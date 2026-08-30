@@ -1,62 +1,62 @@
-# Decision 0002: Jetson / ESP32 actuation and encoder boundary
+# 결정 기록 0002: Jetson·ESP32의 구동 제어와 엔코더 역할 분담
 
-- Status: provisional baseline
-- Date: 2026-08-30
+- 상태: 잠정적인 기본 구성
+- 날짜: 2026-08-30
 
-## Decision
+## 결정
 
-Use the Jetson for perception, race-state logic, planning, and generation of a desired vehicle speed and steering angle. Use an ESP32-class MCU for the time-sensitive actuator and safety layer:
+Jetson은 인지, 경주 상태 판단, 경로 계획과 목표 차량 속도·조향각 생성을 담당합니다. ESP32 계열 MCU는 시간 제약이 중요한 구동 제어와 안전 기능을 담당합니다.
 
 ```text
-Jetson (/drive: desired speed + steering angle)
+Jetson (/drive: 목표 속도 + 조향각)
               |
               v
-     ESP32 command watchdog
+      ESP32 명령 수신 감시
        |                  |
        v                  v
- ESC command output   steering-servo PWM
+  ESC 명령 출력      조향 서보 PWM
        |
        v
-   ESC -> BLDC motor
+   ESC -> BLDC 모터
 
-left/right driven-wheel encoders -> ESP32 speed estimate / control
-                                      |
-                                      v
-                     Jetson (/wheel_states + health)
+좌우 구동륜 엔코더 -> ESP32 속도 추정·제어
+                              |
+                              v
+                 Jetson (/wheel_states + 장치 상태)
 ```
 
-The ESP32 does not directly commutate the final BLDC in the baseline design. A compatible ESC performs motor commutation; the ESP32 sends the ESC's required command signal. Direct field-oriented control is a different hardware/software project and is not assumed.
+기본 설계에서 ESP32가 실제 BLDC 모터의 정류, 즉 회전에 맞춰 모터 상의 전류를 전환하는 동작을 직접 수행하지는 않습니다. 호환되는 ESC가 이 역할을 맡고, ESP32는 해당 ESC가 요구하는 명령 신호를 보냅니다. 자속 기준 제어(FOC)를 직접 구현하는 것은 별도의 하드웨어·소프트웨어 개발 과제이며, 현재 설계의 전제가 아닙니다.
 
-Fit one quadrature encoder to each driven rear wheel if packaging permits. A single motor-shaft encoder can regulate motor speed but cannot observe left/right wheel difference, wheel slip after the drivetrain, or a mechanically disconnected wheel. If encoders are mounted before a gearbox, the configured counts per wheel revolution must include the gear ratio.
+장착 공간이 허용된다면 좌우 구동 뒷바퀴 각각에 쿼드러처 엔코더를 하나씩 설치합니다. 모터 축에 엔코더 하나만 설치해도 모터 속도는 제어할 수 있지만, 좌우 바퀴의 회전 차이, 동력 전달계 이후 바퀴의 미끄러짐, 바퀴의 기계적 연결 이탈은 관측할 수 없습니다. 엔코더가 기어박스 앞단에 설치된다면 바퀴 한 회전당 카운트 수 설정에 기어비를 반영해야 합니다.
 
-Keep the cross-computer ROS contract independent of the selected transport:
+장치 간 ROS 인터페이스 규약은 선택할 통신 방식과 독립적으로 유지합니다.
 
-- `/drive` (`ackermann_msgs/AckermannDriveStamped`): desired longitudinal speed and steering angle;
-- `/wheel_states` (`sensor_msgs/JointState`): left/right driven-wheel angle and angular velocity;
-- `/wheel_encoder_ticks` (`std_msgs/Int64MultiArray`): cumulative `[rear_left, rear_right]` counts for bring-up and diagnostics.
+- `/drive` (`ackermann_msgs/AckermannDriveStamped`): 차량의 목표 종방향 속도와 조향각
+- `/wheel_states` (`sensor_msgs/JointState`): 좌우 구동륜의 회전각과 각속도
+- `/wheel_encoder_ticks` (`std_msgs/Int64MultiArray`): 초기 구동 점검과 진단을 위한 `[rear_left, rear_right]` 순서의 누적 카운트
 
-USB serial, CAN, and micro-ROS transport remain open choices. The final link must include sequence/age checking, an ESP32-side timeout that commands a safe stop, explicit arming state, and an independently reachable emergency stop.
+USB 직렬 통신, CAN, micro-ROS 중 어떤 방식을 사용할지는 아직 정하지 않았습니다. 최종 통신 체계에는 메시지 순서·경과 시간 검사, 명령 수신 제한 시간을 넘겼을 때 ESP32에서 안전 정지를 지시하는 기능, 명시적인 구동 허용(arming) 상태와 독립적으로 작동시킬 수 있는 비상 정지가 필요합니다.
 
-## Why an encoder is in the baseline
+## 기본 구성에 엔코더를 포함하는 이유
 
-Open-loop ESC throttle is sufficient to make the car move, but commanded throttle is not vehicle speed. Battery voltage, tire load, surface friction, motor temperature, gearing, and collisions change the achieved speed. Encoder feedback materially improves repeatable low-speed motion, stopping distance, launch consistency, and fault detection. It does not replace IMU or visual/lidar localization because wheel slip remains possible.
+피드백 없이 ESC 스로틀을 지정하는 개방 루프 방식으로도 차량을 움직일 수는 있습니다. 그러나 스로틀 명령값이 곧 차량 속도는 아닙니다. 배터리 전압, 타이어 하중, 노면 마찰, 모터 온도, 기어 구성과 충돌에 따라 실제 속도가 달라집니다. 엔코더 피드백은 저속 주행의 재현성, 정지 거리 관리, 출발 동작의 일관성과 고장 감지에 실질적으로 도움이 됩니다. 다만 바퀴가 미끄러질 가능성은 남으므로 IMU나 영상·LiDAR 기반 위치 추정을 대체하지는 않습니다.
 
-## Simulation treatment
+## 시뮬레이션에서의 처리
 
-Gazebo already calculates ideal wheel-joint angle and velocity. Algorithms do not consume that ground truth directly. `sim_wheel_encoder` converts it into the same `/wheel_states` interface intended for the real ESP32 adapter and can model:
+Gazebo는 이미 이상적인 휠 관절 회전각과 각속도를 계산합니다. 알고리즘은 이 정답값을 직접 사용하지 않습니다. `sim_wheel_encoder`가 이를 실제 ESP32 어댑터에 사용할 `/wheel_states` 인터페이스로 변환하며, 다음 특성을 모사할 수 있습니다.
 
-- encoder counts per revolution;
-- finite sample rate;
-- communication / processing latency;
-- optional sample dropout.
+- 엔코더의 회전당 카운트 수
+- 제한된 샘플링 빈도
+- 통신·처리 지연
+- 필요에 따른 샘플 누락
 
-The first provisional values are 2048 ticks per wheel revolution, 100 Hz sampling, 2 ms latency, and no dropout. They are test parameters, not a purchasing specification.
+첫 임시값은 바퀴 한 회전당 2048틱, 샘플링 100 Hz, 지연 2 ms, 샘플 누락 없음입니다. 이는 테스트용 매개변수이며 구매 사양이 아닙니다.
 
-## Revisit when known
+## 사양 확인 후 재검토할 항목
 
-- motor, ESC, command protocol, braking and reverse behavior;
-- encoder mounting point, electrical interface, counts per revolution, and maximum edge rate;
-- drivetrain gear ratio and differential / spool layout;
-- exact ESP32 board and available timers, pulse counters, buses, and isolated power;
-- Jetson-to-ESP32 transport and message framing;
-- electrical emergency stop and loss-of-command behavior.
+- 모터, ESC, 명령 프로토콜, 제동·후진 동작
+- 엔코더 장착 지점, 전기적 인터페이스, 회전당 카운트 수와 최대 신호 에지 빈도
+- 동력 전달계의 기어비와 차동장치·좌우 바퀴 고정 연결(spool) 구성
+- 정확한 ESP32 보드 모델과 사용 가능한 타이머·펄스 카운터·통신 버스·절연 전원
+- Jetson과 ESP32 사이의 통신 방식 및 메시지 프레이밍(메시지 경계 구분 방식)
+- 전기적 비상 정지와 명령 수신 중단 시 동작

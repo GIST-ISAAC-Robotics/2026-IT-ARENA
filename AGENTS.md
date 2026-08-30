@@ -1,20 +1,28 @@
-# IT ARENA project handoff rules
+# IT ARENA 프로젝트 인수인계 규칙
 
-Before changing this repository, read these files in order:
+이 저장소를 변경하기 전에 다음 파일을 순서대로 읽습니다.
 
 1. `docs/PROJECT_CONTEXT.md`
-2. the newest file in `docs/activity/`
-3. any relevant record in `docs/decisions/`
-4. `docs/track/TRACK_AUDIT.md` when touching the course or simulator world
+2. `docs/activity/`에서 날짜가 가장 최신인 파일
+3. `docs/decisions/`에서 현재 작업과 관련된 결정 기록
+4. 코스나 시뮬레이터 월드를 변경할 경우 `docs/track/TRACK_AUDIT.md`
 
-Keep these records current:
+다음 기록과 원칙을 항상 유지합니다.
 
-- Update `docs/PROJECT_CONTEXT.md` when confirmed facts, decisions, blockers, or next actions change.
-- Append material work to the current date's file in `docs/activity/`. Record outcomes and evidence, not a transcript of commands.
-- Add an ADR under `docs/decisions/` for choices that would be costly to reverse.
-- Do not edit `assets/track/original/it_arena_track_final.zip`. It is the byte-for-byte source archive.
-- Treat `assets/track/source/it_arena_track/output_final/scene.json` and `world.sdf` as the observed current outputs, not the accompanying README. Their known inconsistencies are documented in the track audit.
-- Hardware dimensions in `src/arena_description/config/vehicle.yaml` are provisional until explicitly marked confirmed.
-- Keep simulated and real vehicle-facing ROS topics compatible. Simulation-only ground truth must never be consumed by competition autonomy nodes.
+- 확인된 사실, 결정 사항, 진행을 막는 문제 또는 다음 작업이 바뀌면 `docs/PROJECT_CONTEXT.md`를 갱신합니다.
+- 중요한 작업은 당일 `docs/activity/` 파일에 추가합니다. 명령어 실행 내역을 그대로 옮기지 말고, 결과와 근거를 기록합니다.
+- 되돌리는 비용이 큰 선택은 `docs/decisions/` 아래에 아키텍처 결정 기록(ADR)으로 남깁니다.
+- `assets/track/original/it_arena_track_final.zip`은 수정하지 않습니다. 원본을 바이트 단위로 보존하는 압축 파일입니다.
+- 함께 제공된 README가 아니라 `assets/track/source/it_arena_track/output_final/scene.json`과 `world.sdf`를 현재 확인된 출력물로 취급합니다. 알려진 불일치는 트랙 감사 문서에 기록되어 있습니다.
+- `src/arena_description/config/vehicle.yaml`의 하드웨어 치수는 명시적으로 확정 표시를 하기 전까지 임시값입니다.
+- 시뮬레이션 차량과 실제 차량이 사용하는 ROS 토픽의 호환성을 유지합니다. 대회용 자율주행 노드는 시뮬레이션에서만 얻을 수 있는 정답값(ground truth)을 절대 입력으로 사용해서는 안 됩니다.
 
-The repeatable track + parameterized Ackermann + D435i/encoder interface baseline was verified on 2026-08-30. The next milestone is ground-truth centerline following with curvature-based speed control; do not skip directly to opaque end-to-end racing behavior.
+반복 실행 가능한 트랙, 매개변수 기반 Ackermann 차량, D435i·엔코더 인터페이스의 기초 구현은 2026-08-30에 검증했습니다. 다음 이정표는 시뮬레이터의 정답 위치를 이용한 중심선 추종과 곡률 기반 속도 제어입니다. 동작을 설명하기 어려운 종단간(end-to-end) 경주 방식으로 곧장 건너뛰지 않습니다.
+
+## 문서 작성 언어
+
+- 이 프로젝트에서 작성하는 설명 문서, 활동 내역, 결정 기록과 인수인계 문서는 한국어를 기본으로 합니다.
+- 전문 용어는 필요할 때 한국어 설명과 영문 명칭을 함께 씁니다. 코드 식별자, 실행 명령어, 경로, ROS 토픽, 메시지 형식과 설정 키는 번역하지 않습니다.
+- 번역만 하는 작업에서는 수치, 단위, 검증 근거, 확정·임시·계획의 구분을 유지합니다. 문서 내용을 수정해야 한다면 번역과 구분하여 기록합니다.
+- 주최 측 원본 자료인 `assets/track/` 아래 파일은 번역하거나 덮어쓰지 않습니다. 필요한 해설은 프로젝트 문서에 별도로 작성합니다.
+- 별도 요청이 없다면 동일한 문서의 한국어판과 영어판을 중복 관리하지 않습니다.

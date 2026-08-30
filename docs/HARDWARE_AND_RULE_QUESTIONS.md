@@ -1,49 +1,49 @@
-# Hardware and rule questions
+# 하드웨어·경기 규칙 확인 질문
 
-These answers are not required to start the first simulation, but they progressively replace provisional values in `src/arena_description/config/vehicle.yaml`.
+첫 시뮬레이션을 시작하기 위해 아래 답변이 모두 필요한 것은 아닙니다. 확인되는 항목부터 `src/arena_description/config/vehicle.yaml`의 임시값을 실제 값으로 바꿉니다.
 
-## Ask the organizer first
+## 주최 측에 먼저 확인할 사항
 
-1. Is 20 cm x 15 cm a maximum outer envelope, and do wheels, bumpers, wiring, and sensors count?
-2. Is there truly no height limit, minimum ground clearance, or forbidden sensor overhang?
-3. Is the current `output_final` track the competition baseline? Which file/version/date is authoritative?
-4. Are both branches really 0.12 m wide? If so, what maximum vehicle width is expected to use them?
-5. What are the final wall height, wall thickness, surface material, friction, bump geometry, and tolerances?
-6. What are the traffic-light position, lamp diameter, height, color order, sequence, timing, and allowed viewing region?
-7. What are the final ArUco dictionary, physical size, IDs, poses, mounting height, and decoy-marker policy?
-8. Are deliberate contact, blocking, reversing, lane crossing, and passing restricted? How are collisions penalized?
-9. Can a stopped vehicle remain on course, and must competitors safely handle it?
-10. What exact battery and power-related board are supplied? The forgotten name may be a PDB, DC-DC/power board, motor driver, or another board; the exact part number matters.
-11. What radio / external-compute / preloaded-map restrictions apply during a race?
+1. 20 cm x 15 cm는 차량의 최대 외형 치수입니까? 바퀴, 범퍼, 배선과 센서도 이 범위에 포함됩니까?
+2. 높이 제한, 최저 지상고 규정이나 센서 돌출 금지 규정이 정말 없습니까?
+3. 현재 `output_final` 트랙이 대회 기준입니까? 어떤 파일·버전·날짜의 자료를 최종 기준으로 삼아야 합니까?
+4. 두 분기 경로의 폭이 실제로 모두 0.12 m입니까? 그렇다면 어느 정도의 최대 차량 폭까지 이용할 수 있도록 설계한 것입니까?
+5. 최종 벽 높이·두께, 노면 재질·마찰, 과속방지턱 형상과 제작 허용 오차는 얼마입니까?
+6. 신호등 위치, 등 지름·높이, 색상 배치 순서, 점등 순서·시간과 관측이 허용되는 영역은 어떻게 됩니까?
+7. 최종 ArUco 사전(dictionary), 실제 마커 크기, ID, 위치·자세, 장착 높이와 혼동용 가짜 마커에 관한 규정은 무엇입니까?
+8. 고의 접촉, 진로 방해, 후진, 차선 횡단과 추월에 제한이 있습니까? 충돌에는 어떤 벌칙이 적용됩니까?
+9. 정지한 차량이 코스에 남아 있을 수 있습니까? 다른 참가 차량은 이를 안전하게 처리해야 합니까?
+10. 지급되는 배터리와 전원 관련 보드의 정확한 모델은 무엇입니까? 이름을 기억하지 못한 보드는 전원 분배 보드(PDB), DC-DC·전원 보드, 모터 드라이버 또는 다른 보드일 수 있으므로 정확한 부품 번호가 중요합니다.
+11. 경기 중 무선 통신, 외부 연산과 사전 탑재 지도에는 어떤 제한이 있습니까?
 
-## Ask the hardware team next
+## 하드웨어팀에 이어서 확인할 사항
 
-1. Wheelbase: rear axle center to front kingpin/axle center.
-2. Front and rear track widths.
-3. Overall body length and width, including wheels and protection.
-4. Wheel diameter, width, tire material, and expected deformation.
-5. Steering linkage type, neutral PWM, end-stop PWM, maximum inner/outer wheel angle, backlash, and full-step response time.
-6. Driven axle, motor model, ESC model, gear ratio, differential/spool/free-wheel arrangement, and brake/reverse behavior.
-7. Total mass, approximate center of gravity, battery mass/position, and expected payload range.
-8. Available regulated rails, current limits, connectors, grounding plan, emergency stop, and Jetson power mode.
-9. Exact ESP32 board, logic voltage, available pins/timers, and power source.
-10. ESC command protocol (servo PWM, DShot, CAN, UART, or vendor-specific), arming sequence, update rate, telemetry, braking, and reverse behavior.
-11. Encoder mounting point (motor shaft, gearbox output, or wheel), channels per driven wheel, quadrature/index support, counts per revolution, gear ratio, maximum edge rate, and voltage level.
-12. Jetson-to-ESP32 transport (USB serial, CAN, UART, or Ethernet), connector retention, grounding, message timeout, and restart behavior.
-13. Which layer owns the speed loop, steering calibration, command watchdog, arming state, and emergency stop. The provisional design assigns these real-time/safety duties to the ESP32.
-14. D435i mount height/pitch and unobstructed field of view.
-15. Feasible LiDAR height and whether its 360-degree scan is blocked by the Jetson, battery, mast, wheels, or bodywork.
-16. Bumper heights of our car and likely opponents; this determines whether a single scan plane can see them.
+1. 축거(wheelbase): 뒷차축 중심부터 앞바퀴 킹핀·앞차축 중심까지의 거리
+2. 전륜·후륜의 윤거(track width)
+3. 바퀴와 보호 구조를 포함한 전체 길이·폭
+4. 바퀴 지름·폭, 타이어 재질과 예상 변형량
+5. 조향 링크 방식, 중립 PWM, 양 끝 한계 위치의 PWM, 안쪽·바깥쪽 바퀴의 최대 조향각, 백래시(기계적 유격)와 전 범위 계단 입력에 대한 응답 시간
+6. 구동 차축, 모터 모델, ESC 모델, 기어비, 차동장치·좌우 바퀴 고정 연결(spool)·프리휠 구성과 제동·후진 동작
+7. 총질량, 대략적인 무게중심, 배터리 질량·위치와 예상 탑재 하중 범위
+8. 사용 가능한 정전압 전원 출력, 전류 한도, 커넥터, 접지 계획, 비상 정지와 Jetson 전력 모드
+9. 정확한 ESP32 보드 모델, 논리 전압, 사용 가능한 핀·타이머와 전원 공급원
+10. ESC 명령 프로토콜(서보 PWM, DShot, CAN, UART 또는 제조사 전용 방식), 구동 허용(arming) 절차, 명령 갱신 빈도, 상태 피드백(telemetry)과 제동·후진 동작
+11. 엔코더 장착 지점(모터 축, 기어박스 출력축 또는 바퀴), 구동륜당 채널 수, 쿼드러처·인덱스 신호 지원 여부, 회전당 카운트 수, 기어비, 최대 신호 에지 빈도와 전압 레벨
+12. Jetson과 ESP32 사이의 통신 방식(USB 직렬 통신, CAN, UART 또는 Ethernet), 커넥터 이탈 방지, 접지, 메시지 수신 제한 시간과 재시작 시 동작
+13. 속도 제어 루프, 조향 보정, 명령 수신 감시, 구동 허용 상태와 비상 정지를 어느 계층이 담당할지 확인합니다. 잠정 설계에서는 이러한 실시간·안전 기능을 ESP32에 맡깁니다.
+14. D435i 장착 높이·상하 기울기(pitch)와 가림 없이 확보되는 시야 범위
+15. 설치 가능한 LiDAR 높이와 Jetson·배터리·지지대·바퀴·차체에 의한 360도 스캔 가림 여부
+16. 우리 차량과 예상 상대 차량의 범퍼 높이: 단일 스캔 평면으로 감지할 수 있는지를 결정하는 조건입니다.
 
-## Sensor purchase gate
+## 센서 구매 전 확인 조건
 
-Do not purchase a LiDAR or an array of ToF sensors solely from intuition. First simulate and measure blind regions using:
+직감만으로 LiDAR나 여러 개의 ToF 센서를 구매하지 않습니다. 먼저 다음 조건을 반영해 사각지대를 시뮬레이션하고 측정합니다.
 
-- the confirmed chassis envelope;
-- at least three opponent-height profiles (low, equal, tall);
-- front, side, rear, and close-corner approaches;
-- self-occlusion from wheels/body/electronics;
-- D435i minimum-range and field-of-view limits;
-- required stopping distance at the chosen maximum speed.
+- 확정된 차체 외형
+- 최소 3가지 상대 차량 높이 조건: 우리 차량보다 낮음·같음·높음
+- 전방·측면·후방에서의 접근과 차체 모서리 근처로의 접근
+- 바퀴·차체·전자 장치에 의한 자체 가림
+- D435i의 최소 측정 거리와 시야각 한계
+- 선택한 최고 속도에서 필요한 정지 거리
 
-The initial likely architecture is D435i RGB/depth + a low or mid-height 2D LiDAR, with ToF only for demonstrated near-field blind spots.
+초기 유력 구성은 D435i RGB·깊이 센서와 낮거나 중간 높이에 장착한 2D LiDAR의 조합입니다. ToF는 실제로 확인된 근거리 사각지대를 보완할 때만 추가합니다.

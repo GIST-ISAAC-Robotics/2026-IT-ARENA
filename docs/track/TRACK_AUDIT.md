@@ -1,66 +1,66 @@
-# Supplied track audit
+# 제공된 트랙 감사 기록
 
-Audit date: 2026-08-30
+감사 날짜: 2026-08-30
 
-## Provenance
+## 자료 출처와 보존
 
-- Imported from `C:\Users\Jinhyeong\Documents\카카오톡 받은 파일\it_arena_track_final.zip`.
-- Preserved repository copy: `assets/track/original/it_arena_track_final.zip`.
-- SHA-256: `DE448BA10C614E0F635D44B2F36BAB29EBF455C323DE442562DD01A8296758E4`.
-- Extracted files are under `assets/track/source/it_arena_track/`.
-- Do not edit the preserved archive. Runtime fixes belong in ROS/Gazebo package directories and must be traceable.
+- 가져온 원본: `C:\Users\Jinhyeong\Documents\카카오톡 받은 파일\it_arena_track_final.zip`
+- 저장소에 보존한 사본: `assets/track/original/it_arena_track_final.zip`
+- SHA-256: `DE448BA10C614E0F635D44B2F36BAB29EBF455C323DE442562DD01A8296758E4`
+- 압축을 푼 파일은 `assets/track/source/it_arena_track/`에 있습니다.
+- 보존된 원본 압축 파일은 수정하지 않습니다. 실행을 위한 수정은 ROS/Gazebo 패키지 디렉터리에서 수행하고, 변경 내역을 추적할 수 있어야 합니다.
 
-## Observed `output_final` facts
+## `output_final`에서 확인한 사실
 
-The actual `output_final/scene.json`, CSVs, image, and SDF describe:
+실제 `output_final/scene.json`, CSV, 이미지와 SDF에 나타난 내용은 다음과 같습니다.
 
-- lap length: 46.6329 m;
-- main track width: 0.35 m;
-- two branches, each 0.12 m wide;
-- branch spans: 13.2-16.8 m and 32.897-36.397 m along the main path;
-- scene's assumed vehicle: 0.15 m x 0.10 m;
-- six grid slots in two staggered columns;
-- wall height: 0.30 m and thickness: 0.05 m;
-- one 0.01 m-high speed bump in the observed output;
-- signal gantry height: 1.20 m; lamp centers at approximately 1.08 m;
-- ArUco dictionary: `DICT_4X4_50`, marker size 0.10 m;
-- present marker IDs: 0, 20, 30, and 45;
-- general minimum centerline radius: 0.298695 m;
-- `min_radius_general_ok: false` in the generated verification record.
+- 한 바퀴 길이: 46.6329 m
+- 주 경로 폭: 0.35 m
+- 분기 경로: 2개, 각각 폭 0.12 m
+- 분기 구간: 주 경로를 따라 측정한 거리 기준 13.2-16.8 m와 32.897-36.397 m
+- 장면에서 가정한 차량 크기: 0.15 m x 0.10 m
+- 출발 위치: 서로 엇갈린 2열에 총 6개
+- 벽 높이: 0.30 m, 두께: 0.05 m
+- 확인된 출력물에는 높이 0.01 m의 과속방지턱이 1개 있습니다.
+- 신호등 지지 구조물 높이: 1.20 m, 등 중심 높이: 약 1.08 m
+- ArUco 사전: `DICT_4X4_50`, 마커 크기: 0.10 m
+- 실제 배치된 마커 ID: 0, 20, 30, 45
+- 일반 구간 중심선의 최소 곡률 반경: 0.298695 m
+- 생성된 검증 기록의 결과: `min_radius_general_ok: false`
 
-## Conflicts with the accompanying README
+## 동봉된 README와의 불일치
 
-The README instead describes an older/different result, including:
+반면 README에는 다음과 같이 이전 버전이거나 다른 결과로 보이는 내용이 적혀 있습니다.
 
-- 38.11 m lap length;
-- 0.15 m wall height;
-- multiple bump groups;
-- marker ID 10 and fake IDs 7, 23, 33;
-- general minimum radius 0.45 m and a PASS;
-- `track_gen.py` as the single source of truth.
+- 한 바퀴 길이 38.11 m
+- 벽 높이 0.15 m
+- 여러 과속방지턱 묶음
+- 마커 ID 10과 가짜 마커 ID 7, 23, 33
+- 일반 구간 최소 곡률 반경 0.45 m 및 검사 통과(PASS)
+- `track_gen.py`가 유일한 기준 원본이라는 설명
 
-The current `scene.json` calls the course a `track_editor.html` user-designed course, and the actual output names / values do not match several README claims. Therefore neither the README nor `track_gen.py` may be treated as authoritative for the event until the organizer confirms the final version.
+현재 `scene.json`은 이 코스를 `track_editor.html`에서 사용자가 설계한 코스로 명시합니다. 실제 출력물의 이름·값도 README의 여러 설명과 일치하지 않습니다. 따라서 주최 측에서 최종 버전을 확인해 주기 전까지는 README와 `track_gen.py` 어느 쪽도 대회의 확정 기준으로 취급할 수 없습니다.
 
-## Runtime issues to fix in a derived copy
+## 파생본에서 해결해야 할 실행 문제
 
-1. All red, yellow, and green lamp visuals are emissive simultaneously.
-2. `traffic_light.py` broadcasts UDP state but does not change the Gazebo visuals.
-3. ArUco texture paths in `world.sdf` use `../aruco/...` even though the images are in the same output directory's `aruco/` child. The accompanying `<script>` material elements also omit the required `<name>`, so strict SDF validation fails. The derived runtime world corrects the path and removes the malformed legacy script element while retaining the PBR texture.
-4. The world contains no vehicle or competition logic, which is expected but must be supplied by this repository.
-5. The general minimum-radius verification failure must be reconciled with the actual steering geometry.
+1. 빨강·노랑·초록 신호등 시각 모델이 동시에 모두 발광 상태입니다.
+2. `traffic_light.py`는 UDP로 상태를 송신하지만 Gazebo의 시각 모델을 바꾸지는 않습니다.
+3. `world.sdf`의 ArUco 텍스처 경로는 `../aruco/...`를 사용하지만, 실제 이미지는 같은 출력 디렉터리의 하위 폴더인 `aruco/`에 있습니다. 재질의 `<script>` 요소에는 필수 항목인 `<name>`도 빠져 있어 엄격한 SDF 검증에 실패합니다. 파생 실행용 월드에서는 경로를 수정하고, PBR 텍스처는 유지하면서 잘못 작성된 기존 스크립트 요소를 제거했습니다.
+4. 원본 월드에는 차량이나 경기 로직이 없습니다. 예상된 구성이지만, 이 저장소에서 별도로 구현해야 합니다.
+5. 일반 구간 최소 곡률 반경 검증 실패를 실제 조향 기하 구조와 대조해 검토해야 합니다.
 
-The reproducible derived world is built by `scripts/build_runtime_world.py`. In addition to the ArUco material repairs, it merges repetitive static track links while retaining semantic traffic-light and marker links. The supplied output contains 1,090 links; the derived world reduces this to 10 without changing the individual geometry poses.
+재현 가능한 파생 월드는 `scripts/build_runtime_world.py`로 생성합니다. ArUco 재질을 수정하는 데 더해, 신호등·마커처럼 개별 의미가 있는 링크는 유지하면서 반복적인 정적 트랙 링크를 병합합니다. 제공된 출력물에는 링크가 1,090개 있지만, 파생 월드에서는 개별 형상의 위치·자세를 바꾸지 않고 10개로 줄였습니다.
 
-## Rule-impact observations
+## 규칙과 차량 설계에 영향을 주는 사항
 
-- A 0.12 m branch cannot accommodate a 0.15 m-wide vehicle. Even the scene's 0.10 m-wide assumed vehicle has only 0.01 m nominal clearance on each side.
-- A 0.12 m-wide provisional vehicle has zero theoretical branch clearance. The branch must be considered unavailable until either its width or the actual vehicle width is confirmed.
-- A high traffic signal and a low, road-facing D435i can be mutually incompatible. Visibility must be checked from all six grid slots.
-- A 0.30 m wall is high relative to a 0.20 m-long car and can dominate LiDAR/depth observations; confirm whether the physical track will match it.
+- 폭 0.12 m의 분기 경로에는 폭 0.15 m의 차량이 들어갈 수 없습니다. 장면에서 가정한 폭 0.10 m 차량도 좌우 여유가 명목상 각각 0.01 m뿐입니다.
+- 임시 차량 폭이 0.12 m이므로 분기 경로 통과 시 이론적인 여유가 전혀 없습니다. 분기 경로 폭이나 실제 차량 폭이 확정되기 전까지는 해당 경로를 이용 불가로 취급해야 합니다.
+- 높은 신호등과 낮은 위치에서 노면을 바라보는 D435i는 시야 조건이 맞지 않을 수 있습니다. 6개 출발 위치 모두에서 신호등 가시성을 확인해야 합니다.
+- 높이 0.30 m의 벽은 길이 0.20 m의 차량에 비해 높아 LiDAR·깊이 센서 관측의 상당 부분을 차지할 수 있습니다. 실제 트랙도 같은 높이인지 확인해야 합니다.
 
-## Source hierarchy until organizer confirmation
+## 주최 측 확인 전까지의 자료 우선순위
 
-1. Preserved ZIP hash for provenance.
-2. `output_final/scene.json` and `world.sdf` for reproducing the supplied actual output.
-3. CSV/map/image files for cross-checking geometry.
-4. README only as historical intent, not current numeric truth.
+1. 출처·무결성 확인: 보존된 ZIP의 해시
+2. 제공된 실제 출력물 재현: `output_final/scene.json`과 `world.sdf`
+3. 형상 교차 검증: CSV·지도·이미지 파일
+4. README: 과거 설계 의도를 파악하는 참고 자료로만 사용하며, 현재 수치의 기준으로 삼지 않습니다.

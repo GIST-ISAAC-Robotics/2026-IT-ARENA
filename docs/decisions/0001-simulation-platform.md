@@ -1,38 +1,38 @@
-# ADR 0001: PC simulation and Jetson deployment platforms
+# ADR 0001: PC 시뮬레이션 환경과 Jetson 배포 환경
 
-Date: 2026-08-30
-Status: accepted for the first milestone
+날짜: 2026-08-30
+상태: 첫 이정표를 위한 구성으로 채택
 
-## Decision
+## 결정
 
-Use the existing WSL2 Ubuntu 24.04 distro with ROS 2 Jazzy and Gazebo Harmonic for PC simulation. Preserve the Jetson's JetPack 6.2.1 installation and plan to build competition packages for ROS 2 Humble on its Ubuntu 22.04 base.
+PC 시뮬레이션에는 기존 WSL2 Ubuntu 24.04 배포판과 ROS 2 Jazzy, Gazebo Harmonic을 사용합니다. Jetson에 설치된 JetPack 6.2.1은 유지하고, 그 기반인 Ubuntu 22.04에서 ROS 2 Humble용 대회 패키지를 빌드할 계획입니다.
 
-## Reasons
+## 선택 근거
 
-- Jazzy + Harmonic is the officially recommended ROS/Gazebo LTS pairing on Ubuntu 24.04.
-- The existing WSL distro already has WSLg and working NVIDIA GPU forwarding.
-- JetPack 6.2.1 uses Jetson Linux 36.4.4 with an Ubuntu 22.04 root filesystem. Reflashing it only for distro symmetry adds hardware-driver and recovery risk without improving the algorithms.
-- Gazebo belongs behind a simulation adapter. Perception, planning, and control code can remain portable across Humble and Jazzy if distro-specific APIs are kept at the edges and CI checks both.
-- Running Jazzy in a Jetson container remains an escape hatch, not the baseline, because direct RealSense, serial, GPIO, and acceleration integration would add complexity.
+- Jazzy + Harmonic은 Ubuntu 24.04에서 공식 권장하는 ROS/Gazebo 장기 지원(LTS) 조합입니다.
+- 기존 WSL 배포판에서 WSLg와 NVIDIA GPU 연동이 이미 정상 동작합니다.
+- JetPack 6.2.1은 Ubuntu 22.04 루트 파일시스템을 사용하는 Jetson Linux 36.4.4를 기반으로 합니다. 운영체제 배포판을 통일하기 위한 목적만으로 Jetson 시스템 이미지를 다시 설치하면, 알고리즘 개선 없이 하드웨어 드라이버와 복구 작업에 따른 위험만 늘어납니다.
+- Gazebo와의 연동은 시뮬레이션 어댑터 뒤로 분리해야 합니다. 배포판 전용 API를 연동 경계에 한정하고 지속적 통합(CI)에서 양쪽을 검사하면, 인지·계획·제어 코드를 Humble과 Jazzy 사이에서 이식 가능한 형태로 유지할 수 있습니다.
+- Jetson의 컨테이너에서 Jazzy를 실행하는 방법은 기본 구성 대신 예비 대안으로 남깁니다. RealSense, 직렬 통신, GPIO와 하드웨어 가속을 직접 연동하는 과정이 복잡해지기 때문입니다.
 
-## Rejected alternatives
+## 채택하지 않은 대안
 
-### Replace WSL 24.04 with Ubuntu 22.04 + ROS 2 Humble + Gazebo Fortress
+### 기존 WSL 24.04를 Ubuntu 22.04 + ROS 2 Humble + Gazebo Fortress로 교체
 
-This gives exact ROS distro symmetry, but moves the simulator onto an older pairing close to the event and discards an already healthy WSL environment. A second WSL distro may still be added later for Humble compatibility testing without replacing the current one.
+ROS 배포판을 정확히 통일할 수는 있습니다. 그러나 대회를 앞둔 시점에 시뮬레이터를 더 오래된 조합으로 옮기고, 정상 동작하는 기존 WSL 환경을 포기하게 됩니다. 나중에 Humble 호환성 테스트가 필요하다면 현재 환경을 교체하지 않고 별도의 WSL 배포판을 추가할 수 있습니다.
 
-### Use ROS 2 Humble + Gazebo Harmonic everywhere
+### 모든 환경에서 ROS 2 Humble + Gazebo Harmonic 사용
 
-This pairing exists, but Gazebo documents it as possible-with-caution and distributes non-default packages that can conflict with the normal Humble `ros_gz` packages. It is unnecessary for the first milestone.
+사용 가능한 조합이지만, Gazebo 문서에서는 주의가 필요한 조합으로 안내합니다. 또한 이를 위해 제공되는 비기본 패키지는 일반적인 Humble의 `ros_gz` 패키지와 충돌할 수 있습니다. 첫 이정표에는 필요하지 않습니다.
 
-### Reflash the Jetson to a 24.04-based environment
+### Jetson을 Ubuntu 24.04 기반 환경으로 재설치
 
-Not selected. JetPack's board-support and acceleration stack are the controlling constraints. Reflashing a working target before a concrete dependency requires it is needless risk.
+채택하지 않았습니다. JetPack의 보드 지원과 하드웨어 가속 소프트웨어가 우선적인 제약 조건입니다. 실제로 필요한 의존성이 확인되지 않은 상태에서 정상 동작하는 Jetson을 재설치하는 것은 불필요한 위험입니다.
 
-## Compatibility rules
+## 호환성 유지 규칙
 
-- Use standard messages where possible.
-- Isolate `ros_gz` dependencies to simulation packages.
-- Avoid relying on Jazzy-only node APIs in portable autonomy packages.
-- Add Humble and Jazzy build checks before hardware integration begins.
-- Keep configuration files and topic contracts shared even when launch files differ.
+- 가능한 한 표준 메시지를 사용합니다.
+- `ros_gz` 의존성은 시뮬레이션 패키지 안으로 한정합니다.
+- 여러 환경에서 실행할 자율주행 패키지는 Jazzy에만 있는 노드 API에 의존하지 않도록 합니다.
+- 하드웨어 통합을 시작하기 전에 Humble과 Jazzy 양쪽의 빌드 검사를 추가합니다.
+- 실행 설정 파일(launch file)이 달라지더라도 구성 파일과 토픽 인터페이스 규약은 공유합니다.

@@ -1,34 +1,34 @@
-# 2026 IT ARENA Autonomous Racing
+# 2026 IT ARENA 자율주행 경주
 
-Software and simulation workspace for the GIST-ISAAC-Robotics entry in the 2026 IT ARENA autonomous-driving event.
+GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프트웨어·시뮬레이션 작업 공간입니다.
 
-The project starts from the organizer's supplied track package and targets:
+주최 측에서 제공한 트랙 자료를 출발점으로 삼으며, 다음을 목표로 합니다.
 
-- a parameterized Ackermann vehicle no larger than the 20 cm x 15 cm rule envelope;
-- a RealSense D435i-compatible simulated camera/depth/IMU interface;
-- a Jetson-to-ESP32 actuation boundary with configurable wheel-encoder simulation;
-- optional low-mounted 2D LiDAR and short-range ToF coverage;
-- camera-only traffic-light and ArUco recognition;
-- single-car path following first, then multi-car safety and avoidance;
-- a clean boundary between Gazebo-only truth and code that can run on the Jetson.
+- 규정상 외형 한계인 20 cm x 15 cm를 넘지 않고, 치수를 매개변수로 조정할 수 있는 Ackermann 조향 차량
+- RealSense D435i와 호환되는 시뮬레이션 카메라·깊이·IMU 인터페이스
+- Jetson과 ESP32의 구동 제어 역할 분리 및 매개변수로 조정 가능한 휠 엔코더 시뮬레이션
+- 필요에 따라 낮은 위치에 장착한 2D LiDAR와 근거리 ToF 센서로 감지 범위 보완
+- 카메라 영상만을 이용한 신호등·ArUco 마커 인식
+- 단독 차량의 경로 추종을 먼저 구현한 뒤, 여러 차량이 함께 달릴 때의 안전 주행과 회피로 확장
+- Gazebo에서만 얻을 수 있는 정답값과 실제 Jetson에서 실행할 자율주행 코드의 명확한 분리
 
-## Current status
+## 현재 상태
 
-- The original track ZIP is preserved under `assets/track/original/` with a recorded SHA-256.
-- The extracted track is under `assets/track/source/`.
-- WSL2 Ubuntu 24.04 is the selected simulation host.
-- ROS 2 Jazzy + Gazebo Harmonic is the selected PC simulation stack.
-- Vehicle dimensions and sensor poses are provisional pending the hardware team's measurements.
-- Manual forward/steering control, odometry, D435i RGB/depth/point cloud, and encoder topics are implemented; final verification results are tracked in the activity log.
+- 원본 트랙 ZIP은 `assets/track/original/`에 보존했으며, SHA-256 해시를 기록했습니다.
+- 압축을 푼 트랙 자료는 `assets/track/source/`에 있습니다.
+- 시뮬레이션 실행 환경으로 WSL2 Ubuntu 24.04를 선택했습니다.
+- PC 시뮬레이션 소프트웨어로 ROS 2 Jazzy + Gazebo Harmonic을 선택했습니다.
+- 차량 치수와 센서 장착 위치·자세는 하드웨어팀의 실측값을 받기 전까지 임시값입니다.
+- 수동 전진·조향 제어, 오도메트리(이동량 추정), D435i RGB·깊이·포인트 클라우드와 엔코더 토픽을 구현했습니다. 최종 검증 결과는 활동 기록에 남깁니다.
 
-Read [docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md) for the current handoff state and [docs/track/TRACK_AUDIT.md](docs/track/TRACK_AUDIT.md) before trusting the track README.
+현재 인수인계 내용은 [프로젝트 현황](docs/PROJECT_CONTEXT.md)을 참고하십시오. 주최 측 트랙 README를 근거로 사용하기 전에는 [트랙 감사 기록](docs/track/TRACK_AUDIT.md)을 먼저 읽어야 합니다.
 
-![Gazebo baseline with the supplied IT ARENA track](artifacts/screenshots/gazebo_baseline.png)
+![제공된 IT ARENA 트랙을 불러온 Gazebo 기초 구현 화면](artifacts/screenshots/gazebo_baseline.png)
 
-## Intended quick start
+## 기본 실행 절차
 
 ```bash
-sudo bash scripts/setup_wsl.sh # once inside Ubuntu 24.04
+sudo bash scripts/setup_wsl.sh # Ubuntu 24.04 안에서 최초 한 번만 실행
 bash scripts/configure_wsl_user.sh
 bash scripts/doctor.sh
 colcon build --symlink-install
@@ -36,13 +36,13 @@ source install/setup.bash
 ros2 launch arena_bringup simulation.launch.py
 ```
 
-Use `headless:=true` when no Gazebo window is wanted. Publish an `ackermann_msgs/AckermannDriveStamped` command on `/drive`; simulated encoder feedback is available on `/wheel_states` and `/wheel_encoder_ticks`.
+Gazebo 창 없이 실행하려면 `headless:=true`를 사용합니다. `/drive`에 `ackermann_msgs/AckermannDriveStamped` 형식의 명령을 발행하며, 시뮬레이션 엔코더 피드백은 `/wheel_states`와 `/wheel_encoder_ticks`에서 확인할 수 있습니다.
 
-Example low-speed command from another sourced WSL terminal:
+환경 설정을 불러온 별도의 WSL 터미널에서 다음 저속 주행 명령을 실행할 수 있습니다.
 
 ```bash
 ros2 topic pub -r 20 /drive ackermann_msgs/msg/AckermannDriveStamped \
   "{drive: {steering_angle: 0.15, speed: 0.25}}"
 ```
 
-Stop the publisher with `Ctrl+C`. The vehicle-side watchdog sends a zero command after 0.5 seconds without a fresh command.
+명령 발행을 중단하려면 `Ctrl+C`를 누릅니다. 차량 측 명령 감시 기능(watchdog)은 새로운 명령이 0.5초 동안 들어오지 않으면 값이 0인 명령을 보냅니다.

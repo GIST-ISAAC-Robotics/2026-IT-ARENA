@@ -1,109 +1,116 @@
-# Project context
+# 프로젝트 현황과 인수인계
 
-Last updated: 2026-08-30
+최종 갱신: 2026-08-30
 
-## Purpose
+## 목적
 
-Prepare a simulation-first software stack for the GIST-ISAAC-Robotics entry in the 2026 IT ARENA autonomous-driving competition, approximately three months away. Hardware is still being designed, so geometry and sensor placement in `src/arena_description/config/vehicle.yaml` must remain configurable while software experiments begin now.
+약 3개월 뒤 열리는 2026 IT ARENA 자율주행 대회에 GIST-ISAAC-Robotics 팀으로 참가하기 위해, 시뮬레이션을 우선 활용하는 소프트웨어 체계를 준비합니다. 하드웨어는 아직 설계 중이므로 `src/arena_description/config/vehicle.yaml`의 차량 치수와 센서 배치를 바꿀 수 있도록 유지하면서 소프트웨어 실험을 먼저 시작합니다.
 
-## Confirmed team and event constraints
+## 현재 파악한 팀·대회 조건
 
-- The reported vehicle footprint limit is 20 cm x 15 cm. No height rule has yet been supplied.
-- Roughly five cars are expected to start together after a qualifying-based grid order.
-- The organizer is expected to provide a battery, an as-yet-unidentified power-related board, a Jetson Orin Nano, and a steering servo.
-- BLDC propulsion is permitted. An ESP32-class MCU and driven-wheel encoders are now the provisional baseline, but the exact ESC, motor, gearing, encoder, transport, and power architecture are not confirmed.
-- The team owns a RealSense D435i and intends to use it by default.
-- A rotating 2D LiDAR and optional ToF sensors are candidates, mainly for surrounding-vehicle safety.
-- The vehicle must observe the start traffic light with a camera.
-- ArUco markers identify course regions / branch opportunities. Route choice must be supported.
-- Overtaking is not a first milestone; reliable slowing, stopping, and collision avoidance are.
+- 전달받은 차량의 평면 외형 제한은 20 cm x 15 cm입니다. 높이 규정은 아직 전달받지 못했습니다.
+- 예선 성적에 따라 출발 위치를 정한 뒤, 약 5대가 동시에 출발할 예정입니다.
+- 주최 측은 배터리, 아직 정확한 종류를 확인하지 못한 전원 관련 보드, Jetson Orin Nano와 조향 서보를 제공할 예정입니다.
+- BLDC 모터를 이용한 구동이 허용됩니다. ESP32 계열 MCU와 구동륜 엔코더를 잠정적인 기본 구성으로 삼았지만, 정확한 ESC·모터·기어 구성·엔코더·통신 방식·전원 구조는 확정되지 않았습니다.
+- 팀은 RealSense D435i를 보유하고 있으며 기본 센서로 사용할 계획입니다.
+- 회전식 2D LiDAR와 선택적인 ToF 센서는 주로 주변 차량과의 충돌 방지를 위한 후보입니다.
+- 출발 신호등을 카메라로 확인해야 합니다.
+- ArUco 마커는 코스 구역과 분기 경로의 위치를 알려줍니다. 주행 경로를 선택하는 기능이 필요합니다.
+- 첫 목표는 추월이 아니라 신뢰할 수 있는 감속·정지·충돌 회피입니다.
 
-## Machine state observed on 2026-08-30
+## 2026-08-30에 확인한 컴퓨터 환경
 
-- Windows host GPU: NVIDIA GeForce RTX 5070 Laptop GPU, driver 610.74, 8 GB VRAM.
-- WSL: Ubuntu 24.04.4 LTS on WSL2, with WSLg and NVIDIA GPU forwarding available.
-- ROS 2 and Gazebo were not installed at first inspection. ROS 2 Jazzy Desktop, Gazebo Harmonic / `ros_gz`, and the supporting development packages are now installed and pass `scripts/doctor.sh`.
-- Docker was not installed on Windows. It is not required for the first milestone.
-- GitHub CLI is authenticated as `leejinh0225`.
-- Remote repository: `GIST-ISAAC-Robotics/2026-IT-ARENA` (public and initially empty).
+- Windows 호스트 GPU: NVIDIA GeForce RTX 5070 Laptop GPU, 드라이버 610.74, VRAM 8 GB
+- WSL: WSL2 기반 Ubuntu 24.04.4 LTS이며, WSLg와 NVIDIA GPU 연동을 사용할 수 있습니다.
+- 최초 점검 당시 ROS 2와 Gazebo는 설치되어 있지 않았습니다. 현재는 ROS 2 Jazzy Desktop, Gazebo Harmonic / `ros_gz`와 관련 개발 패키지를 설치했으며, `scripts/doctor.sh` 점검을 통과했습니다.
+- Windows에 Docker는 설치되어 있지 않았습니다. 첫 이정표에는 필요하지 않습니다.
+- GitHub CLI는 `leejinh0225` 계정으로 인증되어 있습니다.
+- 원격 저장소: `GIST-ISAAC-Robotics/2026-IT-ARENA` — 공개 저장소이며, 처음에는 비어 있었습니다.
 
-## Architecture decision
+## 아키텍처 결정
 
-- PC simulation: Ubuntu 24.04 + ROS 2 Jazzy + Gazebo Harmonic.
-- Jetson deployment: preserve JetPack 6.2.1 / Ubuntu 22.04. Do not reflash merely to match the simulator.
-- Keep algorithm packages source-compatible with ROS 2 Humble and Jazzy where practical. Confine simulator integration to dedicated packages.
-- Vehicle-facing interfaces remain stable across environments; only adapters change.
-- Gazebo ground-truth pose may be used for controller validation, but competition autonomy must never depend on it.
+- PC 시뮬레이션: Ubuntu 24.04 + ROS 2 Jazzy + Gazebo Harmonic
+- Jetson 배포: JetPack 6.2.1 / Ubuntu 22.04를 유지합니다. 시뮬레이터와 운영체제 버전을 맞추기 위한 목적만으로 재설치하지 않습니다.
+- 가능한 범위에서 알고리즘 패키지가 ROS 2 Humble과 Jazzy 양쪽에서 소스 수준으로 호환되도록 유지합니다. 시뮬레이터 연동은 전용 패키지로 한정합니다.
+- 환경이 달라져도 차량 제어·피드백 인터페이스는 유지하고, 이를 연결하는 어댑터만 교체합니다.
+- 제어기 검증에는 Gazebo의 정답 위치·자세(ground-truth pose)를 사용할 수 있지만, 대회용 자율주행은 이에 의존해서는 안 됩니다.
 
-See `docs/decisions/0001-simulation-platform.md` for rationale.
+선택 근거는 `docs/decisions/0001-simulation-platform.md`에 기록했습니다.
 
-The provisional real-vehicle boundary assigns perception/planning to the Jetson and actuator timing, command timeout, ESC/servo output, and encoder acquisition to an ESP32. See `docs/decisions/0002-jetson-esp32-actuation-boundary.md`.
+실제 차량의 잠정적인 역할 분담은 Jetson이 인지·계획을 담당하고, ESP32가 구동 장치의 동작 타이밍, 명령 수신 시간 초과 처리, ESC·서보 출력과 엔코더 신호 수집을 담당하는 구조입니다. `docs/decisions/0002-jetson-esp32-actuation-boundary.md`를 참고하십시오.
 
-## Track source
+## 트랙 원본
 
-- Original: `assets/track/original/it_arena_track_final.zip`
+- 원본: `assets/track/original/it_arena_track_final.zip`
 - SHA-256: `DE448BA10C614E0F635D44B2F36BAB29EBF455C323DE442562DD01A8296758E4`
-- Extracted copy: `assets/track/source/it_arena_track/`
-- Actual generated output and the included README disagree. Always read `docs/track/TRACK_AUDIT.md` first.
+- 압축 해제본: `assets/track/source/it_arena_track/`
+- 실제 생성된 출력물과 동봉된 README의 내용이 서로 다릅니다. 반드시 `docs/track/TRACK_AUDIT.md`를 먼저 읽습니다.
 
-## Planned software boundary
+## 계획한 소프트웨어 역할 분리
 
 ```text
-Gazebo world and simulated sensors
+Gazebo 월드·시뮬레이션 센서
               |
               v
-simulation adapters -> stable ROS topics <- real hardware adapters
+시뮬레이션 어댑터 -> 공통 ROS 토픽 <- 실제 하드웨어 어댑터
                               |
                               v
- perception -> localization -> route/race state -> planning -> control
-                              |
-                              v
-                          /drive command
+       인지 -> 위치 추정 -> 경로·경주 상태 -> 계획 -> 제어
+                                                      |
+                                                      v
+                                                 /drive 명령
 ```
 
-Gazebo wheel-joint ground truth is exposed only as `/sim/joint_states_raw`. The simulated encoder adapter publishes quantized `/wheel_states` and `/wheel_encoder_ticks`, matching the planned ESP32-facing feedback contract.
+Gazebo의 휠 관절 정답값은 `/sim/joint_states_raw`로만 노출합니다. 시뮬레이션 엔코더 어댑터는 정해진 엔코더 분해능에 맞춰 양자화한 `/wheel_states`와 `/wheel_encoder_ticks`를 발행하며, 이는 실제 ESP32에서 받을 피드백 인터페이스와 맞춥니다.
 
-Traffic-light and ArUco algorithms must consume rendered RGB images. Direct simulator state is allowed only in test assertions and visualization.
+신호등·ArUco 인식 알고리즘은 렌더링된 RGB 영상을 입력으로 사용해야 합니다. 시뮬레이터 내부 상태의 직접 사용은 테스트의 정답 판정과 시각화에만 허용합니다.
 
-## Verified implementation baseline
+## 검증을 마친 기초 구현
 
-- The preserved organizer output is converted into a strict-SDF runtime world without modifying the source archive. Repetitive static geometry is merged from 1,090 links to 10 so startup is practical in WSL.
-- A configurable 0.18 m x 0.12 m provisional Ackermann vehicle spawns in any of six supplied grid slots.
-- `/drive` commands are adapted to Gazebo with speed/steering limits and a 0.5 s command-loss watchdog.
-- `/odom`, `/tf`, D435i-like RGB, depth, point cloud, and IMU outputs are bridged to ROS 2.
-- Ideal Gazebo joint data stays under `/sim/joint_states_raw`. Configurable rear-wheel encoder feedback is published as `/wheel_states` and `/wheel_encoder_ticks`.
-- Headless and WSLg GUI launches both succeed and shut down without leaving Gazebo / ROS child processes.
-- Environment doctor, strict SDF validation, track provenance validation, four Python interface tests, straight/turn motion, camera/depth, IMU, and encoder data have been exercised successfully.
+- 주최 측 원본 압축 파일을 수정하지 않고, 보존한 출력물을 엄격한 SDF 검증을 통과하는 실행용 월드로 변환했습니다. WSL에서 무리 없이 시작할 수 있도록 반복적인 정적 형상을 병합하여 링크 수를 1,090개에서 10개로 줄였습니다.
+- 치수를 바꿀 수 있는 0.18 m x 0.12 m 크기의 임시 Ackermann 차량을 제공된 6개 출발 위치 중 원하는 곳에 생성할 수 있습니다.
+- `/drive` 명령을 Gazebo에 전달하는 어댑터에 속도·조향 제한과 0.5 s 명령 수신 중단 감시 기능을 적용했습니다.
+- `/odom`, `/tf`, D435i와 유사한 RGB·깊이·포인트 클라우드·IMU 출력을 ROS 2로 연결했습니다.
+- Gazebo의 이상적인 관절 데이터는 `/sim/joint_states_raw`에만 둡니다. 매개변수를 조정할 수 있는 뒷바퀴 엔코더 피드백은 `/wheel_states`와 `/wheel_encoder_ticks`로 발행합니다.
+- 창 없는 실행(headless)과 WSLg GUI 실행 모두 성공했으며, 종료 후 Gazebo·ROS 하위 프로세스가 남지 않았습니다.
+- 환경 점검, 엄격한 SDF 검증, 트랙 원본 출처·무결성 검증, Python 인터페이스 테스트 4개, 직진·회전 동작, 카메라·깊이·IMU·엔코더 데이터 확인을 모두 통과했습니다.
 
-## Milestones
+## 단계별 이정표
 
-1. Reproducible environment check and dependency setup.
-2. Load the supplied track headlessly and in the Gazebo GUI.
-3. Spawn a parameterized Ackermann car and verify manual forward/steering control.
-4. Follow the supplied centerline using ground-truth pose.
-5. Add curvature-based speed control and complete one solo lap.
-6. Add camera/IMU, then 2D LiDAR and optional ToF models behind stable interfaces.
-7. Render and recognize the traffic light and ArUco markers from camera pixels.
-8. Replace ground truth with realistic localization inputs.
-9. Add another vehicle, safe following/stopping, and controlled avoidance.
-10. Run multi-car, noise, latency, dropout, and parameter-sweep tests.
-11. Bring the same autonomy nodes onto the Jetson through real sensor / actuator adapters.
+1. 환경 점검과 의존성 설치를 반복 가능한 형태로 준비합니다.
+2. 제공된 트랙을 창 없이 실행하고, Gazebo GUI에서도 불러옵니다.
+3. 매개변수 기반 Ackermann 차량을 생성하고 수동 전진·조향 제어를 검증합니다.
+4. 시뮬레이터의 정답 위치·자세를 이용해 제공된 중심선을 추종합니다.
+5. 곡률 기반 속도 제어를 추가하고 단독으로 한 바퀴를 완주합니다.
+6. 공통 인터페이스를 유지하면서 카메라·IMU를 추가하고, 이어서 2D LiDAR와 필요한 경우 ToF 모델을 추가합니다.
+7. 신호등과 ArUco 마커를 렌더링하고 카메라 영상의 픽셀에서 인식합니다.
+8. 정답값 입력을 실제 환경에 맞는 위치 추정 입력으로 교체합니다.
+9. 다른 차량을 추가하고, 안전한 추종·정지와 제어 가능한 회피를 구현합니다.
+10. 다중 차량, 잡음, 지연, 데이터 누락과 매개변수 범위별 반복 실험을 수행합니다.
+11. 실제 센서·구동 장치 어댑터를 통해 동일한 자율주행 노드를 Jetson에서 실행합니다.
 
-## Current blockers and risks
+## 현재 미해결 사항과 위험 요소
 
-- Final vehicle wheelbase, track width, wheel radius, steering range, mass, CG, motor/ESC response, and sensor poses are unknown.
-- The actual 12 cm-wide branches are narrower than the maximum permitted 15 cm vehicle width and leave no tolerance for many plausible chassis designs.
-- The generated track's general minimum-radius check is false (`0.2987 m` versus the README's older `0.45 m` claim).
-- Track README and `output_final` disagree on lap length, wall height, marker set, branch geometry, and source-of-truth status.
-- The supplied traffic-light visual has all three lamps emissive and is not animated by the UDP script.
-- Camera visibility of the lamp at approximately 1.08 m height must be tested from every grid slot before fixing the D435i bracket.
-- A single 2D LiDAR scan plane can miss lower opponent bodywork. Final coverage requires opponent-height evidence and simulated occlusion tests.
-- The first simulated D435i uses a combined RGB-D camera with RGB-like horizontal FOV. It is an interface and visibility baseline, not yet a faithful model of the separate RGB/depth intrinsics, stereo holes, lighting sensitivity, or D435i IMU noise.
+- 최종 차량의 축거(wheelbase), 윤거(track width), 바퀴 반지름, 조향 범위, 질량, 무게중심(CG), 모터·ESC 응답 특성과 센서 장착 위치·자세를 아직 모릅니다.
+- 실제 출력물의 분기 경로 폭 12 cm는 허용된 최대 차량 폭 15 cm보다 좁습니다. 가능한 여러 차체 설계에서 통과 여유를 확보할 수 없습니다.
+- 생성된 트랙의 일반 구간 최소 곡률 반경 검사는 실패 상태입니다. 실제 값은 `0.2987 m`이며, 오래된 README에는 `0.45 m`라고 기재되어 있습니다.
+- 트랙 README와 `output_final`은 한 바퀴 길이, 벽 높이, 마커 구성, 분기 형상과 어떤 자료를 기준으로 삼아야 하는지에 관해 서로 다릅니다.
+- 제공된 신호등 시각 모델은 세 등 모두 발광 상태이며, UDP 스크립트가 화면의 점등 상태를 바꾸지 않습니다.
+- D435i 브래킷을 확정하기 전에 약 1.08 m 높이의 신호등이 모든 출발 위치에서 카메라에 보이는지 테스트해야 합니다.
+- 2D LiDAR의 단일 스캔 평면은 그보다 낮은 상대 차량의 차체를 놓칠 수 있습니다. 최종 감지 범위를 결정하려면 상대 차량 높이에 대한 자료와 시뮬레이션 가림 테스트가 필요합니다.
+- 초기 D435i 시뮬레이션은 RGB와 유사한 수평 시야각(FOV)을 가진 통합 RGB-D 카메라를 사용합니다. 인터페이스와 가시성을 확인하는 기초 모델이며, RGB·깊이 센서 각각의 내부 파라미터, 스테레오 깊이 추정의 결측 영역, 조명 민감도나 D435i IMU 잡음을 아직 충실하게 재현하지는 않습니다.
 
-## Next actions
+## 다음 작업
 
-1. Ask the organizer / hardware team the questions in `docs/HARDWARE_AND_RULE_QUESTIONS.md`; branch width and supplied power hardware are the most urgent.
-2. Implement ground-truth centerline following and curvature-based speed control, then record a reproducible solo lap.
-3. Add configurable 2D LiDAR and simple opponent models for sensor-height / occlusion experiments before purchasing sensors.
-4. Add rendered traffic-light state control and camera-only traffic-light / ArUco perception tests.
-5. Select the ESC, encoder, exact ESP32 board, and Jetson transport; then implement the real adapter behind the existing topic contract.
+1. `docs/HARDWARE_AND_RULE_QUESTIONS.md`의 질문을 주최 측과 하드웨어팀에 확인합니다. 분기 경로 폭과 지급 전원 장치 확인이 가장 시급합니다.
+2. 정답 위치 기반 중심선 추종과 곡률 기반 속도 제어를 구현한 뒤, 재현 가능한 단독 완주 결과를 기록합니다.
+3. 센서를 구매하기 전에 조정 가능한 2D LiDAR와 단순한 상대 차량 모델을 추가해 센서 높이·가림 실험을 진행합니다.
+4. 렌더링된 신호등의 상태 제어와 카메라 영상만을 사용하는 신호등·ArUco 인식 테스트를 추가합니다.
+5. ESC, 엔코더, 정확한 ESP32 보드와 Jetson 통신 방식을 선택한 뒤, 기존 토픽 인터페이스에 맞는 실제 하드웨어 어댑터를 구현합니다.
+
+## 문서 운영 원칙
+
+- 프로젝트 설명과 인수인계 문서, 활동 내역, 결정 기록은 한국어를 기본으로 작성합니다. 필요한 전문 용어는 영문을 병기하되, 실행 명령어·코드 식별자·경로·ROS 토픽·메시지 형식·설정 키는 유지합니다.
+- 이번 한국어판은 복구된 영문 문서에서 새로 번역했습니다. 앞서 작성된 번역본이나 그 백업은 참고하지 않았습니다.
+- 번역과 문서 운영 원칙 추가는 별개의 작업입니다. 기존 기술 결정, 수치, 검증 결과와 미확정 사항은 번역 과정에서 바꾸지 않습니다.
+- 주최 측 원본 트랙 자료는 번역 대상에서 제외하며, 한국어 문서와 같은 내용의 영문 문서를 별도로 중복 관리하지 않습니다.
