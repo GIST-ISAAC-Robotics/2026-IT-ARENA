@@ -116,6 +116,10 @@ def build_runtime_world(source_dir: Path, destination_dir: Path) -> dict:
     texture_destination.mkdir(parents=True, exist_ok=True)
     for texture in sorted((source_dir / "aruco").glob("aruco_id*.png")):
         shutil.copy2(texture, texture_destination / texture.name)
+    # 실험 시설의 곡면 충돌체·표시용 메시도 같은 출력 묶음으로 이동합니다.
+    # 원본 출력에는 meshes가 없어 원본 실행 XML·자료에는 영향을 주지 않습니다.
+    if (source_dir / "meshes").is_dir():
+        shutil.copytree(source_dir / "meshes", destination_dir / "meshes", dirs_exist_ok=True)
 
     # 출발 위치·지도·중심선은 선택한 월드의 같은 생성 결과를 사용합니다.
     for pattern in ("scene.json", "map*.png", "map*.yaml", "*.csv", "preview.png"):

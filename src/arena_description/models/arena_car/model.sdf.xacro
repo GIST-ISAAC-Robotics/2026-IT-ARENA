@@ -10,18 +10,52 @@
   <xacro:arg name="wheel_width" default="0.012"/>
   <xacro:arg name="max_steering_angle" default="0.45"/>
   <xacro:arg name="max_speed" default="2.0"/>
+  <xacro:arg name="steering_p_gain" default="12.0"/>
+  <xacro:arg name="acceleration_limit" default="4.0"/>
+  <xacro:arg name="lidar_enabled" default="true"/>
+  <xacro:arg name="lidar_x" default="-0.03"/>
+  <xacro:arg name="lidar_y" default="0.0"/>
+  <xacro:arg name="lidar_z" default="0.125"/>
+  <xacro:arg name="lidar_roll" default="0.0"/>
+  <xacro:arg name="lidar_pitch" default="0.0"/>
+  <xacro:arg name="lidar_yaw" default="0.0"/>
+  <xacro:arg name="lidar_rate" default="10.0"/>
+  <xacro:arg name="lidar_samples" default="500"/>
+  <xacro:arg name="lidar_min" default="0.05"/>
+  <xacro:arg name="lidar_max" default="12.0"/>
+  <xacro:arg name="lidar_resolution" default="0.015"/>
+  <xacro:arg name="lidar_noise" default="0.0"/>
+  <xacro:arg name="lidar_mass" default="0.110"/>
+  <xacro:arg name="lidar_radius" default="0.030"/>
+  <xacro:arg name="lidar_height" default="0.035"/>
   <xacro:arg name="d435i_x" default="0.055"/>
   <xacro:arg name="d435i_y" default="0.0"/>
   <xacro:arg name="d435i_z" default="0.075"/>
   <xacro:arg name="d435i_roll" default="0.0"/>
   <xacro:arg name="d435i_pitch" default="0.0"/>
   <xacro:arg name="d435i_yaw" default="0.0"/>
-  <xacro:arg name="d435i_horizontal_fov" default="1.2043"/>
-  <xacro:arg name="d435i_width" default="848"/>
-  <xacro:arg name="d435i_height" default="480"/>
-  <xacro:arg name="d435i_rate" default="30.0"/>
-  <xacro:arg name="d435i_near" default="0.10"/>
-  <xacro:arg name="d435i_far" default="6.0"/>
+  <xacro:arg name="d435i_color_horizontal_fov" default="1.2112585008840648"/>
+  <xacro:arg name="d435i_color_width" default="848"/>
+  <xacro:arg name="d435i_color_height" default="480"/>
+  <xacro:arg name="d435i_color_rate" default="60.0"/>
+  <xacro:arg name="d435i_color_near" default="0.02"/>
+  <xacro:arg name="d435i_color_far" default="20.0"/>
+  <xacro:arg name="d435i_color_fx" default="612.3337640816779"/>
+  <xacro:arg name="d435i_color_fy" default="617.1589761579678"/>
+  <xacro:arg name="d435i_color_cx" default="424.0"/>
+  <xacro:arg name="d435i_color_cy" default="240.0"/>
+  <xacro:arg name="d435i_depth_horizontal_fov" default="1.5184364492350666"/>
+  <xacro:arg name="d435i_depth_enabled" default="true"/>
+  <xacro:arg name="d435i_depth_width" default="848"/>
+  <xacro:arg name="d435i_depth_height" default="480"/>
+  <xacro:arg name="d435i_depth_rate" default="90.0"/>
+  <xacro:arg name="d435i_depth_near" default="0.195"/>
+  <xacro:arg name="d435i_depth_far" default="3.0"/>
+  <xacro:arg name="d435i_depth_fx" default="446.80277311912806"/>
+  <xacro:arg name="d435i_depth_fy" default="432.97146126514167"/>
+  <xacro:arg name="d435i_depth_cx" default="424.0"/>
+  <xacro:arg name="d435i_depth_cy" default="240.0"/>
+  <xacro:arg name="d435i_imu_rate" default="200.0"/>
 
   <xacro:property name="body_length" value="$(arg body_length)"/>
   <xacro:property name="body_width" value="$(arg body_width)"/>
@@ -33,18 +67,34 @@
   <xacro:property name="wheel_width" value="$(arg wheel_width)"/>
   <xacro:property name="max_steering_angle" value="$(arg max_steering_angle)"/>
   <xacro:property name="max_speed" value="$(arg max_speed)"/>
+  <xacro:property name="lidar_samples" value="$(arg lidar_samples)"/>
   <xacro:property name="d435i_x" value="$(arg d435i_x)"/>
   <xacro:property name="d435i_y" value="$(arg d435i_y)"/>
   <xacro:property name="d435i_z" value="$(arg d435i_z)"/>
   <xacro:property name="d435i_roll" value="$(arg d435i_roll)"/>
   <xacro:property name="d435i_pitch" value="$(arg d435i_pitch)"/>
   <xacro:property name="d435i_yaw" value="$(arg d435i_yaw)"/>
-  <xacro:property name="d435i_horizontal_fov" value="$(arg d435i_horizontal_fov)"/>
-  <xacro:property name="d435i_width" value="$(arg d435i_width)"/>
-  <xacro:property name="d435i_height" value="$(arg d435i_height)"/>
-  <xacro:property name="d435i_rate" value="$(arg d435i_rate)"/>
-  <xacro:property name="d435i_near" value="$(arg d435i_near)"/>
-  <xacro:property name="d435i_far" value="$(arg d435i_far)"/>
+  <xacro:property name="d435i_color_horizontal_fov" value="$(arg d435i_color_horizontal_fov)"/>
+  <xacro:property name="d435i_color_width" value="$(arg d435i_color_width)"/>
+  <xacro:property name="d435i_color_height" value="$(arg d435i_color_height)"/>
+  <xacro:property name="d435i_color_rate" value="$(arg d435i_color_rate)"/>
+  <xacro:property name="d435i_color_near" value="$(arg d435i_color_near)"/>
+  <xacro:property name="d435i_color_far" value="$(arg d435i_color_far)"/>
+  <xacro:property name="d435i_color_fx" value="$(arg d435i_color_fx)"/>
+  <xacro:property name="d435i_color_fy" value="$(arg d435i_color_fy)"/>
+  <xacro:property name="d435i_color_cx" value="$(arg d435i_color_cx)"/>
+  <xacro:property name="d435i_color_cy" value="$(arg d435i_color_cy)"/>
+  <xacro:property name="d435i_depth_horizontal_fov" value="$(arg d435i_depth_horizontal_fov)"/>
+  <xacro:property name="d435i_depth_width" value="$(arg d435i_depth_width)"/>
+  <xacro:property name="d435i_depth_height" value="$(arg d435i_depth_height)"/>
+  <xacro:property name="d435i_depth_rate" value="$(arg d435i_depth_rate)"/>
+  <xacro:property name="d435i_depth_near" value="$(arg d435i_depth_near)"/>
+  <xacro:property name="d435i_depth_far" value="$(arg d435i_depth_far)"/>
+  <xacro:property name="d435i_depth_fx" value="$(arg d435i_depth_fx)"/>
+  <xacro:property name="d435i_depth_fy" value="$(arg d435i_depth_fy)"/>
+  <xacro:property name="d435i_depth_cx" value="$(arg d435i_depth_cx)"/>
+  <xacro:property name="d435i_depth_cy" value="$(arg d435i_depth_cy)"/>
+  <xacro:property name="d435i_imu_rate" value="$(arg d435i_imu_rate)"/>
   <xacro:property name="wheel_mass" value="0.04"/>
   <xacro:property name="steering_link_mass" value="0.01"/>
 
@@ -166,31 +216,74 @@
           <diffuse>0.10 0.10 0.10 1</diffuse>
         </material>
       </visual>
-      <sensor name="d435i_rgbd" type="rgbd_camera">
-        <camera>
-          <horizontal_fov>${d435i_horizontal_fov}</horizontal_fov>
+      <sensor name="d435i_color" type="camera">
+        <camera name="color">
+          <horizontal_fov>${d435i_color_horizontal_fov}</horizontal_fov>
           <image>
-            <width>${int(d435i_width)}</width>
-            <height>${int(d435i_height)}</height>
+            <width>${int(d435i_color_width)}</width>
+            <height>${int(d435i_color_height)}</height>
+            <format>R8G8B8</format>
           </image>
           <clip>
-            <near>${d435i_near}</near>
-            <far>${d435i_far}</far>
+            <near>${d435i_color_near}</near>
+            <far>${d435i_color_far}</far>
           </clip>
-          <noise>
-            <type>gaussian</type>
-            <mean>0.0</mean>
-            <stddev>0.002</stddev>
-          </noise>
+          <lens>
+            <intrinsics>
+              <fx>${d435i_color_fx}</fx>
+              <fy>${d435i_color_fy}</fy>
+              <cx>${d435i_color_cx}</cx>
+              <cy>${d435i_color_cy}</cy>
+              <s>0.0</s>
+            </intrinsics>
+          </lens>
+          <optical_frame_id>camera_color_optical_frame</optical_frame_id>
         </camera>
         <always_on>true</always_on>
-        <update_rate>${d435i_rate}</update_rate>
+        <update_rate>${d435i_color_rate}</update_rate>
         <visualize>false</visualize>
-        <topic>camera</topic>
+        <!-- Gazebo는 영상 토픽의 마지막 경로를 camera_info로 바꿔 정보 토픽을 만듭니다. -->
+        <topic>camera/color/image_raw</topic>
       </sensor>
+      <xacro:if value="$(arg d435i_depth_enabled)">
+      <sensor name="d435i_depth" type="depth_camera">
+        <camera name="depth">
+          <horizontal_fov>${d435i_depth_horizontal_fov}</horizontal_fov>
+          <image>
+            <width>${int(d435i_depth_width)}</width>
+            <height>${int(d435i_depth_height)}</height>
+            <format>R_FLOAT32</format>
+          </image>
+          <clip>
+            <near>${d435i_depth_near}</near>
+            <far>${d435i_depth_far}</far>
+          </clip>
+          <depth_camera>
+            <clip>
+              <near>${d435i_depth_near}</near>
+              <far>${d435i_depth_far}</far>
+            </clip>
+          </depth_camera>
+          <lens>
+            <intrinsics>
+              <fx>${d435i_depth_fx}</fx>
+              <fy>${d435i_depth_fy}</fy>
+              <cx>${d435i_depth_cx}</cx>
+              <cy>${d435i_depth_cy}</cy>
+              <s>0.0</s>
+            </intrinsics>
+          </lens>
+          <optical_frame_id>camera_depth_optical_frame</optical_frame_id>
+        </camera>
+        <always_on>true</always_on>
+        <update_rate>${d435i_depth_rate}</update_rate>
+        <visualize>false</visualize>
+        <topic>camera/depth/image_rect_raw</topic>
+      </sensor>
+      </xacro:if>
       <sensor name="d435i_imu" type="imu">
         <always_on>true</always_on>
-        <update_rate>200</update_rate>
+        <update_rate>${d435i_imu_rate}</update_rate>
         <visualize>false</visualize>
         <topic>camera/imu</topic>
       </sensor>
@@ -199,6 +292,42 @@
       <parent>chassis</parent>
       <child>d435i_link</child>
     </joint>
+
+    <xacro:if value="$(arg lidar_enabled)">
+      <link name="lidar_link">
+        <pose>$(arg lidar_x) $(arg lidar_y) $(arg lidar_z) $(arg lidar_roll) $(arg lidar_pitch) $(arg lidar_yaw)</pose>
+        <xacro:box_inertial mass="$(arg lidar_mass)" x="0.06" y="0.06" z="$(arg lidar_height)"/>
+        <!-- 스캔 평면 아래의 단순 몸체이며 실물 CAD가 아닙니다. -->
+        <visual name="lidar_body">
+          <pose>0 0 -0.020 0 0 0</pose>
+          <geometry><cylinder><radius>$(arg lidar_radius)</radius><length>$(arg lidar_height)</length></cylinder></geometry>
+          <material><ambient>0.045 0.045 0.05 1</ambient><diffuse>0.06 0.065 0.075 1</diffuse></material>
+        </visual>
+        <visual name="lidar_cap">
+          <pose>0 0 -0.003 0 0 0</pose>
+          <geometry><cylinder><radius>0.023</radius><length>0.002</length></cylinder></geometry>
+          <material><ambient>0.9 0.27 0.025 1</ambient><diffuse>0.95 0.32 0.03 1</diffuse></material>
+        </visual>
+        <sensor name="rplidar_c1" type="gpu_lidar">
+          <always_on>true</always_on>
+          <update_rate>$(arg lidar_rate)</update_rate>
+          <visualize>false</visualize>
+          <topic>/scan</topic>
+          <lidar>
+            <scan><horizontal>
+              <samples>${int(lidar_samples)}</samples>
+              <resolution>1</resolution>
+              <min_angle>${-pi}</min_angle>
+              <!-- 360도를 500개 표본으로 나누며 양 끝을 중복하지 않습니다. -->
+              <max_angle>${pi - 2.0 * pi / int(lidar_samples)}</max_angle>
+            </horizontal></scan>
+            <range><min>$(arg lidar_min)</min><max>$(arg lidar_max)</max><resolution>$(arg lidar_resolution)</resolution></range>
+            <noise><type>gaussian</type><mean>0</mean><stddev>$(arg lidar_noise)</stddev></noise>
+          </lidar>
+        </sensor>
+      </link>
+      <joint name="lidar_fixed_joint" type="fixed"><parent>chassis</parent><child>lidar_link</child></joint>
+    </xacro:if>
 
     <xacro:wheel_link name="front_left_wheel" x="${wheelbase / 2.0}" y="${track_width / 2.0}"/>
     <xacro:wheel_link name="front_right_wheel" x="${wheelbase / 2.0}" y="${-track_width / 2.0}"/>
@@ -264,12 +393,12 @@
       <wheel_base>${wheelbase}</wheel_base>
       <wheel_radius>${wheel_radius}</wheel_radius>
       <steering_limit>${max_steering_angle}</steering_limit>
+      <steer_p_gain>$(arg steering_p_gain)</steer_p_gain>
       <min_velocity>${-max_speed}</min_velocity>
       <max_velocity>${max_speed}</max_velocity>
-      <min_acceleration>-4.0</min_acceleration>
-      <max_acceleration>4.0</max_acceleration>
-      <min_jerk>-20.0</min_jerk>
-      <max_jerk>20.0</max_jerk>
+      <min_acceleration>-${float('$(arg acceleration_limit)')}</min_acceleration>
+      <max_acceleration>$(arg acceleration_limit)</max_acceleration>
+      <!-- jerk 제한의 정지 진동을 피하고 속도·가속도 제한은 유지합니다. -->
       <odom_publish_frequency>50</odom_publish_frequency>
       <topic>/model/arena_car/cmd_vel</topic>
       <odom_topic>/model/arena_car/odometry</odom_topic>

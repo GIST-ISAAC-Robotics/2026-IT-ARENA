@@ -9,9 +9,10 @@
   },
   "source_design_sha256": "57e8a27b9871e0682c1098350a88cbb8cd149bf1d03a0e573278f0c8b48b7431",
   "source_generator_sha256": "41709a9e2d447d37f2ee3cff4ccd9d3bcf86fe68768a976c4db71dfb1b91b970",
-  "derivation_script_sha256": "560e643d2c5b2357a303ee6370a0a34c3be7fd5084eddc65c02595ffa9bbade4",
-  "runtime_builder_sha256": "e344c777e22414cfa085afbe9f04c9914cec99d6cd244337d4ac37834086f06e",
-  "profile_sha256": "a7012a88c2e5acfc76349e57874310f8a251d22f0ace35310401f6fa44f16e2c",
+  "derivation_script_sha256": "2036ff1598e52ec9bff995714cdb8bfdd9f135f5f6561b5a2dd6f0d6fbcfe751",
+  "runtime_builder_sha256": "9819da9f6f82f35965ddcf5e7cf3a154360f1a0aa7713df5ca6544b92d9e8c91",
+  "facility_builder_sha256": "b4c99a411aabb4ab9858e651f82ec1a80c4c6a27a93e3f9819bec2461e14db75",
+  "profile_sha256": "f9e024b36a990872de0f7f6d6a64ad21bceb92354950bd2c4d81789f4de24233",
   "main_width_m": 0.45,
   "branch_widths_m": [
     0.25,
@@ -25,20 +26,57 @@
     "width_m": 0.15
   },
   "centerlines_unchanged": true,
+  "facilities": {
+    "speed_bump": {
+      "profile": "raised_cosine",
+      "length_m": 0.2,
+      "height_m": 0.01,
+      "subdivisions": 40,
+      "lateral_stripes": 10
+    },
+    "traffic_light": {
+      "gantry_height_m": 0.42,
+      "lamp_center_height_m": 0.3,
+      "lamp_radius_m": 0.026,
+      "initial_state": "red"
+    },
+    "markers": {
+      "black_square_size_m": 0.1,
+      "quiet_zone_m": 0.015,
+      "center_height_m": 0.2,
+      "face_target_distance_m": 1.2,
+      "post_width_m": 0.014
+    },
+    "starting_grid": {
+      "length_m": 0.26,
+      "width_m": 0.166,
+      "line_width_m": 0.006,
+      "number_height_m": 0.07
+    },
+    "finish_line": {
+      "depth_m": 0.1,
+      "cells_across": 9,
+      "rows": 2
+    }
+  },
   "lap_length_m": 46.6329,
   "changes": [
     "본선·분기 폭",
     "폭에 종속된 노면·벽·잔디·분기 입구",
     "폭에 종속된 마커 횡방향 위치·신호등 지지대",
     "ID 30 표지판을 통로 반대편으로 이동",
-    "차량 메타데이터·그리드 표시 폭"
+    "차량 메타데이터·노면 위 출발 6칸과 피니시 표시",
+    "도로 횡단 방향 신호등·낮은 등 높이·초기 빨강 단독 점등",
+    "진행 방향 20 cm 코사인 곡면 방지턱·같은 표본을 잇는 분할 물리 충돌면",
+    "진입 차량을 향하는 독립 ArUco 표지판·흰 여백·SDF 셀 형상",
+    "마커 10 cm의 기준을 검은 테두리 바깥 변으로 명시(원본 PNG 전체 크기와 구분)"
   ],
   "not_changed": [
     "중심선 좌표",
     "길이 배율 1.0",
     "분기 접속 위치",
     "출발 위치",
-    "마커 ID·크기",
+    "마커 ID",
     "벽 높이·두께",
     "잔디 폭·과속방지턱 높이"
   ],
@@ -133,10 +171,10 @@
     "branches_ok": true
   },
   "runtime_conversion": {
-    "merged_links": 1066,
-    "remaining_links": 10,
-    "collisions": 1069,
-    "visuals": 1075
+    "merged_links": 1059,
+    "remaining_links": 13,
+    "collisions": 1116,
+    "visuals": 1295
   },
   "output_sha256": {
     "aruco/aruco_id0.png": "41cb852ad24c57f22714b309a4589d16c73ed39911c12c6c1d404c26add9a13c",
@@ -152,9 +190,21 @@
     "map.yaml": "1ac9cd5c54f323d316e5e057171cccc5b75bca1e0c92bb9b66312f08b89a90f5",
     "map_with_grass.png": "53d241cca463918a75b56ce2abc59829a423af6282d38412a4a434e9b15ef132",
     "map_with_grass.yaml": "cdc83665baa364ce7683c9133b25eae4dd7e3d7d89615dc5d15a68c6084450b1",
-    "preview.png": "3e29526e6c9b9ba0b89ce40f047b807ebf9bcd07c7a6b04de1e92e3592cdb01a",
+    "meshes/bump_0_profile.obj": "c87ce481ab05c844f845eec70bbab10ae54e5cb8b5c3c804cf4803267c0d4826",
+    "meshes/bump_0_stripe_0.obj": "645ba77f6626ca6056b927e9d6559b74be7047aebdaaeb2569ec0b30e26a88a1",
+    "meshes/bump_0_stripe_1.obj": "6dc1277cd4dafbf55bffefe1cc67ea881e23f53b91a498099c803eaf92ab0218",
+    "meshes/bump_0_stripe_2.obj": "dcffe88485fbbb8026888822b73dcd70cb80e6868e2987656481323990422389",
+    "meshes/bump_0_stripe_3.obj": "7240da46c82e4b22f68138c5bc0f90fb4db8fc6b0b9e3abe0a39657d27a9c3ec",
+    "meshes/bump_0_stripe_4.obj": "2b8dd0bb287b4e2e768d15bc45b588a12d81d786f4539cb9c6e149dffe6500e7",
+    "meshes/bump_0_stripe_5.obj": "c22480e7b6cba07b1c4488b97c4f20b306daea327879528417ed7bc54cf70c03",
+    "meshes/bump_0_stripe_6.obj": "4c1887aaf985fc74b2c59c0684c123edd8840fb94d667f0113dc500bb5214fe4",
+    "meshes/bump_0_stripe_7.obj": "ce96e0393a9ff66dce5d9f793e23b76159fdaee82f9b3c519575554981ff4f5b",
+    "meshes/bump_0_stripe_8.obj": "4f744b7263b0cf27a969478a81af2f95a5605f33dad7702d036cd6cb2e0dd91f",
+    "meshes/bump_0_stripe_9.obj": "105074ea1fb7e7634f0c19c44c7d8d505d740e337ede7ae159d8e32fe464a5b0",
+    "meshes/bump_surface.mtl": "2312f6ab9767e9926f80f539173d70e2a993fa5232c3703f2250b8000823e8bb",
+    "preview.png": "b4eb601d98ebe8a870d9d0f5175789bfa69dfde0c3f3f39842d36d8f3e5d9338",
     "right_boundary.csv": "023ce9693640213de213d07bbcb37546622eaee92f91490b65cdcc4a2cd0930f",
-    "scene.json": "e80a32ec82b9ff1cb015466f32209e7b6237cfb9bfe336118e5042801bb14828",
-    "world.sdf": "0e46efb3296fd0c9b15a6893b7ebe1ce207ec316141a1de38c180e970c7db348"
+    "scene.json": "2b2baec2e5eafbc9fab21d3909f82336bda5a223f825554b544acf4d959da604",
+    "world.sdf": "53bd03061c32c3785b5705dad6ecc19876c3ed8b192ec93c580425c3e9a9091a"
   }
 }

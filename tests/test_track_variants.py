@@ -149,3 +149,4 @@ def test_launch_exposes_original_and_experimental_profiles():
     assert launch.TRACK_DIRECTORIES == {"original": "it_arena_track", "experimental": "it_arena_experimental"}
     arguments = {argument.name: argument for argument in launch.generate_launch_description().get_launch_arguments()}
     assert arguments["track"].default_value[0].text == "experimental"
+    assert arguments["d435i_profile"].default_value[0].text == "configured"

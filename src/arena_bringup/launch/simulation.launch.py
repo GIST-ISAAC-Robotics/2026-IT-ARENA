@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import xacro
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, LogInfo, OpaqueFunction, TimerAction
-from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, LogInfo, OpaqueFunction, SetEnvironmentVariable, TimerAction
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -16,13 +17,46 @@ TRACK_DIRECTORIES = {
     "original": "it_arena_track",
     "experimental": "it_arena_experimental",
 }
+D435I_STREAM_PROFILES = ("high_speed_async", "synchronized_60", "low_load_30")
 
 
 def _as_bool(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _nominal_intrinsics(stream: dict) -> dict[str, float]:
+    width = int(stream["width_px"])
+    height = int(stream["height_px"])
+    horizontal_fov = math.radians(float(stream["horizontal_fov_deg"]))
+    vertical_fov = math.radians(float(stream["vertical_fov_deg"]))
+    if width <= 0 or height <= 0 or not 0 < horizontal_fov < math.pi or not 0 < vertical_fov < math.pi:
+        raise RuntimeError(f"Invalid D435i nominal stream geometry: {stream}")
+    return {
+        "horizontal_fov_rad": horizontal_fov,
+        "fx_px": (width / 2.0) / math.tan(horizontal_fov / 2.0),
+        "fy_px": (height / 2.0) / math.tan(vertical_fov / 2.0),
+        # 실제 principal point와 RGB-깊이 외부 파라미터는 카메라 개체별 보정값으로 교체합니다.
+        "cx_px": width / 2.0,
+        "cy_px": height / 2.0,
+    }
+
+
+def _resolve_d435i_profile(config: dict, requested: str) -> tuple[str, dict]:
+    name = config["active_stream_profile"] if requested == "configured" else requested
+    if name not in config["stream_profiles"]:
+        raise RuntimeError(f"d435i_profile must be one of {sorted(config['stream_profiles'])}")
+    profile = config["stream_profiles"][name]
+    color_rate = float(profile["color_rate_hz"])
+    depth_rate = float(profile["depth_rate_hz"])
+    if not math.isfinite(color_rate) or not math.isfinite(depth_rate) or min(color_rate, depth_rate) <= 0:
+        raise RuntimeError("D435i stream rates must be finite and positive")
+    if profile["hardware_sync_compatible"] and color_rate != depth_rate:
+        raise RuntimeError("A hardware-sync-compatible D435i profile must use equal RGB and depth rates")
+    return name, profile
+
+
 def _launch_setup(context):
+    bringup_share = Path(get_package_share_directory("arena_bringup"))
     description_share = Path(get_package_share_directory("arena_description"))
     gazebo_share = Path(get_package_share_directory("arena_gazebo"))
     config_path = Path(LaunchConfiguration("vehicle_config").perform(context))
@@ -33,8 +67,22 @@ def _launch_setup(context):
     drivetrain = config["drivetrain"]
     d435i = config["sensors"]["d435i"]
     wheel_encoders = config["sensors"]["wheel_encoders"]
+    lidar = config["sensors"]["lidar_2d"]
+    if lidar["enabled"]:
+        if int(lidar["samples_per_scan"]) < 10 or not math.isclose(float(lidar["field_of_view_deg"]), 360.0):
+            raise RuntimeError("기초 C1 모델은 360도 스캔과 10개 이상의 표본을 요구합니다.")
+        if not 0 < float(lidar["range_min_m"]) < float(lidar["range_max_m"]) or float(lidar["scan_rate_hz"]) <= 0:
+            raise RuntimeError("라이다 거리·주기 설정이 올바르지 않습니다.")
     d435i_xyz = d435i["xyz_m"]
     d435i_rpy = d435i["rpy_rad"]
+    d435i_profile_name, d435i_profile = _resolve_d435i_profile(
+        d435i, LaunchConfiguration("d435i_profile").perform(context)
+    )
+    color = d435i["color"]
+    depth = d435i["depth"]
+    depth_enabled = _as_bool(LaunchConfiguration("depth_camera").perform(context))
+    color_intrinsics = _nominal_intrinsics(color)
+    depth_intrinsics = _nominal_intrinsics(depth)
     xacro_path = description_share / "models" / "arena_car" / "model.sdf.xacro"
     model_xml = xacro.process_file(
         str(xacro_path),
@@ -49,18 +97,48 @@ def _launch_setup(context):
             "wheel_width": str(drivetrain["wheel_width_m"]),
             "max_steering_angle": str(drivetrain["max_steering_angle_rad"]),
             "max_speed": str(drivetrain["max_speed_mps"]),
+            "steering_p_gain": str(drivetrain.get("simulation_steering_p_gain", 12.0)),
+            "acceleration_limit": str(drivetrain.get("simulation_acceleration_limit_mps2", 4.0)),
+            "lidar_enabled": str(lidar["enabled"]).lower(),
+            **{f"lidar_{axis}": str(value) for axis, value in zip(("x", "y", "z"), lidar["xyz_m"])},
+            **{f"lidar_{axis}": str(value) for axis, value in zip(("roll", "pitch", "yaw"), lidar["rpy_rad"])},
+            "lidar_rate": str(lidar["scan_rate_hz"]),
+            "lidar_samples": str(lidar["samples_per_scan"]),
+            "lidar_min": str(lidar["range_min_m"]),
+            "lidar_max": str(lidar["range_max_m"]),
+            "lidar_resolution": str(lidar["nominal_range_resolution_m"]),
+            "lidar_noise": str(lidar["simulated_noise_stddev_m"]),
+            "lidar_mass": str(lidar["mass_kg"]),
+            "lidar_radius": str(lidar["proxy_radius_m"]),
+            "lidar_height": str(lidar["proxy_height_m"]),
             "d435i_x": str(d435i_xyz[0]),
             "d435i_y": str(d435i_xyz[1]),
             "d435i_z": str(d435i_xyz[2]),
             "d435i_roll": str(d435i_rpy[0]),
             "d435i_pitch": str(d435i_rpy[1]),
             "d435i_yaw": str(d435i_rpy[2]),
-            "d435i_horizontal_fov": str(d435i["rgb_horizontal_fov_rad"]),
-            "d435i_width": str(d435i["width_px"]),
-            "d435i_height": str(d435i["height_px"]),
-            "d435i_rate": str(d435i["update_rate_hz"]),
-            "d435i_near": str(d435i["minimum_depth_m"]),
-            "d435i_far": str(d435i["maximum_depth_m"]),
+            "d435i_color_horizontal_fov": str(color_intrinsics["horizontal_fov_rad"]),
+            "d435i_color_width": str(color["width_px"]),
+            "d435i_color_height": str(color["height_px"]),
+            "d435i_color_rate": str(d435i_profile["color_rate_hz"]),
+            "d435i_color_near": str(color["render_near_clip_m"]),
+            "d435i_color_far": str(color["render_far_clip_m"]),
+            "d435i_color_fx": str(color_intrinsics["fx_px"]),
+            "d435i_color_fy": str(color_intrinsics["fy_px"]),
+            "d435i_color_cx": str(color_intrinsics["cx_px"]),
+            "d435i_color_cy": str(color_intrinsics["cy_px"]),
+            "d435i_depth_horizontal_fov": str(depth_intrinsics["horizontal_fov_rad"]),
+            "d435i_depth_enabled": str(depth_enabled).lower(),
+            "d435i_depth_width": str(depth["width_px"]),
+            "d435i_depth_height": str(depth["height_px"]),
+            "d435i_depth_rate": str(d435i_profile["depth_rate_hz"]),
+            "d435i_depth_near": str(depth["minimum_depth_m"]),
+            "d435i_depth_far": str(depth["simulation_far_clip_m"]),
+            "d435i_depth_fx": str(depth_intrinsics["fx_px"]),
+            "d435i_depth_fy": str(depth_intrinsics["fy_px"]),
+            "d435i_depth_cx": str(depth_intrinsics["cx_px"]),
+            "d435i_depth_cy": str(depth_intrinsics["cy_px"]),
+            "d435i_imu_rate": str(d435i["imu"]["update_rate_hz"]),
         },
     ).toxml()
 
@@ -124,22 +202,32 @@ def _launch_setup(context):
             "/model/arena_car/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry",
             "/model/arena_car/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
             "/model/arena_car/joint_state@sensor_msgs/msg/JointState@gz.msgs.Model",
-            "/camera/image@sensor_msgs/msg/Image@gz.msgs.Image",
-            "/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo",
-            "/camera/depth_image@sensor_msgs/msg/Image@gz.msgs.Image",
-            "/camera/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked",
-            "/camera/imu@sensor_msgs/msg/Imu@gz.msgs.IMU",
         ],
         remappings=[
             ("/model/arena_car/cmd_vel", "/sim/cmd_vel"),
             ("/model/arena_car/odometry", "/odom"),
             ("/model/arena_car/tf", "/tf"),
             ("/model/arena_car/joint_state", "/sim/joint_states_raw"),
-            ("/camera/image", "/camera/color/image_raw"),
-            ("/camera/camera_info", "/camera/color/camera_info"),
-            ("/camera/depth_image", "/camera/depth/image_rect_raw"),
-            ("/camera/points", "/camera/depth/color/points"),
         ],
+    )
+
+    sensor_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="d435i_sensor_bridge",
+        output="screen",
+        parameters=[{"config_file": str(bringup_share / "config" /
+                                        ("d435i_sensor_bridge.yaml" if depth_enabled else "d435i_rgb_imu_bridge.yaml"))}],
+    )
+
+    # 대용량 포인트 클라우드가 RGB/깊이 영상 브리지를 지연시키지 않게 분리하고,
+    # 실제 ROS 구독자가 있을 때만 ROS 변환·전송합니다. 토픽 이름은 유지합니다.
+    pointcloud_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="d435i_pointcloud_bridge",
+        output="screen",
+        parameters=[{"config_file": str(bringup_share / "config" / "d435i_pointcloud_bridge.yaml")}],
     )
 
     vehicle_interface = Node(
@@ -162,13 +250,53 @@ def _launch_setup(context):
         LogInfo(msg=f"Track: {track}; main width: {scene['track']['width_m']} m; "
                     f"shortcut widths: {[branch['width_m'] for branch in scene['branches']]} m. "
                     "Not a confirmed official course."),
+        LogInfo(msg=f"D435i profile: {d435i_profile_name}; "
+                    f"RGB {color['width_px']}x{color['height_px']} @ "
+                    f"{d435i_profile['color_rate_hz']} Hz; depth "
+                    f"{depth['width_px']}x{depth['height_px']} @ "
+                    f"{d435i_profile['depth_rate_hz']} Hz (enabled={depth_enabled})."),
         gazebo_server,
         bridge,
+        sensor_bridge,
         vehicle_interface,
         TimerAction(period=2.0, actions=[spawn_vehicle]),
     ]
+    if depth_enabled:
+        actions.append(pointcloud_bridge)
     if not headless:
         actions.insert(2, gazebo_gui)
+
+    if lidar["enabled"]:
+        actions.extend([
+            Node(package="ros_gz_bridge", executable="parameter_bridge", name="lidar_bridge",
+                 arguments=["/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan"],
+                 parameters=[{"override_frame_id": str(lidar["frame_id"])}], output="screen"),
+            Node(package="tf2_ros", executable="static_transform_publisher", name="lidar_transform",
+                 arguments=["--x", str(lidar["xyz_m"][0]), "--y", str(lidar["xyz_m"][1]),
+                            "--z", str(lidar["xyz_m"][2]), "--roll", str(lidar["rpy_rad"][0]),
+                            "--pitch", str(lidar["rpy_rad"][1]), "--yaw", str(lidar["rpy_rad"][2]),
+                            "--frame-id", "base_link", "--child-frame-id", str(lidar["frame_id"])],
+                 parameters=[{"use_sim_time": True}], output="screen"),
+        ])
+
+    autonomy = _as_bool(LaunchConfiguration("autonomy").perform(context))
+    traffic = _as_bool(LaunchConfiguration("traffic_light").perform(context))
+    if (autonomy or traffic) and track != "experimental":
+        raise RuntimeError("신호등·본선 벽 추종 데모는 experimental 지도에서만 지원합니다.")
+    if autonomy and not lidar["enabled"]:
+        raise RuntimeError("벽 추종에는 lidar_2d.enabled=true가 필요합니다.")
+    if traffic:
+        actions.append(Node(package="arena_gazebo", executable="traffic_light_controller.py",
+                            parameters=[{"use_sim_time": True,
+                                         "red_duration_s": float(LaunchConfiguration("red_duration_s").perform(context)),
+                                         "yellow_duration_s": 2.0}], output="screen"))
+    if autonomy:
+        actions.append(Node(package="arena_autonomy", executable="wall_follow",
+                            parameters=[str(bringup_share / "config" / "wall_follow.yaml"),
+                                        {"use_sim_time": True, "wheelbase_m": float(drivetrain["wheelbase_m"]),
+                                         "lidar_x_m": float(lidar["xyz_m"][0]),
+                                         "max_steering_angle_rad": float(drivetrain["max_steering_angle_rad"])}],
+                            output="screen"))
 
     if wheel_encoders["enabled"]:
         actions.append(
@@ -201,6 +329,12 @@ def generate_launch_description() -> LaunchDescription:
     description_share = Path(get_package_share_directory("arena_description"))
     return LaunchDescription(
         [
+            # 이번 launch의 ROS 하위 프로세스에만 적용합니다. 별도 수신 터미널도
+            # 같은 모드를 사용해야 하며, 기존 사용자 지정 환경변수는 덮어쓰지 않습니다.
+            SetEnvironmentVariable(
+                "FASTDDS_BUILTIN_TRANSPORTS",
+                EnvironmentVariable("FASTDDS_BUILTIN_TRANSPORTS", default_value="LARGE_DATA"),
+            ),
             DeclareLaunchArgument(
                 "track",
                 default_value="experimental",
@@ -213,6 +347,12 @@ def generate_launch_description() -> LaunchDescription:
                 description="Vehicle parameter YAML file.",
             ),
             DeclareLaunchArgument(
+                "d435i_profile",
+                default_value="configured",
+                choices=["configured", *D435I_STREAM_PROFILES],
+                description="D435i stream profile. configured follows active_stream_profile in vehicle_config.",
+            ),
+            DeclareLaunchArgument(
                 "grid_slot",
                 default_value="0",
                 description="Starting grid slot index (0-5).",
@@ -222,6 +362,10 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="false",
                 description="Run the Gazebo server without its GUI.",
             ),
+            DeclareLaunchArgument("autonomy", default_value="false", description="RGB 출발 신호 + 라이다 본선 벽 추종"),
+            DeclareLaunchArgument("depth_camera", default_value="true", description="깊이 센서와 점군을 켭니다. RGB·IMU는 유지합니다."),
+            DeclareLaunchArgument("traffic_light", default_value="false", description="빨강-노랑-초록 출발 신호와 수동 제어"),
+            DeclareLaunchArgument("red_duration_s", default_value="8.0", description="영상 준비 이후 빨간 신호 유지 시간"),
             OpaqueFunction(function=_launch_setup),
         ]
     )

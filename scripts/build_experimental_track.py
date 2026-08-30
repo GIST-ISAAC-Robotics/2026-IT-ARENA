@@ -21,6 +21,7 @@ from shapely.geometry import LineString, Polygon
 from shapely.strtree import STRtree
 
 from build_runtime_world import build_runtime_world
+from experimental_facilities import configure, replace_facilities, update_scene
 from validate_track import verify_preserved_sources
 
 
@@ -88,6 +89,9 @@ def obstacle_polygons(world_path: Path) -> list[Polygon]:
     model = ET.parse(world_path).find("./world/model[@name='it_arena_track_static']")
     obstacles = []
     for link in model.findall("link"):
+        # 방지턱은 차량이 밟고 넘는 저층 노면입니다. 별도 곡면 높이·물리 검사로 검증합니다.
+        if link.attrib.get("name", "").startswith("safety_bump_"):
+            continue
         lp = [float(value) for value in link.findtext("pose", "0 0 0 0 0 0").split()]
         for collision in link.findall("collision"):
             size = collision.findtext("geometry/box/size")
@@ -167,8 +171,15 @@ def render_preview(res: dict, boxes: dict, target: Path) -> None:
                                                       box["length"], box["width"]).exterior.coords),
                                  facecolor=color, edgecolor="none"))
     for grid in res["grid_slots"]:
-        axis.text(grid["x"], grid["y"], str(grid["index"]), color="#f6c85f", fontsize=8,
+        axis.text(grid["x"], grid["y"], str(grid.get("painted_number", grid["index"])), color="#f6c85f", fontsize=8,
                   ha="center", va="center")
+    for bump in res["bumps"]:
+        axis.add_patch(Patch(np.asarray(rectangle(bump["x"], bump["y"], bump["yaw"], bump["length"],
+                                                  bump["width"]).exterior.coords), facecolor="#edc531", edgecolor="none"))
+    if "finish_line" in res:
+        finish = res["finish_line"]
+        axis.add_patch(Patch(np.asarray(rectangle(finish["x"], finish["y"], finish["yaw_rad"], finish["depth_m"],
+                                                  finish["width_m"]).exterior.coords), facecolor="white", edgecolor="black", linewidth=.3))
     for marker in res["markers"]:
         axis.plot(marker["x"], marker["y"], "s", color="#d83b49", markersize=4)
         axis.annotate(f"ID {marker['id']}", (marker["x"], marker["y"]),
@@ -213,6 +224,7 @@ def prepare(profile_path: Path):
     original_scene = json.loads((SOURCE / "output_final/scene.json").read_text(encoding="utf-8"))
     if round(result["meta"]["Ltot"], 4) != original_scene["track"]["lap_length_m"]:
         raise ValueError("원본 출력물과 재생성한 중심선의 한 바퀴 길이가 다릅니다.")
+    facility_config = configure(result, profile, generator)
     provenance = {
         "profile": "experimental", "status": "experimental_not_official",
         "meeting_url": profile["meeting_url"], "meeting_date": profile["meeting_date"],
@@ -221,16 +233,22 @@ def prepare(profile_path: Path):
         "source_generator_sha256": sha256(SOURCE / "track_gen.py"),
         "derivation_script_sha256": sha256(Path(__file__)),
         "runtime_builder_sha256": sha256(REPO / "scripts/build_runtime_world.py"),
+        "facility_builder_sha256": sha256(REPO / "scripts/experimental_facilities.py"),
         "profile_sha256": sha256(profile_path),
         "main_width_m": profile["main_width_m"], "branch_widths_m": profile["branch_widths_m"],
         "marker_side_overrides": {str(key): value for key, value in profile.get("marker_side_overrides", {}).items()},
         "vehicle_footprint_m": footprint, "centerlines_unchanged": True,
+        "facilities": facility_config,
         "lap_length_m": original_scene["track"]["lap_length_m"],
         "changes": ["본선·분기 폭", "폭에 종속된 노면·벽·잔디·분기 입구",
                     "폭에 종속된 마커 횡방향 위치·신호등 지지대", "ID 30 표지판을 통로 반대편으로 이동",
-                    "차량 메타데이터·그리드 표시 폭"],
+                    "차량 메타데이터·노면 위 출발 6칸과 피니시 표시",
+                    "도로 횡단 방향 신호등·낮은 등 높이·초기 빨강 단독 점등",
+                    "진행 방향 20 cm 코사인 곡면 방지턱·같은 표본을 잇는 분할 물리 충돌면",
+                    "진입 차량을 향하는 독립 ArUco 표지판·흰 여백·SDF 셀 형상",
+                    "마커 10 cm의 기준을 검은 테두리 바깥 변으로 명시(원본 PNG 전체 크기와 구분)"],
         "not_changed": ["중심선 좌표", "길이 배율 1.0", "분기 접속 위치", "출발 위치",
-                        "마커 ID·크기", "벽 높이·두께", "잔디 폭·과속방지턱 높이"],
+                        "마커 ID", "벽 높이·두께", "잔디 폭·과속방지턱 높이"],
     }
     return generator, result, design, footprint, provenance
 
@@ -270,8 +288,10 @@ def main() -> int:
         generator.write_csvs(res, str(raw))
         generator.write_map(res, boxes, str(raw), res["meta"]["resolution"])
         generator.write_sdf(res, boxes, str(raw))
+        replace_facilities(raw / "world.sdf", res, generator)
         checks = generator.run_checks(res)
         scene = generator.write_scene_json(res, str(raw), checks)
+        update_scene(scene, res, generator)
         scene["course_name"] = "IT ARENA 실험 코스 — 공식 규격 아님"
         scene["experimental_profile"] = provenance
         write_json(raw / "scene.json", scene)

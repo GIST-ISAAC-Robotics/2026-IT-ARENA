@@ -42,6 +42,10 @@ vehicle:
     wheel_width_m: 0.012
     max_steering_angle_rad: 0.45
     max_speed_mps: 2.0
+    # 모터 실측값이 아닌 Gazebo 제어기 설정. jerk 제한은 저속 정지 진동을
+    # 유발하여 제외하고, 속도·가속도 제한은 유지합니다.
+    simulation_steering_p_gain: 12.0
+    simulation_acceleration_limit_mps2: 4.0
 
   sensors:
     # Candidate real-car baseline: one quadrature encoder per driven rear wheel.
@@ -61,19 +65,76 @@ vehicle:
       enabled: true
       xyz_m: [0.055, 0.0, 0.075]
       rpy_rad: [0.0, 0.0, 0.0]
-      rgb_horizontal_fov_rad: 1.2043
-      width_px: 848
-      height_px: 480
-      update_rate_hz: 30.0
-      minimum_depth_m: 0.10
-      maximum_depth_m: 6.0
-      model_note: combined RGB-D approximation; split RGB/depth intrinsics later
-      status: provisional
+      # USB 3.1 Gen 1에서 지원되는 공식 스트림 조합을 사용합니다. RGB와 깊이의
+      # 하드웨어 동기화를 고려할 때는 동일 프레임률인 synchronized_60을
+      # 선택합니다. 아래 표시는 동기화 호환성이지 실제 장치의 설정 상태가 아닙니다.
+      active_stream_profile: high_speed_async
+      stream_profiles:
+        high_speed_async:
+          color_rate_hz: 60.0
+          depth_rate_hz: 90.0
+          hardware_sync_compatible: false
+        synchronized_60:
+          color_rate_hz: 60.0
+          depth_rate_hz: 60.0
+          hardware_sync_compatible: true
+        low_load_30:
+          color_rate_hz: 30.0
+          depth_rate_hz: 30.0
+          hardware_sync_compatible: true
+      color:
+        width_px: 848
+        height_px: 480
+        horizontal_fov_deg: 69.4
+        vertical_fov_deg: 42.5
+        render_near_clip_m: 0.02
+        # 깊이 유효 거리와 무관한 RGB 렌더링 범위입니다. 약 10.3 m의 최장
+        # 직선 시야와 14.5 m 길이의 행사장 전체를 가리지 않도록 설정합니다.
+        render_far_clip_m: 20.0
+        shutter_type: rolling
+      depth:
+        width_px: 848
+        height_px: 480
+        horizontal_fov_deg: 87.0
+        vertical_fov_deg: 58.0
+        minimum_depth_m: 0.195
+        qualified_quality_range_max_m: 2.0
+        nominal_range_max_m: 3.0
+        # 공식 자료의 '3 m 이상, 환경 의존'을 완벽한 4 m 측정으로 오해하지
+        # 않도록 기본 절단 거리는 명목 범위인 3 m로 둡니다.
+        simulation_far_clip_m: 3.0
+        extended_test_far_clip_m: 4.0
+        shutter_type: global
+      imu:
+        update_rate_hz: 200.0
+        model_note: combined Gazebo IMU; verify BMI055/BMI085 revision on the real device
+      specification_source: https://dev.realsenseai.com/download/42003/
+      model_note: separate nominal RGB and depth intrinsics; per-device calibration and range-dependent errors remain pending
+      calibration_status: nominal_intrinsics_only
+      status: official_nominal_profile_with_documented_simulation_limits
     lidar_2d:
-      enabled: false
-      xyz_m: [0.0, 0.0, 0.055]
+      enabled: true
+      model_reference: RPLIDAR_C1
+      # 지면 기준 모델 원점. 차체 상단 8.5 cm보다 높여 자기 가림을 피합니다.
+      xyz_m: [-0.03, 0.0, 0.125]
       rpy_rad: [0.0, 0.0, 0.0]
-      status: candidate
+      frame_id: laser_frame
+      scan_rate_hz: 10.0
+      samples_per_scan: 500
+      field_of_view_deg: 360.0
+      range_min_m: 0.05
+      range_max_m: 12.0
+      nominal_range_resolution_m: 0.015
+      # ±30 mm 정확도를 가우시안 표준편차로 해석하지 않습니다.
+      simulated_noise_stddev_m: 0.0
+      nominal_accuracy_m: 0.030
+      dark_target_range_max_m: 6.0
+      mass_kg: 0.110
+      # 단순 표시·관성용 대체 형상이며 C1의 기계 도면이 아닙니다.
+      proxy_radius_m: 0.030
+      proxy_height_m: 0.035
+      specification_source: https://www.slamtec.com/en/c1/spec
+      status: provisional_C1_nominal_idealized_scan_not_hardware_selection
     tof_front_left:
       enabled: false
       xyz_m: [0.085, 0.045, 0.025]
