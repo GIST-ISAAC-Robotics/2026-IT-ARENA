@@ -8,10 +8,32 @@ import json
 import math
 import sys
 import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
 
 
 EXPECTED_ZIP_SHA256 = "de448ba10c614e0f635d44b2f36bab29ebf455c323de442562dd01a8296758e4"
+
+
+def verify_preserved_sources(repo: Path) -> dict:
+    """원본 ZIP 및 압축 해제본을 매번 바이트 단위로 확인합니다."""
+    archive = repo / "assets/track/original/it_arena_track_final.zip"
+    source_root = (repo / "assets/track/source").resolve()
+    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    if digest != EXPECTED_ZIP_SHA256:
+        raise ValueError(f"원본 ZIP 해시 불일치: {digest}")
+    checked = 0
+    with zipfile.ZipFile(archive) as bundle:
+        for entry in bundle.infolist():
+            if entry.is_dir():
+                continue
+            target = (source_root / entry.filename).resolve()
+            if not target.is_relative_to(source_root):
+                raise ValueError(f"압축 파일에 잘못된 경로가 있습니다: {entry.filename}")
+            if not target.is_file() or target.read_bytes() != bundle.read(entry):
+                raise ValueError(f"원본 압축 해제본 불일치: {entry.filename}")
+            checked += 1
+    return {"archive_sha256": digest, "source_files_matched": checked}
 
 
 def fail(message: str) -> None:
@@ -35,10 +57,12 @@ def main() -> int:
     if not archive.is_file():
         fail(f"missing preserved archive: {archive}")
 
-    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-    if digest != EXPECTED_ZIP_SHA256:
-        fail(f"archive hash changed: {digest}")
-    print(f"[ok] preserved ZIP SHA-256: {digest}")
+    try:
+        preservation = verify_preserved_sources(repo)
+    except (OSError, ValueError, zipfile.BadZipFile) as exc:
+        fail(str(exc))
+    print(f"[ok] preserved ZIP SHA-256: {preservation['archive_sha256']}")
+    print(f"[ok] extracted files match archive: {preservation['source_files_matched']}")
 
     try:
         scene = json.loads(scene_path.read_text(encoding="utf-8"))
@@ -71,9 +95,9 @@ def main() -> int:
     print("[ok] world.sdf is well-formed XML")
 
     missing = [
-        path.name
-        for path in (output / "aruco").glob("aruco_id*.png")
-        if not path.is_file()
+        f"aruco_id{marker_id}.png"
+        for marker_id in marker_ids
+        if not (output / "aruco" / f"aruco_id{marker_id}.png").is_file()
     ]
     if missing:
         fail(f"missing ArUco textures: {missing}")

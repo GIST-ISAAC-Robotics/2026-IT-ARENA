@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import math
 
-import rclpy
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
+
+from arena_vehicle_interface.node_lifecycle import run_node
 
 
 class AckermannToTwist(Node):
@@ -13,7 +14,7 @@ class AckermannToTwist(Node):
 
     def __init__(self) -> None:
         super().__init__("ackermann_to_twist")
-        self.declare_parameter("wheelbase_m", 0.13)
+        self.declare_parameter("wheelbase_m", 0.145)
         self.declare_parameter("max_speed_mps", 2.0)
         self.declare_parameter("max_steering_angle_rad", 0.45)
         self.declare_parameter("command_timeout_s", 0.5)
@@ -62,16 +63,7 @@ class AckermannToTwist(Node):
 
 
 def main(args=None) -> None:
-    rclpy.init(args=args)
-    node = AckermannToTwist()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        if rclpy.ok():
-            rclpy.shutdown()
+    run_node(AckermannToTwist, args=args)
 
 
 if __name__ == "__main__":

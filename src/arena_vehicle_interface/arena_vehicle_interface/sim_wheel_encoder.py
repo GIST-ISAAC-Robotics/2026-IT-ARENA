@@ -7,11 +7,12 @@ from dataclasses import dataclass
 import math
 import random
 
-import rclpy
 from builtin_interfaces.msg import Time
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Int64MultiArray
+
+from arena_vehicle_interface.node_lifecycle import run_node
 
 
 def radians_per_tick(ticks_per_revolution: int) -> float:
@@ -210,16 +211,7 @@ class SimWheelEncoder(Node):
 
 
 def main(args: list[str] | None = None) -> None:
-    rclpy.init(args=args)
-    node = SimWheelEncoder()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        if rclpy.ok():
-            rclpy.shutdown()
+    run_node(SimWheelEncoder, args=args)
 
 
 if __name__ == "__main__":

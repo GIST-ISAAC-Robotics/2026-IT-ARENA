@@ -10,6 +10,7 @@ links (traffic light and ArUco boards) remain separate for later control/tests.
 
 from __future__ import annotations
 
+import argparse
 import shutil
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -25,14 +26,19 @@ MERGED_PREFIXES = (
 )
 
 
-def main() -> int:
+def build_runtime_world(source_dir: Path, destination_dir: Path) -> dict:
+    """원본 또는 실험 출력물을 읽고, 별도 실행 디렉터리만 갱신합니다."""
     repo = Path(__file__).resolve().parents[1]
-    source_dir = (
-        repo / "assets" / "track" / "source" / "it_arena_track" / "output_final"
-    )
-    destination_dir = (
-        repo / "src" / "arena_gazebo" / "worlds" / "it_arena_track"
-    )
+    source_dir = source_dir.resolve()
+    destination_dir = destination_dir.resolve()
+    if destination_dir.is_relative_to((repo / "assets/track").resolve()):
+        raise ValueError("보존된 assets/track에는 출력할 수 없습니다.")
+    if source_dir == destination_dir:
+        raise ValueError("입력과 실행용 출력 디렉터리는 달라야 합니다.")
+    original_runtime = (repo / "src/arena_gazebo/worlds/it_arena_track").resolve()
+    original_output = (repo / "assets/track/source/it_arena_track/output_final").resolve()
+    if destination_dir == original_runtime and source_dir != original_output:
+        raise ValueError("원본 재현용 월드를 실험 입력으로 덮어쓸 수 없습니다.")
     source_world = source_dir / "world.sdf"
     destination_world = destination_dir / "world.sdf"
 
@@ -111,6 +117,11 @@ def main() -> int:
     for texture in sorted((source_dir / "aruco").glob("aruco_id*.png")):
         shutil.copy2(texture, texture_destination / texture.name)
 
+    # 출발 위치·지도·중심선은 선택한 월드의 같은 생성 결과를 사용합니다.
+    for pattern in ("scene.json", "map*.png", "map*.yaml", "*.csv", "preview.png"):
+        for artifact in sorted(source_dir.glob(pattern)):
+            shutil.copy2(artifact, destination_dir / artifact.name)
+
     ET.indent(tree, space="  ")
     tree.write(destination_world, encoding="utf-8", xml_declaration=True)
 
@@ -122,6 +133,27 @@ def main() -> int:
         f"{remaining_links} links, {collision_count} collisions, "
         f"{visual_count} visuals remain."
     )
+    return {
+        "merged_links": merged_count,
+        "remaining_links": remaining_links,
+        "collisions": collision_count,
+        "visuals": visual_count,
+    }
+
+
+def main() -> int:
+    repo = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--source", type=Path,
+        default=repo / "assets/track/source/it_arena_track/output_final",
+    )
+    parser.add_argument(
+        "--destination", type=Path,
+        default=repo / "src/arena_gazebo/worlds/it_arena_track",
+    )
+    args = parser.parse_args()
+    build_runtime_world(args.source, args.destination)
     return 0
 
 

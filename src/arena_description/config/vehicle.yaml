@@ -1,6 +1,6 @@
-# Provisional geometry. Replace values as soon as the hardware team supplies measurements.
+# 전체 평면 외형은 팀이 확정한 설계 목표입니다. 나머지 치수는 실측 전 임시값입니다.
 vehicle:
-  status: provisional
+  status: partially_confirmed
   # Sensor xyz values are relative to the model origin at ground level midway
   # between the axles. This convention is provisional but explicit.
   reference_frame: model_origin
@@ -11,17 +11,33 @@ vehicle:
     max_width_m: 0.15
     max_height_m: null
 
-  # Conservative first model, not a confirmed chassis design.
+  # 2026-08-30 팀 확인: 허용 범위를 최대한 사용하는 20 cm x 15 cm로 제작합니다.
+  # 바퀴·센서·범퍼를 포함한 외형 목표이며, 완성 차량의 실측값은 아닙니다.
+  # 검차에서 조향 중 바퀴 돌출까지 포함하는지는 미확정입니다.
+  # 조향 중 점유 영역은 주행·충돌 판단용이며 검차 외형과 구분합니다.
+  footprint:
+    status: confirmed_team_design_target
+    length_m: 0.20
+    width_m: 0.15
+    inspection_steering_state: unconfirmed
+
+  # 충돌체는 전체 평면 외형을 단순한 상자로 근사합니다.
+  # 실제 섀시 판의 형상·높이·질량을 확정한 것은 아닙니다.
   body:
-    length_m: 0.18
-    width_m: 0.12
+    length_m: 0.20
+    width_m: 0.15
     height_m: 0.06
     mass_kg: 1.5
+    height_and_mass_status: provisional
 
   drivetrain:
+    status: provisional
     layout: rear_wheel_drive_ackermann
-    wheelbase_m: 0.13
-    track_width_m: 0.105
+    # 직진 시 바퀴 바깥 치수: 축거 + 지름, 윤거 + 바퀴 폭.
+    # 현재 바퀴로는 각각 0.195 m, 0.147 m이며 제작 전 임시 배치입니다.
+    # 조향 시 바퀴가 목표 외형 밖으로 나갈 수 있으므로 충돌 판단은 별도입니다.
+    wheelbase_m: 0.145
+    track_width_m: 0.135
     wheel_radius_m: 0.025
     wheel_width_m: 0.012
     max_steering_angle_rad: 0.45

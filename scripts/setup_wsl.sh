@@ -48,6 +48,8 @@ apt-get install -y \
   ros-dev-tools \
   python3-colcon-common-extensions \
   python3-opencv \
+  python3-matplotlib \
+  python3-shapely \
   python3-rosdep \
   python3-vcstool
 

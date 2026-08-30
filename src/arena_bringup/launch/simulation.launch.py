@@ -1,23 +1,20 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import xacro
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, TimerAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, LogInfo, OpaqueFunction, TimerAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-GRID_SLOTS = {
-    0: (9.8688, 4.6804, 1.5637),
-    1: (9.8722, 5.1804, 1.5637),
-    2: (9.8757, 5.6804, 1.5639),
-    3: (10.0375, 4.4792, 1.5639),
-    4: (10.0409, 4.9792, 1.5639),
-    5: (10.0443, 5.4792, 1.5639),
+TRACK_DIRECTORIES = {
+    "original": "it_arena_track",
+    "experimental": "it_arena_experimental",
 }
 
 
@@ -67,12 +64,19 @@ def _launch_setup(context):
         },
     ).toxml()
 
+    track = LaunchConfiguration("track").perform(context)
+    if track not in TRACK_DIRECTORIES:
+        raise RuntimeError(f"track must be one of {sorted(TRACK_DIRECTORIES)}")
+    world_directory = gazebo_share / "worlds" / TRACK_DIRECTORIES[track]
+    scene = json.loads((world_directory / "scene.json").read_text(encoding="utf-8"))
+    slots = {int(slot["index"]): slot for slot in scene["starting_grid"]["slots"]}
     slot_index = int(LaunchConfiguration("grid_slot").perform(context))
-    if slot_index not in GRID_SLOTS:
-        raise RuntimeError(f"grid_slot must be one of {sorted(GRID_SLOTS)}")
-    spawn_x, spawn_y, spawn_yaw = GRID_SLOTS[slot_index]
+    if slot_index not in slots:
+        raise RuntimeError(f"grid_slot must be one of {sorted(slots)}")
+    slot = slots[slot_index]
+    spawn_x, spawn_y, spawn_yaw = slot["x"], slot["y"], slot["yaw_rad"]
 
-    world_path = gazebo_share / "worlds" / "it_arena_track" / "world.sdf"
+    world_path = world_directory / "world.sdf"
     headless = _as_bool(LaunchConfiguration("headless").perform(context))
     # Keep the server and GUI as direct child processes. The upstream combined
     # launcher uses a shell wrapper, which can leave the actual Gazebo process
@@ -155,13 +159,16 @@ def _launch_setup(context):
     )
 
     actions = [
+        LogInfo(msg=f"Track: {track}; main width: {scene['track']['width_m']} m; "
+                    f"shortcut widths: {[branch['width_m'] for branch in scene['branches']]} m. "
+                    "Not a confirmed official course."),
         gazebo_server,
         bridge,
         vehicle_interface,
         TimerAction(period=2.0, actions=[spawn_vehicle]),
     ]
     if not headless:
-        actions.insert(1, gazebo_gui)
+        actions.insert(2, gazebo_gui)
 
     if wheel_encoders["enabled"]:
         actions.append(
@@ -194,6 +201,12 @@ def generate_launch_description() -> LaunchDescription:
     description_share = Path(get_package_share_directory("arena_description"))
     return LaunchDescription(
         [
+            DeclareLaunchArgument(
+                "track",
+                default_value="experimental",
+                choices=list(TRACK_DIRECTORIES),
+                description="experimental: 45/25 cm test track; original: preserved 35/12 cm output.",
+            ),
             DeclareLaunchArgument(
                 "vehicle_config",
                 default_value=str(description_share / "config" / "vehicle.yaml"),
