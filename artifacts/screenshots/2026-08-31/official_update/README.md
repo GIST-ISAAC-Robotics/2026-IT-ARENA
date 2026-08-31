@@ -24,9 +24,10 @@
 | [upstream_signal_all_lit.png](upstream_signal_all_lit.png) | 원본의 빨강·노랑·초록 동시 발광 |
 | [upstream_id30_collision_plan.png](upstream_id30_collision_plan.png) | **계산 도식**: 실제 CSV 141표본과 SDF 판에 20×15 cm 외형을 대조해 10표본 간섭 재현 |
 | [upstream_bump_axis_plan.png](upstream_bump_axis_plan.png) | **계산 도식**: 원본 SDF와 설명의 진행/횡단 치수 비교 |
+| [upstream_grid_height_cross_section.png](upstream_grid_height_cross_section.png) | **계산 도식**: 원본 SDF의 노면 상단 3.0 mm와 출발 그리드 표시 상단 1.7 mm를 대조해 표시가 1.3 mm 매몰되는 관계를 재현 |
 
 원본은 `v2026.08.31` / 커밋 `d61c5db9252cedfbc163cd044a47671df91e1660`입니다. 엄격 SDF 파서에서 실패하므로 촬영용 사본에는 기존 `build_runtime_world.py`의 시스템 추가·정적 링크 병합·재질/경로 호환성 변환만 적용했습니다. 마커 위치·방지턱 치수·신호 발광값은 그대로 두었으며, 보존 ZIP이나 원본 출력물은 변경하지 않았습니다.
 
-도식은 `python3 scripts/illustrate_official_issues.py`로 보존 ZIP에서 재생성할 수 있습니다. 원시 XWD·초기 변환 시험 파일은 Git 제외 경로 `build/official_capture_raw/`에 남겼습니다.
+도식은 보존 ZIP의 `output_final/world.sdf`와 `centerline.csv`를 직접 읽어 산출했습니다. 원시 XWD·초기 변환 시험 파일은 Git 제외 경로 `build/official_capture_raw/`에 남겼습니다.
 
 사진·도식·원본 수치의 구분과 게시용 본문은 [승인 대기 이슈 초안](../../../../docs/track/OFFICIAL_UPSTREAM_ISSUE_DRAFTS.md)에 있습니다. **사용자의 명시적 승인 전에는 upstream에 이슈를 게시하지 않습니다.**
