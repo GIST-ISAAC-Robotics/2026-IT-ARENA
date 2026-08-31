@@ -1,0 +1,165 @@
+{
+  "source_case": "script_and_paths",
+  "source_world_sha256": "8c90a410b4b4dedbd8905fd534dfc7a0100d3907bc1dd3fd00a389069b16e67e",
+  "render_world_sha256": "f93d910804433de18533508d91e7ec886a8cb553999f38e62b57a2390e6349c6",
+  "camera_pose_xyz_rpy": {
+    "0": [
+      9.971000334552862,
+      6.466483928602237,
+      0.1,
+      0,
+      0,
+      -0.0013826535897930707
+    ],
+    "20": [
+      7.60530434468745,
+      9.117456078459602,
+      0.1,
+      0,
+      0,
+      0.004982653589793119
+    ],
+    "30": [
+      2.2360271238822755,
+      2.4171164995853744,
+      0.1,
+      0,
+      0,
+      0.1499426535897933
+    ],
+    "45": [
+      9.956291178287058,
+      5.77981502087809,
+      0.1,
+      0,
+      0,
+      3.1344926535897932
+    ]
+  },
+  "camera": {
+    "width": 640,
+    "height": 480,
+    "horizontal_fov_rad": 0.65,
+    "distance_m": 0.35,
+    "update_rate_hz": 2
+  },
+  "track_links": 1113,
+  "source_model_unchanged_except_diffuse": true,
+  "case": "diffuse_white",
+  "started_at": "2026-08-31T12:06:03.806943+00:00",
+  "scope": "원본 위치의 정지 마커와 별도 정면 진단 카메라. Physics 제외. 실차/주행 검증 아님.",
+  "commands": {
+    "server": [
+      "stdbuf",
+      "-oL",
+      "-eL",
+      "gz",
+      "sim",
+      "-s",
+      "-r",
+      "-v",
+      "4",
+      "world.sdf"
+    ],
+    "bridge": [
+      "ros2",
+      "run",
+      "ros_gz_bridge",
+      "parameter_bridge",
+      "/audit/marker_0/rgb@sensor_msgs/msg/Image[gz.msgs.Image",
+      "/audit/marker_20/rgb@sensor_msgs/msg/Image[gz.msgs.Image",
+      "/audit/marker_30/rgb@sensor_msgs/msg/Image[gz.msgs.Image",
+      "/audit/marker_45/rgb@sensor_msgs/msg/Image[gz.msgs.Image"
+    ]
+  },
+  "received_counts": {
+    "0": 3,
+    "20": 3,
+    "30": 3,
+    "45": 3
+  },
+  "frames": {
+    "0": {
+      "file": "marker_0.png",
+      "sha256": "94bccd208994c8b96485f52850bc1966530c21fcc941398e15437d7cd894543e",
+      "stamp_sec": 1.0,
+      "detected_ids": [
+        0
+      ],
+      "horizontally_flipped_diagnostic_ids": [],
+      "center_200px_gray_min_max_mean": [
+        0,
+        71,
+        21.117275
+      ]
+    },
+    "20": {
+      "file": "marker_20.png",
+      "sha256": "5355394738fd2cf7a0e4561c032e598d75328eefca6f4fc759e1d86a48742eac",
+      "stamp_sec": 1.0,
+      "detected_ids": [
+        20
+      ],
+      "horizontally_flipped_diagnostic_ids": [],
+      "center_200px_gray_min_max_mean": [
+        0,
+        71,
+        19.316825
+      ]
+    },
+    "30": {
+      "file": "marker_30.png",
+      "sha256": "42af9400e54e0e9b35398d4670aa78e0c2094fd25287697f5346983b7cb77d14",
+      "stamp_sec": 1.0,
+      "detected_ids": [
+        30
+      ],
+      "horizontally_flipped_diagnostic_ids": [],
+      "center_200px_gray_min_max_mean": [
+        0,
+        71,
+        15.56815
+      ]
+    },
+    "45": {
+      "file": "marker_45.png",
+      "sha256": "3aafcb0c1f4465e4c9813066e13b279d7dfe1bc95a894975b2f3ac659e1d6caa",
+      "stamp_sec": 1.0,
+      "detected_ids": [
+        45
+      ],
+      "horizontally_flipped_diagnostic_ids": [],
+      "center_200px_gray_min_max_mean": [
+        0,
+        103,
+        36.352825
+      ]
+    }
+  },
+  "capture_complete": true,
+  "cleanup": [
+    {
+      "return_code": 0,
+      "signals": [
+        "SIGINT"
+      ],
+      "remaining_test_pids": []
+    },
+    {
+      "return_code": 0,
+      "signals": [
+        "SIGINT"
+      ],
+      "remaining_test_pids": []
+    }
+  ],
+  "errors_warnings": {
+    "server": [
+      "[Wrn] [Ogre2Camera.cc:423] Ogre2Camera::SetVisibilityMask: Mask bits c0000000 are set but will be ignored as they conflict with the reserved bits used internally by the ogre2 backend.",
+      "[Wrn] [Ogre2Camera.cc:423] Ogre2Camera::SetVisibilityMask: Mask bits c0000000 are set but will be ignored as they conflict with the reserved bits used internally by the ogre2 backend.",
+      "[Wrn] [Ogre2Camera.cc:423] Ogre2Camera::SetVisibilityMask: Mask bits c0000000 are set but will be ignored as they conflict with the reserved bits used internally by the ogre2 backend.",
+      "[Wrn] [Ogre2Camera.cc:423] Ogre2Camera::SetVisibilityMask: Mask bits c0000000 are set but will be ignored as they conflict with the reserved bits used internally by the ogre2 backend."
+    ],
+    "bridge": []
+  }
+}

@@ -1,0 +1,463 @@
+{
+  "source_release": "v2026.08.31",
+  "source_commit": "d61c5db9252cedfbc163cd044a47671df91e1660",
+  "source_zip_sha256": "897183d2e2541458d190a0a1e3f76bff754c67fab894f2302c3110830a86149b",
+  "source_world_sha256": "62d7ae4abf2dbcc0ce850065de5ade28703a67649ab6a8c62311c432cc2200de",
+  "source_file_count": 23,
+  "sequential_workflow": true,
+  "source_zip_unchanged": true,
+  "geometry_equal_across_all_five_fixtures": true,
+  "flattened_geometry_signature": "76777a4e792d894b88d33106625e23a7d7343bd54a7fdd1f96e146f6d53ebf8c",
+  "environment": {
+    "ubuntu": "24.04.4 LTS",
+    "ros": "Jazzy",
+    "gazebo_sim": "8.11.0",
+    "sdformat": "14.9.0",
+    "physics_plugin": "gz::physics::dartsim::Plugin",
+    "render_engine": "ogre2",
+    "default_server_systems": [
+      "Physics",
+      "UserCommands",
+      "SceneBroadcaster"
+    ]
+  },
+  "scope": "배포 원본 파싱, 격리 수정별 첫 갱신, 정지 진단 RGB. 주행·실물·다른 OS/엔진 검증 아님.",
+  "public_logs": "원시 로그에서 <WORKSPACE>/<WSL_HOME> 치환 및 ANSI 제어문자 제거. 원시는 build에 별도 보존.",
+  "initial_helper_flag_correction": "초기 loaded_physics_log는 검색 문자열 불일치가 있었음. 이 보고서는 실제 로그 문구를 재대조. 원시 초기 JSON은 보존.",
+  "runs": [
+    {
+      "case": "merge_only",
+      "mode": "check",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sdf",
+        "-k",
+        "world.sdf"
+      ],
+      "source_world_sha256": "374a94a5a9221dcf595753640f01f1fb0c08c46c3d43264e6137476bd6a940f6",
+      "cwd": "build/official_single_issue_20260831/fixtures/merge_only/output_final",
+      "timeout_seconds": 30.0,
+      "observation_timeout_reached": false,
+      "return_code": 0,
+      "wall_seconds_including_cleanup": 2.8336,
+      "cleanup_signals": [],
+      "remaining_test_pids": [],
+      "run_id": "merge_only_check_01",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 0,
+        "9": 0,
+        "14": 0
+      },
+      "world_initialized_message_present": false,
+      "physics_loaded_message_present": false,
+      "log": "logs/merge_only_check_01.log",
+      "unmodified_raw_log_sha256": "581e1adf70bd048b67b37b74d7e86c4914095ff3f6ca4164e452e18465907d34"
+    },
+    {
+      "case": "merge_only",
+      "mode": "server",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sim",
+        "-s",
+        "-r",
+        "-v",
+        "4",
+        "--iterations",
+        "1",
+        "world.sdf"
+      ],
+      "source_world_sha256": "374a94a5a9221dcf595753640f01f1fb0c08c46c3d43264e6137476bd6a940f6",
+      "cwd": "build/official_single_issue_20260831/fixtures/merge_only/output_final",
+      "timeout_seconds": 30.0,
+      "observation_timeout_reached": false,
+      "return_code": 0,
+      "wall_seconds_including_cleanup": 2.8388,
+      "cleanup_signals": [],
+      "remaining_test_pids": [],
+      "run_id": "merge_only_server_01",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 0,
+        "9": 0,
+        "14": 0
+      },
+      "world_initialized_message_present": true,
+      "physics_loaded_message_present": true,
+      "log": "logs/merge_only_server_01.log",
+      "unmodified_raw_log_sha256": "effd25684b077c9801c488b384a23d7d2039552ca541604488c5564daf02a3f6"
+    },
+    {
+      "case": "merge_static",
+      "mode": "check",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sdf",
+        "-k",
+        "world.sdf"
+      ],
+      "source_world_sha256": "3b19afcaecdc5c0a63fd59d06592d8fa40451d796d68261efd6bf981e7a5591d",
+      "cwd": "build/official_single_issue_20260831/fixtures/merge_static/output_final",
+      "timeout_seconds": 30.0,
+      "observation_timeout_reached": false,
+      "return_code": 0,
+      "wall_seconds_including_cleanup": 2.4317,
+      "cleanup_signals": [],
+      "remaining_test_pids": [],
+      "run_id": "merge_static_check_01",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 0,
+        "9": 0,
+        "14": 0
+      },
+      "world_initialized_message_present": false,
+      "physics_loaded_message_present": false,
+      "log": "logs/merge_static_check_01.log",
+      "unmodified_raw_log_sha256": "581e1adf70bd048b67b37b74d7e86c4914095ff3f6ca4164e452e18465907d34"
+    },
+    {
+      "case": "merge_static",
+      "mode": "server",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sim",
+        "-s",
+        "-r",
+        "-v",
+        "4",
+        "--iterations",
+        "1",
+        "world.sdf"
+      ],
+      "source_world_sha256": "3b19afcaecdc5c0a63fd59d06592d8fa40451d796d68261efd6bf981e7a5591d",
+      "cwd": "build/official_single_issue_20260831/fixtures/merge_static/output_final",
+      "timeout_seconds": 30.0,
+      "observation_timeout_reached": false,
+      "return_code": 0,
+      "wall_seconds_including_cleanup": 2.8295,
+      "cleanup_signals": [],
+      "remaining_test_pids": [],
+      "run_id": "merge_static_server_01",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 0,
+        "9": 0,
+        "14": 0
+      },
+      "world_initialized_message_present": true,
+      "physics_loaded_message_present": true,
+      "log": "logs/merge_static_server_01.log",
+      "unmodified_raw_log_sha256": "0014d1156fd8b978f70decdb5ae04f24fdc78f0a3a66bdd8608cbb807cccd50f"
+    },
+    {
+      "case": "raw",
+      "mode": "check",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sdf",
+        "-k",
+        "world.sdf"
+      ],
+      "source_world_sha256": "62d7ae4abf2dbcc0ce850065de5ade28703a67649ab6a8c62311c432cc2200de",
+      "cwd": "build/official_single_issue_20260831/fixtures/raw/output_final",
+      "timeout_seconds": 30.0,
+      "observation_timeout_reached": false,
+      "return_code": 255,
+      "wall_seconds_including_cleanup": 4.035,
+      "cleanup_signals": [],
+      "remaining_test_pids": [],
+      "run_id": "raw_check_01",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 4,
+        "9": 1,
+        "14": 0
+      },
+      "world_initialized_message_present": false,
+      "physics_loaded_message_present": false,
+      "log": "logs/raw_check_01.log",
+      "unmodified_raw_log_sha256": "eb6ace9f6dbef89b415c81387757daa4bdfdca6602dacc085992e47370486b20"
+    },
+    {
+      "case": "raw",
+      "mode": "server",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sim",
+        "-s",
+        "-r",
+        "-v",
+        "4",
+        "--iterations",
+        "1",
+        "world.sdf"
+      ],
+      "source_world_sha256": "62d7ae4abf2dbcc0ce850065de5ade28703a67649ab6a8c62311c432cc2200de",
+      "cwd": "build/official_single_issue_20260831/fixtures/raw/output_final",
+      "timeout_seconds": 30.0,
+      "observation_timeout_reached": false,
+      "return_code": 0,
+      "wall_seconds_including_cleanup": 3.1832,
+      "cleanup_signals": [],
+      "remaining_test_pids": [],
+      "run_id": "raw_server_01",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 4,
+        "9": 1,
+        "14": 4
+      },
+      "world_initialized_message_present": false,
+      "physics_loaded_message_present": false,
+      "log": "logs/raw_server_01.log",
+      "unmodified_raw_log_sha256": "a96f896da0e3f956e71134d28aa8e5475dfd91878288643a79138a71c6c92bcc"
+    },
+    {
+      "case": "ready",
+      "mode": "check",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sdf",
+        "-k",
+        "world.sdf"
+      ],
+      "source_world_sha256": "c6904431c48615874f28a345ece13906cd55955752f5acff3377b78667d1b667",
+      "cwd": "build/official_single_issue_20260831/fixtures/ready/output_final",
+      "timeout_seconds": 30.0,
+      "observation_timeout_reached": false,
+      "return_code": 0,
+      "wall_seconds_including_cleanup": 2.3792,
+      "cleanup_signals": [],
+      "remaining_test_pids": [],
+      "run_id": "ready_check_01",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 0,
+        "9": 0,
+        "14": 0
+      },
+      "world_initialized_message_present": false,
+      "physics_loaded_message_present": false,
+      "log": "logs/ready_check_01.log",
+      "unmodified_raw_log_sha256": "581e1adf70bd048b67b37b74d7e86c4914095ff3f6ca4164e452e18465907d34"
+    },
+    {
+      "case": "ready",
+      "mode": "server",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sim",
+        "-s",
+        "-r",
+        "-v",
+        "4",
+        "--iterations",
+        "1",
+        "world.sdf"
+      ],
+      "source_world_sha256": "c6904431c48615874f28a345ece13906cd55955752f5acff3377b78667d1b667",
+      "cwd": "build/official_single_issue_20260831/fixtures/ready/output_final",
+      "timeout_seconds": 30.0,
+      "observation_timeout_reached": false,
+      "return_code": 0,
+      "wall_seconds_including_cleanup": 2.8334,
+      "cleanup_signals": [],
+      "remaining_test_pids": [],
+      "run_id": "ready_server_01",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 0,
+        "9": 0,
+        "14": 0
+      },
+      "world_initialized_message_present": true,
+      "physics_loaded_message_present": true,
+      "log": "logs/ready_server_01.log",
+      "unmodified_raw_log_sha256": "472b618119acc6fb58c88daea3a02284f3527a22770457e7780e1ca6ec16768b"
+    },
+    {
+      "case": "ready",
+      "mode": "server",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sim",
+        "-s",
+        "-r",
+        "-v",
+        "4",
+        "--iterations",
+        "2000",
+        "world.sdf"
+      ],
+      "source_world_sha256": "c6904431c48615874f28a345ece13906cd55955752f5acff3377b78667d1b667",
+      "cwd": "build/official_single_issue_20260831/fixtures/ready/output_final",
+      "timeout_seconds": 45.0,
+      "observation_timeout_reached": false,
+      "return_code": 0,
+      "wall_seconds_including_cleanup": 5.9453,
+      "cleanup_signals": [],
+      "remaining_test_pids": [],
+      "run_id": "ready_server_sustained",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 0,
+        "9": 0,
+        "14": 0
+      },
+      "world_initialized_message_present": true,
+      "physics_loaded_message_present": true,
+      "log": "logs/ready_server_sustained.log",
+      "unmodified_raw_log_sha256": "472b618119acc6fb58c88daea3a02284f3527a22770457e7780e1ca6ec16768b"
+    },
+    {
+      "case": "remove_script",
+      "mode": "check",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sdf",
+        "-k",
+        "world.sdf"
+      ],
+      "source_world_sha256": "e01c2bd63126192c4c9f08f00b6fa0ce8c566cc5781d18e6b77127411b8b4097",
+      "cwd": "build/official_single_issue_20260831/fixtures/remove_script/output_final",
+      "timeout_seconds": 180.0,
+      "observation_timeout_reached": false,
+      "return_code": 0,
+      "wall_seconds_including_cleanup": 7.0515,
+      "cleanup_signals": [],
+      "remaining_test_pids": [],
+      "run_id": "remove_script_check_01",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 0,
+        "9": 0,
+        "14": 0
+      },
+      "world_initialized_message_present": false,
+      "physics_loaded_message_present": false,
+      "log": "logs/remove_script_check_01.log",
+      "unmodified_raw_log_sha256": "581e1adf70bd048b67b37b74d7e86c4914095ff3f6ca4164e452e18465907d34"
+    },
+    {
+      "case": "remove_script",
+      "mode": "server",
+      "command": [
+        "stdbuf",
+        "-oL",
+        "-eL",
+        "gz",
+        "sim",
+        "-s",
+        "-r",
+        "-v",
+        "4",
+        "--iterations",
+        "1",
+        "world.sdf"
+      ],
+      "source_world_sha256": "e01c2bd63126192c4c9f08f00b6fa0ce8c566cc5781d18e6b77127411b8b4097",
+      "cwd": "build/official_single_issue_20260831/fixtures/remove_script/output_final",
+      "timeout_seconds": 180.0,
+      "observation_timeout_reached": true,
+      "return_code": -9,
+      "wall_seconds_including_cleanup": 192.2548,
+      "cleanup_signals": [
+        "SIGINT",
+        "SIGTERM",
+        "SIGKILL"
+      ],
+      "remaining_test_pids": [],
+      "run_id": "remove_script_server_01",
+      "server_config_override": null,
+      "error_codes": {
+        "8": 0,
+        "9": 0,
+        "14": 0
+      },
+      "world_initialized_message_present": true,
+      "physics_loaded_message_present": true,
+      "log": "logs/remove_script_server_01.log",
+      "unmodified_raw_log_sha256": "c9b4d5ca90aea7844983541d4111c619c91d56295a42c9a36054bb4f523c76c3"
+    }
+  ],
+  "render": {
+    "02_bad_path": {
+      "report": "render/02_bad_path/result.json",
+      "capture_complete": true,
+      "source_case": "merge_only",
+      "physics_enabled": true,
+      "detected_ids_by_target": {
+        "0": [],
+        "20": [],
+        "30": [],
+        "45": []
+      }
+    },
+    "03_black_material": {
+      "report": "render/03_black_material/result.json",
+      "capture_complete": true,
+      "source_case": "merge_static",
+      "physics_enabled": true,
+      "detected_ids_by_target": {
+        "0": [],
+        "20": [],
+        "30": [],
+        "45": []
+      }
+    },
+    "04_ready": {
+      "report": "render/04_ready/result.json",
+      "capture_complete": true,
+      "source_case": "ready",
+      "physics_enabled": true,
+      "detected_ids_by_target": {
+        "0": [
+          0
+        ],
+        "20": [
+          20
+        ],
+        "30": [
+          30
+        ],
+        "45": [
+          45
+        ]
+      }
+    }
+  },
+  "upstream_writes": 0,
+  "team_repository_push": false
+}
