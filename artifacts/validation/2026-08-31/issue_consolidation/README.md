@@ -44,4 +44,4 @@ python3 scripts/audit_official_marker_render.py as_is --workdir build/official_l
 - 원본 `world.sdf` SHA-256: `62d7ae4abf2dbcc0ce850065de5ade28703a67649ab6a8c62311c432cc2200de`
 - [정리 전 압축본](before_consolidation.zip): 13개 파일, 65,934 bytes, SHA-256 `422a03bda5c30d5b66ab0d95346965e19c79005b715ce86d7b0debd2f166c88c`. 개별 초안 9개·manifest·이전 색인·원본 감사 문서·정리 직전 활동 기록을 원래 상대경로로 보존했습니다. 생성 당시 각 파일의 바이트 일치를 검사했습니다.
 - 중복 개별 초안·manifest·감사 설명문은 현재 문서 구조에서 제거했습니다. 더 이상 쓰지 않는 `scripts/illustrate_official_issues.py`는 [정리 전 Git 이력](https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA/blob/71d04ee562abac11b9a4ac73bcc3612cfcfc451d/scripts/illustrate_official_issues.py)에서 복구할 수 있습니다. 기존 사진·도식·실행 로그·활동 기록은 삭제하지 않았습니다.
-- 나머지 시설·기하 관찰은 [공식 자료 감사 §5](../../../../docs/track/OFFICIAL_SOURCE_AUDIT.md#5-공식-출력물-내부-불일치와-재현한-한계)에만 보류 상태로 관리합니다. 운영진 업데이트 후 재확인하며, 현재 주최 측에 게시한 이슈·댓글은 없습니다.
+- 나머지 시설·기하 관찰은 [공식 자료 감사 §5](../../../../docs/track/OFFICIAL_SOURCE_AUDIT.md#5-공식-출력물-내부-불일치와-재현한-한계)에만 보류 상태로 관리합니다. 자료 정리 당시에는 미게시였고, 이후 2026-08-31 사용자의 명시적 승인으로 단일 보고를 [주최 측 이슈 #7](https://github.com/MOSW626/istech-it-arena/issues/7)에 등록했습니다. 다른 이슈·댓글은 게시하지 않았습니다. 검증 JSON의 게시 전 상태와 원시 기록은 그대로 보존합니다.
