@@ -30,4 +30,4 @@
 
 도식은 보존 ZIP의 `output_final/world.sdf`와 `centerline.csv`를 직접 읽어 산출했습니다. 원시 XWD·초기 변환 시험 파일은 Git 제외 경로 `build/official_capture_raw/`에 남겼습니다.
 
-사진·도식·원본 수치의 구분과 게시용 본문은 [승인 대기 이슈 초안](../../../../docs/track/OFFICIAL_UPSTREAM_ISSUE_DRAFTS.md)에 있습니다. **사용자의 명시적 승인 전에는 upstream에 이슈를 게시하지 않습니다.**
+마커 원본 화면·간섭 도식은 [주최 측 이슈 #8](https://github.com/MOSW626/istech-it-arena/issues/8)에 사용했습니다. [#10](https://github.com/MOSW626/istech-it-arena/issues/10)에는 `upstream_signal_all_lit.png`의 표시가 안 보이는 출발 구역 원본 화면과 그리드 높이 단면도를 함께 사용했으며, 신호 발광 상태와 그리드 매몰 증상을 서로 다른 관찰로 명시했습니다. 사진·도식·원본 수치의 구분은 유지하며, 이후 새 upstream 이슈·댓글은 다시 사용자의 명시적 승인을 받은 뒤 게시합니다.
