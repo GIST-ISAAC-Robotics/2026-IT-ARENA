@@ -28,6 +28,32 @@
   <xacro:arg name="lidar_mass" default="0.110"/>
   <xacro:arg name="lidar_radius" default="0.030"/>
   <xacro:arg name="lidar_height" default="0.035"/>
+  <xacro:arg name="tof_enabled" default="true"/>
+  <xacro:arg name="tof_rate" default="15.0"/>
+  <xacro:arg name="tof_horizontal_zones" default="8"/>
+  <xacro:arg name="tof_vertical_zones" default="8"/>
+  <xacro:arg name="tof_horizontal_fov" default="1.0471975512"/>
+  <xacro:arg name="tof_vertical_fov" default="1.0471975512"/>
+  <xacro:arg name="tof_min" default="0.020"/>
+  <xacro:arg name="tof_max" default="3.50"/>
+  <xacro:arg name="tof_resolution" default="0.001"/>
+  <xacro:arg name="tof_noise" default="0.0"/>
+  <xacro:arg name="tof_carrier_size_x" default="0.003"/>
+  <xacro:arg name="tof_carrier_size_y" default="0.013"/>
+  <xacro:arg name="tof_carrier_size_z" default="0.018"/>
+  <xacro:arg name="tof_carrier_mass" default="0.0005"/>
+  <xacro:arg name="tof_front_pose" default="0.0980 0.0000 0.040 0 0 0"/>
+  <xacro:arg name="tof_front_left_pose" default="0.0413 0.0715 0.040 0 0 1.0471975512"/>
+  <xacro:arg name="tof_rear_left_pose" default="-0.0413 0.0715 0.040 0 0 2.0943951024"/>
+  <xacro:arg name="tof_rear_pose" default="-0.0980 0.0000 0.040 0 0 3.1415926536"/>
+  <xacro:arg name="tof_rear_right_pose" default="-0.0413 -0.0715 0.040 0 0 -2.0943951024"/>
+  <xacro:arg name="tof_front_right_pose" default="0.0413 -0.0715 0.040 0 0 -1.0471975512"/>
+  <xacro:arg name="tof_front_topic" default="/tof/front"/>
+  <xacro:arg name="tof_front_left_topic" default="/tof/front_left"/>
+  <xacro:arg name="tof_rear_left_topic" default="/tof/rear_left"/>
+  <xacro:arg name="tof_rear_topic" default="/tof/rear"/>
+  <xacro:arg name="tof_rear_right_topic" default="/tof/rear_right"/>
+  <xacro:arg name="tof_front_right_topic" default="/tof/front_right"/>
   <xacro:arg name="d435i_x" default="0.055"/>
   <xacro:arg name="d435i_y" default="0.0"/>
   <xacro:arg name="d435i_z" default="0.075"/>
@@ -95,6 +121,14 @@
   <xacro:property name="d435i_depth_cx" value="$(arg d435i_depth_cx)"/>
   <xacro:property name="d435i_depth_cy" value="$(arg d435i_depth_cy)"/>
   <xacro:property name="d435i_imu_rate" value="$(arg d435i_imu_rate)"/>
+  <xacro:property name="tof_horizontal_zones" value="$(arg tof_horizontal_zones)"/>
+  <xacro:property name="tof_vertical_zones" value="$(arg tof_vertical_zones)"/>
+  <xacro:property name="tof_horizontal_fov" value="$(arg tof_horizontal_fov)"/>
+  <xacro:property name="tof_vertical_fov" value="$(arg tof_vertical_fov)"/>
+  <xacro:property name="tof_carrier_size_x" value="$(arg tof_carrier_size_x)"/>
+  <xacro:property name="tof_carrier_size_y" value="$(arg tof_carrier_size_y)"/>
+  <xacro:property name="tof_carrier_size_z" value="$(arg tof_carrier_size_z)"/>
+  <xacro:property name="tof_carrier_mass" value="$(arg tof_carrier_mass)"/>
   <xacro:property name="wheel_mass" value="0.04"/>
   <xacro:property name="steering_link_mass" value="0.01"/>
 
@@ -178,6 +212,61 @@
     </joint>
   </xacro:macro>
 
+  <!--
+    VL53L7CX급 다중영역 ToF의 이상화 모델입니다. 실제 센서의 히스토그램,
+    반사율·주변광 의존성, 다중 반사, 센서 간 적외선 간섭과 invalid 상태는
+    재현하지 않습니다. 2차원 LaserScan 대신 각 영역의 3차원 점군을 사용합니다.
+  -->
+  <xacro:macro name="tof_module" params="name pose topic">
+    <link name="tof_${name}_link">
+      <pose>${pose}</pose>
+      <xacro:box_inertial mass="${tof_carrier_mass}" x="${tof_carrier_size_x}" y="${tof_carrier_size_y}" z="${tof_carrier_size_z}"/>
+      <visual name="carrier_visual">
+        <!-- 광학 중심 뒤쪽으로 얇은 캐리어 보드를 배치합니다. -->
+        <pose>${-tof_carrier_size_x / 2.0} 0 0 0 0 0</pose>
+        <geometry><box><size>${tof_carrier_size_x} ${tof_carrier_size_y} ${tof_carrier_size_z}</size></box></geometry>
+        <material>
+          <ambient>0.02 0.25 0.24 1</ambient>
+          <diffuse>0.03 0.48 0.45 1</diffuse>
+          <specular>0.10 0.10 0.10 1</specular>
+        </material>
+      </visual>
+      <sensor name="tof_${name}" type="gpu_lidar">
+        <always_on>true</always_on>
+        <update_rate>$(arg tof_rate)</update_rate>
+        <visualize>false</visualize>
+        <topic>${topic}</topic>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>${int(tof_horizontal_zones)}</samples>
+              <resolution>1</resolution>
+              <!-- 각 광선을 VL53L7CX 영역의 가장자리가 아니라 중심에 둡니다. -->
+              <min_angle>${-tof_horizontal_fov / 2.0 + tof_horizontal_fov / (2.0 * int(tof_horizontal_zones))}</min_angle>
+              <max_angle>${tof_horizontal_fov / 2.0 - tof_horizontal_fov / (2.0 * int(tof_horizontal_zones))}</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>${int(tof_vertical_zones)}</samples>
+              <resolution>1</resolution>
+              <min_angle>${-tof_vertical_fov / 2.0 + tof_vertical_fov / (2.0 * int(tof_vertical_zones))}</min_angle>
+              <max_angle>${tof_vertical_fov / 2.0 - tof_vertical_fov / (2.0 * int(tof_vertical_zones))}</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>$(arg tof_min)</min>
+            <max>$(arg tof_max)</max>
+            <resolution>$(arg tof_resolution)</resolution>
+          </range>
+          <noise><type>gaussian</type><mean>0</mean><stddev>$(arg tof_noise)</stddev></noise>
+        </lidar>
+      </sensor>
+    </link>
+    <joint name="tof_${name}_fixed_joint" type="fixed">
+      <parent>chassis</parent>
+      <child>tof_${name}_link</child>
+    </joint>
+  </xacro:macro>
+
   <model name="arena_car">
     <self_collide>false</self_collide>
     <allow_auto_disable>false</allow_auto_disable>
@@ -187,7 +276,9 @@
       <xacro:box_inertial mass="${body_mass}" x="${body_length}" y="${body_width}" z="${body_height}"/>
       <visual name="visual">
         <geometry>
-          <box><size>${body_length} ${body_width} ${body_height}</size></box>
+          <!-- 센서 보드가 파묻히지 않게 표시용 상자만 안쪽으로 넣습니다.
+               아래 충돌체와 20x15 cm 설계 외형·관성은 줄이지 않습니다. -->
+          <box><size>${body_length - 0.012} ${body_width - 0.020} ${body_height}</size></box>
         </geometry>
         <material>
           <ambient>0.04 0.24 0.65 1</ambient>
@@ -327,6 +418,15 @@
         </sensor>
       </link>
       <joint name="lidar_fixed_joint" type="fixed"><parent>chassis</parent><child>lidar_link</child></joint>
+    </xacro:if>
+
+    <xacro:if value="$(arg tof_enabled)">
+      <xacro:tof_module name="front" pose="$(arg tof_front_pose)" topic="$(arg tof_front_topic)"/>
+      <xacro:tof_module name="front_left" pose="$(arg tof_front_left_pose)" topic="$(arg tof_front_left_topic)"/>
+      <xacro:tof_module name="rear_left" pose="$(arg tof_rear_left_pose)" topic="$(arg tof_rear_left_topic)"/>
+      <xacro:tof_module name="rear" pose="$(arg tof_rear_pose)" topic="$(arg tof_rear_topic)"/>
+      <xacro:tof_module name="rear_right" pose="$(arg tof_rear_right_pose)" topic="$(arg tof_rear_right_topic)"/>
+      <xacro:tof_module name="front_right" pose="$(arg tof_front_right_pose)" topic="$(arg tof_front_right_topic)"/>
     </xacro:if>
 
     <xacro:wheel_link name="front_left_wheel" x="${wheelbase / 2.0}" y="${track_width / 2.0}"/>

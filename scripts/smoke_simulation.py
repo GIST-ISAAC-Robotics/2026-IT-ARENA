@@ -23,6 +23,8 @@ def main() -> int:
     parser.add_argument("--track", choices=("original", "experimental"), default="experimental")
     parser.add_argument("--d435i-profile", choices=("configured", "high_speed_async", "synchronized_60", "low_load_30"),
                         default="configured")
+    parser.add_argument("--tof-profile", choices=("configured", "low_latency_4x4_60", "tracking_8x8_15"),
+                        default="configured")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     output = repo / "artifacts/tests"
@@ -47,15 +49,22 @@ def main() -> int:
     import yaml
 
     config_path = repo / "src/arena_description/config/vehicle.yaml"
-    camera_config = yaml.safe_load(config_path.read_text(encoding="utf-8"))["vehicle"]["sensors"]["d435i"]
+    sensor_config = yaml.safe_load(config_path.read_text(encoding="utf-8"))["vehicle"]["sensors"]
+    camera_config = sensor_config["d435i"]
+    tof_config = sensor_config["tof_ring"]
     profile_name = (camera_config["active_stream_profile"] if args.d435i_profile == "configured"
                     else args.d435i_profile)
     profile = camera_config["stream_profiles"][profile_name]
+    tof_profile_name = (tof_config["active_profile"] if args.tof_profile == "configured"
+                        else args.tof_profile)
+    tof_profile = tof_config["profiles"][tof_profile_name]
 
     rclpy.init()
     node = rclpy.create_node("arena_smoke_test")
     state = {}
     camera_stamps = {"rgb": [], "depth": [], "rgb_info": [], "depth_info": []}
+    tof_modules = tof_config["modules"] if tof_config["enabled"] else []
+    tof_stamps = {f"tof_{module['name']}": [] for module in tof_modules}
     collect_camera_stamps = False
 
     def observe(message, key):
@@ -66,6 +75,12 @@ def main() -> int:
             history = camera_stamps[key]
             if not history or timestamp > history[-1][0]:
                 history.append((timestamp, time.monotonic()))
+        if key in tof_stamps:
+            stamp = message.header.stamp
+            timestamp = stamp.sec + stamp.nanosec / 1e9
+            history = tof_stamps[key]
+            if not history or timestamp > history[-1]:
+                history.append(timestamp)
 
     subscriptions = []
     pointcloud_subscription = None
@@ -84,22 +99,35 @@ def main() -> int:
             message_type, topic, lambda message, key=key: observe(message, key), qos))
         if key == "points":
             pointcloud_subscription = subscriptions[-1]
+    tof_keys = []
+    for module in tof_modules:
+        key = f"tof_{module['name']}"
+        tof_keys.append(key)
+        subscriptions.append(node.create_subscription(
+            PointCloud2, f"{module['topic']}/points",
+            lambda message, key=key: observe(message, key), qos_profile_sensor_data,
+        ))
     publisher = node.create_publisher(AckermannDriveStamped, "/drive", 10)
-    suffix = "" if args.d435i_profile == "configured" else f"_{profile_name}"
+    suffix_parts = []
+    if args.d435i_profile != "configured":
+        suffix_parts.append(profile_name)
+    if args.tof_profile != "configured":
+        suffix_parts.append(tof_profile_name)
+    suffix = "" if not suffix_parts else "_" + "_".join(suffix_parts)
     log_path = output / f"{args.track}{suffix}_smoke.log"
     report_path = output / f"{args.track}{suffix}_smoke.json"
     report = {
         "track": args.track, "passed": False, "full_lap_test": False,
-        "d435i_profile": profile_name,
+        "d435i_profile": profile_name, "tof_profile": tof_profile_name,
         "fastdds_builtin_transports": os.environ["FASTDDS_BUILTIN_TRANSPORTS"],
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
         "vehicle_config_sha256": hashlib.sha256(config_path.read_bytes()).hexdigest(),
     }
     log_stream = log_path.open("w", encoding="utf-8")
     process = subprocess.Popen(
-        ["ros2", "launch", "arena_bringup", "simulation.launch.py", "headless:=true", f"track:={args.track}",
-         f"d435i_profile:={args.d435i_profile}"],
-        cwd=repo, stdout=log_stream, stderr=subprocess.STDOUT, start_new_session=True,
+        ["ros2", "launch", "--noninteractive", "arena_bringup", "simulation.launch.py", "headless:=true", f"track:={args.track}",
+         f"d435i_profile:={args.d435i_profile}", f"tof_profile:={args.tof_profile}"],
+        cwd=repo, stdin=subprocess.DEVNULL, stdout=log_stream, stderr=subprocess.STDOUT, start_new_session=True,
     )
 
     def wait_for(predicate, timeout=45):
@@ -141,8 +169,44 @@ def main() -> int:
 
     try:
         print(f"[{args.track}] 차량·센서 준비 대기", flush=True)
-        wait_for(lambda: all(key in state for key in ("odom", "rgb", "depth", "rgb_info", "depth_info",
-                                                     "points", "imu", "ticks")), timeout=60)
+        required = ("odom", "rgb", "depth", "rgb_info", "depth_info", "points", "imu", "ticks", *tof_keys)
+        wait_for(lambda: all(key in state for key in required), timeout=60)
+        for key in tof_keys:
+            tof_stamps[key].clear()  # 준비 단계의 짧은 첫 프레임 간격을 제외합니다.
+        wait_for(lambda: all(len(tof_stamps[key]) >= 2 and tof_stamps[key][-1] - tof_stamps[key][0] >= 1.0
+                             for key in tof_keys), timeout=30)
+        expected_tof_size = [int(tof_profile["horizontal_zones"]), int(tof_profile["vertical_zones"])]
+        tof_report = {}
+        for module, key in zip(tof_modules, tof_keys):
+            message = state[key]
+            actual_size = [message.width, message.height]
+            fields = [field.name for field in message.fields]
+            if actual_size != expected_tof_size:
+                raise AssertionError(f"{module['name']} ToF 점군 크기: {actual_size}; 목표: {expected_tof_size}")
+            if message.header.frame_id != module["frame_id"]:
+                raise AssertionError(
+                    f"{module['name']} ToF 좌표계: {message.header.frame_id}; 목표: {module['frame_id']}"
+                )
+            if fields[:3] != ["x", "y", "z"]:
+                raise AssertionError(f"{module['name']} ToF 점군 필드: {fields}")
+            stamps = tof_stamps[key]
+            observed_rate = (len(stamps) - 1) / (stamps[-1] - stamps[0])
+            if not math.isclose(observed_rate, float(tof_profile["update_rate_hz"]), rel_tol=.05):
+                raise AssertionError(
+                    f"{module['name']} ToF 시뮬레이션 시간 기준 주기: {observed_rate}; "
+                    f"목표: {tof_profile['update_rate_hz']}"
+                )
+            tof_report[module["name"]] = {
+                "topic": f"{module['topic']}/points", "size": actual_size,
+                "frame_id": message.header.frame_id, "fields": fields,
+                "observed_sim_rate_hz": observed_rate, "samples": len(stamps),
+            }
+        report["tof_validation"] = {
+            "enabled": bool(tof_config["enabled"]),
+            "profile": tof_profile_name,
+            "target_rate_hz": float(tof_profile["update_rate_hz"]),
+            "modules": tof_report,
+        }
         # 포인트 클라우드의 존재·형식을 먼저 확인한 뒤 기본 영상 파이프라인의
         # 처리율을 계측합니다. 불필요한 대용량 스트림은 지연 구독으로 중단됩니다.
         node.destroy_subscription(pointcloud_subscription)

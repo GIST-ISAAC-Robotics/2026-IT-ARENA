@@ -15,10 +15,12 @@ def generate_launch_description():
         DeclareLaunchArgument("grid_slot", default_value="0"),
         DeclareLaunchArgument("red_duration_s", default_value="8.0"),
         DeclareLaunchArgument("depth_camera", default_value="false", description="이 데모는 깊이를 사용하지 않으므로 기본값은 끕니다."),
+        DeclareLaunchArgument("tof_profile", default_value="configured", description="하부 ToF 영역·주기 프로필"),
         IncludeLaunchDescription(PythonLaunchDescriptionSource(str(launch_file)), launch_arguments={
             "headless": LaunchConfiguration("headless"), "grid_slot": LaunchConfiguration("grid_slot"),
             "red_duration_s": LaunchConfiguration("red_duration_s"), "track": "experimental",
             "depth_camera": LaunchConfiguration("depth_camera"),
+            "tof_profile": LaunchConfiguration("tof_profile"),
             "d435i_profile": "low_load_30", "autonomy": "true", "traffic_light": "true",
         }.items()),
     ])

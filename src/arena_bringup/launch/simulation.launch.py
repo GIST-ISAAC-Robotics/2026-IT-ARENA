@@ -18,6 +18,8 @@ TRACK_DIRECTORIES = {
     "experimental": "it_arena_experimental",
 }
 D435I_STREAM_PROFILES = ("high_speed_async", "synchronized_60", "low_load_30")
+TOF_PROFILES = ("low_latency_4x4_60", "tracking_8x8_15")
+TOF_MODULE_NAMES = {"front", "front_left", "rear_left", "rear", "rear_right", "front_right"}
 
 
 def _as_bool(value: str) -> bool:
@@ -55,6 +57,61 @@ def _resolve_d435i_profile(config: dict, requested: str) -> tuple[str, dict]:
     return name, profile
 
 
+def _resolve_tof_profile(config: dict, requested: str) -> tuple[str, dict]:
+    name = config["active_profile"] if requested == "configured" else requested
+    if name not in config["profiles"]:
+        raise RuntimeError(f"tof_profile must be one of {sorted(config['profiles'])}")
+    profile = config["profiles"][name]
+    horizontal = profile["horizontal_zones"]
+    vertical = profile["vertical_zones"]
+    rate = float(profile["update_rate_hz"])
+    if horizontal not in {4, 8} or vertical not in {4, 8}:
+        raise RuntimeError("VL53L7CX ToF profile zones must be 4 or 8")
+    if horizontal != vertical:
+        raise RuntimeError("VL53L7CX ToF simulation requires a square zone grid")
+    maximum_rate = 60.0 if horizontal == 4 else 15.0
+    if not math.isfinite(rate) or not 0 < rate <= maximum_rate:
+        raise RuntimeError(
+            f"VL53L7CX {horizontal}x{vertical} profile rate must be in (0, {maximum_rate}] Hz"
+        )
+    return name, profile
+
+
+def _validate_tof_ring(config: dict, body: dict) -> None:
+    modules = config["modules"]
+    if len(modules) != 6 or {module["name"] for module in modules} != TOF_MODULE_NAMES:
+        raise RuntimeError(f"ToF ring requires these six module names: {sorted(TOF_MODULE_NAMES)}")
+    for key in ("frame_id", "topic"):
+        if len({module[key] for module in modules}) != len(modules):
+            raise RuntimeError(f"ToF modules require unique {key} values")
+    for key in ("horizontal_fov_deg", "vertical_fov_deg"):
+        value = float(config[key])
+        if not math.isfinite(value) or not 0 < value < 180:
+            raise RuntimeError(f"Invalid ToF {key}: {value}")
+    minimum, maximum = float(config["range_min_m"]), float(config["range_max_m"])
+    if not math.isfinite(minimum) or not math.isfinite(maximum) or not 0 < minimum < maximum:
+        raise RuntimeError("Invalid ToF range limits")
+    half_length = float(body["length_m"]) / 2.0
+    half_width = float(body["width_m"]) / 2.0
+    yaws = []
+    for module in modules:
+        xyz = [float(value) for value in module["xyz_m"]]
+        rpy = [float(value) for value in module["rpy_rad"]]
+        if len(xyz) != 3 or len(rpy) != 3 or not all(math.isfinite(value) for value in [*xyz, *rpy]):
+            raise RuntimeError(f"Invalid ToF module pose: {module}")
+        if abs(xyz[0]) > half_length or abs(xyz[1]) > half_width or xyz[2] <= 0:
+            raise RuntimeError(f"ToF optical center is outside the vehicle envelope: {module['name']}")
+        yaws.append(rpy[2] % (2.0 * math.pi))
+    yaws.sort()
+    gaps = [
+        (yaws[(index + 1) % len(yaws)] - yaws[index]) % (2.0 * math.pi)
+        for index in range(len(yaws))
+    ]
+    horizontal_fov = math.radians(float(config["horizontal_fov_deg"]))
+    if max(gaps) > horizontal_fov + 1e-6:
+        raise RuntimeError("Nominal ToF ring has an angular coverage gap")
+
+
 def _launch_setup(context):
     bringup_share = Path(get_package_share_directory("arena_bringup"))
     description_share = Path(get_package_share_directory("arena_description"))
@@ -68,6 +125,7 @@ def _launch_setup(context):
     d435i = config["sensors"]["d435i"]
     wheel_encoders = config["sensors"]["wheel_encoders"]
     lidar = config["sensors"]["lidar_2d"]
+    tof = config["sensors"]["tof_ring"]
     if lidar["enabled"]:
         if int(lidar["samples_per_scan"]) < 10 or not math.isclose(float(lidar["field_of_view_deg"]), 360.0):
             raise RuntimeError("기초 C1 모델은 360도 스캔과 10개 이상의 표본을 요구합니다.")
@@ -78,6 +136,11 @@ def _launch_setup(context):
     d435i_profile_name, d435i_profile = _resolve_d435i_profile(
         d435i, LaunchConfiguration("d435i_profile").perform(context)
     )
+    tof_profile_name, tof_profile = _resolve_tof_profile(
+        tof, LaunchConfiguration("tof_profile").perform(context)
+    )
+    if tof["enabled"]:
+        _validate_tof_ring(tof, body)
     color = d435i["color"]
     depth = d435i["depth"]
     depth_enabled = _as_bool(LaunchConfiguration("depth_camera").perform(context))
@@ -111,6 +174,27 @@ def _launch_setup(context):
             "lidar_mass": str(lidar["mass_kg"]),
             "lidar_radius": str(lidar["proxy_radius_m"]),
             "lidar_height": str(lidar["proxy_height_m"]),
+            "tof_enabled": str(tof["enabled"]).lower(),
+            "tof_rate": str(tof_profile["update_rate_hz"]),
+            "tof_horizontal_zones": str(tof_profile["horizontal_zones"]),
+            "tof_vertical_zones": str(tof_profile["vertical_zones"]),
+            "tof_horizontal_fov": str(math.radians(float(tof["horizontal_fov_deg"]))),
+            "tof_vertical_fov": str(math.radians(float(tof["vertical_fov_deg"]))),
+            "tof_min": str(tof["range_min_m"]),
+            "tof_max": str(tof["range_max_m"]),
+            "tof_resolution": str(tof["nominal_depth_resolution_m"]),
+            "tof_noise": str(tof["simulated_noise_stddev_m"]),
+            "tof_carrier_size_x": str(tof["carrier_size_m"][0]),
+            "tof_carrier_size_y": str(tof["carrier_size_m"][1]),
+            "tof_carrier_size_z": str(tof["carrier_size_m"][2]),
+            "tof_carrier_mass": str(tof["carrier_mass_kg"]),
+            **{
+                f"tof_{module['name']}_pose": " ".join(
+                    str(value) for value in [*module["xyz_m"], *module["rpy_rad"]]
+                )
+                for module in tof["modules"]
+            },
+            **{f"tof_{module['name']}_topic": str(module["topic"]) for module in tof["modules"]},
             "d435i_x": str(d435i_xyz[0]),
             "d435i_y": str(d435i_xyz[1]),
             "d435i_z": str(d435i_xyz[2]),
@@ -255,6 +339,9 @@ def _launch_setup(context):
                     f"{d435i_profile['color_rate_hz']} Hz; depth "
                     f"{depth['width_px']}x{depth['height_px']} @ "
                     f"{d435i_profile['depth_rate_hz']} Hz (enabled={depth_enabled})."),
+        LogInfo(msg=f"ToF ring: enabled={tof['enabled']}; profile={tof_profile_name}; "
+                    f"{tof_profile['horizontal_zones']}x{tof_profile['vertical_zones']} @ "
+                    f"{tof_profile['update_rate_hz']} Hz; modules={len(tof['modules'])}."),
         gazebo_server,
         bridge,
         sensor_bridge,
@@ -278,6 +365,37 @@ def _launch_setup(context):
                             "--frame-id", "base_link", "--child-frame-id", str(lidar["frame_id"])],
                  parameters=[{"use_sim_time": True}], output="screen"),
         ])
+
+    if tof["enabled"]:
+        for module in tof["modules"]:
+            name = str(module["name"])
+            topic = str(module["topic"])
+            xyz = module["xyz_m"]
+            rpy = module["rpy_rad"]
+            actions.extend([
+                Node(
+                    package="ros_gz_bridge",
+                    executable="parameter_bridge",
+                    name=f"tof_{name}_pointcloud_bridge",
+                    arguments=[
+                        f"{topic}/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked"
+                    ],
+                    parameters=[{"override_frame_id": str(module["frame_id"])}],
+                    output="screen",
+                ),
+                Node(
+                    package="tf2_ros",
+                    executable="static_transform_publisher",
+                    name=f"tof_{name}_transform",
+                    arguments=[
+                        "--x", str(xyz[0]), "--y", str(xyz[1]), "--z", str(xyz[2]),
+                        "--roll", str(rpy[0]), "--pitch", str(rpy[1]), "--yaw", str(rpy[2]),
+                        "--frame-id", "base_link", "--child-frame-id", str(module["frame_id"]),
+                    ],
+                    parameters=[{"use_sim_time": True}],
+                    output="screen",
+                ),
+            ])
 
     autonomy = _as_bool(LaunchConfiguration("autonomy").perform(context))
     traffic = _as_bool(LaunchConfiguration("traffic_light").perform(context))
@@ -351,6 +469,12 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="configured",
                 choices=["configured", *D435I_STREAM_PROFILES],
                 description="D435i stream profile. configured follows active_stream_profile in vehicle_config.",
+            ),
+            DeclareLaunchArgument(
+                "tof_profile",
+                default_value="configured",
+                choices=["configured", *TOF_PROFILES],
+                description="ToF zone/rate profile. configured follows active_profile in vehicle_config.",
             ),
             DeclareLaunchArgument(
                 "grid_slot",

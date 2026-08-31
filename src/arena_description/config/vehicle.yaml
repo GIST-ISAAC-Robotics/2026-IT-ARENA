@@ -135,13 +135,69 @@ vehicle:
       proxy_height_m: 0.035
       specification_source: https://www.slamtec.com/en/c1/spec
       status: provisional_C1_nominal_idealized_scan_not_hardware_selection
-    tof_front_left:
-      enabled: false
-      xyz_m: [0.085, 0.045, 0.025]
-      rpy_rad: [0.0, 0.0, 0.20]
-      status: candidate
-    tof_front_right:
-      enabled: false
-      xyz_m: [0.085, -0.045, 0.025]
-      rpy_rad: [0.0, 0.0, -0.20]
-      status: candidate
+    tof_ring:
+      enabled: true
+      model_reference: VL53L7CX
+      # 영역 중심 광선 모델에서 4x4는 50 cm 앞 높이 5 cm 표적을 놓쳤습니다.
+      # 같은 시험에서 감지한 8x8을 기본값으로 두고, 4x4는 근거리·지연 비교용으로
+      # 유지합니다. 이는 실물 센서의 영역 적분 성능을 확정한 결과가 아닙니다.
+      active_profile: tracking_8x8_15
+      profiles:
+        low_latency_4x4_60:
+          horizontal_zones: 4
+          vertical_zones: 4
+          update_rate_hz: 60.0
+          intended_use: close_range_latency_comparison
+        tracking_8x8_15:
+          horizontal_zones: 8
+          vertical_zones: 8
+          update_rate_hz: 15.0
+          intended_use: coarse_shape_and_bearing_experiments
+      horizontal_fov_deg: 60.0
+      vertical_fov_deg: 60.0
+      range_min_m: 0.020
+      # 이상화 상한입니다. 8x8·15 Hz에서도 3.5 m 검출을 보장하지 않습니다.
+      # 반사율·외광·영역별 유효 거리와 invalid 모델은 후속입니다.
+      range_max_m: 3.50
+      nominal_depth_resolution_m: 0.001
+      simulated_noise_stddev_m: 0.0
+      # Pololu 3418 캐리어의 명목 외형·헤더 미포함 질량을 표시한 대체 형상입니다.
+      # 브래킷·커버·배선의 부피와 질량은 아직 포함하지 않습니다.
+      carrier_size_m: [0.003, 0.013, 0.018]
+      carrier_mass_kg: 0.0005
+      specification_source: https://www.st.com/en/imaging-and-photonics-solutions/vl53l7cx.html
+      carrier_source: https://www.pololu.com/product/3418
+      # 광학 중심이 서로 떨어져 있으므로 6 x 60도라는 각도 합만으로 전방위를
+      # 덮지 못합니다. 근접 경계 사각과 실제 가림을 평가할 임시 6개 배치입니다.
+      modules:
+        - name: front
+          xyz_m: [0.0980, 0.0000, 0.040]
+          rpy_rad: [0.0, 0.0, 0.0]
+          frame_id: tof_front_frame
+          topic: /tof/front
+        - name: front_left
+          xyz_m: [0.0413, 0.0715, 0.040]
+          rpy_rad: [0.0, 0.0, 1.0471975512]
+          frame_id: tof_front_left_frame
+          topic: /tof/front_left
+        - name: rear_left
+          xyz_m: [-0.0413, 0.0715, 0.040]
+          rpy_rad: [0.0, 0.0, 2.0943951024]
+          frame_id: tof_rear_left_frame
+          topic: /tof/rear_left
+        - name: rear
+          xyz_m: [-0.0980, 0.0000, 0.040]
+          rpy_rad: [0.0, 0.0, 3.1415926536]
+          frame_id: tof_rear_frame
+          topic: /tof/rear
+        - name: rear_right
+          xyz_m: [-0.0413, -0.0715, 0.040]
+          rpy_rad: [0.0, 0.0, -2.0943951024]
+          frame_id: tof_rear_right_frame
+          topic: /tof/rear_right
+        - name: front_right
+          xyz_m: [0.0413, -0.0715, 0.040]
+          rpy_rad: [0.0, 0.0, -1.0471975512]
+          frame_id: tof_front_right_frame
+          topic: /tof/front_right
+      status: provisional_six_module_reference_under_team_selected_lidar_tof_architecture

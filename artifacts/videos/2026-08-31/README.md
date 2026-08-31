@@ -16,4 +16,4 @@
 
 이 실행 전체는 95.2856 m를 달린 뒤 지속 정지·정상 종료까지 통과했습니다. 단일 차량의 기초 데모이며 다중 차량 회피·추월이나 실차 안전성의 검증 영상은 아닙니다.
 
-[최종 검사 JSON](../../screenshots/2026-08-31/basic_demo/final_integrated_report.json) · [임시 보고서](../../../docs/reports/TEMP_REPORT_2026-08-31.md) · [데모 실행 방법](../../../docs/autonomy/BASIC_DEMO.md)
+[최종 검사 JSON](../../screenshots/2026-08-31/basic_demo/final_integrated_report.json) · [조향·회피·추월 검토](../../../docs/autonomy/ALGORITHM_OPTIONS.md) · [데모 실행 방법](../../../docs/autonomy/BASIC_DEMO.md)
