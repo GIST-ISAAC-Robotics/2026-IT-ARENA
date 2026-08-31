@@ -1,0 +1,45 @@
+profile: official_v2026.08.31
+status: official_source_with_documented_runtime_corrections
+upstream_repository: https://github.com/MOSW626/istech-it-arena
+upstream_commit: d61c5db9252cedfbc163cd044a47671df91e1660
+upstream_release: v2026.08.31
+release_asset: it_arena_track_v2026.08.31.zip
+release_sha256: 897183d2e2541458d190a0a1e3f76bff754c67fab894f2302c3110830a86149b
+
+# 노면·벽·중심선·분기 형상은 공식 릴리스 자료를 그대로 사용합니다.
+# 아래는 실물 후속 자료가 오기 전까지 실행·시인성을 위해 교체하는 시설만 정의합니다.
+facilities:
+  status: mixed_official_dimensions_and_provisional_runtime_geometry
+  speed_bump:
+    # 진행 길이·높이·개수는 공식 패키지, 코사인 단면·무늬는 실물 STL 전 임시값입니다.
+    profile: raised_cosine
+    length_m: 0.05
+    height_m: 0.01
+    subdivisions: 20
+    lateral_stripes: 10
+  traffic_light:
+    # Pinocchio 실물 자료가 없으므로 카메라 테스트가 가능한 기존 임시 형상을 유지합니다.
+    gantry_height_m: 0.42
+    lamp_center_height_m: 0.30
+    lamp_radius_m: 0.026
+    initial_state: red
+  markers:
+    # 공식 인쇄 시트: 전체 10 cm, 검은 코드 7 cm, 흰 여백 각 1.5 cm.
+    mount_type: wall_attached
+    printed_board_size_m: 0.10
+    black_square_size_m: 0.07
+    quiet_zone_m: 0.015
+    bottom_height_m: 0.05
+    face_target_distance_m: 0.001
+  starting_grid:
+    # 외곽 크기와 슬롯 pose는 공식. U자 선·번호는 시인성용 임시 표시입니다.
+    length_m: 0.25
+    width_m: 0.17
+    line_width_m: 0.006
+    number_height_m: 0.07
+  finish_line:
+    # design_final.json의 start_line.s=46.246139726... 기준 표시입니다.
+    # ID 0·신호의 s=0과 약 0.3868 m 차이가 있으므로 동일 좌표라고 부르지 않습니다.
+    depth_m: 0.10
+    cells_across: 9
+    rows: 2

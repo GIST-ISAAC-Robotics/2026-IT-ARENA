@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""독립 Gazebo 실행에서 신호 출발·본선 연속 주행을 검증합니다.
+"""공식 자료 기반 official 월드의 독립 Gazebo 실행에서 신호 출발·본선 연속 주행을 검증합니다.
 
 정답 위치·중심선은 이 검사기의 판정에만 사용하며 자율주행 노드에 전달하지 않습니다.
 """
@@ -23,6 +23,8 @@ from build_experimental_track import obstacle_polygons, rectangle
 from validate_facility_visibility import image_array, yaw_of
 
 REPO = Path(__file__).resolve().parents[1]
+DEMO_TRACK = "official"
+DEMO_WORLD = REPO / "src/arena_gazebo/worlds/it_arena_official"
 
 
 def early_start_detected(applied_light, drive_speed, autonomy):
@@ -33,11 +35,12 @@ def early_start_detected(applied_light, drive_speed, autonomy):
             abs(float(autonomy.get("speed_command_mps", 0.0))) > .001)
 
 
-def start_demo_process(log):
+def start_demo_process(log, speed_profile="cautious"):
     # 이 검사기는 터미널 프로세스 그룹이 아니라 ros2 launch에만 SIGINT를
     # 보냅니다. WSL의 TTY 상속 여부와 무관하게 자식에게도 전달되게 합니다.
     return subprocess.Popen(
-        ["ros2", "launch", "--noninteractive", "arena_bringup", "demo.launch.py", "headless:=true"],
+        ["ros2", "launch", "--noninteractive", "arena_bringup", "demo.launch.py", "headless:=true",
+         f"speed_profile:={speed_profile}"],
         cwd=REPO, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
 
 
@@ -45,7 +48,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--laps", type=int, default=2)
     parser.add_argument("--max-sim-seconds", type=float, default=900)
-    parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy")
+    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "hardware_target"), default="cautious")
+    parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy_official",
+                        help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
     args = parser.parse_args()
     if args.laps < 1 or not math.isfinite(args.max_sim_seconds) or args.max_sim_seconds <= 0:
         raise ValueError("바퀴 수는 1 이상, 시간 한도는 유한한 양수여야 합니다.")
@@ -86,17 +91,21 @@ def main():
         node.create_subscription(AckermannDriveStamped, "/drive", lambda m: remember(m, "drive"), 10),
         node.create_subscription(String, "/autonomy/status", lambda m: remember(json.loads(m.data), "autonomy"), 10),
         node.create_subscription(String, "/sim/traffic_light/state", lambda m: remember(json.loads(m.data), "light"), 10),
+        node.create_subscription(String, "/sim/drivetrain", lambda m: remember(json.loads(m.data), "dynamics"), 10),
+        node.create_subscription(String, "/safety/status", lambda m: remember(json.loads(m.data), "safety"), 10),
+        node.create_subscription(AckermannDriveStamped, "/drive/safe", lambda m: remember(m, "safe_drive"), 10),
     ]
     stop_service = node.create_client(SetBool, "/autonomy/enable")
-    world = REPO / "src/arena_gazebo/worlds/it_arena_experimental"
+    # demo.launch.py의 track=official과 같은 월드로 진행 거리와 충돌을 판정합니다.
+    world = DEMO_WORLD
     route = np.genfromtxt(world / "centerline.csv", delimiter=",", names=True)
     xy = np.column_stack((route["x_m"], route["y_m"]))
     scene = json.loads((world / "scene.json").read_text())
     lap_length = float(scene["track"]["lap_length_m"])
     obstacles = obstacle_polygons(world / "world.sdf")
     tree = STRtree(obstacles)
-    report = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "passed": False,
-              "requested_laps": args.laps, "lap_length_m": lap_length,
+    report = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "passed": False, "track": DEMO_TRACK,
+              "requested_laps": args.laps, "lap_length_m": lap_length, "speed_profile": args.speed_profile,
               "input_sha256": {str(path.relative_to(REPO)): hashlib.sha256(path.read_bytes()).hexdigest()
                                for path in [world / "world.sdf", REPO / "src/arena_description/config/vehicle.yaml",
                                             REPO / "src/arena_description/models/arena_car/model.sdf.xacro",
@@ -105,6 +114,13 @@ def main():
                                             REPO / "src/arena_gazebo/scripts/traffic_light_controller.py",
                                             REPO / "src/arena_bringup/launch/demo.launch.py",
                                             REPO / "src/arena_bringup/launch/simulation.launch.py",
+                                            REPO / "src/arena_gazebo/src/single_motor_drive.cpp",
+                                            REPO / "src/arena_gazebo/include/arena_gazebo/drivetrain.hpp",
+                                            REPO / "src/arena_vehicle_interface/arena_vehicle_interface/sim_wheel_encoder.py",
+                                            REPO / "src/arena_vehicle_interface/arena_vehicle_interface/ackermann_to_twist.py",
+                                            REPO / "src/arena_bringup/config/tof_safety.yaml",
+                                            REPO / "src/arena_autonomy/arena_autonomy/tof_safety.py",
+                                            REPO / "src/arena_autonomy/arena_autonomy/tof_safety_core.py",
                                             REPO / "src/arena_bringup/config/wall_follow.yaml"]}}
     processes = []
     log_path = output / "simulation.log"
@@ -119,7 +135,7 @@ def main():
     checkpoint({"completed": False, "state": "STARTING", "pid": os.getpid(),
                 "started_at_utc": report["started_at_utc"], "input_sha256": report["input_sha256"]})
     try:
-        processes.append(start_demo_process(log))
+        processes.append(start_demo_process(log, args.speed_profile))
         pose_process = subprocess.Popen(["gz", "topic", "-e", "-t", "/world/it_arena_track/dynamic_pose/info", "--json-output"],
                                         cwd=REPO, stdout=subprocess.PIPE, stderr=log, text=True, start_new_session=True)
         processes.append(pose_process)
@@ -151,7 +167,7 @@ def main():
                 raise RuntimeError("검사 프로세스가 예상보다 일찍 종료했습니다.")
             if time.monotonic() - began > max(180, args.max_sim_seconds * 7):
                 raise TimeoutError("실제 시간 검사 한도 초과")
-            if not all(key in state for key in ("pose", "autonomy", "light", "rgb", "scan", "odom", "drive")):
+            if not all(key in state for key in ("pose", "autonomy", "light", "rgb", "scan", "odom", "drive", "dynamics", "safety", "safe_drive")):
                 if time.monotonic() - began > 90:
                     raise TimeoutError(f"시작 데이터 미수신: {sorted(state)}")
                 continue
@@ -180,13 +196,16 @@ def main():
             markers_seen.update(autonomous["marker_ids"])
             sides_seen.add(autonomous["side"])
             false_start |= early_start_detected(light["applied"], state["drive"].drive.speed, autonomous)
+            false_start |= early_start_detected(light["applied"], state["safe_drive"].drive.speed, autonomous)
             if autonomous["started"] and run_started is None:
                 run_started = now
                 report["start_time_sim_s"] = now
             record = {"time": now, "x": float(position[0]), "y": float(position[1]), "s": s,
                       "progress_m": progress, "centerline_error_m": error, "collision": collision,
                       "yaw": yaw_of(pose["orientation"]), "autonomy": autonomous, "light": light["applied"],
-                      "odom_speed": state["odom"].twist.twist.linear.x}
+                      "odom_speed": state["odom"].twist.twist.linear.x,
+                      "dynamics": state["dynamics"], "safety": state["safety"],
+                      "safe_drive_speed_mps": state["safe_drive"].drive.speed}
             trace.append(record)
             trace_stream.write(json.dumps(record, ensure_ascii=False) + "\n")
             for label in [f"signal_{light['applied']}", *[f"marker_{value}" for value in autonomous["marker_ids"]]]:
@@ -204,10 +223,10 @@ def main():
                             "marker_ids": sorted(markers_seen), "collision_samples": collision_samples,
                             "max_centerline_error_m": max_error})
                 last_progress_log = time.monotonic()
-            if run_started is not None and autonomous["state"] != "RUNNING":
+            if run_started is not None and (autonomous["state"] != "RUNNING" or state["safety"]["safe_speed_mps"] == 0):
                 stalled_since = now if stalled_since is None else stalled_since
                 if now - stalled_since > 7:
-                    raise RuntimeError(f"주행 정지 상태 지속: {autonomous}")
+                    raise RuntimeError(f"주행 정지 상태 지속: autonomy={autonomous}, safety={state['safety']}")
             else:
                 stalled_since = None
             if collision_samples > 3 or error > .35:
@@ -224,6 +243,12 @@ def main():
         report["autonomy_subscriptions"] = sorted(inputs)
         report["sensor_only_inputs"] = {"/scan", "/camera/color/image_raw"}.issubset(inputs) and inputs.issubset(
             {"/scan", "/camera/color/image_raw", "/clock", "/parameter_events"})
+        safety_inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node("tof_safety", "/")}
+        tof_inputs = {f"/tof/{name}/points" for name in ("front", "front_left", "rear_left", "rear", "rear_right", "front_right")}
+        report["safety_subscriptions"] = sorted(safety_inputs)
+        report["safety_sensor_only_inputs"] = (tof_inputs | {"/drive", "/wheel_states"}).issubset(safety_inputs) and safety_inputs.issubset(
+            tof_inputs | {"/drive", "/wheel_states", "/clock", "/parameter_events"})
+        report["peak_ground_speed_mps"] = max(abs(row["dynamics"]["truth_longitudinal_mps"]) for row in trace)
         scan = state["scan"]
         report["lidar"] = {"frame_id": scan.header.frame_id, "samples": len(scan.ranges),
                            "angle_increment_rad": scan.angle_increment, "range_min": scan.range_min,
@@ -246,7 +271,9 @@ def main():
                 raise TimeoutError("정지 검사 중 중단·시간 초과·프로세스 종료를 확인했습니다.")
             rclpy.spin_once(node, timeout_sec=.01)
             now = state["pose"]["time"]
-            if abs(state["odom"].twist.twist.linear.x) < .01:
+            if (abs(state["odom"].twist.twist.linear.x) < .01 and
+                    abs(state["dynamics"]["truth_longitudinal_mps"]) < .01 and
+                    abs(state["dynamics"]["truth_lateral_mps"]) < .01):
                 stable_since = now if stable_since is None else stable_since
                 if now - stable_since >= .5 and future.done() and future.result().success:
                     break
@@ -260,7 +287,7 @@ def main():
             [state["pose"]["position"].get(axis, 0.) for axis in ("x", "y")])
         report["final_odom_speed_mps"] = state["odom"].twist.twist.linear.x
         report["passed"] = (not false_start and collision_samples == 0 and report["stop_stable"] and
-                            report["sensor_only_inputs"] and report["lidar_nominal_interface_passed"] and
+                            report["sensor_only_inputs"] and report["safety_sensor_only_inputs"] and report["lidar_nominal_interface_passed"] and
                             {"red", "yellow", "green"}.issubset(signal_states) and {20, 30}.issubset(markers_seen))
     except Exception as error:
         report["error"] = str(error)

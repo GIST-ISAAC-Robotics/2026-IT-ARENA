@@ -24,7 +24,8 @@ class WallFollow(Node):
         super().__init__("wall_follow")
         defaults = {"wheelbase_m": .145, "lidar_x_m": -.03, "max_steering_angle_rad": .43,
                     "target_wall_distance_m": .425, "max_speed_mps": .35, "min_speed_mps": .14,
-                    "scan_timeout_s": .45, "image_timeout_s": 1.0, "control_rate_hz": 20.0}
+                    "scan_timeout_s": .45, "image_timeout_s": 1.0, "control_rate_hz": 20.0,
+                    "acceleration_mps2": .5, "lateral_acceleration_limit_mps2": 3.0}
         self.settings = {key: self.declare_parameter(key, value).value for key, value in defaults.items()}
         if any(not math.isfinite(float(value)) for value in self.settings.values()):
             raise ValueError("자율주행 매개변수는 유한한 수여야 합니다.")
@@ -141,10 +142,13 @@ class WallFollow(Node):
                     points, self.side, self.settings["target_wall_distance_m"], self.settings["wheelbase_m"],
                     self.settings["max_steering_angle_rad"], self.settings["max_speed_mps"], self.settings["min_speed_mps"])
                 status.update(details)
+                curvature = abs(math.tan(steering) / self.settings["wheelbase_m"])
+                if curvature > 1e-6:
+                    speed = min(speed, math.sqrt(self.settings["lateral_acceleration_limit_mps2"] / curvature))
                 status["state"] = "RUNNING" if speed > 0 else details["reason"].upper()
         dt = 1 / self.settings["control_rate_hz"]
         # 증속은 완만하게, 위험·센서 누락 시에는 즉시 0 명령을 내립니다.
-        speed = min(speed, self.last_speed + .5 * dt)
+        speed = min(speed, self.last_speed + self.settings.get("acceleration_mps2", .5) * dt)
         steering = max(self.last_steering - 3 * dt, min(self.last_steering + 3 * dt, steering))
         self.last_speed, self.last_steering = speed, steering
         message = AckermannDriveStamped()

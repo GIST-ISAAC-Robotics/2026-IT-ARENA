@@ -2,13 +2,14 @@
 
 GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프트웨어·시뮬레이션 작업 공간입니다.
 
-현재 인수인계는 [프로젝트 현황](docs/PROJECT_CONTEXT.md), 센서 결정은 [상부 LiDAR·하부 ToF 링](docs/sensors/TOF_RING.md), 이후 조향·회피·추월 후보는 [알고리즘 검토 노트](docs/autonomy/ALGORITHM_OPTIONS.md)에서 계속 관리합니다.
+현재 인수인계는 [프로젝트 현황](docs/PROJECT_CONTEXT.md), 구동 모델은 [단일 모터·차동 차량 동역학](docs/simulation/VEHICLE_DYNAMICS.md), 센서 결정은 [상부 LiDAR·하부 ToF 링](docs/sensors/TOF_RING.md), 이후 조향·회피·추월 후보는 [알고리즘 검토 노트](docs/autonomy/ALGORITHM_OPTIONS.md)에서 계속 관리합니다.
 
 주최 측에서 제공한 트랙 자료를 출발점으로 삼으며, 다음을 목표로 합니다.
 
 - 팀이 확정한 전체 외형 20 cm x 15 cm를 사용하고, 축거·윤거 등 미확정 치수를 매개변수로 조정할 수 있는 Ackermann 조향 차량
 - RealSense D435i와 호환되는 시뮬레이션 카메라·깊이·IMU 인터페이스
 - Jetson과 ESP32의 구동 제어 역할 분리 및 매개변수로 조정 가능한 휠 엔코더 시뮬레이션
+- BLDC 하나·기계식 차동장치·좌우 뒷바퀴 엔코더 두 개를 가정한 토크 기반 구동 및 이상/손실/점성 LSD 비교
 - 상부 2D LiDAR와 하부 다중영역 ToF 링을 이용한 서로 다른 높이의 주변 차량 감지
 - 카메라 영상만을 이용한 신호등·ArUco 마커 인식
 - 단독 차량의 경로 추종을 먼저 구현한 뒤, 여러 차량이 함께 달릴 때의 안전 주행과 회피로 확장
@@ -16,27 +17,34 @@ GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프
 
 ## 현재 상태
 
-- 원본 트랙 ZIP은 `assets/track/original/`에 보존했으며, SHA-256 해시를 기록했습니다.
-- 압축을 푼 트랙 자료는 `assets/track/source/`에 있습니다.
+- 현재 공식 근거는 [MOSW626/istech-it-arena](https://github.com/MOSW626/istech-it-arena)의 태그 [`v2026.08.31`](https://github.com/MOSW626/istech-it-arena/tree/v2026.08.31), 커밋 `d61c5db9252cedfbc163cd044a47671df91e1660`입니다. 규정·일정·지원은 `MANUAL.md`, 트랙은 같은 버전의 `track/README.md`·출력물·도면·인쇄 시트를 함께 대조합니다.
+- 공식 트랙 ZIP은 `assets/track/official/v2026.08.31/`에 별도로 보존했습니다. [출처·해시 기록](assets/track/official/v2026.08.31/SOURCE.md)과 [공식 파일 감사](docs/track/OFFICIAL_SOURCE_AUDIT.md)에 근거를 남겼습니다. 초기 ZIP `assets/track/original/` 및 압축 해제본 `assets/track/source/`, 과거 활동과 실패 기록도 그대로 보존합니다.
 - 시뮬레이션 실행 환경으로 WSL2 Ubuntu 24.04를 선택했습니다.
 - PC 시뮬레이션 소프트웨어로 ROS 2 Jazzy + Gazebo Harmonic을 선택했습니다.
 - 전체 평면 외형은 길이 20 cm·폭 15 cm로 팀이 확정한 설계 목표입니다. 축거 14.5 cm, 윤거 13.5 cm, 바퀴 지름 5 cm·폭 1.2 cm와 센서 배치 등은 실측 전 임시값입니다.
 - 현재 기본 모델은 20 cm x 15 cm 외형을 사용합니다. 초기 18 cm x 12 cm 모델의 검증 기록과 현재 모델의 기록은 활동 내역에서 구분합니다.
-- 원본 재현용 본선 35 cm·지름길 12 cm 지도는 보존했습니다. 기본 실행은 별도 실험 지도인 본선 45 cm·지름길 25 cm이며, 중심선과 경로 길이는 유지합니다. 어느 쪽도 최신 공식 코스라고 확정한 상태가 아닙니다.
-- 수동 전진·조향 제어, 오도메트리(이동량 추정), D435i RGB·깊이·포인트 클라우드와 엔코더 토픽을 구현했습니다. 최종 검증 결과는 활동 기록에 남깁니다.
-- 8/30 치수 변경 때 원본·실험 지도 각각의 짧은 전진·조향·RGB·깊이·IMU·엔코더·명령 중단 정지와 종료를 확인했습니다. 본선 단독 완주는 아래 8/31 최종 데모에서 별도로 검증했으며, 지름길 진입 궤적은 아직 검증하지 않았습니다.
+- 기본 실행은 공식 기반 `official`로, 본선 45 cm·지름길 각각 20 cm·한 바퀴 약 46.6329 m입니다. 공식 도로·중심선·합집합 벽을 사용하며 차량 20×15 cm는 축소하지 않습니다. 초기 35/12 cm `original`과 기존 45/25 cm `experimental`도 선택 실행할 수 있습니다.
+- 코스 ArUco는 ID 0/20/30/45와 공식 인쇄판 10 cm·검은 코드 7 cm·흰 여백 각 1.5 cm·판 하단 5 cm를 적용했습니다. 원본 좌표를 같은 설계 측면의 벽 부착으로 보정하고 차량 정적 경로 표본 통과를 확인했습니다. ID 30 지지판과 노면 폴리곤의 작은 겹침은 남으므로 노면 침범이 완전히 없어진 것은 아닙니다. 원래/런타임 좌표를 기록했으며 차량 후방 5×5 cm 식별 마커 의무와는 별도 규격입니다.
+- 방지턱의 공식 명목 길이 5 cm·높이 1 cm는 반영하되, 곡선 단면과 색띠는 제작 STL 도착 전 임시입니다. 낮은 신호등·고정 데모 주기·출발 U자/번호·피니시 체크무늬도 임시입니다. [공식 적용·런타임 보정·미확정 구분](docs/decisions/0010-official-v2026-08-31-track.md)을 참고하십시오.
+- 공식 벽의 `mu=mu2=0.8`은 보존했습니다. 도로·잔디·방지턱에는 공식 마찰계수가 없어 새 값을 주입하지 않았으며, 엔진 기본값과 별도 임시 타이어 모델은 실물 마찰 실측값이 아닙니다.
+- 공식 전환 후 [실제 짧은 실행 검사](artifacts/validation/2026-08-31/official_track/smoke_low_load_30.json)를 통과했습니다. RGB·깊이 848×480 약 30.30 Hz, ToF 여섯 개의 8×8 점군 약 15.15 Hz, 엔코더·IMU·직진·조향·명령 중단 정지·정상 종료를 확인했습니다. 주기는 시뮬레이션 시간 기준이며 실시간 처리율 보장이 아닙니다.
+- 새 `official`에서도 단일 모터·ToF 보호층의 [`brisk` 한 바퀴 검증](artifacts/validation/2026-08-31/official_track/brisk_one_lap.json)을 별도로 통과했습니다. 48.6927 m, 최고 지면 속도 0.794307 m/s, 최대 중심선 거리 0.124205 m, 고정 외형-정적 벽 겹침 표본 0개, 조기 출발 없음, 마커 네 개·좌우 벽 전환·센서 기반 입력·실제 정지·정상 종료를 확인했습니다. 지름길 진입·합류, 다중 차량·추월·고속 안전성 검증은 아닙니다.
+- 공식 전환 최종 소스의 Python 검사 105개·C++ 차동 검사 1개·ROS 패키지 5개 빌드, 공식/실험 트랙 해시 검사와 공식 월드 엄격한 SDF 검사를 통과했습니다. 아래 과거 검사 수치와 합산하지 않습니다.
+- 수동 전진·조향 제어, 오도메트리(이동량 추정), D435i RGB·깊이·포인트 클라우드와 엔코더 토픽을 구현했습니다. 현재 총질량은 사용자 예상에 맞춘 2.000 kg의 임시 합산값이며 실제 BOM/CG 측정값은 아닙니다.
+- 공식 전환 전 8/30 치수 변경 때 원본·실험 지도 각각의 짧은 전진·조향·RGB·깊이·IMU·엔코더·명령 중단 정지와 종료를 확인했습니다. 아래 8/31 완주·시설 영상 기록도 당시 `experimental` 기준이며 새 공식 트랙의 검증으로 승계하지 않습니다. 지름길 진입 궤적은 아직 검증하지 않았습니다.
 - D435i 기본 설정은 RGB 848×480·60 FPS, 깊이 848×480·90 FPS입니다. RGB와 깊이의 명목 시야각·내부 파라미터·거리 경계를 분리했습니다. 실물 보정값·측정 오차는 미반영이며, 현재 PC에서 실시간 60/90 FPS 처리를 보장하지 않습니다.
 - 원본·실험 지도의 최장 직선에 가까운 구간은 약 10.3 m입니다. 폐회로 중심선의 방위각 변화 폭 1° 조건으로 계산했으며, 가림 없는 센서 시야 거리를 뜻하지는 않습니다.
-- 실험본에 횡단 방향 신호등·곡선 방지턱·독립형 ArUco 표지판 4개·출발 표시 6개·체크무늬 피니시를 적용했습니다. 실제 차량 RGB의 가시성 18조건과 저속 방지턱 통과를 확인했습니다. 시설 치수는 공식 사양이 아닙니다.
+- 기존 `experimental`에 횡단 방향 신호등·곡선 방지턱·독립형 ArUco 표지판 4개·출발 표시 6개·체크무늬 피니시를 적용했습니다. 당시 실제 차량 RGB의 가시성 18조건과 저속 방지턱 통과를 확인했습니다. 해당 시설 치수와 검사 결과를 새 `official`의 벽 부착 마커·5 cm 방지턱에 전용하지 않습니다.
 - 임시 RPLIDAR C1 기준 360°·10 Hz·500점·0.05~12 m 라이다와 동적 빨강→노랑→초록 신호, RGB 출발 판단·ArUco 분기 선택·라이다 벽 추종을 추가했습니다. 자율주행 노드는 정답 위치나 지도 파일을 읽지 않습니다.
-- 하부 광학 중심 4 cm에 VL53L7CX급 다중영역 ToF 여섯 개를 임시 배치했습니다. 기본은 8×8·15 Hz이고 비교용 4×4·60 Hz도 선택할 수 있습니다. 여섯 점군과 좌표계를 ROS에 내지만 현재 벽 추종 제어는 아직 이 점군을 사용하지 않습니다. 방향 사이 사각과 실물 수량은 추가 검증 대상입니다.
-- 종료 신호 보완 뒤 같은 실행에서 본선 두 바퀴와 추가 2 m, 총 95.2856 m의 연속 주행·기록 표본상 초록 전 움직임 없음·고정 20×15 cm 외형과 정적 벽 겹침 0회·지속 정지·정상 종료를 확인하여 최종 통합 검사가 통과했습니다. 이전 종료 실패 보고서는 별도 과거 근거로 보존합니다.
-- 현재 소스에서 ROS 패키지 5개 빌드, 자동 검사 76개, 원본·실험 월드와 생성 차량의 엄격한 SDF 검사를 통과했습니다. 별도 정지 표적 검사에서 기본 8×8은 18/50 cm 앞 높이 5 cm 표적을 여섯 방향 모두 검출했습니다. 이 결과는 실물 ToF 성능·전방위 무사각·다중 차량 회피나 추월을 검증한 것이 아닙니다. 기존 두 바퀴 완주 기록은 ToF 추가 전 데모입니다.
+- 하부 광학 중심 4 cm에 VL53L7CX급 다중영역 ToF 여섯 개를 임시 배치했습니다. 기본은 8×8·15 Hz이고 비교용 4×4·60 Hz도 선택할 수 있습니다. 벽 추종 조향은 RGB·라이다만 쓰고, 별도 ToF 보호층이 여섯 점군과 좌우 엔코더로 `/drive` 요청을 제한해 낮은 정적 표적 앞에서 감속·정지합니다. 방향 사이 사각과 실물 수량은 추가 검증 대상입니다.
+- 공식 전환 전 `experimental`에서 속도 강제 구동 기준선은 본선 2바퀴+약 2 m를 완주했습니다. 후속 단일 모터 토크 구동+ToF 보호층 기준선은 `brisk`로 1바퀴+약 2 m(48.6527 m), 고정 외형-정적 벽 겹침 0회·실제 정지·정상 종료를 확인했습니다. 두 기록을 같은 차량 모델의 연속 검증이나 새 공식 월드의 완주로 합치지 않습니다.
+- 별도 평지 시험은 약 20 km/h 도달/정지, 코너 5·8 km/h, 편측 저마찰 오픈/점성 LSD 비교, 전·후방 높이 5 cm 표적 정지를 완료했습니다. 요철·편측 턱·높은 CG에서 차체 들림·피치·롤·슬립은 나타났지만 시험 조건에서는 전복하지 않았습니다. 이는 물성 민감도 결과이지 실차 안전 속도나 전복 임계값이 아닙니다. [검증 요약](artifacts/validation/2026-08-31/vehicle_dynamics/README.md)
+- 공식 전환 이전 소스에서 ROS 패키지 5개 빌드, Python/ROS 검사 98개와 C++ 차동 검사, 원본 무결성·실험 지도 재생성, 생성 차량·원본 재현/실험/동역학 실행 월드의 엄격한 SDF 검사를 통과했습니다. 이 수치는 과거 실행 기준이며 최신 검사는 [활동 기록](docs/activity/2026-08-31.md)의 해당 소스·산출물로 확인합니다. 주최 측 원본 SDF 자체의 알려진 잘못된 재질 스크립트는 보존하며 [트랙 감사](docs/track/TRACK_AUDIT.md)에 따라 파생 실행 월드만 사용합니다.
 - 기존 정지 흔들림은 Gazebo의 jerk 제한에서 독립적으로 재현하여 해당 제한을 제외했으며 속도·가속도 제한은 유지했습니다. 차량 제동과 검사 프로그램 종료는 서로 다른 문제입니다.
 
-현재 인수인계 내용은 [프로젝트 현황](docs/PROJECT_CONTEXT.md)을 참고하십시오. 주최 측 트랙 README를 근거로 사용하기 전에는 [트랙 감사 기록](docs/track/TRACK_AUDIT.md)을 먼저 읽어야 합니다.
+현재 인수인계 내용은 [프로젝트 현황](docs/PROJECT_CONTEXT.md)을 참고하십시오. 공식 문서와 실제 출력물의 남은 차이는 [공식 파일 감사](docs/track/OFFICIAL_SOURCE_AUDIT.md)·[마커와 임시 시설](docs/track/OFFICIAL_MARKERS_AND_FACILITIES.md), 초기 전달본의 감사 이력은 [트랙 감사 기록](docs/track/TRACK_AUDIT.md)에 있습니다.
 
-계속 참고할 원문은 [2026-06-30 미팅](https://maddening-cause-ce7.notion.site/2026-06-30-38f99fd42e3080f6956fe5a5b90d0824)입니다. 당시 기준과 현재 파일을 구분하며, 지도 전환·재생성과 차량 치수 근거는 [실험 트랙 안내](docs/track/EXPERIMENTAL_TRACK.md)에 정리했습니다.
+공식 [매뉴얼](https://github.com/MOSW626/istech-it-arena/blob/d61c5db9252cedfbc163cd044a47671df91e1660/MANUAL.md)을 현재 규정 근거로 사용합니다. [2026-06-30 미팅](https://maddening-cause-ce7.notion.site/2026-06-30-38f99fd42e3080f6956fe5a5b90d0824)은 결정 경위 자료로 보존하며, 과거 접근 실패도 삭제하지 않습니다. 세 지도 선택과 기존 실험 재생성·차량 치수 근거는 [실험 트랙 안내](docs/track/EXPERIMENTAL_TRACK.md)에 정리했습니다.
 
 센서 설정의 공식 출처, 60/60·30/30 프로필 선택, 깊이 거리·ROS 표현의 한계는 [D435i 설정 안내](docs/sensors/D435I_SIMULATION.md)를 참고하십시오. 상부 LiDAR와 여섯 하부 ToF의 배치·프로필·전원 및 실물 시험 조건은 [ToF 링 안내](docs/sensors/TOF_RING.md)에 있습니다.
 
@@ -48,19 +56,25 @@ GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프
 ros2 launch arena_bringup demo.launch.py
 ```
 
-빨강 8초·노랑 2초 후 초록으로 바뀌고, 차량 카메라가 이를 확인하면 지름길을 피하며 계속 본선을 돕니다. 한 바퀴 종료 조건은 없습니다. 직선 최고 명령은 0.35 m/s이며 커브에서는 감속합니다. GUI 왼쪽 아래 일시정지 또는 실행 터미널의 `Ctrl+C`로 멈출 수 있습니다.
+기본 지도는 `official`입니다. 데모는 빨강 8초·노랑 2초 후 초록으로 바뀌며, 카메라의 초록 인식 후 지름길을 피하고 본선을 반복 주행하도록 구성했습니다. 이 고정 순서는 무작위 시각 출발을 요구하는 공식 경기 절차의 완성 구현이 아닙니다. 한 바퀴 종료 조건은 없고 직선 최고 명령은 0.35 m/s이며 커브에서는 감속합니다. GUI 왼쪽 아래 일시정지 또는 실행 터미널의 `Ctrl+C`로 멈출 수 있습니다.
 
-데모 제어기는 RGB 30 Hz와 라이다 10 Hz를 사용하고 깊이 센서는 끕니다. ToF 여섯 개의 점군은 생성하지만 아직 제어 입력으로 쓰지 않습니다. 일반 `simulation.launch.py`의 RGB 60·깊이 90 기본값은 유지합니다. [실행·정지·신호등 제어 안내](docs/autonomy/BASIC_DEMO.md) · [C1 사양과 임시 장착 한계](docs/sensors/RPLIDAR_C1_SIMULATION.md)
+벽 추종기는 RGB 30 Hz와 라이다 10 Hz를 사용하고 깊이 센서는 끕니다. 독립 ToF 안전층은 여섯 점군과 좌우 엔코더로 속도를 제한·정지하며, 이동 차량 회피·추월은 아직 없습니다. 일반 `simulation.launch.py`의 RGB 60·깊이 90 기본값은 유지합니다. [실행·정지·신호등 제어 안내](docs/autonomy/BASIC_DEMO.md) · [ToF 감속·정지층](docs/autonomy/TOF_SAFETY.md)
 
-중간 확인 사진: [출발 구역과 빨간 신호](artifacts/screenshots/2026-08-31/basic_demo/start_grid_red.jpg) · [차량과 임시 라이다](artifacts/screenshots/2026-08-31/basic_demo/car_lidar_oblique.jpg) · [실제 차량 RGB의 초록 신호](artifacts/screenshots/2026-08-31/basic_demo/signal_green.png)
+공식 전환 전 `experimental` 확인 사진: [출발 구역과 빨간 신호](artifacts/screenshots/2026-08-31/basic_demo/start_grid_red.jpg) · [차량과 임시 라이다](artifacts/screenshots/2026-08-31/basic_demo/car_lidar_oblique.jpg) · [실제 차량 RGB의 초록 신호](artifacts/screenshots/2026-08-31/basic_demo/signal_green.png)
 
-최종 통합 실행의 [사선 조감도 한 바퀴 영상](artifacts/videos/2026-08-31/basic_autonomy_overhead_one_lap.mp4) · [검사 보고서](artifacts/screenshots/2026-08-31/basic_demo/final_integrated_report.json)
+공식 전환 전 통합 실행의 [사선 조감도 한 바퀴 영상](artifacts/videos/2026-08-31/basic_autonomy_overhead_one_lap.mp4) · [검사 보고서](artifacts/screenshots/2026-08-31/basic_demo/final_integrated_report.json)
 
 ## 시설과 화면 기록
 
-새 시설 치수·출발 번호·마커 가시성 검사와 남은 제어 문제는 [시설 안내](docs/track/FACILITIES.md)에 정리했습니다. 실제 차량 RGB: [출발 신호](artifacts/screenshots/2026-08-31/facilities/signal_from_grid.png) · [표지판](artifacts/screenshots/2026-08-31/facilities/marker_30_75cm.png) · [곡선 방지턱](artifacts/screenshots/2026-08-31/facilities/bump_approach.png).
+현재 `official`을 실제 Gazebo에서 위쪽에서 촬영한 전체 확인 사진입니다. 사진은 형상 확인 자료이고, 본선 주행 검증은 위의 별도 보고서에 기록했습니다. 실물과 완전히 같다는 의미는 아닙니다.
 
-아래는 2026-08-31 **시설 수정 후** 실제 Gazebo의 사선 항공뷰입니다. 본선 45 cm·지름길 25 cm의 실험 지도이며, 차량은 20×15 cm의 임시 상자형 모델입니다.
+![공식 기반 본선 45 cm·지름길 20 cm 트랙 전체 확인](artifacts/screenshots/2026-08-31/official_update/official_track_overview.png)
+
+[공식 트랙 출발 구역](artifacts/screenshots/2026-08-31/official_update/official_start_area.png) · [보정 후 ID 30 벽 부착 마커](artifacts/screenshots/2026-08-31/official_update/official_marker_id30_after.png)
+
+기존 `experimental`의 시설 치수·출발 번호·마커 가시성 검사와 당시 제어 문제는 [시설 안내](docs/track/FACILITIES.md)에 보존했습니다. 당시 실제 차량 RGB: [출발 신호](artifacts/screenshots/2026-08-31/facilities/signal_from_grid.png) · [표지판](artifacts/screenshots/2026-08-31/facilities/marker_30_75cm.png) · [곡선 방지턱](artifacts/screenshots/2026-08-31/facilities/bump_approach.png).
+
+아래는 2026-08-31 **공식 전환 이전 시설 수정 후** 실제 Gazebo의 사선 항공뷰입니다. 본선 45 cm·지름길 25 cm의 과거 실험 지도이며, 차량은 20×15 cm의 임시 상자형 모델입니다.
 
 ![시설 수정 후 실험 트랙 사선 항공뷰](artifacts/screenshots/2026-08-31/facilities/track_oblique.jpg)
 
@@ -81,10 +95,20 @@ ros2 launch arena_bringup simulation.launch.py
 
 Gazebo 창 없이 실행하려면 `headless:=true`를 사용합니다. `/drive`에 `ackermann_msgs/AckermannDriveStamped` 형식의 명령을 발행하며, 시뮬레이션 엔코더 피드백은 `/wheel_states`와 `/wheel_encoder_ticks`에서 확인할 수 있습니다.
 
-기본 실행은 실험 지도입니다. 원본 재현용은 아래와 같이 선택합니다. 차량은 두 지도 모두 20×15 cm이므로 원본의 12 cm 지름길은 이용할 수 없습니다.
+기본 실행은 `official`입니다. 다음처럼 세 지도를 명시적으로 선택할 수도 있습니다. 차량은 모두 20×15 cm이므로 초기 원본의 12 cm 지름길은 이용할 수 없습니다. 공식 지름길 20 cm도 정적 폭 여유와 연속 진입·합류 성공을 구분해야 합니다.
 
 ```bash
+ros2 launch arena_bringup simulation.launch.py track:=official
+ros2 launch arena_bringup simulation.launch.py track:=experimental
 ros2 launch arena_bringup simulation.launch.py track:=original
+```
+
+위 명령은 하나씩 실행하고 `Ctrl+C`로 종료한 뒤 다른 지도를 선택합니다. 공식 실행 월드는 보존 ZIP과 [설정 파일](config/tracks/official_v2026.08.31.yaml)에서 다음과 같이 재생성합니다. `--check`는 원본·입력·출력 해시와 출처 기록을 대조하며 재생성이나 실제 주행을 대신하지 않습니다.
+
+```bash
+python3 scripts/build_official_track.py
+python3 scripts/build_official_track.py --check
+python3 -m pytest tests src/arena_vehicle_interface/test -q
 ```
 
 영상 결합 실험에는 `d435i_profile:=synchronized_60`, 부하를 낮추려면 `d435i_profile:=low_load_30`을 추가합니다. 별도 터미널에서 대용량 영상을 수신할 때는 실행 환경과 동일하게 `export FASTDDS_BUILTIN_TRANSPORTS=LARGE_DATA`를 적용합니다. 이는 프로젝트의 전송 선택이며 실시간·무누락 보장은 아닙니다.

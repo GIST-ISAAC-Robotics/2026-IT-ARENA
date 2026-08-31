@@ -85,6 +85,7 @@ class SimWheelEncoder(Node):
         self._random = random.Random(int(self.get_parameter("random_seed").value))
         self._pending: deque[PendingSample] = deque()
         self._last_capture_time_ns: int | None = None
+        self._last_clock_time_ns: int | None = None
         self._last_published: PendingSample | None = None
         self._warned_missing_joint = False
 
@@ -116,9 +117,15 @@ class SimWheelEncoder(Node):
     def _capture(self, message: JointState) -> None:
         now = self.get_clock().now()
         now_ns = now.nanoseconds
+        self._check_clock_reset(now_ns)
+        # 물리 관절 표본의 시각을 사용합니다. ROS 도착 시각을 캡처 시각으로
+        # 쓰면 전송 지연의 흔들림이 바퀴 속도 오차로 바뀝니다.
+        capture_ns = message.header.stamp.sec * 1_000_000_000 + message.header.stamp.nanosec
+        if capture_ns < 0 or capture_ns > now_ns + 100_000_000:
+            return
         if (
             self._last_capture_time_ns is not None
-            and now_ns - self._last_capture_time_ns < self._sample_period_ns
+            and capture_ns - self._last_capture_time_ns < self._sample_period_ns
         ):
             return
 
@@ -138,9 +145,11 @@ class SimWheelEncoder(Node):
         assert left_index is not None and right_index is not None
         if max(left_index, right_index) >= len(message.position):
             return
+        if not all(math.isfinite(message.position[index]) for index in indices):
+            return
 
         if self._random.random() < self._dropout_probability:
-            self._last_capture_time_ns = now_ns
+            self._last_capture_time_ns = capture_ns
             return
 
         left_ticks = position_to_ticks(
@@ -151,17 +160,25 @@ class SimWheelEncoder(Node):
         )
         self._pending.append(
             PendingSample(
-                capture_time_ns=now_ns,
-                due_time_ns=now_ns + self._latency_ns,
-                stamp=now.to_msg(),
+                capture_time_ns=capture_ns,
+                due_time_ns=capture_ns + self._latency_ns,
+                stamp=message.header.stamp,
                 left_ticks=left_ticks,
                 right_ticks=right_ticks,
             )
         )
-        self._last_capture_time_ns = now_ns
+        self._last_capture_time_ns = capture_ns
+
+    def _check_clock_reset(self, now_ns: int) -> None:
+        if self._last_clock_time_ns is not None and now_ns < self._last_clock_time_ns:
+            self._pending.clear()
+            self._last_capture_time_ns = None
+            self._last_published = None
+        self._last_clock_time_ns = now_ns
 
     def _publish_due_samples(self) -> None:
         now_ns = self.get_clock().now().nanoseconds
+        self._check_clock_reset(now_ns)
         while self._pending and self._pending[0].due_time_ns <= now_ns:
             sample = self._pending.popleft()
             self._publish(sample)

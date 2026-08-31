@@ -20,7 +20,8 @@ import time
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--track", choices=("original", "experimental"), default="experimental")
+    parser.add_argument("--track", choices=("official", "original", "experimental"), default="official",
+                        help="official: 공식 자료 기반 45/20 cm (기본), original: 보존 원본 35/12 cm, experimental: 이전 실험 45/25 cm")
     parser.add_argument("--d435i-profile", choices=("configured", "high_speed_async", "synchronized_60", "low_load_30"),
                         default="configured")
     parser.add_argument("--tof-profile", choices=("configured", "low_latency_4x4_60", "tracking_8x8_15"),

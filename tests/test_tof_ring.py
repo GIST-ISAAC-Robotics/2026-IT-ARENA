@@ -154,7 +154,7 @@ def test_launch_bridges_only_the_multizone_pointcloud_representation():
     assert "f\"{topic}/points" in source
     assert "override_frame_id" in source
     tof_bridge_section = source.split(
-        "if tof[\"enabled\"]:\n        for module in tof[\"modules\"]:", 1
+        "if tof[\"enabled\"] and render_sensors:\n        for module in tof[\"modules\"]:", 1
     )[1].split("    autonomy =", 1)[0]
     assert "sensor_msgs/msg/LaserScan[gz.msgs.LaserScan" not in tof_bridge_section
 
@@ -166,7 +166,8 @@ def test_chassis_visual_inset_does_not_shrink_collision_or_mass():
     visual_size = [float(value) for value in chassis.findtext("visual/geometry/box/size").split()]
     assert collision_size == pytest.approx([.20, .15, .06])
     assert visual_size == pytest.approx([.188, .130, .06])
-    assert float(chassis.findtext("inertial/mass")) == 1.5
+    assert float(chassis.findtext("inertial/mass")) == vehicle_config()["body"]["mass_kg"]
+    assert sum(float(link.findtext("inertial/mass")) for link in model.findall("link")) == pytest.approx(2.0)
     for module in vehicle_config()["sensors"]["tof_ring"]["modules"]:
         x, y, _ = module["xyz_m"]
         assert abs(x) > visual_size[0] / 2 or abs(y) > visual_size[1] / 2

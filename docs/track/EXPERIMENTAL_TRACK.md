@@ -2,8 +2,23 @@
 
 갱신: 2026-08-31. 이 문서의 실험값은 공식 경기 규격이 아닙니다.
 
+## 현재 기본값과 이 문서의 범위
+
+현재 기본은 공식 `v2026.08.31` 기반 `track:=official`입니다. 이 문서는 초기 전달본과 기존 45/25 cm 폭 실험의 설정·검증 이력을 계속 보존합니다. 아래 25 cm 지름길·큰 독립형 마커·20 cm 방지턱을 새 공식 실행본의 값으로 읽지 않습니다.
+
+| 지도 | 본선 / 지름길 | 현재 상태 |
+|---|---|---|
+| `official` | 45 cm / 각각 20 cm | 기본. 공식 도로·벽·중심선과 문서화한 시설 보정 |
+| `experimental` | 45 cm / 각각 25 cm | 이전 사용자 승인 실험, 선택 실행·재생성 유지 |
+| `original` | 35 cm / 각각 12 cm | 초기 전달본 재현, 선택 실행·원본 보존 유지 |
+
+공식 기준 커밋은 `d61c5db9252cedfbc163cd044a47671df91e1660`입니다. 보존 ZIP·해시는 [`assets/track/official/v2026.08.31/SOURCE.md`](../../assets/track/official/v2026.08.31/SOURCE.md), 입력은 [`config/tracks/official_v2026.08.31.yaml`](../../config/tracks/official_v2026.08.31.yaml), 생성기는 [`scripts/build_official_track.py`](../../scripts/build_official_track.py), 결과는 `src/arena_gazebo/worlds/it_arena_official/`입니다.
+
+공식 실행본은 인쇄판 10 cm·코드 7 cm·하단 5 cm의 벽 부착 마커를 적용하고, ID 30도 설계 측면을 유지해 벽면으로 보정합니다. 방지턱의 공식 명목 길이 5 cm·높이 1 cm와 임시 곡면, 신호등·출발/피니시 표시를 구분합니다. 벽의 공식 마찰 0.8은 보존하되 도로·잔디·방지턱 계수는 미지정 상태를 유지합니다. 자세한 근거는 [공식 원본 감사](OFFICIAL_SOURCE_AUDIT.md), [마커·시설 안내](OFFICIAL_MARKERS_AND_FACILITIES.md), [ADR 0010](../decisions/0010-official-v2026-08-31-track.md)에 있습니다.
+
 ## 계속 확인할 원문
 
+- 현재 공식 기준은 [공식 `track/README.md`](https://github.com/MOSW626/istech-it-arena/blob/d61c5db9252cedfbc163cd044a47671df91e1660/track/README.md)와 같은 버전 출력물·도면·인쇄 시트입니다. 아래 과거 원문·접근 실패·실험 결과와 구분합니다.
 - [2026-06-30 미팅](https://maddening-cause-ce7.notion.site/2026-06-30-38f99fd42e3080f6956fe5a5b90d0824): A-1 도로 폭, A-2 차량 크기·지름길·마커 배치 의도.
 - [트랙 감사 기록](TRACK_AUDIT.md): 회의록과 현재 제공된 파일의 수치 차이.
 - [본선 45 cm·차량 3대 상단 배치 확인](MAIN_WIDTH_VISUAL_CHECK.md): 현재 실험 월드와 실제 차량 SDF의 폭 적용을 사진으로 대조한 자료.
@@ -12,7 +27,7 @@
 
 회의록은 2026-08-30에 공개 본문을 확인한 6월 당시 자료입니다. 최신 규정으로 단정하지 않습니다. 트랙 폭·차량 외형·분기 표지판을 변경할 때 원문과 이후 주최 측 공지를 재확인합니다.
 
-2026-08-31 시설 작업의 재조회는 본문 접근 실패로 끝났습니다. 아래 시설 치수는 새 공식 사양이 아니라 사용자가 요청한 실험 가정입니다.
+2026-08-31 시설 작업의 재조회는 본문 접근 실패로 끝났습니다. 아래 시설 치수는 새 공식 사양이 아니라 사용자가 요청한 실험 가정입니다. 같은 날 후속 공식 GitHub 확인과 `official` 적용이 이루어졌으며, 이 과거 접근 실패 기록을 삭제하거나 현재 공식 확인 상태로 덮어쓰지 않습니다.
 
 ## 원본과 실험본의 구분
 
@@ -26,7 +41,7 @@
 | 신호등 | 진행 방향 가로대·등 중심 약 108 cm·세 등 발광 | 횡단 가로대·등 중심 30 cm·초기 빨강. 데모에서 동적 전환 |
 | 방지턱 | 직육면체, 길이·폭 축 뒤바뀜 | 진행 길이 20 cm·노면 폭 45 cm·높이 1 cm 곡선 |
 | 피니시 | 별도 체크무늬 표시 없음 | 기존 위치에 45×10 cm 체크무늬 |
-| 기본 실행 여부 | 선택 실행 | 기본 실행 |
+| 기본 실행 여부 | 선택 실행 | 당시 기본, 현재 선택 실행 |
 
 본선의 잔디 폭 20 cm씩, 벽 높이 30 cm·두께 5 cm와 방지턱 높이 1 cm는 유지합니다. 마커는 검은 코드 바깥 변 10 cm·흰 여백 포함 판 13 cm로 크기 기준을 명시했습니다. 원본 PNG 전체를 10 cm 면에 놓는 방식과 실제 코드 크기가 다르므로 물리적 인쇄 크기까지 보존했다고 표현하지 않습니다. 잔디를 실제 대회의 연석으로 확정한 것은 아니며, 물리적 벽 사이 폭은 위 노면 폭과 다릅니다.
 
@@ -40,7 +55,7 @@
 
 생성기는 원본 디렉터리에 캐시 파일을 만들지 않으며, 임시 출력은 `build/track_generation/` 아래에서 처리합니다. 생성 작업이 보존 디렉터리나 원본 실행 월드에 실험 결과를 덮어쓰지 않도록 경로 검사를 둡니다.
 
-## 실행과 원본으로 돌아가기
+## 현재 기본 실행과 기존 지도 선택
 
 WSL의 프로젝트 디렉터리에서 실행합니다.
 
@@ -51,15 +66,18 @@ source install/setup.bash
 ros2 launch arena_bringup simulation.launch.py
 ```
 
-기본값은 실험 지도입니다. 실행 중인 시뮬레이터를 `Ctrl+C`로 종료한 다음 원본을 선택할 수 있습니다.
+위 명령의 현재 기본값은 공식 지도입니다. 이 문서의 이전 실험이나 초기 원본을 재현하려면 실행 중인 시뮬레이터를 `Ctrl+C`로 종료한 다음 하나를 선택합니다.
 
 ```bash
+ros2 launch arena_bringup simulation.launch.py track:=experimental
 ros2 launch arena_bringup simulation.launch.py track:=original
 ```
 
 지도 선택은 차량 크기를 바꾸지 않습니다. 원본 지름길 12 cm는 15 cm 폭 차량으로 통과할 수 없습니다. 창 없이 실행하려면 `headless:=true`, 출발 위치를 바꾸려면 `grid_slot:=0`부터 `grid_slot:=5`까지 지정합니다.
 
-## 폭을 다시 바꾸는 방법
+## 기존 실험본의 폭을 다시 바꾸는 방법
+
+아래 절차는 `experimental`에만 적용합니다. 공식 실행본의 도로·벽·중심선은 고정 버전 ZIP에서 유지하며, 실험 폭 설정을 바꾸어 공식값으로 승격하지 않습니다. 공식 실행본을 재생성하려면 `python3 scripts/build_official_track.py`, 원본·입력·출력 해시 대조는 `python3 scripts/build_official_track.py --check`를 사용합니다. 해시 대조는 실제 주행 검증이 아닙니다.
 
 `config/tracks/experimental.yaml`의 `main_width_m`와 `branch_widths_m`를 변경한 뒤 재생성합니다. 분기 폭 배열 순서는 갈림길1·갈림길2입니다. `marker_side_overrides`의 ID 30 보정은 현 입구 간섭을 해결하기 위한 항목입니다.
 
@@ -87,7 +105,7 @@ SDF뿐 아니라 지도 이미지·지도 설정·CSV·장면 메타데이터를
 
 전체 외형 20×15 cm 외의 수치는 하드웨어 설계 확정 전 임시값입니다. `vehicle.yaml`로 바꿀 수 있으며, 모델은 제작용 CAD가 아니라 단순 충돌체를 쓰는 주행 실험용 근사입니다.
 
-## 검증 방법과 보장하지 않는 것
+## 기존 원본·실험본의 검증 방법과 보장하지 않는 것
 
 ```bash
 python3 scripts/validate_track.py

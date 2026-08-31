@@ -3,13 +3,42 @@
   <xacro:arg name="body_length" default="0.20"/>
   <xacro:arg name="body_width" default="0.15"/>
   <xacro:arg name="body_height" default="0.06"/>
-  <xacro:arg name="body_mass" default="1.5"/>
+  <xacro:arg name="body_mass" default="1.635"/>
+  <xacro:arg name="body_cg_z_offset" default="0.0"/>
+  <xacro:arg name="drive_mode" default="single_motor"/>
+  <xacro:arg name="render_sensors" default="true"/>
+  <xacro:arg name="gear_ratio" default="8.0"/>
+  <xacro:arg name="gear_efficiency" default="1.0"/>
+  <xacro:arg name="motor_torque_limit" default="0.060"/>
+  <xacro:arg name="motor_brake_torque_limit" default="0.045"/>
+  <xacro:arg name="motor_free_speed" default="2200.0"/>
+  <xacro:arg name="motor_response_time" default="0.040"/>
+  <xacro:arg name="motor_speed_kp" default="0.10"/>
+  <xacro:arg name="motor_speed_ki" default="0.20"/>
+  <xacro:arg name="motor_acceleration" default="3.0"/>
+  <xacro:arg name="motor_timeout" default="0.5"/>
+  <xacro:arg name="carrier_drag" default="0.0"/>
+  <xacro:arg name="differential_viscosity" default="0.0"/>
+  <xacro:arg name="differential_torque_limit" default="0.0"/>
+  <xacro:arg name="servo_position_gain" default="0.40"/>
+  <xacro:arg name="servo_integral_gain" default="0.25"/>
+  <xacro:arg name="servo_velocity_gain" default="0.003"/>
+  <xacro:arg name="servo_torque_limit" default="0.12"/>
+  <xacro:arg name="servo_rate_limit" default="4.0"/>
+  <xacro:arg name="tire_mu_lateral" default="0.9"/>
+  <xacro:arg name="tire_mu_longitudinal" default="0.9"/>
+  <xacro:arg name="tire_slip_lateral" default="0.02"/>
+  <xacro:arg name="tire_slip_longitudinal" default="0.02"/>
+  <xacro:arg name="tire_normal_force" default="4.905"/>
+  <xacro:arg name="wheel_damping" default="0.000005"/>
+  <!-- 시험용 한쪽 타이어 마찰 배율. 기본값은 좌우 동일합니다. -->
+  <xacro:arg name="rear_left_friction_scale" default="1.0"/>
   <xacro:arg name="wheelbase" default="0.145"/>
   <xacro:arg name="track_width" default="0.135"/>
   <xacro:arg name="wheel_radius" default="0.025"/>
   <xacro:arg name="wheel_width" default="0.012"/>
   <xacro:arg name="max_steering_angle" default="0.45"/>
-  <xacro:arg name="max_speed" default="2.0"/>
+  <xacro:arg name="max_speed" default="5.5555555556"/>
   <xacro:arg name="steering_p_gain" default="12.0"/>
   <xacro:arg name="acceleration_limit" default="4.0"/>
   <xacro:arg name="lidar_enabled" default="true"/>
@@ -132,8 +161,9 @@
   <xacro:property name="wheel_mass" value="0.04"/>
   <xacro:property name="steering_link_mass" value="0.01"/>
 
-  <xacro:macro name="box_inertial" params="mass x y z">
+  <xacro:macro name="box_inertial" params="mass x y z cg_z:=0">
     <inertial>
+      <pose>0 0 ${cg_z} 0 0 0</pose>
       <mass>${mass}</mass>
       <inertia>
         <ixx>${mass * (y * y + z * z) / 12.0}</ixx>
@@ -160,7 +190,7 @@
     </inertial>
   </xacro:macro>
 
-  <xacro:macro name="wheel_link" params="name x y">
+  <xacro:macro name="wheel_link" params="name x y friction_scale:=1">
     <link name="${name}">
       <pose>${x} ${y} ${wheel_radius} ${-pi / 2.0} 0 0</pose>
       <xacro:wheel_inertial mass="${wheel_mass}" radius="${wheel_radius}" width="${wheel_width}"/>
@@ -186,9 +216,10 @@
         <surface>
           <friction>
             <ode>
-              <mu>1.2</mu>
-              <mu2>1.0</mu2>
-              <fdir1>0 1 0</fdir1>
+              <mu>${float('$(arg tire_mu_lateral)') * float(friction_scale)}</mu>
+              <mu2>${float('$(arg tire_mu_longitudinal)') * float(friction_scale)}</mu2>
+              <!-- WheelSlip 규약: 바퀴 로컬 회전축 Z와 평행, 횡방향 마찰. -->
+              <fdir1>0 0 1</fdir1>
             </ode>
           </friction>
         </surface>
@@ -206,8 +237,9 @@
           <lower>-1.79769e+308</lower>
           <upper>1.79769e+308</upper>
           <effort>5.0</effort>
-          <velocity>200.0</velocity>
+          <velocity>1500.0</velocity>
         </limit>
+        <dynamics><damping>$(arg wheel_damping)</damping></dynamics>
       </axis>
     </joint>
   </xacro:macro>
@@ -231,6 +263,7 @@
           <specular>0.10 0.10 0.10 1</specular>
         </material>
       </visual>
+      <xacro:if value="$(arg render_sensors)">
       <sensor name="tof_${name}" type="gpu_lidar">
         <always_on>true</always_on>
         <update_rate>$(arg tof_rate)</update_rate>
@@ -260,6 +293,7 @@
           <noise><type>gaussian</type><mean>0</mean><stddev>$(arg tof_noise)</stddev></noise>
         </lidar>
       </sensor>
+      </xacro:if>
     </link>
     <joint name="tof_${name}_fixed_joint" type="fixed">
       <parent>chassis</parent>
@@ -273,7 +307,7 @@
 
     <link name="chassis">
       <pose>0 0 ${wheel_radius + body_height / 2.0} 0 0 0</pose>
-      <xacro:box_inertial mass="${body_mass}" x="${body_length}" y="${body_width}" z="${body_height}"/>
+      <xacro:box_inertial mass="${body_mass}" x="${body_length}" y="${body_width}" z="${body_height}" cg_z="$(arg body_cg_z_offset)"/>
       <visual name="visual">
         <geometry>
           <!-- 센서 보드가 파묻히지 않게 표시용 상자만 안쪽으로 넣습니다.
@@ -307,6 +341,7 @@
           <diffuse>0.10 0.10 0.10 1</diffuse>
         </material>
       </visual>
+      <xacro:if value="$(arg render_sensors)">
       <sensor name="d435i_color" type="camera">
         <camera name="color">
           <horizontal_fov>${d435i_color_horizontal_fov}</horizontal_fov>
@@ -372,6 +407,7 @@
         <topic>camera/depth/image_rect_raw</topic>
       </sensor>
       </xacro:if>
+      </xacro:if>
       <sensor name="d435i_imu" type="imu">
         <always_on>true</always_on>
         <update_rate>${d435i_imu_rate}</update_rate>
@@ -399,6 +435,7 @@
           <geometry><cylinder><radius>0.023</radius><length>0.002</length></cylinder></geometry>
           <material><ambient>0.9 0.27 0.025 1</ambient><diffuse>0.95 0.32 0.03 1</diffuse></material>
         </visual>
+        <xacro:if value="$(arg render_sensors)">
         <sensor name="rplidar_c1" type="gpu_lidar">
           <always_on>true</always_on>
           <update_rate>$(arg lidar_rate)</update_rate>
@@ -416,6 +453,7 @@
             <noise><type>gaussian</type><mean>0</mean><stddev>$(arg lidar_noise)</stddev></noise>
           </lidar>
         </sensor>
+        </xacro:if>
       </link>
       <joint name="lidar_fixed_joint" type="fixed"><parent>chassis</parent><child>lidar_link</child></joint>
     </xacro:if>
@@ -431,7 +469,7 @@
 
     <xacro:wheel_link name="front_left_wheel" x="${wheelbase / 2.0}" y="${track_width / 2.0}"/>
     <xacro:wheel_link name="front_right_wheel" x="${wheelbase / 2.0}" y="${-track_width / 2.0}"/>
-    <xacro:wheel_link name="rear_left_wheel" x="${-wheelbase / 2.0}" y="${track_width / 2.0}"/>
+    <xacro:wheel_link name="rear_left_wheel" x="${-wheelbase / 2.0}" y="${track_width / 2.0}" friction_scale="$(arg rear_left_friction_scale)"/>
     <xacro:wheel_link name="rear_right_wheel" x="${-wheelbase / 2.0}" y="${-track_width / 2.0}"/>
 
     <link name="front_left_steering_link">
@@ -483,6 +521,7 @@
     <xacro:wheel_joint name="rear_left_wheel_joint" parent="chassis" child="rear_left_wheel"/>
     <xacro:wheel_joint name="rear_right_wheel_joint" parent="chassis" child="rear_right_wheel"/>
 
+    <xacro:if value="${'$(arg drive_mode)' == 'legacy_velocity'}">
     <plugin filename="gz-sim-ackermann-steering-system" name="gz::sim::systems::AckermannSteering">
       <left_joint>rear_left_wheel_joint</left_joint>
       <right_joint>rear_right_wheel_joint</right_joint>
@@ -506,6 +545,49 @@
       <frame_id>odom</frame_id>
       <child_frame_id>base_link</child_frame_id>
     </plugin>
+    </xacro:if>
+
+    <xacro:if value="${'$(arg drive_mode)' == 'single_motor'}">
+    <plugin filename="arena-single-motor-system" name="arena::SingleMotorDrive">
+      <wheel_radius>${wheel_radius}</wheel_radius>
+      <wheelbase>${wheelbase}</wheelbase>
+      <track_width>${track_width}</track_width>
+      <steering_limit>${max_steering_angle}</steering_limit>
+      <max_speed>${max_speed}</max_speed>
+      <gear_ratio>$(arg gear_ratio)</gear_ratio>
+      <gear_efficiency>$(arg gear_efficiency)</gear_efficiency>
+      <motor_torque_limit>$(arg motor_torque_limit)</motor_torque_limit>
+      <motor_brake_torque_limit>$(arg motor_brake_torque_limit)</motor_brake_torque_limit>
+      <motor_free_speed>$(arg motor_free_speed)</motor_free_speed>
+      <motor_response_time>$(arg motor_response_time)</motor_response_time>
+      <speed_kp>$(arg motor_speed_kp)</speed_kp>
+      <speed_ki>$(arg motor_speed_ki)</speed_ki>
+      <acceleration_limit>$(arg motor_acceleration)</acceleration_limit>
+      <command_timeout>$(arg motor_timeout)</command_timeout>
+      <carrier_drag>$(arg carrier_drag)</carrier_drag>
+      <differential_viscosity>$(arg differential_viscosity)</differential_viscosity>
+      <differential_torque_limit>$(arg differential_torque_limit)</differential_torque_limit>
+      <steering_gain>$(arg servo_position_gain)</steering_gain>
+      <steering_integral_gain>$(arg servo_integral_gain)</steering_integral_gain>
+      <steering_velocity_gain>$(arg servo_velocity_gain)</steering_velocity_gain>
+      <steering_torque_limit>$(arg servo_torque_limit)</steering_torque_limit>
+      <steering_rate_limit>$(arg servo_rate_limit)</steering_rate_limit>
+    </plugin>
+    <plugin filename="gz-sim-wheel-slip-system" name="gz::sim::systems::WheelSlip">
+      <xacro:macro name="slip_wheel" params="name">
+        <wheel link_name="${name}">
+          <slip_compliance_lateral>$(arg tire_slip_lateral)</slip_compliance_lateral>
+          <slip_compliance_longitudinal>$(arg tire_slip_longitudinal)</slip_compliance_longitudinal>
+          <wheel_normal_force>$(arg tire_normal_force)</wheel_normal_force>
+          <wheel_radius>${wheel_radius}</wheel_radius>
+        </wheel>
+      </xacro:macro>
+      <xacro:slip_wheel name="front_left_wheel"/>
+      <xacro:slip_wheel name="front_right_wheel"/>
+      <xacro:slip_wheel name="rear_left_wheel"/>
+      <xacro:slip_wheel name="rear_right_wheel"/>
+    </plugin>
+    </xacro:if>
 
     <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
       <topic>/model/arena_car/joint_state</topic>

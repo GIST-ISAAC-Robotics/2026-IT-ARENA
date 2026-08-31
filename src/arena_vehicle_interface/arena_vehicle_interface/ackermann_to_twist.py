@@ -5,6 +5,7 @@ import math
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
+from std_msgs.msg import Float64
 
 from arena_vehicle_interface.node_lifecycle import run_node
 
@@ -29,6 +30,7 @@ class AckermannToTwist(Node):
             raise ValueError("wheelbase_m must be positive")
 
         self._publisher = self.create_publisher(Twist, "/sim/cmd_vel", 10)
+        self._steering_publisher = self.create_publisher(Float64, "/sim/steering_angle", 10)
         self._subscription = self.create_subscription(
             AckermannDriveStamped, "/drive", self._on_drive, 10
         )
@@ -41,6 +43,11 @@ class AckermannToTwist(Node):
         return min(max(value, lower), upper)
 
     def _on_drive(self, message: AckermannDriveStamped) -> None:
+        if not all(math.isfinite(value) for value in (message.drive.speed, message.drive.steering_angle)):
+            self._publisher.publish(Twist())
+            self._steering_publisher.publish(Float64(data=0.0))
+            self._stop_sent = True
+            return
         speed = self._clamp(message.drive.speed, -self._max_speed, self._max_speed)
         steering = self._clamp(
             message.drive.steering_angle, -self._max_steering, self._max_steering
@@ -50,6 +57,8 @@ class AckermannToTwist(Node):
         command.linear.x = speed
         command.angular.z = speed * math.tan(steering) / self._wheelbase
         self._publisher.publish(command)
+        # 정지 상태에서도 조향 명령이 사라지지 않도록 별도 각도 토픽을 사용합니다.
+        self._steering_publisher.publish(Float64(data=steering))
         self._last_command_ns = self.get_clock().now().nanoseconds
         self._stop_sent = False
 
@@ -59,6 +68,7 @@ class AckermannToTwist(Node):
         age_s = (self.get_clock().now().nanoseconds - self._last_command_ns) / 1e9
         if age_s >= self._timeout:
             self._publisher.publish(Twist())
+            self._steering_publisher.publish(Float64(data=0.0))
             self._stop_sent = True
 
 

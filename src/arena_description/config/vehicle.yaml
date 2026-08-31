@@ -27,12 +27,16 @@ vehicle:
     length_m: 0.20
     width_m: 0.15
     height_m: 0.06
-    mass_kg: 1.5
+    # 바퀴 0.160 + 조향 링크 0.020 + D435i 0.072 + C1 0.110 + ToF 0.003
+    # + 잔여 차체 1.635 = 2.000 kg. 사용자가 전달한 예상 총질량, 실측값 아님.
+    mass_kg: 1.635
+    center_of_mass_z_offset_m: 0.0
     height_and_mass_status: provisional
 
   drivetrain:
-    status: provisional
+    status: single_motor_mechanical_differential_selected_parameters_provisional
     layout: rear_wheel_drive_ackermann
+    simulation_drive_mode: single_motor
     # 직진 시 바퀴 바깥 치수: 축거 + 지름, 윤거 + 바퀴 폭.
     # 현재 바퀴로는 각각 0.195 m, 0.147 m이며 제작 전 임시 배치입니다.
     # 조향 시 바퀴가 목표 외형 밖으로 나갈 수 있으므로 충돌 판단은 별도입니다.
@@ -41,11 +45,58 @@ vehicle:
     wheel_radius_m: 0.025
     wheel_width_m: 0.012
     max_steering_angle_rad: 0.45
-    max_speed_mps: 2.0
+    # 하드웨어팀의 20 km/h 목표를 시험 상한으로 사용. 실차 성능 보증 아님.
+    max_speed_mps: 5.5555555556
     # 모터 실측값이 아닌 Gazebo 제어기 설정. jerk 제한은 저속 정지 진동을
     # 유발하여 제외하고, 속도·가속도 제한은 유지합니다.
     simulation_steering_p_gain: 12.0
     simulation_acceleration_limit_mps2: 4.0
+    mechanical_differential:
+      active_profile: ideal_open
+      # 동일 평균속도 관계, 차이는 손실과 수동 차동 저항입니다.
+      profiles:
+        ideal_open:
+          gear_efficiency: 1.0
+          carrier_drag_nm_per_rad_s: 0.0
+          coupling_nm_per_rad_s: 0.0
+          coupling_limit_nm: 0.0
+        lossy_open:
+          gear_efficiency: 0.90
+          carrier_drag_nm_per_rad_s: 0.0001
+          coupling_nm_per_rad_s: 0.0
+          coupling_limit_nm: 0.0
+        viscous_lsd:
+          gear_efficiency: 0.90
+          carrier_drag_nm_per_rad_s: 0.0001
+          coupling_nm_per_rad_s: 0.002
+          coupling_limit_nm: 0.030
+    motor:
+      # 아래 값은 특정 구매 모터/ESC 사양이 아니라 민감도 시험용입니다.
+      gear_ratio: 8.0
+      torque_limit_nm: 0.060
+      brake_torque_limit_nm: 0.045
+      free_speed_rad_s: 2200.0
+      response_time_s: 0.040
+      speed_kp: 0.10
+      speed_ki: 0.20
+      acceleration_limit_mps2: 3.0
+      command_timeout_s: 0.5
+    steering_servo:
+      # 공유 각도 명령·총 조향 토크 예산을 사용하는 가상 서보입니다.
+      position_gain: 0.40
+      integral_gain: 0.25
+      velocity_gain: 0.003
+      torque_limit_nm: 0.12
+      rate_limit_rad_s: 4.0
+    tire_contact:
+      # 실측 전 Coulomb + force-dependent slip 근사. Pacejka 타이어 아님.
+      friction_lateral: 0.9
+      friction_longitudinal: 0.9
+      rear_left_friction_scale: 1.0
+      slip_compliance_lateral: 0.02
+      slip_compliance_longitudinal: 0.02
+      nominal_wheel_normal_force_n: 4.905
+      joint_viscous_damping_nm_per_rad_s: 0.000005
 
   sensors:
     # Candidate real-car baseline: one quadrature encoder per driven rear wheel.
@@ -59,8 +110,8 @@ vehicle:
       sample_rate_hz: 100.0
       latency_ms: 2.0
       dropout_probability: 0.0
-      mount_note: candidate; measure at wheel or account for gear ratio explicitly
-      status: provisional
+      mount_note: two rear wheel output encoders after the mechanical differential; hardware mounting pending
+      status: two_rear_wheel_measurements_selected_resolution_provisional
     d435i:
       enabled: true
       xyz_m: [0.055, 0.0, 0.075]

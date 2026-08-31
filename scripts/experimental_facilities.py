@@ -1,4 +1,4 @@
-"""실험본에만 적용하는 도로 시설 형상·메타데이터. 원본 생성기는 수정하지 않습니다."""
+"""실행용 파생 월드의 시설 형상·메타데이터. 보존 원본은 수정하지 않습니다."""
 
 from __future__ import annotations
 
@@ -72,6 +72,8 @@ def configure(res, profile, generator):
     """도로·출발 위치·ID·s는 보존하고 별도 시설 설정을 적용합니다."""
     config = copy.deepcopy(profile["facilities"])
     for group in config.values():
+        if not isinstance(group, dict):
+            continue
         for key, item in group.items():
             if key.endswith("_m") and (not math.isfinite(float(item)) or float(item) <= 0):
                 raise ValueError(f"시설 치수는 유한한 양수여야 합니다: {key}")
@@ -84,8 +86,20 @@ def configure(res, profile, generator):
         raise ValueError("이 기초 차량용 방지턱은 2 cm 미만 높이와 충분한 진입 길이가 필요합니다.")
     if config["traffic_light"]["initial_state"] != "red":
         raise ValueError("아직 동적 신호 제어가 없으므로 초기 상태는 red만 지원합니다.")
-    if not math.isclose(config["markers"]["black_square_size_m"], .10):
-        raise ValueError("현재 실험에서는 ArUco 검은 정사각형 크기 10 cm를 유지합니다.")
+    markers = config["markers"]
+    board_size = float(markers.get(
+        "printed_board_size_m",
+        markers["black_square_size_m"] + 2 * markers["quiet_zone_m"],
+    ))
+    if not math.isclose(
+        board_size,
+        float(markers["black_square_size_m"]) + 2 * float(markers["quiet_zone_m"]),
+        abs_tol=1e-9,
+    ):
+        raise ValueError("마커 코드와 양쪽 흰 여백의 합은 인쇄판 크기와 같아야 합니다.")
+    if markers.get("mount_type", "freestanding") not in {"freestanding", "wall_attached"}:
+        raise ValueError("마커 설치 형식은 freestanding 또는 wall_attached여야 합니다.")
+    markers["printed_board_size_m"] = board_size
     if len(res["grid_slots"]) != 6:
         raise ValueError("이번 실험 시설은 보존된 6개 출발 위치를 요구합니다.")
 
@@ -96,14 +110,18 @@ def configure(res, profile, generator):
     light["gantry_height"] = config["traffic_light"]["gantry_height_m"]
     light["lamp_center_height"] = config["traffic_light"]["lamp_center_height_m"]
     light["initial_state"] = "red"
-    markers = config["markers"]
     for marker in res["markers"]:
+        target_distance = float(markers.get("face_target_distance_m", 0.0))
         target_x, target_y, _ = generator.sample_at_s(
-            res["arr"], (marker["s"] - markers["face_target_distance_m"]) % res["meta"]["Ltot"],
+            res["arr"], (marker["s"] - target_distance) % res["meta"]["Ltot"],
             res["meta"]["Ltot"])
-        marker["yaw"] = math.atan2(target_y - marker["y"], target_x - marker["x"])
-        marker["center_height"] = markers["center_height_m"]
-        marker["z"] = marker["center_height"] - markers["black_square_size_m"] / 2
+        if markers.get("mount_type", "freestanding") == "freestanding":
+            marker["yaw"] = math.atan2(target_y - marker["y"], target_x - marker["x"])
+        marker["center_height"] = float(markers.get(
+            "center_height_m",
+            markers.get("bottom_height_m", .05) + board_size / 2,
+        ))
+        marker["z"] = marker["center_height"] - board_size / 2
         marker["approach_target"] = [float(target_x), float(target_y)]
     res["experimental_facilities"] = config
     return config
@@ -169,9 +187,12 @@ def add_bumps(model, res, output):
                              (z0 + z1) / 2 - math.cos(angle) * thickness / 2), (0, -angle, 0))
             value(ET.SubElement(ET.SubElement(collision, "geometry"), "box"), "size",
                   number_list((math.hypot(x1 - x0, z1 - z0), bump["width"], thickness)))
-            friction = ET.SubElement(ET.SubElement(ET.SubElement(collision, "surface"), "friction"), "ode")
-            value(friction, "mu", ".8")
-            value(friction, "mu2", ".8")
+            # 제공된 최종 설계에는 방지턱·노면 마찰 수치가 없습니다.
+            # 실측 프로필에서 명시한 경우에만 SDF 마찰 항목을 생성합니다.
+            if "friction_coefficient" in config:
+                friction = ET.SubElement(ET.SubElement(ET.SubElement(collision, "surface"), "friction"), "ode")
+                value(friction, "mu", config["friction_coefficient"])
+                value(friction, "mu2", config["friction_coefficient"])
         for stripe in range(config["lateral_stripes"]):
             y0 = -bump["width"] / 2 + bump["width"] * stripe / config["lateral_stripes"]
             y1 = -bump["width"] / 2 + bump["width"] * (stripe + 1) / config["lateral_stripes"]
@@ -278,14 +299,17 @@ def marker_cells(marker_id):
 def add_markers(model, res):
     config = res["experimental_facilities"]["markers"]
     size = config["black_square_size_m"]
-    board_size = size + 2 * config["quiet_zone_m"]
+    board_size = config["printed_board_size_m"]
+    mount_type = config.get("mount_type", "freestanding")
     for marker in res["markers"]:
         center = marker["center_height"]
         link = link_at(model, f"aruco_{marker['id']}", marker["x"], marker["y"], yaw=marker["yaw"])
-        post_height = center - board_size / 2
-        box(link, "stand", (0, 0, post_height / 2), (config["post_width_m"], config["post_width_m"], post_height),
-            STEEL, collision=True)
-        box(link, "base", (0, 0, .008), (.05, .05, .016), STEEL, collision=True)
+        if mount_type == "freestanding":
+            post_height = center - board_size / 2
+            box(link, "stand", (0, 0, post_height / 2),
+                (config["post_width_m"], config["post_width_m"], post_height),
+                STEEL, collision=True)
+            box(link, "base", (0, 0, .008), (.05, .05, .016), STEEL, collision=True)
         # 검은 장식 테두리는 ArUco 후보 중복 제거 단계에서 실제 경계를 밀어낼 수 있습니다.
         # 지지판까지 흰색으로 하여 코드 바깥에 두 번째 검은 사각형을 만들지 않습니다.
         box(link, "backing", (-.004, 0, center), (.009, board_size, board_size), WHITE, collision=True)
@@ -327,22 +351,33 @@ def update_scene(scene, res, generator):
                                 "longitudinal_axis": "local_x_along_route",
                                 "collision": f"{config['speed_bump']['subdivisions']} inclined box strips; top endpoints match visual profile samples"})
     scene["traffic_light"].update({"initial_state": "red", "state_control": "static_initial_state_only",
+                                  "gantry_height_m": config["traffic_light"]["gantry_height_m"],
                                   "lamp_center_height_m": config["traffic_light"]["lamp_center_height_m"],
                                   "lamp_radius_m": config["traffic_light"]["lamp_radius_m"],
                                   "lamp_poses": res["traffic_light"]["lamp_poses"],
                                   "beam_axis": "local_y_across_route", "udp_visual_controller_connected": False})
     scene["traffic_light"].pop("udp_port", None)
-    scene["aruco_markers"].update({"marker_size_m": config["markers"]["black_square_size_m"],
-                                    "size_reference": "outer_edge_of_black_border",
+    marker_config = config["markers"]
+    mount_type = marker_config.get("mount_type", "freestanding")
+    scene["aruco_markers"].update({"marker_size_m": marker_config["printed_board_size_m"],
+                                    "printed_board_size_m": marker_config["printed_board_size_m"],
+                                    "black_code_size_m": marker_config["black_square_size_m"],
+                                    "size_reference": "full_printed_board_including_white_margin",
                                     "quiet_zone_each_side_m": config["markers"]["quiet_zone_m"],
-                                    "mount_bottom_height_m": config["markers"]["center_height_m"] - .05,
-                                    "mount_type": "freestanding_upstream_facing_sign",
+                                    "mount_bottom_height_m": marker_config.get(
+                                        "bottom_height_m",
+                                        marker_config.get("center_height_m", .10) - marker_config["printed_board_size_m"] / 2,
+                                    ),
+                                    "mount_type": mount_type,
                                     "rendering": "DICT_4X4_50 cells as untextured SDF geometry; preserved PNG files unchanged"})
     by_id = {marker["id"]: marker for marker in res["markers"]}
     for marker in scene["aruco_markers"]["markers"]:
         source = by_id[marker["id"]]
-        marker.update(pose=source["face_pose"], pose_reference="black_square_front_center",
-                      normal_note=f"local +X faces a point {config['markers']['face_target_distance_m']:g} m upstream along the main route",
+        normal_note = "local +X faces the main-route reference point"
+        if mount_type == "freestanding":
+            normal_note = f"local +X faces a point {marker_config['face_target_distance_m']:g} m upstream along the main route"
+        marker.update(pose=source["face_pose"], pose_reference="printed_board_front_center",
+                      normal_note=normal_note,
                       approach_target_xy_m=source["approach_target"])
     scene["starting_grid"]["paint"] = {**config["starting_grid"], "paint_center_height_m": PAINT_CENTER_M,
                                         "collision": False, "numbering": "front_to_back_1_to_6",
@@ -357,5 +392,10 @@ def update_scene(scene, res, generator):
             x, y, yaw = generator.sample_at_s(res["arr"], (marker["s"] - distance) % res["meta"]["Ltot"], res["meta"]["Ltot"])
             cases.append({"name": f"marker_{marker['id']}_{int(distance * 100)}cm", "x": float(x), "y": float(y),
                           "yaw_rad": float(yaw), "expected_marker_id": marker["id"], "approach_distance_m": distance})
-    scene["facility_inspection"] = {"status": "experimental_not_official", "config": config,
+    scene["facility_inspection"] = {"status": profile_status(config), "config": config,
                                     "camera_cases": cases, "test_ground_truth_only": True}
+
+
+def profile_status(config):
+    """시설 프로필의 근거 상태를 메타데이터에 보존합니다."""
+    return config.get("status", "experimental_not_official")

@@ -59,7 +59,7 @@ def test_c1_nominal_scan_and_provisional_mount():
 
 
 def test_speed_limits_remain_without_oscillating_jerk_clamp():
-    plugin = model().find(".//plugin[@name='gz::sim::systems::AckermannSteering']")
+    plugin = model(drive_mode="legacy_velocity", max_speed="2").find(".//plugin[@name='gz::sim::systems::AckermannSteering']")
     assert plugin.find("max_jerk") is None and plugin.find("min_jerk") is None
     assert float(plugin.findtext("max_velocity")) == 2
     assert float(plugin.findtext("max_acceleration")) == 4
@@ -154,7 +154,8 @@ def controller_double(monkeypatch):
     controller = SimpleNamespace(
         settings={"control_rate_hz": 20., "scan_timeout_s": .45, "image_timeout_s": 1.,
                   "lidar_x_m": -.03, "target_wall_distance_m": .425, "wheelbase_m": .145,
-                  "max_steering_angle_rad": .45, "max_speed_mps": .35, "min_speed_mps": .14},
+                  "max_steering_angle_rad": .45, "max_speed_mps": .35, "min_speed_mps": .14,
+                  "lateral_acceleration_limit_mps2": 3.0, "acceleration_mps2": .5},
         signal=signal, scan=scan, rgb_stamp=10., scan_wall_time=time.monotonic(),
         image_wall_time=time.monotonic(), enabled=True, side="left", ids=[],
         last_steering=0., last_speed=.2, last_status="", last_status_time=-math.inf,

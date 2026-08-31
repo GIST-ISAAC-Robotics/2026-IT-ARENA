@@ -44,6 +44,8 @@ def test_bump_collision_top_edges_follow_rendered_curve(data):
     assert float(bump.findtext("pose").split()[2]) == ROAD_TOP_M
     collisions = bump.findall("collision")
     assert len(collisions) == 40
+    assert all(collision.findtext("surface/friction/ode/mu") == "0.8" for collision in collisions)
+    assert all(collision.findtext("surface/friction/ode/mu2") == "0.8" for collision in collisions)
     assert not bump.findall("collision/geometry/mesh")  # 설치된 DART/ODE의 메시 충돌 오류를 피합니다.
     endpoints = []
     for collision in collisions:
@@ -142,7 +144,9 @@ def test_freestanding_marker_cells_are_correct_and_not_mirrored(data, marker_id)
     pose = metadata["pose"]
     desired = math.atan2(target[1] - pose["y"], target[0] - pose["x"])
     assert abs(math.atan2(math.sin(desired - pose["yaw_rad"]), math.cos(desired - pose["yaw_rad"]))) < .002
-    assert scene["aruco_markers"]["marker_size_m"] == .1
+    assert scene["aruco_markers"]["marker_size_m"] == .13
+    assert scene["aruco_markers"]["printed_board_size_m"] == .13
+    assert scene["aruco_markers"]["black_code_size_m"] == .1
 
 
 def test_light_lenses_fit_nominal_rgb_frustum_from_all_grid_slots(data):

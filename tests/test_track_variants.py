@@ -128,9 +128,9 @@ def test_vehicle_dimensions_and_steered_envelope(prepared):
     assert drive["wheelbase_m"] + 2 * drive["wheel_radius_m"] <= footprint["length_m"]
     assert drive["track_width_m"] + drive["wheel_width_m"] <= footprint["width_m"]
     model = ET.fromstring(xacro.process_file(str(REPO / "src/arena_description/models/arena_car/model.sdf.xacro")).toxml())
-    plugin = model.find("./model/plugin[@name='gz::sim::systems::AckermannSteering']")
-    assert float(plugin.findtext("wheel_base")) == drive["wheelbase_m"]
-    assert float(plugin.findtext("wheel_separation")) == drive["track_width_m"]
+    plugin = model.find("./model/plugin[@name='arena::SingleMotorDrive']")
+    assert float(plugin.findtext("wheelbase")) == drive["wheelbase_m"]
+    assert float(plugin.findtext("track_width")) == drive["track_width_m"]
     angles = np.linspace(0, drive["max_steering_angle_rad"], 2001)
     half_x = max(drive["wheel_radius_m"] * np.cos(angles) + drive["wheel_width_m"] / 2 * np.sin(angles))
     half_y = max(drive["wheel_radius_m"] * np.sin(angles) + drive["wheel_width_m"] / 2 * np.cos(angles))
@@ -141,12 +141,16 @@ def test_vehicle_dimensions_and_steered_envelope(prepared):
     assert report["static_footprint_checks_pass"], report
 
 
-def test_launch_exposes_original_and_experimental_profiles():
+def test_launch_exposes_official_and_legacy_profiles():
     path = REPO / "src/arena_bringup/launch/simulation.launch.py"
     spec = importlib.util.spec_from_file_location("arena_simulation_launch", path)
     launch = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(launch)
-    assert launch.TRACK_DIRECTORIES == {"original": "it_arena_track", "experimental": "it_arena_experimental"}
+    assert launch.TRACK_DIRECTORIES == {
+        "official": "it_arena_official",
+        "original": "it_arena_track",
+        "experimental": "it_arena_experimental",
+    }
     arguments = {argument.name: argument for argument in launch.generate_launch_description().get_launch_arguments()}
-    assert arguments["track"].default_value[0].text == "experimental"
+    assert arguments["track"].default_value[0].text == "official"
     assert arguments["d435i_profile"].default_value[0].text == "configured"
