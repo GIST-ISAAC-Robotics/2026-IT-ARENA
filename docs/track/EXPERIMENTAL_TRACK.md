@@ -6,6 +6,7 @@
 
 - [2026-06-30 미팅](https://maddening-cause-ce7.notion.site/2026-06-30-38f99fd42e3080f6956fe5a5b90d0824): A-1 도로 폭, A-2 차량 크기·지름길·마커 배치 의도.
 - [트랙 감사 기록](TRACK_AUDIT.md): 회의록과 현재 제공된 파일의 수치 차이.
+- [본선 45 cm·차량 3대 상단 배치 확인](MAIN_WIDTH_VISUAL_CHECK.md): 현재 실험 월드와 실제 차량 SDF의 폭 적용을 사진으로 대조한 자료.
 - [트랙 분리 결정](../decisions/0003-track-variants.md): 원본 보존 및 실험값 채택 근거.
 - [시설 안내](FACILITIES.md)와 [결정 0005](../decisions/0005-experimental-facilities.md): 신호등·방지턱·표지판·노면 표시와 차량 영상 검사.
 
@@ -101,6 +102,7 @@ python3 scripts/smoke_simulation.py --track original
 - 실제 SDF의 벽·저층 시설 충돌체와 출발 위치·본선·지름길 표본에서의 차량 외형을 대조합니다. 회귀 검사에서는 조향 점유 폭의 보수적인 직사각형도 확인합니다.
 - 짧은 실행 검사는 별도 ROS/Gazebo 통신 영역에서 전진·회전·엔코더·RGB·깊이·IMU·명령 중단 정지를 확인하고, 자신이 시작한 프로세스만 종료합니다. 로그는 Git에서 제외한 `artifacts/tests/`에 저장합니다.
 - 후속 시설 검사에서 정지 속도 흔들림을 발견했고 Gazebo의 jerk 제한을 제외한 뒤 같은 지속 정지 조건을 통과했습니다. 과거 실패와 수정 후 재검사는 [시설 안내](FACILITIES.md)에서 구분합니다.
+- 본선 긴 직선부에 현재 20×15 cm 차량 SDF 세 대를 횡방향 15 cm 간격으로 배치해, 실제 45 cm 노면에 겹침 없이 정확히 들어가는 상단 사진을 남겼습니다. 명목 여유는 0 cm이며 병렬 주행 가능성을 증명하지 않습니다. 배치 좌표와 원본 사진은 [별도 확인 기록](MAIN_WIDTH_VISUAL_CHECK.md)에 있습니다.
 - **정적 간섭 검사나 짧은 주행 성공이 지름길 진입·합류의 연속 조향 궤적, 단독 완주, 다중 차량 안전성을 증명하지는 않습니다.** 기존 급커브 반경 검사 실패도 유지됩니다.
 
 ![본선 45 cm·지름길 25 cm 실험 지도](../../src/arena_gazebo/worlds/it_arena_experimental/preview.png)
