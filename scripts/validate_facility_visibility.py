@@ -104,9 +104,14 @@ def main():
     log = log_path.open("w", encoding="utf-8")
     processes = []
     try:
-        processes.append(subprocess.Popen([
+        launch_command = [
             "ros2", "launch", "arena_bringup", "simulation.launch.py", "headless:=true",
-            f"track:={args.track}", "d435i_profile:=low_load_30"],
+            f"track:={args.track}", "d435i_profile:=low_load_30"]
+        if args.bump_only or args.flat_control:
+            # 방지턱 동역학 대조에는 RGB·주행거리계만 필요합니다. 시작 시간이 긴 깊이
+            # 스트림을 끄되, 실제 주행 명령과 차량 물리는 일반 시험과 동일하게 둡니다.
+            launch_command.append("depth_camera:=false")
+        processes.append(subprocess.Popen(launch_command,
             cwd=REPO, stdout=log, stderr=subprocess.STDOUT, start_new_session=True))
         if not args.capture_only:
             # SceneBroadcaster의 pose.name은 TF 변환 시 보존되지 않습니다.
@@ -132,7 +137,7 @@ def main():
 
             threading.Thread(target=observe_poses, daemon=True).start()
 
-        def wait_for(predicate, timeout=60):
+        def wait_for(predicate, timeout=120):
             deadline = time.monotonic() + timeout
             next_log_check = 0
             while not predicate():
@@ -260,7 +265,9 @@ def main():
             initial = state["world_pose"]["position"].copy()
             initial_z = initial.get("z", 0)
             record_poses = True
-            started, deadline, next_publish = sim_time(), time.monotonic() + 50, 0.0
+            # WSL의 소프트웨어 렌더링에서는 RTF가 약 0.1까지 내려갈 수 있습니다.
+            # 판정 구간은 동일한 7 sim s로 유지하고 벽시계 제한만 넉넉히 둡니다.
+            started, deadline, next_publish = sim_time(), time.monotonic() + 180, 0.0
             while sim_time() - started < 7.0:
                 now = time.monotonic()
                 if now > deadline:
@@ -276,7 +283,7 @@ def main():
             stable_since = None
             stop_stable = False
             speed_trace = []
-            deadline = time.monotonic() + 60
+            deadline = time.monotonic() + 180
             while sim_time() - stopped_at < 6.0:
                 if time.monotonic() > deadline:
                     raise TimeoutError("정지 관측 중 시뮬레이션 진행 시간 초과")

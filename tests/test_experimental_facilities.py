@@ -102,6 +102,7 @@ def test_bump_obj_has_explicit_face_normals_and_colored_materials():
 
 def test_all_six_grid_marks_and_finish_are_above_road_and_not_collisions(data):
     model, scene = data
+    assert scene["starting_grid"]["paint"]["representation"] == "provisional_u_numbers"
     grid = model.find("link[@name='start_grid_paint']")
     assert not grid.findall("collision")
     fronts = [visual for visual in grid.findall("visual") if visual.attrib["name"].endswith("_front")]

@@ -97,11 +97,34 @@ def configure(res, profile, generator):
         abs_tol=1e-9,
     ):
         raise ValueError("마커 코드와 양쪽 흰 여백의 합은 인쇄판 크기와 같아야 합니다.")
-    if markers.get("mount_type", "freestanding") not in {"freestanding", "wall_attached"}:
-        raise ValueError("마커 설치 형식은 freestanding 또는 wall_attached여야 합니다.")
-    if markers.get("representation", "sdf_cells") not in {"sdf_cells", "official_pbr_texture"}:
-        raise ValueError("마커 표현은 sdf_cells 또는 official_pbr_texture여야 합니다.")
+    mount_type = markers.get("mount_type", "freestanding")
+    if mount_type not in {"freestanding", "wall_attached", "wall_attached_angled_bracket"}:
+        raise ValueError(
+            "마커 설치 형식은 freestanding, wall_attached 또는 "
+            "wall_attached_angled_bracket여야 합니다."
+        )
+    if markers.get("representation", "sdf_cells") not in {
+        "sdf_cells", "official_pbr_texture", "official_pbr_texture_with_sdf_face"
+    }:
+        raise ValueError(
+            "마커 표현은 sdf_cells, official_pbr_texture 또는 "
+            "official_pbr_texture_with_sdf_face여야 합니다."
+        )
+    orientation_mode = markers.get(
+        "orientation_mode",
+        "face_upstream_route_point" if mount_type == "freestanding" else "official_pose",
+    )
+    if orientation_mode not in {"official_pose", "face_upstream_route_point"}:
+        raise ValueError("마커 방향 방식은 official_pose 또는 face_upstream_route_point여야 합니다.")
+    if mount_type == "wall_attached_angled_bracket" and orientation_mode != "face_upstream_route_point":
+        raise ValueError("기울인 벽 부착 마커는 진행 경로 접근점을 바라보도록 설정해야 합니다.")
+    markers["mount_type"] = mount_type
+    markers["orientation_mode"] = orientation_mode
     markers["printed_board_size_m"] = board_size
+    grid_representation = config["starting_grid"].get("representation", "provisional_u_numbers")
+    if grid_representation not in {"provisional_u_numbers", "official_filled_slots"}:
+        raise ValueError("출발 그리드 표현은 provisional_u_numbers 또는 official_filled_slots여야 합니다.")
+    config["starting_grid"]["representation"] = grid_representation
     if len(res["grid_slots"]) != 6:
         raise ValueError("이번 실험 시설은 보존된 6개 출발 위치를 요구합니다.")
 
@@ -113,12 +136,56 @@ def configure(res, profile, generator):
     light["lamp_center_height"] = config["traffic_light"]["lamp_center_height_m"]
     light["initial_state"] = "red"
     for marker in res["markers"]:
+        official_x = float(marker["x"])
+        official_y = float(marker["y"])
+        official_yaw = float(marker["yaw"])
         target_distance = float(markers.get("face_target_distance_m", 0.0))
         target_x, target_y, _ = generator.sample_at_s(
             res["arr"], (marker["s"] - target_distance) % res["meta"]["Ltot"],
             res["meta"]["Ltot"])
-        if markers.get("mount_type", "freestanding") == "freestanding":
+        if orientation_mode == "face_upstream_route_point":
             marker["yaw"] = math.atan2(target_y - marker["y"], target_x - marker["x"])
+        if mount_type == "wall_attached_angled_bracket":
+            face_offset = float(markers.get("face_offset_m", .0025))
+            wall_clearance = float(markers.get("wall_clearance_m", .001))
+            board_thickness = 2 * face_offset
+            delta = math.atan2(
+                math.sin(float(marker["yaw"]) - official_yaw),
+                math.cos(float(marker["yaw"]) - official_yaw),
+            )
+            # 공식 판의 뒤쪽 중앙을 벽 부착점으로 삼습니다. 판을 돌렸을 때 가장
+            # 뒤쪽 모서리가 벽을 뚫지 않도록 공식 벽 법선 방향으로 밀어냅니다.
+            wall_anchor_x = official_x - face_offset * math.cos(official_yaw)
+            wall_anchor_y = official_y - face_offset * math.sin(official_yaw)
+            wall_to_center = (
+                wall_clearance
+                + abs(math.sin(delta)) * board_size / 2
+                + abs(math.cos(delta)) * board_thickness / 2
+            )
+            marker["x"] = wall_anchor_x + wall_to_center * math.cos(official_yaw)
+            marker["y"] = wall_anchor_y + wall_to_center * math.sin(official_yaw)
+            marker["wall_mount"] = {
+                "official_board_center_xy_m": [official_x, official_y],
+                "official_yaw_rad": official_yaw,
+                "wall_anchor_xy_m": [wall_anchor_x, wall_anchor_y],
+                "runtime_board_center_xy_m": [float(marker["x"]), float(marker["y"])],
+                "runtime_yaw_rad": float(marker["yaw"]),
+                "yaw_delta_rad": delta,
+                "wall_to_board_center_m": wall_to_center,
+                "wall_clearance_m": wall_clearance,
+                "bracket_width_m": float(markers.get("bracket_width_m", .012)),
+            }
+        else:
+            marker["wall_mount"] = {
+                "official_board_center_xy_m": [official_x, official_y],
+                "official_yaw_rad": official_yaw,
+                "runtime_board_center_xy_m": [float(marker["x"]), float(marker["y"])],
+                "runtime_yaw_rad": float(marker["yaw"]),
+                "yaw_delta_rad": math.atan2(
+                    math.sin(float(marker["yaw"]) - official_yaw),
+                    math.cos(float(marker["yaw"]) - official_yaw),
+                ),
+            }
         marker["center_height"] = float(markers.get(
             "center_height_m",
             markers.get("bottom_height_m", .05) + board_size / 2,
@@ -222,29 +289,36 @@ DIGITS = {"1": ["010", "110", "010", "010", "111"], "2": ["110", "001", "010", "
 
 def add_grid_and_finish(model, res, generator):
     config = res["experimental_facilities"]["starting_grid"]
-    length, width, line = config["length_m"], config["width_m"], config["line_width_m"]
-    if width <= .15 or length <= .20 or line >= .02:
-        raise ValueError("출발 표시 외곽은 차량보다 커야 하고 선 두께는 2 cm 미만이어야 합니다.")
-    ranking = sorted(res["grid_slots"], key=lambda slot: (res["meta"]["startfinish_s"] - slot["s"]) % res["meta"]["Ltot"])
-    paint = link_at(model, "start_grid_paint", 0, 0)
-    for rank, slot in enumerate(ranking, 1):
-        slot["painted_number"] = rank
-        specs = [("front", length / 2, 0, line, width),
-                 ("left", 0, width / 2, length, line), ("right", 0, -width / 2, length, line)]
-        for suffix, forward, left, sx, sy in specs:
-            x, y = local_to_world(slot["x"], slot["y"], slot["yaw"], forward, left)
-            box(paint, f"slot_{slot['index']}_{suffix}", (x, y, PAINT_CENTER_M), (sx, sy, PAINT_THICKNESS_M),
-                WHITE, rpy=(0, 0, slot["yaw"]))
-        cell = config["number_height_m"] / 5
-        for row, cells in enumerate(DIGITS[str(rank)]):
-            for col, filled in enumerate(cells):
-                if filled == "0":
-                    continue
-                forward = -length / 2 - .025 - (row + .5) * cell
-                left = (1 - col) * cell
+    representation = config["representation"]
+    for slot in res["grid_slots"]:
+        slot.pop("painted_number", None)
+    if representation == "provisional_u_numbers":
+        length, width, line = config["length_m"], config["width_m"], config["line_width_m"]
+        if width <= .15 or length <= .20 or line >= .02:
+            raise ValueError("출발 표시 외곽은 차량보다 커야 하고 선 두께는 2 cm 미만이어야 합니다.")
+        ranking = sorted(
+            res["grid_slots"],
+            key=lambda slot: (res["meta"]["startfinish_s"] - slot["s"]) % res["meta"]["Ltot"],
+        )
+        paint = link_at(model, "start_grid_paint", 0, 0)
+        for rank, slot in enumerate(ranking, 1):
+            slot["painted_number"] = rank
+            specs = [("front", length / 2, 0, line, width),
+                     ("left", 0, width / 2, length, line), ("right", 0, -width / 2, length, line)]
+            for suffix, forward, left, sx, sy in specs:
                 x, y = local_to_world(slot["x"], slot["y"], slot["yaw"], forward, left)
-                box(paint, f"slot_{slot['index']}_number_{row}_{col}", (x, y, PAINT_CENTER_M),
-                    (cell, cell, PAINT_THICKNESS_M), WHITE, rpy=(0, 0, slot["yaw"]))
+                box(paint, f"slot_{slot['index']}_{suffix}", (x, y, PAINT_CENTER_M),
+                    (sx, sy, PAINT_THICKNESS_M), WHITE, rpy=(0, 0, slot["yaw"]))
+            cell = config["number_height_m"] / 5
+            for row, cells in enumerate(DIGITS[str(rank)]):
+                for col, filled in enumerate(cells):
+                    if filled == "0":
+                        continue
+                    forward = -length / 2 - .025 - (row + .5) * cell
+                    left = (1 - col) * cell
+                    x, y = local_to_world(slot["x"], slot["y"], slot["yaw"], forward, left)
+                    box(paint, f"slot_{slot['index']}_number_{row}_{col}", (x, y, PAINT_CENTER_M),
+                        (cell, cell, PAINT_THICKNESS_M), WHITE, rpy=(0, 0, slot["yaw"]))
 
     config = res["experimental_facilities"]["finish_line"]
     x, y, yaw = generator.sample_at_s(res["arr"], res["meta"]["startfinish_s"], res["meta"]["Ltot"])
@@ -334,24 +408,102 @@ def add_markers(model, res):
                     center + size / 2 - (row + .5) * cell), (.0004, cell, cell), BLACK)
 
 
+def angle_preserved_official_markers(model, res):
+    """공식 PBR 판을 벽 부착점을 유지한 시험용 각도·브래킷으로 바꿉니다."""
+    config = res["experimental_facilities"]["markers"]
+    if config.get("mount_type") != "wall_attached_angled_bracket":
+        return []
+    placements = []
+    for marker in res["markers"]:
+        marker_id = int(marker["id"])
+        link = model.find(f"link[@name='aruco_{marker_id}']")
+        if link is None:
+            raise ValueError(f"기울일 공식 ArUco ID {marker_id} 링크가 없습니다.")
+        original = [float(value) for value in link.findtext("pose").split()]
+        mount = marker["wall_mount"]
+        expected = [*mount["official_board_center_xy_m"], mount["official_yaw_rad"]]
+        if not all(math.isclose(a, b, abs_tol=1e-4) for a, b in zip(
+            (original[0], original[1], original[5]), expected
+        )):
+            raise ValueError(f"ArUco ID {marker_id}의 공식 부착점이 구성 입력과 다릅니다.")
+        runtime_pose = [float(marker["x"]), float(marker["y"]), original[2], 0.0, 0.0, float(marker["yaw"])]
+        link.find("pose").text = number_list(runtime_pose)
+
+        anchor_x, anchor_y = mount["wall_anchor_xy_m"]
+        dx_world = anchor_x - float(marker["x"])
+        dy_world = anchor_y - float(marker["y"])
+        c, s = math.cos(float(marker["yaw"])), math.sin(float(marker["yaw"]))
+        dx_local = c * dx_world + s * dy_world
+        dy_local = -s * dx_world + c * dy_world
+        bracket_length = math.hypot(dx_local, dy_local)
+        bracket_yaw = math.atan2(dy_local, dx_local)
+        bracket_width = float(mount["bracket_width_m"])
+        for suffix, z in (("lower", -.03), ("upper", .03)):
+            box(
+                link,
+                f"mounting_bracket_{suffix}",
+                (dx_local / 2, dy_local / 2, z),
+                (bracket_length, bracket_width, bracket_width),
+                STEEL,
+                rpy=(0, 0, bracket_yaw),
+                collision=True,
+            )
+        if config.get("representation") == "official_pbr_texture_with_sdf_face":
+            board_size = float(config["printed_board_size_m"])
+            code_size = float(config["black_square_size_m"])
+            # 공식 PBR 판·텍스처는 제거하지 않습니다. 정면(+X)에 0.2 mm 면을
+            # 겹쳐, 돌출된 상자 외곽이 ArUco 내부 경계보다 먼저 후보가 되는
+            # Gazebo 렌더링 특성만 피합니다. 실물 재질 시험을 대신하지 않습니다.
+            box(link, "sim_readable_white_face", (.0027, 0, 0),
+                (.0002, board_size, board_size), WHITE)
+            cells = marker_cells(marker_id)
+            cell = code_size / 6
+            for row in range(6):
+                for col in range(6):
+                    if cells[row, col] != 0:
+                        continue
+                    box(link, f"sim_readable_ink_{row}_{col}",
+                        (.0029, -code_size / 2 + (col + .5) * cell,
+                         code_size / 2 - (row + .5) * cell),
+                        (.0002, cell, cell), BLACK)
+        placements.append({
+            "id": marker_id,
+            "official_link_pose_xyz_rpy": original,
+            "wall_anchor_xy_m": mount["wall_anchor_xy_m"],
+            "runtime_link_pose_xyz_rpy": runtime_pose,
+            "yaw_delta_rad": mount["yaw_delta_rad"],
+            "bracket_length_m": bracket_length,
+            "placement_changed": True,
+        })
+    return placements
+
+
 def replace_facilities(world_path, res, generator):
     """생성기의 시설 링크만 교체합니다. 노면·벽·그리드 위치는 변경하지 않습니다."""
     tree = ET.parse(world_path)
     model = tree.find("./world/model[@name='it_arena_track_static']")
     preserve_official_markers = (
-        res["experimental_facilities"]["markers"].get("representation")
-        == "official_pbr_texture"
+        res["experimental_facilities"]["markers"].get("representation", "").startswith(
+            "official_pbr_texture"
+        )
+    )
+    preserve_official_grid = (
+        res["experimental_facilities"]["starting_grid"].get("representation")
+        == "official_filled_slots"
     )
     for link in list(model.findall("link")):
         name = link.attrib["name"]
         replace_marker = name.startswith("aruco_") and not preserve_official_markers
-        if name.startswith(("bump_", "grid_slot_", "lamp_")) or replace_marker or name in ("tl_post", "tl_beam"):
+        replace_grid = name.startswith("grid_slot_") and not preserve_official_grid
+        if name.startswith(("bump_", "lamp_")) or replace_grid or replace_marker or name in ("tl_post", "tl_beam"):
             model.remove(link)
     add_bumps(model, res, world_path.parent)
     add_grid_and_finish(model, res, generator)
     add_traffic_light(model, res)
     if not preserve_official_markers:
         add_markers(model, res)
+    else:
+        res["runtime_marker_placements"] = angle_preserved_official_markers(model, res)
     ET.indent(tree, space="  ")
     tree.write(world_path, encoding="utf-8", xml_declaration=True)
 
@@ -373,8 +525,10 @@ def update_scene(scene, res, generator):
     mount_type = marker_config.get("mount_type", "freestanding")
     marker_representation = marker_config.get("representation", "sdf_cells")
     marker_rendering = (
-        "official v2026.09.01 PNG albedo map on the preserved PBR board"
-        if marker_representation == "official_pbr_texture"
+        ("official v2026.09.02 PNG/PBR board preserved with a matching thin SDF-cell front face"
+         if marker_representation == "official_pbr_texture_with_sdf_face"
+         else "official v2026.09.02 PNG albedo map on the preserved PBR board")
+        if marker_representation.startswith("official_pbr_texture")
         else "DICT_4X4_50 cells as untextured SDF geometry; preserved PNG files unchanged"
     )
     scene["aruco_markers"].update({"marker_size_m": marker_config["printed_board_size_m"],
@@ -391,15 +545,41 @@ def update_scene(scene, res, generator):
     by_id = {marker["id"]: marker for marker in res["markers"]}
     for marker in scene["aruco_markers"]["markers"]:
         source = by_id[marker["id"]]
-        normal_note = "local +X faces the main-route reference point"
+        normal_note = "local +X keeps the official wall-parallel direction"
         if mount_type == "freestanding":
             normal_note = f"local +X faces a point {marker_config['face_target_distance_m']:g} m upstream along the main route"
+        elif mount_type == "wall_attached_angled_bracket":
+            normal_note = (
+                f"local +X faces a point {marker_config['face_target_distance_m']:g} m upstream; "
+                "the official wall anchor is retained by two provisional brackets"
+            )
         marker.update(pose=source["face_pose"], pose_reference="printed_board_front_center",
                       normal_note=normal_note,
                       approach_target_xy_m=source["approach_target"])
-    scene["starting_grid"]["paint"] = {**config["starting_grid"], "paint_center_height_m": PAINT_CENTER_M,
-                                        "collision": False, "numbering": "front_to_back_1_to_6",
-                                        "slot_number_map": {str(slot["index"]): slot["painted_number"] for slot in res["grid_slots"]}}
+    grid_config = config["starting_grid"]
+    if grid_config["representation"] == "official_filled_slots":
+        scene["starting_grid"]["paint"] = {
+            "representation": "official_filled_slots",
+            "source": "official v2026.09.02 world.sdf grid_slot_0..5 visuals",
+            "length_m": grid_config["length_m"],
+            "width_m": grid_config["width_m"],
+            "paint_center_height_m": grid_config["center_height_m"],
+            "paint_thickness_m": grid_config["thickness_m"],
+            "material": "white",
+            "collision": False,
+            "numbering": "none",
+        }
+    else:
+        scene["starting_grid"]["paint"] = {
+            **grid_config,
+            "paint_center_height_m": PAINT_CENTER_M,
+            "paint_thickness_m": PAINT_THICKNESS_M,
+            "collision": False,
+            "numbering": "front_to_back_1_to_6",
+            "slot_number_map": {
+                str(slot["index"]): slot["painted_number"] for slot in res["grid_slots"]
+            },
+        }
     scene["finish_line"] = res["finish_line"]
     cases = []
     for slot in scene["starting_grid"]["slots"]:

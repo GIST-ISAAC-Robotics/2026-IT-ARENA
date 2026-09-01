@@ -168,6 +168,24 @@ def _launch_setup(context):
 
     body = config["body"]
     drivetrain = config["drivetrain"]
+    rear_marker = config["identification_marker"]
+    rear_marker_xyz = [float(value) for value in rear_marker["xyz_m"]]
+    rear_marker_rpy = [float(value) for value in rear_marker["rpy_rad"]]
+    if (
+        rear_marker["dictionary"] != "DICT_4X4_50"
+        or int(rear_marker["id"]) != 10
+        or not math.isclose(float(rear_marker["printed_board_size_m"]), .05, abs_tol=1e-9)
+        or not math.isclose(
+            float(rear_marker["black_code_size_m"])
+            + 2 * float(rear_marker["quiet_zone_each_side_m"]),
+            float(rear_marker["printed_board_size_m"]),
+            abs_tol=1e-9,
+        )
+        or any(not math.isfinite(value) for value in [*rear_marker_xyz, *rear_marker_rpy])
+        or not math.isclose(rear_marker_rpy[0], 0.0, abs_tol=1e-9)
+        or not math.isclose(rear_marker_rpy[1], 0.0, abs_tol=1e-9)
+    ):
+        raise RuntimeError("현재 차량 형상은 5 cm DICT_4X4_50 ID 10 후면 마커 설정만 지원합니다.")
     d435i = config["sensors"]["d435i"]
     wheel_encoders = config["sensors"]["wheel_encoders"]
     drive_mappings = _dynamics_mappings(config, LaunchConfiguration("drive_mode").perform(context),
@@ -208,6 +226,13 @@ def _launch_setup(context):
             "body_width": str(body["width_m"]),
             "body_height": str(body["height_m"]),
             "body_mass": str(body["mass_kg"]),
+            "rear_marker_enabled": str(rear_marker["enabled"]).lower(),
+            "rear_marker_x": str(rear_marker_xyz[0]),
+            "rear_marker_y": str(rear_marker_xyz[1]),
+            "rear_marker_z": str(rear_marker_xyz[2]),
+            "rear_marker_yaw": str(rear_marker_rpy[2]),
+            "rear_marker_board_size": str(rear_marker["printed_board_size_m"]),
+            "rear_marker_code_size": str(rear_marker["black_code_size_m"]),
             "wheelbase": str(drivetrain["wheelbase_m"]),
             "track_width": str(drivetrain["track_width_m"]),
             "wheel_radius": str(drivetrain["wheel_radius_m"]),
@@ -408,9 +433,12 @@ def _launch_setup(context):
                     f"ToF safety={safety_enabled}. Motor/tire properties are provisional."),
         LogInfo(msg=f"Track: {track}; main width: {scene['track']['width_m']} m; "
                     f"shortcut widths: {[branch['width_m'] for branch in scene['branches']]} m. "
-                    + ("Official v2026.09.01 geometry; marker placement and s=0 start/finish are preserved; "
-                     "signal, bump profile and painted-guide styling remain provisional."
+                    + ("Official v2026.09.02 road/grass/wall geometry and filled grid visuals are preserved; "
+                     "course-marker angle, signal, bump profile and checker finish are team-test provisional."
                      if track == "official" else "Historical reproduction / experimental course.")),
+        LogInfo(msg=f"Rear identification marker: enabled={rear_marker['enabled']}; "
+                    f"{rear_marker['dictionary']} ID {rear_marker['id']}; "
+                    f"board={rear_marker['printed_board_size_m']} m (team provisional)."),
         LogInfo(msg=f"D435i profile: {d435i_profile_name}; "
                     f"RGB {color['width_px']}x{color['height_px']} @ "
                     f"{d435i_profile['color_rate_hz']} Hz; depth "
@@ -546,7 +574,7 @@ def generate_launch_description() -> LaunchDescription:
                 "track",
                 default_value="official",
                 choices=list(TRACK_DIRECTORIES),
-                description="official: v2026.09.01 45/20 cm; experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
+                description="official: v2026.09.02 45/20 cm team-test runtime; experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
             ),
             DeclareLaunchArgument(
                 "vehicle_config",

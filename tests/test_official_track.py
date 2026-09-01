@@ -1,4 +1,4 @@
-"""공식 v2026.09.01 입력·보정 범위·실행 월드 회귀 검사."""
+"""공식 v2026.09.02 입력·보정 범위·실행 월드 회귀 검사."""
 
 import json
 import math
@@ -19,7 +19,7 @@ import build_official_track as official_builder  # noqa: E402
 
 
 def test_pinned_official_release_is_preserved():
-    assert ARCHIVE.stat().st_size == 822_391
+    assert ARCHIVE.stat().st_size == 883_631
     assert sha256(ARCHIVE) == EXPECTED_ARCHIVE_SHA256
     with ZipFile(ARCHIVE) as archive:
         assert sum(not item.is_dir() for item in archive.infolist()) == 24
@@ -46,15 +46,22 @@ def test_official_geometry_and_classification_are_explicit():
     assert scene["track"]["lap_length_m"] == 46.6329
     assert provenance["official_values"]["vehicle_envelope_m"] == {"length": .2, "width": .15}
     assert provenance["runtime_corrections"]["facilities"]["status"] == (
-        "official_v2026.09.01_geometry_with_provisional_runtime_facility_representation"
+        "official_v2026.09.02_geometry_with_provisional_marker_mount_and_facility_representation"
     )
+    verification = scene["verification"]
+    assert verification["surface_coverage_ok"] is True
+    assert verification["grass_coverage_ok"] is True
+    assert verification["surface_missing_pct"] == .0538
+    assert verification["surface_max_gap_m"] == .001
+    assert verification["grass_missing_pct"] == .2311
+    assert verification["grass_on_road_pct"] == .1305
     assert provenance["friction_scope"]["road"] == "unspecified_engine_default"
     for report in provenance["geometry_checks"].values():
         assert report["static_footprint_checks_pass"], report
         assert not any(route["blocked_samples"] for route in report["routes"].values())
 
 
-def test_course_markers_follow_print_sheet_and_preserve_official_placement():
+def test_course_markers_follow_print_sheet_and_use_documented_angled_wall_brackets():
     scene = json.loads((DESTINATION / "scene.json").read_text(encoding="utf-8"))
     provenance = json.loads((DESTINATION / "provenance.json").read_text(encoding="utf-8"))
     markers = scene["aruco_markers"]
@@ -63,18 +70,18 @@ def test_course_markers_follow_print_sheet_and_preserve_official_placement():
     assert markers["black_code_size_m"] == .07
     assert markers["quiet_zone_each_side_m"] == .015
     assert markers["mount_bottom_height_m"] == .05
-    assert markers["mount_type"] == "wall_attached"
+    assert markers["mount_type"] == "wall_attached_angled_bracket"
     assert {item["id"] for item in markers["markers"]} == {0, 20, 30, 45}
     placement = provenance["runtime_corrections"]["marker_placement"]
-    assert placement["status"] == "official_v2026.09.01_pose_preserved"
+    assert placement["status"] == "team_provisional_angled_wall_bracket_pending_issue_12_meeting_decision"
     assert {item["id"] for item in placement["placements"]} == {0, 20, 30, 45}
-    assert all(not item["placement_changed"] for item in placement["placements"])
+    assert all(item["placement_changed"] for item in placement["placements"])
     for item in placement["placements"]:
         official = item["official_scene_pose"]
-        runtime = item["runtime_link_origin"]
-        assert math.isclose(official["x"], runtime["x"], abs_tol=1e-4)
-        assert math.isclose(official["y"], runtime["y"], abs_tol=1e-4)
-        assert math.isclose(official["yaw_rad"], runtime["yaw_rad"], abs_tol=1e-4)
+        runtime = item["runtime_link_pose_xyz_rpy"]
+        assert not math.isclose(official["yaw_rad"], runtime[5], abs_tol=1e-3)
+        assert item["bracket_length_m"] > 0
+        assert item["official_input_verified_before_runtime_change"] is True
 
     model = ET.parse(DESTINATION / "world.sdf").find("./world/model[@name='it_arena_track_static']")
     for marker_id in (0, 20, 30, 45):
@@ -91,9 +98,20 @@ def test_course_markers_follow_print_sheet_and_preserve_official_placement():
         assert visual.find("material/script") is None
         assert visual.findtext("material/diffuse") == "1 1 1 1"
         assert visual.findtext("material/pbr/metal/albedo_map") == f"aruco/aruco_id{marker_id}.png"
+        brackets = [visual for visual in link.findall("visual") if visual.attrib["name"].startswith("mounting_bracket_")]
+        bracket_collisions = [
+            collision for collision in link.findall("collision")
+            if collision.attrib["name"].startswith("mounting_bracket_")
+        ]
+        assert len(brackets) == len(bracket_collisions) == 2
+        assert link.find("visual[@name='sim_readable_white_face']") is not None
+        assert len([
+            item for item in link.findall("visual")
+            if item.attrib["name"].startswith("sim_readable_ink_")
+        ]) >= 20
 
     assert markers["rendering"] == (
-        "official v2026.09.01 PNG albedo map on the preserved PBR board"
+        "official v2026.09.02 PNG/PBR board preserved with a matching thin SDF-cell front face"
     )
 
 
@@ -110,6 +128,45 @@ def test_only_official_walls_carry_track_friction_coefficients():
                for name, mu, mu2 in specified)
     bump = model.find("link[@name='safety_bump_0']")
     assert bump is not None and not bump.findall("collision/surface/friction")
+
+
+def test_official_filled_starting_grid_visuals_are_preserved_without_provisional_numbers():
+    scene = json.loads((DESTINATION / "scene.json").read_text(encoding="utf-8"))
+    model = ET.parse(DESTINATION / "world.sdf").find("./world/model[@name='it_arena_track_static']")
+    merged = model.find("link[@name='track_geometry_merged']")
+    assert model.find("link[@name='start_grid_paint']") is None
+    assert not [
+        visual for visual in model.findall(".//visual")
+        if visual.attrib["name"].startswith("slot_")
+    ]
+
+    paint = scene["starting_grid"]["paint"]
+    assert paint == {
+        "representation": "official_filled_slots",
+        "source": "official v2026.09.02 world.sdf grid_slot_0..5 visuals",
+        "length_m": .25,
+        "width_m": .17,
+        "paint_center_height_m": .0037,
+        "paint_thickness_m": .001,
+        "material": "white",
+        "collision": False,
+        "numbering": "none",
+    }
+
+    with ZipFile(ARCHIVE) as archive:
+        raw_model = ET.fromstring(archive.read("output_final/world.sdf")).find(
+            "./world/model[@name='it_arena_track_static']"
+        )
+    for index in range(6):
+        raw_link = raw_model.find(f"link[@name='grid_slot_{index}']")
+        raw_visual = raw_link.find(f"visual[@name='grid_slot_{index}_vis']")
+        runtime_visual = merged.find(f"visual[@name='grid_slot_{index}__grid_slot_{index}_vis']")
+        assert runtime_visual is not None
+        assert runtime_visual.findtext("pose") == raw_link.findtext("pose")
+        assert runtime_visual.findtext("geometry/box/size") == raw_visual.findtext("geometry/box/size")
+        assert runtime_visual.findtext("material/ambient") == raw_visual.findtext("material/ambient")
+        assert runtime_visual.findtext("material/diffuse") == raw_visual.findtext("material/diffuse")
+        assert merged.find(f"collision[@name='grid_slot_{index}__grid_slot_{index}_col']") is None
 
 
 def test_runtime_facility_metadata_matches_geometry_and_selected_start_line():

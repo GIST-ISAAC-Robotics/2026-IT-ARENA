@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""공식 v2026.09.01 릴리스를 보존하며 Gazebo 실행 월드를 생성합니다.
+"""공식 v2026.09.02 릴리스를 보존하며 Gazebo 실행 월드를 생성합니다.
 
-노면·벽·중심선·분기·그리드 슬롯·ArUco 배치는 릴리스를 따릅니다. 신호등,
-방지턱 단면과 노면 표시는 실물 자료 전까지의 실행용 표현으로 분리합니다.
+노면·잔디·벽·중심선·분기·그리드 슬롯은 릴리스를 따릅니다. 코스 ArUco의
+ID·경로 위치·판·텍스처는 보존하되 방향은 #12 회의 결론 전 팀 시험용으로
+기울입니다. 신호등과 방지턱 단면도 실물 자료 전 실행용 표현으로 분리합니다.
 보존 ZIP은 절대 수정하지 않습니다.
 """
 
@@ -29,12 +30,12 @@ from experimental_facilities import configure, replace_facilities, update_scene
 
 
 REPO = Path(__file__).resolve().parents[1]
-ARCHIVE = REPO / "assets/track/official/v2026.09.01/it_arena_track_v2026.09.01.zip"
-PROFILE = REPO / "config/tracks/official_v2026.09.01.yaml"
+ARCHIVE = REPO / "assets/track/official/v2026.09.02/it_arena_track_v2026.09.02.zip"
+PROFILE = REPO / "config/tracks/official_v2026.09.02.yaml"
 DESTINATION = REPO / "src/arena_gazebo/worlds/it_arena_official"
 VEHICLE = REPO / "src/arena_description/config/vehicle.yaml"
-EXPECTED_ARCHIVE_SHA256 = "f40aca619a6207f48f33741a56716edc65e948a674c7937f70b44476205b894c"
-EXPECTED_ARCHIVE_SIZE = 822_391
+EXPECTED_ARCHIVE_SHA256 = "6f74322703554e2dbe87598ce00a85332e1c6227353e82b1255180d2b12e12cb"
+EXPECTED_ARCHIVE_SIZE = 883_631
 EXPECTED_MEMBER_COUNT = 24
 
 
@@ -86,8 +87,8 @@ def _floats(text: str | None, default: str = "0 0 0 0 0 0") -> list[float]:
     return [float(value) for value in (text or default).split()]
 
 
-def verify_official_markers(world_path: Path, source_scene: dict, res: dict) -> list[dict]:
-    """v2026.09.01의 공식 마커 pose·재질을 대조하고 런타임 이동이 없음을 기록합니다."""
+def verify_official_markers(world_path: Path, source_scene: dict) -> list[dict]:
+    """v2026.09.02 원본 마커의 pose·판·재질을 팀 변경 전에 대조합니다."""
     tree = ET.parse(world_path)
     model = tree.find("./world/model[@name='it_arena_track_static']")
     if model is None:
@@ -96,22 +97,16 @@ def verify_official_markers(world_path: Path, source_scene: dict, res: dict) -> 
     if set(scene_markers) != {0, 20, 30, 45}:
         raise ValueError("공식 scene.json의 코스 마커 ID가 예상과 다릅니다.")
     placements = []
-    for marker in res["markers"]:
-        marker_id = int(marker["id"])
-        scene_pose = scene_markers[marker_id]["pose"]
+    for marker_id, scene_marker in sorted(scene_markers.items()):
+        scene_pose = scene_marker["pose"]
         link = model.find(f"link[@name='aruco_{marker_id}']")
         if link is None:
             raise ValueError(f"공식 SDF에서 ArUco ID {marker_id} 링크를 찾지 못했습니다.")
         link_pose = _floats(link.findtext("pose"))
-        expected = [float(marker["x"]), float(marker["y"]), float(marker["center_height"]),
-                    0.0, 0.0, float(marker["yaw"])]
+        expected = [float(scene_pose["x"]), float(scene_pose["y"]), float(scene_pose["z"]) + .05,
+                    0.0, 0.0, float(scene_pose["yaw_rad"])]
         if not all(math.isclose(a, b, abs_tol=1e-4) for a, b in zip(link_pose, expected)):
             raise ValueError(f"ArUco ID {marker_id}의 생성 결과와 SDF pose가 다릅니다.")
-        if not all(math.isclose(float(scene_pose[key]), value, abs_tol=1e-4) for key, value in (
-            ("x", expected[0]), ("y", expected[1]), ("z", float(marker["z"])),
-            ("yaw_rad", expected[5]),
-        )):
-            raise ValueError(f"ArUco ID {marker_id}의 scene.json과 생성 결과 pose가 다릅니다.")
         visual = link.find("visual")
         collision = link.find("collision")
         if visual is None or collision is None:
@@ -131,11 +126,8 @@ def verify_official_markers(world_path: Path, source_scene: dict, res: dict) -> 
             "official_sdf_board_center_pose": {
                 "x": link_pose[0], "y": link_pose[1], "z": link_pose[2], "yaw_rad": link_pose[5],
             },
-            "runtime_link_origin": {
-                "x": float(marker["x"]), "y": float(marker["y"]), "yaw_rad": float(marker["yaw"]),
-            },
-            "placement_changed": False,
-            "runtime_representation": "official v2026.09.01 pose and PNG/PBR textured plate preserved",
+            "official_input_verified_before_runtime_change": True,
+            "runtime_representation": "official v2026.09.02 PNG/PBR textured plate on a provisional angled wall bracket",
         })
     return placements
 
@@ -158,7 +150,7 @@ def swept_footprint(vehicle: dict) -> dict:
 def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict, dict]:
     archive = verify_archive()
     profile = yaml.safe_load(profile_path.read_text(encoding="utf-8"))
-    if profile.get("profile") != "official_v2026.09.01":
+    if profile.get("profile") != "official_v2026.09.02":
         raise ValueError("공식 프로필 이름이 올바르지 않습니다.")
     if profile["release_sha256"] != archive["sha256"]:
         raise ValueError("프로필의 릴리스 해시가 보존 ZIP과 다릅니다.")
@@ -174,19 +166,24 @@ def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict
         raise ValueError("공식 설계의 재생성 길이가 릴리스 scene과 다릅니다.")
     if float(result["meta"]["track_w"]) != .45 or [float(item["width_m"]) for item in result["branches"]] != [.20, .20]:
         raise ValueError("공식 본선 45 cm·지름길 20 cm 조건을 만족하지 않습니다.")
+    marker_placements = verify_official_markers(raw / "world.sdf", source_scene)
     facility_config = configure(result, profile, generator)
-    marker_placements = verify_official_markers(raw / "world.sdf", source_scene, result)
     start_finish = source_scene.get("start_finish")
     if not start_finish or not math.isclose(float(start_finish["s_m"]), 0.0, abs_tol=1e-9):
-        raise ValueError("v2026.09.01 공식 출발/결승 기준 s=0이 scene.json에 없습니다.")
+        raise ValueError("v2026.09.02 공식 출발/결승 기준 s=0이 scene.json에 없습니다.")
     if not math.isclose(float(design["features"]["start_line"]["s"]), 0.0, abs_tol=1e-9):
-        raise ValueError("v2026.09.01 design_final.json의 출발/결승 기준이 s=0이 아닙니다.")
+        raise ValueError("v2026.09.02 design_final.json의 출발/결승 기준이 s=0이 아닙니다.")
     if not math.isclose(float(source_scene["starting_grid"]["longitudinal_stagger_m"]), .20, abs_tol=1e-9):
-        raise ValueError("v2026.09.01 그리드 엇갈림 메타데이터가 실제 적용값 0.20 m가 아닙니다.")
+        raise ValueError("v2026.09.02 그리드 엇갈림 메타데이터가 실제 적용값 0.20 m가 아닙니다.")
     replace_facilities(raw / "world.sdf", result, generator)
+    runtime_by_id = {item["id"]: item for item in result.get("runtime_marker_placements", [])}
+    if set(runtime_by_id) != {0, 20, 30, 45}:
+        raise ValueError("팀 시험용 코스 마커 네 개의 기울임 결과가 완전하지 않습니다.")
+    for placement in marker_placements:
+        placement.update(runtime_by_id[placement["id"]])
     scene = copy.deepcopy(source_scene)
     update_scene(scene, result, generator)
-    scene["course_name"] = "IT ARENA official release v2026.09.01 runtime"
+    scene["course_name"] = "IT ARENA official release v2026.09.02 team-test runtime"
     scene["official_source"] = {
         "repository": profile["upstream_repository"], "commit": profile["upstream_commit"],
         "release": profile["upstream_release"], "asset": profile["release_asset"], **archive,
@@ -194,16 +191,18 @@ def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict
     scene["runtime_corrections"] = {
         "official_geometry_unchanged": [
             "main and shortcut centerlines", "road/grass/wall geometry", "branch openings",
-            "starting slot poses", "course ArUco IDs, poses and official PNG/PBR board rendering",
+            "starting slot poses and filled white visuals",
+            "course ArUco IDs, route s, board dimensions and official PNG/PBR rendering",
         ],
         "marker_placement": {
-            "status": "official_v2026.09.01_pose_preserved",
+            "status": "team_provisional_angled_wall_bracket_pending_issue_12_meeting_decision",
             "placements": marker_placements,
         },
         "provisional_facilities": [
+            "course-marker yaw and wall bracket chosen for a 1.2 m upstream viewing point",
             "camera-visible low traffic-light body and deterministic simulator sequence",
             "5 cm raised-cosine speed-bump cross-section pending MeKENic STL",
-            "grid U-lines/numbers and checker finish paint at the official s=0 start/finish pose",
+            "checker finish paint at the official s=0 start/finish pose",
         ],
         "friction": "official wall collisions retain mu=mu2=0.8; road, grass and bump have no injected coefficient",
     }
@@ -218,7 +217,7 @@ def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict
 def build(profile_path: Path = PROFILE, destination: Path = DESTINATION) -> dict:
     scratch_root = REPO / "build/official_track_generation"
     scratch_root.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="v2026_09_01_", dir=scratch_root) as temporary:
+    with tempfile.TemporaryDirectory(prefix="v2026_09_02_", dir=scratch_root) as temporary:
         profile, generator, result, design, prepared = prepare(profile_path, Path(temporary))
         raw = prepared["raw"]
         vehicle = yaml.safe_load(VEHICLE.read_text(encoding="utf-8"))["vehicle"]
@@ -249,7 +248,7 @@ def build(profile_path: Path = PROFILE, destination: Path = DESTINATION) -> dict
         },
         "runtime_corrections": {
             "marker_placement": {
-                "status": "official_v2026.09.01_pose_preserved",
+                "status": "team_provisional_angled_wall_bracket_pending_issue_12_meeting_decision",
                 "placements": prepared["marker_placements"],
             },
             "facilities": prepared["facility_config"],
