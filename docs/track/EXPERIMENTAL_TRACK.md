@@ -1,10 +1,10 @@
 # 실험 트랙과 차량 치수 안내
 
-갱신: 2026-08-31. 이 문서의 실험값은 공식 경기 규격이 아닙니다.
+갱신: 2026-09-01. 이 문서의 실험값은 공식 경기 규격이 아닙니다.
 
 ## 현재 기본값과 이 문서의 범위
 
-현재 기본은 공식 `v2026.08.31` 기반 `track:=official`입니다. 이 문서는 초기 전달본과 기존 45/25 cm 폭 실험의 설정·검증 이력을 계속 보존합니다. 아래 25 cm 지름길·큰 독립형 마커·20 cm 방지턱을 새 공식 실행본의 값으로 읽지 않습니다.
+현재 기본은 공식 `v2026.09.01` 기반 `track:=official`입니다. 이 문서는 초기 전달본과 기존 45/25 cm 폭 실험의 설정·검증 이력을 계속 보존합니다. 아래 25 cm 지름길·큰 독립형 마커·20 cm 방지턱을 새 공식 실행본의 값으로 읽지 않습니다.
 
 | 지도 | 본선 / 지름길 | 현재 상태 |
 |---|---|---|
@@ -12,13 +12,13 @@
 | `experimental` | 45 cm / 각각 25 cm | 이전 사용자 승인 실험, 선택 실행·재생성 유지 |
 | `original` | 35 cm / 각각 12 cm | 초기 전달본 재현, 선택 실행·원본 보존 유지 |
 
-공식 기준 커밋은 `d61c5db9252cedfbc163cd044a47671df91e1660`입니다. 보존 ZIP·해시는 [`assets/track/official/v2026.08.31/SOURCE.md`](../../assets/track/official/v2026.08.31/SOURCE.md), 입력은 [`config/tracks/official_v2026.08.31.yaml`](../../config/tracks/official_v2026.08.31.yaml), 생성기는 [`scripts/build_official_track.py`](../../scripts/build_official_track.py), 결과는 `src/arena_gazebo/worlds/it_arena_official/`입니다.
+공식 기준 커밋은 `921f3f9a044f1a38ff849cb8e19d00182dd5533b`입니다. 보존 ZIP·해시는 [`assets/track/official/v2026.09.01/SOURCE.md`](../../assets/track/official/v2026.09.01/SOURCE.md), 입력은 [`config/tracks/official_v2026.09.01.yaml`](../../config/tracks/official_v2026.09.01.yaml), 생성기는 [`scripts/build_official_track.py`](../../scripts/build_official_track.py), 결과는 `src/arena_gazebo/worlds/it_arena_official/`입니다.
 
-공식 실행본은 인쇄판 10 cm·코드 7 cm·하단 5 cm의 벽 부착 마커를 적용하고, ID 30도 설계 측면을 유지해 벽면으로 보정합니다. 방지턱의 공식 명목 길이 5 cm·높이 1 cm와 임시 곡면, 신호등·출발/피니시 표시를 구분합니다. 벽의 공식 마찰 0.8은 보존하되 도로·잔디·방지턱 계수는 미지정 상태를 유지합니다. 자세한 근거는 [공식 원본 감사](OFFICIAL_SOURCE_AUDIT.md), [마커·시설 안내](OFFICIAL_MARKERS_AND_FACILITIES.md), [ADR 0010](../decisions/0010-official-v2026-08-31-track.md)에 있습니다.
+공식 실행본은 인쇄판 10 cm·코드 7 cm·하단 5 cm의 새 공식 벽 부착 pose와 PNG/PBR 판을 그대로 사용합니다. 방지턱의 공식 명목 길이 5 cm·높이 1 cm와 임시 곡면, 신호등·출발/피니시 표시를 구분합니다. 벽의 공식 마찰 0.8은 보존하되 도로·잔디·방지턱 계수는 미지정 상태를 유지합니다. 자세한 근거는 [공식 재감사](OFFICIAL_V2026_09_01_REAUDIT.md), [마커·시설 안내](OFFICIAL_MARKERS_AND_FACILITIES.md), [ADR 0011](../decisions/0011-official-v2026-09-01-track.md)에 있습니다.
 
 ## 계속 확인할 원문
 
-- 현재 공식 기준은 [공식 `track/README.md`](https://github.com/MOSW626/istech-it-arena/blob/d61c5db9252cedfbc163cd044a47671df91e1660/track/README.md)와 같은 버전 출력물·도면·인쇄 시트입니다. 아래 과거 원문·접근 실패·실험 결과와 구분합니다.
+- 현재 공식 기준은 [공식 `track/README.md`](https://github.com/MOSW626/istech-it-arena/blob/921f3f9a044f1a38ff849cb8e19d00182dd5533b/track/README.md)와 같은 버전 출력물·도면·인쇄 시트입니다. 아래 과거 원문·접근 실패·실험 결과와 구분합니다.
 - [2026-06-30 미팅](https://maddening-cause-ce7.notion.site/2026-06-30-38f99fd42e3080f6956fe5a5b90d0824): A-1 도로 폭, A-2 차량 크기·지름길·마커 배치 의도.
 - [트랙 감사 기록](TRACK_AUDIT.md): 회의록과 현재 제공된 파일의 수치 차이.
 - [본선 45 cm·차량 3대 상단 배치 확인](MAIN_WIDTH_VISUAL_CHECK.md): 현재 실험 월드와 실제 차량 SDF의 폭 적용을 사진으로 대조한 자료.

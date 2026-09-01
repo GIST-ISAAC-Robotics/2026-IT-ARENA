@@ -1,4 +1,4 @@
-"""공식 v2026.08.31 입력·보정 범위·실행 월드 회귀 검사."""
+"""공식 v2026.09.01 입력·보정 범위·실행 월드 회귀 검사."""
 
 import json
 import math
@@ -15,15 +15,14 @@ sys.path.insert(0, str(REPO / "scripts"))
 from build_official_track import (  # noqa: E402
     ARCHIVE, DESTINATION, EXPECTED_ARCHIVE_SHA256, check, sha256,
 )
-from experimental_facilities import marker_cells  # noqa: E402
 import build_official_track as official_builder  # noqa: E402
 
 
 def test_pinned_official_release_is_preserved():
-    assert ARCHIVE.stat().st_size == 746_603
+    assert ARCHIVE.stat().st_size == 822_391
     assert sha256(ARCHIVE) == EXPECTED_ARCHIVE_SHA256
     with ZipFile(ARCHIVE) as archive:
-        assert sum(not item.is_dir() for item in archive.infolist()) == 23
+        assert sum(not item.is_dir() for item in archive.infolist()) == 24
         assert {"design_final.json", "track_gen.py", "output_final/world.sdf", "output_final/scene.json"} <= set(archive.namelist())
 
 
@@ -46,14 +45,16 @@ def test_official_geometry_and_classification_are_explicit():
     assert [branch["width_m"] for branch in scene["branches"]] == [.2, .2]
     assert scene["track"]["lap_length_m"] == 46.6329
     assert provenance["official_values"]["vehicle_envelope_m"] == {"length": .2, "width": .15}
-    assert provenance["runtime_corrections"]["facilities"]["status"] == "mixed_official_dimensions_and_provisional_runtime_geometry"
+    assert provenance["runtime_corrections"]["facilities"]["status"] == (
+        "official_v2026.09.01_geometry_with_provisional_runtime_facility_representation"
+    )
     assert provenance["friction_scope"]["road"] == "unspecified_engine_default"
     for report in provenance["geometry_checks"].values():
         assert report["static_footprint_checks_pass"], report
         assert not any(route["blocked_samples"] for route in report["routes"].values())
 
 
-def test_course_markers_follow_print_sheet_and_wall_correction():
+def test_course_markers_follow_print_sheet_and_preserve_official_placement():
     scene = json.loads((DESTINATION / "scene.json").read_text(encoding="utf-8"))
     provenance = json.loads((DESTINATION / "provenance.json").read_text(encoding="utf-8"))
     markers = scene["aruco_markers"]
@@ -64,24 +65,36 @@ def test_course_markers_follow_print_sheet_and_wall_correction():
     assert markers["mount_bottom_height_m"] == .05
     assert markers["mount_type"] == "wall_attached"
     assert {item["id"] for item in markers["markers"]} == {0, 20, 30, 45}
-    corrections = provenance["runtime_corrections"]["marker_wall_attachment"]
-    assert {item["id"] for item in corrections} == {0, 20, 30, 45}
-    assert all(.40 < item["route_center_to_wall_surface_m"] < .45 for item in corrections)
-    assert all(item["official_generated_pose"] != item["runtime_wall_attached_pose"] for item in corrections)
+    placement = provenance["runtime_corrections"]["marker_placement"]
+    assert placement["status"] == "official_v2026.09.01_pose_preserved"
+    assert {item["id"] for item in placement["placements"]} == {0, 20, 30, 45}
+    assert all(not item["placement_changed"] for item in placement["placements"])
+    for item in placement["placements"]:
+        official = item["official_scene_pose"]
+        runtime = item["runtime_link_origin"]
+        assert math.isclose(official["x"], runtime["x"], abs_tol=1e-4)
+        assert math.isclose(official["y"], runtime["y"], abs_tol=1e-4)
+        assert math.isclose(official["yaw_rad"], runtime["yaw_rad"], abs_tol=1e-4)
 
     model = ET.parse(DESTINATION / "world.sdf").find("./world/model[@name='it_arena_track_static']")
     for marker_id in (0, 20, 30, 45):
         link = model.find(f"link[@name='aruco_{marker_id}']")
         assert link is not None
         assert link.find("collision[@name='stand_collision']") is None
-        backing = link.find("visual[@name='backing']")
-        np.testing.assert_allclose(list(map(float, backing.findtext("geometry/box/size").split()))[1:], [.1, .1])
-        actual = np.full((6, 6), 255, dtype=np.uint8)
-        for visual in link.findall("visual"):
-            if visual.attrib["name"].startswith("ink_"):
-                _, row, col = visual.attrib["name"].split("_")
-                actual[int(row), int(col)] = 0
-        np.testing.assert_array_equal(actual, marker_cells(marker_id))
+        visual = link.find(f"visual[@name='aruco_{marker_id}_vis']")
+        collision = link.find(f"collision[@name='aruco_{marker_id}_col']")
+        assert visual is not None and collision is not None
+        np.testing.assert_allclose(
+            list(map(float, visual.findtext("geometry/box/size").split())),
+            [.005, .1, .1],
+        )
+        assert visual.find("material/script") is None
+        assert visual.findtext("material/diffuse") == "1 1 1 1"
+        assert visual.findtext("material/pbr/metal/albedo_map") == f"aruco/aruco_id{marker_id}.png"
+
+    assert markers["rendering"] == (
+        "official v2026.09.01 PNG albedo map on the preserved PBR board"
+    )
 
 
 def test_only_official_walls_carry_track_friction_coefficients():
@@ -111,6 +124,7 @@ def test_runtime_facility_metadata_matches_geometry_and_selected_start_line():
     assert scene["speed_bumps"]["bump_height_m"] == .01
     assert len(model.findall("link[@name='safety_bump_0']/collision")) == 20
     assert scene["finish_line"]["s_m"] == design["features"]["start_line"]["s"]
+    assert scene["start_finish"]["s_m"] == 0
     marker_zero = next(marker for marker in scene["aruco_markers"]["markers"] if marker["id"] == 0)
     assert marker_zero["s_m"] == 0
-    assert not math.isclose(scene["finish_line"]["s_m"], marker_zero["s_m"])
+    assert math.isclose(scene["finish_line"]["s_m"], marker_zero["s_m"])

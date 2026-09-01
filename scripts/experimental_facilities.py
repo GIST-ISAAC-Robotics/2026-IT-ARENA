@@ -99,6 +99,8 @@ def configure(res, profile, generator):
         raise ValueError("마커 코드와 양쪽 흰 여백의 합은 인쇄판 크기와 같아야 합니다.")
     if markers.get("mount_type", "freestanding") not in {"freestanding", "wall_attached"}:
         raise ValueError("마커 설치 형식은 freestanding 또는 wall_attached여야 합니다.")
+    if markers.get("representation", "sdf_cells") not in {"sdf_cells", "official_pbr_texture"}:
+        raise ValueError("마커 표현은 sdf_cells 또는 official_pbr_texture여야 합니다.")
     markers["printed_board_size_m"] = board_size
     if len(res["grid_slots"]) != 6:
         raise ValueError("이번 실험 시설은 보존된 6개 출발 위치를 요구합니다.")
@@ -123,6 +125,13 @@ def configure(res, profile, generator):
         ))
         marker["z"] = marker["center_height"] - board_size / 2
         marker["approach_target"] = [float(target_x), float(target_y)]
+        face_offset = float(markers.get("face_offset_m", .002))
+        marker["face_pose"] = {
+            "x": marker["x"] + face_offset * math.cos(marker["yaw"]),
+            "y": marker["y"] + face_offset * math.sin(marker["yaw"]),
+            "z": marker["center_height"],
+            "yaw_rad": marker["yaw"],
+        }
     res["experimental_facilities"] = config
     return config
 
@@ -323,23 +332,26 @@ def add_markers(model, res):
                 # +X 면에서 보았을 때 영상의 오른쪽은 로컬 +Y, 위쪽은 +Z입니다.
                 box(link, f"ink_{row}_{col}", (.0018, -size / 2 + (col + .5) * cell,
                     center + size / 2 - (row + .5) * cell), (.0004, cell, cell), BLACK)
-        marker["face_pose"] = {"x": marker["x"] + .002 * math.cos(marker["yaw"]),
-                               "y": marker["y"] + .002 * math.sin(marker["yaw"]),
-                               "z": center, "yaw_rad": marker["yaw"]}
 
 
 def replace_facilities(world_path, res, generator):
     """생성기의 시설 링크만 교체합니다. 노면·벽·그리드 위치는 변경하지 않습니다."""
     tree = ET.parse(world_path)
     model = tree.find("./world/model[@name='it_arena_track_static']")
+    preserve_official_markers = (
+        res["experimental_facilities"]["markers"].get("representation")
+        == "official_pbr_texture"
+    )
     for link in list(model.findall("link")):
         name = link.attrib["name"]
-        if name.startswith(("bump_", "grid_slot_", "aruco_", "lamp_")) or name in ("tl_post", "tl_beam"):
+        replace_marker = name.startswith("aruco_") and not preserve_official_markers
+        if name.startswith(("bump_", "grid_slot_", "lamp_")) or replace_marker or name in ("tl_post", "tl_beam"):
             model.remove(link)
     add_bumps(model, res, world_path.parent)
     add_grid_and_finish(model, res, generator)
     add_traffic_light(model, res)
-    add_markers(model, res)
+    if not preserve_official_markers:
+        add_markers(model, res)
     ET.indent(tree, space="  ")
     tree.write(world_path, encoding="utf-8", xml_declaration=True)
 
@@ -359,6 +371,12 @@ def update_scene(scene, res, generator):
     scene["traffic_light"].pop("udp_port", None)
     marker_config = config["markers"]
     mount_type = marker_config.get("mount_type", "freestanding")
+    marker_representation = marker_config.get("representation", "sdf_cells")
+    marker_rendering = (
+        "official v2026.09.01 PNG albedo map on the preserved PBR board"
+        if marker_representation == "official_pbr_texture"
+        else "DICT_4X4_50 cells as untextured SDF geometry; preserved PNG files unchanged"
+    )
     scene["aruco_markers"].update({"marker_size_m": marker_config["printed_board_size_m"],
                                     "printed_board_size_m": marker_config["printed_board_size_m"],
                                     "black_code_size_m": marker_config["black_square_size_m"],
@@ -369,7 +387,7 @@ def update_scene(scene, res, generator):
                                         marker_config.get("center_height_m", .10) - marker_config["printed_board_size_m"] / 2,
                                     ),
                                     "mount_type": mount_type,
-                                    "rendering": "DICT_4X4_50 cells as untextured SDF geometry; preserved PNG files unchanged"})
+                                    "rendering": marker_rendering})
     by_id = {marker["id"]: marker for marker in res["markers"]}
     for marker in scene["aruco_markers"]["markers"]:
         source = by_id[marker["id"]]

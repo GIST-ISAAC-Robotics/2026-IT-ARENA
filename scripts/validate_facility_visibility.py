@@ -51,6 +51,10 @@ def main():
     mode.add_argument("--capture-only", action="store_true", help="현재 출발 위치의 원본 RGB만 저장")
     mode.add_argument("--bump-only", action="store_true", help="방지턱 물리·표시 진단만 실행")
     mode.add_argument("--flat-control", action="store_true", help="방지턱 이전 평지에서 동일 속도의 정지 대조 시험")
+    parser.add_argument("--track", choices=("official", "original", "experimental"), default="experimental",
+                        help="검사할 트랙 프로필(기존 동작 호환을 위해 기본값은 experimental)")
+    parser.add_argument("--case-file", type=Path,
+                        help="scene.json의 기본 camera_cases 대신 사용할 JSON 배열(감사용)")
     parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/facility_visibility")
     args = parser.parse_args()
     output = args.output.resolve()
@@ -84,23 +88,25 @@ def main():
         node.create_subscription(Odometry, "/odom", lambda m: observe(m, "odom"), 10),
     ]
     drive_publisher = node.create_publisher(AckermannDriveStamped, "/drive", 10)
+    world_directories = {"official": "it_arena_official", "original": "it_arena_track",
+                         "experimental": "it_arena_experimental"}
+    world_directory = REPO / "src/arena_gazebo/worlds" / world_directories[args.track]
     report = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "passed": False,
               "source": "arena_car D435i RGB /camera/color/image_raw", "profile": "low_load_30",
+              "track": args.track,
               "capture_only": args.capture_only, "bump_only": args.bump_only, "flat_control": args.flat_control,
               "scope": "정지한 차량의 실제 렌더링 영상. 정답 위치는 시험 배치·검사에만 사용.", "cases": []}
     report["input_sha256"] = {
-        relative: hashlib.sha256((REPO / relative).read_bytes()).hexdigest() for relative in (
-            "src/arena_gazebo/worlds/it_arena_experimental/world.sdf",
-            "src/arena_gazebo/worlds/it_arena_experimental/scene.json",
-            "src/arena_gazebo/worlds/it_arena_experimental/provenance.json",
-            "src/arena_description/config/vehicle.yaml")}
+        str(path.relative_to(REPO)): hashlib.sha256(path.read_bytes()).hexdigest() for path in (
+            world_directory / "world.sdf", world_directory / "scene.json",
+            world_directory / "provenance.json", REPO / "src/arena_description/config/vehicle.yaml")}
     log_path = output / "simulation.log"
     log = log_path.open("w", encoding="utf-8")
     processes = []
     try:
         processes.append(subprocess.Popen([
             "ros2", "launch", "arena_bringup", "simulation.launch.py", "headless:=true",
-            "track:=experimental", "d435i_profile:=low_load_30"],
+            f"track:={args.track}", "d435i_profile:=low_load_30"],
             cwd=REPO, stdout=log, stderr=subprocess.STDOUT, start_new_session=True))
         if not args.capture_only:
             # SceneBroadcaster의 pose.name은 TF 변환 시 보존되지 않습니다.
@@ -199,8 +205,15 @@ def main():
         report["initial_rgb_range"] = [int(rgb.min()), int(rgb.max())]
         report["initial_detected_ids"] = sorted(detect_markers(rgb))
         if not args.capture_only:
-            scene = json.loads((REPO / "src/arena_gazebo/worlds/it_arena_experimental/scene.json").read_text(encoding="utf-8"))
-            for case in ([] if args.bump_only or args.flat_control else scene["facility_inspection"]["camera_cases"]):
+            scene = json.loads((world_directory / "scene.json").read_text(encoding="utf-8"))
+            camera_cases = scene["facility_inspection"]["camera_cases"]
+            if args.case_file:
+                case_file = args.case_file.resolve()
+                if not case_file.is_relative_to(REPO):
+                    raise ValueError("사용자 지정 검사 사례는 프로젝트 폴더 안에 있어야 합니다.")
+                camera_cases = json.loads(case_file.read_text(encoding="utf-8"))
+                report["case_file"] = str(case_file.relative_to(REPO))
+            for case in ([] if args.bump_only or args.flat_control else camera_cases):
                 move_to(case["x"], case["y"], case["yaw_rad"])
                 rgb, file = save_frame(case["name"])
                 detections = detect_markers(rgb)

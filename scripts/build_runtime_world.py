@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Build a Gazebo-friendly runtime world from the preserved organizer output.
+"""Build a Gazebo-friendly runtime world from a preserved organizer output.
 
-The supplied SDF contains more than one thousand static links. Gazebo spends an
-unreasonable amount of time creating a separate rigid-body entity for each one.
-This script merges flat track / wall / grass / grid links into one static link,
-while preserving each child geometry's model-relative pose. Semantic feature
-links (traffic light and ArUco boards) remain separate for later control/tests.
+Legacy inputs may contain more than one thousand static links, so this script
+merges their flat track / wall / grass / grid links while preserving poses. New
+official inputs can already be merged; in that case no empty compatibility link
+is inserted. Semantic facilities remain separate for later control and tests.
 """
 
 from __future__ import annotations
@@ -75,9 +74,10 @@ def build_runtime_world(source_dir: Path, destination_dir: Path) -> dict:
         model.remove(link)
         merged_count += 1
 
-    static_element = model.find("static")
-    insert_at = list(model).index(static_element) + 1 if static_element is not None else 0
-    model.insert(insert_at, merged_link)
+    if merged_count:
+        static_element = model.find("static")
+        insert_at = list(model).index(static_element) + 1 if static_element is not None else 0
+        model.insert(insert_at, merged_link)
 
     for albedo_map in model.findall(".//albedo_map"):
         if albedo_map.text:

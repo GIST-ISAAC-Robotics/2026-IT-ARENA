@@ -1,0 +1,48 @@
+profile: official_v2026.09.01
+status: official_source_with_documented_runtime_facility_substitutions
+upstream_repository: https://github.com/MOSW626/istech-it-arena
+upstream_commit: 921f3f9a044f1a38ff849cb8e19d00182dd5533b
+upstream_release: v2026.09.01
+release_asset: it_arena_track_v2026.09.01.zip
+release_sha256: f40aca619a6207f48f33741a56716edc65e948a674c7937f70b44476205b894c
+
+# 노면·벽·중심선·분기·그리드 슬롯·ArUco 배치와 텍스처는 공식 릴리스 자료를 그대로 사용합니다.
+# 아래는 실물 후속 자료가 오기 전까지 실행·시인성을 위해 교체하는 나머지 시설 표현만 정의합니다.
+facilities:
+  status: official_v2026.09.01_geometry_with_provisional_runtime_facility_representation
+  speed_bump:
+    # 진행 길이·높이·개수는 공식 패키지, 코사인 단면·무늬는 실물 STL 전 임시값입니다.
+    profile: raised_cosine
+    length_m: 0.05
+    height_m: 0.01
+    subdivisions: 20
+    lateral_stripes: 10
+  traffic_light:
+    # Pinocchio 실물 자료가 없으므로 카메라 테스트가 가능한 기존 임시 형상을 유지합니다.
+    gantry_height_m: 0.42
+    lamp_center_height_m: 0.30
+    lamp_radius_m: 0.026
+    initial_state: red
+  markers:
+    # 위치·방향은 v2026.09.01 공식 벽 부착 좌표를 보존합니다.
+    # 이번 릴리스에서 재질과 상대 경로가 수정되었으므로 공식 PNG/PBR 표현도 그대로 보존합니다.
+    representation: official_pbr_texture
+    mount_type: wall_attached
+    printed_board_size_m: 0.10
+    black_square_size_m: 0.07
+    quiet_zone_m: 0.015
+    bottom_height_m: 0.05
+    face_target_distance_m: 0.001
+    face_offset_m: 0.0025
+  starting_grid:
+    # 외곽 크기와 슬롯 pose는 공식. U자 선·번호는 시인성용 임시 표시입니다.
+    length_m: 0.25
+    width_m: 0.17
+    line_width_m: 0.006
+    number_height_m: 0.07
+  finish_line:
+    # v2026.09.01에서 공식 기준이 s=0으로 확정되어 신호등·ID 0과 정렬됩니다.
+    # 체크무늬 모양 자체는 우리 런타임 확인용 임시 표시입니다.
+    depth_m: 0.10
+    cells_across: 9
+    rows: 2

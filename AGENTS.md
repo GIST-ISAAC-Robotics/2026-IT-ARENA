@@ -6,27 +6,27 @@
 2. `docs/activity/`에서 날짜가 가장 최신인 파일
 3. `docs/decisions/`에서 현재 작업과 관련된 결정 기록
 4. 코스나 시뮬레이터 월드를 변경할 경우 `docs/track/TRACK_AUDIT.md`
-5. 코스·차량 치수를 변경할 경우 `docs/track/OFFICIAL_SOURCE_AUDIT.md`, `docs/track/OFFICIAL_MARKERS_AND_FACILITIES.md`와 관련 결정 기록 `0010-official-v2026-08-31-track.md`. 이전 폭 실험을 다룰 때는 `docs/track/EXPERIMENTAL_TRACK.md`와 `0003-track-variants.md`도 읽습니다.
+5. 코스·차량 치수를 변경할 경우 `docs/track/OFFICIAL_V2026_09_01_REAUDIT.md`, `docs/track/OFFICIAL_SOURCE_AUDIT.md`, `docs/track/OFFICIAL_MARKERS_AND_FACILITIES.md`와 관련 결정 기록 `0011-official-v2026-09-01-track.md`. 이전 공식판의 결정 경위는 `0010-official-v2026-08-31-track.md`, 폭 실험을 다룰 때는 `docs/track/EXPERIMENTAL_TRACK.md`와 `0003-track-variants.md`도 읽습니다.
 
 다음 기록과 원칙을 항상 유지합니다.
 
 - 확인된 사실, 결정 사항, 진행을 막는 문제 또는 다음 작업이 바뀌면 `docs/PROJECT_CONTEXT.md`를 갱신합니다.
 - 중요한 작업은 당일 `docs/activity/` 파일에 추가합니다. 명령어 실행 내역을 그대로 옮기지 말고, 결과와 근거를 기록합니다.
-- 현재 공식 공유소는 [MOSW626/istech-it-arena](https://github.com/MOSW626/istech-it-arena)입니다. 2026-08-31 확인 기준은 태그 `v2026.08.31`, 커밋 `d61c5db9252cedfbc163cd044a47671df91e1660`입니다. 규정·일정·지원은 `MANUAL.md`(2026-08-30 확정본), 트랙은 `track/README.md`와 같은 버전의 실제 출력물·도면·인쇄 시트를 먼저 대조합니다. 이후 Release·운영진 이슈 답변을 확인하면 기준 커밋과 변경 근거도 갱신하며, 읽지 않은 후속 내용을 추정하지 않습니다.
+- 현재 공식 공유소는 [MOSW626/istech-it-arena](https://github.com/MOSW626/istech-it-arena)입니다. 2026-09-01 확인 기준은 태그 `v2026.09.01`, 커밋 `921f3f9a044f1a38ff849cb8e19d00182dd5533b`입니다. 규정·일정·지원은 `MANUAL.md`(2026-08-30 확정본), 트랙은 `track/README.md`와 같은 버전의 실제 출력물·도면·인쇄 시트를 먼저 대조합니다. 이후 Release·운영진 이슈 답변을 확인하면 기준 커밋과 변경 근거도 갱신하며, 읽지 않은 후속 내용을 추정하지 않습니다.
 - 공식 저장소는 주최 측 정보의 원본이지 우리 활동 기록의 대체물이 아닙니다. 기존 활동·실패·검증 산출물·결정 당시의 근거는 보존하고, 후속 확정으로 바뀐 사실은 현재 현황과 새 활동 항목에 구분해 기록합니다.
 - 발견한 공식 자료 오류는 `docs/track/OFFICIAL_UPSTREAM_ISSUE_DRAFTS.md`에 upstream 이슈 템플릿을 따라 승인 즉시 제출 가능한 초안으로 준비합니다. 사용자의 명시적 등록 승인 전에는 upstream 이슈·댓글을 게시하지 않습니다. 초안 작성·로컬 트랙 수정·우리 저장소의 `main` 반영 승인을 주최 측 저장소에 대한 게시 승인으로 확대하지 않습니다.
-- **배포 월드의 로드 오류부터 물리 갱신·마커 표시까지의 수정 과정**은 [주최 측 이슈 #7](https://github.com/MOSW626/istech-it-arena/issues/7)로 등록했습니다. 2026-08-31 사용자의 별도 명시적 승인에 따라 [마커 벽 이격·ID 30 간섭 #8](https://github.com/MOSW626/istech-it-arena/issues/8), [그리드 엇갈림 메타데이터 #9](https://github.com/MOSW626/istech-it-arena/issues/9), [그리드 표시 매몰 #10](https://github.com/MOSW626/istech-it-arena/issues/10), [출발/결승선 기준 불일치 #11](https://github.com/MOSW626/istech-it-arena/issues/11)도 등록했습니다. 모두 등록 직후 `open`이며 같은 이슈를 중복 생성하지 않습니다. #8은 원본 화면과 정적 간섭 도식, #10은 표시가 안 보이는 원본 출발 구역 화면과 원본 SDF 수치 단면 계산도를 포함합니다. 직접 증거가 되지 않는 전체 사진은 #9·#11에 억지로 넣지 않았습니다. 방지턱·신호등 관찰은 아직 게시하지 않고 `docs/track/OFFICIAL_SOURCE_AUDIT.md` §5에서 운영진 업데이트 후 재확인합니다. 과거 개별 초안은 `issue_consolidation/before_consolidation.zip`에 보존하며, 이후 새 이슈·댓글도 별도 승인 없이 게시하지 않습니다.
+- **배포 월드의 로드 오류부터 물리 갱신·마커 표시까지의 수정 과정**은 [주최 측 이슈 #7](https://github.com/MOSW626/istech-it-arena/issues/7)로 등록했습니다. 2026-08-31 사용자의 별도 명시적 승인에 따라 [마커 벽 이격·ID 30 간섭 #8](https://github.com/MOSW626/istech-it-arena/issues/8), [그리드 엇갈림 메타데이터 #9](https://github.com/MOSW626/istech-it-arena/issues/9), [그리드 표시 매몰 #10](https://github.com/MOSW626/istech-it-arena/issues/10), [출발/결승선 기준 불일치 #11](https://github.com/MOSW626/istech-it-arena/issues/11)도 등록했습니다. 2026-09-01에는 모두 `CLOSED`이며 릴리스 `v2026.09.01`에서 해결된 것을 재검증했습니다. 같은 이슈를 중복 생성하지 않습니다. 새로 관찰한 차량 접근각의 ArUco 검출 구간은 미승인 초안으로만 보존하며, 이후 새 이슈·댓글도 별도 승인 없이 게시하지 않습니다.
 - 되돌리는 비용이 큰 선택은 `docs/decisions/` 아래에 아키텍처 결정 기록(ADR)으로 남깁니다.
 - `assets/track/original/it_arena_track_final.zip`은 수정하지 않습니다. 원본을 바이트 단위로 보존하는 압축 파일입니다.
-- 공식 배포 ZIP도 `assets/track/official/v2026.08.31/`에 별도로 보존하며 수정하지 않습니다. 출처·SHA-256은 같은 폴더의 `SOURCE.md`에 있습니다. 새 버전은 새 디렉터리에 보존하고 기존 원본·실험·활동 기록을 교체하지 않습니다.
+- 공식 배포 ZIP은 버전별로 보존합니다. 현재 `v2026.09.01`은 `assets/track/official/v2026.09.01/`, 이전 `v2026.08.31`은 같은 상위 폴더의 별도 디렉터리에 있으며 어느 쪽도 수정하지 않습니다. 출처·SHA-256은 각 폴더의 `SOURCE.md`에 있습니다. 새 버전은 새 디렉터리에 보존하고 기존 원본·실험·활동 기록을 교체하지 않습니다.
 - 초기 전달본을 재현할 때는 동봉 README가 아니라 `assets/track/source/it_arena_track/output_final/scene.json`과 `world.sdf`를 기준으로 합니다. 이 원본 재현 원칙을 새 공식 저장소의 규정·출력물을 무시하는 근거로 쓰지 않습니다. 버전별 불일치는 트랙 감사 문서에 기록합니다.
 - `src/arena_description/config/vehicle.yaml`의 전체 평면 외형은 길이 0.20 m·폭 0.15 m로 팀이 확정한 설계 목표입니다. 공식 `MANUAL.md`는 15×20 cm·높이 제한 없음을 명시하지만 완성 차량의 실측값은 아닙니다. 축거·윤거·바퀴 치수·실제 높이·질량·센서 배치는 별도 확정 전까지 임시값이며, 지름길에 맞추기 위해 차량 외형을 임의로 줄이지 않습니다.
 - 검차 때 조향 중 바퀴 돌출을 외형에 포함하는지는 미확정입니다. 이를 공식 규정으로 단정하지 말고, 주행 중 충돌 회피에 필요한 점유 영역과 구분합니다.
 - 2026-06-30 회의록과 초기 전달본의 본선 폭·가정 차량 불일치는 당시 감사 이력으로 보존합니다. 초기 전달본의 본선 0.35 m·가정 차량 0.15 m x 0.10 m와 회의록 기반 실험을 새 공식 저장소의 같은 버전 파일과 구분하며, 기존 실험값을 자동으로 공식 규격으로 승격하지 않습니다.
-- 현재 기본 실행은 `track:=official`입니다. 공식 `v2026.08.31`의 본선 0.45 m·지름길 각각 0.20 m·중심선·합집합 벽을 사용합니다. 입력은 `config/tracks/official_v2026.08.31.yaml`, 생성은 `scripts/build_official_track.py`, 결과는 `src/arena_gazebo/worlds/it_arena_official/`입니다. `track:=original`은 초기 0.35/0.12 m 재현용, `track:=experimental`은 기존 0.45/0.25 m 실험용이며 둘 다 보존합니다.
-- 공식 코스 ArUco는 `DICT_4X4_50`의 ID 0/20/30/45, 인쇄판 10 cm·검은 코드 7 cm·각 흰 여백 1.5 cm·판 하단 5 cm를 적용합니다. 공식 출력의 벽 이격·ID 30 노면 간섭은 같은 설계 측면의 벽 부착으로 런타임 보정하며 원래 좌표와 보정 좌표를 `scene.json`·`provenance.json`에 남깁니다. 기존 실험의 큰 독립형 표지판·ID 30 반대편 이동을 공식값으로 전용하지 않습니다.
-- 마커 보정의 통과 범위는 차량의 정적 경로 표본 간섭 검사입니다. ID 30 지지판과 노면 폴리곤의 평면 겹침은 약 0.000109 m² 남으므로 “노면 침범 완전 해소”로 표현하지 않습니다. 본선 완주와 지름길의 연속 진입·합류도 별도 검증입니다.
-- 공식 방지턱의 명목 진행 길이 5 cm·높이 1 cm는 반영하되 곡선 단면·접촉 분할·색띠, 낮은 신호등·고정 데모 주기, 출발 U자/번호·피니시 체크무늬는 임시 구현입니다. 공식 도면의 출발선과 신호/ID 0 위치 차이도 기록하며, 임시 표시 위치를 확정 규정으로 취급하지 않습니다.
+- 현재 기본 실행은 `track:=official`입니다. 공식 `v2026.09.01`의 본선 0.45 m·지름길 각각 0.20 m·중심선·합집합 벽을 사용합니다. 입력은 `config/tracks/official_v2026.09.01.yaml`, 생성은 `scripts/build_official_track.py`, 결과는 `src/arena_gazebo/worlds/it_arena_official/`입니다. `track:=original`은 초기 0.35/0.12 m 재현용, `track:=experimental`은 기존 0.45/0.25 m 실험용이며 둘 다 보존합니다.
+- 공식 코스 ArUco는 `DICT_4X4_50`의 ID 0/20/30/45, 인쇄판 10 cm·검은 코드 7 cm·각 흰 여백 1.5 cm·판 하단 5 cm를 적용합니다. `v2026.09.01`의 벽면 pose와 PNG/PBR 판을 런타임에서도 그대로 보존하며, 이전 릴리스용 벽 스냅·ID 30 추가 이동·비텍스처 셀 대체를 적용하지 않습니다. 기존 실험의 큰 독립형 표지판·ID 30 반대편 이동을 공식값으로 전용하지 않습니다.
+- 새 공식 마커 배치는 20×15 cm 정적 경로 표본 검사를 통과하고 저속 한 바퀴에서 네 ID를 모두 검출했습니다. 다만 차량 전방 카메라의 정지 표본에서는 접근각에 따라 검출 구간이 짧았으므로 20 km/h·다른 차량 가림·실물 인쇄/노출 조건을 검증하기 전 고속 인식이 해결됐다고 표현하지 않습니다. 본선 완주와 지름길의 연속 진입·합류도 별도 검증입니다.
+- 공식 방지턱의 명목 진행 길이 5 cm·높이 1 cm는 반영하되 곡선 단면·접촉 분할·색띠, 낮은 신호등·고정 데모 주기, 출발 U자/번호·피니시 체크무늬는 임시 구현입니다. `v2026.09.01`의 공식 출발/결승 기준은 `s=0`이며, 임시 표시 모양을 확정 규정으로 취급하지 않습니다.
 - 공식 SDF의 벽 접촉 `mu=mu2=0.8`만 그대로 보존합니다. 도로·잔디·방지턱 마찰은 공식 파일에 미지정이므로 새 수치를 주입하지 않습니다. 엔진 기본값이나 별도 임시 차량 타이어 값을 실물 포맥스/EVA·잔디의 측정 마찰로 표현하지 않습니다.
 - 트랙 폭·외형 규정·분기 표지판을 변경할 때는 공식 저장소의 현재 규정과 트랙 파일을 우선 대조합니다. [2026-06-30 미팅](https://maddening-cause-ce7.notion.site/2026-06-30-38f99fd42e3080f6956fe5a5b90d0824)과 공식 저장소의 `meetings/`는 결정 경위를 추적하는 과거 기록으로 보존합니다. 신호등(Pinocchio)·과속방지턱(MeKENic)은 9월 제작·공유 예정이므로 기존 실험 형상을 최종 실물 사양으로 취급하지 않습니다.
 - 시뮬레이션 차량과 실제 차량이 사용하는 ROS 토픽의 호환성을 유지합니다. 대회용 자율주행 노드는 시뮬레이션에서만 얻을 수 있는 정답값(ground truth)을 절대 입력으로 사용해서는 안 됩니다.
@@ -37,7 +37,7 @@
 
 반복 실행 가능한 트랙, D435i·LiDAR·ToF·엔코더 인터페이스, RGB 신호·ArUco·벽 추종은 2026-08-30~31에 검증했습니다. 다음 한 바퀴 기록은 공식 전환 이전 `experimental` 기준이고, 별도 동역학 시험 결과와 함께 보존합니다. 2 kg 단일 모터 토크/차동 기준선은 브리스크 단일차 한 바퀴·실제 정지, 평지 20 km/h 도달, 코너 5/8 km/h, 편측 저마찰 오픈/LSD 근사, 전·후방 저상 정적 표적 ToF 정지를 통과했습니다. 이를 새 `official` 월드의 완주·가시성 검증으로 승계하지 않으며, 공식 전환 후 검사는 해당 활동 기록과 산출물로 확인합니다. 요철·편측 턱·높은 CG 시험에서는 슬립·들림이 생겼지만 전복하지 않았으며 실차 임계값은 미검증입니다. 다음 이정표는 실차 질량/CG·모터/서보/제동/타이어·ToF 가림/간섭 측정과 상대속도 TTC, 느린 상대 차량 추종·정지 시나리오입니다. 경주선+Pure Pursuit/Stanley와 반응형 FTG는 현재 벽 추종과 비교 가능한 선택지로 유지하며 설명하기 어려운 종단간 경주 방식으로 곧장 건너뛰지 않습니다. 상세 후보는 `docs/autonomy/ALGORITHM_OPTIONS.md`에서 관리합니다.
 
-2026-08-31 공식 전환 후에는 `official`(본선 45 cm·지름길 20 cm)에서 별도 실증을 마쳤습니다. [짧은 실행 검사](artifacts/validation/2026-08-31/official_track/smoke_low_load_30.json)는 RGB·깊이 848×480 약 30.30 Hz, 여섯 ToF 8×8 약 15.15 Hz(모두 시뮬레이션 시간 기준), 엔코더·IMU·직진·조향·명령 중단 정지·정상 종료를 통과했습니다. [브리스크 한 바퀴](artifacts/validation/2026-08-31/official_track/brisk_one_lap.json)는 48.6927 m, 최고 지면 속도 0.794307 m/s, 최대 중심선 거리 0.124205 m, 고정 외형-정적 벽 겹침 표본 0개, 조기 출발 없음, 마커 0/20/30/45·좌우 벽 전환·센서 기반 제어 입력·실제 정지·종료 코드 0/0을 확인했습니다. 해당 소스의 Python 검사 105개·C++ 검사 1개·ROS 패키지 5개 빌드, 공식/실험 해시 검사와 공식 월드 엄격한 SDF 검사도 통과했습니다. [전체 조감도](artifacts/screenshots/2026-08-31/official_update/official_track_overview.png)를 남겼으며, 이전 실험 기록과 이번 공식 기반 검증을 합산하거나 실물·다중 차량·지름길 안전성으로 확대하지 않습니다.
+2026-08-31의 `v2026.08.31` 공식 전환 검증은 이전 기준선 기록으로 보존합니다. 2026-09-01에는 `v2026.09.01`에서 다시 [짧은 실행 검사](artifacts/validation/2026-09-01/official_update/smoke_low_load_30.json)와 [브리스크 한 바퀴](artifacts/validation/2026-09-01/official_update/brisk_one_lap.json)를 통과했습니다. 새 한 바퀴는 48.6927 m, 최고 지면 속도 0.784933 m/s, 최대 중심선 거리 0.122350 m, 정적 벽 겹침 표본 0개, 조기 출발 없음, 마커 0/20/30/45·좌우 벽 전환·센서 기반 제어 입력·실제 정지·정상 종료를 확인했습니다. Python 검사 114개·C++ 검사 1개·ROS 패키지 5개 빌드, 공식 해시 검사와 엄격한 SDF 검사도 통과했습니다. [재감사 근거](artifacts/validation/2026-09-01/official_update/README.md)를 실물·다중 차량·지름길 안전성이나 20 km/h 마커 검출로 확대하지 않습니다.
 
 ## 문서 작성 언어
 

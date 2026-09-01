@@ -408,8 +408,8 @@ def _launch_setup(context):
                     f"ToF safety={safety_enabled}. Motor/tire properties are provisional."),
         LogInfo(msg=f"Track: {track}; main width: {scene['track']['width_m']} m; "
                     f"shortcut widths: {[branch['width_m'] for branch in scene['branches']]} m. "
-                    + ("Official v2026.08.31 geometry with documented runtime corrections; "
-                     "signal and bump shape remain provisional."
+                    + ("Official v2026.09.01 geometry; marker placement and s=0 start/finish are preserved; "
+                     "signal, bump profile and painted-guide styling remain provisional."
                      if track == "official" else "Historical reproduction / experimental course.")),
         LogInfo(msg=f"D435i profile: {d435i_profile_name}; "
                     f"RGB {color['width_px']}x{color['height_px']} @ "
@@ -546,7 +546,7 @@ def generate_launch_description() -> LaunchDescription:
                 "track",
                 default_value="official",
                 choices=list(TRACK_DIRECTORIES),
-                description="official: v2026.08.31 45/20 cm; experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
+                description="official: v2026.09.01 45/20 cm; experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
             ),
             DeclareLaunchArgument(
                 "vehicle_config",
