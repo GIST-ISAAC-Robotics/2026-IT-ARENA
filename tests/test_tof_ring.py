@@ -49,6 +49,16 @@ def test_tof_ring_uses_six_multizone_modules_and_two_profiles():
     assert len({module["name"] for module in tof["modules"]}) == 6
 
 
+def test_lidar_rate_override_is_explicit_and_bounded():
+    launch = load_launch_module()
+    lidar = vehicle_config()["sensors"]["lidar_2d"]
+    assert launch._resolve_lidar_rate(lidar, "configured") == 10.0
+    assert launch._resolve_lidar_rate(lidar, "30") == 30.0
+    for value in ("0.1", "101", "nan", "inf"):
+        with pytest.raises(RuntimeError, match="lidar_rate_hz"):
+            launch._resolve_lidar_rate(lidar, value)
+
+
 def test_nominal_bearing_intervals_tile_360_but_do_not_prove_spatial_coverage():
     tof = vehicle_config()["sensors"]["tof_ring"]
     yaws = sorted(module["rpy_rad"][2] % (2.0 * math.pi) for module in tof["modules"])

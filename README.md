@@ -2,7 +2,9 @@
 
 GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프트웨어·시뮬레이션 작업 공간입니다.
 
-현재 인수인계는 [프로젝트 현황](docs/PROJECT_CONTEXT.md), 구동 모델은 [단일 모터·차동 차량 동역학](docs/simulation/VEHICLE_DYNAMICS.md), 센서 결정은 [상부 LiDAR·하부 ToF 링](docs/sensors/TOF_RING.md), 이후 조향·회피·추월 후보는 [알고리즘 검토 노트](docs/autonomy/ALGORITHM_OPTIONS.md)에서 계속 관리합니다.
+현재 인수인계는 [프로젝트 현황](docs/PROJECT_CONTEXT.md), 구동 모델은 [단일 모터·차동 차량 동역학](docs/simulation/VEHICLE_DYNAMICS.md), 센서 기준선은 [상부 LiDAR·하부 ToF 링](docs/sensors/TOF_RING.md), 이후 조향·회피·추월 후보는 [알고리즘 검토 노트](docs/autonomy/ALGORITHM_OPTIONS.md)에서 계속 관리합니다.
+
+최근 작업: [LiDAR 갱신률·20 km/h 직접 실험과 실패 기록](artifacts/validation/2026-09-03/lidar_rate_sweep/README.md) · [운동 보상과 자기 위치 추정 설명](docs/sensors/LIDAR_MOTION_AND_RATE.md) · [센서 구성 재검토](docs/sensors/PERCEPTION_ARCHITECTURE_REVIEW.md). 독립 시험 결과이며 기본 주행 속도·센서 배치와 공식 트랙은 바꾸지 않았습니다.
 
 주최 측에서 제공한 트랙 자료를 출발점으로 삼으며, 다음을 목표로 합니다.
 

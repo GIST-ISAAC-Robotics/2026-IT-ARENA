@@ -27,6 +27,12 @@ SPEED_PROFILES = {
     "brisk": {"max_speed_mps": .70, "min_speed_mps": .18, "acceleration_mps2": .8},
     "exploratory": {"max_speed_mps": 1.40, "min_speed_mps": .20, "acceleration_mps2": 1.0},
     "hardware_target": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 1.5},
+    # 라이다 주기 비교용 목표 속도 상한입니다. 20 km/h 실측 도달을 보장하지 않습니다.
+    # 전방 거리·곡률 감속이 남아 있으며 실제 모터 가속도나 안전 속도도 아닙니다.
+    "lidar_rate_stress": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 4.0},
+    # 입력 급상승 비교 이력을 재현하기 위해 보존합니다. 공식 코스 실측은 약 12~13 km/h였습니다.
+    # 단일 모터 3 m/s^2 제한은 그대로입니다. 고정 20 km/h 검사는 별도 LiDAR lab을 씁니다.
+    "lidar_20kmh_straight": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 10.0},
 }
 
 
@@ -123,6 +129,13 @@ def _resolve_tof_profile(config: dict, requested: str) -> tuple[str, dict]:
     return name, profile
 
 
+def _resolve_lidar_rate(config: dict, requested: str) -> float:
+    rate = float(config["scan_rate_hz"] if requested == "configured" else requested)
+    if not math.isfinite(rate) or not .5 <= rate <= 100.0:
+        raise RuntimeError("lidar_rate_hz는 configured 또는 0.5~100 Hz의 유한한 값이어야 합니다.")
+    return rate
+
+
 def _validate_tof_ring(config: dict, body: dict) -> None:
     modules = config["modules"]
     if len(modules) != 6 or {module["name"] for module in modules} != TOF_MODULE_NAMES:
@@ -201,6 +214,9 @@ def _launch_setup(context):
             raise RuntimeError("기초 C1 모델은 360도 스캔과 10개 이상의 표본을 요구합니다.")
         if not 0 < float(lidar["range_min_m"]) < float(lidar["range_max_m"]) or float(lidar["scan_rate_hz"]) <= 0:
             raise RuntimeError("라이다 거리·주기 설정이 올바르지 않습니다.")
+    lidar_rate_hz = _resolve_lidar_rate(
+        lidar, LaunchConfiguration("lidar_rate_hz").perform(context)
+    )
     d435i_xyz = d435i["xyz_m"]
     d435i_rpy = d435i["rpy_rad"]
     d435i_profile_name, d435i_profile = _resolve_d435i_profile(
@@ -244,7 +260,7 @@ def _launch_setup(context):
             "lidar_enabled": str(lidar["enabled"]).lower(),
             **{f"lidar_{axis}": str(value) for axis, value in zip(("x", "y", "z"), lidar["xyz_m"])},
             **{f"lidar_{axis}": str(value) for axis, value in zip(("roll", "pitch", "yaw"), lidar["rpy_rad"])},
-            "lidar_rate": str(lidar["scan_rate_hz"]),
+            "lidar_rate": str(lidar_rate_hz),
             "lidar_samples": str(lidar["samples_per_scan"]),
             "lidar_min": str(lidar["range_min_m"]),
             "lidar_max": str(lidar["range_max_m"]),
@@ -447,6 +463,8 @@ def _launch_setup(context):
         LogInfo(msg=f"ToF ring: enabled={tof['enabled']}; profile={tof_profile_name}; "
                     f"{tof_profile['horizontal_zones']}x{tof_profile['vertical_zones']} @ "
                     f"{tof_profile['update_rate_hz']} Hz; modules={len(tof['modules'])}."),
+        LogInfo(msg=f"2D LiDAR: {lidar_rate_hz:g} Hz, {lidar['samples_per_scan']} samples/scan. "
+                    "Gazebo snapshot scan; sequential rotation/transport delay is not simulated."),
         gazebo_server,
         bridge,
         sensor_bridge,
@@ -592,6 +610,11 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="configured",
                 choices=["configured", *TOF_PROFILES],
                 description="ToF zone/rate profile. configured follows active_profile in vehicle_config.",
+            ),
+            DeclareLaunchArgument(
+                "lidar_rate_hz",
+                default_value="configured",
+                description="configured 또는 시험용 0.5~100 Hz. C1 하드웨어 사양을 바꾸는 설정이 아닙니다.",
             ),
             DeclareLaunchArgument(
                 "grid_slot",

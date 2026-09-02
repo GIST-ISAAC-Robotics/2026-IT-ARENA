@@ -211,6 +211,9 @@ def test_validator_forwards_shutdown_without_inherited_terminal(monkeypatch):
     validator.start_demo_process(log)
     args, kwargs = calls[0]
     assert args[0][:3] == ["ros2", "launch", "--noninteractive"]
+    assert "lidar_rate_hz:=10" in args[0]
+    assert "tof_safety:=true" in args[0]
+    assert "red_duration_s:=8" in args[0]
     assert kwargs["stdin"] == validator.subprocess.DEVNULL
     assert kwargs["start_new_session"] is True
     assert kwargs["stdout"] is log and kwargs["stderr"] is log
