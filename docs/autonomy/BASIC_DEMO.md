@@ -2,6 +2,16 @@
 
 이 데모는 **한 대의 차량이 빨간 신호에서 기다렸다가 초록불을 보고 출발하고, 지름길을 타지 않은 채 본선을 계속 도는** 최소 구현입니다. 완주 횟수 제한은 없습니다. 대회용 위치 추정·추월·다중 차량 회피까지 구현한 것은 아닙니다.
 
+2026-09-04 현재 `autonomy_mode:=lidar|stereo` 선택을 구현했습니다. `lidar`는
+C1급 `/scan`+ToF 여섯 개, `stereo`는 전방 D435i급 RGB-D+좌우 ToF 네 개를
+사용합니다. 이 배치는 사용자의 개인 검토안이며 팀원과 아직 협의하지 않았습니다.
+두 모드 모두 본선 한 바퀴+약 2 m와 실제 정지, 3인칭 촬영을 확인했습니다.
+스테레오는 이전 헛돎 이후 RGB-D 노면 목표점 추종으로 변경했습니다. 다만
+완주 실행의 깊이 전달률 약 24 Hz·Gazebo 종료 실패가 남아 종합 검사는 실패입니다.
+[두 모드 검증 결과와 영상](../../artifacts/validation/2026-09-04/selectable_autonomy/README.md),
+[결정 0015](../decisions/0015-selectable-lidar-stereo-autonomy-prototypes.md)를 함께 확인하십시오.
+주행·영상·종료 성공은 서로 구분합니다.
+
 2026-08-31 공식 자료 반영 후 `demo.launch.py`는 **공식 자료 기반 `official` 트랙(본선 45 cm·지름길 20 cm)**을 선택합니다. 마커 벽 부착 보정과 임시 신호등·방지턱이 포함된 파생 실행 월드이며, 공개 SDF를 아무 수정 없이 실행한 것은 아닙니다. [공식 마커·시설 근거와 보정](../track/OFFICIAL_MARKERS_AND_FACILITIES.md)을 함께 확인하십시오. 새 `official`에서 짧은 센서·주행 검사와 `brisk` 본선 한 바퀴·정지·정상 종료를 별도로 통과했으며 아래에 고정 보고서를 연결했습니다. 지름길 25 cm인 `experimental`의 과거 기록은 보존하되 새 공식 검증으로 승계하지 않습니다.
 
 ## 실행
@@ -17,6 +27,14 @@ export ROS_DOMAIN_ID=164
 export GZ_PARTITION=it_arena_basic_demo
 export FASTDDS_BUILTIN_TRANSPORTS=LARGE_DATA
 ros2 launch arena_bringup demo.launch.py
+```
+
+선택형 실행은 다음과 같습니다. `depth_camera:=auto`는 LiDAR 모드에서는 깊이를
+끄고 스테레오 모드에서는 켭니다.
+
+```bash
+ros2 launch arena_bringup demo.launch.py autonomy_mode:=lidar
+ros2 launch arena_bringup demo.launch.py autonomy_mode:=stereo
 ```
 
 차량의 첫 RGB 영상이 준비되면 빨강 8초 → 노랑 2초 → 초록 유지 순서로 바뀝니다. 시간은 **시뮬레이션 시간**입니다. 컴퓨터 부하에 따라 실제 대기 시간은 더 길어집니다. 이는 시험용 순서이며, 실제 대회는 랜덤한 시각 신호를 인식하여 출발하고 무선 출발 신호는 없습니다. 차량은 이 시간표를 읽지 않고 RGB 영상에서 빨강을 먼저 확인한 뒤 초록을 연속 세 번 확인해야 출발합니다.
@@ -68,6 +86,8 @@ ros2 service call /sim/traffic_light/reset std_srvs/srv/Trigger '{}'
 
 ## 사용한 알고리즘
 
+### C1 모드
+
 1. RGB 영상에서 빨간 렌즈를 찾고, 같은 신호등의 초록 렌즈가 연속으로 켜진 것을 확인합니다.
 2. 2D 라이다에서 한쪽 벽의 점들을 골라 짧은 2차 곡선으로 맞춥니다. 벽과의 거리·기울기·곡률로 조향하고 커브에서는 감속합니다.
 3. RGB 영상에서 ArUco를 읽어 지름길 반대편 벽을 선택합니다.
@@ -80,6 +100,25 @@ ros2 service call /sim/traffic_light/reset std_srvs/srv/Trigger '{}'
 현재 `official`과 이전 `experimental`은 모두 **본선 노면 0.45 m + 양쪽 녹색 영역 각각 0.20 m**를 사용하여, 일반 구간의 목표 벽 간격은 중심선에서 약 0.425 m입니다. 분기 벽·마커 배치까지 같다는 의미는 아니므로 기존 튜닝과 완주 결과를 새 지도에 그대로 보장하지 않습니다. 다른 폭의 지도에는 이 목표 거리를 그대로 적용할 수 없으며, 일반 실행에서도 `track:=original`의 신호등·자율주행 데모 활성화는 막습니다.
 
 조향 입력은 `/scan`과 `/camera/color/image_raw`뿐입니다. `/odom`, 정답 위치·자세, 중심선 CSV, 지도 파일, 신호등 상태 토픽을 자율주행 노드가 읽지 않습니다. 검사 도구는 정답 위치를 별도로 관측해 완주·이탈 여부를 판정하지만 차량 제어에는 전달하지 않습니다.
+
+### D435i 모드
+
+RGB 영상의 회색 노면 후보를 깊이로 평지인지 확인하고, 전방 약 0.34 m의
+노면 중심 목표점을 기본 Pure Pursuit로 추종합니다. 한쪽 경계만 보이면 본선
+명목 폭 0.45 m를 이용합니다. 가까운 목표점이 없을 때만 깊이의 열린 통로·
+선택한 벽 거리 기반 조향을 최저속도로 사용합니다. 신호와 마커의 규칙은 같습니다.
+
+`/camera/color/image_raw`, `/camera/depth/image_rect_raw`, 깊이 `CameraInfo`가
+입력이며 `/scan`·지도·정답 위치는 읽지 않습니다. 데모 RGB/깊이는 각각 명목
+30 Hz, 제어 주기는 20 Hz입니다. ToF는 좌우 전·후측 네 개만 남기므로 정후방
+관측과 전방 근거리 ToF를 포기합니다. 이를 전방 깊이만으로 완전히 보완했다고
+가정하면 안 됩니다.
+
+이 방식은 회색 도로·녹색 잔디, 평지와 현재 시뮬레이션 카메라 정렬을 이용한
+단순 기준선입니다. 잔디와 도로는 깊이만으로 구분하지 못합니다. 실물 RGB-깊이
+정렬, 조명·노출, 흰색 표시·방지턱, 다른 차량의 가림은 후속 과제입니다.
+
+### 공통 속도와 정지
 
 기본 `cautious`의 직선 목표 최고 속도는 **0.35 m/s**, 일반적인 커브 최저 명령은 0.14 m/s입니다. `brisk`·`exploratory`·`hardware_target` 프로필도 있지만 ToF 가시거리·벽 곡률·횡가속 가정이 추가로 제한합니다. 가까운 장애물·벽 소실·센서 데이터 누락·사용자 정지 시에는 0을 명령합니다. 가속·감속과 실제 속도가 순간적으로 같지는 않습니다. 튜닝 값은 `src/arena_bringup/config/wall_follow.yaml`과 `src/arena_bringup/config/tof_safety.yaml`에 있습니다.
 

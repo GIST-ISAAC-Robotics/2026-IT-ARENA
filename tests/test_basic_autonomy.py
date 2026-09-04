@@ -13,7 +13,9 @@ import yaml
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src/arena_autonomy"))
-from arena_autonomy.core import StartSignal, estimate_wall, follow_command, marker_ids, scan_points
+from arena_autonomy.core import (StartSignal, depth_gap_command, depth_lateral_clearance,
+                                 depth_wall_points, estimate_wall, follow_command, image_depth_m,
+                                 marker_ids, road_center_angle, scan_points)
 from arena_autonomy import wall_follow
 
 
@@ -56,6 +58,20 @@ def test_c1_nominal_scan_and_provisional_mount():
         offset = float(visual.findtext("pose").split()[2])
         height = float(visual.findtext("geometry/cylinder/length"))
         assert offset + height / 2 < 0  # 자기 몸체가 스캔 평면을 막지 않음
+
+
+def test_sensor_mode_comparison_keeps_two_kilogram_dynamics():
+    config = yaml.safe_load((REPO / "src/arena_description/config/vehicle.yaml").read_text())["vehicle"]
+    fixed_mass = 4 * .04 + 2 * .01 + .072
+    tof_mass = float(config["sensors"]["tof_ring"]["carrier_mass_kg"])
+    lidar_mass = float(config["sensors"]["lidar_2d"]["mass_kg"])
+    body_mass = float(config["body"]["mass_kg"])
+    lidar_total = body_mass + fixed_mass + lidar_mass + 6 * tof_mass
+    stereo_ballast = lidar_mass + 2 * tof_mass
+    stereo_total = body_mass + stereo_ballast + fixed_mass + 4 * tof_mass
+    assert lidar_total == pytest.approx(2.0)
+    assert stereo_ballast == pytest.approx(.111)
+    assert stereo_total == pytest.approx(lidar_total)
 
 
 def test_speed_limits_remain_without_oscillating_jerk_clamp():
@@ -120,15 +136,101 @@ def test_missing_wall_and_close_obstacle_stop():
     assert speed == 0 and detail["reason"] == "obstacle_stop"
 
 
+def test_depth_gap_steers_to_open_side_and_centers_symmetric_opening():
+    depth = np.ones((80, 120), np.float32)
+    depth[28:53, 44:76] = np.inf
+    speed, steering, detail = depth_gap_command(
+        depth, fx=70., cx=60., cy=40., row_half_height=10, column_stride=2,
+    )
+    assert speed > 0 and abs(steering) < .04
+    assert detail["reason"] == "depth_gap_following"
+
+    depth[28:53, 44:76] = 1.0
+    depth[28:53, 10:40] = np.inf  # 영상 왼쪽은 차량 기준 왼쪽입니다.
+    speed, steering, detail = depth_gap_command(
+        depth, fx=70., cx=60., cy=40., row_half_height=10, column_stride=2,
+    )
+    assert speed > 0 and steering > .1
+    assert detail["target_angle_rad"] > 0
+
+
+def test_depth_gap_stops_when_no_clear_corridor_exists():
+    depth = np.full((40, 60), .3, np.float32)
+    speed, steering, detail = depth_gap_command(
+        depth, fx=50., cx=30., cy=20., row_half_height=6, column_stride=2,
+    )
+    assert speed == 0 and steering == 0
+    assert detail["reason"] == "no_free_gap"
+
+
+def test_depth_gap_does_not_treat_too_close_negative_infinity_as_open():
+    depth = np.full((60, 100), np.inf, np.float32)
+    depth[20:41, :45] = -np.inf
+    speed, steering, detail = depth_gap_command(
+        depth, fx=70., cx=50., cy=30., row_half_height=8, column_stride=2,
+    )
+    assert speed > 0 and steering < -.1
+    assert detail["too_close_depth_samples"] > 0
+    assert detail["near_obstacle_angle_rad"] > 0
+    assert detail["near_avoidance_rad"] < 0
+
+
+def test_depth_lateral_clearance_is_mirrored_and_rejects_small_outlier_set():
+    x = np.linspace(.2, .65, 80)
+    for side, sign in (("left", 1), ("right", -1)):
+        wall = np.column_stack((x, np.full(len(x), sign * .31)))
+        poles = np.asarray([[.3, sign * .08], [.4, sign * .09]])
+        assert depth_lateral_clearance(np.vstack((wall, poles)), side) == pytest.approx(.31)
+    assert depth_lateral_clearance(np.asarray([[.3, .2]]), "left") is None
+
+
+def test_rgb_road_center_cue_steers_toward_shifted_gray_strip():
+    rgb = np.full((100, 160, 3), (170, 170, 170), np.uint8)
+    rgb[55:, 15:95] = (88, 88, 91)
+    rgb[55:, :15] = (65, 140, 65)
+    rgb[55:, 95:] = (65, 140, 65)
+    angle, detail = road_center_angle(rgb, fx=120., cx=80.)
+    assert angle > .15  # 도로 중심이 영상 왼쪽이므로 차량 기준 좌회전
+    assert detail["road_center_rows"] == 3
+
+
+def test_rgb_road_center_cue_rejects_grass_and_missing_rows():
+    grass = np.full((100, 160, 3), (50, 150, 50), np.uint8)
+    angle, detail = road_center_angle(grass, fx=120., cx=80.)
+    assert angle is None
+    assert detail["road_center_reason"] == "insufficient_gray_road_rows"
+
+
 def test_scan_invalid_values_are_not_obstacles_or_free_space_samples():
     points, count = scan_points([math.nan, math.inf, 0, .01, .5, 20], -1, .2, .05, 12)
     assert count == 1 and np.all(np.isfinite(points))
 
 
+def test_depth_image_padding_endianness_and_vehicle_projection():
+    # 두 행 사이 4바이트 패딩을 깊이 표본으로 잘못 읽지 않습니다.
+    raw = (np.asarray([1.0, 2.0], dtype="<f4").tobytes() + b"pad!" +
+           np.asarray([.5, math.inf], dtype="<f4").tobytes() + b"pad!")
+    message = SimpleNamespace(encoding="32FC1", width=2, height=2, step=12,
+                              is_bigendian=False, data=raw)
+    depth = image_depth_m(message)
+    assert depth.shape == (2, 2) and depth[0].tolist() == pytest.approx([1., 2.])
+    points, count = depth_wall_points(
+        np.asarray([[1.0]], np.float32), fx=2., fy=2., cx=1., cy=1.,
+        camera_xyz=(.055, 0., .075), stride=1, minimum_height=.5,
+        maximum_height=.7, minimum_forward=.5, maximum_forward=1.2,
+    )
+    assert count == 1
+    assert points[0] == pytest.approx([1.055, .5])
+
+
 def test_runtime_autonomy_has_no_ground_truth_or_map_input():
-    source = (REPO / "src/arena_autonomy/arena_autonomy/wall_follow.py").read_text()
-    for forbidden in ("Odometry", '"/odom"', '"/tf"', "centerline.csv", "scene.json", "dynamic_pose", "traffic_light/state"):
-        assert forbidden not in source
+    for filename in ("wall_follow.py", "stereo_wall_follow.py"):
+        source = (REPO / "src/arena_autonomy/arena_autonomy" / filename).read_text()
+        for forbidden in ("Odometry", '"/odom"', '"/tf"', "centerline.csv", "scene.json", "dynamic_pose", "traffic_light/state"):
+            assert forbidden not in source
+    stereo = (REPO / "src/arena_autonomy/arena_autonomy/stereo_wall_follow.py").read_text()
+    assert '"/scan"' not in stereo
+    assert '"/camera/depth/image_rect_raw"' in stereo
 
 
 def test_aruco_gate_id_is_read_from_pixels():

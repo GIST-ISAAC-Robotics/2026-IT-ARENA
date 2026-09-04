@@ -2,9 +2,14 @@
 
 GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프트웨어·시뮬레이션 작업 공간입니다.
 
-현재 인수인계는 [프로젝트 현황](docs/PROJECT_CONTEXT.md), 구동 모델은 [단일 모터·차동 차량 동역학](docs/simulation/VEHICLE_DYNAMICS.md), 센서 기준선은 [상부 LiDAR·하부 ToF 링](docs/sensors/TOF_RING.md), 이후 조향·회피·추월 후보는 [알고리즘 검토 노트](docs/autonomy/ALGORITHM_OPTIONS.md)에서 계속 관리합니다.
+현재 인수인계는 [프로젝트 현황](docs/PROJECT_CONTEXT.md), 구동 모델은 [단일 모터·차동 차량 동역학](docs/simulation/VEHICLE_DYNAMICS.md), 센서 기준선은 [상부 LiDAR·하부 ToF 링](docs/sensors/TOF_RING.md), 예산별 카메라와 축소 배치는 [스테레오 카메라·최소 ToF 검토](docs/sensors/STEREO_CAMERA_AND_MINIMAL_TOF.md), 이후 조향·회피·추월 후보는 [알고리즘 검토 노트](docs/autonomy/ALGORITHM_OPTIONS.md)에서 계속 관리합니다.
 
-최근 작업: [LiDAR 갱신률·20 km/h 직접 실험과 실패 기록](artifacts/validation/2026-09-03/lidar_rate_sweep/README.md) · [운동 보상과 자기 위치 추정 설명](docs/sensors/LIDAR_MOTION_AND_RATE.md) · [센서 구성 재검토](docs/sensors/PERCEPTION_ARCHITECTURE_REVIEW.md). 독립 시험 결과이며 기본 주행 속도·센서 배치와 공식 트랙은 바꾸지 않았습니다.
+최신 작업: [C1+ToF6 / D435i+ToF4 선택형 주행과 두 완주 영상](artifacts/validation/2026-09-04/selectable_autonomy/README.md).
+두 구성 모두 단독 본선 48.65 m와 실제 정지·3인칭 촬영을 확인했습니다. 다만
+스테레오 장시간 녹화에서는 깊이 전달률·Gazebo 종료 실패가 남아 종합 검사는 실패입니다.
+같은 소스의 녹화 없는 2 m 시험은 통과했습니다. 이 구성은 개인 임시안·팀 미협의 상태입니다.
+
+이전 작업: [LiDAR 갱신률·20 km/h 직접 실험과 실패 기록](artifacts/validation/2026-09-03/lidar_rate_sweep/README.md) · [운동 보상과 자기 위치 추정 설명](docs/sensors/LIDAR_MOTION_AND_RATE.md) · [센서 구성 재검토](docs/sensors/PERCEPTION_ARCHITECTURE_REVIEW.md) · [D435i 유지·최소 ToF 후보 결정](docs/decisions/0014-d435i-baseline-and-minimal-tof-options.md). 기본 시뮬레이션의 D435i·상부 C1·ToF 여섯 개와 공식 트랙은 회귀 기준선으로 유지합니다.
 
 주최 측에서 제공한 트랙 자료를 출발점으로 삼으며, 다음을 목표로 합니다.
 
@@ -59,6 +64,16 @@ GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프
 ```bash
 ros2 launch arena_bringup demo.launch.py
 ```
+
+두 구성은 다음처럼 선택합니다. 기본값은 `lidar`입니다.
+
+```bash
+ros2 launch arena_bringup demo.launch.py autonomy_mode:=lidar
+ros2 launch arena_bringup demo.launch.py autonomy_mode:=stereo
+```
+
+스테레오는 전방 RGB-D 노면 목표점 추종과 측면 ToF 네 개를 사용합니다.
+[선택형 데모의 실행·한계](docs/autonomy/BASIC_DEMO.md)를 확인하십시오.
 
 기본 지도는 `official`입니다. 데모는 빨강 8초·노랑 2초 후 초록으로 바뀌며, 카메라의 초록 인식 후 지름길을 피하고 본선을 반복 주행하도록 구성했습니다. 이 고정 순서는 무작위 시각 출발을 요구하는 공식 경기 절차의 완성 구현이 아닙니다. 한 바퀴 종료 조건은 없고 직선 최고 명령은 0.35 m/s이며 커브에서는 감속합니다. GUI 왼쪽 아래 일시정지 또는 실행 터미널의 `Ctrl+C`로 멈출 수 있습니다.
 

@@ -21,6 +21,8 @@ TRACK_DIRECTORIES = {
 D435I_STREAM_PROFILES = ("high_speed_async", "synchronized_60", "low_load_30")
 TOF_PROFILES = ("low_latency_4x4_60", "tracking_8x8_15")
 TOF_MODULE_NAMES = {"front", "front_left", "rear_left", "rear", "rear_right", "front_right"}
+AUTONOMY_MODES = ("lidar", "stereo")
+SENSOR_LAYOUT_BY_MODE = {"lidar": "lidar_tof6", "stereo": "stereo_tof4"}
 DIFFERENTIAL_PROFILES = ("ideal_open", "lossy_open", "viscous_lsd")
 SPEED_PROFILES = {
     "cautious": {"max_speed_mps": .35, "min_speed_mps": .14, "acceleration_mps2": .5},
@@ -136,7 +138,7 @@ def _resolve_lidar_rate(config: dict, requested: str) -> float:
     return rate
 
 
-def _validate_tof_ring(config: dict, body: dict) -> None:
+def _validate_tof_ring(config: dict, body: dict, layout_name: str | None = None) -> list[dict]:
     modules = config["modules"]
     if len(modules) != 6 or {module["name"] for module in modules} != TOF_MODULE_NAMES:
         raise RuntimeError(f"ToF ring requires these six module names: {sorted(TOF_MODULE_NAMES)}")
@@ -152,7 +154,7 @@ def _validate_tof_ring(config: dict, body: dict) -> None:
         raise RuntimeError("Invalid ToF range limits")
     half_length = float(body["length_m"]) / 2.0
     half_width = float(body["width_m"]) / 2.0
-    yaws = []
+    by_name = {module["name"]: module for module in modules}
     for module in modules:
         xyz = [float(value) for value in module["xyz_m"]]
         rpy = [float(value) for value in module["rpy_rad"]]
@@ -160,15 +162,37 @@ def _validate_tof_ring(config: dict, body: dict) -> None:
             raise RuntimeError(f"Invalid ToF module pose: {module}")
         if abs(xyz[0]) > half_length or abs(xyz[1]) > half_width or xyz[2] <= 0:
             raise RuntimeError(f"ToF optical center is outside the vehicle envelope: {module['name']}")
-        yaws.append(rpy[2] % (2.0 * math.pi))
+    layouts = config.get("layouts", {})
+    selected_layout = layout_name or config.get("active_layout")
+    if selected_layout not in layouts:
+        raise RuntimeError(f"ToF layout must be one of {sorted(layouts)}")
+    names = layouts[selected_layout].get("modules", [])
+    if not names or len(names) != len(set(names)) or any(name not in by_name for name in names):
+        raise RuntimeError(f"Invalid ToF module list for layout {selected_layout}")
+    selected = [by_name[name] for name in names]
+    yaws = sorted(module["rpy_rad"][2] % (2.0 * math.pi) for module in selected)
     yaws.sort()
     gaps = [
         (yaws[(index + 1) % len(yaws)] - yaws[index]) % (2.0 * math.pi)
         for index in range(len(yaws))
     ]
     horizontal_fov = math.radians(float(config["horizontal_fov_deg"]))
-    if max(gaps) > horizontal_fov + 1e-6:
-        raise RuntimeError("Nominal ToF ring has an angular coverage gap")
+    coverage = str(layouts[selected_layout].get("nominal_coverage", ""))
+    if coverage.startswith("full_azimuth"):
+        if max(gaps) > horizontal_fov + 1e-6:
+            raise RuntimeError("Nominal ToF ring has an angular coverage gap")
+    elif coverage == "front_camera_plus_both_side_arcs_rear_blind":
+        expected = {"front_left", "rear_left", "rear_right", "front_right"}
+        if set(names) != expected:
+            raise RuntimeError("Stereo ToF layout must use two modules on each side")
+        # +60/+120도와 -60/-120도의 60도 시야가 양쪽 정측면에서 맞닿습니다.
+        actual = {module["name"]: module["rpy_rad"][2] % (2 * math.pi) for module in selected}
+        for first, second in (("front_left", "rear_left"), ("rear_right", "front_right")):
+            if abs((actual[second] - actual[first]) % (2 * math.pi) - horizontal_fov) > 1e-6:
+                raise RuntimeError("Stereo ToF side arcs do not join at the side bearing")
+    else:
+        raise RuntimeError(f"Unknown ToF coverage declaration: {coverage}")
+    return selected
 
 
 def _launch_setup(context):
@@ -201,6 +225,10 @@ def _launch_setup(context):
         raise RuntimeError("현재 차량 형상은 5 cm DICT_4X4_50 ID 10 후면 마커 설정만 지원합니다.")
     d435i = config["sensors"]["d435i"]
     wheel_encoders = config["sensors"]["wheel_encoders"]
+    autonomy_mode = LaunchConfiguration("autonomy_mode").perform(context)
+    if autonomy_mode not in AUTONOMY_MODES:
+        raise RuntimeError(f"autonomy_mode must be one of {AUTONOMY_MODES}")
+    tof_layout_name = SENSOR_LAYOUT_BY_MODE[autonomy_mode]
     drive_mappings = _dynamics_mappings(config, LaunchConfiguration("drive_mode").perform(context),
                                        LaunchConfiguration("differential_profile").perform(context))
     safety_enabled = _as_bool(LaunchConfiguration("tof_safety").perform(context))
@@ -209,7 +237,8 @@ def _launch_setup(context):
         raise RuntimeError("광학 센서를 끈 동역학 전용 시험에서는 tof_safety:=false를 명시해야 합니다.")
     lidar = config["sensors"]["lidar_2d"]
     tof = config["sensors"]["tof_ring"]
-    if lidar["enabled"]:
+    lidar_enabled = bool(lidar["enabled"] and autonomy_mode == "lidar")
+    if lidar_enabled:
         if int(lidar["samples_per_scan"]) < 10 or not math.isclose(float(lidar["field_of_view_deg"]), 360.0):
             raise RuntimeError("기초 C1 모델은 360도 스캔과 10개 이상의 표본을 요구합니다.")
         if not 0 < float(lidar["range_min_m"]) < float(lidar["range_max_m"]) or float(lidar["scan_rate_hz"]) <= 0:
@@ -225,8 +254,15 @@ def _launch_setup(context):
     tof_profile_name, tof_profile = _resolve_tof_profile(
         tof, LaunchConfiguration("tof_profile").perform(context)
     )
-    if tof["enabled"]:
-        _validate_tof_ring(tof, body)
+    active_tof_modules = _validate_tof_ring(tof, body, tof_layout_name) if tof["enabled"] else []
+    # 두 인지 방식의 조향 성능만 비교할 때 센서 제거로 차량 질량까지 달라지면
+    # 결과를 공정하게 해석할 수 없습니다. 빠진 C1과 ToF 캐리어 질량은 충돌체나
+    # 시각 형상이 없는 중앙 차체 질량으로 보충합니다. 이는 실차 부품 배치가
+    # 아니라 알고리즘 A/B 시험용 비교 ballast입니다.
+    comparison_ballast_kg = (
+        (0.0 if lidar_enabled else float(lidar["mass_kg"]))
+        + (len(tof["modules"]) - len(active_tof_modules)) * float(tof["carrier_mass_kg"])
+    )
     color = d435i["color"]
     depth = d435i["depth"]
     depth_enabled = _as_bool(LaunchConfiguration("depth_camera").perform(context))
@@ -241,7 +277,7 @@ def _launch_setup(context):
             "body_length": str(body["length_m"]),
             "body_width": str(body["width_m"]),
             "body_height": str(body["height_m"]),
-            "body_mass": str(body["mass_kg"]),
+            "body_mass": str(float(body["mass_kg"]) + comparison_ballast_kg),
             "rear_marker_enabled": str(rear_marker["enabled"]).lower(),
             "rear_marker_x": str(rear_marker_xyz[0]),
             "rear_marker_y": str(rear_marker_xyz[1]),
@@ -257,7 +293,7 @@ def _launch_setup(context):
             "max_speed": str(drivetrain["max_speed_mps"]),
             "steering_p_gain": str(drivetrain.get("simulation_steering_p_gain", 12.0)),
             "acceleration_limit": str(drivetrain.get("simulation_acceleration_limit_mps2", 4.0)),
-            "lidar_enabled": str(lidar["enabled"]).lower(),
+            "lidar_enabled": str(lidar_enabled).lower(),
             **{f"lidar_{axis}": str(value) for axis, value in zip(("x", "y", "z"), lidar["xyz_m"])},
             **{f"lidar_{axis}": str(value) for axis, value in zip(("roll", "pitch", "yaw"), lidar["rpy_rad"])},
             "lidar_rate": str(lidar_rate_hz),
@@ -290,6 +326,10 @@ def _launch_setup(context):
                 for module in tof["modules"]
             },
             **{f"tof_{module['name']}_topic": str(module["topic"]) for module in tof["modules"]},
+            **{
+                f"tof_{module['name']}_enabled": str(module in active_tof_modules).lower()
+                for module in tof["modules"]
+            },
             "d435i_x": str(d435i_xyz[0]),
             "d435i_y": str(d435i_xyz[1]),
             "d435i_z": str(d435i_xyz[2]),
@@ -318,6 +358,7 @@ def _launch_setup(context):
             "d435i_depth_cx": str(depth_intrinsics["cx_px"]),
             "d435i_depth_cy": str(depth_intrinsics["cy_px"]),
             "d435i_imu_rate": str(d435i["imu"]["update_rate_hz"]),
+            "chase_camera_enabled": str(_as_bool(LaunchConfiguration("chase_camera").perform(context))).lower(),
         },
     ).toxml()
 
@@ -460,10 +501,15 @@ def _launch_setup(context):
                     f"{d435i_profile['color_rate_hz']} Hz; depth "
                     f"{depth['width_px']}x{depth['height_px']} @ "
                     f"{d435i_profile['depth_rate_hz']} Hz (enabled={depth_enabled})."),
+        LogInfo(msg=f"Sensor mode: {autonomy_mode}; ToF layout={tof_layout_name} "
+                    f"(user provisional, no team consensus); comparison ballast="
+                    f"{comparison_ballast_kg:.3f} kg."),
         LogInfo(msg=f"ToF ring: enabled={tof['enabled']}; profile={tof_profile_name}; "
                     f"{tof_profile['horizontal_zones']}x{tof_profile['vertical_zones']} @ "
-                    f"{tof_profile['update_rate_hz']} Hz; modules={len(tof['modules'])}."),
-        LogInfo(msg=f"2D LiDAR: {lidar_rate_hz:g} Hz, {lidar['samples_per_scan']} samples/scan. "
+                    f"{tof_profile['update_rate_hz']} Hz; "
+                    f"modules={[module['name'] for module in active_tof_modules]}."),
+        LogInfo(msg=f"2D LiDAR: enabled={lidar_enabled}; {lidar_rate_hz:g} Hz, "
+                    f"{lidar['samples_per_scan']} samples/scan. "
                     "Gazebo snapshot scan; sequential rotation/transport delay is not simulated."),
         gazebo_server,
         bridge,
@@ -479,13 +525,14 @@ def _launch_setup(context):
         actions.append(gazebo_gui)
 
     if safety_enabled:
-        if not tof["enabled"] or not wheel_encoders["enabled"]:
+        if not active_tof_modules or not wheel_encoders["enabled"]:
             raise RuntimeError("ToF 안전층은 ToF 링과 좌우 바퀴 엔코더가 필요합니다.")
         actions.append(Node(package="arena_autonomy", executable="tof_safety", output="screen",
                             parameters=[str(bringup_share / "config/tof_safety.yaml"),
-                                        {"use_sim_time": True, "vehicle_config": str(config_path)}]))
+                                        {"use_sim_time": True, "vehicle_config": str(config_path),
+                                         "active_modules": [module["name"] for module in active_tof_modules]}]))
 
-    if lidar["enabled"] and render_sensors:
+    if lidar_enabled and render_sensors:
         actions.extend([
             Node(package="ros_gz_bridge", executable="parameter_bridge", name="lidar_bridge",
                  arguments=["/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan"],
@@ -499,7 +546,7 @@ def _launch_setup(context):
         ])
 
     if tof["enabled"] and render_sensors:
-        for module in tof["modules"]:
+        for module in active_tof_modules:
             name = str(module["name"])
             topic = str(module["topic"])
             xyz = module["xyz_m"]
@@ -529,14 +576,26 @@ def _launch_setup(context):
                 ),
             ])
 
+    chase_camera = _as_bool(LaunchConfiguration("chase_camera").perform(context))
+    if chase_camera and render_sensors:
+        actions.append(Node(
+            package="ros_gz_bridge",
+            executable="parameter_bridge",
+            name="chase_camera_bridge",
+            arguments=["/sim/chase/image@sensor_msgs/msg/Image[gz.msgs.Image"],
+            output="screen",
+        ))
+
     autonomy = _as_bool(LaunchConfiguration("autonomy").perform(context))
     traffic = _as_bool(LaunchConfiguration("traffic_light").perform(context))
     if (autonomy or traffic) and (world_override or not render_sensors):
         raise RuntimeError("시험 월드/광학 센서 비활성화는 본선 자율주행·신호등과 함께 쓰지 않습니다.")
     if (autonomy or traffic) and track not in {"official", "experimental"}:
         raise RuntimeError("신호등·본선 벽 추종 데모는 official/experimental 지도에서만 지원합니다.")
-    if autonomy and not lidar["enabled"]:
-        raise RuntimeError("벽 추종에는 lidar_2d.enabled=true가 필요합니다.")
+    if autonomy and autonomy_mode == "lidar" and not lidar_enabled:
+        raise RuntimeError("LiDAR 벽 추종에는 lidar_2d.enabled=true가 필요합니다.")
+    if autonomy and autonomy_mode == "stereo" and not depth_enabled:
+        raise RuntimeError("스테레오 벽 추종에는 depth_camera:=true가 필요합니다.")
     if traffic:
         actions.append(Node(package="arena_gazebo", executable="traffic_light_controller.py",
                             parameters=[{"use_sim_time": True,
@@ -544,11 +603,28 @@ def _launch_setup(context):
                                          "yellow_duration_s": 2.0}], output="screen"))
     if autonomy:
         speed_profile = SPEED_PROFILES[LaunchConfiguration("speed_profile").perform(context)]
-        actions.append(Node(package="arena_autonomy", executable="wall_follow",
+        executable = "wall_follow" if autonomy_mode == "lidar" else "stereo_wall_follow"
+        controller_parameters = {
+            "use_sim_time": True,
+            **speed_profile,
+            "wheelbase_m": float(drivetrain["wheelbase_m"]),
+            "max_steering_angle_rad": float(drivetrain["max_steering_angle_rad"]),
+        }
+        if autonomy_mode == "lidar":
+            controller_parameters["lidar_x_m"] = float(lidar["xyz_m"][0])
+        else:
+            controller_parameters.update(
+                camera_x_m=float(d435i_xyz[0]),
+                camera_y_m=float(d435i_xyz[1]),
+                camera_z_m=float(d435i_xyz[2]),
+                color_fx_px=float(color_intrinsics["fx_px"]),
+                color_fy_px=float(color_intrinsics["fy_px"]),
+                color_cx_px=float(color_intrinsics["cx_px"]),
+                color_cy_px=float(color_intrinsics["cy_px"]),
+            )
+        actions.append(Node(package="arena_autonomy", executable=executable,
                             parameters=[str(bringup_share / "config" / "wall_follow.yaml"),
-                                        {"use_sim_time": True, **speed_profile, "wheelbase_m": float(drivetrain["wheelbase_m"]),
-                                         "lidar_x_m": float(lidar["xyz_m"][0]),
-                                         "max_steering_angle_rad": float(drivetrain["max_steering_angle_rad"])}],
+                                        controller_parameters],
                             output="screen"))
 
     if wheel_encoders["enabled"]:
@@ -626,7 +702,11 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="false",
                 description="Run the Gazebo server without its GUI.",
             ),
-            DeclareLaunchArgument("autonomy", default_value="false", description="RGB 출발 신호 + 라이다 본선 벽 추종"),
+            DeclareLaunchArgument("autonomy", default_value="false", description="RGB 출발 신호 + 선택한 센서의 본선 벽 추종"),
+            DeclareLaunchArgument(
+                "autonomy_mode", default_value="lidar", choices=list(AUTONOMY_MODES),
+                description="lidar: C1+ToF6, stereo: 전방 D435i 깊이+측면 ToF4 개인 비교안",
+            ),
             DeclareLaunchArgument("render_sensors", default_value="true", description="동역학 전용 시험에서 광학 센서만 끕니다. 링크·질량은 유지합니다."),
             DeclareLaunchArgument("world_override", default_value="", description="시험 전용 SDF. 원본/실험 트랙 파일은 덮어쓰지 않습니다."),
             DeclareLaunchArgument("test_spawn_x", default_value="0"),
@@ -638,6 +718,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("speed_profile", default_value="cautious", choices=list(SPEED_PROFILES),
                                   description="명령 속도 상한이며 실제 속도/완주 보증이 아닙니다. ToF 안전층이 추가 제한합니다."),
             DeclareLaunchArgument("depth_camera", default_value="true", description="깊이 센서와 점군을 켭니다. RGB·IMU는 유지합니다."),
+            DeclareLaunchArgument("chase_camera", default_value="false", description="영상 검증 전용 차량 추적 3인칭 카메라"),
             DeclareLaunchArgument("traffic_light", default_value="false", description="빨강-노랑-초록 출발 신호와 수동 제어"),
             DeclareLaunchArgument("red_duration_s", default_value="8.0", description="영상 준비 이후 빨간 신호 유지 시간"),
             OpaqueFunction(function=_launch_setup),

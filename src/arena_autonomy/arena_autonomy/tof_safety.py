@@ -45,8 +45,16 @@ class TofSafety(Node):
              float(drive["track_width_m"]) / 2))
         encoders = config["sensors"]["wheel_encoders"]
         self.wheel_names = (encoders["left_joint_name"], encoders["right_joint_name"])
-        self.modules = config["sensors"]["tof_ring"]["modules"]
-        if not self.modules or not config["sensors"]["tof_ring"]["enabled"]:
+        configured_modules = config["sensors"]["tof_ring"]["modules"]
+        active_names = list(self.declare_parameter(
+            "active_modules", [module["name"] for module in configured_modules]
+        ).value)
+        known = {module["name"]: module for module in configured_modules}
+        if (not active_names or len(active_names) != len(set(active_names)) or
+                any(name not in known for name in active_names)):
+            raise ValueError("활성 ToF 모듈 목록이 비었거나 중복·미등록 이름을 포함합니다.")
+        self.modules = [known[name] for name in active_names]
+        if not config["sensors"]["tof_ring"]["enabled"]:
             raise ValueError("활성 ToF 모듈이 필요합니다.")
         self.geometry = SafetyGeometry(wheelbase=float(drive["wheelbase_m"]),
             length=float(config["footprint"]["length_m"]),
@@ -70,7 +78,11 @@ class TofSafety(Node):
             self.create_subscription(PointCloud2, f"{module['topic']}/points",
                 lambda message, module=module: self.on_cloud(message, module), qos_profile_sensor_data)
         self.create_timer(1 / self.p["control_rate_hz"], self.control)
-        self.get_logger().info("ToF 최소 감속·정지층 활성. 평지/정적 표적 근사, 실차 안전 보증 아님.")
+        self.get_logger().info(
+            f"ToF 최소 감속·정지층 활성({len(self.modules)}개: "
+            f"{','.join(module['name'] for module in self.modules)}). "
+            "평지/정적 표적 근사, 실차 안전 보증 아님."
+        )
 
     def now_s(self):
         return self.get_clock().now().nanoseconds * 1e-9

@@ -47,6 +47,12 @@ def test_tof_ring_uses_six_multizone_modules_and_two_profiles():
     assert tof["profiles"]["tracking_8x8_15"]["update_rate_hz"] == 15.0
     assert len(tof["modules"]) == 6
     assert len({module["name"] for module in tof["modules"]}) == 6
+    assert tof["active_layout"] == "lidar_tof6"
+    assert tof["layouts"]["lidar_tof6"]["modules"] == [
+        "front", "front_left", "rear_left", "rear", "rear_right", "front_right"]
+    assert set(tof["layouts"]["stereo_tof4"]["modules"]) == {
+        "front_left", "rear_left", "rear_right", "front_right"}
+    assert all("not_discussed_with_team" in layout["status"] for layout in tof["layouts"].values())
 
 
 def test_lidar_rate_override_is_explicit_and_bounded():
@@ -138,6 +144,18 @@ def test_4x4_profile_and_disabled_model_are_selectable():
     ]
 
 
+def test_stereo_layout_instantiates_only_four_side_modules_and_no_lidar():
+    model = model_with(
+        lidar_enabled="false", tof_front_enabled="false", tof_rear_enabled="false",
+    )
+    sensors = {sensor.attrib["name"] for sensor in model.findall("./link/sensor")}
+    assert "rplidar_c1" not in sensors
+    assert {name for name in sensors if name.startswith("tof_")} == {
+        "tof_front_left", "tof_rear_left", "tof_rear_right", "tof_front_right"}
+    assert model.find("link[@name='tof_front_link']") is None
+    assert model.find("link[@name='tof_rear_link']") is None
+
+
 def test_launch_validates_profiles_coverage_and_vl53l7cx_rate_limits():
     launch = load_launch_module()
     config = vehicle_config()
@@ -146,6 +164,9 @@ def test_launch_validates_profiles_coverage_and_vl53l7cx_rate_limits():
     assert launch._resolve_tof_profile(tof, "configured")[0] == "tracking_8x8_15"
     assert launch._resolve_tof_profile(tof, "tracking_8x8_15")[1]["vertical_zones"] == 8
     launch._validate_tof_ring(tof, config["body"])
+    selected = launch._validate_tof_ring(tof, config["body"], "stereo_tof4")
+    assert [module["name"] for module in selected] == [
+        "front_left", "rear_left", "rear_right", "front_right"]
 
     with pytest.raises(RuntimeError, match="tof_profile"):
         launch._resolve_tof_profile(tof, "missing")
@@ -164,7 +185,7 @@ def test_launch_bridges_only_the_multizone_pointcloud_representation():
     assert "f\"{topic}/points" in source
     assert "override_frame_id" in source
     tof_bridge_section = source.split(
-        "if tof[\"enabled\"] and render_sensors:\n        for module in tof[\"modules\"]:", 1
+        "if tof[\"enabled\"] and render_sensors:\n        for module in active_tof_modules:", 1
     )[1].split("    autonomy =", 1)[0]
     assert "sensor_msgs/msg/LaserScan[gz.msgs.LaserScan" not in tof_bridge_section
 
@@ -220,3 +241,20 @@ def test_low_target_checker_rejects_ground_and_preserves_pointcloud_row_padding(
     hits = validator.target_hits(decoded, .18, .05, .04)
     assert len(hits) == 1
     assert hits[0] == pytest.approx(points[0])
+
+
+def test_stereo_comparison_ballast_preserves_total_mass_not_full_distribution():
+    config = vehicle_config()
+    removed_mass = (config["sensors"]["lidar_2d"]["mass_kg"] +
+                    2 * config["sensors"]["tof_ring"]["carrier_mass_kg"])
+    model = model_with(
+        lidar_enabled="false", tof_front_enabled="false", tof_rear_enabled="false",
+        body_mass=str(config["body"]["mass_kg"] + removed_mass),
+        chase_camera_enabled="true",
+    )
+    assert removed_mass == pytest.approx(.111)
+    # 관찰 카메라의 1 mg은 별도이며 질량 중심·관성까지 같다고 주장하지 않습니다.
+    total = sum(float(link.findtext("inertial/mass")) for link in model.findall("link"))
+    assert total == pytest.approx(2.000001, abs=1e-9)
+    chase = model.find("link[@name='chase_camera_link']")
+    assert chase.find("collision") is None

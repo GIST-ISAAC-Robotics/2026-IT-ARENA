@@ -78,6 +78,12 @@
   <xacro:arg name="tof_carrier_size_y" default="0.013"/>
   <xacro:arg name="tof_carrier_size_z" default="0.018"/>
   <xacro:arg name="tof_carrier_mass" default="0.0005"/>
+  <xacro:arg name="tof_front_enabled" default="true"/>
+  <xacro:arg name="tof_front_left_enabled" default="true"/>
+  <xacro:arg name="tof_rear_left_enabled" default="true"/>
+  <xacro:arg name="tof_rear_enabled" default="true"/>
+  <xacro:arg name="tof_rear_right_enabled" default="true"/>
+  <xacro:arg name="tof_front_right_enabled" default="true"/>
   <xacro:arg name="tof_front_pose" default="0.0980 0.0000 0.040 0 0 0"/>
   <xacro:arg name="tof_front_left_pose" default="0.0413 0.0715 0.040 0 0 1.0471975512"/>
   <xacro:arg name="tof_rear_left_pose" default="-0.0413 0.0715 0.040 0 0 2.0943951024"/>
@@ -118,6 +124,9 @@
   <xacro:arg name="d435i_depth_cx" default="424.0"/>
   <xacro:arg name="d435i_depth_cy" default="240.0"/>
   <xacro:arg name="d435i_imu_rate" default="200.0"/>
+  <!-- 검증 영상 전용. 제어 노드는 이 토픽을 구독하지 않습니다. -->
+  <xacro:arg name="chase_camera_enabled" default="false"/>
+  <xacro:arg name="chase_camera_rate" default="20.0"/>
 
   <xacro:property name="body_length" value="$(arg body_length)"/>
   <xacro:property name="body_width" value="$(arg body_width)"/>
@@ -477,6 +486,31 @@
       <child>d435i_link</child>
     </joint>
 
+    <!--
+      게임식 3인칭 기록을 위한 1 mg·충돌체 없는 관찰 카메라입니다. 차량과 함께
+      움직이지만 /sim/chase/image는 평가·영상에만 쓰며 자율주행 입력이 아닙니다.
+    -->
+    <xacro:if value="$(arg chase_camera_enabled)">
+      <link name="chase_camera_link">
+        <pose>-0.32 0 0.38 0 0.72 0</pose>
+        <xacro:box_inertial mass="0.000001" x="0.001" y="0.001" z="0.001"/>
+        <sensor name="chase_camera" type="camera">
+          <camera name="chase">
+            <horizontal_fov>1.35</horizontal_fov>
+            <image><width>960</width><height>540</height><format>R8G8B8</format></image>
+            <clip><near>0.05</near><far>30</far></clip>
+          </camera>
+          <always_on>true</always_on>
+          <update_rate>$(arg chase_camera_rate)</update_rate>
+          <visualize>false</visualize>
+          <topic>sim/chase/image</topic>
+        </sensor>
+      </link>
+      <joint name="chase_camera_fixed_joint" type="fixed">
+        <parent>chassis</parent><child>chase_camera_link</child>
+      </joint>
+    </xacro:if>
+
     <xacro:if value="$(arg lidar_enabled)">
       <link name="lidar_link">
         <pose>$(arg lidar_x) $(arg lidar_y) $(arg lidar_z) $(arg lidar_roll) $(arg lidar_pitch) $(arg lidar_yaw)</pose>
@@ -516,12 +550,12 @@
     </xacro:if>
 
     <xacro:if value="$(arg tof_enabled)">
-      <xacro:tof_module name="front" pose="$(arg tof_front_pose)" topic="$(arg tof_front_topic)"/>
-      <xacro:tof_module name="front_left" pose="$(arg tof_front_left_pose)" topic="$(arg tof_front_left_topic)"/>
-      <xacro:tof_module name="rear_left" pose="$(arg tof_rear_left_pose)" topic="$(arg tof_rear_left_topic)"/>
-      <xacro:tof_module name="rear" pose="$(arg tof_rear_pose)" topic="$(arg tof_rear_topic)"/>
-      <xacro:tof_module name="rear_right" pose="$(arg tof_rear_right_pose)" topic="$(arg tof_rear_right_topic)"/>
-      <xacro:tof_module name="front_right" pose="$(arg tof_front_right_pose)" topic="$(arg tof_front_right_topic)"/>
+      <xacro:if value="$(arg tof_front_enabled)"><xacro:tof_module name="front" pose="$(arg tof_front_pose)" topic="$(arg tof_front_topic)"/></xacro:if>
+      <xacro:if value="$(arg tof_front_left_enabled)"><xacro:tof_module name="front_left" pose="$(arg tof_front_left_pose)" topic="$(arg tof_front_left_topic)"/></xacro:if>
+      <xacro:if value="$(arg tof_rear_left_enabled)"><xacro:tof_module name="rear_left" pose="$(arg tof_rear_left_pose)" topic="$(arg tof_rear_left_topic)"/></xacro:if>
+      <xacro:if value="$(arg tof_rear_enabled)"><xacro:tof_module name="rear" pose="$(arg tof_rear_pose)" topic="$(arg tof_rear_topic)"/></xacro:if>
+      <xacro:if value="$(arg tof_rear_right_enabled)"><xacro:tof_module name="rear_right" pose="$(arg tof_rear_right_pose)" topic="$(arg tof_rear_right_topic)"/></xacro:if>
+      <xacro:if value="$(arg tof_front_right_enabled)"><xacro:tof_module name="front_right" pose="$(arg tof_front_right_pose)" topic="$(arg tof_front_right_topic)"/></xacro:if>
     </xacro:if>
 
     <xacro:wheel_link name="front_left_wheel" x="${wheelbase / 2.0}" y="${track_width / 2.0}"/>
