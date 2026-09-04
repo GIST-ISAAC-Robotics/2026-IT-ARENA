@@ -115,8 +115,10 @@ python3 scripts/validate_basic_autonomy.py --autonomy-mode stereo --speed-profil
 구현·권한은 [결정 0015](../../../../docs/decisions/0015-selectable-lidar-stereo-autonomy-prototypes.md),
 전체 활동은 [9월 4일 기록](../../../../docs/activity/2026-09-04.md)을 확인합니다.
 개인 임시 제안·팀 미협의 상태입니다. 최초 작업은 로컬 보관으로 마쳤고,
-2026-09-04 후속 요청에서 팀 GitHub `main` 게시 승인을 받았습니다.
-게시 결과는 위 활동 기록에서 확인하며, 컴퓨터 종료·upstream 게시와는 별개입니다.
+2026-09-04 후속 승인에 따라 팀 GitHub `main`의
+[`23b7076`](https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA/commit/23b70767e5498394d80d9f0f6b717d6a4cce90ea)에
+소스·영상·실패 기록을 함께 게시했습니다. 원격 확인은 위 활동 기록에 남겼으며,
+컴퓨터 종료·upstream 게시는 수행하지 않았습니다.
 
 ## 다음 작업 권고
 
