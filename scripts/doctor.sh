@@ -36,12 +36,19 @@ check_command python3
 
 if command -v nvidia-smi >/dev/null 2>&1; then
   gpu_line="$(nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>/dev/null | head -n 1)"
-  echo "[ok] GPU          ${gpu_line}"
+  echo "[info] NVIDIA device ${gpu_line} (Gazebo rendering not verified)"
 elif [[ -x /usr/lib/wsl/lib/nvidia-smi ]]; then
   gpu_line="$(/usr/lib/wsl/lib/nvidia-smi --query-gpu=name,driver_version --format=csv,noheader 2>/dev/null | head -n 1)"
-  echo "[ok] GPU          ${gpu_line}"
+  echo "[info] NVIDIA device ${gpu_line} (Gazebo rendering not verified)"
 else
   echo "[warning] NVIDIA GPU forwarding not detected"
+fi
+
+if command -v glxinfo >/dev/null 2>&1; then
+  echo "[info] Current shell OpenGL (Gazebo auto may override this on WSL):"
+  glxinfo -B 2>/dev/null | grep -E 'Device:|Accelerated:|OpenGL renderer string:'
+else
+  echo "[info] Install mesa-utils to inspect OpenGL; NVIDIA detection alone does not verify rendering."
 fi
 
 if python3 - <<'PY'

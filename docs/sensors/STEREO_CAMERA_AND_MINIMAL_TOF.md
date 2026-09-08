@@ -1,6 +1,194 @@
 # 스테레오 카메라 후보와 최소 ToF 배치
 
-확인·검토 날짜: 2026-09-03
+초기 확인·검토 날짜: 2026-09-03. 구매 경로·회의 선별 후속 검토: 2026-09-05.
+
+## 2026-09-06 현재 비교 기준과 추천
+
+9월 5일 요청의 후속 수정이다. 최신 사용자 기준은 **LiDAR 포함 ToF0개, LiDAR 없는 RGB 또는 스테레오 구성 ToF4개**이다.
+RGB 단독은 RGB로 조향한다는 뜻이며 거리 센서까지 없다는 뜻이 아니다. ToF4는 사용자가 설명한 측면 보완 구상이다.
+RGB+ToF4 두 안과 D436+S3 20Hz 확장안을 포함해 엑셀은 총20개 구성이다.
+
+사용자는 RGB로 노면·경로를 찾고 가까운 물체는 별도 센서로 감시하는 역할 분리를 제안했다.
+이 구조는 검토 가능한 대안이며, 스테레오가 충돌 방지에 필수라는 전제는 철회한다.
+기존 RGB-D 시뮬레이션에서도 RGB가 노면 후보를 찾고 깊이가 평지 여부를 보조했다.
+같은 높이의 노면과 잔디는 깊이만으로 분리되지 않는다. 다만 RGB-only의 현장 성능은 아직 검증하지 않았다.
+
+후방 식별마커를 찾으면 차량 위치 추적에 도움이 되지만, 마커 영역만 제외하면 차량 전체가 제거되는 것은 아니다.
+마커 가림·측면 접근·차량 외곽과 경로의 겹침을 처리해야 한다. 확인한 규정의 후방 식별마커 의무와
+팀별 ArUco 사전·ID 확정은 다르다(후자는 미확정). 근접 감지 성공도 회피 공간·반응·제동 시간을 확보했다는 뜻은 아니다.
+RGB+측면 ToF4는 정면의 앞차와 정후방 거리 관측이 부족할 수 있으므로, 4개라는 수량을 충돌 방지 보증으로 쓰지 않는다.
+
+**예산 의견은 기본 RGB안 총60만원(지원30+자체30), 깊이 보조 확장까지 확보할 때 총120만원(지원30+자체90)**이다.
+전자는 C1+RGB/ToF0, 후자는 D436+C1/ToF0을 기준으로 한다.
+OV2710의720p60fps는 미확인이고 B0385는 국내 품절 비교가이므로, RGB안은 구조·가격 비교 후보이며 확정 구매안이 아니다.
+가격이 무제한이면 현재 비교 후보 중 D436+S3 20Hz/ToF0을 우선 시험한다.
+RGB 경로 인식·깊이 보조·저상 LiDAR 근접 감시를 분리하며, 깊이는 추가 정보로 활용한다.
+더 비싼 카메라라는 이유만으로 최종 성능이 높다고 단정하지 않는다.
+
+| 비교안 | 센서 합계 | 차체35~40만원 합산 |
+|---|---:|---:|
+| OV2710+C1 / ToF0 | 162,360원 | 512,360~562,360원 |
+| B0385+C1 / ToF0 | 195,360원 | 545,360~595,360원 |
+| OV2710+ToF4 | 204,160원 | 554,160~604,160원 |
+| B0385+ToF4 | 237,160원 | 587,160~637,160원 |
+| 보유 D435i+C1 / ToF0 | 99,000원 | 449,000~499,000원 |
+| D436+C1 / ToF0 | 696,000원 | 1,046,000~1,096,000원 |
+| D436+S3 20Hz / ToF0 | 1,336,200원 | 1,686,200~1,736,200원 |
+
+D436 VAT가 별도면 해당 두 안에59,700원을 더한다. D436+C1은1,105,700~1,155,700원,
+D436+S3는1,745,900~1,795,900원으로 후자는 총180만원 수준이다.
+센서 합계에는 임의 예비비·부자재·배송·ESP32-S3를 추가하지 않았다.
+차체35/40만원은 하드웨어팀 확정 전 가정이고 보유 D435i는 규정 평가액 제외를 별도 합의해야 한다.
+
+### 저상 LiDAR와10Hz의 의미
+
+저상 LiDAR는 조향 입력 대신 근접 차량·벽 감시를 맡기는 검토안이다.
+수평층을 개방해도 바퀴가 조향한 상태·지지대·센서 자기 가림, 피치/롤·턱과 상대차의 검출 가능한 높이를 확인해야 한다.
+2D 수평면 바깥의 표적은 다중 영역 ToF와 관측 형태가 다르므로 완전한 대체를 입증한 것이 아니다.
+
+[C1 공식 사양](https://www.slamtec.com/en/c1/spec)은8~12Hz(대표10), 각 간격0.72°, 최소0.05m, 거리 정확도±30mm이다.
+흰 표적70%는최대12m, 검은 표적10%는최대6m이다.
+같은 방향의 재관측 약100ms 동안 접근 상대속도0.5/1/2m/s이면 간격은5/10/20cm 줄어든다.
+이는 노출·패킷·처리·제동·조향 지연을 제외한 계산이다. 완성 스캔을 모아 전달하는 드라이버는 점별 데이터 나이도 달라진다.
+나란히 같은 속도로 움직이면 상대 접근속도가 낮아10Hz도 가능성이 있지만, 급격한 끼어들기에서 충분하다고 판정할 근거는 없다.
+기존 고정 속도 조향 시험을 병주 충돌 회피 성능으로 전용하지 않는다.
+
+[S3 공식 사양](https://www.slamtec.com/en/s3/spec)은10~20Hz,32k점/초이다.
+20Hz의 각 간격은0.225°이고 같은 방향 재관측은약50ms이다. 대표10Hz의0.1125°와 혼동하지 않는다.
+최소0.05m와거리 정확도±30mm는 C1보다 거리 정확도까지 개선됐다는 근거가 아니다.
+
+### 카메라 사양 재확인에서 바뀐 판단
+
+[Orbbec V1.6 표](https://www.orbbec.com/wp-content/uploads/2025/06/Gemini-330-series-Datasheet-V1.6.pdf)의
+Gemini335L 최소17cm는424×240이다. 848×480에서는335L34cm,33518cm이고,
+[RealSense 2026-03 표4-12](https://www.realsenseai.com/wp-content/uploads/2026/03/RealSense-D400-Series-Datasheet-Mar-2026.pdf)의
+D436은 같은 해상도19.5cm이다. 단순17/20cm 비교를 바로잡았다. 335L의 긴 기선을 무조건 우선할 이유는 없다.
+D436은 근접 깊이와 기존 RealSense 작업 활용에,335L은 검증된 RGB1280×800@60fps 모드에 장점이 있다.
+
+D436 상품 페이지의RGB최대1280×800와최대60fps는 동시 조합으로 확정할 수 없다.
+상세 데이터시트 표4-5의RGB는1280×720@30과848×480@60이 확인되며, Calibration1280×800@15/25를
+일반 RGB 모드로 쓰지 않았다. 해당 불일치는 엑셀에 명시했다.
+D455의RGB도최대해상도30fps일 뿐640×360에서는90fps를 지원한다.
+
+Gemini335/335L의 깊이100fps는848×100의세로14°특수 모드이다.
+D435i300fps·D455100fps도848×100특수 지원 사례이며 현행 펌웨어/SDK 확인 조건이다.
+[제조사 지원 답변](https://support.realsenseai.com/hc/en-us/community/posts/360043522273-Intel-publish-white-paper-on-high-speed-300-FPS-depth-capture-for-D435?sort_by=votes).
+일반 조향용 넓은 영상의90/60fps와 구분했다.
+
+OAK RGB는 현재 RVC2 센서 드라이버의 해상도별 지원 모드를 기록했다.
+깊이 입력 센서fps와 StereoDepth 출력fps를 합치지 않았다.
+[현행 v3 RVC2 벤치](https://docs.luxonis.com/overview/toplevel-features/depth)의
+Fast Density No Subpixel800p50/400p110fps는 공통 벤치로 표시했으며 완제품별 절대상한·RGB/AI동시 출력 보증이 아니다.
+Lite480p의 정확한 깊이 최대fps는 미공개/미확인으로 남겼다. 추측으로 빈칸을 채우지 않았다.
+
+### 전체 카메라 거리·해상도별 모드
+
+최대값은 서로 동시에 성립하지 않을 수 있다. 아래표의 별도 조건과 제품 출처를 함께 읽는다.
+
+| 모델 | 거리 | 깊이 최대해상도/fps | 깊이 최대fps/해상도 | RGB 최대해상도/fps | RGB 최대fps/해상도 |
+|---|---|---|---|---|---|
+| Gemini 2 | 표기 0.15–10m<br>권장 0.2–5m<br>실내 우선<br>최소값의 모드별 표는 미확인 | 1280×800 @ 30fps | 60fps @ 640×400<br>Binned Sparse Default | 1920×1080 @ 30fps | 60fps @ 1280×720 |
+| Gemini 335 | 표기 0.1–20m+<br>권장 0.3–3m<br>최소: 1280×800 0.26m<br>848×480 0.18m<br>424×240 0.10m | 1280×800 @ 30fps | 100fps @ 848×100<br>세로 시야 14°의 특수 모드<br>일반: 848×480 @ 60fps<br>640×480 @ 90fps | 1920×1080 @ 30fps | 60fps @ 1280×720 |
+| Gemini 335L | 표기 0.17–20m+<br>권장 0.25–6m<br>1280×800: 최소0.25/0.50/1m<br>(탐색 범위256/128/64)<br>848×480 0.34m<br>424×240 0.17m | 1280×800 @ 30fps | 100fps @ 848×100<br>세로 시야 14°의 특수 모드<br>일반: 848×480 @ 60fps<br>640×480 @ 90fps | 1280×800 @ 60fps | 90fps @ 640×480<br>1280×800 @ 60fps도 지원 |
+| OAK-D Lite FF | 권장 0.4–8m<br>유효 상한 표기 20m<br>최소 약0.20m:<br>480p + Extended<br>일반 480p 약0.35m | 640×480<br>깊이 출력 최대fps 미공개<br>입력 센서 상한 99fps<br>(출력 보증과 구분) | 제품별 깊이 절대최대 미공개<br>참고: RVC2 640×400<br>최고속 프리셋 벤치 110fps<br>Lite 실측값 아님 | 4208×3120 @ 30fps<br>IMX214 지원 모드 | 35fps @ 1920×1080<br>IMX214 지원 모드 |
+| 신규 D435i | 권장 0.3–3m<br>최소: 1280×720 0.28m<br>848×480 0.195m<br>424×240 0.105m<br>최대 유효 거리: 환경 의존 | 1280×720 @ 30fps | 특수: 300fps @ 848×100<br>정규: 90fps @ 848×480<br>특수 모드는 FW/SDK 확인 | 1920×1080 @ 30fps | 60fps @ 960×540<br>YUY2 출력 표 기준 |
+| D436 | 권장 0.3–3m<br>최소: 1280×720 0.28m<br>848×480 0.195m<br>424×240 0.105m<br>최대 유효 거리: 환경 의존 | 1280×720 @ 30fps | 90fps @ 848×480<br>정규 지원 표 기준<br>D435i의 300fps를 승계 안 함 | 상품 표기 최대 1280×800<br>해당 해상도의 fps 미확인<br>상세 표 확인 조합:<br>1280×720 @ 30fps | 60fps @ 848×480<br>YUY2, 상세 표4-5 기준<br>1280×800 @ 60fps는<br>현재 자료로 확정 불가 |
+| D455 | 권장 0.6–6m<br>최소: 1280×720 0.52m<br>848×480 0.35m<br>424×240 0.18m<br>최대 유효 거리: 환경 의존 | 1280×720 @ 30fps | 특수: 100fps @ 848×100<br>정규: 90fps @ 848×480<br>특수 모드는 FW/SDK 확인 | 1280×800 @ 30fps | 90fps @ 640×360<br>일반: 848×480 @ 60fps<br>YUY2 출력 표 기준 |
+| OAK-D S2 FF | 권장 약0.8–12m<br>최소 약0.20m:<br>400p + Extended<br>일반: 400p 약0.40m<br>800p 약0.80m | 1280×800<br>v3 최고속 프리셋 벤치:<br>50fps @ 1280×800<br>제품의 절대상한은 미공개 | v3 최고속 프리셋 벤치:<br>110fps @ 640×400<br>제품의 절대상한은 미공개 | 4056×3040 @ 30fps<br>IMX378 RVC2 지원 모드 | 85fps @ 2024×1520<br>일반 1920×1080 @ 60fps<br>IMX378 RVC2 지원 모드 |
+| OAK-D Pro FF<br>IMX378 | 권장 약0.8–12m<br>최소 약0.20m:<br>400p + Extended<br>일반: 400p 약0.40m<br>800p 약0.80m | 1280×800<br>v3 최고속 프리셋 벤치:<br>50fps @ 1280×800<br>제품의 절대상한은 미공개 | v3 최고속 프리셋 벤치:<br>110fps @ 640×400<br>제품의 절대상한은 미공개 | 4056×3040 @ 30fps<br>IMX378 RVC2 지원 모드 | 85fps @ 2024×1520<br>일반 1920×1080 @ 60fps<br>IMX378 RVC2 지원 모드 |
+| OAK-D Pro FF-97<br>OV9782 | 권장 약0.8–12m<br>최소 약0.20m:<br>400p + Extended<br>일반: 400p 약0.40m<br>800p 약0.80m | 1280×800<br>v3 최고속 프리셋 벤치:<br>50fps @ 1280×800<br>제품의 절대상한은 미공개 | v3 최고속 프리셋 벤치:<br>110fps @ 640×400<br>제품의 절대상한은 미공개 | 1280×800 @ 129fps<br>OV9782 RVC2 지원 모드 | 143fps @ 1280×720<br>OV9782 RVC2 지원 모드<br>깊이 fps와 별개 |
+
+- Gemini 2 출처: 제조사 데이터시트, 2024-03-16, p7–8 https://files.seeedstudio.com/products/Orbbec/Orbbec_Gemini_2_Series_Datasheet_V1.7_20240316.pdf
+- Gemini 335 출처: V1.6, p10·25·37 (모드/Min-Z 표) https://www.orbbec.com/wp-content/uploads/2025/06/Gemini-330-series-Datasheet-V1.6.pdf
+- Gemini 335L 출처: V1.6, p10·27·37 (모드/Min-Z 표) https://www.orbbec.com/wp-content/uploads/2025/06/Gemini-330-series-Datasheet-V1.6.pdf
+- OAK-D Lite FF 출처: 제품 거리 / 센서 모드 / 공통 깊이 벤치 https://checkout.luxonis.com/products/oak-d-lite-1 https://docs.luxonis.com/hardware/sensors/OV7251 https://docs.luxonis.com/hardware/sensors/IMX214 https://docs.luxonis.com/overview/toplevel-features/depth
+- 신규 D435i 출처: 2026-03 데이터시트 표4-2·4-12 / 특수모드 지원 답변 https://www.realsenseai.com/wp-content/uploads/2026/03/RealSense-D400-Series-Datasheet-Mar-2026.pdf https://support.realsenseai.com/hc/en-us/community/posts/360043522273-Intel-publish-white-paper-on-high-speed-300-FPS-depth-capture-for-D435?sort_by=votes https://www.realsenseai.com/products/depth-camera-d435i/
+- D436 출처: 2026-03 데이터시트 표4-5·4-12 / 상품 페이지 대조 https://www.realsenseai.com/wp-content/uploads/2026/03/RealSense-D400-Series-Datasheet-Mar-2026.pdf https://www.realsenseai.com/products/d436/
+- D455 출처: 2026-03 데이터시트 표4-3·4-12 / 특수모드 지원 답변 https://www.realsenseai.com/wp-content/uploads/2026/03/RealSense-D400-Series-Datasheet-Mar-2026.pdf https://support.realsenseai.com/hc/en-us/community/posts/360043522273-Intel-publish-white-paper-on-high-speed-300-FPS-depth-capture-for-D435?sort_by=votes https://www.realsenseai.com/depth-camera-d455/
+- OAK-D S2 FF 출처: 제품 거리 / IMX378 / v3 깊이 벤치 https://docs.luxonis.com/hardware/products/OAK-D%20S2 https://docs.luxonis.com/hardware/sensors/IMX378 https://docs.luxonis.com/overview/toplevel-features/depth
+- OAK-D Pro FF IMX378 출처: 제품 거리 / IMX378 / v3 깊이 벤치 https://docs.luxonis.com/hardware/products/OAK-D%20Pro https://docs.luxonis.com/hardware/sensors/IMX378 https://docs.luxonis.com/overview/toplevel-features/depth
+- OAK-D Pro FF-97 OV9782 출처: 제품 거리 / OV9782 / v3 깊이 벤치 https://docs.luxonis.com/hardware/products/OAK-D%20Pro https://docs.luxonis.com/hardware/sensors/OV9782 https://docs.luxonis.com/overview/toplevel-features/depth
+
+다음은 이전 판단 이력으로, 현재 수량·예산·최대FPS 판단은 위 갱신 내용을 따른다.
+
+## 2026-09-05 IR 조건 재검토 당시 기록
+
+당시 수량은 LiDAR 포함 구성2개, 스테레오 단독 구성4개였다. 혼합 구성도LiDAR 기준2개로 산정했으며, 이 기준은 위9월6일 갱신으로 대체되었다.
+
+이 절이 아래의 같은 날 초기 선별·9월3일 추천을 대체하는 현재 사용자 검토안이다.
+엑셀에 Gemini2·335L·OAK-D S2 FF·OAK-D Pro FF(IMX378/OV9782 구분)·D455를 추가했다.
+당시 사용자 기준에 따라 전체17개 조합을 LiDAR 포함ToF2·스테레오 단독ToF4로 산정한17개 견적에 구성별 코멘트·가격순 표·스테레오 해설을 제공했다.
+
+무늬가 적은 표면을 가정하면 IR 점무늬 유무는 중요한 시험 항목이다. 실제 코스 재료에서
+깊이 누락을 측정한 결과는 아니므로 능동 IR이 무조건 성공한다고 단정하지 않는다.
+Lite는 고정초점 때문에 제외하는 것이 아니라, IR 부재·480p 깊이용 입력·RGB 최대35fps 조건을
+확인해야 하는 저가 시험안으로 조정했다. 일반 S2도 IR이 없고, Pro는 IR을 갖춘 별도 선택지이다.
+ToF2/4 추가는 카메라 밖의 거리 관측을 위한 것으로 스테레오용 점무늬를 대체하지 않는다.
+
+현재 회의 후보 추천은 보유 허용 시D435i, 신규 가성비Gemini335,
+상위Gemini335L·D436이다. 335L의 현재 국내 단가는605,000원(VAT 포함)으로
+확인되어 예비 후보에서 직접 비교 후보로 올렸다. D436은597,000원 표시가이나 세금 조건이 미확정이다.
+두 후보를 실구매액·근접 깊이·주행 중RGB·기존ROS 작업 이식 부담으로 선별한다.
+OAK Lite는 가격 하한을 설명하는 조건부 선택지로, C1/S3는LiDAR 대안으로 유지한다.
+
+Gemini2는구형 저가 능동안, 335는50mm 기선의능동/수동안, 335L은95mm 기선과
+RGB 글로벌 셔터60fps를 갖춘 상위안이다. 335의RGB는롤링 셔터이다.
+335→335L은 크기만 변하는 관계가 아니며, 336/336L의핵심 차이는깊이IR-pass필터다.
+최대 입력fps와실효 깊이·RGB 동시 처리율은 별도로 검증한다.
+
+단가·구성·출처와 현재 추천의 전체 근거는 [예산안](../hardware/SENSOR_BUDGET_CASES_2026_09_05.md#ir-조건을-반영한-추천-수정)을 따른다.
+사양 근거: [Orbbec 비교표](https://www.orbbec.com/compare-products-spec/),
+[Luxonis Lite](https://checkout.luxonis.com/products/oak-d-lite-1),
+[OAK-D Pro](https://docs.luxonis.com/hardware/products/OAK-D%20Pro),
+[D436](https://www.realsenseai.com/products/d436/).
+기존 시뮬레이션 센서·장착·차량·트랙과 팀 구매 결정을 변경하지 않는다.
+
+## 2026-09-05 구매 경로와 회의 후보 선별 당시 기록
+
+회의 본문에는 보유 D435i 재사용, 신규 OAK-D Lite FF, 신규 D436 세 안을 우선 제안한다.
+각각 ToF 2개·4개를 붙여 동일 조건으로 비교한다. 사용자 검토용 추천이며 팀 확정이 아니다.
+전체 가격별 계산은 [9월 5일 예산안](../hardware/SENSOR_BUDGET_CASES_2026_09_05.md)을 사용하며,
+아래 9월 3일 가격표는 당시 조사 이력으로 보존한다.
+
+### Mouser OAK-D Lite FF
+
+- 마우저의 [공식 주문 안내](https://www.mouser.com/catalog/catalogusd/646/2350.pdf)는 개인도 구매 대상에 포함한다.
+  [현재 한국 고객지원 안내](https://www.mouser.kr/ko/customer-resource-center/)는 최소 주문 수량 없이 구매 가능함을 설명한다.
+- [해당 FF 상품의 검색 수집 정보](https://www.mouser.kr/ko/ProductDetail/Luxonis/OAK-D-Lite-FF?qs=Znm5pLBrcAJFZUYhzN5JTQ%3D%3D)는
+  1개321,500.4원·재고 표시를 제공한다. 직접 상품 페이지 재열기는 실패하여 결제 시점 가격·재고를 확정한 것은 아니다.
+- [한국 배송·결제 표시](https://www.mouser.kr/ko/)는 원화 신용카드, 대부분6만원 초과 무료배송,
+  FCA 조건과 인도 시 관세·통관료·세금 별도 징수를 명시한다. 국내 VAT 포함 판매가와 직접 비교하지 않는다.
+- 다른 부과금 없이 상품가에 VAT10%만 더한다는 계산 예시는 약353,650원이다. 기존 예산의384,901원보다 약31,251원 낮다.
+  이것은 실제 수입세액·도착 총액 견적이 아니다. 엑셀 단가를 이 예시로 교체하지 않았다.
+- [Luxonis 제품 설명](https://checkout.luxonis.com/products/oak-d-lite-1)은 차량 진동에 FF를 권한다.
+  깊이용 스테레오 센서는640×480 글로벌 셔터이고 RGB는 롤링 셔터·최대35fps 표기다.
+  판매처의 포괄적인60fps 표기를 RGB·깊이 동시60fps 보증으로 해석하지 않는다. FF RGB 초점은50cm~무한대 표기다.
+
+### 기존 후보를 줄인 기준과 보완
+
+기존 예산표는 모든 제품의 동일 조건 성능 평가 결과가 아니라 가격대·구매정보가 확보된 대표 후보를 뽑은 것이다.
+최종 지출, 가까운 노면·상대차 관측, RGB 신호·마커의 주행 중 촬영, 실제 처리율·지연,
+Jetson/ROS 통합 및 기존 RealSense 작업의 재사용을 기준으로 선별한다. 크기는 사용자 요청에 따라 우선 기준에서 제외한다.
+
+| 후보 | 회의용 판단 |
+|---|---|
+| 보유 D435i | 재사용 허용 시 신규 카메라 지출이 없어 최우선 조건부 안. 보유품 규정 평가액과 실제 신규 지출은 구분 |
+| OAK-D Lite FF | 저가 신규안. 수동 스테레오의 무늬 부족 및 RGB 프레임·롤링 셔터 한계 확인. RGB60fps가 필수라면 확정 충족안 아님 |
+| D436 | D435i와 같은 D430 깊이 모듈 계열을 사용하고 RGB 글로벌 셔터·최대60fps로 변경. 기존 RealSense 작업과 주행 중 RGB 개선을 함께 고려한 상위안 |
+| Gemini 335 | 중간 가격의 능동·수동 스테레오 비교안. RGB는 롤링 셔터. OAK 성능이 부족하고 D436 비용이 부담스러울 때 예비 |
+| Gemini 2 | Gemini335와 회의에서 설명할 역할이 겹침. 구매조건이 충분히 저렴해지면 능동 스테레오 저가 대안으로 재검토. 성능 불합격으로 제외한 것은 아님 |
+| Gemini 335L | 재검토 우선 예비. 95mm 기선·RGB 글로벌 셔터1280×800@60fps·이상적0.25~6m로 D436과 비교할 실질적 이유가 있음. 최종 도착가가 비슷하면 직접 경쟁시킬 후보 |
+| OAK-D S2 | Lite480p 대비800p 스테레오의 실제 차이가 있음. 단순 AI기능 중복으로 제외하면 부정확함. 국내 최종 단가·필요 깊이 해상도 확인 뒤 재검토 |
+| D455 | 95mm 기선·원거리 측정 이점. 최대해상도 최소깊이 약52cm·RGB1280×800@30fps를 고려하면 근접 노면과 RGB 촬영 우선 목적에서는 D436을 먼저 비교. 저해상도 최소거리와 실제 제동 필요 거리는 별도 검증 |
+| 신규 D435i | 기존 보유품 활용과 별개. 9/5 표시가563,000원과 D436597,000원의 차이가34,000원이므로 신규 구매 대표안에서는 D436 우선. 세금 조건이 다르면 차액도 재산정 |
+
+근거: [D436 제조사](https://www.realsenseai.com/products/d436/),
+[Orbbec 모델별 사양표](https://www.orbbec.com/compare-products-spec/),
+[Gemini2 제조사](https://store.orbbec.com/products/gemini-2),
+[Luxonis 깊이 해상도별 비교](https://docs.luxonis.com/hardware/platform/depth/depth-accuracy/),
+[D455 제조사](https://www.realsenseai.com/products/real-sense-depth-camera-d455f/).
+Gemini335/335L은 현재 제조사 비교표에서 깊이848×480@60fps도 확인되므로 아래 초기 표의1280×800@30fps만으로
+제품 전체의 최대 깊이 프레임률을30fps라고 단정하지 않는다. 모든 제품의 동시 출력·실제 처리 지연은 별도 실물 검증 대상이다.
 
 이 문서는 별도 예산 상한이 생길 가능성에 대비해 스테레오 깊이 카메라의
 가격 기준과, 전방 스테레오 카메라를 주 인지 센서로 사용할 때의 ToF 축소

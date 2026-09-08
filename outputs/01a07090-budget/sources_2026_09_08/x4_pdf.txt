@@ -1,0 +1,374 @@
+PAGE 1
+         YDLIDAR X4PRO
+             DATA SHEET
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Shenzhen EAI Technology Co.,Ltd.
+PAGE 2
+                                                   CONTENTS
+1     OVERVIEW ................................................................................................. 1
+   1.1     Product Features ....................................................................................... 1
+   1.2     Applications ................................................................................................ 1
+   1.3     Installation and Dimensions .................................................................... 1
+2     SPECIFICATIONS ..................................................................................... 2
+   2.1     Performance Parameter ........................................................................... 2
+   2.2     Electrical Parameter .................................................................................. 2
+   2.3     Interface Definition.................................................................................... 2
+   2.4     Data Communication ................................................................................ 3
+   2.5     Motor Control .............................................................................................. 3
+   2.6      Optical Characteristics ............................................................................ 4
+   2.7     Polar Coordinate System Definition ...................................................... 4
+   2.8     Others ........................................................................................................... 5
+3     POINTS FOR ATTENTION ....................................................................... 5
+4     REVISION ................................................................................................... 6
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2022 EAI All Rights Reserved
+PAGE 3
+1    OVERVIEW
+     YDLIDAR X4PRO is a 360 degrees two-dimensional rangefinder (hereinafter referred to as
+X4PRO) developed by EAI team. Based on the principle of triangulation, it is equipped with related
+optics, electricity, and algorithm design to achieve high-frequency and high- accuracy distance
+measurement. The mechanical structure rotates 360 degrees to continuously output the angle
+information as well as the point cloud data of the scanning environment while ranging.
+
+1.1 Product Features
+➢    360 degrees omnidirectional scanning ranging distance measurement
+➢    Small distance error, stable performance and high accuracy
+➢    Wide ranging distance
+➢    Strong resistance to ambient light interference
+➢    Low power consumption, small size and long service life
+➢    Laser power meets Class I laser safety standards
+➢    Adjustable motor speed, scanning frequency is 6~12Hz
+➢    High-speed ranging, ranging frequency up to 5kHz
+
+1.2 Applications
+➢    Robot navigation and obstacle avoidance
+➢    Robot ROS teaching and research
+➢    Regional security
+➢    Environmental scanning and 3D reconstruction
+➢    Navigation and obstacle avoidance of robot vacuum cleaner/ROS Learning robot
+
+1.3 Installation and Dimensions
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                 YDLIDAR X4PRO MECHANICAL DIMENSIONS (UNIT: MM)
+Copyright 2022 EAI All Rights Reserved                                                                           1 / 6
+PAGE 4
+2    SPECIFICATIONS
+2.1 Performance Parameter
+              CHART 1 YDLIDAR X4PRO PERFORMANCE PARAMETER
+
+          Item                  Min                Typical               Max            Unit               Remarks
+  Ranging frequency               /                 5000                   /             Hz         5000 times per second
+ Scanning frequency               6                    /                  12             Hz        PWM or voltage speed
+                                                                                                          regulation
+   Ranging distance             0.12                   /                  10              m       Indoor environment with
+                                                                                                       80% Reflectivity
+     Field of view                /                 0-360                  /            Deg                     /
+    Absolute error                /                   2                    /             cm              Distance≤1m
+     Relative error               /                 3.5%                   /              /           1m<Distance≤6m
+       Tilt angle               0.25                  1                  1.75           Deg                     /
+                                0.43                 0.50                0.86                          Different motor
+   Angle resolution        (frequency@          (frequency@         (frequency@         Deg                frequency
+                                6Hz)                7Hz)                12Hz)
+      Service life                /                 1500                   /              h                     /
+
+Note 1:  The measurement range and relative accuracy above are the factory FQC standard value based on 80%
+         reflectivity object.
+Note 2:  The relative error value indicates the accuracy of the Lidar measurement. Relative error (mean value) =
+           (average measured distance-actual distance)/actual distance *100%, sample size: 100pcs.
+
+Note 3:  Lidar is a precision device. Please avoid using Lidar under high or low temperature or strong vibration
+         situation, which might cause an exceeded relative error.
+
+2.2 Electrical Parameter
+                 CHART 2 YDLIDAR X4PRO ELECTRICAL PARAMETER
+
+       Item                Min               Typical              Max           Unit                   Remarks
+                                                                                          Excessive voltage might damage
+  Supply voltage            4.8                  5                 5.2            V          the Lidar while low voltage
+                                                                                          could affect normal performance
+                                                                                                Instantaneous current,
+  Starting current           /                 800                1000           mA         device needs higher current at
+                                                                                                         startup
+                                                                                           Normal working current, at low
+ Working current             /                 330                 380           mA           temperature, the rotational
+                                                                                           resistance of the lidar increases,
+                                                                                               and the current will rise
+2.3 Interface Definition
+      X4PRO provides a PH2.0-8P receptacle interface with functional interfaces for system power,
+data communication and motor control.
+
+
+
+Copyright 2022 EAI All Rights Reserved                                                                                    2 / 6
+PAGE 5
+          NC                                                          VCC
+          NC                                                           Tx
+          NC                                                          NC
+    M_CTR                                                             GND
+
+
+                                               YDLIDAR X4PRO INTERFACES
+                 CHART 3 YDLIDAR X4PRO INTERFACE DEFINITION
+
+     Pin           Type              Description            Defaults       Range                 Remarks
+    VCC           Power         Power supply voltage           5V        4.8V-5.2V                    /
+                  supply               positive
+     Tx           Output       System serial port output        /             /                 Data stream:
+                                                                                            LiDARPeripherals
+    GND           Power         Power supply voltage           0V            0V                       /
+                  supply               negative
+  M_CTR            Input       Motor speed control end        2.15V       0V-3.3V           PWM speed control
+     NC              /               Reserved pin               /             /                       /
+2.4 Data Communication
+     X4PRO uses a 3.3V serial port (UART) for duplex communication, and only supports one-way
+communication (Tx) for data downlink. The user can connect the external system and the product
+through the physical interface on the product, and communicate in accordance with the system
+communication protocol to obtain the scanned point cloud in real time. Its communication
+parameters are as follows:
+
+             CHART 4 YDLIDAR X4PRO SERIAL PORT SPECIFICATION
+
+        Item                Min               Typical             Max           Unit              Remarks
+      Baud rate               /               128000                /            bps      8-bit data bit,1 stop bit, no
+                                                                                                    parity
+  High signal level          2.4                3.3                3.5            V                    /
+  Low signal level            0                 0.3                0.6            V                    /
+
+2.5 Motor Control
+     X4PRO is a motor driver with its own motor speed regulation function. M_CTR is the motor
+speed control signal, which can be used for voltage speed regulation and PWM wave debugging. The
+lower the voltage/PWM duty cycle, the higher the motor speed. 0V / Maximum speed at 0% duty
+cycle.
+
+
+Copyright 2022 EAI All Rights Reserved                                                                           3 / 6
+PAGE 6
+     For example: M_CTR input voltage is 0V, the motor rotates at the highest speed.
+
+     Among them, the PWM signal of M_CTR has the following requirements:
+
+     CHART 5 YDLIDAR X4PRO MOTOR PWM SIGNAL SPECIFICATIONS
+
+        Item                 Min              Typical              Max           Unit              Remarks
+  PWM frequency               /                  10                  /           KHz        PWM as a square wave
+                                                                                                     signal
+  Duty cycle range            0                 65%               100%             /       Smaller duty value, higher
+                                                                                                    scan rate
+2.6  Optical Characteristics
+     The infrared point pulse laser used in X4PRO can
+ensure the safety of human and pet. The lidar has passed
+testing and conformed to Class I, 21 CFR 1040.10 and
+1040.11 safety level, except for IEC 60825-1 Ed. 3., as
+described in Laser Notice No. 56, dated May 8, 2019.
+
+     When the system is working, lasers and optical lenses complete the transmission and reception
+of laser signals to achieve high-frequency ranging. To ensure the system's ranging performance,
+please ensure that the laser and optical lens of the X4PRO are kept clean. The laser optical
+parameters are as follows:
+
+            CHART 6 YDLIDAR X4PRO LASER OPTICAL PARAMETERS
+
+        Item                 Min              Typical              Max           Unit               Remarks
+  Laser wavelength           775                793                 800           nm              Infrared band
+    Laser power                /                  3                  5           mW          Average power value
+        FDA                                                     Class I IEC60825-1
+
+Note: The personal adjustment or reassembly of the Lidar may result inhazardousradiation exposure.
+
+2.7 Polar Coordinate System Definition
+     In order to facilitate secondary development, X4PRO defines a polar coordinate system
+internally. The polar coordinates of the system take the center of the rotating core of X4PRO as the
+pole. The specified angle is clockwise as positive, and the zero angle is located directly in front of
+the X4PRO motor. Due to individual differences, there is a deviation of plus or minus 3 degrees.
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2022 EAI All Rights Reserved                                                                            4 / 6
+PAGE 7
+                                 YDLIDAR X4PRO POLAR COORDINATE SYSTEM DEFINITION
+2.8 Others
+                                CHART 7 YDLIDAR X4PRO OTHERS
+
+         Item                  Min             Typical             Max           Unit                 Remarks
+                                                                                          Long time working under high
+Operating temperature            0                20                40            ℃         temperature will reduce the
+                                                                                             lifespan of the lidar sensor
+ Storage temperature            -10               20                60            ℃                With package
+Lighting environment             0               2000             40000          Lux               Reference only
+        weight                   /               178                 /            g                     N.W.
+
+
+3   POINTS FOR ATTENTION
+      This lidar uses a non-enclosed brushed motor. According to the operating principle of the brushed
+motor, this product cannot be used in volatile and releasing environments containing low molecular
+compounds such as Si (silicon), S (sulfur), P (phosphorus):
+
+➢    Risk analysis
+      The electrical contacts between the brush and the commutator in a brushed motor will repeatedly
+connected and disconnected during the operation of the motor, generating electrical sparks When the
+motor  is  in  an  environment  with  vapor          such  as    silicon,  sulfur,  and  phosphorus,  molecules  or
+compounds such as silicon, sulfur, and phosphorus (such as SiC, SiO2, etc.) will be adsorbed at the
+contact,  causingthe increases  in the contacts  resistance between the brush  and the commutator
+electrical contact, which may lead to poor contact, blocked rotation or other situations.
+
+➢    Usage suggestions
+1.  Avoid using volatile and releasing materials containing compounds such as Si, S, P, etc., including
+    but not limited to heat dissipation adhesive, insulation adhesive, AB adhesive, etc.
+2.  In terms of structural design, keeping away from the volatilization and releasing environment and
+    materials containing low molecular compounds such as Si (silicon), S (sulfur), P (phosphorus), etc.,
+    and reserve a certain space to ensure air flow and reduce the possible concentration of low
+    molecular compounds.
+Copyright 2022 EAI All Rights Reserved                                                                                5 / 6
+PAGE 8
+4    REVISION
+
+         Date             Version                                           Content
+     2022-05-30             1.0                                          The 1st release
+     2024-01-24             1.1                                           Add section 3
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2022 EAI All Rights Reserved                                                                                  6 / 6

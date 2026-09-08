@@ -26,9 +26,19 @@ def main() -> int:
                         default="configured")
     parser.add_argument("--tof-profile", choices=("configured", "low_latency_4x4_60", "tracking_8x8_15"),
                         default="configured")
+    parser.add_argument("--output-dir", type=Path, help="별도 검증 폴더; 기존 결과 보존용")
+    parser.add_argument("--camera-seconds", type=float, default=1.5)
+    parser.add_argument("--render-backend", choices=("auto", "system", "wsl_nvidia", "software"), default="system")
+    parser.add_argument("--collision-detector", choices=("configured", "ode", "bullet", "fcl"), default="configured")
+    parser.add_argument("--no-scene-broadcaster", action="store_true")
+    parser.add_argument("--shutdown-grace", type=float, default=15., help="종료 진단용 최대 대기; 기본 15초")
     args = parser.parse_args()
+    if not math.isfinite(args.camera_seconds) or args.camera_seconds <= 0:
+        parser.error("--camera-seconds must be positive and finite")
+    if not math.isfinite(args.shutdown_grace) or not 15 <= args.shutdown_grace <= 90:
+        parser.error("--shutdown-grace must be between 15 and 90 seconds")
     repo = Path(__file__).resolve().parents[1]
-    output = repo / "artifacts/tests"
+    output = args.output_dir or repo / "artifacts/tests"
     output.mkdir(parents=True, exist_ok=True)
     # 다른 사용자의 시뮬레이션과 ROS/Gazebo 명령이 섞이지 않게 격리합니다.
     os.environ["ROS_DOMAIN_ID"] = str(70 + os.getpid() % 100)
@@ -118,16 +128,24 @@ def main() -> int:
     log_path = output / f"{args.track}{suffix}_smoke.log"
     report_path = output / f"{args.track}{suffix}_smoke.json"
     report = {
+        "shutdown_grace_s": args.shutdown_grace,
+        "collision_detector": args.collision_detector, "scene_broadcaster": not args.no_scene_broadcaster,
+        "render_backend": args.render_backend, "camera_seconds": args.camera_seconds,
         "track": args.track, "passed": False, "full_lap_test": False,
         "d435i_profile": profile_name, "tof_profile": tof_profile_name,
         "fastdds_builtin_transports": os.environ["FASTDDS_BUILTIN_TRANSPORTS"],
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
         "vehicle_config_sha256": hashlib.sha256(config_path.read_bytes()).hexdigest(),
     }
+    if args.output_dir and (log_path.exists() or report_path.exists()):
+        raise FileExistsError(f"기존 검증 결과를 덮어쓰지 않습니다: {output}")
+    began = time.monotonic()
     log_stream = log_path.open("w", encoding="utf-8")
     process = subprocess.Popen(
         ["ros2", "launch", "--noninteractive", "arena_bringup", "simulation.launch.py", "headless:=true", f"track:={args.track}",
-         f"d435i_profile:={args.d435i_profile}", f"tof_profile:={args.tof_profile}"],
+         f"d435i_profile:={args.d435i_profile}", f"tof_profile:={args.tof_profile}", f"render_backend:={args.render_backend}",
+         f"collision_detector:={args.collision_detector}", f"scene_broadcaster:={str(not args.no_scene_broadcaster).lower()}",
+         f"gazebo_sigterm_timeout:={args.shutdown_grace - 10}"],
         cwd=repo, stdin=subprocess.DEVNULL, stdout=log_stream, stderr=subprocess.STDOUT, start_new_session=True,
     )
 
@@ -215,8 +233,8 @@ def main() -> int:
         warmup_started = sim_time()
         wait_for(lambda: sim_time() - warmup_started >= .5)
         collect_camera_stamps = True
-        wait_for(lambda: len(camera_stamps["rgb"]) >= profile["color_rate_hz"] * 1.5
-                 and len(camera_stamps["depth"]) >= profile["depth_rate_hz"] * 1.5, timeout=60)
+        wait_for(lambda: len(camera_stamps["rgb"]) >= profile["color_rate_hz"] * args.camera_seconds
+                 and len(camera_stamps["depth"]) >= profile["depth_rate_hz"] * args.camera_seconds, timeout=120)
         collect_camera_stamps = False
         camera_report = {}
         report["camera_validation"] = camera_report
@@ -316,7 +334,8 @@ def main() -> int:
         # SIGINT는 ROS launch에만 보냅니다. 전체 그룹에 보내면 launch의 전달과
         # 겹쳐 자식이 정리 도중 두 번째 KeyboardInterrupt를 받을 수 있습니다.
         # 응답하지 않을 때만 이번 검사에서 만든 그룹 전체에 종료 신호를 보냅니다.
-        for sig, timeout in ((signal.SIGINT, 15), (signal.SIGTERM, 5), (signal.SIGKILL, 5)):
+        shutdown_started = time.monotonic()
+        for sig, timeout in ((signal.SIGINT, args.shutdown_grace), (signal.SIGTERM, 5), (signal.SIGKILL, 5)):
             if process.poll() is not None:
                 break
             try:
@@ -331,6 +350,8 @@ def main() -> int:
             except subprocess.TimeoutExpired:
                 continue
         report["launch_exit_code"] = process.poll()
+        report["shutdown_wall_s"] = time.monotonic() - shutdown_started
+        report["elapsed_wall_s"] = time.monotonic() - began
         log_stream.close()
         log_text = log_path.read_text(encoding="utf-8")
         errors = [line for line in log_text.splitlines()

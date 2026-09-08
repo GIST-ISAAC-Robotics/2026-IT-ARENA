@@ -1,0 +1,384 @@
+PAGE 1
+                           G4
+                DATA SHEET
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ Shenzhen EAI Technology Co.,Ltd.
+PAGE 2
+                                                  CONTENTS
+1     PRODUCT OVERVIEW ............................................................................. 1
+   1.1     Product Features ....................................................................................... 1
+   1.2     Applications ................................................................................................ 1
+   1.3     Installation and Dimensions .................................................................... 1
+2     SPECIFICATIONS ..................................................................................... 2
+   2.1     Performance Parameter ........................................................................... 2
+   2.2     Electrical Parameter .................................................................................. 3
+   2.3     Interface Definition.................................................................................... 3
+   2.4     Data Communication ................................................................................ 3
+   2.5     Optical Characteristic ............................................................................... 4
+   2.6     Polar Coordinate System Definition ...................................................... 4
+   2.7     Others ........................................................................................................... 5
+3     REVISE ........................................................................................................ 6
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2017 EAI All Rights Reserved
+PAGE 3
+1    PRODUCT OVERVIEW
+     YDLIDAR G4 is a 360 degrees 2D LiDAR (hereinafter referred to as G4) developed by EAI
+team. Based on the principle of Triangulation, it is equipped with related optics, electricity, and
+algorithm design to achieve high-frequency and high-precision distance measurement. The
+mechanical structure rotates 360 degrees to continuously output the angle information as well as the
+point cloud data of the scanning environment while ranging.
+
+1.1 Product Features
+➢    360 degrees scan ranging
+➢    High accuracy, stable performance
+➢    Wide measuring range
+➢    Strong resistance to ambient light interference
+➢    Industrial grade brushless motor drive, stable performance
+➢    Class I eye safety
+➢    360 degrees omnidirectional scanning and 5-12Hz frequency
+➢    Using optical and magnetic fusion technology to realize wireless communication and wireless
+     power supply
+➢    High-speed ranging, up to 9000Hz frequency
+
+1.2 Applications
+➢    Robot navigation and obstacle avoidance
+➢    Industrial automation
+➢    Regional security
+➢    Intelligent transportation
+➢    Environmental scanning and 3D reconstruction
+➢    Digital multimedia interaction
+➢    Robot ROS teaching and research
+
+1.3 Installation and Dimensions
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2017 EAI All Rights Reserved                                                                          1 / 6
+PAGE 4
+                          FIG 1 YDLIDAR G4 INSTALLATION&MECHANICAL SIZE (UNIT:MM)
+
+
+2    SPECIFICATIONS
+2.1 Performance Parameter
+                        CHART 1 YDLIDAR G4 PERFORMANCE PARAMETER
+
+         Item                 Min               Typical               Max            Unit               Remarks
+ Ranging frequency              /                 9000                   /            Hz                     /
+  Motor frequency               5                   7                   12            Hz         Software speed control,
+                                                                                                   default speed = 7Hz
+                                                                                               Ranging frequency =4KHz
+                              0.12                  /                   16             m           (to be customized),
+                                                                                                     80% Reflectivity
+  Ranging distance                                                                             Ranging frequency =8KHz
+                              0.26                  /                   16             m           (to be customized),
+                                                                                                     80% Reflectivity
+                              0.28                  /                   16             m       Ranging frequency =9KHz,
+                                                                                                     80% Reflectivity
+    Field of view               /                 0-360                  /           Deg                     /
+  Systematic error              /                   2                    /            cm                Range≤1m
+    Relative error              /                 2.0%                   /             /             1m<range ≤8m
+      Tilt angle              0.25                  1                  1.75          Deg                     /
+                               0.2                0.28                 0.48                      When motor frequency
+  Angle resolution        (Frequency           (Frequency          (Frequency        Deg          =7Hz, and the ranging
+                            @5Hz)                @7Hz)              @12Hz)                         Frequency =9000Hz
+
+Note 1:  It is factory FQC standard value, 80% reflectivity material object.
+
+
+
+Copyright 2017 EAI All Rights Reserved                                                                                  2 / 6
+PAGE 5
+Note 2:  The relative error value indicates the accuracy of the Lidar measurement. Relative error (mean value) =
+           (average measured distance-actual distance)/actual distance *100%, sample size: 100pcs.
+
+Note 3:  Lidar is a precision device, please avoid using Lidar under high or low temperature or strong vibration
+           situation, the relative error parameter index will be relatively larger, and it may exceed the typical value.
+
+2.2 Electrical Parameter
+                           CHART 2 YDLIDAR G4 ELECTRICAL PARAMETER
+
+        Item                 Min               Typical                Max            Unit                Remarks
+                                                                                                 Excessive voltage might
+  Supply voltage             4.8                  5.0                  5.2            V        damage the Lidar while low
+                                                                                                affect normal performance
+                                                                                                The driving capability that
+  Startup current           1000                   /                    /            mA          the power supply for the
+                                                                                                    lidar needs to meet
+ Sleeping current              /                   /                   50            mA         System sleep, motor stops
+ Working current               /                  350                 500            mA                System work,
+                                                                                                     motor speed=7Hz
+2.3 Interface Definition
+      G4 provides PH2.0-5P plug interface for system power supply and data communication.
+
+
+                                                                                                       NC
+                                                                                                       GND
+
+                                                                                                       Rx
+                                                                                                       Tx
+                                                                                                       VCC
+
+
+
+                                              FIG 2 YDLIDAR G4 INTERFACES
+                            CHART 3 YDLIDAR G4 INTERFACE DEFINITION
+
+     Pin             Type               Description               Defults            Range                  Remarks
+    VCC         Power supply               Positive                  5V            4.8V-5.2V                     /
+     Tx             Output           System serial port               /                  /                Data stream:
+                                           output                                                     LiDARPeripherals
+     Rx              Input           System serial port               /                  /                Data stream:
+                                            Input                                                     PeripheralsLiDAR
+    GND         Power supply              Negative                   0V                0V                        /
+     NC            Reserve              Reserved pin                  /                  /                       /
+
+2.4 Data Communication
+      With a 3.3V level serial port (UART), users can connect the external system and the product
+through the physical interface. After that, you can obtain the real-time scannedpoint cloud data,
+
+Copyright 2017 EAI All Rights Reserved                                                                                    3 / 6
+PAGE 6
+device information device status as well as set the device working mode, etc. The communication
+protocol of parameters are as follows:
+
+                       CHART 4 YDLIDAR G4 SERIAL PORT SPECIFICATION
+
+         Item                  Min               Typical             Max           Unit               Remarks
+       Baud rate                 /               230400                 /           bps      8-bit data bit,1 stop bit, no
+                                                                                                        parity
+   High signal level           2.4                 3.3                3.5            V                     /
+   Low signal level             0                  0.3                0.6            V                     /
+
+2.5 Optical Characteristic
+      The infrared point pulse laser used in G4 can ensure
+the safety of human and pet. The lidar has passed testing
+and conformed to Class I, 21 CFR 1040.10 and 1040.11
+safety level, except for IEC 60825-1 Ed. 3., as described
+in Laser Notice No. 56, dated May 8, 2019.
+
+      The laser and optical lens finish the transmission and reception of the laser signal to achieve
+high-frequency ranging while working. To ensure system ranging performance, please keep the laser
+and optical lens clean. The detailed optical parameters are as follows:
+
+                       CHART 5 YDLIDAR G4 LASER OPTICAL PARAMETERS
+
+        Item                  Min               Typical              Max            Unit               Remarks
+  Laser wavelength            775                 792                 800            nm              Infrared band
+    Laser power                 /                 3.5                  6             mw             Average power
+        FDA                                                      Class I IEC60825-1
+
+Note: The personal adjustment or reassembly of the Lidar may result inhazardousradiation exposure.
+
+2.6 Polar Coordinate System Definition
+      In order to facilitate secondary development, G4 internally defines a polar coordinate system.
+The polar coordinates of the system take the center of the rotating core of G4 as the pole, and the
+specified Angle is positive clockwise. The zero Angle is located in the direction of the outlet of the
+G4 PH2.0-5P interface line (top view). Due to individual differences, there is a deviation of +/-3
+degrees, as shown in the figure:
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2017 EAI All Rights Reserved                                                                                 4 / 6
+PAGE 7
+                                      Pole                                                     Zero direction
+
+                       Pole axis
+
+
+                                  0°~360°
+
+
+
+
+                             FIG 3 YDLIDAR G4 POLAR COORDINATE SYSTEM DEFINITION
+2.7 Others
+                                        CHART 6 YDLIDAR G4 OTHERS
+
+          Item                   Min              Typical             Max           Unit                Remarks
+                                                                                              Long-term working in a high
+ Operating temperature             0                 20                50            ℃          temperature environment
+                                                                                                will reduce the life span
+  Storage temperature             -10                 /                60            ℃                       /
+ Lighting environment              0                550               2000          Lux             For reference only
+         weight                    /                214                 /             g                      /
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2017 EAI All Rights Reserved                                                                                   5 / 6
+PAGE 8
+3     REVISE
+
+       Date              Version                                                    Content
+   2017-12-06               1.0                                             Compose a first draft
+   2018-01-15               1.1          Modify Operating temperature to 0          -50℃,revise Interface Definition, As shown
+                                                                                 in the chart 3
+   2018-07-24               1.2              1) Modify ranging resolution to 1% accuracy within 8m; 2) zero angle 4                 °
+                                                                                   deviation
+   2019-02-15               1.3             1) Modify the Statistical Error; 2) Revise the footer’s period to 2015             -2019
+   2019-03-12               1.4          Remove the USB Type         -C interface, revise the page number to 7 pages, add the
+                                                                            relative error remarks
+   2019-05-06               1.5                                     Add the range≤0.5m error to 2cm
+   2019-08-27               1.6                      Adjust the zero direction and the color of the line sequence
+   2019-09-20               1.7                             Setting-up minimum distance，Add pitch angle
+   2019-10-16               1.8                                          Adjust the accuracy to 2%
+   2020-01-07               1.9          Optimize the presentation, Adjust the wavelength, optimize the presentation of
+                                                                            application scenarios
+   2021-06-24               2.0                  Modify current, temperature, power and other relevant parameters
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2017 EAI All Rights Reserved                                                                                               6 / 6

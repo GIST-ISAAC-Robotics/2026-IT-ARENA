@@ -1,0 +1,392 @@
+PAGE 1
+    YDLIDAR T-MINI PLUS
+            DATA SHEET
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Shenzhen EAI Technology Co.,Ltd.
+PAGE 2
+                                                   CONTENTS
+1     PRODUCT OVERVIEW ............................................................................. 1
+   1.1     Product Features ....................................................................................... 1
+   1.2     Applications ................................................................................................ 1
+   1.3     Installation and Dimensions .................................................................... 1
+2     SPECIFICATIONS ..................................................................................... 2
+   2.1     Product Parameter .................................................................................... 2
+   2.2     Electrical Parameter .................................................................................. 3
+   2.3     Interface Definition.................................................................................... 3
+   2.4     Data Communication ................................................................................ 3
+   2.5     Motor Control .............................................................................................. 4
+   2.6     Optical Characteristic ............................................................................... 4
+   2.7     Polar Coordinate System Definition ...................................................... 4
+   2.8     Others ........................................................................................................... 5
+3     DEVELOPMENT AND SUPPORT ............................................................ 5
+4     REVISE ........................................................................................................ 6
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2023 EAI All Rights Reserved
+PAGE 3
+1    PRODUCT OVERVIEW
+     YDLIDAR T-mini Plus is a 360 degrees 2D LiDAR (hereinafter referred to as T-mini Plus)
+developed by EAI team. Based on the principle of ToF, it is equipped with related optics, electricity,
+and algorithm design to achieve high-precision laser distance measurement, while measuring the
+distance, the mechanical structure rotates 360 degrees to continuously obtain angle information,
+thereby realizing 360 degrees scanning distance measurement and outputting point cloud data of the
+scanning environment.
+
+1.1 Product Features
+
+➢    360 degrees scanning and ranging, 6-12Hz scan frequency
+➢    Ranging frequency up to 4000Hz
+➢    High accuracy, stable performance
+➢    Strong ability to resist ambient light interference
+➢    Class I eye safety standard
+
+1.2 Applications
+
+➢    Robot navigation and obstacle avoidance
+➢    Robot ROS teaching and research
+➢    Regional security
+➢    Environmental scanning and 3D reconstruction
+➢    Navigation and obstacle avoidance of home service robots/ robot vacuum cleaners
+
+1.3 Installation and Dimensions
+
+
+
+
+
+
+
+
+
+
+
+
+
+                            FIG 1 YDLIDAR T-MINI PLUS OPTICAL WINDOW (UNIT: MM)
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2023 EAI All Rights Reserved                                                                           1 / 6
+PAGE 4
+                   FIG 2 YDLIDAR T-MINI PLUS INSTALLATION AND MECHANICAL SIZE (UNIT: MM)
+
+
+2    SPECIFICATIONS
+2.1 Product Parameter
+               CHART 1 YDLIDAR T-MINI PLUS PRODUCT PARAMETER
+
+         Item                 Min                 Typical                 Max           Unit               Remarks
+
+ Ranging frequency              /                   4000                    /            Hz                      /
+   Scan frequency              6                      6                    12            Hz       Software speed regulation,
+                                                                                                          default 6Hz
+                              0.05                    /                    12             m             80% reflectivity
+  Ranging distance
+                              0.05                    /                     4             m             10% reflectivity
+
+   Fileld of view               /                  0-360                    /            Deg                     /
+
+  Systematic error              /                    20                     /            mm         0.05m＜Distance≤12m
+
+  Angle resolution            0.54                    /                     /            Deg                     /
+
+      Tilt angle               0                    0.75                   1.5           Deg                     /
+
+Note 1: It is factory FQC standard value, 80% reflectivity material object.
+
+Note 2: Lidar is a precision device, please avoid using Lidar under high or low temperature or strong vibration
+        situation, the relative error parameter index will be relatively larger, and it may exceed the typical value.
+
+Copyright 2023 EAI All Rights Reserved                                                                                     2 / 6
+PAGE 5
+2.2 Electrical Parameter
+            CHART 2 YDLIDAR T-MINI PLUS ELECTRICAL PARAMETER
+
+        Item             Min               Typical              Max         Unit                  Remarks
+                                                                                          Excessive voltage might
+  Supply voltage          4.8                5.0                5.2           V         damage the Lidar while low
+                                                                                         affect normal performance
+  Start-up current         /                 840                1000         mA           Peak current at power-on
+ Working current           /                 340                480          mA         System works, motor rotates
+  Sleeping current         /                   /                 45          mA          System sleeps, motor stops
+
+Note: It is recommended to use 5V 1A power supply equipment.
+
+2.3 Interface Definition
+      The T-mini Plus external physical interface terminal is GH1.25-4P, which realizes system
+power supply and data communication.
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                           VCC     Tx    GND    Rx
+
+
+
+
+                                      FIG 3 YDLIDAR T-MINI PLUS INTERFACES
+             CHART 3 YDLIDAR T-MINI PLUS INTERFACE DEFINITION
+
+    Pin            Type                 Description               Defults         Range               Remarks
+    VCC        Power supply               Positive                  5V          4.8V-5.2V                  /
+     Tx            Output           System serial output             /               /               Data stream:
+                                                                                                 LidarPeripherals
+     Rx             Input         System serial port Input           /               /               Data stream:
+                                                                                                 PeripheralsLidar
+    GND           Earthing                Negative                  0V              0V                     /
+
+2.4 Data Communication
+      With a 3.3V level serial port (UART), users can connect the external system and the product
+through the physical interface. After that, you can obtain the real-time scannedpoint cloud data,
+device information as well as device status, and can set the working mode of the equipment, etc. The
+communication protocol of parameters are as follows:
+
+Copyright 2023 EAI All Rights Reserved                                                                              3 / 6
+PAGE 6
+              CHART 4 YDLIDAR T-MINI PLUS SERIAL SPECIFICATION
+
+         Item                 Min                Typical                Max          Unit             Remarks
+       Baud rate                /                230400                   /           bps      8-bit data bit,1 stop bit,
+                                                                                                      no parity
+   High signal level          2.4                  3.3                   3.5           V                   /
+   Low signal level            0                     /                   0.6           V                   /
+
+2.5 Motor Control
+     T-mini Plus has its own motor driver with motor speed control function. For details, please refer
+to the development manual of this product.
+
+2.6 Optical Characteristic
+     The infrared point pulse laser used in T-mini Plus
+can ensure the safety of human and pet. The lidar has
+passed testing and conformed to Class I, 21 CFR 1040.10
+and 1040. 11 safety level, except for IEC 60825-1 Ed. 3.,
+as described in Laser Notice No. 56, dated May 8, 2019.
+
+     The laser and optical lens finish the transmission and reception of the laser signal to achieve
+high-frequency ranging while working. The detailed optical parameters are as follows:
+
+        CHART 5 YDLIDAR T-MINI PLUS LASER OPTICAL PARAMETERS
+
+        Item                 Min                 Typical               Max         Unit              Remarks
+  Laser wavelength           895                   905                 915          nm             Infrared band
+        FDA                                                     Class I IEC60825-1
+
+Note: The personal adjustment or reassembly of the Lidar may result inhazardousradiation exposure.
+
+2.7 Polar Coordinate System Definition
+     In order to facilitate secondary development, T-mini Plus internally defines a polar coordinate
+system. The polar coordinate of the system takes the center of the rotating core of T-mini Plus as the
+pole. The deviation of plus or minus 3 degrees, as shown in the figure:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2023 EAI All Rights Reserved                                                                             4 / 6
+PAGE 7
+                                                     Pole
+
+
+                             Polar axis                                          Zero direction
+
+
+
+
+
+
+
+                                       0~360 derees, clockwise is positive
+
+
+                       FIG 4 YDLIDAR T-MINI PLUS POLAR COORDINATE SYSTEM DEFINITION
+2.8 Others
+                           CHART 6 YDLIDAR T-MINI PLUS OTHERS
+
+        Item            Min               Typical                Max          Unit                  Remarks
+     Operating             -10                 25                  45          ℃                         /
+    temperature
+ Store temperature         -20                 25                  70          ℃                         /
+                                                                                          For reference only, the laser
+      Lighting              /                   /                60000        Lux        transceiver window cannot be
+    environment                                                                          directly facing the strong light
+                                                                                             source such as the sun
+       Weight               /                  45                   /           g                     N.W.
+
+
+3    DEVELOPMENT AND SUPPORT
+      T-mini Plus provides a wealth of software interfaces, which can realize the motor enabling
+control, speed control, range unit enabling control and output control of the system.  On this basis,
+users can also implement the power control and scan control purpose.
+
+      Also, the 3D model of T-mini Plus is disclosed. YDLIDAR provides the graphics debugging
+Workstation under Windows, as well as the corresponding SDK and ROS development kit to users,
+which could be downloaded from our website: https://www.ydlidar.com/.
+
+      In order to facilitate users’ development, T-mini Plus development manual and user manual are
+also provided. Please download them from our website.
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2023 EAI All Rights Reserved                                                                                5 / 6
+PAGE 8
+4    REVISE
+
+        Date               Version                                               Content
+    2023-12-14                1.0                                            The 1st release
+    2024-01-29                1.1                                   Update chart 2 working current
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2023 EAI All Rights Reserved                                                                                    6 / 6

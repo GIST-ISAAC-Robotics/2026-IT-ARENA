@@ -14,6 +14,7 @@ import signal
 import subprocess
 import threading
 import time
+import zipfile
 
 import cv2
 import numpy as np
@@ -143,7 +144,9 @@ def add_depth_metrics(report, stamps, image, info):
 
 
 def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_safety=True,
-                       red_duration_s=8.0, autonomy_mode="lidar", chase_camera=False):
+                       red_duration_s=8.0, autonomy_mode="lidar", chase_camera=False,
+                       lidar_acquisition="snapshot", lidar_compensation="none",
+                       control_rate_hz=20.0, render_backend="system", sensor_wall_timeout_s=3.0):
     # 이 검사기는 터미널 프로세스 그룹이 아니라 ros2 launch에만 SIGINT를
     # 보냅니다. WSL의 TTY 상속 여부와 무관하게 자식에게도 전달되게 합니다.
     return subprocess.Popen(
@@ -151,6 +154,9 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
          f"speed_profile:={speed_profile}", f"lidar_rate_hz:={lidar_rate_hz:g}",
          f"tof_safety:={str(bool(tof_safety)).lower()}", f"red_duration_s:={red_duration_s:g}",
          f"autonomy_mode:={autonomy_mode}",
+         f"lidar_acquisition:={lidar_acquisition}", f"lidar_compensation:={lidar_compensation}",
+         f"autonomy_control_rate_hz:={control_rate_hz}", f"render_backend:={render_backend}",
+         f"sensor_wall_timeout_s:={sensor_wall_timeout_s}",
          f"chase_camera:={str(bool(chase_camera)).lower()}"],
         cwd=REPO, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
 
@@ -158,6 +164,11 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--laps", type=int, default=2)
+    parser.add_argument("--lidar-acquisition", choices=("snapshot", "sequential"), default="snapshot")
+    parser.add_argument("--lidar-compensation", choices=("none", "deskew", "shift", "both"), default="none")
+    parser.add_argument("--control-rate-hz", type=float, default=20.0)
+    parser.add_argument("--render-backend", choices=("system", "software", "wsl_nvidia"), default="system")
+    parser.add_argument("--sensor-wall-timeout-s", type=float, default=3.0)
     parser.add_argument("--max-sim-seconds", type=float, default=900)
     parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight"), default="cautious")
     parser.add_argument("--lidar-rate-hz", type=float, default=10.0,
@@ -175,6 +186,12 @@ def main():
     parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy_official",
                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
     args = parser.parse_args()
+    if not math.isfinite(args.control_rate_hz) or not 5 <= args.control_rate_hz <= 200:
+        raise ValueError("제어 주기는 5~200 Hz 범위의 유한한 수여야 합니다.")
+    if not math.isfinite(args.sensor_wall_timeout_s) or not 3 <= args.sensor_wall_timeout_s <= 60:
+        raise ValueError("벽시계 감시 한도는 3~60초여야 합니다.")
+    if args.autonomy_mode != "lidar" and args.lidar_compensation != "none":
+        raise ValueError("LiDAR 보정 검사는 lidar 모드에서만 사용합니다.")
     if (args.laps < 1 or not math.isfinite(args.max_sim_seconds) or args.max_sim_seconds <= 0 or
             not math.isfinite(args.lidar_rate_hz) or not .5 <= args.lidar_rate_hz <= 100 or
             not math.isfinite(args.red_duration_s) or not .5 <= args.red_duration_s <= 30 or
@@ -200,6 +217,8 @@ def main():
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
     node = rclpy.create_node("basic_autonomy_validator")
     state, trace, scans, depth_stamps, pictures = {}, [], [], [], set()
+    drive_stamps = []
+    acquisition_records = []
     stop_requested = False
     def interrupted(*_):
         nonlocal stop_requested
@@ -208,6 +227,8 @@ def main():
     signal.signal(signal.SIGTERM, interrupted)
     def remember(message, key):
         state[key] = message
+        if key == "drive":
+            drive_stamps.append(float(message.header.stamp.sec) + message.header.stamp.nanosec * 1e-9)
     def receive_scan(message):
         state["scan"] = message
         scans.append(float(message.header.stamp.sec) + message.header.stamp.nanosec * 1e-9)
@@ -223,6 +244,9 @@ def main():
     ]
     if args.autonomy_mode == "lidar":
         subscriptions.append(node.create_subscription(LaserScan, "/scan", receive_scan, qos_profile_sensor_data))
+        if args.lidar_acquisition == "sequential":
+            subscriptions.append(node.create_subscription(String, "/sim/lidar_acquisition",
+                lambda m: acquisition_records.append(json.loads(m.data)), 100))
     else:
         def receive_depth(message):
             state["depth"] = message
@@ -252,6 +276,11 @@ def main():
               "full_lap_validation": full_lap_validation, "lap_length_m": lap_length,
               "speed_profile": args.speed_profile, "requested_lidar_rate_hz": args.lidar_rate_hz,
               "autonomy_mode": args.autonomy_mode,
+              "lidar_acquisition": args.lidar_acquisition,
+              "lidar_compensation": args.lidar_compensation,
+              "requested_control_rate_hz": args.control_rate_hz,
+              "render_backend": args.render_backend,
+              "sensor_wall_timeout_s": args.sensor_wall_timeout_s,
               "sensor_layout": "lidar_tof6" if args.autonomy_mode == "lidar" else "stereo_tof4",
               "simulated_total_mass_kg": 2.0,
               "comparison_ballast_kg": 0.0 if args.autonomy_mode == "lidar" else 0.111,
@@ -266,6 +295,8 @@ def main():
                                             REPO / "src/arena_description/models/arena_car/model.sdf.xacro",
                                             REPO / "src/arena_autonomy/arena_autonomy/core.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/wall_follow.py",
+                                            REPO / "src/arena_autonomy/arena_autonomy/lidar_motion.py",
+                                            REPO / "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/stereo_wall_follow.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/stereo_road.py",
                                             REPO / "src/arena_gazebo/scripts/traffic_light_controller.py",
@@ -280,6 +311,9 @@ def main():
                                             REPO / "src/arena_autonomy/arena_autonomy/tof_safety_core.py",
                                             REPO / "src/arena_bringup/config/wall_follow.yaml"]}}
     processes = []
+    with zipfile.ZipFile(output / "source_snapshot.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+        for relative in report["input_sha256"]:
+            archive.write(REPO / relative, relative)
     log_path = output / "simulation.log"
     log = log_path.open("w", encoding="utf-8")
     checkpoint_path = output / "progress.json"
@@ -290,6 +324,7 @@ def main():
     video_frames = 0
     first_video_stamp = None
     last_video_stamp = -math.inf
+    video_timestamps = []
     def checkpoint(payload):
         temporary = output / "progress.tmp"
         temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -300,7 +335,9 @@ def main():
     try:
         processes.append(start_demo_process(log, args.speed_profile, args.lidar_rate_hz,
                                             not args.disable_tof_safety, args.red_duration_s,
-                                            args.autonomy_mode, args.video))
+                                            args.autonomy_mode, args.video, args.lidar_acquisition,
+                                            args.lidar_compensation, args.control_rate_hz,
+                                            args.render_backend, args.sensor_wall_timeout_s))
         pose_process = subprocess.Popen(["gz", "topic", "-e", "-t", "/world/it_arena_track/dynamic_pose/info", "--json-output"],
                                         cwd=REPO, stdout=subprocess.PIPE, stderr=log, text=True, start_new_session=True)
         processes.append(pose_process)
@@ -390,13 +427,18 @@ def main():
                     if first_video_stamp is None:
                         first_video_stamp = chase_stamp
                     label = "C1 LiDAR + ToF 6" if args.autonomy_mode == "lidar" else "D435i RGB-D + ToF 4"
-                    cv2.rectangle(frame, (18, 16), (535, 83), (12, 16, 22), -1)
+                    if args.lidar_compensation != "none":
+                        label = f"C1 {args.lidar_rate_hz:g}Hz {args.lidar_acquisition} | {args.lidar_compensation}"
+                    cv2.rectangle(frame, (18, 16), (730, 108), (12, 16, 22), -1)
                     cv2.putText(frame, label, (32, 45), cv2.FONT_HERSHEY_SIMPLEX,
                                 .72, (245, 245, 245), 2, cv2.LINE_AA)
-                    cv2.putText(frame, f"progress {progress:5.1f} m   speed {abs(state['dynamics']['truth_longitudinal_mps']):.2f} m/s",
+                    cv2.putText(frame, f"progress {progress:5.1f} m   actual speed {abs(state['dynamics']['truth_longitudinal_mps']) * 3.6:.1f} km/h",
                                 (32, 72), cv2.FONT_HERSHEY_SIMPLEX, .55,
                                 (120, 220, 255), 1, cv2.LINE_AA)
+                    cv2.putText(frame, f"official course | {args.speed_profile} | ToF gate {'OFF (solo test)' if args.disable_tof_safety else 'ON'}",
+                                (32, 96), cv2.FONT_HERSHEY_SIMPLEX, .48, (210, 210, 210), 1, cv2.LINE_AA)
                     video_writer.write(frame)
+                    video_timestamps.append(chase_stamp)
                     video_frames += 1
                     last_video_stamp = chase_stamp
             record = {"time": now, "x": float(position[0]), "y": float(position[1]), "s": s,
@@ -476,6 +518,8 @@ def main():
         required_inputs = ({"/scan", "/camera/color/image_raw"} if args.autonomy_mode == "lidar" else
                            {"/camera/depth/image_rect_raw", "/camera/depth/camera_info",
                             "/camera/color/image_raw"})
+        if args.autonomy_mode == "lidar" and args.lidar_compensation != "none":
+            required_inputs |= {"/wheel_states", "/camera/imu"}
         allowed_inputs = required_inputs | {"/clock", "/parameter_events"}
         report["sensor_only_inputs"] = required_inputs.issubset(inputs) and inputs.issubset(allowed_inputs)
         if args.disable_tof_safety:
@@ -535,6 +579,23 @@ def main():
             add_rate_metrics(report, trace, scans, state.get("scan"), args.lidar_rate_hz)
         if args.autonomy_mode == "stereo" and "depth" not in report:
             add_depth_metrics(report, depth_stamps, state.get("depth"), state.get("depth_info"))
+        if args.lidar_compensation != "none":
+            # 상태 메시지 표본만 감사한다. 원시 100 Hz 보정 실행 수로 해석하지 않는다.
+            statuses = {r["autonomy"]["sim_time_s"]: r["autonomy"] for r in trace
+                        if r["autonomy"].get("started") and "motion" in r["autonomy"]}
+            motion = [s["motion"] for s in statuses.values()]
+            report["motion_status_audit"] = {
+                "unique_status_samples": len(motion),
+                "rejected_samples": sum(m.get("reason") != "ok" for m in motion),
+                "coordinate_mode": args.lidar_compensation,
+                "scope": "published status samples, not every control cycle",
+            }
+        if args.autonomy_mode == "lidar" and args.lidar_acquisition == "sequential":
+            (output / "acquisition.json").write_text(json.dumps(acquisition_records, indent=2), encoding="utf-8")
+            report["sequential_acquisition_verified"] = bool(acquisition_records) and all(
+                r["max_capture_time_error_s"] <= .0021001 and r["discarded_source_gaps"] == 0
+                for r in acquisition_records)
+            report["passed"] = report["passed"] and report["sequential_acquisition_verified"]
         if "rgb" in state:
             cv2.imwrite(str(output / "last_rgb.png"), cv2.cvtColor(image_array(state["rgb"]), cv2.COLOR_RGB2BGR))
         if "scan" in state:
@@ -551,6 +612,7 @@ def main():
             cv2.imwrite(str(output / "last_depth_mm.png"), depth_mm)
         if video_writer is not None:
             video_writer.release()
+            (output / "video_timestamps.json").write_text(json.dumps(video_timestamps), encoding="utf-8")
             report["video"] = {
                 "path": str(video_path.relative_to(REPO)),
                 "codec": "H.264/avc1",
@@ -585,6 +647,12 @@ def main():
         report["shutdown_clean"] = (bool(processes) and processes[0].poll() == 0 and
                                     all(p.poll() in (0, -signal.SIGINT, 130) for p in processes[1:]) and not report["process_errors"])
         report["passed"] = report["passed"] and report["shutdown_clean"]
+        report["drive_delivery"] = {
+            "samples": len(drive_stamps),
+            "measured_sim_hz": ((len(drive_stamps) - 1) / (drive_stamps[-1] - drive_stamps[0])
+                                if len(drive_stamps) > 1 and drive_stamps[-1] > drive_stamps[0] else 0.),
+            "scope": "validator received /drive stamps; not internal timer execution count",
+        }
         if args.video:
             capture = cv2.VideoCapture(str(video_path))
             declared_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) if capture.isOpened() else 0

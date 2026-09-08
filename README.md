@@ -4,7 +4,13 @@ GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프
 
 현재 인수인계는 [프로젝트 현황](docs/PROJECT_CONTEXT.md), 구동 모델은 [단일 모터·차동 차량 동역학](docs/simulation/VEHICLE_DYNAMICS.md), 센서 기준선은 [상부 LiDAR·하부 ToF 링](docs/sensors/TOF_RING.md), 예산별 카메라와 축소 배치는 [스테레오 카메라·최소 ToF 검토](docs/sensors/STEREO_CAMERA_AND_MINIMAL_TOF.md), 이후 조향·회피·추월 후보는 [알고리즘 검토 노트](docs/autonomy/ALGORITHM_OPTIONS.md)에서 계속 관리합니다.
 
-최신 작업: [C1+ToF6 / D435i+ToF4 선택형 주행과 두 완주 영상](artifacts/validation/2026-09-04/selectable_autonomy/README.md).
+최신 진행 상황: [시뮬레이션 중간 보고서](docs/reports/SIMULATION_PROGRESS_2026_09_08.md) ·
+[LiDAR 운동 보정 구현·시험](docs/sensors/LIDAR_MOTION_IMPLEMENTATION.md) ·
+[최신 공식 코스 영상과 실패 기록](artifacts/validation/2026-09-08/lidar_motion/README.md).
+결합 보정은 독립 직선 20 km/h 시험 2/2회 통과했지만 공식 코스는 최고 12.38 km/h이며
+방지턱 들림·최종 정지 확인·GPU 정상 종료 문제는 남아 있습니다. 20 km/h 완주로 해석하지 않습니다.
+
+이전 비교: [C1+ToF6 / D435i+ToF4 선택형 주행과 두 완주 영상](artifacts/validation/2026-09-04/selectable_autonomy/README.md).
 두 구성 모두 단독 본선 48.65 m와 실제 정지·3인칭 촬영을 확인했습니다. 다만
 스테레오 장시간 녹화에서는 깊이 전달률·Gazebo 종료 실패가 남아 종합 검사는 실패입니다.
 같은 소스의 녹화 없는 2 m 시험은 통과했습니다. 이 구성은 개인 임시안·팀 미협의 상태입니다.
@@ -117,6 +123,26 @@ ros2 launch arena_bringup simulation.launch.py
 ```
 
 Gazebo 창 없이 실행하려면 `headless:=true`를 사용합니다. `/drive`에 `ackermann_msgs/AckermannDriveStamped` 형식의 명령을 발행하며, 시뮬레이션 엔코더 피드백은 `/wheel_states`와 `/wheel_encoder_ticks`에서 확인할 수 있습니다.
+
+기본 `render_backend:=system`은 기존 렌더링 환경을 유지합니다. WSL GPU 연결(`/dev/dxg`)이 있을 때 선택형 `render_backend:=auto`는 Gazebo에
+D3D12/NVIDIA 렌더링을 지정합니다. 명시한 기존 드라이버 환경변수는 존중하며,
+다른 Linux에서는 기존 환경을 사용합니다. `render_backend:=system`은 수정 전의
+자동 선택, `render_backend:=software`는 CPU 비교, `render_backend:=wsl_nvidia`는
+WSL NVIDIA 경로의 명시적 선택입니다. `simulation.launch.py`와 `demo.launch.py`
+모두 지원합니다. NVIDIA가 없는 WSL에서는 Mesa의 장치 선택으로 돌아갈 수 있으므로
+실제 렌더러를 확인해야 합니다. `headless:=true`는 GUI만 끄며 GPU 사용의 증거가 아닙니다.
+상세 근거와 한계는 [GPU 점검 기록](docs/activity/2026-09-07.md)을 확인합니다.
+GPU 경로에는 WSL D3D12 종료 문제를 줄이기 위한 실험적 보조 라이브러리가 필요하므로 기존 체크아웃은
+`colcon build --symlink-install --packages-select arena_gazebo`로 한 번 다시 빌드합니다.
+[렌더링 설정·복구 방법](docs/simulation/GPU_RENDERING.md)에 적용 범위와 검증 결과를 기록했습니다.
+초기 일반 코스 비교에서는 GPU 속도 개선이 없었지만, 후속 순차 LiDAR 독립 시험에서는
+전체 시간이 약 33% 줄었습니다. 부하별 결과를 구분하며 [최종 GPU 진단](docs/simulation/GPU_FINAL_DIAGNOSTIC_2026_09_08.md)을 확인합니다.
+간헐적인 종료 실패가 남아 기본값으로 채택하지 않았습니다.
+
+9월 8일에는 코스 물리 계산의 병목을 확인했습니다. `collision_detector:=bullet`은
+같은 DART 엔진 안의 충돌 검출만 바꾸는 선택형 비교로, 짧은 RGB-D/ToF6 주행에서
+약 31% 진행 속도 개선과 센서·주행·정상 종료를 확인했습니다. 접촉 결과가 달라질 수 있어
+기본 검출기는 유지합니다. [비교 방법·검증 범위](docs/simulation/PERFORMANCE_2026_09_08.md)를 확인합니다.
 
 기본 실행은 `official`입니다. 다음처럼 세 지도를 명시적으로 선택할 수도 있습니다. 차량은 모두 20×15 cm이므로 초기 원본의 12 cm 지름길은 이용할 수 없습니다. 공식 지름길 20 cm도 정적 폭 여유와 연속 진입·합류 성공을 구분해야 합니다.
 

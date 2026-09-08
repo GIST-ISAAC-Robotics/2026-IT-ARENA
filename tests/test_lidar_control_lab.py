@@ -95,6 +95,17 @@ class LidarLabTests(unittest.TestCase):
         self.assertEqual(result["road_departure_samples_active"], 0)
         self.assertEqual(result["road_departure_samples_including_stop"], 1)
 
+        # 조기 중단 뒤 제동 표본을 주행 시간·주행 이탈로 세지 않습니다.
+        for row in trace:
+            if row["elapsed_s"] >= 2.:
+                row["phase"] = "stopping"
+                row["road_clearance_m"] = -.01
+        result = lab.summarize(trace, controls, scans, case, 10.)
+        self.assertLess(result["active_duration_s"], 2.)
+        self.assertFalse(result["completed_duration"])
+        self.assertEqual(result["road_departure_samples_active"], 0)
+        self.assertGreater(result["road_departure_samples_including_stop"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

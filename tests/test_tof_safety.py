@@ -120,3 +120,25 @@ def test_safety_node_never_uses_simulator_truth_or_map():
     text = (REPO / "src/arena_autonomy/arena_autonomy/tof_safety.py").read_text()
     for forbidden in ("/sim/", '"/odom"', "Odometry", "centerline.csv", "scene.json", "dynamic_pose"):
         assert forbidden not in text
+
+
+def test_offline_wall_grace_keeps_tof_speed_limit_and_capture_time_guard():
+    controller, commands, _ = gate()
+    controller.p['sensor_wall_timeout_s'] = 30.
+    for name, (stamp, wall, points) in controller.clouds.items():
+        controller.clouds[name] = (stamp, wall - 4., points)
+    controller.request_wall -= 4.
+    controller.encoder_wall -= 4.
+    TofSafety.control(controller)
+    assert 0 < commands[-1].drive.speed < 1.1
+    controller.encoder_at = 9.
+    TofSafety.control(controller)
+    assert commands[-1].drive.speed == 0
+
+
+def test_offline_wall_grace_is_still_finite():
+    controller, commands, _ = gate()
+    controller.p['sensor_wall_timeout_s'] = 30.
+    controller.request_wall -= 31.
+    TofSafety.control(controller)
+    assert commands[-1].drive.speed == 0

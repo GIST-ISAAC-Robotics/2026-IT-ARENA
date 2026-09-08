@@ -28,7 +28,7 @@ class TofSafety(Node):
         defaults = {"sensor_timeout_s": .30, "command_timeout_s": .30, "encoder_timeout_s": .15,
                     "reaction_time_s": .15, "assumed_braking_deceleration_mps2": 2.0,
                     "assumed_detection_distance_m": .50, "stop_margin_m": .05,
-                    "clear_hold_s": .8, "control_rate_hz": 50.0,
+                    "clear_hold_s": .8, "control_rate_hz": 50.0, "sensor_wall_timeout_s": 3.0,
                     "minimum_obstacle_height_m": .015, "maximum_obstacle_height_m": .22,
                     "swept_width_m": .17, "geometry_margin_m": .015}
         self.p = {key: float(self.declare_parameter(key, value).value) for key, value in defaults.items()}
@@ -135,12 +135,13 @@ class TofSafety(Node):
         self.last_time = now
         reason, output, steering, clearance, limit, age = "CLEAR", 0.0, 0.0, math.inf, 0.0, 0.0
         requested = float(self.request.drive.speed) if self.request is not None else 0.0
+        wall_timeout = self.p.get("sensor_wall_timeout_s", 3.0)
         stale = [m["name"] for m in self.modules if m["name"] not in self.clouds or
                  not -.03 <= now - self.clouds[m["name"]][0] < self.p["sensor_timeout_s"] or
-                 wall - self.clouds[m["name"]][1] > 3.0]
-        if self.request is None or not 0 <= now - self.request_at < self.p["command_timeout_s"] or wall - self.request_wall > 3:
+                 wall - self.clouds[m["name"]][1] > wall_timeout]
+        if self.request is None or not 0 <= now - self.request_at < self.p["command_timeout_s"] or wall - self.request_wall > wall_timeout:
             reason = "COMMAND_STOP"
-        elif not -.03 <= now - self.encoder_at < self.p["encoder_timeout_s"] or wall - self.encoder_wall > 3:
+        elif not -.03 <= now - self.encoder_at < self.p["encoder_timeout_s"] or wall - self.encoder_wall > wall_timeout:
             reason = "ENCODER_STOP"
         elif stale:
             reason = "TOF_STALE_STOP"

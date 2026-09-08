@@ -3,7 +3,7 @@
 
 대회용 자율주행 노드가 아닙니다. 빈 시험장에서 일정 속도를 요구하는 스트레스
 시험이며 RGB 신호·ToF 안전층·전방 거리 비례 감속은 사용하지 않습니다.
-조향기는 /scan과 시계만 읽습니다. 정답 위치는 별도 관측기의 평가·시험 중단에만
+조향기는 /scan·엔코더·자이로·시계를 읽습니다. 정답 위치는 별도 관측기의 평가·시험 중단에만
 사용하며 경로 생성·조향·속도 조절에는 전달하지 않습니다.
 """
 
@@ -20,12 +20,17 @@ import signal
 import subprocess
 import time
 import xml.etree.ElementTree as ET
+import zipfile
 
 import numpy as np
 
 
 REPO = Path(__file__).resolve().parents[1]
 CASES = {
+    "straight_5kmh": {"speed_mps": 5 / 3.6, "duration_s": 8., "radius_m": None, "spawn": (0., .06, .02)},
+    "straight_10kmh": {"speed_mps": 10 / 3.6, "duration_s": 8., "radius_m": None, "spawn": (0., .06, .02)},
+    "straight_15kmh": {"speed_mps": 15 / 3.6, "duration_s": 8., "radius_m": None, "spawn": (0., .06, .02)},
+    "circle_10kmh": {"speed_mps": 10 / 3.6, "duration_s": 8., "radius_m": 1., "spawn": (1.06, 0., math.pi / 2 + .02)},
     "straight_20kmh": {"speed_mps": 20 / 3.6, "duration_s": 8., "radius_m": None,
                        "spawn": (0., .06, .02)},
     "circle_5kmh": {"speed_mps": 5 / 3.6, "duration_s": 8., "radius_m": 1.,
@@ -128,7 +133,8 @@ def longest_duration(rows, predicate):
 
 
 def summarize(trace, commands, scans, case, rate):
-    active = [row for row in trace if 0 <= row["elapsed_s"] < case["duration_s"]]
+    active = [row for row in trace if row["phase"] == "running"
+              and 0 <= row["elapsed_s"] < case["duration_s"]]
     stopped = [row for row in trace if row["phase"] == "stopping"]
     controls = [row for row in commands if row["phase"] == "running"]
     if not active or not controls:
@@ -212,6 +218,10 @@ def main():
     parser.add_argument("--case", choices=CASES, required=True)
     parser.add_argument("--rate", type=float, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--acquisition", choices=["snapshot", "snapshot_matched", "sequential"], default="snapshot")
+    parser.add_argument("--source-rate", choices=[500, 1000], type=int, default=500)
+    parser.add_argument("--render-backend", choices=["system", "software", "wsl_nvidia", "auto"], default="system")
+    parser.add_argument("--compensation", choices=["none", "deskew", "shift", "both"], default="none")
     args = parser.parse_args()
     if not math.isfinite(args.rate) or not .5 <= args.rate <= 100:
         raise ValueError("LiDAR 주기는 0.5~100 Hz의 유한한 값이어야 합니다.")
@@ -236,6 +246,8 @@ def main():
     from sensor_msgs.msg import LaserScan
     from std_msgs.msg import String
     from arena_autonomy.core import follow_command, scan_points
+    from arena_autonomy.lidar_motion_ros import MotionInput
+    from arena_autonomy.lidar_motion import MotionUnavailable
 
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
     interrupted = False
@@ -245,8 +257,11 @@ def main():
     signal.signal(signal.SIGINT, interrupt)
     signal.signal(signal.SIGTERM, interrupt)
     trace, commands, scans, latest = [], [], [], {}
+    acquisition_audit, scan_examples = [], []
     stream = (output / "trace.jsonl").open("w", encoding="utf-8")
     command_stream = (output / "commands.jsonl").open("w", encoding="utf-8")
+    motion_stream = (output / "motion_inputs.jsonl").open("w", encoding="utf-8")
+    raw_scan_stream = (output / "scans_raw.jsonl").open("w", encoding="utf-8")
 
     class LidarOnlyController(Node):
         def __init__(self):
@@ -261,16 +276,25 @@ def main():
             self.phase = "waiting"
             self.publisher = self.create_publisher(AckermannDriveStamped, "/drive", 10)
             self.create_subscription(LaserScan, "/scan", self.on_scan, qos_profile_sensor_data)
+            self.motion = MotionInput(self, args.compensation, timing_verified=True,
+                record=lambda row: motion_stream.write(json.dumps(row, allow_nan=False) + "\n"))
             self.create_timer(1 / CONTROL_HZ, self.control)
 
         def on_scan(self, message):
             if self.scan is None or stamp_seconds(message.header.stamp) > stamp_seconds(self.scan.header.stamp):
                 self.scan = message
                 self.last_scan_wall_time = time.monotonic()
+                if len(scans) % 10 == 0:
+                    scan_examples.append({"stamp_s": stamp_seconds(message.header.stamp),
+                        "angle_min": message.angle_min, "angle_increment": message.angle_increment,
+                        "ranges": [float(value) if math.isfinite(value) else None for value in message.ranges]})
                 scans.append({"stamp_s": stamp_seconds(message.header.stamp), "samples": len(message.ranges),
                     "scan_time_s": float(message.scan_time), "time_increment_s": float(message.time_increment),
                     "frame_id": message.header.frame_id, "range_min_m": float(message.range_min),
                     "range_max_m": float(message.range_max)})
+                raw_scan_stream.write(json.dumps({**scans[-1], "received_s": self.get_clock().now().nanoseconds * 1e-9,
+                    "angle_min": message.angle_min, "angle_increment": message.angle_increment,
+                    "ranges": [float(v) if math.isfinite(v) else None for v in message.ranges]}, allow_nan=False) + "\n")
 
         def request_stop(self):
             if self.stop_at is None:
@@ -291,8 +315,10 @@ def main():
             target_steering, target_speed = self.steering, 0.
             reason = "waiting_scan"
             if self.scan is not None and age is not None and -.002 <= age < .45 and time.monotonic() - self.last_scan_wall_time < 5.:
-                points, valid = scan_points(self.scan.ranges, self.scan.angle_min, self.scan.angle_increment,
-                                           self.scan.range_min, self.scan.range_max, -.03)
+                try:
+                    points, valid = self.motion.project(self.scan)
+                except MotionUnavailable:
+                    points, valid = None, 0
                 if valid >= 30:
                     _, target_steering, details = follow_command(points, "left", WALL_HALF_GAP,
                         .145, .375, case["speed_mps"], .14)
@@ -300,7 +326,7 @@ def main():
                     if reason == "following" and self.phase == "running":
                         target_speed = case["speed_mps"]
                 else:
-                    reason = "scan_invalid"
+                    reason = "motion_unavailable" if self.motion.last_meta.get("reason") != "ok" else "scan_invalid"
             elif self.phase == "running":
                 reason = "scan_stale"
             # 3 m/s² 증속·3 rad/s 조향 slew는 모든 주기에 동일합니다. 물리 토크 한계도 유지합니다.
@@ -314,7 +340,7 @@ def main():
             self.publisher.publish(message)
             row = {"time_s": now, "elapsed_s": elapsed, "phase": self.phase, "reason": reason,
                    "speed_mps": self.speed, "steering_rad": self.steering,
-                   "scan_stamp_s": stamp, "scan_age_s": age}
+                   "scan_stamp_s": stamp, "scan_age_s": age, "motion": dict(self.motion.last_meta)}
             commands.append(row)
             command_stream.write(json.dumps(row, allow_nan=False) + "\n")
 
@@ -333,6 +359,8 @@ def main():
         trace.append(row)
         stream.write(json.dumps(row, allow_nan=False) + "\n")
     observer.create_subscription(String, "/sim/drivetrain", observe, 100)
+    observer.create_subscription(String, "/sim/lidar_acquisition",
+                                 lambda msg: acquisition_audit.append(json.loads(msg.data)), 100)
     executor = SingleThreadedExecutor()
     executor.add_node(controller)
     executor.add_node(observer)
@@ -343,20 +371,29 @@ def main():
         REPO / "src/arena_bringup/launch/simulation.launch.py",
         REPO / "src/arena_gazebo/src/single_motor_drive.cpp",
         REPO / "src/arena_gazebo/include/arena_gazebo/drivetrain.hpp",
-        REPO / "src/arena_vehicle_interface/arena_vehicle_interface/ackermann_to_twist.py"]
-    report = {"schema_version": 2, "case": args.case, "configuration": case, "requested_lidar_rate_hz": args.rate,
+        REPO / "src/arena_vehicle_interface/arena_vehicle_interface/ackermann_to_twist.py",
+        REPO / "src/arena_vehicle_interface/arena_vehicle_interface/rotating_lidar.py",
+        REPO / "src/arena_autonomy/arena_autonomy/lidar_motion.py",
+        REPO / "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py"]
+    report = {"schema_version": 3, "acquisition": args.acquisition, "source_rate_hz": args.source_rate, "case": args.case, "configuration": case, "requested_lidar_rate_hz": args.rate,
         "started_at_utc": datetime.now(timezone.utc).isoformat(), "measurement_completed": False,
         "safe_racing_verified": False, "passed": False, "tof_safety_enabled": False,
         "control_rate_hz": CONTROL_HZ, "assessment_footprint_m": [.20, .17],
         "road_width_m": ROAD_HALF_WIDTH * 2, "wall_gap_m": WALL_HALF_GAP * 2,
         "physics_step_s": .001, "ground_friction_assumption": 1.6,
-        "limitations": ["동시 광선 500개·잡음 없는 snapshot; 회전 취득·전송 지연 미재현",
+        "render_backend": args.render_backend,
+        "compensation": args.compensation,
+        "motion_config": vars(controller.motion.history.config),
+        "limitations": [f"취득={args.acquisition}, 보정={args.compensation}; 순차 시간 근사 <=2.1 ms; 반사/실물 잡음/UART 지연 없음",
                         "빈 고정 속도 시험장; 신호등·분기·다른 차량·ToF 안전성 검사 아님",
                         "100 Hz 시험 조향 루프; 기본 주행 노드 20 Hz와 구분",
                         "차량·타이어·서보 물성은 실측 전 임시값",
                         "평면 보수적 외형 평가; 접촉 센서에 의한 실제 접촉 판정 아님"],
         "input_sha256": {str(path.relative_to(REPO)): hashlib.sha256(path.read_bytes()).hexdigest() for path in inputs}}
     process = None
+    with zipfile.ZipFile(output / "source_snapshot.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+        for path in inputs:
+            archive.write(path, str(path.relative_to(REPO)))
     log = (output / "simulation.log").open("w", encoding="utf-8")
     began = time.monotonic()
     last_progress = 0.
@@ -364,8 +401,9 @@ def main():
         x, y, yaw = case["spawn"]
         process = subprocess.Popen(["ros2", "launch", "--noninteractive", "arena_bringup", "simulation.launch.py",
             "headless:=true", f"world_override:={world}", "autonomy:=false", "traffic_light:=false",
+            f"render_backend:={args.render_backend}",
             f"test_spawn_x:={x}", f"test_spawn_y:={y}", f"test_spawn_yaw:={yaw}",
-            f"lidar_rate_hz:={args.rate}", "render_sensors:=true", "tof_safety:=false",
+            f"lidar_rate_hz:={args.rate}", f"lidar_acquisition:={args.acquisition}", f"lidar_source_rate_hz:={args.source_rate}", "render_sensors:=true", "tof_safety:=false",
             "depth_camera:=false", "d435i_profile:=low_load_30"], cwd=REPO, stdin=subprocess.DEVNULL,
             stdout=log, stderr=log, start_new_session=True)
         while True:
@@ -374,8 +412,8 @@ def main():
                 raise RuntimeError("사용자 중단 요청")
             if process.poll() is not None:
                 raise RuntimeError(f"시뮬레이터 조기 종료: {process.returncode}")
-            if time.monotonic() - began > 300:
-                raise RuntimeError("실제 시간 300초 제한 초과")
+            if time.monotonic() - began > 600:
+                raise RuntimeError("실제 시간 600초 제한 초과")
             if not trace:
                 continue
             row = trace[-1]
@@ -403,8 +441,16 @@ def main():
         topics = sorted(
             name for name, _ in observer.get_subscriber_names_and_types_by_node("lidar_lab_controller", "/"))
         report["controller_subscriptions"] = topics
-        report["sensor_only_control"] = set(topics) <= {"/scan", "/clock", "/parameter_events"} and "/scan" in topics
+        report["sensor_only_control"] = (set(topics) <= {"/scan", "/clock", "/parameter_events", "/wheel_states", "/camera/imu"}
+            and {"/scan", "/wheel_states", "/camera/imu"} <= set(topics))
         report["metrics"] = summarize(trace, commands, scans, case, args.rate)
+        active_motion = [r["motion"] for r in commands if r["phase"] == "running"]
+        report["motion_verified"] = bool(active_motion) and all(r.get("reason") == "ok" for r in active_motion)
+        report["motion_counts"] = controller.motion.counts
+        report["motion_metrics"] = {
+            "rejected_active_commands": sum(r.get("reason") != "ok" for r in active_motion),
+            "processing_p95_ms": float(np.percentile([r["processing_ms"] for r in active_motion], 95)) if active_motion else None,
+            "max_extrapolation_s": max((r.get("extrapolation_s", 0.) for r in active_motion), default=0.)}
         report["measurement_completed"] = True
     except Exception as error:
         report["error"] = f"{type(error).__name__}: {error}"
@@ -424,13 +470,28 @@ def main():
         log.close()
         stream.close()
         command_stream.close()
+        motion_stream.close()
+        raw_scan_stream.close()
         write_json(output / "scans.json", scans)
+        write_json(output / "acquisition.json", acquisition_audit)
+        write_json(output / "scan_examples.json", scan_examples)
+        report["acquisition_verified"] = (bool(scans) and all(
+            abs(row["scan_time_s"] - 1 / args.rate) < 1e-6 and
+            abs(row["time_increment_s"] - 1 / args.rate / 500) < 1e-7 for row in scans)
+            and bool(acquisition_audit) and all(row["max_capture_time_error_s"] <= .0021001
+                and row["discarded_source_gaps"] == 0 for row in acquisition_audit)
+            if args.acquisition == "sequential" else bool(scans) and all(
+                row["scan_time_s"] == row["time_increment_s"] == 0 for row in scans))
+        if args.acquisition == "snapshot_matched":
+            report["acquisition_verified"] = bool(report["acquisition_verified"] and acquisition_audit
+                and all(row["max_capture_time_error_s"] <= .0021001
+                        and row["discarded_source_gaps"] == 0 for row in acquisition_audit))
         report["shutdown_audit"] = audit_shutdown((output / "simulation.log").read_text(encoding="utf-8", errors="replace"),
                                                    report["launch_return_code"], report.get("forced_cleanup"))
         report["shutdown_clean"] = report["shutdown_audit"]["clean"]
         report["passed"] = bool(report["measurement_completed"] and report.get("sensor_only_control")
             and report.get("metrics", {}).get("fixed_speed_tracking_passed") and report["shutdown_clean"]
-            and "early_stop_reason" not in report)
+            and "early_stop_reason" not in report and report["acquisition_verified"] and report.get("motion_verified", False))
         report["elapsed_wall_s"] = time.monotonic() - began
         report["finished_at_utc"] = datetime.now(timezone.utc).isoformat()
         write_json(output / "report.json", report)

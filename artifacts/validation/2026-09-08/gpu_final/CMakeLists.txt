@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(arena_sensor_profile LANGUAGES CXX)
+find_package(gz_rendering_vendor REQUIRED)
+find_package(gz-rendering8 REQUIRED)
+add_executable(arena_sensor_profile sensor_profile.cpp)
+target_link_libraries(arena_sensor_profile PRIVATE gz-rendering8::gz-rendering8)
+target_compile_features(arena_sensor_profile PRIVATE cxx_std_17)

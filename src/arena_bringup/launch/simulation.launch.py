@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import math
+import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import xacro
@@ -11,6 +13,8 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, LogInfo, OpaqueFunction, SetEnvironmentVariable, TimerAction
 from launch.substitutions import EnvironmentVariable, LaunchConfiguration
 from launch_ros.actions import Node
+from launch.actions import RegisterEventHandler
+from launch.event_handlers import OnShutdown
 
 
 TRACK_DIRECTORIES = {
@@ -195,6 +199,30 @@ def _validate_tof_ring(config: dict, body: dict, layout_name: str | None = None)
     return selected
 
 
+def _runtime_world_overrides(source, destination, detector, scene_broadcaster):
+    """형상·물성은 보존하고 선택형 런타임 설정만 사본에 적용합니다."""
+    tree = ET.parse(source)
+    world = tree.getroot().find("world")
+    if detector != "configured":
+        physics = world.find("physics")
+        dart = physics.find("dart")
+        if dart is None:
+            dart = ET.SubElement(physics, "dart")
+        field = dart.find("collision_detector")
+        if field is None:
+            field = ET.SubElement(dart, "collision_detector")
+        field.text = detector
+    if not scene_broadcaster:
+        for plugin in list(world.findall("plugin")):
+            if plugin.get("name") == "gz::sim::systems::SceneBroadcaster":
+                world.remove(plugin)
+    for tag in ("uri", "albedo_map", "normal_map", "roughness_map", "metalness_map", "environment_map", "emissive_map"):
+        for value in world.findall(f".//{tag}"):
+            if value.text and "://" not in value.text and not Path(value.text).is_absolute():
+                value.text = str((source.parent / value.text).resolve())
+    tree.write(destination, encoding="utf-8", xml_declaration=True)
+
+
 def _launch_setup(context):
     bringup_share = Path(get_package_share_directory("arena_bringup"))
     description_share = Path(get_package_share_directory("arena_description"))
@@ -232,6 +260,9 @@ def _launch_setup(context):
     drive_mappings = _dynamics_mappings(config, LaunchConfiguration("drive_mode").perform(context),
                                        LaunchConfiguration("differential_profile").perform(context))
     safety_enabled = _as_bool(LaunchConfiguration("tof_safety").perform(context))
+    sensor_wall_timeout = float(LaunchConfiguration("sensor_wall_timeout_s").perform(context))
+    if not math.isfinite(sensor_wall_timeout) or not 3 <= sensor_wall_timeout <= 60:
+        raise ValueError("sensor_wall_timeout_s must be finite and within 3..60")
     render_sensors = _as_bool(LaunchConfiguration("render_sensors").perform(context))
     if safety_enabled and not render_sensors:
         raise RuntimeError("광학 센서를 끈 동역학 전용 시험에서는 tof_safety:=false를 명시해야 합니다.")
@@ -296,7 +327,8 @@ def _launch_setup(context):
             "lidar_enabled": str(lidar_enabled).lower(),
             **{f"lidar_{axis}": str(value) for axis, value in zip(("x", "y", "z"), lidar["xyz_m"])},
             **{f"lidar_{axis}": str(value) for axis, value in zip(("roll", "pitch", "yaw"), lidar["rpy_rad"])},
-            "lidar_rate": str(lidar_rate_hz),
+            "lidar_rate": str(float(LaunchConfiguration("lidar_source_rate_hz").perform(context)) if LaunchConfiguration("lidar_acquisition").perform(context) != "snapshot" else lidar_rate_hz),
+            "lidar_topic": "/sim/lidar_instantaneous" if LaunchConfiguration("lidar_acquisition").perform(context) != "snapshot" else "/scan",
             "lidar_samples": str(lidar["samples_per_scan"]),
             "lidar_min": str(lidar["range_min_m"]),
             "lidar_max": str(lidar["range_max_m"]),
@@ -386,15 +418,48 @@ def _launch_setup(context):
         if not all(math.isfinite(v) for v in (spawn_x, spawn_y, spawn_yaw)):
             raise ValueError("시험 시작 위치는 유한한 수여야 합니다.")
     headless = _as_bool(LaunchConfiguration("headless").perform(context))
+    collision_detector = LaunchConfiguration("collision_detector").perform(context)
+    scene_broadcaster = _as_bool(LaunchConfiguration("scene_broadcaster").perform(context))
+    if not scene_broadcaster and not headless:
+        raise RuntimeError("scene_broadcaster:=false는 headless:=true에서만 사용하십시오.")
+    temporary_world = None
+    if collision_detector != "configured" or not scene_broadcaster:
+        temporary_world = tempfile.TemporaryDirectory(prefix="arena_world_")
+        runtime_path = Path(temporary_world.name) / "world.sdf"
+        _runtime_world_overrides(world_path, runtime_path, collision_detector, scene_broadcaster)
+        world_path = runtime_path
+    render_backend = LaunchConfiguration("render_backend").perform(context)
+    render_env = {}
+    if render_backend == "software":
+        render_env = {"GALLIUM_DRIVER": "llvmpipe", "LIBGL_ALWAYS_SOFTWARE": "true"}
+    elif render_backend == "wsl_nvidia" or (render_backend == "auto" and Path("/dev/dxg").exists()):
+        # WSLg의 자동 선택이 llvmpipe로 떨어지는 환경에서 D3D12를 명시합니다.
+        # auto는 사용자가 명시한 드라이버/소프트웨어 설정을 존중합니다.
+        if render_backend == "wsl_nvidia" or not any(
+            context.environment.get(key) for key in ("GALLIUM_DRIVER", "LIBGL_ALWAYS_SOFTWARE", "MESA_LOADER_DRIVER_OVERRIDE")
+        ):
+            render_env = {"GALLIUM_DRIVER": "d3d12", "LIBGL_ALWAYS_SOFTWARE": "false",
+                          "MESA_D3D12_DEFAULT_ADAPTER_NAME": context.environment.get("MESA_D3D12_DEFAULT_ADAPTER_NAME", "NVIDIA")}
+            library_dir = Path(get_package_prefix("arena_gazebo")) / "lib"
+            library_name = "libarena-wsl-d3d12-lifetime.so"
+            if not (library_dir / library_name).exists():
+                raise RuntimeError("WSL GPU 지원 라이브러리가 없습니다. colcon build --symlink-install --packages-select arena_gazebo 실행 후 다시 시작하십시오.")
+            # LD_PRELOAD는 공백도 구분자로 쓰므로 파일명과 검색 경로를 분리합니다.
+            render_env["LD_LIBRARY_PATH"] = str(library_dir) + ":" + context.environment.get("LD_LIBRARY_PATH", "")
+            render_env["LD_PRELOAD"] = library_name + (":" + context.environment["LD_PRELOAD"]
+                                                       if context.environment.get("LD_PRELOAD") else "")
     # Keep the server and GUI as direct child processes. The upstream combined
     # launcher uses a shell wrapper, which can leave the actual Gazebo process
     # orphaned when ROS launch is interrupted.
     gazebo_server = ExecuteProcess(
         cmd=["gz", "sim", "-r", "-s", "-v", "3", str(world_path)],
+        additional_env=render_env,
+        sigterm_timeout=LaunchConfiguration("gazebo_sigterm_timeout"),
         output="screen",
     )
     gazebo_gui = ExecuteProcess(
         cmd=["gz", "sim", "-g", "-v", "3"],
+        additional_env=render_env,
         output="screen",
     )
 
@@ -482,6 +547,9 @@ def _launch_setup(context):
     )
 
     actions = [
+        LogInfo(msg=f"Collision detector: {collision_detector}; SceneBroadcaster: {scene_broadcaster}"),
+        LogInfo(msg=f"Gazebo rendering request: {render_backend}; driver={render_env.get('GALLIUM_DRIVER', 'inherited')}; "
+                    f"D3D12 lifetime guard={'LD_PRELOAD' in render_env}. Verify actual GL_RENDERER in Ogre2 log."),
         SetEnvironmentVariable("GZ_SIM_SYSTEM_PLUGIN_PATH", [
             str(Path(get_package_prefix("arena_gazebo")) / "lib"), ":",
             EnvironmentVariable("GZ_SIM_SYSTEM_PLUGIN_PATH", default_value="")]),
@@ -510,7 +578,7 @@ def _launch_setup(context):
                     f"modules={[module['name'] for module in active_tof_modules]}."),
         LogInfo(msg=f"2D LiDAR: enabled={lidar_enabled}; {lidar_rate_hz:g} Hz, "
                     f"{lidar['samples_per_scan']} samples/scan. "
-                    "Gazebo snapshot scan; sequential rotation/transport delay is not simulated."),
+                    f"acquisition={LaunchConfiguration('lidar_acquisition').perform(context)}; source={LaunchConfiguration('lidar_source_rate_hz').perform(context)} Hz; capture quantization <=2.1 ms; raw scan uncorrected, controller compensation={LaunchConfiguration('lidar_compensation').perform(context)}."),
         gazebo_server,
         bridge,
         sensor_bridge,
@@ -521,6 +589,11 @@ def _launch_setup(context):
         actions.remove(sensor_bridge)
     if depth_enabled and render_sensors:
         actions.append(pointcloud_bridge)
+    if temporary_world is not None:
+        def cleanup_world(context, *args, **kwargs):
+            temporary_world.cleanup()
+            return []
+        actions.append(RegisterEventHandler(OnShutdown(on_shutdown=[OpaqueFunction(function=cleanup_world)])))
     if not headless:
         actions.append(gazebo_gui)
 
@@ -530,12 +603,21 @@ def _launch_setup(context):
         actions.append(Node(package="arena_autonomy", executable="tof_safety", output="screen",
                             parameters=[str(bringup_share / "config/tof_safety.yaml"),
                                         {"use_sim_time": True, "vehicle_config": str(config_path),
+                                         "sensor_wall_timeout_s": sensor_wall_timeout,
                                          "active_modules": [module["name"] for module in active_tof_modules]}]))
 
     if lidar_enabled and render_sensors:
+        sequential = LaunchConfiguration("lidar_acquisition").perform(context) != "snapshot"
+        lidar_topic = "/sim/lidar_instantaneous" if sequential else "/scan"
+        if sequential:
+            actions.append(Node(package="arena_vehicle_interface", executable="rotating_lidar",
+                                parameters=[{"use_sim_time": True, "rotation_rate_hz": lidar_rate_hz,
+                                             "samples_per_scan": int(lidar["samples_per_scan"]),
+                                             "acquisition": LaunchConfiguration("lidar_acquisition").perform(context)}],
+                                output="screen"))
         actions.extend([
             Node(package="ros_gz_bridge", executable="parameter_bridge", name="lidar_bridge",
-                 arguments=["/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan"],
+                 arguments=[f"{lidar_topic}@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan"],
                  parameters=[{"override_frame_id": str(lidar["frame_id"])}], output="screen"),
             Node(package="tf2_ros", executable="static_transform_publisher", name="lidar_transform",
                  arguments=["--x", str(lidar["xyz_m"][0]), "--y", str(lidar["xyz_m"][1]),
@@ -603,15 +685,31 @@ def _launch_setup(context):
                                          "yellow_duration_s": 2.0}], output="screen"))
     if autonomy:
         speed_profile = SPEED_PROFILES[LaunchConfiguration("speed_profile").perform(context)]
+        control_rate = float(LaunchConfiguration("autonomy_control_rate_hz").perform(context))
+        if not math.isfinite(control_rate) or not 5 <= control_rate <= 200:
+            raise ValueError("autonomy_control_rate_hz must be finite and within 5..200")
         executable = "wall_follow" if autonomy_mode == "lidar" else "stereo_wall_follow"
         controller_parameters = {
             "use_sim_time": True,
             **speed_profile,
+            "control_rate_hz": control_rate,
             "wheelbase_m": float(drivetrain["wheelbase_m"]),
             "max_steering_angle_rad": float(drivetrain["max_steering_angle_rad"]),
         }
         if autonomy_mode == "lidar":
             controller_parameters["lidar_x_m"] = float(lidar["xyz_m"][0])
+            controller_parameters.update(
+                lidar_compensation=LaunchConfiguration("lidar_compensation").perform(context),
+                motion_scan_timing_verified=True,  # 이 launch의 시뮬레이션 어댑터에 한정
+                motion_wheel_radius_m=float(drivetrain["wheel_radius_m"]),
+                motion_rear_axle_x_m=-float(drivetrain["wheelbase_m"]) / 2,
+                motion_lidar_x_m=float(lidar["xyz_m"][0]),
+                motion_lidar_y_m=float(lidar["xyz_m"][1]),
+                motion_lidar_yaw_rad=float(lidar["rpy_rad"][2]),
+                motion_imu_roll_rad=float(d435i["rpy_rad"][0]),
+                motion_imu_pitch_rad=float(d435i["rpy_rad"][1]),
+                sensor_wall_timeout_s=sensor_wall_timeout,
+            )
         else:
             controller_parameters.update(
                 camera_x_m=float(d435i_xyz[0]),
@@ -658,6 +756,9 @@ def generate_launch_description() -> LaunchDescription:
     description_share = Path(get_package_share_directory("arena_description"))
     return LaunchDescription(
         [
+            DeclareLaunchArgument("lidar_compensation", default_value="none", choices=["none", "deskew", "shift", "both"]),
+            DeclareLaunchArgument("autonomy_control_rate_hz", default_value="20.0", description="자율주행 제어 주기; 센서 주기와 독립"),
+            DeclareLaunchArgument("sensor_wall_timeout_s", default_value="3.0", description="오프라인 감시 벽시계 한도. 센서의 시뮬레이션 시각 제한은 유지"),
             # 이번 launch의 ROS 하위 프로세스에만 적용합니다. 별도 수신 터미널도
             # 같은 모드를 사용해야 하며, 기존 사용자 지정 환경변수는 덮어쓰지 않습니다.
             SetEnvironmentVariable(
@@ -702,6 +803,16 @@ def generate_launch_description() -> LaunchDescription:
                 default_value="false",
                 description="Run the Gazebo server without its GUI.",
             ),
+            DeclareLaunchArgument("lidar_acquisition", default_value="snapshot", choices=["snapshot", "snapshot_matched", "sequential"],
+                                  description="순간 스캔 또는 물리 프레임 누적 회전 스캔"),
+            DeclareLaunchArgument("render_backend", default_value="system", choices=["auto", "system", "wsl_nvidia", "software"],
+                                  description="auto: WSL GPU 연결 시 D3D12 선택, system: 기존 환경, software: CPU 비교"),
+            DeclareLaunchArgument("collision_detector", default_value="configured", choices=["configured", "ode", "bullet", "fcl"],
+                                  description="DART 충돌 검출만 선택하는 비교 옵션. 기본 물성/형상 유지"),
+            DeclareLaunchArgument("scene_broadcaster", default_value="true", description="false는 GUI·정답 pose 발행이 필요 없는 headless 검사 전용"),
+            DeclareLaunchArgument("gazebo_sigterm_timeout", default_value="5", description="종료 진단용 SIGINT 대기 초. 기본 ROS launch와 같은 5초"),
+            DeclareLaunchArgument("lidar_source_rate_hz", default_value="500", choices=["500", "1000"],
+                                  description="순차 취득의 내부 광선 계산 주기; C1 회전 주기 아님"),
             DeclareLaunchArgument("autonomy", default_value="false", description="RGB 출발 신호 + 선택한 센서의 본선 벽 추종"),
             DeclareLaunchArgument(
                 "autonomy_mode", default_value="lidar", choices=list(AUTONOMY_MODES),

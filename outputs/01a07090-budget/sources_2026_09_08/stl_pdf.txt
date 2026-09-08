@@ -1,0 +1,326 @@
+PAGE 1
+                                                                                                                                      STL-19P Datasheet
+
+
+                                                                               目录
+1.           Product Description .............................................................................................................. 1
+2.           Product Features ................................................................................................................... 1
+3.           Introduction to Functions...................................................................................................... 2
+        3.1.         360° scanning for ranging ............................................................................................. 2
+        3.2.         PWM speed control ...................................................................................................... 2
+        3.3.         Glass detection ............................................................................................................. 2
+4.           Technical Parameters ............................................................................................................ 2
+        4.1.         Performance parameters.............................................................................................. 2
+        4.2.         Electrical and mechanical parameters ......................................................................... 3
+        4.3.         Optical parameters ....................................................................................................... 4
+5.           Installation and Use ............................................................................................................... 4
+        5.1.         Product dimensions ...................................................................................................... 4
+        5.2.         Assembly diagram ........................................................................................................ 5
+        5.3.         Communication interface ............................................................................................. 5
+        5.4.         Data communication .................................................................................................... 5
+        5.5.         Coordinate system definition ....................................................................................... 6
+6.           Safety and Scope of Application ............................................................................................ 6
+7.           Remarks ................................................................................................................................. 6
+        7.1.         Target surface reflectivity ............................................................................................. 7
+        7.2.         Ranging accuracy .......................................................................................................... 7
+8.           Revision Records ................................................................................................................... 7
+PAGE 2
+                                                                                 STL-19P Datasheet
+
+
+1.   Product Description
+     The   STL-19P      consists  mainly  of  a  laser  ranging  core,  a  wireless  power
+transmission unit, a wireless communication unit, an angle measuring unit, a motor
+drive unit and a mechanical housing.
+     With  DTOF  technology,  STL-19P  ranging  core  is  able  to  perform  5,000
+measurements per second. For each ranging, the LiDAR emits an infrared laser,
+which is reflected back to the single photon receiving unit when it encounters the
+target object.From this, we obtain the time at which the laser is emitted and that at
+which it is received by the single photon receiving unit. The time difference between
+them is the time of flight of the light, which can be combined with the speed of light
+to solve for the distance.Once the distance data have been obtained, STL-19P fuses
+the angle values measured by the angle measuring unit to form the point cloud data
+and   then  sends   the  point   cloud   data  to   an   external   interface   via   wireless
+communication.Meanwhile the external interface supports PWM input to enable the
+motor drive unit to drive the motor rotation. The external control unit obtains the
+speed  and  controls  it  to  the  specified  speed  by  means  of  a  PID  algorithm  in
+closed-loop control, thus allowing the LiDAR to work stably.
+     The diagram of the environmental scan formed by STL-19P point cloud data is
+shown below:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+     The product is mainly suitable for the navigation and obstacle avoidance of
+robots (e.g. floor mopping robots and service robots) by performing a 360°                     scan of
+the indoor layout and building a map so that a walking path can be planned. It is also
+suitable for robotics education and research, etc.
+
+
+2.   Product Features
+PAGE 3
+                                                                                 STL-19P Datasheet
+
+Main features of STL-19P LiDAR:
+➢    High ranging accuracy at close range, with a mean error of                    ±10mm over a
+     distance of 0.03 to 0.5m;
+➢    Compact footprint, easy to integrated design, guaranteeing the aesthetics of the
+➢    High  resistance  to  ambient  light  interference,  for  use  in  environments  up  to
+     60Klux;
+➢    Supporting for glass wall detection;
+➢    Stable performance with a lifetime of up to 10,000 hours;
+
+
+3.   Introduction to Functions
+3.1.      360° scanning for ranging
+     The STL-19P LiDAR scans at 10Hz by default and measures distance at a rate of
+5,000 times per second. Output of ranging information (including distance and angle
+data) for 360°      surroundings via UART interface.
+
+3.2.      PWM speed control
+     STL-19P is furnished with a stepless speed regulation motor drive and supports
+both internal and external speed control.When the PWM pin is grounded, the internal
+speed regulation is available by default, at the speed of 10Hz by default.External
+speed control requires a square signal to be connected to the PWM pin, which can be
+used to control the start, stop and speed of the motor via the PWM signal duty
+ratio.Due to individual differences in each product motor, the actual speed may vary
+when the duty ratio is set to typical values. For precise control of the motor speed,
+closed-loop control is required based on the speed information in the received data.
+     Notes: When external speed control is not used, the PWM pin must be grounded.
+
+3.3.      Glass detection
+     With multi-echo detection technology, the STL-19P supports glass wall detection
+(within ±5° of the angle of incidence and normal), reducing collisions during robot
+operation, extending the life of the whole machine and improving the user experience.
+
+4.   Technical Parameters
+4.1.      Performance parameters
+Parameter          Unit     Minimu      Typical value    Maximum           Remarks
+name                        m value                      value
+                            0.03~12m                                  Tested on a white target with
+Ranging scope      m                                                  80% reflectivity
+                            0.03~8m                                   Tested on a black target with
+                                                                      4% reflectivity
+PAGE 4
+                                                                                                                                      STL-19P Datasheet
+
+                                               ±10mm@0.03-0.5m, STD 2mm；
+                                               ±20mm@0.5-2m, STD 4mm；
+ Ranging                        m              ±30mm@2m-12m, STD 15mm                                               See    emrark        "ranging        ccuracy"a
+ accuracy                                      （white target with 80% reflectivity）；                               orf deted desailcrpton ii
+                                               ±    30mm@2m              - 8 m, STD 15mm
+                                               （    black taretgh 4% wti refectlviyit                      ）；
+ Scanning                       H  z           6                  10                           13                   PWM       sped econtolrprovided
+equencyrf                                                                                                           externaly l
+ Ranging                        H  z           -                  5000Hz                       -                    Fixed fequer ncy
+equency rf
+ Pitch angl           e         °              0  .5              -                            2 °
+ error
+ Ywa angle error                °              - 1                0                            1
+ Angular                        °              -                  0.72    °    @10Hz           -                    Typical       value 0.72°@10Hz
+esrolution
+ Anti    -backgroun             K  Lux         -                  -                            60                   Refo erhe ttambientghties ltt
+ d lght i                                                                                                           specatciion offi LDROBOT
+                                                                                                                    The     ri dars pliaced           horzontiy lla
+ Acoustc noiise                 d B            -                  -                            4 5 dB              orfward,andhe toinseermt e
+                                                                                                                    (S  msearnsort           AR8     2 esed s 4tti)
+                                                                                                                    at a distance of 30 cm.
+ Machine le f  i                h              1  0000            -                            -
+ Working                        ℃              - 10               2  5                         4 5
+emtperature
+ Storage                        ℃              - 30               2  5                         7 0
+emtperature
+ Dustand    water                                                                                                   See  remark  "Dust  and  water
+esstranti                                                         IP5X                                              resistant"         for         detailed
+                                                                                                                    description
+
+
+
+ 4.2.             Electrical and mechanical parameters
+ Parameter name Unit                              Minimu             Typical               Maximu              Remarks
+                                                  m value            value                 m value
+ Input voltage                   V                4.5                5                     5.5
+ PWM      control KHz                             20                 30                    50                  Square signal
+ frequency
+ PWM high level                  V                3.0                3.3                   3.6
+ PWM low level                   V                -0.3               0                     0.5
+ PWM duty ratio                  %                0                  40                    100                 40% duty ratio, scan frequency of
+                                                                                                               10Hz
+PAGE 5
+                                                                                   STL-19P Datasheet
+
+Starting current    mA         -           TBD           -
+Working             mA         -           290           -
+current
+Machine             mm         54.00*46.29*35.0 (L*W*H)
+dimension
+Machine             g          -           45            -           Without connecting line
+weight*
+Communication       -          UART @ 230400
+interface
+UART high level V              3.0         3.3           3.6
+UART low level      V          -0.3        0             0.5
+Driving motor       -          BLDC                                  Brushless motor
+Remarks: Actual weight may vary depending on configuration, manufacturing process, and
+measurement methods.
+
+4.3.      Optical parameters
+Parameter name Unit               Minimum          Typical value    Maximum          Remarks
+                                  value                             value
+Optical     maser nm              895              905              915              Infrared band
+wavelength
+Laser        safety -                           IEC-60825 Class 1
+level
+
+5.   Installation and Use
+5.1.      Product dimensions
+     The laser emission and reception in the ranging unit of the STL-19P requires an
+optical window, which needs to be exposed in the structure. The partial occlusion of
+this window by external systems will affect the ranging performance of the LiDAR to
+some extent. The diagram below shows the optical window dimensions (in mm).
+PAGE 6
+                                                                                     STL-19P Datasheet
+
+Other mounting dimensions are shown in the following diagram with a tolerance of
+±0.2 (in mm):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5.2.       Assembly diagram
+      LiDAR  assembly  diagrams,  typical  design  references  and  constraints,  as
+specified in the STL-19P design guidelines.
+5.3.       Communication interface
+     STL-19P is connected to external systems via a ZH1.5T-4P1.5mm connector for
+power  supply  and  data  reception,  with  the  interface  definitions  and  parameter
+requirements shown in the following diagram/table:
+
+                                  S/N    Signal  Type    Description          Minimu     Typical  Maximum
+                                         name                                 m value    value    value
+
+                                  1      Tx      Output  LiDAR data output    0V         3.3V     3.6V
+
+                                  2      PWM     Input   Motor control signal  0V        -        3.6V
+
+                                  3      GND     Power   Negative pole        -          0V       -
+                                                 supply
+                                  4      P5V     Power   Positive pole        4.5V       5V       5.5V
+                                                 supply
+
+
+
+     Notes: When external speed control is not used, the PWM pin must be grounded.
+5.4.       Data communication
+     The data communication of the STL-19P is sent in one direction using a Universal
+PAGE 7
+                                                                                 STL-19P Datasheet
+
+Asynchronous Receiver Transmitter (UART) with the transmission parameters shown
+in the following table:
+     Baud rate            Data length          Stop bit       Parity check bit     Flow control
+      230400                8 Bits                 1                  N/A                  N/A
+     With  one-way  communication,  STL-19P  starts  sending  measurement  data  as
+soon as the rotation is stabilized, without sending any commands. The measurement
+data  follow  the  serial  software  communication  protocol  of  module.  See  STL-19P
+development manual.
+5.5.      Coordinate system definition
+     The STL-19P commonly follows a left-hand rule coordinate system where the
+front of the sensor is defined as the X-axis of the coordinate system (i.e. the 0-angle
+position), the origin of the coordinate system is the center of rotation of the ranging
+unit, and the angle of rotation increases along the clockwise direction, as shown in
+the following diagram:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6.   Safety and Scope of Application
+                                STL-19P is provided with a low-powered infrared laser as
+                                the emitting light source to ensure safety for humans and
+                                pets.  It  is  qualified  in  the  tests  of  Class  I  laser  safety
+                                standards. The STL-19P complies with 21 CFR 1040.10 and
+1040.11 with the exception of deviations from Laser Notice No. 50 dated June 24,
+2007.
+     Attention:  Self-adjustment  or  modification  of  this  product  may  result  in
+dangerous radiation exposure.
+
+7.   Remarks
+PAGE 8
+                                                                                                                            STL-19P Datasheet
+
+7.1.            Target surface reflectivity
+       1、       The reflectivity represents the test result of the C84-III reflectivity tester;
+
+
+
+
+
+
+
+
+       2、       The reflectivity of white target in LDROBOT laboratory is 80.6%; that of the
+              black target is 4.1%.
+7.2.            Ranging accuracy
+Parameter indexes of the ranging accuracy:
+                ±10mm@0.03-0.5m, STD 2mm；
+                ±20mm@0.5-2m, STD 4mm；
+                ±30mm@2m-12m, STD 15mm                                  （white target with 80% reflectivity）；
+                ±    30mm@2m             -8 m, STD 1m5m               （   black tger wah 4ytttiivec%il rtfe                     ）；
+Amonghemt ,              ±   m01m@30.0            m-5, .0TDSm2a minsemditaeascuremenactcuacof ry                                                ±   m01m
+m(ean .5m,0a oanrtev3ro0of eg.0)erorrwith anaccuacry of m2DTSm(                                                                   anal-tl reovsdad r
+deviaiotn, 1       σ   . Rer)fe to the otore sfhe. insrorditac
+8.      Revon Risiecords
+
+Veriosn                      visReion de ta                                       visReion cen tonst
+
+V  1.0                       2023-09-28                                           Initial creation

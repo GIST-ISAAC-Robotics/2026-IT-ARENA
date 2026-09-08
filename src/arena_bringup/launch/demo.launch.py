@@ -18,10 +18,17 @@ def _include_simulation(context):
         raise RuntimeError("stereo 모드는 depth_camera:=true가 필요합니다.")
     return [IncludeLaunchDescription(PythonLaunchDescriptionSource(str(launch_file)), launch_arguments={
         "headless": LaunchConfiguration("headless"), "grid_slot": LaunchConfiguration("grid_slot"),
+        "render_backend": LaunchConfiguration("render_backend"),
+        "collision_detector": LaunchConfiguration("collision_detector"),
+        "scene_broadcaster": LaunchConfiguration("scene_broadcaster"),
         "red_duration_s": LaunchConfiguration("red_duration_s"), "track": "official",
         "depth_camera": depth,
         "tof_profile": LaunchConfiguration("tof_profile"),
         "lidar_rate_hz": LaunchConfiguration("lidar_rate_hz"),
+        "lidar_acquisition": LaunchConfiguration("lidar_acquisition"),
+        "lidar_compensation": LaunchConfiguration("lidar_compensation"),
+        "autonomy_control_rate_hz": LaunchConfiguration("autonomy_control_rate_hz"),
+        "sensor_wall_timeout_s": LaunchConfiguration("sensor_wall_timeout_s"),
         "speed_profile": LaunchConfiguration("speed_profile"),
         "differential_profile": LaunchConfiguration("differential_profile"),
         "tof_safety": LaunchConfiguration("tof_safety"),
@@ -35,6 +42,9 @@ def _include_simulation(context):
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument("headless", default_value="false"),
+        DeclareLaunchArgument("render_backend", default_value="system", choices=["auto", "system", "wsl_nvidia", "software"]),
+        DeclareLaunchArgument("collision_detector", default_value="configured", choices=["configured", "ode", "bullet", "fcl"]),
+        DeclareLaunchArgument("scene_broadcaster", default_value="true"),
         DeclareLaunchArgument("grid_slot", default_value="0"),
         DeclareLaunchArgument("red_duration_s", default_value="8.0"),
         DeclareLaunchArgument("autonomy_mode", default_value="lidar", choices=["lidar", "stereo"],
@@ -44,6 +54,10 @@ def generate_launch_description():
         DeclareLaunchArgument("chase_camera", default_value="false", description="검증 영상 전용 3인칭 카메라"),
         DeclareLaunchArgument("tof_profile", default_value="configured", description="하부 ToF 영역·주기 프로필"),
         DeclareLaunchArgument("lidar_rate_hz", default_value="configured", description="라이다 주기 비교용 실행 덮어쓰기"),
+        DeclareLaunchArgument("lidar_acquisition", default_value="snapshot", choices=["snapshot", "sequential"]),
+        DeclareLaunchArgument("lidar_compensation", default_value="none", choices=["none", "deskew", "shift", "both"]),
+        DeclareLaunchArgument("autonomy_control_rate_hz", default_value="20.0", description="단독 고속 시험용 제어 주기; 기본 20 Hz 유지"),
+        DeclareLaunchArgument("sensor_wall_timeout_s", default_value="3.0", description="느린 오프라인 시뮬레이션용 벽시계 감시 한도; 센서 취득 시각 제한은 유지"),
         DeclareLaunchArgument("speed_profile", default_value="cautious"),
         DeclareLaunchArgument("differential_profile", default_value="configured"),
         DeclareLaunchArgument("tof_safety", default_value="true"),

@@ -56,6 +56,7 @@
   <xacro:arg name="lidar_pitch" default="0.0"/>
   <xacro:arg name="lidar_yaw" default="0.0"/>
   <xacro:arg name="lidar_rate" default="10.0"/>
+  <xacro:arg name="lidar_topic" default="/scan"/>
   <xacro:arg name="lidar_samples" default="500"/>
   <xacro:arg name="lidar_min" default="0.05"/>
   <xacro:arg name="lidar_max" default="12.0"/>
@@ -531,7 +532,7 @@
           <always_on>true</always_on>
           <update_rate>$(arg lidar_rate)</update_rate>
           <visualize>false</visualize>
-          <topic>/scan</topic>
+          <topic>$(arg lidar_topic)</topic>
           <lidar>
             <scan><horizontal>
               <samples>${int(lidar_samples)}</samples>

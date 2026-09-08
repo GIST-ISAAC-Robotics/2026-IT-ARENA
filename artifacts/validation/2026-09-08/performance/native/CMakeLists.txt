@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(arena_profile LANGUAGES CXX)
+find_package(gz_sim_vendor REQUIRED)
+find_package(gz-sim8 REQUIRED)
+add_executable(arena_profile profile.cpp)
+target_link_libraries(arena_profile PRIVATE gz-sim8::gz-sim8)
+target_compile_features(arena_profile PRIVATE cxx_std_17)

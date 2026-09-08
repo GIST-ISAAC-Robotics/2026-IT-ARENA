@@ -14,6 +14,12 @@ target_link_libraries(arena-single-motor-system PRIVATE gz-sim8::gz-sim8 gz-plug
 target_compile_options(arena-single-motor-system PRIVATE -Wall -Wextra -Wpedantic)
 install(TARGETS arena-single-motor-system LIBRARY DESTINATION lib)
 
+add_library(arena-wsl-d3d12-lifetime SHARED src/wsl_d3d12_lifetime.cpp)
+target_compile_features(arena-wsl-d3d12-lifetime PRIVATE cxx_std_17)
+target_link_libraries(arena-wsl-d3d12-lifetime PRIVATE ${CMAKE_DL_LIBS})
+target_compile_options(arena-wsl-d3d12-lifetime PRIVATE -Wall -Wextra -Wpedantic)
+install(TARGETS arena-wsl-d3d12-lifetime LIBRARY DESTINATION lib)
+
 if(BUILD_TESTING)
   enable_testing()
   add_executable(test_drivetrain test/test_drivetrain.cpp)

@@ -1,0 +1,140 @@
+{
+  "schema_version": 3,
+  "acquisition": "snapshot_matched",
+  "source_rate_hz": 500,
+  "case": "straight_15kmh",
+  "configuration": {
+    "speed_mps": 4.166666666666667,
+    "duration_s": 8.0,
+    "radius_m": null,
+    "spawn": [
+      0.0,
+      0.06,
+      0.02
+    ]
+  },
+  "requested_lidar_rate_hz": 10.0,
+  "started_at_utc": "2026-09-05T15:49:49.904895+00:00",
+  "measurement_completed": true,
+  "safe_racing_verified": false,
+  "passed": true,
+  "tof_safety_enabled": false,
+  "control_rate_hz": 100.0,
+  "assessment_footprint_m": [
+    0.2,
+    0.17
+  ],
+  "road_width_m": 0.45,
+  "wall_gap_m": 0.85,
+  "physics_step_s": 0.001,
+  "ground_friction_assumption": 1.6,
+  "limitations": [
+    "취득=snapshot_matched; 순차 모드는 물리 프레임 시간 근사 <=2.1 ms; 반사/잡음/실제 UART 지연과 deskew 없음",
+    "빈 고정 속도 시험장; 신호등·분기·다른 차량·ToF 안전성 검사 아님",
+    "100 Hz 시험 조향 루프; 기본 주행 노드 20 Hz와 구분",
+    "차량·타이어·서보 물성은 실측 전 임시값",
+    "평면 보수적 외형 평가; 접촉 센서에 의한 실제 접촉 판정 아님"
+  ],
+  "input_sha256": {
+    "scripts/validate_lidar_control_lab.py": "40f42551cb6ee7b8e31f6e14b11c3b0deb9e197068b33a167ce91114f02524f9",
+    "scripts/lidar_shutdown.py": "cc8266e681019aa1d7f867f15469e3c59c42a461fc8e5f7cb2f5fe479144d78b",
+    "artifacts/validation/2026-09-06/rotating_lidar/boundary_repeat_v1/straight_15kmh_snapshot_matched_01/trial_world.sdf": "00c05c8e7ad6e4b90a7c54b55a916f4695288b21e913e0d94e445230b3b18260",
+    "src/arena_description/config/vehicle.yaml": "e59508b8600e5bc6b9d56dc99797fbb23d5c36124ac2d4970d3af53832ddb920",
+    "src/arena_description/models/arena_car/model.sdf.xacro": "b1d06609f6e62d620b988ff5f473a314e7c8e58123be9477d9b9db094172e8b5",
+    "src/arena_autonomy/arena_autonomy/core.py": "2558f1fcc88abf8603ee8a0c451400fa88dc10a41de849a6d714141a8fccaf78",
+    "src/arena_bringup/launch/simulation.launch.py": "1cc260e2311054a8dc49e102206ae6a7fddf7a8d092ca8cc7e03e06a029d590f",
+    "src/arena_gazebo/src/single_motor_drive.cpp": "22c849afdc8e4ee568e594b3bb1dc650b9dba9c7aa11b5c9671e70069524bb44",
+    "src/arena_gazebo/include/arena_gazebo/drivetrain.hpp": "b1242336c27cb207536be08627b422d510677e18ee3c03714436aac43099e680",
+    "src/arena_vehicle_interface/arena_vehicle_interface/ackermann_to_twist.py": "a3fff247ee25ef4776b667741ac59e5546f40eb9a563a19848120375603b9909",
+    "src/arena_vehicle_interface/arena_vehicle_interface/rotating_lidar.py": "d7e1e5778a771f4d90d8e4d59e2b624b73849a9ecef967d3f0db9f958ffb87ed"
+  },
+  "controller_subscriptions": [
+    "/clock",
+    "/scan"
+  ],
+  "sensor_only_control": true,
+  "metrics": {
+    "target_speed_kmh": 15.000000000000002,
+    "peak_longitudinal_speed_kmh": 15.600241791108,
+    "peak_planar_speed_kmh": 15.600241813654113,
+    "target_speed_band_fraction": 0.8277634961439588,
+    "longest_target_speed_dwell_s": 6.639000000000001,
+    "target_speed_verified": true,
+    "active_duration_s": 7.992000000000001,
+    "completed_duration": true,
+    "tracking_all_active": {
+      "samples": 389,
+      "centerline_rmse_m": 0.017664867751443727,
+      "max_abs_centerline_error_m": 0.0600272700015,
+      "min_road_clearance_m": 0.07801717363855554,
+      "min_wall_clearance_m": 0.2780171736385555
+    },
+    "tracking_after_3s": {
+      "samples": 240,
+      "centerline_rmse_m": 0.0030937466141618673,
+      "max_abs_centerline_error_m": 0.00784872569154,
+      "min_road_clearance_m": 0.1320110083239923,
+      "min_wall_clearance_m": 0.3320110083239923
+    },
+    "tracking_at_target_speed": {
+      "samples": 322,
+      "centerline_rmse_m": 0.007843724465796186,
+      "max_abs_centerline_error_m": 0.0220633837438,
+      "min_road_clearance_m": 0.11792601100063572,
+      "min_wall_clearance_m": 0.3179260110006357
+    },
+    "road_departure_samples_active": 0,
+    "road_departure_samples_including_stop": 0,
+    "wall_overlap_samples_including_stop": 0,
+    "peak_lateral_speed_mps": 0.0283674846891,
+    "peak_wheel_ground_speed_difference_mps": 0.05205851312999954,
+    "peak_roll_deg": 2.8928967034275113e-07,
+    "peak_pitch_deg": 1.1938345095626516e-06,
+    "stop_stable": true,
+    "stable_stop_duration_s": 0.5630000000000006,
+    "measured_lidar_rate_hz": 10.0,
+    "lidar_rate_verified": true,
+    "scan_interval_max_s": 0.10000000000000142,
+    "scan_age_mean_s": 0.051000000000000274,
+    "scan_age_p95_s": 0.09600000000000009,
+    "scan_age_max_s": 0.09600000000000186,
+    "unique_scans_used_in_active_control": 80,
+    "control_commands": 800,
+    "measured_control_rate_hz": 100.0,
+    "control_max_interval_s": 0.010000000000001563,
+    "steering_command_max_step_rad": 0.025505190103101982,
+    "steering_command_total_variation_rad": 0.15164237502926697,
+    "steering_command_rms_rad": 0.015621471329667562,
+    "sensor_stop_command_count": 0,
+    "scan_shape": {
+      "stamp_s": 11.044,
+      "samples": 500,
+      "scan_time_s": 0.0,
+      "time_increment_s": 0.0,
+      "frame_id": "laser_frame",
+      "range_min_m": 0.05000000074505806,
+      "range_max_m": 12.0
+    },
+    "ideal_snapshot": true,
+    "control_rate_verified": true,
+    "lidar_interface_verified": true,
+    "fixed_speed_tracking_passed": true
+  },
+  "launch_return_code": 0,
+  "acquisition_verified": true,
+  "shutdown_audit": {
+    "clean": true,
+    "launch_return_code": 0,
+    "forced_cleanup": null,
+    "started_child_count": 21,
+    "clean_child_count": 21,
+    "failed_children": {},
+    "unaccounted_child_pids": [],
+    "errors": [],
+    "errors_before_shutdown_count": 0,
+    "errors_after_shutdown_count": 0
+  },
+  "shutdown_clean": true,
+  "elapsed_wall_s": 184.39888359099996,
+  "finished_at_utc": "2026-09-05T15:52:54.333616+00:00"
+}

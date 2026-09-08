@@ -258,7 +258,7 @@ def controller_double(monkeypatch):
                   "lidar_x_m": -.03, "target_wall_distance_m": .425, "wheelbase_m": .145,
                   "max_steering_angle_rad": .45, "max_speed_mps": .35, "min_speed_mps": .14,
                   "lateral_acceleration_limit_mps2": 3.0, "acceleration_mps2": .5},
-        signal=signal, scan=scan, rgb_stamp=10., scan_wall_time=time.monotonic(),
+        signal=signal, scan=scan, motion=None, rgb_stamp=10., scan_wall_time=time.monotonic(),
         image_wall_time=time.monotonic(), enabled=True, side="left", ids=[],
         last_steering=0., last_speed=.2, last_status="", last_status_time=-math.inf,
         last_control_time=-math.inf, now_s=lambda: 10.,
@@ -292,6 +292,44 @@ def test_controller_stops_without_fresh_inputs_and_permission(monkeypatch, failu
     assert json.loads(statuses[-1].data)["state"] == expected
 
 
+def test_offline_wall_timeout_does_not_relax_observation_age(monkeypatch):
+    controller, commands, _ = controller_double(monkeypatch)
+    controller.settings['sensor_wall_timeout_s'] = 30.
+    controller.scan_wall_time = time.monotonic() - 4.
+    controller.image_wall_time = time.monotonic() - 4.
+    wall_follow.WallFollow.control(controller)
+    assert commands[-1].drive.speed > 0
+    controller.scan.header.stamp.sec = 8
+    wall_follow.WallFollow.control(controller)
+    assert commands[-1].drive.speed == 0
+
+
+def test_motion_failure_stops_without_uncompensated_fallback(monkeypatch):
+    import json
+    from arena_autonomy.lidar_motion import MotionUnavailable
+    controller, commands, statuses = controller_double(monkeypatch)
+    def reject(_):
+        raise MotionUnavailable('motion_stale')
+    controller.motion = SimpleNamespace(project=reject, last_meta={'reason': 'motion_stale'})
+    wall_follow.WallFollow.control(controller)
+    assert commands[-1].drive.speed == 0.
+    assert json.loads(statuses[-1].data)['state'] == 'MOTION_STOP'
+
+
+def test_motion_success_feeds_corrected_points_to_same_controller(monkeypatch):
+    controller, commands, statuses = controller_double(monkeypatch)
+    points = np.column_stack((np.linspace(-.2, .6, 40), np.full(40, .425)))
+    seen = []
+    def follow(received, *_):
+        seen.append(received)
+        return .3, .1, {'reason':'following'}
+    monkeypatch.setattr(wall_follow, 'follow_command', follow)
+    controller.motion = SimpleNamespace(project=lambda _: (points, 40), last_meta={'reason':'ok'})
+    wall_follow.WallFollow.control(controller)
+    assert seen[0] is points
+    assert commands[-1].drive.speed > 0
+
+
 def test_late_image_is_ignored_without_clearing_start_permission():
     from sensor_msgs.msg import Image
     from builtin_interfaces.msg import Time
@@ -319,6 +357,19 @@ def test_validator_forwards_shutdown_without_inherited_terminal(monkeypatch):
     assert kwargs["stdin"] == validator.subprocess.DEVNULL
     assert kwargs["start_new_session"] is True
     assert kwargs["stdout"] is log and kwargs["stderr"] is log
+
+
+def test_high_speed_recording_options_are_explicit_and_default_stays_protected(monkeypatch):
+    monkeypatch.syspath_prepend(str(REPO / "scripts"))
+    import validate_basic_autonomy as validator
+    calls = []
+    monkeypatch.setattr(validator.subprocess, "Popen", lambda *a, **kw: calls.append(a[0]))
+    validator.start_demo_process(None, speed_profile="hardware_target", tof_safety=False,
+        chase_camera=True, lidar_acquisition="sequential", lidar_compensation="both",
+        control_rate_hz=100., render_backend="wsl_nvidia")
+    assert {"tof_safety:=false", "chase_camera:=true", "lidar_acquisition:=sequential",
+            "lidar_compensation:=both", "autonomy_control_rate_hz:=100.0",
+            "render_backend:=wsl_nvidia", "speed_profile:=hardware_target"} <= set(calls[0])
 
 
 @pytest.mark.parametrize(

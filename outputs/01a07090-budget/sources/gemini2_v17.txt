@@ -1,0 +1,3282 @@
+
+PAGE 1
+Gemini     2 Series
+
+
+
+
+        Gemini2/Gemini2L
+
+PAGE 2
+     Copyright     Orbbec    Inc. All  rights  reserved.   The   product   described    may   contain   defects  or  errors  or
+deviation   from  published    specifications.   Contact    your  sales  representative    to obtain  the  latest Orbbec    3D
+product   specifications.    Orbbec    is not  responsible    for  any   users  infringing   on   third  party  copyright    or
+other  rights in  use  of Orbbec    products.   In addition,   Orbbec    does  not  assume    any  liability for  damages    or
+any  losses   resulting  from    the use   of this  product.   All  information     provided    here  is  subject  to  change
+without   notice.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.    AllRights Reserved.  https://orbbec3d.com/                                                                    2
+Note: Orbbec  reserves  the rightto change  any  information inthe document   without prior notice.
+
+PAGE 3
+Revision           History
+
+
+
+    Version              Date                                                   Note
+
+      V1.0             2023.2.7         Initialrelease
+                                             Modify  product   brief,product  features, application  scenarios,
+                                              recommended     system
+                                             Modify  product   specification sheet
+                                             Modify  Figure  1-4-1  sensor  arrangement
+                                             Modify  PS(PROXIMITY         SENSOR)     of 2.4.4 to LDP
+                                             Modify  the  no blind area  content of 3.4  and listit separately as 3.7  for
+                                              detailed explanation
+                                             Modify  Table  3-6-1  and  Table  3-6-2 resolution  and  frame  rate
+      V1.1            2023.3.24              Modify  3.8  Depth  start point parameter
+                                             Modify  Table  3-12-1   toadd  typical scenarios
+                                             Modify  the  fixed trigger of 3.12 to the specific  trigger
+                                             Modify  the  arbitrary frequency  passive  trigger of 3.13  to free trigger
+                                              mode
+                                             Modify  3.15  Multi-Camera    Synchronization    error data
+                                             Modify  Multi-Camera     Synchronization    description  inTable  3-16-1
+                                             Add  electronic  performance   parameters   in Table  3-16-2
+                                             Modify  resolution  and  FPS  of Binned   Sparse  Default  in Table  4-1-2
+                                             Modify  product   lifetime description
+                                             Modify  Table  3-6-2  image   format
+      V1.2            2023.4.24              Modify  3.15  Muti-Camera     Synchronization   time  error data
+                                             Delete Image   Mirroring   and Dynamic    Switching
+                                             Modify  7.3  camera  glass parameter   description
+      V1.3            2023.6.30              Add  Gemini   2 L
+      V1.3            2023.8.15              Add  Depth  and  Color  camera   IMU   coordinate  system
+                                             Modify  Appendix    II /III
+                                             Add  Figure  3-1-10  Bottom   view
+                                             Add  Figure  4-3-1, 4-3-2,  4-3-3, 4-3-4, 4-3-5
+                                             Add  Figure  4-9-1, 4-9-2,  4-9-3, 4-9-4, 4-9-5
+      V1.4           2023.10.10              Add  aspect  ratioin Table  4-9-1&   Table  4-9-2
+                                             Modify  4.8  depth start point data
+                                             Modify  Power   description
+                                             Modify  Appendix    II /III
+      V1.5           2023.12.12              Gemini  2  add Obstacle   Avoidance   Mode
+      V1.6            2024.3.16              Modify  IP  Rating
+                                             Add   5.1.3
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.    AllRights Reserved.  https://orbbec3d.com/                                                                    3
+Note: Orbbec  reserves  the rightto change  any  information inthe document   without  priornotice.
+
+PAGE 4
+                                                                                            Content
+
+1  Description          and    Features............................................................................................................................................6
+2  Introduction          ..............................................................................................................................................................10
+          2.1   Purpose........................................................................................................................................................                     10
+          2.2   Terminology................................................................................................................................................                         10
+          2.3   Introduction           to  Active       Stereo      3D    Imaging         Technology           ..............................................................................       11
+          2.4   Depth       Field     of   View      at  Distance(Depth              Z)..................................................................................................11
+          2.5   Depth       Camera        System        Framework..............................................................................................................12
+3  Product       Composition            ................................................................................................................................................13
+          3.1   Component             Composition           .............................................................................................................................13
+                    3.1.1     Product       Physical        Picture      .................................................................................................................          13
+                    3.1.2     Camera        Dimension           ..........................................................................................................................15
+          3.2   Component             Description         ...............................................................................................................................18
+          3.3   Depth       Engine...............................................................................................................................................19
+          3.4   Depth       Camera        Module.................................................................................................................................19
+                    3.4.1     Infrared       Camera..............................................................................................................................                   19
+                    3.4.2     Laser      Module..................................................................................................................................                   19
+                    3.4.3     Color      Camera        ..................................................................................................................................20
+                    3.4.4     Proximity         Sensors(LDP).................................................................................................................20
+                    3.4.5     Gemini        2  Series      Interface       ................................................................................................................21
+4  Functional         Specification...........................................................................................................................................22
+          4.1   Vendor        Identification(VID)                and    Product        Identification(PID).....................................................................22
+          4.2   Platform        and     System        Requirements            .............................................................................................................22
+          4.3   Depth       Image       of  FOV...................................................................................................................................22
+          4.4   Depth       Data     Streams.....................................................................................................................................25
+          4.5   Color      Image       Data     Streams        (UVC)...............................................................................................................25
+          4.6   Depth       and    Color      Image       Data     Stream       Formats.............................................................................................25
+          4.7   No-Blind          Zone      Depth      Data..........................................................................................................................27
+          4.8   Depth       Start    Point     Reference........................................................................................................................                    29
+          4.9   Depth       to  Color      Alignment...........................................................................................................................30
+          4.10    IMU       Specification.....................................................................................................................................                      34
+                    4.10.1      IMU       Specification          Description.....................................................................................................34
+                    4.10.2      IMU       Coordinate          System       ...............................................................................................................          34
+          4.11    Depth       Mode...............................................................................................................................................36
+          4.12    Specific        Frame       Rate     Trigger       Mode...........................................................................................................                36
+          4.13    Free     Trigger       Mode.....................................................................................................................................37
+          4.14    Multi-Camera              Synchronization              Function..................................................................................................                 37
+                    4.14.1      Specification           Description..............................................................................................................37
+                    4.14.2      Multi-Camera              Synchronization              Interface......................................................................................39
+5  Performance..............................................................................................................................................................41
+          5.1   Electrical        Performance           .................................................................................................................................41
+                    5.1.1     Power       Supply       ..................................................................................................................................41
+                    5.1.2     Power...............................................................................................................................................41
+
+
+ORBBEC.          All  Rights     Reserved.         https://orbbec3d.com/                                                                                                                      4
+Note:    Orbbec       reserves        the   right   to  change       any    information         in the   document          without      prior   notice.
+
+PAGE 5
+                    5.1.3     Storage       and    Powered         Conditions          ....................................................................................................42
+6  Firmware..................................................................................................................................................................                      43
+          6.1   Update       ..........................................................................................................................................................43
+          6.2   Update        Restrictions......................................................................................................................................43
+          6.3   Recovery......................................................................................................................................................43
+7  SDK..........................................................................................................................................................................44
+          7.1   SDK       Description..........................................................................................................................................44
+8  Use    Instructions         ........................................................................................................................................................45
+          8.1   Mounting          / Fixing       Solutions........................................................................................................................45
+          8.2   Heat     Dissipation          Recommendations                 ............................................................................................................45
+          8.3   Camera         Front     Cover       Glass     Lens      Parameters          Description         ...........................................................................       45
+9  Regulatory          Compliance           ............................................................................................................................................46
+10   System        Integration        Guide.......................................................................................................................................47
+11   Cautions        ..................................................................................................................................................................48
+Appendix         I  Multi-Camera             Synchronization               Interface       Structure        Diagram        ..................................................................49
+Appendix         II  Gemini        2   2D    Structure        Diagram        .............................................................................................................50
+Appendix         III   Gemini        2  L   2D    Structure        Diagram        ........................................................................................................51
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.          All  Rights     Reserved.         https://orbbec3d.com/                                                                                                                     5
+Note:    Orbbec       reserves        the   right   to  change       any    information        in  the   document         without      prior   notice.
+
+PAGE 6
+1      Description              and      Features
+
+     Orbbec   Gemini   2 Series  is a new  generation   depth  camera   product  based  on  active stereo technology.   This
+seriesof  products  provides  a complete   range of depth  modules,   RGB   color  modules,  image   signal processors,  and
+depth  computing   engines.  This  cameras   provide   six-axis IMU/inertial   data and  high  quality  RGB    images.  This
+seriesalso integrates  the hardware  depth  image   and color image   spatial alignment  function, which   saves computing
+power  of the host computer.   The  camera  comes   with  a variety of depth  operating modes   to choose  from  to adapt  to
+different  application   scenarios.   It  provides   flexible   and   rich  frame    synchronization    and   multi-camera
+synchronization  functions.  Itsupports  the Orbbec  SDK,   a unified development    toolkit across platforms.
+
+                                          Robot
+                                          AVG    /AMR
+                                          3D  body/object  scan
+Usages  /Markets                          Dimension
+                                          Body   tracking
+                                          AR/VR
+                                          Gesture  control
+                                     x86/x64
+                                          OS:Windows     10、Ubuntu18.04/20.04
+                                          Connector:USB     3.0/USB   2.0
+                                          CPU:qual-core,    2.9GHz
+                                          RAM:4GB
+                                     ARM
+System  Requirements                      OS:Ubuntu18.04/20.04、Android          7or above
+                                          Connector:USB     3.0/USB   2.0
+                                          CPU:Jetson    Nano  or A311D(quad-core     Cortex-A73,dual-    core Cortex-
+                                               A53)
+                                          RAM:4GB
+                                          Support  LibUSB    + LibUVC
+                                          Support  UVC
+                                          Hardware   Align  (Depth  to Color)
+                                           No  Blind Zone
+General  Feature                          Infrared (IR)  Laser Projector
+                                          Free  Trigger   Mode
+                                          Multi-Camera    Synchronization   Function
+                                          Depth  Working    Modes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved.   https://orbbec3d.com/                                                                 6
+Note: Orbbec  reserves the rightto change  any  information inthe document   without priornotice.
+
+PAGE 7
+                                               Product   Specification
+
+               Name                                Gemini   2                               Gemini   2 L
+               Use                  Indoor/semi-outdoor                       Indoor/semi-outdoor
+               Environment
+               Depth  Range[1]      0.15m  - 10m                              0.20m  - 10m
+Feature
+               Ideal Range          0.2m  - 5m                                0.25m  - 7m
+
+               Camera   Driver      UVC                                       UVC
+
+               SDK                  Orbbec  SDK                               Orbbec  SDK
+               Depth                Stereo Structure  Light                   Stereo Structure  Light
+               Technology
+               Baseline             50mm                                      100mm
+               Depth                < 2%  (1280  x 800  @  2m &  81%          < 2%  (1280  x 800  @  4m  & 81%
+               Accuracy[2]          ROI)                                      ROI)
+                                    Unbinned   Dense  Default                 Unbinned   Dense  Default  Unbinned
+Depth          Depth  Working       Unbinned   Sparse  Default                Sparse  Default
+               Mode                 Binned  Sparse  Default                   Binned  Sparse  Default
+                                    Obstacle  Avoidance                       Dimensioning
+               Depth  Output        1280  x 800@30fps                         1280  x 800@30fps
+               Resolution           640  x 400@60fps[3]                       640  x 400@60fps[3]
+               Depth  Field of      H91°  / V66°  /D101°   ± 3° @  2m         H91°  / V66°  /D101°   ± 3° @  4m
+               View  FOV
+               Shutter Type         Global  shutter                           Global  shutter
+               IR Image             1280  x 800@30fps                         1280  x 800@30fps
+               Output                640 x 400@60fps[3]                        640 x 400@60fps[3]
+IR             Resolution
+               IR FOV               H94°  / V66.5°  /D102°   ± 3°             H94°  / V68°  /D104°   ± 3°
+                                    1920  x 1080@30fps                        1280  x 800@30fps
+               Color  Image         1280  x 720@60fps[3]                      1280  x 720@60fps[3]
+               Output               640  x 480@60fps                          800  x 600@60fps
+               Resolution           640  x 360@60fps                          640  x 400@60fps
+                                                                              640  x 360@60fps
+RGB                                 16:9  H86°  / V55°  /D94°  ± 3°           16:10   H93°  / V68°  /D104°±3°
+               RGB   FOV            4:3  H63°  /V50°  / D75°  ± 3°            16:9   H93°   /V61°  /D101±3°
+                                                                              4:3    H65°/  V52°/ D78±3°
+
+               Shutter Type         Rolling  shutter                          Global  shutter
+
+               D2C   Depth          16:9 H86°   /V55°  /D94°   ± 3° @2m       16:10  H91°  /V66°  / D101°±3°   @4m
+               Image  FOV           4:3  H63°  /V50°  / D75°  ± 3° @2m        16:9 H91°   /V60°  /D98±3°   @4m
+                                                                              4:3 H65°/  V52°/  D78±3°   @4m
+                                    Wavelength   940nm                        Wavelength   940nm
+               LDP[4]               Distance  measuring  range: 0mm   -       Distance  measuring  range: 0mm   -
+                                    400mm                                     400mm
+Function       IMU                  6 axis                                    6 axis
+               IR Image  AE         Support                                   Support
+               Function
+               UVC   RGB            Support                                   Support
+               Function
+               Data                 USB   3.0 & USB   2.0                     USB   3.0 & USB   2.0
+               Connection
+ORBBEC.   AllRights Reserved. https://orbbec3d.com/                                                               7
+Note:Orbbec  reserves  therightto change any  informationinthe document  without priornotice.
+
+PAGE 8
+                                          Typical   average[5]   < 2.0W                    Typical   average[5  ]<  2.5W
+                  Power                   Max   average[6   ]< 2.5W                        Max   average[6]<    3W
+Electrical                                Max   peak   value[7] < 6.5W                     Max   peak  value[7]  < 8.5W
+
+                  Power   Input           DC   5V   ≥1.5A                                  DC   5V  ≥2A
+                  Ambient                 0℃   - 40℃                                       0℃   - 40℃
+                  Temperature
+                  Working                 ＜   95  %RH    (non-condensing)                  ＜   95 %RH     (non-condensing)
+                  Humidity
+                  Storage                 -20℃    - 60℃                                    -20℃    -60℃
+                  Temperature
+                  Multi-Camera            8-Pin                                            8-Pin
+                  Connector
+                  Connector               Type-C                                           Type-C
+Physical          Size                    L90   x W25    x D30   mm   ±   0.5mm            L124   x W29    x D26   mm   ±   0.5mm
+
+                  Weight                  97g  ±  3g                                       144g   ± 3g
+
+                  IP Rating               IP  5X                                           IP 5X
+                  Mounting                1 x  1/4-20  UNC    thread   mounting            1 x 1/4-20   UNC    thread  mounting
+                  Mechanism               point                                            point
+                                          2 x  M3   thread  mounting    points             2 x M4   thread  mounting     points
+                  Heat                    Passive   heat  transfer                         Passive   heat transfer
+                  Dissipation
+                  Certification           Class  1、RoHS、FCC、CE、                            Class  1、RoHS、FCC、CE、
+Others                                    Reach、KC                                         Reach、KC
+                  Lifetime[8]             3 years                                          3 years
+
+Notes:
+[1] Measure  object reflectivity>10%,upto   10m  distancedepth data,but theactual accuracy varieswith the distanceand the objecttobe
+measured.
+[2] Thetest  objectisa reflectivity>80%  plane,and the reference rangeis 81%  FOV  (81%  FOV  isthe remaining center 81%  ofthe depth
+map  areaaftercropping 5%  of thetop and bottom of thedepth map). The  rootmean  square ofthe distancesequence  from allvalidpointsin
+thearea tothe best-fitpointofthe fittedplaneis calculated.
+[3] 60*  fpsfor depthimages  inBinned  Sparse Default mode.
+[4] Theactual  working  range outputvalue range of LDP  is1mm  - 400mm   in1mm..
+[5] Typicalaverage  operating modes   withonly Depth  and RGB  data streams turnedon and  IRimages  turned off,operatingaccording to
+typicalparameters:
+
+
+                                                                 Gemini 2                                      Gemini  2 L
+Unbinned  Dense Default                        Depth:1280x800@30fps    Y14                    Depth:1280x800@30fps     Y14
+                                               RGB:1920x1080@30fps     MJPEG                  RGB:1280x800@30fpsMJPEG
+Unbinned  Sparse Default                       Depth:1280x800@30fps    Y14                    Depth:1280x800@30fps     Y14
+                                               RGB:1920x1080@3fps     MJPEG                   RGB:1280x800@30fpsMJPEG
+Binned Sparse Default                          Depth:640x400@30fps    Y14                     Depth:640x400@30fps    Y14
+                                               RGB:1920x1080@30fps     MJPEG                  RGB:1280x800@30fpsMJPEG
+Dimensioning                                                      N/A                         Depth:1280x800@30fps     Y14
+                                                                                              RGB:1280x800@30fpsMJPEG
+Obstacleavoidance                              Depth:1280x800@30fps    Y14                                       N/A
+                                               RGB:1920x1080@30fps     MJPEG
+[6] Maximum    average: when  depth mode  isUnbinned  Sparse Default with RGB,  IR and Depth data streams areturned on:
+                                                      Gemini  2                                           Gemini  2L
+          Depth Mode                          Unbinned  Sparse Default                            Unbinned  Sparse Default
+             RGB                            1920x1080@30    fps MJPEG                            1280x800@30    fpsMJPEG
+             Depth                            1280x800@30    fps RLE                               1280x800@30    fpsRLE
+ORBBEC.     AllRights  Reserved.   https://orbbec3d.com/                                                                            8
+Note:  Orbbec   reserves  the  rightto change   any  information  in the document    without  prior notice.
+
+PAGE 9
+               IR                               1280x800@30     fps MJPEG                                1280x800@30    fps MJEPG
+            Exposure                                      5000us                                                   3000us
+       Laser Energy  Level                                   5                                                        7
+[7]  Maximum    peak powerconsumption      ismaximum    instantaneous  power, depth  mode  and parameter  setting are the same as [6].
+[8]  Operating in typical working  mode  within  thesupported  temperature(0-40℃)    for up to 8 hours a day.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.     All Rights   Reserved.    https://orbbec3d.com/                                                                                   9
+Note:  Orbbec    reserves   the  right to change    any  information   in the  document     without  prior notice.
+
+PAGE 10
+2       Introduction
+
+2.1   Purpose
+
+      This  document     describes    the specifications    and   some   design   details  of  ORBBEC®        Gemini     2 Series
+depth  camera    products,    as well  as  for developers    to  understand    and  use  the  related  products.
+
+2.2     Terminology
+
+
+                                            Table  2-2-1   Terminology    Description
+         Term                                                          Description
+
+        Baseline          Distance   between   left and right  infrared camera   imaging   centers
+                          The  depth   video  stream  is basically  the  same  as  the color  video  stream,  except   that each
+          Depth           pixel  value  represents   the spatial  depth   of the  observed   object  from   the camera,   rather
+                          than  the color  information   in the color image.
+                          Field  of view,  used  to describe   the angular  range  of  the camera   to observe   a given  scene,
+          FOV             there  are three main   horizontal  field of view  (H  FOV),   vertical field of  view  (V  FOV)   and
+                          diagonal   field of view  (D  FOV).
+         Depth            Depth    computation      processor,    a   dedicated    ASIC     chip   for   implementing      depth
+       Processor          computation    algorithms   and  outputting  depth  images,   such  as MX6600.
+       IR Camera          Infrared  camera,   or infrared  camera.
+
+     LDMP/LDM             Laser  modules,   also  known   as IR  projector, etc., for emitting  structured  light patterns.
+                          Only   the depth  imaging    module   and  the  external  interface  are included,  where   the  depth
+     Depth  Camera        imaging    module    generally  consists   of an  infrared  projector,   an  infrared  camera   and   a
+                          depth  computing    processor.
+           PS             Proximity   Sensor,  a proximity   sensor  for laser  safety protection.
+
+           ISP            Image   signal processor   for post-processing    of images.
+
+          LDP             Proximity   Sensor   for laser safety protection   and  distance  measurement.
+        IR Flood          IR  floodlight,  using  infrared  light to illuminate   the environment,    used  to fill the infrared
+                          imaging   light.
+          Lens            Lens   sets for  imaging    in infrared   cameras,   color  cameras,   and   for projection   in  laser
+                          diffuser.
+                          MIPI    Alliance,  the  Mobile    Industry   Processor   Interface   (MIPI)   Alliance,   is an   open
+          MIPI            standard   and   a specification   for  mobile    application   processors   initiated  by  the  MIPI
+                          Alliance.
+                          System    on  Chip,  also  known    as System    on  Chip,  means    that it is a product   that is an
+           SoC            integrated  circuit  with a  dedicated  target  that contains  a complete    system  with  embedded
+                          software   in itsentirety.
+                          ASIC    is considered   to be  an  integrated  circuit  designed   for a  specific  purpose.   Itis an
+                          integrated   circuit designed   and   manufactured    in  response   to specific  user  requirements
+                          and  the needs  of  a specific electronic  system.   ASIC   are characterized   by  being  oriented  to
+          ASIC            the  needs   of  specific  users.  ASIC    have  the  advantages    of  smaller   size, lower   power
+                          consumption,     increased  reliability, improved    performance,    enhanced    confidentiality,  and
+                          lower   cost when   compared     to general-purpose    integrated  circuits  in mass   production.   In
+                          this document,    itmainly   refers to MX6600.
+         PCBA             PCB(Printed     Circuit  Board)   that carry  deep   computing    processors,   memories    and  other
+                          electronic  devices.
+
+ORBBEC.    AllRights  Reserved.   https://orbbec3d.com/                                                                      10
+Note: Orbbec   reserves  the rightto change   any information  in the document   without  priornotice.
+
+PAGE 11
+         TBD           TBD,   information will be provided  in alaterrevision.
+
+2.3  Introduction        to  Active     Stereo    3D    Imaging      Technology
+
+     The   Gemini    2 Series   is a  depth   camera   that  utilises active  stereo   3D  imaging    technology.    It
+comprises   of IR  Left and  IR  Right  cameras,   a laser projection  module    (LDM),   and  a depth  computation
+processor  (MX6600).     The  laser projection  module   projects  structured  light patterns onto  the target  scene,
+while  the left and  right IR  cameras   acquire  the corresponding    images.   These  images   are  then processed
+by the depth  computation    processor  using  an  algorithm  to produce   a depth  image  of the  scene.
+
+2.4  Depth     Field    of  View    at  Distance(Depth           Z)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                             Figure2-4-1  Depth Field of View  to Depth  Map  Illustration
+
+     Depth   Field  of  View   (Depth    FOV)    at any   distance  (Z)  can  be  calculated   using   the  following
+equation:
+
+                Depth    Active    H  -FoV      arctan   cx    B   arctan   width    -1 -cx
+                                                          fx    Z                     fx
+                                                                   
+
+                        H     F o V     arctan     cx    arctan     width     1   cx
+                                                     fx                         fx
+
+                                       Z  0           B
+                                                 2tan H FoV 
+                                                          2
+
+
+
+
+
+     Definitions:
+     1.   cx  = X-direction   image  coordinates   of the main  point  of the depth  image
+
+ORBBEC.   AllRightsReserved.  https://orbbec3d.com/                                                             11
+Note:Orbbec  reserves the righttochange  any information inthedocument   withoutpriornotice.
+
+PAGE 12
+      2.    fx  = Depth    camera    focal   length
+      3.    width=    Depth    image    width
+      4.    H-FOV      = IR   H-FOV
+      Note:
+      1.cx, fx,and width parameters are obtained through theSDK   Depth Intrinsicforthe relevantcamera  parameters, and each depth camera
+parameters arenot thesame.
+      2.At differentdistances,thedepth FOV  is different.Thefartherthe distance,thegreaterthe depth FOV.
+
+2.5   Depth       Camera         System        Framework
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                  Figure  2-5-1  Gemini    2 Series  System    Framework     Diagram
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.    All Rights  Reserved.   https://orbbec3d.com/                                                                           12
+Note: Orbbec   reserves   the right to change   any information   inthe document    without  prior notice.
+
+PAGE 13
+3      Product          Composition
+
+3.1    Component          Composition
+
+     This  section  introduces   the  basic  structure  of the  Gemini    2 Series  depth  camera.   Please   note  that
+structure size  data and   pictures may   vary  slightly  due  to product-specific   configuration    differences.  For
+more  accurate  information,   please  refer to the actual  product.
+
+3.1.1  Product    Physical    Picture
+
+
+
+
+
+
+
+
+
+
+
+
+                                          Figure 3-1-1 Gemini   2 Front View
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                          Figure  3-1-2 Gemini  2 Rear  View
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                           Figure 3-1-3 Gemini   2 Top View
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved. https://orbbec3d.com/                                                               13
+Note:Orbbec  reserves  therightto change  any informationin thedocument   withoutpriornotice.
+
+PAGE 14
+                                            Figure  3-1-4  Gemini   2 L  Front  View
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                             Figure  3-1-5 Gemini    2 L Rear  View
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                             Figure  3-1-6  Gemini   2 L  Top  View
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                           Figure  3-1-7  Gemini   2 L  Bottom   View
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.    AllRights Reserved.   https://orbbec3d.com/                                                                      14
+Note: Orbbec   reserves  the rightto change  any  information in the document   without prior notice.
+
+PAGE 15
+3.1.2  Camera      Dimension
+
+                                               Table  3-1-1 Gemini   2 Dimension
+          Dimension                                      Nominal                                         Unit
+
+             Width                                          90                                           mm
+
+             Height                                         25                                           mm
+
+             Depth                                          30                                           mm
+
+
+Gemini   2 dimension    diagram:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                 Figure 3-1-8  Front View
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                 Figure  3-1-9 Top  View
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                               Figure 3-1-10  Bottom   View
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                                 15
+Note: Orbbec  reserves the rightto change  any information inthe document   without priornotice.
+
+PAGE 16
+                                                 Figure  3-1-11  Right  View
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                  Figure  3-1-12  Left View
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                  Figure  3-1-13  Rear  View
+
+
+                                               Table  3-1-2  Gemini   2 L Dimension
+
+          Dimension                                        Nominal                                          Unit
+
+             Width                                            124                                            mm
+
+             Height                                           29                                             mm
+
+             Depth                                            26                                             mm
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.    AllRights Reserved.  https://orbbec3d.com/                                                                     16
+Note: Orbbec  reserves  the rightto change  any  information in thedocument    without priornotice.
+
+PAGE 17
+Gemini    2 L  dimension    diagram:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                   Figure  3-1-13  Front  View
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                 Figure  3-1-14   Bottom   View
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                   Figure  3-1-15  Side  View
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                   Figure  3-1-16  Rear  View
+
+
+
+
+
+ORBBEC.    AllRights Reserved.   https://orbbec3d.com/                                                                      17
+Note: Orbbec   reserves  the rightto change  any  information in the document   without  priornotice.
+
+PAGE 18
+3.2    Component           Description
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                     Figure  3-2-1  Gemini   2 Series Product   Diagram
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                               Figure  3-2-2  Exploded   View
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                       Figure  3-2-3   Gemini  2 L  Product  Diagram
+
+
+
+
+
+
+
+
+ORBBEC.   All Rights Reserved.  https://orbbec3d.com/                                                                   18
+Note: Orbbec  reserves  the righttochange   any information in the document   without priornotice.
+
+PAGE 19
+                                       Figure 3-2-4 Gemini   2 L Exploded   View
+
+
+3.3    Depth     Engine
+
+     The   Depth   Computing     Processor   MX6600     is mainly   used   for depth   image   calculations.  The   host
+computer   communicates     with  the  depth  camera   through   Type-C   and  receives  image   data  from  the  Depth
+Computing    Processor.
+
+3.4    Depth     Camera        Module
+
+3.4.1  Infrared    Camera
+
+                                          Table  3-4-1 Infrared  Camera  Parameter
+                    Parameters                                            Gemini   2 /Gemini   2 L
+
+                   Effective Pixels                                             1280  x 800
+
+                    Aspect  Ratio                                                 16 : 10
+
+                    Focal Length                                                Fixed focus
+
+                    Shutter Type                                              Global  shutter
+
+                   Signal Interface                                                MIPI
+
+                  Horizontal  FOV                                                   94°
+
+                    Vertical FOV                                                    68°
+
+                   Diagonal  FOV                                                   104°
+
+                     FOV   Error                                                   ±3.0°
+
+3.4.2  Laser   Module
+
+     The   laser module    (LDM)    comprises    an  array  of vertical  cavity  surface  emitting   lasers and  a  spot
+diffuser. It enhances    the depth  camera    system's  ability  to detect  depth  information    by  projecting   static
+infrared patterns  onto  the  scene, adding   texture  to low-quality   scenes.  The  Gemini    2 Series  laser module
+isa Class  1 Laser  Product   under  normal   conditions.
+
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                              19
+Note:Orbbec  reserves  therightto change  any information inthedocument   without priornotice.
+
+PAGE 20
+                                            Table 3-4-2  Laser Module   Parameters
+                     Parameters                                            Gemini   2 /Gemini   2 L
+
+                        Type                                                       Infrared
+
+                Lighting  Component                      Vertical Cavity  Surface  Laser Emitter(VCSEL)     + Optics
+
+                  Laser  Controller                                                 Pulse
+
+                     Wavelength                                                    850nm
+
+                   Horizontal FOV                                                   101°
+
+                    Vertical FOV                                                    72.5°
+
+                     FOV   Error                                                    ±3.0°
+
+3.4.3  Color    Camera
+
+                                           Table  3-4-3  Color  Camera  Parameters
+
+               Parameters                                Gemini   2                            Gemini   2 L
+
+             Effective  Pixels                         1920  x 1080                            1280  x 800
+
+               Aspect  Ratio                                16:9                                  16:10
+
+                  Format                            MJPEG    &  YUYV                       MJPEG    &  YUYV
+
+               Focal Length                             Fixed  focus                           Fixed focus
+
+               Shutter Type                           Rolling  shutter                       Global  shutter
+
+             Signal  Interface                             MIPI                                   MIPI
+
+             Horizontal  FOV                               86.2°                                   94°
+
+               Vertical FOV                                55.2°                                   68°
+
+              Diagonal  FOV                                94.2°                                  104°
+
+                FOV   Error                                ±3.0°                                  ±3.0°
+
+3.4.4  Proximity     Sensors(LDP)
+
+     The   Gemini    2  Series  supports   LDP,    which   detects  objects   in close  proximity    and   enables   laser
+safety protection.
+     Gemini    2: LDP   protection  standard   is ≤ 10cm   ±2mm.
+     Gemini    2 L: LDP   protection   standard  is ≤ 15cm    ±2mm.
+     The   LDP   function  is tested as follows.
+     The   camera   system  will  reduce  or turn  off the power   supply  and  IR  image   brightness  when   an  object
+moves   closer  to the camera.   This  is due  to the activation  of  laser safety  protection.  During   this stage, the
+IR image   brightness   value  will decrease   below   its original  value.  When   the  object  moves   away   from  the
+
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                                20
+Note:Orbbec   reserves the righttochange  any information in thedocument   without priornotice.
+
+PAGE 21
+camera,   the aforementioned      changes    will be  reversed,   and  the laser  safety  protection   will  be turned   off at
+the end.
+
+3.4.5  Gemini      2 Series   Interface
+
+      Gemini   2  support   Type-C    and  8-Pin  multi-camera     synchronization     :
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                               Figure  3-4-1 Type-C   Interface
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                               Figure 3-4-2  8-Pin  Multi-Camera    Synchronization    Interface
+
+      Gemini   2  L support   Type-C    and  8-Pin   multi-camera    synchronization      :
+
+
+
+
+
+
+
+
+
+
+
+                                               Figure  3-4-3 Type-C   Interface
+
+
+
+
+
+
+
+
+
+
+
+                               Figure 3-4-4  8-Pin  Multi-Camera    Synchronization    Interface
+
+ORBBEC.    AllRights Reserved.  https://orbbec3d.com/                                                                    21
+Note: Orbbec  reserves  the rightto change  any  information inthe document   without prior notice.
+
+PAGE 22
+4      Functional           Specification
+
+4.1    Vendor      Identification(VID)          and    Product     Identification(PID)
+
+
+                                    Table 4-1-1 Gemini  2 Series VID  and PID
+
+          Name                          Model                           VID                        PID
+
+        Gemini  2                    G20155-15                         0x2BC5                     0x0670
+
+       Gemini  2 L                   G20055-15                         0x2BC5                     0x0673
+
+4.2    Platform      and   System      Requirements
+
+     This product  connects   to the host computer   using Type-C,   which  is compatible   with various
+platforms  and system   requirements.
+                               Table 4-2-1  Gemini  2 Series Platforms and Systems
+
+Chip                  x86 / x64                                               ARM
+ OS       Windows   10           Ubuntu            Android 8/9/10      Ubuntu  18.04/20.04        ROS   /ROS2
+                               18.04/20.04
+USB     USB   3.0&  USB     USB   3.0 & USB       USB  3.0 &  USB        USB  3.0 &  USB        USB   3.0&  USB
+               2.0                 2.0            2.0(support host)      2.0(support host)      2.0(support host)
+        Quad-core,          Quad-core,          Quad-core  Cortex-     Quad-core  Cortex-     Quad-core  Cortex-
+CPU     2.9GHz              2.9GHz              A73, dual-core         A73,  dual-core        A73,  dual-core
+                                                Cortex-A53             Cortex-A53             Cortex-A53
+
+RAM     8GB                 4GB                 4GB                    4GB                    4GB
+
+4.3    Depth    Image      of FOV
+
+     The  table presents the depth  FOV   values  for the Gemini   2 Series, including  horizontal, vertical, and
+diagonal  FOV,  as well  as FOV   error.
+
+
+                                Table 4-3-1 Gemini  2 /Gemini  2 L Depth  Image  ofFOV
+
+    Parameters                                Gemini  2                                    Gemini   2 L
+
+  Horizontal  FOV                                91°                                            91°
+
+    VerticalFOV                                  66°                                           66°
+
+   Diagonal  FOV                                101°                                           101°
+
+     FOV   error                                ±3.0°                                          ±3.0°
+
+      Distance                                   2m                                             4m
+
+
+
+
+
+ORBBEC.  AllRights Reserved. https://orbbec3d.com/                                                           22
+Note:Orbbec  reserves therighttochange  any informationinthedocument  without priornotice.
+
+PAGE 23
+                                   Figure   4-3-1  Gemini    2 Depth  Aspect   Ratio16:9   FOV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                    Figure  4-3-2   Gemini   2 Depth   Aspect  Ratio  4:3  FOV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.    AllRights  Reserved.   https://orbbec3d.com/                                                                       23
+Note: Orbbec   reserves  the rightto change   any  information in the document   without  priornotice.
+
+PAGE 24
+                                 Figure  4-3-3   Gemini   2 L  Depth   Aspect  Ratio16:10    FOV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                  Figure  4-3-4   Gemini   2 L  Depth  Aspect   Ratio16:9   FOV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.    AllRights  Reserved.  https://orbbec3d.com/                                                                       24
+Note: Orbbec   reserves  the rightto change   any information  inthe document    without prior notice.
+
+PAGE 25
+                               Figure 4-3-5  Gemini  2 L  Depth  Aspect Ratio  4:3FOV
+
+
+4.4    Depth     Data    Streams
+
+     The   Gemini   2  Series  is capable  of  outputting   depth  data  streams.  Depth   image   data  is generated
+using  active stereo  technology,   which   can  acquire  and  output  depth   data of  objects between    0.15m   and
+10m.  The  format  of the  depth stream   output  isY14/RLE..
+
+4.5    Color    Image      Data    Streams       (UVC)
+
+     The   Gemini    2 Series  is capable   of  outputting   both  depth  data  and   color  image   data.  The  color
+camera  can  capture  and  output  color images   of objects  in MJPEG    and  YUYV     format.
+
+4.6    Depth     and    Color    Image      Data    Stream      Formats
+
+
+     The  Gemini   2 Series offers high-quality, multi-resolution  depth and  high-definition colour  image  data. The
+camera  outputs  depth  image  data  in Y14/RLE    format,  which   affects USB   bandwidth   usage,  while  the upper
+computer  SDK   outputs in Y16   format. The  camera  also outputs colour  image  data in MJPEG/YUYV       format, and
+theSDK   supports output  inMJEPG/YUYV/RGB888          format.
+
+
+                                     Table  4-6-1 Gemini  2 (USB   3.0)Image   Formats
+         Format                   Resolution             Frame   Rate(FPS)                    Comment
+                                  1280  x 800               5, 10, 15, 30
+         Y14H14                    640 x 400              5,10, 15, 30, 60*
+                                   320 x 200              5,10, 15, 30, 60*                      Depth
+                                  1280  x 800               5, 10, 15, 30
+           RLE                     640 x 400              5,10, 15, 30, 60*
+                                   320 x 200              5,10, 15, 30, 60*
+
+ORBBEC.   AllRightsReserved.  https://orbbec3d.com/                                                              25
+Note:Orbbec  reserves the righttochange  any information inthe document  without priornotice.
+
+PAGE 26
+                                     1280  x  800                 5, 10, 15, 30
+           Y8H8                       640  x 400               5, 10, 15, 30, 60*
+                                      320  x 200               5, 10, 15, 30, 60*                          IR
+                                     1280  x  800                 5, 10, 15, 30
+          MJPEG                       640  x 400               5, 10, 15, 30, 60*
+                                      320  x 200               5, 10, 15, 30, 60*
+                                     1920  x 1080                 5, 10, 15, 30
+          YUYV                       1280  x  720              5, 10, 15, 30, 60*
+                                      640  x 480               5, 10, 15, 30, 60*
+                                      640  x 360               5, 10, 15, 30, 60*                        Color
+                                     1920  x 1080                 5, 10, 15, 30
+          MJPEG                      1280  x  720              5, 10, 15, 30, 60*
+                                      640  x 480               5, 10, 15, 30, 60*
+                                      640  x 360               5, 10, 15, 30, 60*
+Note:60* fpsisused inBinned Sparse Default
+
+
+                                         Table  4-6-2 Gemini   2  (USB   2.0) Image  Formats
+          Format                     Resolution               Frame   Rate   (FPS)                     Comment
+                                     1280  x  800                     5, 10
+          Y14H14                      640  x 400                  5, 10, 15, 30
+                                      320  x 200                  5, 10, 15, 30                          Depth
+                                     1280  x  800                     5, 10
+            RLE                       640  x 400                  5, 10, 15, 30
+                                      320  x 200                  5, 10, 15, 30
+                                     1280  x  800                     5, 10
+           Y8H8                       640  x 400                  5, 10, 15, 30
+                                      320  x 200                  5, 10, 15, 30                            IR
+                                     1280  x  800                     5, 10
+          MJPEG                       640  x 400                  5, 10, 15, 30
+                                      320  x 200                  5, 10, 15, 30
+          YUYV                        640  x 480                  5, 10, 15, 30
+                                      640  x 360                  5, 10, 15, 30
+                                    1920   x 1080                 5, 10, 15, 30                           Color
+          MJPEG                      1280  x  720                 5, 10, 15, 30
+                                      640  x 480                  5, 10, 15, 30
+                                      640  x 360                  5, 10, 15, 30
+Note:Singleoutput videostreamscansupport allresolutionsandframe rates.However, fortwo orthreeoutput depthand colorvideo streams,
+theactualbandwidth ofUSB2.0  and theperformance ofthehost computer may limitsome combinations,which may  notbe supported..
+
+
+                                       Table  4-6-3  Gemini   2 L  (USB   3.0) Image   Formats
+           Format                       Resolution               Frame    Rate  (FPS)                   Comment
+                                        1280  x  800                 5, 10, 15, 30
+           Y14H14                        640  x 400               5, 10, 15, 30, 60*
+                                         320  x 200               5, 10, 15, 30, 60*                       Depth
+                                        1280  x  800                 5, 10, 15, 30
+             RLE                         640  x 400               5, 10, 15, 30, 60*
+                                         320  x 200               5, 10, 15, 30, 60*
+                                        1280  x  800                 5, 10, 15, 30
+            Y8H8                         640  x 400               5, 10, 15, 30, 60*
+                                         320  x 200               5, 10, 15, 30, 60*                         IR
+                                        1280  x  800                 5, 10, 15, 30
+           MJPEG                         640  x 400               5, 10, 15, 30, 60*
+                                         320  x 200               5, 10, 15, 30, 60*
+            YUYV                        1280  x  800                 5, 10, 15, 30                         Color
+                                         640  x 400               5, 10, 15, 30, 60*
+
+ORBBEC.    AllRights Reserved.   https://orbbec3d.com/                                                                     26
+Note: Orbbec  reserves  the right tochange   any information  inthe document   without  priornotice.
+
+PAGE 27
+                                        320  x 200               5, 10, 15, 30, 60*
+                                        1280  x 800                 5,10,  15, 30
+                                        1280  x 720              5, 10, 15, 30, 60*
+           MJPEG                        800  x 600               5, 10, 15, 30, 60*
+                                        640  x 400               5, 10, 15, 30, 60*
+                                        640  x 360               5, 10, 15, 30, 60*
+Note:60* fpsisused inBinned SparseDefault
+
+
+                                       Table  4-6-4 Gemini   2 L  (USB   2.0) Image  Formats
+           Format                      Resolution               Frame   Rate  (FPS)                   Comment
+                                        1280  x 800                     5,10
+           Y14H14                       640  x 400                  5,10, 15,  30
+                                        320  x 200                  5,10, 15,  30                        Depth
+                                        1280  x 800                     5,10
+             RLE                        640  x 400                  5,10, 15,  30
+                                        320  x 200                  5,10, 15,  30
+                                        1280  x 800                     5,10
+            Y8H8                        640  x 400                  5,10, 15,  30
+                                        320  x 200                  5,10, 15,  30                          IR
+                                        1280  x 800                     5,10
+           MJPEG                        640  x 400                  5,10, 15,  30
+                                        320  x 200                  5,10, 15,  30
+                                        800  x 600                    5,10,  15
+            YUYV                        640  x 400                  5,10, 15,  30
+                                        640  x 360                  5,10, 15,  30
+                                        1280  x 800                 5,10, 15,  30                        Color
+                                        1280  x 720                 5,10, 15,  30
+           MJPEG                        800  x 600                  5,10, 15,  30
+                                        640  x 400                  5,10, 15,  30
+                                        640  x 360                  5,10, 15,  30
+Note:Singleoutputvideo streamscansupport allresolutionsandframerates.However, fortwoor threeoutputdepthand colorvideo streams,
+theactualbandwidthof USB2.0 and theperformance ofthe hostcomputer may limitsome combinations,which may not besupported..
+
+
+4.7    No-Blind        Zone      Depth      Data
+
+      The  Gemini    2 Series  not  only  generates   depth   maps   and  outputs   depth  data  through   stereo  structured
+light technology,    but  itcan   also detect  no-blind    zones  within   0-10   meters   using  the  LDP   module,    which
+has  the function    of single-point    ranging.   A  value   of  0 for  LDP    indicates   the absence    of  any  obstacles
+within  a 400mm     range.
+
+      The  following    table gives  reference   values   for the  LDP   ranging   accuracy    of the Gemini    2 Series.
+
+
+                           Table  4-7-1  Gemini   2 Series LDP   Ranging   Accuracy   Reference   Values
+                                          Distance                          Value                            Unit
+        LDP   Distance                    ≥ 200mm                            ±5%                               /
+  Measurement     Accuracy            20mm    – 200mm                        ±15                             mm
+
+
+
+
+
+
+
+
+ORBBEC.    AllRights Reserved.  https://orbbec3d.com/                                                                    27
+Note: Orbbec  reserves  the rightto change  any information  inthe document   without prior notice.
+
+PAGE 28
+                                    Figure  4-7-1 3D  Schematic    of Gemini   2 LDP   FOV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                          Figure  4-7-2  Gemini   2 LDP   FOV   Data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                  Figure  4-7-3  3D  Schematic   of Gemini   2 L  LDP   FOV
+
+
+
+
+
+
+
+ORBBEC.    AllRights Reserved.   https://orbbec3d.com/                                                                    28
+Note: Orbbec  reserves  the rightto change  any  information in the document   without priornotice.
+
+PAGE 29
+                                       Figure  4-7-4 Gemini  2 L  LDP  FOV   Data
+
+
+4.8    Depth     Start    Point     Reference
+
+     The   starting  point  for depth,  also  known    as  the ground   zero  datum,    can  be defined   as  a plane  or
+point with  a depth   of 0. In the  case of  the Gemini   2  Series  depth  camera,   the distance  between    the depth
+zero point  and  the front face  of the module    isprovided   in tables.
+
+
+              Camera                       Front  Cover  Glass  of Thickness           Start Point  Distance（Z’）
+              Gemini   2                                 0.7mm                                    4.23mm
+             Gemini  2 L                                 1.1mm                                    4.48mm
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                Figure 4-8-1  Schematic   of Gemini  2 Depth  Start Point
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                               29
+Note:Orbbec   reserves the righttochange  any information inthe document   withoutprior notice.
+
+PAGE 30
+                               Figure 4-8-2  Schematic   of Gemini  2 L  Depth  StartPoint
+
+
+
+4.9    Depth      to  Color    Alignment
+
+     The   Gemini    2 Series  enables   the  simultaneous    output   of D2C    (Depth   To  Color).  This   maps   each
+pixel point  on  the depth  map   to the  corresponding    position   on the  color  image  based   on  the internal  and
+external  parameters   of the depth   and color  cameras,   resulting  in an RGBD     map.
+
+
+                                         Table  4-9-1 Gemini   2 Depth  toColor
+        Pre-D2C   Depth   Image                  Color  Image                 Post  D2C   Depth  Image        Aspect
+                                                                                                               Ratio
+   1280  x 800@5/10/15/30fps            1920  x 1080@5/10/15/30fps          1920  x 1080@5/10/15/30fps
+
+   1280  x 800@5/10/15/30fps            1280  x 720@5/10/15/30fps           1280  x 720@5/10/15/30fps
+
+   640  x 400@5/10/15/30fps             1920  x 1080@5/10/15/30fps          1920  x 1080@5/10/15/30fps
+
+   640  x 400@5/10/15/30fps             1280  x 720@5/10/15/30fps           1280  x 720@5/10/15/30fps
+                                                                                                                16:9
+   640  x 400@5/10/15/30/60fps          640  x 360@5/10/15/30/60fps         640 x 360@5/10/15/30/60fps
+
+   320  x 200@5/10/15/30/60fps          1920  x 1080@5/10/15/30fps          1920  x 1080@5/10/15/30fps
+
+   320  x 200@5/10/15/30/60fps          1280  x 720@5/10/15/30fps           1280  x 720@5/10/15/30fps
+
+   320  x 200@5/10/15/30/60fps          640  x 360@5/10/15/30/60fps         640 x 360@5/10/15/30/60fps
+
+   1280  x 800@5/10/15/30fps            640  x 480@5/10/15/30/60fps         640 x 480@5/10/15/30/60fps
+
+   640  x 400@5/10/15/30/60fps          640  x 480@5/10/15/30/60fps         640 x 480@5/10/15/30/60fps          4:3
+
+   320  x 200@5/10/15/30/60fps          640  x 480@5/10/15/30/60fps         640 x 480@5/10/15/30/60fps
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                                30
+Note:Orbbec   reserves the righttochange  any information in thedocument   without priornotice.
+
+PAGE 31
+                                        Table  4-9-2  Gemini  2 L  Depth  to Color
+        Pre-D2C    Depth  Image                   Color  Image                 Post  D2C   Depth   Image        Aspect
+                                                                                                                Ratio
+   1280  x 800@5/10/15/30fps             1280  x 800@5/10/15/30fps           1280  x 800@5/10/15/30fps
+
+   640  x 400@5/10/15/30fps              1280  x 800@5/10/15/30fps           1280  x 800@5/10/15/30fps
+
+   320  x 200@5/10/15/30/60fps           1280  x 800@5/10/15/30fps           1280  x 800@5/10/15/30fps           16:10
+
+   640  x 400@5/10/15/30/60fps           640 x 400@5/10/15/30/60fps          640 x 400@5/10/15/30/60fps
+
+   320  x 200@5/10/15/30/60fps           640 x 400@5/10/15/30/60fps          640 x 400@5/10/15/30/60fps
+
+   1280  x 800@5/10/15/30fps             1280  x 720@5/10/15/30fps           1280  x 720@5/10/15/30fps
+
+   640  x 400@5/10/15/30fps              1280  x 720@5/10/15/30fps           1280  x 720@5/10/15/30fps
+
+   320  x 200@5/10/15/30/60fps           1280  x 720@5/10/15/30fps           1280  x 720@5/10/15/30fps           16:9
+
+   640  x 400@5/10/15/30/60fps           640 x 360@5/10/15/30/60fps          640 x 360@5/10/15/30/60fps
+
+   320  x 200@5/10/15/30/60fps           640 x 360@5/10/15/30/60fps          640 x 360@5/10/15/30/60fps
+
+   1280  x 800@5/10/15/30fps             800 x 600@5/10/15/30fps             800 x 600@5/10/15/30fps
+
+   640  x 400@5/10/15/30/60fps           800 x 600@5/10/15/30fps             800 x 600@5/10/15/30fps              4:3
+
+   320  x 200@5/10/15/30/60fps           800 x 600@5/10/15/30fps             800 x 600@5/10/15/30fps
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                              Figure  4-9-1  Gemini  2 D2C   Image  Aspect   Ratio16:9  FOV
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                                 31
+Note: Orbbec  reserves the rightto change  any information inthe document   without priornotice.
+
+PAGE 32
+                                Figure  4-9-2   Gemini   2 D2C   Image   Aspect  Ratio  4:3 FOV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                              Figure  4-9-3  Gemini    2 L D2C   Image   Aspect  Ratio16:10    FOV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.    AllRights Reserved.   https://orbbec3d.com/                                                                      32
+Note: Orbbec   reserves  the rightto change  any  information in the document   without prior notice.
+
+PAGE 33
+                               Figure  4-9-4  Gemini   2 L  D2C   Image   Aspect  Ratio16:9   FOV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                               Figure  4-9-5  Gemini    2 L D2C   Image   Aspect  Ratio  4:3  FOV
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.    AllRights Reserved.   https://orbbec3d.com/                                                                      33
+Note: Orbbec   reserves  the rightto change  any  information in the document   without prior notice.
+
+PAGE 34
+4.10   IMU      Specification
+
+4.10.1     IMU    Specification      Description
+
+                             Table  4-10-1  Gemini   2 Series IMU   Specification  Description
+                           Parameters                                           Gemini   2 Series
+                           Timestamp                    Timestamp    synchronization   (us) with IR, depth  and RGB
+                                                        data all using the same  time  reference  and clock  frequency
+                                                        X-axis  in linewith  depth, pointing  to the leftof the camera
+                     X/Y/Z   axis orientation           Y-axis  in linewith  depth, pointing  below  the camera
+                                                        Z-axis  inline with  depth, pointing  infront of the camera
+                                       Format           3x16-bit
+                                   Measurement          ±17.45rad/s(1000dps)
+               Gyroscope               Range
+                                 Output  Frequency      100/200/500/1000
+    IMU                               （Hz）
+                                       Format           3x16-bit
+                                   Measurement          ± 39.2m/s²(4g)
+             Accelerometer             Range
+                                 Output  Frequency      100/200/500/1000
+                                      （Hz）
+                                       Format           1x16-bit
+                                   Measurement          -40~85℃
+              Temperature              Range
+                                 Output  Frequency      Follows   gyroscope  and  accelerometer   frequencies
+                                      （Hz）
+
+
+4.10.2     IMU    Coordinate       System
+
+     The   origin   of  the  IMU    coordinate    system    is situated   at  the  physical   sensor   center   point.  The
+accelerometer    and  gyroscope     coordinate   systems   are  located   at the back   of the  left IR.  The  positive   X-
+axis of  the coordinate   system    points  to the right,  the positive  Y-axis   points  downwards,      and  the positive
+Z-axis  points  forwards.
+     The   origin  is located   at the  focal  point  of the  depth   and  color  camera.   The   positive   X-axis   of the
+coordinate   system   points   to the  right, while   the positive   Y-axis   points  downwards,      and  the  positive  Z-
+axis points  forwards.   This  is illustrated in the  diagram   below.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                   Figure  4-10-1   Gemini  2 IMU   Coordinate   System
+
+
+ORBBEC.   AllRights Reserved.   https://orbbec3d.com/                                                                 34
+Note: Orbbec  reserves the rightto change  any information  inthe document   withoutprior notice.
+
+PAGE 35
+                              Figure  4-10-2   Gemini   2 Depth   and  RGB   Coordinate   System
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                    Figure  4-10-3  Gemini   2  L IMU   Coordinate   System
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                             Figure  4-10-4   Gemini   2 L  Depth  and  RGB   Coordinate   System
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.    AllRights Reserved.   https://orbbec3d.com/                                                                     35
+Note: Orbbec  reserves  the right tochange   any information  inthe document   without  priornotice.
+
+PAGE 36
+4.11   Depth      Mode
+
+
+                                         Table  4-11-1 Gemini   2 Series Depth  Mode
+
+
+               Unbinned    Dense      Unbinned    Sparse       Binned   Sparse       Dimensioning          Obstacle
+                    Default                 Default                Default                                Avoidance
+
+   Ideal
+  Range          0.20m   -5.0m           0.20m  - 5.0m          0.15m  - 2.5m             N/A           0.20m  - 5.0m
+ (Gemini
+     2)
+   Ideal
+  Range          0.30m   -7.0m           0.30m  - 7.0m          0.25m  - 5.0m        0.30m   -4.0m      N/A
+(Gemini   2
+    L)
+ Accuracy             High                  Medium                   Low                  High                High
+              1280x800@5/10/1         1280x800@5/10/15                                                  1280x800@5/1
+ Resolutio    5/30fps                 /30fps                 640x400@5/10/1                             0/15/30fps
+n (Gemini     640x400@5/10/15/        640x400@5/10/15/       5/30/60fps                   N/A           640x400@5/10/
+     2)       30fps                   30fps                  320x200@5/10/1                             15/30fps
+              320x200@5/10/15/        320x200@5/10/15/       5/30/60fps                                 320x200@5/10/
+              30fps                   30fps                                                             15/30fps
+              1280x800@5/10/1         1280x800@5/10/15                              1280x800@5/1
+ Resolutio    5/30fps                 /30fps                 640x400@5/10/1         0/15/30fps
+n (Gemini     640x400@5/10/15/        640x400@5/10/15/       5/30/60fps             640x400@5/10/             N/A
+   2 L)       30fps                   30fps                  320x200@5/10/1         15/30fps
+              320x200@5/10/15/        320x200@5/10/15/       5/30/60fps             320x200@5/10/
+              30fps                   30fps                                         15/30fps
+  Power               High                  Medium                   Low                  High          High
+                                       Balancing   depth                                                Enables  the
+               High  accuracy  and       accuracy  and          Low  power  &        High  accuracy     recognition  of
+  Feature      High  qualitydepth          power   &          Support  60fps  &         and High        small objects, &
+                      data            Optimizing   forlow     Small  blind zone      quality depth      high and  low
+                                      inversion and  semi-                                data          inverted objects.
+                                            outdoor
+  Typical        Robots  /Body         Robots  / Gesture       Robots  / Sports     Dimension   / 3D    Robots  / AMR
+  Usages            Tracking                Control                                       Scan
+
+4.12   Specific     Frame       Rate    Trigger      Mode
+
+     The   Gemini    2 Series  offers  users  flexible  methods   for  acquiring   IR, Depth,   and  RGB    image    data,
+with  the most  common     being   the specific  frame   rate trigger mode.   In  this mode,   users  set a target frame
+rate,resolution,  and  image   format   for each  type  of data, and  then  activate  the corresponding     data streams
+insequence.    The  camera   captures  and  outputs  image   data  at the user-defined   target frame   rate, resolution,
+and  image   format.  The  user  can  select  a specific  frame   rate for the  current  scene  from   predefined   fixed
+frame  rate values  of  5fps, 10fps,  15fps,  30fps,  and  60fps,  depending    on the camera's   currently   configured
+depth  mode   and  resolution,  and  capture  image   data at that frame   rate.
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                                36
+Note:Orbbec   reserves the righttochange  any information in thedocument   without priornotice.
+
+PAGE 37
+4.13   Free    Trigger      Mode
+
+     The   Gemini   2 Series  supports   image   data acquisition   methods   based   on specific  frame   rates, as well
+as a free trigger  mode   that supports   arbitrary  frequencies.   In this mode,   the camera    waits  for an external
+input trigger  signal  and  only  completes   an  image   data  acquisition  after receiving   a valid  external  trigger
+signal, as  configured    by  the  camera.   The  camera    then  continues   to  wait  for  the next   external  trigger
+signal. As  there  is no set time  limit  between   two   consecutive   triggers,  but only  a single  acquisition   time
+greater than  that of the camera,   it ispossible  to control  the  time  interval between   two   consecutive   triggers
+to achieve  any  desired   frequency.   This  allows  for  passive  acquisition   of trigger  image   data. The  camera
+can be  triggered  through   a soft signal  sent by  the host  computer    via USB   command     or  an external  device
+through  the 8-Pin  synchronous     interface. This  allows   for passive  trigger mode   at any  frequency.
+     In  free trigger  mode,   the camera's   IR,  Depth,   and  RGB    fixed  frame  rates  must  be  set to a uniform
+value  of 5fps,  10fps,  15fps,  30fps,  or  60fps  upon   request.  This  is necessary   to determine    the  minimum
+time  interval between    two  consecutive    active  triggers. Table   3-14-1  shows    the relationship   between   the
+fixed  frame  rate,  the minimum      time  interval,  and  the  upper   frequency   limit  for passive   triggering.  In
+summary,    the camera   will only  respond   to trigger  signals  within  the allowable   range.  This  means   that the
+trigger frequency   can  be any  value  within  the  valid frequency    range  for passive  triggering.
+
+
+                     Table  4-13-1  Table of Arbitrary Frame   Rates Allowed   to be Passively  Triggered
+  Set The  Camera’s    Fixed Frame          Supportable   Passive  Trigger          Supportable    Passive  Trigger
+              Rate(fps)                              Interval(ms)                           Frequency(Hz)
+                  60                                     ≥ 250                                    0 -4
+                  30                                     ≥ 250                                    0 -4
+                  15                                     ≥ 500                                    0 -2
+                  10                                     ≥ 750                                  0 – 1.33
+                   5                                    ≥ 1500                                  0 – 0.66
+
+                     Table  4-13-2  Table of Arbitrary Frame   Rates Allowed   to be Passively  Triggered
+  Set The  Camera’s    Fixed Frame          Supportable   Passive  Trigger          Supportable    Passive  Trigger
+              Rate(fps)                              Interval(ms)                           Frequency(Hz)
+                  60                                     ≥ 40                                    0 - 24
+                  30                                     ≥ 80                                    0 - 12
+                  15                                     ≥ 160                                    0 -6
+                  10                                     ≥ 250                                   0 – 4
+                   5                                     ≥ 500                                   0 – 2
+
+
+4.14   Multi-Camera            Synchronization           Function
+
+4.14.1     Specification     Description
+
+    Each   depth  camera   device   isequipped    with  a synchronization    interface  that enables   multiple  camera
+connections.    The   use  of  multiple   depth   camera    devices   allows   for  a  wider   range   of  applications,
+including:
+          Filling the  masked    area:  The  depth   and  RGB    cameras   on  the  depth   camera   maintain   a  small
+           distance   between    them,   which   can   cause  occlusion.     Occlusion    occurs   when   a  foreground
+           object  blocks   part of  the view   of the  background     object  from  one   of the  two  cameras   on  the
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                                37
+Note:Orbbec   reserves the righttochange  any information inthe document   withoutprior notice.
+
+PAGE 38
+            device.  To  the  human   eye,  the  foreground    object  appears   to cast a  shadow   on  the  background
+            object in the  resulting  color  image.
+          Better  scanning   of 3D  objects.
+          Increasing   the spatial coverage    of the camera.
+          Increase  the  effective  frame  rate to a value  above   30  frames   per second   (FPS).
+          Capturing   multiple   color  images   of the same   scene.
+          Multi-camera     synchronization     is particularly   useful  in scenarios    such  as  shooting   volumetric
+            video  and  requiring  a large  field of view.
+     The   synchronization    function   can  be implemented     through   two  types  of connections:
+
+    Star  Topology:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                        Figure  4-14-1   StarTopology    Diagram
+
+    Chain   Topology:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                      Figure  4-14-2   Chain  Topology    Diagram
+
+
+
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                                 38
+Note: Orbbec  reserves the rightto change  any information inthe document   without priornotice.
+
+PAGE 39
+     The   text  describes   the  synchronization      of multi-camera      frames   in two   topologies,    namely    depth
+image   synchronization     and  RGB    image   synchronization.     The  time  difference   between    the  frames   is less
+than  or equal   to 3ms   when    auto  exposure    is off. This  is achieved    through   the  use  of  the multi-camera
+synchronization    function.
+
+4.14.2     Multi-Camera         Synchronization        Interface
+
+     The   table  below   provides   a definition   of the  multi-camera    synchronization     interface  for  the Gemini
+2 Series.
+
+
+                     Table 4-14-1  Gemini   2 Series Multi-Camera    Synchronization    Interface Definitions
+ Pin            Definitions                                                Description
+                                       The  electrical level setting isset to 1.8V  by default. Ifa 3.3V  or 5V  drive
+   1                VCC                voltage  isprovided   on the VCC   interface, the I/O level setting can  be
+                                       adjusted  to 3.3V  or 5V  as required.
+                                       The  synchronization   drive signal  isactive high  and itshigh-level  interval
+   2            GPIO_OUT               coincides  with  the IR exposure  time.  This signal is typically used  todrive
+                                       external  filllight.
+   3          VSYNC_OUT                The  trigger signal for secondary   devices  is provided  by a high  level, which  is
+                                       active.
+   4       TIMER_SYNC_OUT              Reset  the hardware   timestamp   of secondary  devices  using  the pulse signal
+                                       source.
+                                       The  hardware   reset signal triggers the camera  to power  down   and
+                                       automatically   power  up  and reset. The input  signal isdetected  by analyzing
+   5            RESET_IN               20Hz   with a 50%   duty cycle  for more  than 5 consecutive   cycles. Any  signal
+                                       that does  not meet  these criteriais filteredout. Allowed   fluctuations  for
+                                       frequency   are ±1Hz    and for duty  cycle are ±2%.
+                                       The  synchronous    triggersignal  isactive high  and is used for the
+                                       triggering/sync  signal  from the primary   device. The  synchronous   trigger
+   6            VSYNC_IN               signal is active high  and is used for the triggering/sync  signal from  the
+                                       primary   device. The  synchronous   trigger signal is active high and  isused  for
+                                       the triggering/sync  signal from  the primary   device. Itsduration  is 1MS.
+   7        TIMER_SYNC_IN              Hardware    timestamp   resetsignal  input,hardware   timestamp   clearing
+   8                GND                Ground
+
+
+       Table  4-14-2  Gemini   2 Series Multi-Camera    Synchronization    Interface Electronic  Performance   Parameters
+ Pin            Definitions                                  Electronic  Performance     Parameters
+                                       Input  voltage: min:  1.75V,  max:  5.25V,  typical:1.8V/3.3V/5.0V,    default:1.8V
+   1                VCC                Input  current: ≧100mA
+                                       Power   ripple: ≦50mV/AC
+                                       Output   voltage: =VCC
+   2            GPIO_OUT               Output   current: 1.8V@4mA,     3.3V@24mA,      5.0V@32mA
+                                       Rise/Fall: 1.8V@≦20ns/V,       3.3V@≦10ns/V,       5.0V@≦6ns/V
+                                       Output   voltage: =VCC
+   3          VSYNC_OUT                Output   current: 1.8V@4mA,     3.3V@24mA,      5.0V@32mA
+                                       Rise/Fall: 1.8V@≦20ns/V,       3.3V@≦10ns/V,       5.0V@≦6ns/V
+                                       Output   voltage: =VCC
+   4       TIMER_SYNC_OUT              Output   current: 1.8V@4mA,     3.3V@24mA,      5.0V@32mA
+                                       Rise/Fall: 1.8V@≦20ns/V,       3.3V@≦10ns/V,       5.0V@≦6ns/V
+                                       Input  voltage: =VCC
+                                       Input  current: VIH:VCC×0.65,VIL:≦0.7V
+   5            RESET_IN               Input  current: 1.8V~5.0V    @≧4mA
+                                       Rise:1.8V@≦30ns/V,        3.3V@≦20ns/V,      5.0V@≦8ns/V
+                                       Fall:1.8V@≦90ns/V,       3.3V@≦90ns/V,       5.0V@≦50ns/V
+
+ORBBEC.   AllRights  Reserved.  https://orbbec3d.com/                                                                  39
+Note: Orbbec  reserves  theright tochange  any  information inthe document   without priornotice.
+
+PAGE 40
+                                      Signal: Freq 20Hz±1Hz,     duty cycle 50%±2%,     cycle≧8T
+                                      Input voltage: =VCC
+                                      Input current:VIH:VCC×0.65,VIL:≦0.7V
+   6           VSYNC_IN               Input current:1.8V~5.0V    @≧4mA
+                                      Rise:1.8V@≦30ns/V,      3.3V@≦20ns/V,      5.0V@≦8ns/V
+                                      Fall:1.8V@≦90ns/V,     3.3V@≦90ns/V,      5.0V@≦50ns/V
+                                      Rise edge trigger &  Single pulse triggering
+                                      Input voltage: =VCC
+                                      Input current:VIH:VCC×0.65,VIL:≦0.7V
+   7       TIMER_SYNC_IN              Input current:1.8V~5.0V    @≧4mA
+                                      Rise:1.8V@≦30ns/V,      3.3V@≦20ns/V,      5.0V@≦8ns/V
+                                      Fall:1.8V@≦90ns/V,     3.3V@≦90ns/V,      5.0V@≦50ns/V
+                                      Rise edge trigger &  Single pulse triggering
+   8               GND                Ground
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                  Figure  4-14-3  Gemini  2 Multi-Camera     Synchronization    Interface  Diagram
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                 Figure  4-14-4  Gemini  2 L Multi-Camera     Synchronization    Interface  Diagram
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved. https://orbbec3d.com/                                                               40
+Note:Orbbec  reserves  therightto change any  informationinthe document  without priornotice.
+
+PAGE 41
+5       Performance
+
+5.1     Electrical         Performance
+
+5.1.1   Power      Supply
+
+       The    Gemini     2  Series   requires    Type-C      power    and   it is  important     to  ensure    that  the  power     output    is
+standard    and   that  the  maximum        current   of  the  Type-C     power     port  is 1.5A    or higher.
+
+5.1.2   Power
+
+      Power     consumption        varies   depending      on  the  selected    working     mode.
+
+                                         Table   5-1-1   Gemini    2 Typical    Average     Configuration
+
+                                              Typical  Work   Mode  Configuration
+                                                                                                                     Average        Standby
+    Mode                      Depth  Parameter                                  RGB   Parameter                       Power           power
+                                                                                                                       (mW)           (mW)
+                       Resolution            Format      AE             Resolution            Format        AE
+
+   Unbinned
+    Dense           1280x800@30fps            Y14         on        1920x1080@30fps           MJPEG         on         1800            840
+    Default
+   Unbinned
+    Sparse          1280x800@30fps            Y14         on        1920x1080@30fps           MJPEG         on         1850            840
+    Default
+    Binned
+    Sparse           640x400@30fps            Y14         on        1920x1080@30fps           MJPEG         on         1500            840
+    Default
+   Obstacle         1280x800@30fps            Y14         on        1920x1080@30fps           MJPEG         on         1800            840
+  Avoidance
+                 1. Ensure that thereare no obstructions infront of thecamera  thathave  not activatedthe laserauto-adjustment  function.
+                 2. Duringthe  typical average power  consumption  test,the laserenergy level issetto 5 and the hardware  D2C  function is
+     Note        turned on; IMU   ODR(output   dataregister )is200Hz;   The depth stream  and colour RGB   stream are both active
+                 simultaneously,  while theIR  image stream  isinactive.
+                 3. Test theambient  temperature  at25℃.
+
+
+
+                                         Table   5-1-2  Gemini    2  Max   Power    Mode    Configuration
+                                                  Typical Work  Mode   Configuration                                       Peak      Average
+    Mode                     Depth  Parameter                       IR Parameter                RGB   Parameter           Power       Power
+                Resolution    Format      AE     Exposure      Resolution     Format     Resolution     Format     AE      (mW)        (mW)
+                                                    (us)
+  Unbinned      1280x800                                       1280x800                  1920x1080
+    Dense        @30fps         RLE       off      5000         @30fps        MJPEG        @30fps       MJPEG       on     6000        2000
+   Default
+  Unbinned      1280x800                                       1280x800                  1920x1080
+   Sparse        @30fps         RLE       off      5000         @30fps        MJPEG        @30fps       MJPEG       on     6300        2100
+   Default
+   Binned        640x400                                        640x400                   1280x720
+   Sparse        @60fps         RLE       off      1500         @60fps        MJPEG        @60fps       MJPEG       on     5000        1800
+   Default
+  Obstacle      1280x800        RLE       off      5000        1280x800       MJPEG      1920x1080      MJPEG       on     6000        2000
+ Avoidance       @30fps                                         @30fps                     @30fps
+                1.Ensure  thatthere arenoobstructions  in frontof the camera that have not activatedthe laserauto-adjustment  function.
+                2.During  thetypical average power  consumption   test,thelaserenergy  levelisset to5 and the hardware  D2C  function is
+    Note        turned on;IMU   ODR(output   data register)is 200Hz;  The  depth stream and colour RGB   stream are both active
+                simultaneously, while theIR  image  stream isinactive.
+                3.IR utilisesidenticalexposure and gain settingsas depth.
+                4.Test the ambient temperature  at25℃.
+
+ORBBEC.     AllRights   Reserved.    https://orbbec3d.com/                                                                               41
+Note:  Orbbec   reserves   the  right tochange    any  information   in the document    without   prior notice.
+
+PAGE 42
+                                          Table   5-1-3   Gemini    2  L Typical    Average      Configuration
+
+                                                Typical  Work   Mode   Configuration
+                                                                                                                          Average         Standby
+     Mode                       Depth  Parameter                                   RGB   Parameter                         Power           power
+                                                                                                                           (mW)            (mW)
+                        Resolution            Format        AE             Resolution             Format        AE
+   Unbinned
+     Dense           1280x800@30fps             Y14         on         1280x800@30fps             MJPEG         on          2500            810
+    Default
+   Unbinned
+    Sparse           1280x800@30fps             Y14         on         1280x800@30fps             MJPEG         on          2200            810
+    Default
+    Binned
+    Sparse           640x400@30fps              Y14         on         1280x720@30fps             MJPEG         on          1700            810
+    Default
+                  1. Ensure that there are no obstructions in frontof the camera  that have not activated the laserauto-adjustment   function.
+                  2. Duringthe  typical average  power  consumption   test,the laserenergy  levelis setto 5 and the hardware  D2C   function is
+     Note         turned on; IMU   ODR(output   data register )is 200Hz;   The depth  stream and  colour RGB   stream are both active
+                  simultaneously,  while the IR image  stream  isinactive.
+                  3. Test the ambient temperature  at 25℃.
+
+
+
+                                         Table   5-1-4   Gemini     2 L  Max    Power    Mode    Configuration
+                                                    Typical Work   Mode  Configuration                                          Peak      Average
+    Mode                      Depth  Parameter                        IR Parameter                  RGB   Parameter            Power       Power
+                Resolution      Format     AE      Exposure      Resolution      Format      Resolution     Format      AE     (mW)         (mW)
+                                                      (us)
+  Unbinned       1280x800                                         1280x800                   1280x800
+    Dense         @30fps         RLE        off      5000          @30fps        MJPEG        @30fps        MJPEG       on      6000        2600
+   Default
+  Unbinned       1280x800                                         1280x800                   1280x800
+   Sparse         @30fps         RLE        off      5000          @30fps        MJPEG        @30fps        MJPEG       on      8000        2500
+   Default
+   Binned        640x400                                          640x400                    1280x720
+   Sparse         @60fps         RLE        off      1500          @60fps        MJPEG        @30fps        MJPEG       on      6200        2300
+   Default
+                1. Ensure  thatthere are noobstructions  in front ofthe camera  that have not activated the laser auto-adjustment  function.
+                2. During  the typicalaverage  power  consumption   test,the laserenergy  level isset to5 and  thehardware   D2C  function is
+    Note        turned  on;IMU   ODR(output    data register) is200Hz;   The depth  stream and  colour RGB   stream  areboth  active
+                simultaneously,  while  theIR  image  stream isinactive.
+                3.IR utilisesidentical exposure  and gain settings as depth.
+                4. Test the ambient  temperature  at25℃.
+Note:  The   data   in the  above   tables  are  laboratory    measurements        and  are  for design    reference   only.
+
+5.1.3    Storage      and     Powered        Conditions
+
+                                   Table   5-1-5   Gemini     2 Series   Storage    and  Powerd     Conditions
+               Condition                                               Description                                  Min          Max           Unit
+
+                                             Long  term storage                                                       0            50           ℃
+Storage(Ambient),  Not  Powerd               Short exposure  represents  temporary  max  limits acceptable  for      -20           70           ℃
+                                             transportation conditions
+
+                                             Humidity                                                              Temperature   /RH：60℃       /95%
+
+Ambient,  Powerd                             The camera   ambient  temperature  when  powered                         0            40           ℃
+                                             The  maximum    temperature   of the backside  case occurs  when
+Backside  Case Temperature,   Powerd         the camera  isoperated  inan ambient  temperature  of 40°C               0            50           ℃
+
+
+
+
+
+
+ORBBEC.     All Rights   Reserved.    https://orbbec3d.com/                                                                                   42
+Note:  Orbbec    reserves   the  right to change    any  information   in the  document     without  prior  notice.
+
+PAGE 43
+6      Firmware
+
+6.1    Update
+
+      1.  Firmware    upgrades    do not  require access  to a specific  mode
+      2.  When    upgrading    the firmware,   please  make   sure all camera   streams  are turned   off
+      3.  The   upgrade   tool does  not  currently  verify the  device's  firmware   version,  which   means   that itis
+           possible   toupgrade   or  downgrade    the version.
+      4.  Please   check  ifyou   need  to "upgrade"
+
+
+6.2    Update      Restrictions
+
+     After  a successful   upgrade,  the  device  can be  reboot  in the following:
+     1. To  ensure  the  new  firmware   version   takes effect, disconnect   the  USB   cable  and  plug it in again. It
+isalso  recommended      toconfirm   that the  device's USB    isdisconnected.
+     2. Restart  the device  using  the  software  interface  (SDK).
+
+
+6.3    Recovery
+
+     Ensure   the  stability of  the USB    cable  during   the upgrade   process   to  avoid  upgrade   failure.  If the
+upgrade   fails, disconnect    the  USB    cable,  re-insert   it,and   burn   the  product   again.  If  re-burning   is
+unsuccessful,   the  product   may   be  damaged.     Orbbec    assumes    no  liability for  any  damages     or losses
+resulting from   the use of  thisproduct.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                               43
+Note:Orbbec  reserves  the righttochange  any information inthe document  without priornotice.
+
+PAGE 44
+7      SDK
+
+7.1    SDK     Description
+
+     The   Orbbec    SDK    is  a cross-platform     software   development      kit that  provides   device   parameter
+configuration,   data  stream  reading,   and  stream  processing    for depth  cameras,    such  as Orbbec    Structured
+Light, Stereo,  and  iToF.  It offers a range   of features, including:
+     1.    Access   and  control  of hardware   devices
+     2.    Access,  control,  and  data  acquisition  of sensors   in the device
+     3.    Control  of frame   synchronization    and  alignment
+     4.    Point  cloud  data acquisition
+     5.    Provides   algorithmic   capabilities  such  as filtering
+     6.    Different  systems   and  Wrapper    support
+
+     Refer   to the related software   instructions   for using  Orbbec   Viewer.
+
+     For   SDK   development,     please   refer to  the  documentation     directory   in the  SDK    development     kit,
+which  contains   relevant  software   development    instructions.
+
+     For  SDK    downloads    and  updates,  please  visit https://www.orbbec3d.com/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                                44
+Note: Orbbec  reserves the righttochange  any  information inthe document  without priornotice.
+
+PAGE 45
+8      Use     Instructions
+
+8.1    Mounting       / Fixing     Solutions
+
+      1.  The  depth  camera   housing  should  use  foam  or rubber  sealing to prevent  dust from   entering.
+      2.  Do  not apply  any  external  force to the depth  camera  mount   during  installation.
+      3.  During   installation,  avoid  removing    the  screws   that connect   the  depth  camera    bracket  and  the
+           bridging  steel plate.
+
+
+8.2    Heat    Dissipation      Recommendations
+
+      1.  Avoid   direct heat source  around  the camera.
+      2.  Maximize    the space  inside the external  housing  may   help lowering   operating  temperature.
+     Note:   For   further   support   of   housing    design   information,    please   contact   Orbbec    3D    at
+info@orbbec3d.com.
+
+
+8.3    Camera       Front    Cover     Glass    Lens    Parameters         Description
+
+      The  current light transmission   of the Gemini   2 Series front cover  glass lens is as follows:
+      1.  RGB(420~650nm)transmittance          rate≥91%
+
+      2.  IR、LDM      (858  ±20nm)    transmittance  rate ≥91%
+
+      3.  LDP   (940nm±30)     transmittance  rate ≥91%
+     The  camera   has  a front cover  glass, if a new   transparent  media  is added   in front of the  front glass
+lens of  the camera   cover,  may   affect the  accuracy   and  imaging   effect, for  details, please  contact  our
+technical support.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRightsReserved. https://orbbec3d.com/                                                            45
+Note:Orbbec  reserves therightto change any information inthedocument  without priornotice.
+
+PAGE 46
+9      Regulatory               Compliance
+  The   products   is certified as  follows:
+      1.   RoHS    Certification
+      2.   Reach   Certification
+      3.   Class  1 Laser   Product   under  the  EN/IEC    60825-1:2014
+
+
+
+
+
+
+
+
+                                                       Figure  9-1  Class 1
+      4.   CE  Certification
+
+
+
+
+
+
+
+
+                                                  Figure  9-2  CE  Certification
+      5.   FCC   Certification
+
+
+
+
+
+
+
+
+                                                 Figure  9-3  FCC   Certification
+      6.   KC   Certification
+
+
+
+
+
+
+
+
+
+                                                  Figure  9-4  KC  Certification
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights  Reserved.  https://orbbec3d.com/                                                                  46
+Note: Orbbec  reserves  theright tochange  any  information inthe document   without priornotice.
+
+PAGE 47
+10     System         Integration             Guide
+     Before   choosing   Gemini   2 Series  for development,    users  should  contact  Orbbec    sales staff to obtain
+the user manual    and  apply  for the SDK    development    kit; through   evaluation,  debugging    and  verification
+steps to confirm   whether  the  solution  meets  the mass  production    requirements.
+     We   provide   SDK    for Gemini    2 Series  for  various  software   platforms,   you  need   the SDK    for the
+corresponding    platform  to develop   and  use the hardware    device.  Users  can  get the depth  map   through  the
+depth  camera,   and  can  use the  corresponding    API   interface to  convert  the original  depth   to point  cloud
+data. By  using  the driver and  SDK    package,  users  can  develop  application   layer for the product.
+
+     Suggested    Process:
+     1.   Read   the product   specification
+     2.   Buy   the product  from   the WEB    store online
+     3.   Before   development,    you   should  get  in touch  with  the sales  staff of Orbbec    to obtain  the user
+          manual    and apply  for the  SDK   development    kit.
+     4.   Choose    the right development    platform
+     5.   According     to  the  function   of  product   development,     encounter    technical   problems,    please
+          contact  with  Orbbec   staff in time
+     6.   Confirm    the mass  production   plan  of the product
+     7.   Mass   production   of the products   according   to mass  production   plan
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved. https://orbbec3d.com/                                                               47
+Note:Orbbec  reserves  therightto change any  informationinthe document   withoutpriornotice.
+
+PAGE 48
+11     Cautions
+     1.    Please  follow   the guidelines   to operate   the device   correctly, such   as illegal operation   may   lead
+           to damage    to internal components.
+     2.    Do   not  drop  or  hit this  product   to  prevent   damage    to  the  internal  components     and   loss  of
+           accuracy.
+     3.    Do  not  attempt  to  modify   or disassemble    this  product  in  any  way   during  assembly    and  use,  as
+           this may  cause   damage   to the  depth  camera   and  loss of  accuracy.
+     4.    The  product   temperature   rises after a period   of use, which   is a normal   phenomenon.
+     5.    Please  do  not  touch   the  lens, so  as not  to  leave  a foreign   body   and  thus  affect  the  effect  of
+           taking  picture.
+     6.    Do  not place  the  product  in a place  where   children  or  animals  can  touch  it to avoid  accidents.
+     7.    If you   can't recognize    the  camera,   please   check   whether   the  cable   meets   the  power   supply
+           requirements    and  re-plug  the USB    to check.
+     8.    Although    this  product    uses   a  Class   1  laser  (a  harmless,    control-free    laser), we    do  not
+           recommend     looking   directly  atthe  laser emitter  for more   than  20 seconds   to avoid  discomfort.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.   AllRights Reserved.  https://orbbec3d.com/                                                                 48
+Note: Orbbec  reserves the righttochange   any information inthe document  without priornotice.
+
+PAGE 49
+    Appendix         I  Multi-Camera              Synchronization              Interface
+Structure        Diagram
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC. AllRightsReserved.https://orbbec3d.com/                                                   49
+Note:Orbbecreservesthe righttochangeanyinformationinthedocumentwithoutpriornotice.
+
+PAGE 50
+    Appendix           II  Gemini         2  2D     Structure          Diagram
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.  AllRightsReserved. https://orbbec3d.com/                                                        50
+Note:Orbbec reserves therighttochange any informationinthe document withoutpriornotice.
+
+PAGE 51
+    Appendix           III   Gemini        2   L   2D    Structure          Diagram
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ORBBEC.  AllRightsReserved. https://orbbec3d.com/                                                       51
+Note:Orbbec reserves therighttochange any informationinthedocument  withoutpriornotice.

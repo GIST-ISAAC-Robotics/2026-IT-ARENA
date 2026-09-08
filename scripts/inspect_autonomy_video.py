@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("video", type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--times", nargs="+", type=float, help="추가로 보존할 영상 시각(초)")
     args = parser.parse_args()
     video, output = args.video.resolve(), args.output.resolve()
     if not video.is_relative_to(REPO / "artifacts") or not output.is_relative_to(REPO / "artifacts"):
@@ -25,6 +26,10 @@ def main():
     declared = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = float(capture.get(cv2.CAP_PROP_FPS))
     positions = sorted(set(round((declared-1)*f) for f in (0, .25, .50, .75, .95, 1)))
+    if args.times:
+        if any(not 0 <= t < declared / fps for t in args.times):
+            raise ValueError("추가 시각은 영상 길이 안에 있어야 합니다.")
+        positions = sorted(set(positions + [min(declared - 1, round(t * fps)) for t in args.times]))
     count, frames, dimensions = 0, [], set()
     while True:
         valid, frame = capture.read()

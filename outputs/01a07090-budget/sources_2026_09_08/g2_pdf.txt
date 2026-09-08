@@ -1,0 +1,393 @@
+PAGE 1
+                             G2
+                 DATA SHEET
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Shenzhen EAI Technology Co.,Ltd.
+
+
+
+PAGE 2
+                                                   CONTENTS
+1     PRODUCT OVERVIEW ............................................................................. 1
+   1.1     Product Features ....................................................................................... 1
+   1.2     Applications ................................................................................................ 1
+   1.3     Installation and Dimensions .................................................................... 1
+2     SPECIFICATIONS ..................................................................................... 2
+   2.1     Performance Parameter ........................................................................... 2
+   2.2     Electrical Parameter .................................................................................. 3
+   2.3     Interface Definition.................................................................................... 3
+   2.4     Data Communication ................................................................................ 3
+   2.5     Optical Characteristic ............................................................................... 4
+   2.6     Polar Coordinate System Definition ...................................................... 4
+   2.7     Others ........................................................................................................... 5
+3     REVISE ........................................................................................................ 6
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2019 EAI All Rights Reserved
+PAGE 3
+1    PRODUCT OVERVIEW
+     YDLIDAR G2 is a 360 degrees 2D LiDAR (hereinafter referred to as G2) developed by EAI
+team. Based on the principle of Triangulation, it is equipped with related optics, electricity, and
+algorithm design to achieve high-frequency and high-precision distance measurement. The
+mechanical structure rotates 360 degrees to continuously output the angle information as well as the
+point cloud data of the scanning environment while ranging.
+
+1.1 Product Features
+➢    360 degrees scan ranging
+➢    Stable performance and high accuracy
+➢    Wide measuring range
+➢    Strong resistance to ambient light interference
+➢    Industrial grade brushless motor drive, stable performance
+➢    Laser power meets Class I laser safety standards
+➢    360 degrees omnidirectional scanning and 5-12Hz frequency
+➢    Using optical and magnetic fusion technology to realize wireless communication and wireless
+     power supply
+➢    High-speed ranging, up to 5000Hz frequency
+
+1.2 Applications
+➢    Robot navigation and obstacle avoidance
+➢    Industrial automation
+➢    Regional security
+➢    Intelligent transportation
+➢    Environmental scanning and 3D reconstruction
+➢    Digital multimedia interaction
+➢    Robot ROS teaching and research
+
+1.3 Installation and Dimensions
+
+
+
+
+
+
+
+
+
+
+
+
+                                FIG 1 YDLIDAR G2 INSTALLATION SIZE (UNIT: MM)
+
+
+
+
+
+Copyright 2019 EAI All Rights Reserved                                                                           1 / 6
+PAGE 4
+                                     FIG 2 YDLIDAR G2 MECHANICAL SIZE (UNIT: MM)
+
+
+2    SPECIFICATIONS
+2.1 Performance Parameter
+                      CHART 1 YDLIDAR G2 PERFORMANCE PARAMETER
+
+         Item                   Min                Typical                Max             Unit                Remarks
+ Ranging frequency                /                  5000                    /             Hz         Ranging 5000 times per
+                                                                                                                second
+  Motor frequency                5                     7                   12              Hz        Software control, Factory
+                                                                                                             setting 7Hz
+  Ranging distance              0.12                   /                   12              m              80% Reflectivity
+    Field of view                 /                 0-360                    /            Deg                      /
+  Systematic error                /                    2                     /             cm                Range≤1m
+    Relative error                /                  2.0%                    /              /             1m<Range ≤8m
+      Luminous                   0                     /                  1023              /               laser intensity
+   intensity range
+      Tilt angle                0.25                   1                  1.75            Deg              Laser tilt angle
+                                0.36                0.504                 0.864
+  Angle resolution          (Frequency           (Frequency           (Frequency          Deg                      /
+                              @5Hz)                @7Hz)                @12Hz)
+
+Note 1:  It is factory FQC standard value, 80% reflectivity material object.
+Note 2:  The relative error value indicates the accuracy of the Lidar measurement. Relative error (mean value) =
+           (average measured distance-actual distance)/actual distance *100%, sample size: 100pcs.
+Note 3:  Lidar is a precision device, please avoid using Lidar under high or low temperature or strong vibration
+           situation, the relative error parameter index will be relatively larger, and it may exceed the typical value            .
+
+Copyright 2019 EAI All Rights Reserved                                                                                         2 / 6
+PAGE 5
+2.2 Electrical Parameter
+                      CHART 2 YDLIDAR G2 ELECTRICAL PARAMETER
+
+        Item                 Min               Typical              Max            Unit               Remarks
+                                                                                              Excessive voltage might
+   Supply voltage             4.8                5.0                 5.2            V         damage the Lidar while
+                                                                                                 low affect normal
+                                                                                                    performance
+   Startup current           1000                  /                  /            mA       Instantaneous peak current
+                                                                                                     at start-up
+  Sleeping current             /                   /                 50            mA        System sleep, motor stops
+  Working current              /                 350                 500           mA              System work,
+                                                                                                 motor speed=7Hz
+2.3 Interface Definition
+      G2 provides PH2.0-5P plug interface for system power supply and data communication.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                            FIG 3 YDLIDAR G2 INTERFACES
+
+                        CHART 3 YDLIDAR G2 INTERFACE DEFINITION
+
+     Pin            Type                Description               Defults         Range                Remarks
+    VCC        Power supply                Positive                  5V         4.8V-5.2V                   /
+     Tx            Output         System serial port output           /               /               Data stream:
+                                                                                                 LiDARPeripherals
+     Rx             Input         System serial port Input            /               /               Data stream:
+                                                                                                 PeripheralsLiDAR
+    GND        Power supply               Negative                   0V             0V                      /
+     NC           Reserve               Reserved pin                  /               /                     /
+
+2.4 Data Communication
+      With a 3.3V level serial port (UART), users can connect the external system and the product
+through the physical interface. After that, you can obtain the real-time scannedpoint cloud data,
+device information as well as device status.The communication protocol of parameters are as
+follows：
+
+
+Copyright 2019 EAI All Rights Reserved                                                                               3 / 6
+PAGE 6
+                        CHART 4 YDLIDAR G2 SERIAL SPECIFICATION
+
+        Item                  Min               Typical              Max            Unit               Remarks
+      Baud rate                 /               230400                  /            bps      8-bit data bit,1 stop bit, no
+                                                                                                         parity
+  High signal level           2.4                 3.3                 3.5             V                     /
+  Low signal level             0                  0.3                 0.6             V                     /
+
+2.5 Optical Characteristic
+      The infrared point pulse laser used in G2 can ensure
+the safety of human and pet. The lidar has passed testing
+and conformed to Class I, 21 CFR 1040.10 and 1040.11
+safety level, except for IEC 60825-1 Ed. 3., as described in
+Laser Notice No. 56, dated May 8, 2019.
+
+      The laser and optical lens finish the transmission and reception of the laser signal to achieve
+high-frequency ranging while working. To ensure system ranging performance, please keep the laser
+and optical lens clean. The detailed optical parameters are as follows:
+
+                   CHART 5 YDLIDAR G2 LASER OPTICAL PARAMETERS
+
+        Item                  Min               Typical              Max            Unit               Remarks
+  Laser wavelength            775                 792                 800            nm              Infrared band
+    Laser power                 /                 3.5                  6             mw             Average power
+        FDA                                                       Class I IEC60825-1
+
+Note: The personal adjustment or reassembly of the Lidar may result inhazardousradiation exposure.
+
+2.6 Polar Coordinate System Definition
+      In order to facilitate secondary development, G2 internally defines a polar coordinate system.
+The polar coordinates of the system take the center of the rotating core of G2 as the pole, and the
+specified Angle is positive clockwise (top view). The zero Angle is located in the direction of the
+outlet of the G2 PH2.0-5P interface line. Due to individual differences, there is a deviation of plus or
+minus 3 degrees, as shown in the figure:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2019 EAI All Rights Reserved                                                                                 4 / 6
+PAGE 7
+                                          Pole
+
+                          Pole axis                                                     Zero direction
+
+                            0°~360°, clockwise is positive
+
+
+
+
+                             FIG 4 YDLIDAR G2 POLAR COORDINATE SYSTEM DEFINITION
+2.7 Others
+                                     CHART 6 YDLIDAR G2 OTHERS
+       Item                Min                Typical               Max            Unit                  Remarks
+    Operating                                                                                 Long-term working in a high
+   temperature               0                   20                   50             ℃        temperature environment will
+                                                                                                   reduce the life span
+      Storage               -10                   /                   60             ℃                        /
+   temperature
+     Lighting                0                  550                 2000            Lux             For reference only
+   environment
+      weight                 /                  185                    /             g                     N.W.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2019 EAI All Rights Reserved                                                                                     5 / 6
+PAGE 8
+3     REVISE
+
+        Date               Version                                                  Content
+    2019-09-03                1.0                                            Compose a first draft
+    2020-01-07                1.1            Optimize the presentation of application scenarios and adjust            the accuracy
+    2020-11-18                1.2                                     Correct the Startup current value
+    2021-06-23                1.3                 Modify current, temperature, power and other relevant parameters
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright 2019 EAI All Rights Reserved                                                                                            6 / 6

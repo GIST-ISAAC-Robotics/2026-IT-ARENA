@@ -22,6 +22,7 @@ setup(
         "console_scripts": [
             "ackermann_to_twist = arena_vehicle_interface.ackermann_to_twist:main",
             "sim_wheel_encoder = arena_vehicle_interface.sim_wheel_encoder:main",
+            "rotating_lidar = arena_vehicle_interface.rotating_lidar:main",
         ],
     },
 )
