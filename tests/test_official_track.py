@@ -1,4 +1,4 @@
-"""공식 v2026.09.02 입력·보정 범위·실행 월드 회귀 검사."""
+"""공식 v2026.09.14 입력·보정 범위·실행 월드 회귀 검사."""
 
 import json
 import math
@@ -19,10 +19,10 @@ import build_official_track as official_builder  # noqa: E402
 
 
 def test_pinned_official_release_is_preserved():
-    assert ARCHIVE.stat().st_size == 883_631
+    assert ARCHIVE.stat().st_size == 805_607
     assert sha256(ARCHIVE) == EXPECTED_ARCHIVE_SHA256
     with ZipFile(ARCHIVE) as archive:
-        assert sum(not item.is_dir() for item in archive.infolist()) == 24
+        assert sum(not item.is_dir() for item in archive.infolist()) == 23
         assert {"design_final.json", "track_gen.py", "output_final/world.sdf", "output_final/scene.json"} <= set(archive.namelist())
 
 
@@ -46,7 +46,7 @@ def test_official_geometry_and_classification_are_explicit():
     assert scene["track"]["lap_length_m"] == 46.6329
     assert provenance["official_values"]["vehicle_envelope_m"] == {"length": .2, "width": .15}
     assert provenance["runtime_corrections"]["facilities"]["status"] == (
-        "official_v2026.09.02_geometry_with_provisional_marker_mount_and_facility_representation"
+        "official_v2026.09.14_markers_unchanged_provisional_light_bump_finish"
     )
     verification = scene["verification"]
     assert verification["surface_coverage_ok"] is True
@@ -61,58 +61,52 @@ def test_official_geometry_and_classification_are_explicit():
         assert not any(route["blocked_samples"] for route in report["routes"].values())
 
 
-def test_course_markers_follow_print_sheet_and_use_documented_angled_wall_brackets():
+def test_official_gantry_markers_are_unchanged_including_scene_and_pixels(tmp_path):
+    with ZipFile(ARCHIVE) as archive:
+        archive.extractall(tmp_path)
+    official_builder.verify_preserved_markers(tmp_path / "output_final/world.sdf", DESTINATION / "world.sdf")
     scene = json.loads((DESTINATION / "scene.json").read_text(encoding="utf-8"))
+    raw_scene = json.loads((tmp_path / "output_final/scene.json").read_text(encoding="utf-8"))
+    assert scene["aruco_markers"] == raw_scene["aruco_markers"]
+    assert scene["aruco_markers"]["mount_bottom_height_m"] == .35
+    assert scene["aruco_markers"]["mount_center_height_m"] == .4
     provenance = json.loads((DESTINATION / "provenance.json").read_text(encoding="utf-8"))
-    markers = scene["aruco_markers"]
-    assert markers["dictionary"] == "DICT_4X4_50"
-    assert markers["printed_board_size_m"] == .10
-    assert markers["black_code_size_m"] == .07
-    assert markers["quiet_zone_each_side_m"] == .015
-    assert markers["mount_bottom_height_m"] == .05
-    assert markers["mount_type"] == "wall_attached_angled_bracket"
-    assert {item["id"] for item in markers["markers"]} == {0, 20, 30, 45}
     placement = provenance["runtime_corrections"]["marker_placement"]
-    assert placement["status"] == "team_provisional_angled_wall_bracket_pending_issue_12_meeting_decision"
+    assert placement["status"] == "official_gantry_unchanged"
     assert {item["id"] for item in placement["placements"]} == {0, 20, 30, 45}
-    assert all(item["placement_changed"] for item in placement["placements"])
-    for item in placement["placements"]:
-        official = item["official_scene_pose"]
-        runtime = item["runtime_link_pose_xyz_rpy"]
-        assert not math.isclose(official["yaw_rad"], runtime[5], abs_tol=1e-3)
-        assert item["bracket_length_m"] > 0
-        assert item["official_input_verified_before_runtime_change"] is True
+    assert all(not item["placement_changed"] for item in placement["placements"])
 
+
+def test_marker_preservation_guard_rejects_yaw_change(tmp_path):
+    with ZipFile(ARCHIVE) as archive:
+        archive.extractall(tmp_path)
+    raw = tmp_path / "output_final/world.sdf"
+    tree = ET.parse(raw)
+    link = tree.find("./world/model[@name='it_arena_track_static']/link[@name='aruco_30']")
+    pose = link.find("pose")
+    values = pose.text.split()
+    values[5] = str(float(values[5]) + .1)
+    pose.text = " ".join(values)
+    tree.write(raw)
+    with pytest.raises(ValueError, match="30.*변경"):
+        official_builder.verify_preserved_markers(raw, DESTINATION / "world.sdf")
+
+
+def test_provisional_gantry_supports_are_separate_and_clear_of_the_printed_face():
     model = ET.parse(DESTINATION / "world.sdf").find("./world/model[@name='it_arena_track_static']")
-    for marker_id in (0, 20, 30, 45):
-        link = model.find(f"link[@name='aruco_{marker_id}']")
-        assert link is not None
-        assert link.find("collision[@name='stand_collision']") is None
-        visual = link.find(f"visual[@name='aruco_{marker_id}_vis']")
-        collision = link.find(f"collision[@name='aruco_{marker_id}_col']")
-        assert visual is not None and collision is not None
-        np.testing.assert_allclose(
-            list(map(float, visual.findtext("geometry/box/size").split())),
-            [.005, .1, .1],
-        )
-        assert visual.find("material/script") is None
-        assert visual.findtext("material/diffuse") == "1 1 1 1"
-        assert visual.findtext("material/pbr/metal/albedo_map") == f"aruco/aruco_id{marker_id}.png"
-        brackets = [visual for visual in link.findall("visual") if visual.attrib["name"].startswith("mounting_bracket_")]
-        bracket_collisions = [
-            collision for collision in link.findall("collision")
-            if collision.attrib["name"].startswith("mounting_bracket_")
-        ]
-        assert len(brackets) == len(bracket_collisions) == 2
-        assert link.find("visual[@name='sim_readable_white_face']") is not None
-        assert len([
-            item for item in link.findall("visual")
-            if item.attrib["name"].startswith("sim_readable_ink_")
-        ]) >= 20
-
-    assert markers["rendering"] == (
-        "official v2026.09.02 PNG/PBR board preserved with a matching thin SDF-cell front face"
-    )
+    supports = [link for link in model.findall("link") if link.attrib['name'].startswith('team_gantry_support_')]
+    assert len(supports) == 4
+    for link in supports:
+        assert len(link.findall('collision')) == (6 if link.attrib['name'].endswith('_30') else 7)
+        for collision in link.findall('collision'):
+            xyz = list(map(float, collision.findtext('pose').split()))
+            size = list(map(float, collision.findtext('geometry/box/size').split()))
+            if 'post' in collision.attrib['name']:
+                assert abs(xyz[1]) - size[1] / 2 >= .29 - 1e-9
+            elif 'beam' in collision.attrib['name']:
+                assert xyz[2] - size[2] / 2 > .45
+            else:
+                assert abs(xyz[1]) - size[1] / 2 >= .05 - 1e-9
 
 
 def test_only_official_walls_carry_track_friction_coefficients():
@@ -143,7 +137,7 @@ def test_official_filled_starting_grid_visuals_are_preserved_without_provisional
     paint = scene["starting_grid"]["paint"]
     assert paint == {
         "representation": "official_filled_slots",
-        "source": "official v2026.09.02 world.sdf grid_slot_0..5 visuals",
+        "source": "official v2026.09.14 world.sdf grid_slot_0..5 visuals",
         "length_m": .25,
         "width_m": .17,
         "paint_center_height_m": .0037,
@@ -177,6 +171,10 @@ def test_runtime_facility_metadata_matches_geometry_and_selected_start_line():
     beam_z = float(beam.findtext("pose").split()[2])
     assert scene["traffic_light"]["gantry_height_m"] == beam_z == .42
     assert scene["traffic_light"]["lamp_center_height_m"] == .30
+    assert scene["traffic_light"]["provisional_route_offset_m"] == .60
+    start = scene["start_finish"]
+    assert math.hypot(scene["traffic_light"]["pose"]["x"] - start["pose"]["x"],
+                      scene["traffic_light"]["pose"]["y"] - start["pose"]["y"]) > .59
     assert scene["speed_bumps"]["bump_length_m"] == .05
     assert scene["speed_bumps"]["bump_height_m"] == .01
     assert len(model.findall("link[@name='safety_bump_0']/collision")) == 20

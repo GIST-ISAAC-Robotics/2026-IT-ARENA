@@ -1,0 +1,54 @@
+profile: official_v2026.09.14
+status: official_markers_unchanged_with_provisional_light_and_bump
+upstream_repository: https://github.com/MOSW626/istech-it-arena
+upstream_commit: 0eb3a217e79a75c249b3ce9ec6b087bf82238c0c
+upstream_release: v2026.09.14
+release_asset: it_arena_track_v2026.09.14.zip
+release_sha256: a4ff2ea0ab99c217803fff799189d7e24794f1944faf21db56215517c4c5d814
+
+# 공식 마커의 SDF 링크 전체와 PNG, scene 위치는 변경하지 않습니다.
+# 최종 실물 자료가 없는 신호등·방지턱 표현과 기존 결승 체크무늬만 임시입니다.
+facilities:
+  status: official_v2026.09.14_markers_unchanged_provisional_light_bump_finish
+  speed_bump:
+    profile: raised_cosine
+    length_m: 0.05
+    height_m: 0.01
+    subdivisions: 20
+    lateral_stripes: 10
+  traffic_light:
+    # 공식 F1식 LED 사양·순서·무작위 시간은 미공개. 기존 데모와 구분합니다.
+    # 새 ID 0 마커를 가리지 않도록 임시 시설만 출발선 0.6 m 뒤로 이동합니다.
+    route_offset_m: 0.60
+    gantry_height_m: 0.42
+    lamp_center_height_m: 0.30
+    lamp_radius_m: 0.026
+    initial_state: red
+  markers:
+    representation: official_pbr_texture
+    mount_type: gantry
+    orientation_mode: official_pose
+    printed_board_size_m: 0.10
+    black_square_size_m: 0.07
+    quiet_zone_m: 0.015
+    bottom_height_m: 0.35
+  gantry_supports:
+    # 사용자 요청의 마지막 시각/가림 시험용 구조. 공식 시공 도면이 아닙니다.
+    enabled: true
+    post_offset_m: 0.30
+    post_width_m: 0.020
+    beam_height_m: 0.52
+    beam_width_m: 0.022
+    hanger_width_m: 0.010
+    # ID 30의 -Y측은 지름길 입구이므로 그쪽 기둥 없이 한쪽 지지로 둡니다.
+    omit_right_post_ids: [30]
+  starting_grid:
+    representation: official_filled_slots
+    length_m: 0.25
+    width_m: 0.17
+    center_height_m: 0.0037
+    thickness_m: 0.001
+  finish_line:
+    depth_m: 0.10
+    cells_across: 9
+    rows: 2

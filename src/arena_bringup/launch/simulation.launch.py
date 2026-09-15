@@ -558,8 +558,8 @@ def _launch_setup(context):
                     f"ToF safety={safety_enabled}. Motor/tire properties are provisional."),
         LogInfo(msg=f"Track: {track}; main width: {scene['track']['width_m']} m; "
                     f"shortcut widths: {[branch['width_m'] for branch in scene['branches']]} m. "
-                    + ("Official v2026.09.02 road/grass/wall geometry and filled grid visuals are preserved; "
-                     "course-marker angle, signal, bump profile and checker finish are team-test provisional."
+                    + ("Official v2026.09.14 track and complete gantry markers are preserved; "
+                     "signal, bump profile and checker finish are team-test provisional."
                      if track == "official" else "Historical reproduction / experimental course.")),
         LogInfo(msg=f"Rear identification marker: enabled={rear_marker['enabled']}; "
                     f"{rear_marker['dictionary']} ID {rear_marker['id']}; "
@@ -769,7 +769,7 @@ def generate_launch_description() -> LaunchDescription:
                 "track",
                 default_value="official",
                 choices=list(TRACK_DIRECTORIES),
-                description="official: v2026.09.02 45/20 cm team-test runtime; experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
+                description="official: v2026.09.14 45/20 cm unchanged gantry markers; experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
             ),
             DeclareLaunchArgument(
                 "vehicle_config",

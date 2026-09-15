@@ -1,0 +1,49 @@
+[
+  {
+    "url": "https://api.github.com/repos/MOSW626/istech-it-arena/issues/comments/5496352095",
+    "html_url": "https://github.com/MOSW626/istech-it-arena/issues/13#issuecomment-5496352095",
+    "issue_url": "https://api.github.com/repos/MOSW626/istech-it-arena/issues/13",
+    "id": 5496352095,
+    "node_id": "IC_kwDOUJfe8c8AAAABR5utXw",
+    "user": {
+      "login": "MOSW626",
+      "id": 87415566,
+      "node_id": "MDQ6VXNlcjg3NDE1NTY2",
+      "avatar_url": "https://avatars.githubusercontent.com/u/87415566?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/MOSW626",
+      "html_url": "https://github.com/MOSW626",
+      "followers_url": "https://api.github.com/users/MOSW626/followers",
+      "following_url": "https://api.github.com/users/MOSW626/following{/other_user}",
+      "gists_url": "https://api.github.com/users/MOSW626/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/MOSW626/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/MOSW626/subscriptions",
+      "organizations_url": "https://api.github.com/users/MOSW626/orgs",
+      "repos_url": "https://api.github.com/users/MOSW626/repos",
+      "events_url": "https://api.github.com/users/MOSW626/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/MOSW626/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "created_at": "2026-09-01T15:30:20Z",
+    "updated_at": "2026-09-01T15:30:20Z",
+    "body": "정확한 수치와 위치까지 짚어주셔서 원인 파악이 빨랐습니다. 두 건 모두 수정해 [v2026.09.02](../../releases/tag/v2026.09.02)로 배포했습니다.\n\n**1. 급커브 노면 공백** — 구조적 원인이었습니다. 직사각형 조각의 *바깥* 모서리는 반경 R 코너에서 필요한 각도의 R/(R+w/2)만 덮는데, 최소 반경 0.30m·폭 0.45m 구간에서는 57%라 조각을 아무리 잘게 나눠도 43%가 남았습니다(그래서 step과 무관하게 공백이 유지됐습니다). 조각 양 끝을 (w/2)·tan(Δyaw/2)만큼 연장해 이웃 조각의 바깥 모서리가 맞물리도록 고쳤습니다.\n- 설계 대비 누락 **0.3242㎡(1.488%) → 0.0117㎡(0.054%)**\n- 최대 공백 깊이 **44.6mm → 1.0mm** (지적하신 0.149m 측정과 같은 결함이며, 측정 방식만 다릅니다)\n- collision도 같은 박스 목록을 쓰므로 동일하게 해소\n\n**2. 갈림길 잔디** — 시뮬 표현 단순화였고, **실제 트랙 의도는 주행면 밖 잔디 완충이 연속**되는 것이 맞습니다. 잔디를 벽과 같은 유니온 방식(corridor − drivable)으로 생성하도록 바꿔 갈림길 입구·주변까지 채웠습니다.\n- 잔디 띠 누락 **5.87% → 0.23%**, 노면 침범 **1.74% → 0.13%**\n- 지도 래스터 그리기 순서도 잔디→노면→벽으로 정정했습니다(노면 가장자리가 잔디에 덮이던 문제)\n- preview.png도 같은 폴리곤을 쓰도록 해 SDF·지도와 시각적으로 일치시켰습니다\n\n**재발 방지**: 생성기에 노면·잔디·벽 커버리지 가드를 추가했습니다. scene.json과 실행 로그에 수치가 나오고 기준을 넘으면 생성 단계에서 잡힙니다.\n\n작업 중 mitre 확장이 벽에도 적용돼 벽이 주행면 안쪽으로 최대 11.7mm 침범하는 회귀가 있었는데, 배포 전 검증에서 잡아 노면에만 적용하도록 되돌렸습니다. **벽·ArUco·그리드·신호등·방지턱 기하는 v2026.09.01과 완전 동일**합니다.\n\n말씀하신 잔디 진입 패널티 관련 우려도 타당합니다 — 규칙 확정 전에 시뮬 형상이 실제 시공 의도와 맞아야 하므로, 이번 수정으로 노면·잔디·지면 구분이 연속됐습니다. 패널티 매핑 자체는 #6 안건으로 회의에서 확정됩니다.\n\nSDF 크기가 1.0MB → 1.9MB로 늘었습니다(조각 세분화, 링크 수는 20개 동일). 새 릴리즈로 재확인해주시면 감사하겠습니다.",
+    "author_association": "OWNER",
+    "pin": null,
+    "reactions": {
+      "url": "https://api.github.com/repos/MOSW626/istech-it-arena/issues/comments/5496352095/reactions",
+      "total_count": 0,
+      "+1": 0,
+      "-1": 0,
+      "laugh": 0,
+      "hooray": 0,
+      "confused": 0,
+      "heart": 0,
+      "rocket": 0,
+      "eyes": 0
+    },
+    "performed_via_github_app": null,
+    "minimized": null
+  }
+]

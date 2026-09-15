@@ -4,7 +4,10 @@ GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프
 
 현재 인수인계는 [프로젝트 현황](docs/PROJECT_CONTEXT.md), 구동 모델은 [단일 모터·차동 차량 동역학](docs/simulation/VEHICLE_DYNAMICS.md), 센서 기준선은 [상부 LiDAR·하부 ToF 링](docs/sensors/TOF_RING.md), 예산별 카메라와 축소 배치는 [스테레오 카메라·최소 ToF 검토](docs/sensors/STEREO_CAMERA_AND_MINIMAL_TOF.md), 이후 조향·회피·추월 후보는 [알고리즘 검토 노트](docs/autonomy/ALGORITHM_OPTIONS.md)에서 계속 관리합니다.
 
-최신 진행 상황: [시뮬레이션 중간 보고서](docs/reports/SIMULATION_PROGRESS_2026_09_08.md) ·
+최신 규정·트랙: [v2026.09.15 문서 적용·트랙 동일 확인](docs/track/OFFICIAL_V2026_09_15_DOC_UPDATE.md) · [9/14 회의 변경과 할 일](docs/reports/OFFICIAL_UPDATE_2026_09_15.md) · [v2026.09.14 재감사](docs/track/OFFICIAL_V2026_09_14_REAUDIT.md) · [#12 게시 완료 회신](docs/track/ISSUE_12_REPLY_DRAFT_2026_09_15.md).
+보유 D435i는 #14 공식 해석상 신규 구매 집계에서 제외됩니다. 본 경기 5랩·HW/SW 비상정지 각각 1개 이상 등의 규정은 문서에 반영했으며, 해당 경기 상태/실물 안전 기능의 구현 완료를 뜻하지 않습니다.
+
+이전 구현 진행 상황: [시뮬레이션 중간 보고서](docs/reports/SIMULATION_PROGRESS_2026_09_08.md) ·
 [LiDAR 운동 보정 구현·시험](docs/sensors/LIDAR_MOTION_IMPLEMENTATION.md) ·
 [최신 공식 코스 영상과 실패 기록](artifacts/validation/2026-09-08/lidar_motion/README.md).
 결합 보정은 독립 직선 20 km/h 시험 2/2회 통과했지만 공식 코스는 최고 12.38 km/h이며
@@ -30,16 +33,16 @@ GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프
 
 ## 현재 상태
 
-- 현재 공식 트랙 근거는 [MOSW626/istech-it-arena](https://github.com/MOSW626/istech-it-arena)의 태그 [`v2026.09.02`](https://github.com/MOSW626/istech-it-arena/tree/v2026.09.02), 커밋 `cb8fc14b1027c956b04cc297fa1454a65c956bfb`입니다. 규정·일정·지원은 `MANUAL.md`, 트랙은 같은 버전의 `track/README.md`·출력물·도면·인쇄 시트를 함께 대조합니다.
-- 공식 트랙 ZIP은 `assets/track/official/v2026.09.02/`에 수정하지 않고 보존했습니다. [출처·해시 기록](assets/track/official/v2026.09.02/SOURCE.md)과 [새 릴리스 재감사](docs/track/OFFICIAL_V2026_09_02_REAUDIT.md)에 근거를 남겼습니다. `v2026.09.01`·`v2026.08.31`, 초기 ZIP과 과거 활동·실패 기록도 그대로 보존합니다.
+- 최신 공식 문서는 [v2026.09.15](https://github.com/MOSW626/istech-it-arena/releases/tag/v2026.09.15), 커밋 `7cdb5def2e891584bac8bf54079b75212c9d25d5`입니다. 판 10 cm/코드 7 cm와 검출 설정 안내가 명확해졌으며 예산·경기 규칙은 변경되지 않았습니다. 트랙 산출물은 9/14와 같아 실행 입력은 `v2026.09.14`/`0eb3a217e79a75c249b3ce9ec6b087bf82238c0c`를 유지합니다.
+- [9/15 원본 ZIP](assets/track/official/v2026.09.15/SOURCE.md)과 [9/14 원본](assets/track/official/v2026.09.14/SOURCE.md)을 별도 보존했습니다. 새 ZIP 23파일 중 README 외 22파일은 바이트 동일합니다. [재감사](docs/track/OFFICIAL_V2026_09_14_REAUDIT.md)에 검증·실패·임시 시설을 구분하며 이전 ZIP·활동·영상·실패는 삭제하지 않았습니다.
 - 시뮬레이션 실행 환경으로 WSL2 Ubuntu 24.04를 선택했습니다.
 - PC 시뮬레이션 소프트웨어로 ROS 2 Jazzy + Gazebo Harmonic을 선택했습니다.
 - 전체 평면 외형은 길이 20 cm·폭 15 cm로 팀이 확정한 설계 목표입니다. 축거 14.5 cm, 윤거 13.5 cm, 바퀴 지름 5 cm·폭 1.2 cm와 센서 배치 등은 실측 전 임시값입니다.
 - 현재 기본 모델은 20 cm x 15 cm 외형을 사용합니다. 초기 18 cm x 12 cm 모델의 검증 기록과 현재 모델의 기록은 활동 내역에서 구분합니다.
 - 기본 실행은 공식 기반 `official`로, 본선 45 cm·지름길 각각 20 cm·한 바퀴 약 46.6329 m입니다. 공식 도로·중심선·합집합 벽을 사용하며 차량 20×15 cm는 축소하지 않습니다. 초기 35/12 cm `original`과 기존 45/25 cm `experimental`도 선택 실행할 수 있습니다.
-- 코스 ArUco는 ID 0/20/30/45와 공식 인쇄판 10 cm·검은 코드 7 cm·흰 여백 각 1.5 cm·판 하단 5 cm를 적용했습니다. #12 운영 회의 결론 전 팀 실행본만 공식 벽 부착점에서 판 정면이 1.2 m 상류를 향하도록 기울입니다. 정지 RGB 12표본 중 11개를 검출했지만 고속·가림·실물 시험은 남았습니다.
+- 코스 ArUco는 공식 갠트리형·ID 0/20/30/45, 판 10 cm·코드 7 cm·흰 여백 1.5 cm·중심 40 cm·하단 35 cm입니다. 위치·각도·재질·PNG를 그대로 보존합니다. 정면 네 ID 검출과 거리 표본을 확인했지만 기본 검출기 누락·종료 실패·실물 미검증은 남았습니다.
 - 차량 후면에는 흰 판 전체 5×5 cm의 `DICT_4X4_50` ID 10을 팀 시험용 시각 요소로 임시 구현했습니다. 코스 ID와 겹치지 않으며 ToF 위·LiDAR 스캔면 아래에 두었습니다. 공식 팀별 모양·ID·장착 기준이나 다른 차량에서의 검출 성능을 확정한 것은 아닙니다.
-- 방지턱의 공식 명목 길이 5 cm·높이 1 cm는 반영하되, 곡선 단면과 색띠는 제작 STL 도착 전 임시입니다. 낮은 신호등·고정 데모 주기와 피니시 체크무늬도 임시입니다. `official`의 출발 그리드는 `v2026.09.02` 원본의 25×17 cm 흰색 채움 슬롯 6개를 그대로 보존합니다. [현재 공식 적용·미확정 구분](docs/decisions/0012-official-v2026-09-02-track.md)을 참고하십시오.
+- 방지턱의 공식 명목 길이 5 cm·높이 1 cm는 반영하되, 곡선 단면과 색띠는 제작 STL 도착 전 임시입니다. 낮은 신호등·고정 데모 주기와 피니시 체크무늬도 임시입니다. `official`의 출발 그리드는 `v2026.09.14` 원본의 25×17 cm 흰색 채움 슬롯 6개를 그대로 보존합니다. [현재 공식 적용·임시 구분](docs/decisions/0019-official-v2026-09-14-gantry-markers.md)을 참고하십시오.
 - 공식 벽의 `mu=mu2=0.8`은 보존했습니다. 도로·잔디·방지턱에는 공식 마찰계수가 없어 새 값을 주입하지 않았으며, 엔진 기본값과 별도 임시 타이어 모델은 실물 마찰 실측값이 아닙니다.
 - `v2026.09.02`에서 [실제 짧은 실행 검사](artifacts/validation/2026-09-02/official_update/smoke_low_load_30.json)를 통과했습니다. RGB·깊이 848×480 약 30.30 sim Hz, ToF 여섯 개의 8×8 점군 약 15.15 sim Hz, 엔코더·IMU·직진·조향·명령 중단 정지·정상 종료를 확인했습니다. 벽시계 처리율 보장이 아닙니다.
 - 같은 월드의 [0.16 m/s 방지턱 통과](artifacts/validation/2026-09-02/official_update/bump_only_retry2/report.json)는 1.1363 m 이동, 기준 높이 0.002998→최대 0.008058→최종 0.003000 m와 실제 정지·정상 종료를 확인했습니다. 고속·실물 서스펜션 시험이 아닙니다.
@@ -57,9 +60,9 @@ GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프
 - 공식 전환 이전 소스에서 ROS 패키지 5개 빌드, Python/ROS 검사 98개와 C++ 차동 검사, 원본 무결성·실험 지도 재생성, 생성 차량·원본 재현/실험/동역학 실행 월드의 엄격한 SDF 검사를 통과했습니다. 이 수치는 과거 실행 기준이며 최신 검사는 [활동 기록](docs/activity/2026-08-31.md)의 해당 소스·산출물로 확인합니다. 주최 측 원본 SDF 자체의 알려진 잘못된 재질 스크립트는 보존하며 [트랙 감사](docs/track/TRACK_AUDIT.md)에 따라 파생 실행 월드만 사용합니다.
 - 기존 정지 흔들림은 Gazebo의 jerk 제한에서 독립적으로 재현하여 해당 제한을 제외했으며 속도·가속도 제한은 유지했습니다. 차량 제동과 검사 프로그램 종료는 서로 다른 문제입니다.
 
-현재 인수인계 내용은 [프로젝트 현황](docs/PROJECT_CONTEXT.md)을 참고하십시오. 새 릴리스 결과는 [`v2026.09.02` 재감사](docs/track/OFFICIAL_V2026_09_02_REAUDIT.md), 이전 공식판과 오류 근거·시설 해석은 [`v2026.09.01` 재감사](docs/track/OFFICIAL_V2026_09_01_REAUDIT.md)·[공식 파일 감사](docs/track/OFFICIAL_SOURCE_AUDIT.md)·[마커와 임시 시설](docs/track/OFFICIAL_MARKERS_AND_FACILITIES.md)에 보존합니다.
+현재 인수인계 내용은 [프로젝트 현황](docs/PROJECT_CONTEXT.md)을 참고하십시오. 9/2판 당시 결과는 [`v2026.09.02` 재감사](docs/track/OFFICIAL_V2026_09_02_REAUDIT.md), 이전 공식판과 오류 근거·시설 해석은 [`v2026.09.01` 재감사](docs/track/OFFICIAL_V2026_09_01_REAUDIT.md)·[공식 파일 감사](docs/track/OFFICIAL_SOURCE_AUDIT.md)·[마커와 임시 시설](docs/track/OFFICIAL_MARKERS_AND_FACILITIES.md)에 보존합니다.
 
-공식 [매뉴얼](https://github.com/MOSW626/istech-it-arena/blob/cb8fc14b1027c956b04cc297fa1454a65c956bfb/MANUAL.md)을 현재 규정 근거로 사용합니다. [2026-06-30 미팅](https://maddening-cause-ce7.notion.site/2026-06-30-38f99fd42e3080f6956fe5a5b90d0824)은 결정 경위 자료로 보존하며, 과거 접근 실패도 삭제하지 않습니다. 세 지도 선택과 기존 실험 재생성·차량 치수 근거는 [실험 트랙 안내](docs/track/EXPERIMENTAL_TRACK.md)에 정리했습니다.
+공식 [매뉴얼](https://github.com/MOSW626/istech-it-arena/blob/7cdb5def2e891584bac8bf54079b75212c9d25d5/MANUAL.md)을 현재 규정 근거로 사용합니다. [2026-06-30 미팅](https://maddening-cause-ce7.notion.site/2026-06-30-38f99fd42e3080f6956fe5a5b90d0824)은 결정 경위 자료로 보존하며, 과거 접근 실패도 삭제하지 않습니다. 세 지도 선택과 기존 실험 재생성·차량 치수 근거는 [실험 트랙 안내](docs/track/EXPERIMENTAL_TRACK.md)에 정리했습니다.
 
 센서 설정의 공식 출처, 60/60·30/30 프로필 선택, 깊이 거리·ROS 표현의 한계는 [D435i 설정 안내](docs/sensors/D435I_SIMULATION.md)를 참고하십시오. 상부 LiDAR와 여섯 하부 ToF의 배치·프로필·전원 및 실물 시험 조건은 [ToF 링 안내](docs/sensors/TOF_RING.md)에 있습니다.
 
@@ -117,7 +120,7 @@ ros2 launch arena_bringup demo.launch.py autonomy_mode:=stereo
 sudo bash scripts/setup_wsl.sh # Ubuntu 24.04 안에서 최초 한 번만 실행
 bash scripts/configure_wsl_user.sh
 bash scripts/doctor.sh
-colcon build --symlink-install
+colcon build --symlink-install --base-paths src
 source install/setup.bash
 ros2 launch arena_bringup simulation.launch.py
 ```
@@ -152,7 +155,7 @@ ros2 launch arena_bringup simulation.launch.py track:=experimental
 ros2 launch arena_bringup simulation.launch.py track:=original
 ```
 
-위 명령은 하나씩 실행하고 `Ctrl+C`로 종료한 뒤 다른 지도를 선택합니다. 공식 실행 월드는 보존 ZIP과 [설정 파일](config/tracks/official_v2026.09.02.yaml)에서 다음과 같이 재생성합니다. `--check`는 원본·입력·출력 해시와 출처 기록을 대조하며 재생성이나 실제 주행을 대신하지 않습니다.
+위 명령은 하나씩 실행하고 `Ctrl+C`로 종료한 뒤 다른 지도를 선택합니다. 공식 실행 월드는 보존 ZIP과 [설정 파일](config/tracks/official_v2026.09.14.yaml)에서 다음과 같이 재생성합니다. 9/15는 문서 전용 릴리스이므로 실행 입력은 9/14를 유지합니다. `--check`는 원본·입력·출력 해시와 출처 기록을 대조하며 재생성이나 실제 주행을 대신하지 않습니다.
 
 ```bash
 python3 scripts/build_official_track.py

@@ -1,5 +1,13 @@
 # 주최 측 이슈 기록과 게시 본문
 
+## 2026-09-15 운영진 확인·문서 릴리스 반영
+
+운영진이 #12의 회신·사용자 후속 크기/옛 영상 재검사 댓글을 [확인](https://github.com/MOSW626/istech-it-arena/issues/12#issuecomment-5676527820)하고 [v2026.09.15 배포](https://github.com/MOSW626/istech-it-arena/issues/12#issuecomment-5676565769)를 알렸습니다. 판 10 cm/코드 7 cm·0.02 검출 안내가 문서에 반영됐으며 형상/PNG는 그대로입니다. 실물 제작은 #6 2차 회의 안건이고 지금 즉시 측정하거나 추가 회신하라는 요청은 없습니다. [적용 기록](OFFICIAL_V2026_09_15_DOC_UPDATE.md)과 [조회 스냅샷](../../artifacts/validation/2026-09-15/document_release/upstream/)을 보존하며, 이번 정리에서 새 외부 댓글은 작성하지 않았습니다.
+
+## 2026-09-15 회신 완료
+
+#12 최신 댓글의 렌더링·현물 검출 거리 요청에 대해 [검토본](ISSUE_12_REPLY_DRAFT_2026_09_15.md)을 작성하고, 사용자 명시적 승인 후 [회신 댓글](https://github.com/MOSW626/istech-it-arena/issues/12#issuecomment-5675666830)로 등록했습니다. 현물 시험은 하지 않았고 과거 수치도 시뮬레이션이었다는 점을 바로잡았습니다. 사용자 수동 첨부 사진 3장·전체 비교표를 포함하며, 재조회로 본문 일치를 확인한 [실제 게시 본문](../../artifacts/validation/2026-09-15/official_update/reply_assets/posted_comment.md)을 보존합니다. #7의 재확인과 #5의 자원 모집은 철회됐습니다. [전체 요청 판정](../reports/OFFICIAL_UPDATE_2026_09_15.md#이슈별-요청-정리)을 먼저 읽습니다. **향후 새 이슈·댓글도 별도 승인 없이 게시하지 않습니다.** 아래 과거 게시 본문은 수정하지 않고 보존합니다.
+
 ## 게시 상태
 
 - 사용자의 2026-09-01 명시적 승인에 따라 ArUco 설치 방향 질문은 [이슈 #12](https://github.com/MOSW626/istech-it-arena/issues/12), 노면·잔디 공백 문제는 [이슈 #13](https://github.com/MOSW626/istech-it-arena/issues/13)으로 등록했다. 게시 직후 두 이슈는 `OPEN`이었고 아래 본문과 정확히 일치했다.

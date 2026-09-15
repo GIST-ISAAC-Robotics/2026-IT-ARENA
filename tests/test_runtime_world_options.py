@@ -26,7 +26,8 @@ def test_runtime_detector_preserves_original_and_collision_properties(tmp_path):
         assert old.findtext("pose") == new.findtext("pose")
     old_collisions = original.findall(".//collision")
     new_collisions = changed.findall(".//collision")
-    assert len(old_collisions) == len(new_collisions) == 3740
+    # 옛 브래킷 8개 제거, 지지 구조 27개 추가(ID 30은 분기 쪽 기둥 생략).
+    assert len(old_collisions) == len(new_collisions) == 3759
     for old, new in zip(old_collisions, new_collisions):
         for uri in old.findall(".//uri"):
             if uri.text and "://" not in uri.text and not Path(uri.text).is_absolute():

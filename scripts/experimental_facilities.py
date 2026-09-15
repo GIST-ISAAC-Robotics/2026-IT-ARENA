@@ -98,10 +98,10 @@ def configure(res, profile, generator):
     ):
         raise ValueError("마커 코드와 양쪽 흰 여백의 합은 인쇄판 크기와 같아야 합니다.")
     mount_type = markers.get("mount_type", "freestanding")
-    if mount_type not in {"freestanding", "wall_attached", "wall_attached_angled_bracket"}:
+    if mount_type not in {"freestanding", "wall_attached", "wall_attached_angled_bracket", "gantry"}:
         raise ValueError(
             "마커 설치 형식은 freestanding, wall_attached 또는 "
-            "wall_attached_angled_bracket여야 합니다."
+            "wall_attached_angled_bracket 또는 gantry여야 합니다."
         )
     if markers.get("representation", "sdf_cells") not in {
         "sdf_cells", "official_pbr_texture", "official_pbr_texture_with_sdf_face"
@@ -121,6 +121,11 @@ def configure(res, profile, generator):
     markers["mount_type"] = mount_type
     markers["orientation_mode"] = orientation_mode
     markers["printed_board_size_m"] = board_size
+    if mount_type == "gantry" and (
+        orientation_mode != "official_pose"
+        or markers.get("representation") != "official_pbr_texture"
+    ):
+        raise ValueError("공식 gantry 마커는 원본 방향과 PBR 표현을 보존해야 합니다.")
     grid_representation = config["starting_grid"].get("representation", "provisional_u_numbers")
     if grid_representation not in {"provisional_u_numbers", "official_filled_slots"}:
         raise ValueError("출발 그리드 표현은 provisional_u_numbers 또는 official_filled_slots여야 합니다.")
@@ -132,6 +137,10 @@ def configure(res, profile, generator):
         bump.update(length=bump_config["length_m"], height=bump_config["height_m"])
     res["meta"]["bump_height"] = bump_config["height_m"]
     light = res["traffic_light"]
+    if "route_offset_m" in config["traffic_light"]:
+        light["x"], light["y"], light["yaw"] = map(float, generator.sample_at_s(
+            res["arr"], (res["meta"]["startfinish_s"] + config["traffic_light"]["route_offset_m"]) % res["meta"]["Ltot"],
+            res["meta"]["Ltot"]))
     light["gantry_height"] = config["traffic_light"]["gantry_height_m"]
     light["lamp_center_height"] = config["traffic_light"]["lamp_center_height_m"]
     light["initial_state"] = "red"
@@ -478,6 +487,38 @@ def angle_preserved_official_markers(model, res):
     return placements
 
 
+def add_gantry_supports(model, res):
+    """공식 마커 링크를 수정하지 않고 옆 기둥·상부 가로대·가장자리 연결대만 추가합니다."""
+    config = res["experimental_facilities"].get("gantry_supports", {})
+    if not config.get("enabled", False):
+        return
+    if res["experimental_facilities"]["markers"]["mount_type"] != "gantry":
+        raise ValueError("갠트리 지지 구조는 공식 갠트리 마커에만 사용합니다.")
+    offset, thickness = config["post_offset_m"], config["post_width_m"]
+    beam_z, beam_width, hanger_width = (config[key] for key in ("beam_height_m", "beam_width_m", "hanger_width_m"))
+    if offset - thickness / 2 <= float(res["meta"]["track_w"]) / 2 + .05:
+        raise ValueError("임시 기둥은 공식 도로와 벽 바깥에 두어야 합니다.")
+    for marker_id in (0, 20, 30, 45):
+        marker = model.find(f"link[@name='aruco_{marker_id}']")
+        x, y, z, roll, pitch, yaw = map(float, marker.findtext("pose").split())
+        if roll or pitch or beam_z - beam_width / 2 <= z + .05:
+            raise ValueError("가로대는 마커 윗변보다 높아야 합니다.")
+        support = link_at(model, f"team_gantry_support_{marker_id}", x, y, yaw=yaw)
+        for sign, name in ((-1, "right"), (1, "left")):
+            if not (name == "right" and marker_id in config.get("omit_right_post_ids", [])):
+                box(support, f"{name}_post", (0, sign * offset, beam_z / 2),
+                    (thickness, thickness, beam_z), STEEL, collision=True)
+            # 작은 연결대는 판 가장자리 바깥에만 접합니다. 코드/여백 정면은 덮지 않습니다.
+            hanger_y = .05 + hanger_width * 1.5
+            lower_z = z + .03
+            box(support, f"{name}_hanger", (0, sign * hanger_y, (beam_z + lower_z) / 2),
+                (hanger_width, hanger_width, beam_z - lower_z), STEEL, collision=True)
+            box(support, f"{name}_edge_clamp", (0, sign * (.05 + hanger_width / 2), lower_z),
+                (.005, hanger_width, hanger_width), STEEL, collision=True)
+        box(support, "overhead_beam", (0, 0, beam_z),
+            (beam_width, 2 * offset + thickness, beam_width), STEEL, collision=True)
+
+
 def replace_facilities(world_path, res, generator):
     """생성기의 시설 링크만 교체합니다. 노면·벽·그리드 위치는 변경하지 않습니다."""
     tree = ET.parse(world_path)
@@ -504,12 +545,14 @@ def replace_facilities(world_path, res, generator):
         add_markers(model, res)
     else:
         res["runtime_marker_placements"] = angle_preserved_official_markers(model, res)
+    add_gantry_supports(model, res)
     ET.indent(tree, space="  ")
     tree.write(world_path, encoding="utf-8", xml_declaration=True)
 
 
 def update_scene(scene, res, generator):
     config = res["experimental_facilities"]
+    official_markers = copy.deepcopy(scene["aruco_markers"])
     scene["speed_bumps"].update({"profile": "raised_cosine", "bump_length_m": config["speed_bump"]["length_m"],
                                 "bump_height_m": config["speed_bump"]["height_m"], "height_reference": "road_top",
                                 "longitudinal_axis": "local_x_along_route",
@@ -521,6 +564,10 @@ def update_scene(scene, res, generator):
                                   "lamp_poses": res["traffic_light"]["lamp_poses"],
                                   "beam_axis": "local_y_across_route", "udp_visual_controller_connected": False})
     scene["traffic_light"].pop("udp_port", None)
+    if "route_offset_m" in config["traffic_light"]:
+        light = res["traffic_light"]
+        scene["traffic_light"]["pose"] = {"x": light["x"], "y": light["y"], "yaw_rad": light["yaw"]}
+        scene["traffic_light"]["provisional_route_offset_m"] = config["traffic_light"]["route_offset_m"]
     marker_config = config["markers"]
     mount_type = marker_config.get("mount_type", "freestanding")
     marker_representation = marker_config.get("representation", "sdf_cells")
@@ -556,6 +603,10 @@ def update_scene(scene, res, generator):
         marker.update(pose=source["face_pose"], pose_reference="printed_board_front_center",
                       normal_note=normal_note,
                       approach_target_xy_m=source["approach_target"])
+    # 갠트리 원본의 pose.z는 판 하단입니다. 이전 front-center 메타데이터로
+    # 덮어쓰지 않으며 공식 scene 전체를 보존합니다.
+    if mount_type == "gantry":
+        scene["aruco_markers"] = official_markers
     grid_config = config["starting_grid"]
     if grid_config["representation"] == "official_filled_slots":
         scene["starting_grid"]["paint"] = {
@@ -592,6 +643,12 @@ def update_scene(scene, res, generator):
                           "yaw_rad": float(yaw), "expected_marker_id": marker["id"], "approach_distance_m": distance})
     scene["facility_inspection"] = {"status": profile_status(config), "config": config,
                                     "camera_cases": cases, "test_ground_truth_only": True}
+    if config.get("gantry_supports", {}).get("enabled", False):
+        scene["team_gantry_supports"] = {
+            **config["gantry_supports"], "status": "user_requested_provisional_not_official_construction",
+            "marker_links_unchanged": True, "collision": True,
+            "note": "기둥·상부 가로대·판 가장자리 연결대. 실물 구조/재질/강성 검증 아님.",
+        }
 
 
 def profile_status(config):
