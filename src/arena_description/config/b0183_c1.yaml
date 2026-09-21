@@ -1,0 +1,32 @@
+# 구매 모델과 장착/오차 가정을 구분한 새 선택형 구성. 기존 vehicle.yaml 보존.
+camera:
+  model: Arducam_B0183_IMX219
+  status: user_confirmed_camera_mount_provisional
+  xyz_m: [0.055, 0.0, 0.145]
+  rpy_rad: [0.0, 0.0, 0.0]
+  width_px: 1280
+  height_px: 720
+  rate_hz: 60.0
+  horizontal_fov_deg: 75.0
+  # 720p 실제 크롭·왜곡/노출/롤링셔터는 미측정. 핀홀 가정.
+  mass_kg: 0.010
+  proxy_size_m: [0.020, 0.025, 0.025]
+  source: https://docs.arducam.com/Nvidia-Jetson-Camera/Native-Camera/imx219/
+lidar:
+  model: RPLIDAR_C1
+  status: user_confirmed_model_mount_provisional
+  xyz_m: [0.060, 0.0, 0.095]
+  masked_rear_half_angle_deg: 30.0
+  rate_hz: 10.0
+imu:
+  model: LSM6DSOX
+  status: provisional_6axis_candidate
+  xyz_m: [0.0, 0.0, 0.060]
+  rate_hz: 208.0
+  gyro_full_scale_dps: 500
+  accel_full_scale_g: 8
+  mass_kg: 0.003
+  # 임의의 소규모 백색잡음. 제조사 잡음밀도를 표준편차로 오인하지 않는다.
+  simulated_gyro_stddev_rad_s: 0.001
+  simulated_accel_stddev_mps2: 0.01
+  source: https://www.st.com/resource/en/datasheet/lsm6dsox.pdf

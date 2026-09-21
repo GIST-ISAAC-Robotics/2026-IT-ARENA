@@ -300,13 +300,23 @@ class StartSignal:
         return self.started
 
 
-def marker_ids(rgb):
+def marker_ids(rgb, min_distance_rate=None):
     dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+    parameters = None
+    if min_distance_rate is not None:
+        # OpenCV 4.6은 일부 클래스명이 있어도 구 API의 factory가 필요하다.
+        parameters = (cv2.aruco.DetectorParameters() if hasattr(cv2.aruco, "ArucoDetector")
+                      else cv2.aruco.DetectorParameters_create())
+        parameters.minMarkerDistanceRate = min_distance_rate
     if hasattr(cv2.aruco, "ArucoDetector"):
-        _, ids, _ = cv2.aruco.ArucoDetector(dictionary).detectMarkers(gray)
+        detector = cv2.aruco.ArucoDetector(dictionary) if parameters is None else cv2.aruco.ArucoDetector(dictionary, parameters)
+        _, ids, _ = detector.detectMarkers(gray)
     else:
-        _, ids, _ = cv2.aruco.detectMarkers(gray, dictionary)
+        if parameters is None:
+            _, ids, _ = cv2.aruco.detectMarkers(gray, dictionary)
+        else:
+            _, ids, _ = cv2.aruco.detectMarkers(gray, dictionary, parameters=parameters)
     return [] if ids is None else [int(value) for value in ids.flatten()]
 
 

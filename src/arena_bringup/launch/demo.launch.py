@@ -35,6 +35,9 @@ def _include_simulation(context):
         "drive_mode": LaunchConfiguration("drive_mode"),
         "autonomy_mode": mode,
         "chase_camera": LaunchConfiguration("chase_camera"),
+        "speed_bump": LaunchConfiguration("speed_bump"),
+        "runtime_artifacts": LaunchConfiguration("runtime_artifacts"),
+        "batch_static_visuals": LaunchConfiguration("batch_static_visuals"),
         "d435i_profile": "low_load_30", "autonomy": "true", "traffic_light": "true",
     }.items())]
 
@@ -47,7 +50,7 @@ def generate_launch_description():
         DeclareLaunchArgument("scene_broadcaster", default_value="true"),
         DeclareLaunchArgument("grid_slot", default_value="0"),
         DeclareLaunchArgument("red_duration_s", default_value="8.0"),
-        DeclareLaunchArgument("autonomy_mode", default_value="lidar", choices=["lidar", "stereo"],
+        DeclareLaunchArgument("autonomy_mode", default_value="lidar", choices=["lidar", "stereo", "local_pursuit"],
                               description="lidar=C1+ToF6, stereo=전방 D435i 깊이+측면 ToF4"),
         DeclareLaunchArgument("depth_camera", default_value="auto", choices=["auto", "true", "false"],
                               description="auto는 stereo에서 켜고 lidar에서 끕니다."),
@@ -62,5 +65,8 @@ def generate_launch_description():
         DeclareLaunchArgument("differential_profile", default_value="configured"),
         DeclareLaunchArgument("tof_safety", default_value="true"),
         DeclareLaunchArgument("drive_mode", default_value="configured"),
+        DeclareLaunchArgument("speed_bump", default_value="true"),
+        DeclareLaunchArgument("runtime_artifacts", default_value=""),
+        DeclareLaunchArgument("batch_static_visuals", default_value="false"),
         OpaqueFunction(function=_include_simulation),
     ])

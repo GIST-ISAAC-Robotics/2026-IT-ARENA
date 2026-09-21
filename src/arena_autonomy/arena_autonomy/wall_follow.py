@@ -22,8 +22,8 @@ def stamp_seconds(stamp):
 
 
 class WallFollow(Node):
-    def __init__(self):
-        super().__init__("wall_follow")
+    def __init__(self, node_name="wall_follow"):
+        super().__init__(node_name)
         defaults = {"wheelbase_m": .145, "lidar_x_m": -.03, "max_steering_angle_rad": .43,
                     "target_wall_distance_m": .425, "max_speed_mps": .35, "min_speed_mps": .14,
                     "scan_timeout_s": .45, "image_timeout_s": 1.0, "control_rate_hz": 20.0,
@@ -82,7 +82,7 @@ class WallFollow(Node):
         self.image_wall_time = time.monotonic()
         rgb = image_rgb(message)
         self.signal.update(rgb)
-        self.ids = marker_ids(rgb)
+        self.ids = self.detect_markers(rgb)
         # 현재 코스의 분기 방향만 설정한 간단한 규칙입니다. 좌표를 조회하지 않습니다.
         if 30 in self.ids:
             self.side = "right"
@@ -95,6 +95,9 @@ class WallFollow(Node):
         message.header.stamp = self.get_clock().now().to_msg()
         message.header.frame_id = "base_link"
         self.publisher.publish(message)
+
+    def detect_markers(self, rgb):
+        return marker_ids(rgb)
 
     def on_enable(self, request, response):
         self.enabled = bool(request.data)
@@ -156,9 +159,7 @@ class WallFollow(Node):
             if valid_count < 30:
                 status["state"] = "MOTION_STOP" if self.motion and self.motion.last_meta.get("reason") != "ok" else "SCAN_INVALID"
             else:
-                speed, steering, details = follow_command(
-                    points, self.side, self.settings["target_wall_distance_m"], self.settings["wheelbase_m"],
-                    self.settings["max_steering_angle_rad"], self.settings["max_speed_mps"], self.settings["min_speed_mps"])
+                speed, steering, details = self.command(points)
                 status.update(details)
                 curvature = abs(math.tan(steering) / self.settings["wheelbase_m"])
                 if curvature > 1e-6:
@@ -185,6 +186,11 @@ class WallFollow(Node):
     def destroy_node(self):
         self.stop()
         return super().destroy_node()
+
+    def command(self, points):
+        return follow_command(points, self.side, self.settings["target_wall_distance_m"],
+                              self.settings["wheelbase_m"], self.settings["max_steering_angle_rad"],
+                              self.settings["max_speed_mps"], self.settings["min_speed_mps"])
 
 
 def main(args=None):

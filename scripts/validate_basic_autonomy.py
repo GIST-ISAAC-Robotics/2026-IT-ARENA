@@ -21,6 +21,7 @@ import numpy as np
 from shapely.strtree import STRtree
 
 from build_experimental_track import obstacle_polygons, rectangle
+from lidar_shutdown import audit_shutdown, group_processes, stop_gazebo_service, stop_launch
 from validate_facility_visibility import image_array, yaw_of
 
 REPO = Path(__file__).resolve().parents[1]
@@ -67,6 +68,17 @@ def add_rate_metrics(report, trace, scans, scan, requested_rate_hz):
                 "sensor_stop_samples": sum(
                     row["autonomy"].get("state") == "SENSOR_STOP" for row in active
                 ),
+            }
+            corners = [abs(row['dynamics']['truth_longitudinal_mps']) for row in active
+                       if abs(row['dynamics']['truth_longitudinal_mps']) > .3 and
+                       abs(row['dynamics'].get('truth_yaw_rate_rad_s', 0.)) /
+                       abs(row['dynamics']['truth_longitudinal_mps']) >= .5]
+            report['corner_speed_metrics'] = {
+                'definition': 'evaluation only: speed > 0.3 m/s and abs(truth yaw rate / forward speed) >= 0.5 /m',
+                'samples': len(corners),
+                'p10_mps': float(np.percentile(corners, 10)) if corners else None,
+                'median_mps': float(np.median(corners)) if corners else None,
+                'p90_mps': float(np.percentile(corners, 90)) if corners else None,
             }
     if scan is None:
         return
@@ -146,7 +158,8 @@ def add_depth_metrics(report, stamps, image, info):
 def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_safety=True,
                        red_duration_s=8.0, autonomy_mode="lidar", chase_camera=False,
                        lidar_acquisition="snapshot", lidar_compensation="none",
-                       control_rate_hz=20.0, render_backend="system", sensor_wall_timeout_s=3.0):
+                       control_rate_hz=20.0, render_backend="system", sensor_wall_timeout_s=3.0,
+                       speed_bump=True, collision_detector="configured", runtime_artifacts="", grid_slot=0):
     # 이 검사기는 터미널 프로세스 그룹이 아니라 ros2 launch에만 SIGINT를
     # 보냅니다. WSL의 TTY 상속 여부와 무관하게 자식에게도 전달되게 합니다.
     return subprocess.Popen(
@@ -157,6 +170,10 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
          f"lidar_acquisition:={lidar_acquisition}", f"lidar_compensation:={lidar_compensation}",
          f"autonomy_control_rate_hz:={control_rate_hz}", f"render_backend:={render_backend}",
          f"sensor_wall_timeout_s:={sensor_wall_timeout_s}",
+         f"speed_bump:={str(speed_bump).lower()}", f"collision_detector:={collision_detector}",
+         f"runtime_artifacts:={runtime_artifacts}",
+         f"grid_slot:={grid_slot}",
+         f"batch_static_visuals:={str(autonomy_mode == 'local_pursuit').lower()}",
          f"chase_camera:={str(bool(chase_camera)).lower()}"],
         cwd=REPO, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
 
@@ -164,13 +181,19 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--laps", type=int, default=2)
+    parser.add_argument("--grid-slot", type=int, choices=range(6), default=0)
+    parser.add_argument("--shutdown-mode", choices=("sigint", "service"), default="sigint",
+                        help="service는 격리된 Gazebo 정상 종료 확인 후 ROS launch를 종료합니다.")
     parser.add_argument("--lidar-acquisition", choices=("snapshot", "sequential"), default="snapshot")
     parser.add_argument("--lidar-compensation", choices=("none", "deskew", "shift", "both"), default="none")
     parser.add_argument("--control-rate-hz", type=float, default=20.0)
     parser.add_argument("--render-backend", choices=("system", "software", "wsl_nvidia"), default="system")
     parser.add_argument("--sensor-wall-timeout-s", type=float, default=3.0)
     parser.add_argument("--max-sim-seconds", type=float, default=900)
-    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight"), default="cautious")
+    parser.add_argument("--wall-timeout-s", type=float, default=None,
+                        help="느린 오프라인 실행의 실제 시간 한도. 센서 시각 제한과 무관.")
+    parser.add_argument("--stop-wall-timeout-s", type=float, default=60.)
+    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
     parser.add_argument("--lidar-rate-hz", type=float, default=10.0,
                         help="Gazebo 이상화 라이다의 시험용 갱신률. C1 실물 회전수를 바꾸지 않습니다.")
     parser.add_argument("--target-progress-m", type=float,
@@ -179,22 +202,28 @@ def main():
                         help="라이다 조향 주기만 분리해 볼 때 ToF 속도 제한을 끕니다. 안전 검증이 아닙니다.")
     parser.add_argument("--red-duration-s", type=float, default=8.0,
                         help="검사 시작 전 빨간 신호 유지 시간. 기본 데모와 같은 8초입니다.")
-    parser.add_argument("--autonomy-mode", choices=("lidar", "stereo"), default="lidar",
+    parser.add_argument("--autonomy-mode", choices=("lidar", "stereo", "local_pursuit"), default="lidar",
                         help="lidar=C1+ToF6, stereo=전방 D435i 깊이+측면 ToF4")
     parser.add_argument("--video", action="store_true",
                         help="제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.")
+    parser.add_argument("--disable-speed-bump", action="store_true")
+    parser.add_argument("--collision-detector", choices=("configured", "ode", "bullet", "fcl"), default="configured")
     parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy_official",
                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
     args = parser.parse_args()
+    if args.wall_timeout_s is not None and (not math.isfinite(args.wall_timeout_s) or args.wall_timeout_s <= 0):
+        raise ValueError("실제 시간 한도는 유한한 양수여야 합니다.")
+    if not math.isfinite(args.stop_wall_timeout_s) or args.stop_wall_timeout_s <= 0:
+        raise ValueError("정지 검사 실제 시간 한도는 유한한 양수여야 합니다.")
     if not math.isfinite(args.control_rate_hz) or not 5 <= args.control_rate_hz <= 200:
         raise ValueError("제어 주기는 5~200 Hz 범위의 유한한 수여야 합니다.")
     if not math.isfinite(args.sensor_wall_timeout_s) or not 3 <= args.sensor_wall_timeout_s <= 60:
         raise ValueError("벽시계 감시 한도는 3~60초여야 합니다.")
-    if args.autonomy_mode != "lidar" and args.lidar_compensation != "none":
+    if args.autonomy_mode == "stereo" and args.lidar_compensation != "none":
         raise ValueError("LiDAR 보정 검사는 lidar 모드에서만 사용합니다.")
     if (args.laps < 1 or not math.isfinite(args.max_sim_seconds) or args.max_sim_seconds <= 0 or
             not math.isfinite(args.lidar_rate_hz) or not .5 <= args.lidar_rate_hz <= 100 or
-            not math.isfinite(args.red_duration_s) or not .5 <= args.red_duration_s <= 30 or
+            not math.isfinite(args.red_duration_s) or not 1.0 <= args.red_duration_s <= 30 or
             (args.target_progress_m is not None and
              (not math.isfinite(args.target_progress_m) or args.target_progress_m <= 0))):
         raise ValueError("바퀴 수는 1 이상, 시간 한도는 유한한 양수여야 합니다.")
@@ -208,7 +237,7 @@ def main():
     import rclpy
     from rclpy.signals import SignalHandlerOptions
     from rclpy.qos import QoSProfile, qos_profile_sensor_data
-    from sensor_msgs.msg import CameraInfo, Image, LaserScan
+    from sensor_msgs.msg import CameraInfo, Image, LaserScan, Imu
     from nav_msgs.msg import Odometry
     from ackermann_msgs.msg import AckermannDriveStamped
     from std_msgs.msg import String
@@ -218,6 +247,8 @@ def main():
     node = rclpy.create_node("basic_autonomy_validator")
     state, trace, scans, depth_stamps, pictures = {}, [], [], [], set()
     drive_stamps = []
+    rgb_stamps, imu_stamps = [], []
+    safety_active = args.autonomy_mode == 'local_pursuit' or not args.disable_tof_safety
     acquisition_records = []
     stop_requested = False
     def interrupted(*_):
@@ -229,6 +260,9 @@ def main():
         state[key] = message
         if key == "drive":
             drive_stamps.append(float(message.header.stamp.sec) + message.header.stamp.nanosec * 1e-9)
+        elif key in ('rgb', 'imu'):
+            (rgb_stamps if key == 'rgb' else imu_stamps).append(
+                float(message.header.stamp.sec) + message.header.stamp.nanosec * 1e-9)
     def receive_scan(message):
         state["scan"] = message
         scans.append(float(message.header.stamp.sec) + message.header.stamp.nanosec * 1e-9)
@@ -242,7 +276,9 @@ def main():
         node.create_subscription(String, "/safety/status", lambda m: remember(json.loads(m.data), "safety"), 10),
         node.create_subscription(AckermannDriveStamped, "/drive/safe", lambda m: remember(m, "safe_drive"), 10),
     ]
-    if args.autonomy_mode == "lidar":
+    if args.autonomy_mode == 'local_pursuit':
+        subscriptions.append(node.create_subscription(Imu, '/imu/data', lambda m: remember(m, 'imu'), qos_profile_sensor_data))
+    if args.autonomy_mode != "stereo":
         subscriptions.append(node.create_subscription(LaserScan, "/scan", receive_scan, qos_profile_sensor_data))
         if args.lidar_acquisition == "sequential":
             subscriptions.append(node.create_subscription(String, "/sim/lidar_acquisition",
@@ -275,26 +311,35 @@ def main():
               "requested_laps": args.laps, "target_progress_m": target_progress,
               "full_lap_validation": full_lap_validation, "lap_length_m": lap_length,
               "speed_profile": args.speed_profile, "requested_lidar_rate_hz": args.lidar_rate_hz,
+              "test_arguments": vars(args) | {"output": str(output)},
               "autonomy_mode": args.autonomy_mode,
               "lidar_acquisition": args.lidar_acquisition,
               "lidar_compensation": args.lidar_compensation,
               "requested_control_rate_hz": args.control_rate_hz,
               "render_backend": args.render_backend,
               "sensor_wall_timeout_s": args.sensor_wall_timeout_s,
-              "sensor_layout": "lidar_tof6" if args.autonomy_mode == "lidar" else "stereo_tof4",
+              "sensor_layout": "b0183_c1_lsm6dsox" if args.autonomy_mode == "local_pursuit" else "lidar_tof6" if args.autonomy_mode == "lidar" else "stereo_tof4",
+              "speed_bump_enabled": not args.disable_speed_bump,
+              "collision_detector": args.collision_detector,
               "simulated_total_mass_kg": 2.0,
-              "comparison_ballast_kg": 0.0 if args.autonomy_mode == "lidar" else 0.111,
+              "comparison_ballast_kg": .062 if args.autonomy_mode == "local_pursuit" else 0.0 if args.autonomy_mode == "lidar" else 0.111,
               "mass_comparison_scope": "same 2.000 kg total mass; removed sensor mass added to chassis for A/B; CG/inertia distribution is not identical; recording camera adds 0.000001 kg",
               "video_requested": args.video,
-              "tof_safety_enabled": not args.disable_tof_safety,
+              "tof_safety_enabled": not args.disable_tof_safety and args.autonomy_mode != "local_pursuit",
+              "lidar_safety_enabled": args.autonomy_mode == "local_pursuit",
               "red_duration_s": args.red_duration_s,
               "validation_scope": "requested progress and stop; speed-profile limit is not a verified target speed",
-              "collision_scope": "active path samples only; stop-phase collision is not assessed by this validator",
+              "collision_scope": "active and stopping pose samples against static wall footprints; not continuous collision proof or moving traffic",
               "input_sha256": {str(path.relative_to(REPO)): hashlib.sha256(path.read_bytes()).hexdigest()
-                               for path in [Path(__file__).resolve(), world / "world.sdf", REPO / "src/arena_description/config/vehicle.yaml",
+                               for path in [Path(__file__).resolve(), REPO / "scripts/lidar_shutdown.py",
+                                            world / "world.sdf", REPO / "src/arena_description/config/vehicle.yaml",
                                             REPO / "src/arena_description/models/arena_car/model.sdf.xacro",
                                             REPO / "src/arena_autonomy/arena_autonomy/core.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/wall_follow.py",
+                                            REPO / "src/arena_autonomy/arena_autonomy/local_path.py",
+                                            REPO / "src/arena_autonomy/arena_autonomy/local_pursuit.py",
+                                            REPO / "src/arena_autonomy/arena_autonomy/lidar_safety.py",
+                                            REPO / "src/arena_description/config/b0183_c1.yaml",
                                             REPO / "src/arena_autonomy/arena_autonomy/lidar_motion.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/stereo_wall_follow.py",
@@ -302,6 +347,9 @@ def main():
                                             REPO / "src/arena_gazebo/scripts/traffic_light_controller.py",
                                             REPO / "src/arena_bringup/launch/demo.launch.py",
                                             REPO / "src/arena_bringup/launch/simulation.launch.py",
+                                            REPO / "src/arena_bringup/launch/local_pursuit.launch.py",
+                                            REPO / "src/arena_bringup/config/b0183_imu_bridge.yaml",
+                                            REPO / "src/arena_vehicle_interface/arena_vehicle_interface/rotating_lidar.py",
                                             REPO / "src/arena_gazebo/src/single_motor_drive.cpp",
                                             REPO / "src/arena_gazebo/include/arena_gazebo/drivetrain.hpp",
                                             REPO / "src/arena_vehicle_interface/arena_vehicle_interface/sim_wheel_encoder.py",
@@ -337,7 +385,9 @@ def main():
                                             not args.disable_tof_safety, args.red_duration_s,
                                             args.autonomy_mode, args.video, args.lidar_acquisition,
                                             args.lidar_compensation, args.control_rate_hz,
-                                            args.render_backend, args.sensor_wall_timeout_s))
+                                            args.render_backend, args.sensor_wall_timeout_s,
+                                            not args.disable_speed_bump, args.collision_detector, str(output),
+                                            args.grid_slot))
         pose_process = subprocess.Popen(["gz", "topic", "-e", "-t", "/world/it_arena_track/dynamic_pose/info", "--json-output"],
                                         cwd=REPO, stdout=subprocess.PIPE, stderr=log, text=True, start_new_session=True)
         processes.append(pose_process)
@@ -367,16 +417,18 @@ def main():
                 raise RuntimeError("검사 중단 요청")
             if any(process.poll() is not None for process in processes):
                 raise RuntimeError("검사 프로세스가 예상보다 일찍 종료했습니다.")
-            if time.monotonic() - began > max(180, args.max_sim_seconds * 7):
+            if time.monotonic() - began > (args.wall_timeout_s or max(180, args.max_sim_seconds * 7)):
                 raise TimeoutError("실제 시간 검사 한도 초과")
             required = {"pose", "autonomy", "light", "rgb", "odom", "drive", "dynamics"}
-            required.add("scan" if args.autonomy_mode == "lidar" else "depth")
+            required.add("scan" if args.autonomy_mode != "stereo" else "depth")
             if args.autonomy_mode == "stereo":
                 required.add("depth_info")
             if args.video:
                 required.add("chase")
-            if not args.disable_tof_safety:
+            if safety_active:
                 required.update(("safety", "safe_drive"))
+            if args.autonomy_mode == 'local_pursuit':
+                required.add('imu')
             if not required.issubset(state):
                 if time.monotonic() - began > 90:
                     raise TimeoutError(f"시작 데이터 미수신: {sorted(state)}")
@@ -406,7 +458,7 @@ def main():
             markers_seen.update(autonomous["marker_ids"])
             sides_seen.add(autonomous["side"])
             false_start |= early_start_detected(light["applied"], state["drive"].drive.speed, autonomous)
-            if not args.disable_tof_safety:
+            if safety_active:
                 false_start |= early_start_detected(light["applied"], state["safe_drive"].drive.speed, autonomous)
             if autonomous["started"] and run_started is None:
                 run_started = now
@@ -426,7 +478,7 @@ def main():
                         cv2.imwrite(str(output / "third_person_first_frame.png"), frame)
                     if first_video_stamp is None:
                         first_video_stamp = chase_stamp
-                    label = "C1 LiDAR + ToF 6" if args.autonomy_mode == "lidar" else "D435i RGB-D + ToF 4"
+                    label = "B0183 + C1 + 6-axis IMU | local Pure Pursuit" if args.autonomy_mode == "local_pursuit" else "C1 LiDAR + ToF 6" if args.autonomy_mode == "lidar" else "D435i RGB-D + ToF 4"
                     if args.lidar_compensation != "none":
                         label = f"C1 {args.lidar_rate_hz:g}Hz {args.lidar_acquisition} | {args.lidar_compensation}"
                     cv2.rectangle(frame, (18, 16), (730, 108), (12, 16, 22), -1)
@@ -435,7 +487,8 @@ def main():
                     cv2.putText(frame, f"progress {progress:5.1f} m   actual speed {abs(state['dynamics']['truth_longitudinal_mps']) * 3.6:.1f} km/h",
                                 (32, 72), cv2.FONT_HERSHEY_SIMPLEX, .55,
                                 (120, 220, 255), 1, cv2.LINE_AA)
-                    cv2.putText(frame, f"official course | {args.speed_profile} | ToF gate {'OFF (solo test)' if args.disable_tof_safety else 'ON'}",
+                    gate_label = 'LiDAR gate ON' if args.autonomy_mode == 'local_pursuit' else f"ToF gate {'OFF (solo test)' if args.disable_tof_safety else 'ON'}"
+                    cv2.putText(frame, f"official course | {args.speed_profile} | {gate_label}",
                                 (32, 96), cv2.FONT_HERSHEY_SIMPLEX, .48, (210, 210, 210), 1, cv2.LINE_AA)
                     video_writer.write(frame)
                     video_timestamps.append(chase_stamp)
@@ -465,7 +518,7 @@ def main():
                             "marker_ids": sorted(markers_seen), "collision_samples": collision_samples,
                             "max_centerline_error_m": max_error})
                 last_progress_log = time.monotonic()
-            safety_stopped = (not args.disable_tof_safety and state["safety"]["safe_speed_mps"] == 0)
+            safety_stopped = (safety_active and state["safety"]["safe_speed_mps"] == 0)
             if run_started is not None and (autonomous["state"] != "RUNNING" or safety_stopped):
                 stalled_since = now if stalled_since is None else stalled_since
                 if now - stalled_since > 7:
@@ -512,17 +565,22 @@ def main():
                       max_centerline_error_m=max_error, collision_samples=collision_samples,
                       false_start=false_start, signal_states=sorted(signal_states), marker_ids=sorted(markers_seen),
                       wall_sides=sorted(sides_seen))
-        controller_name = "wall_follow" if args.autonomy_mode == "lidar" else "stereo_wall_follow"
+        controller_name = "local_pursuit" if args.autonomy_mode == "local_pursuit" else "wall_follow" if args.autonomy_mode == "lidar" else "stereo_wall_follow"
         inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node(controller_name, "/")}
         report["autonomy_subscriptions"] = sorted(inputs)
-        required_inputs = ({"/scan", "/camera/color/image_raw"} if args.autonomy_mode == "lidar" else
+        required_inputs = ({"/scan", "/camera/color/image_raw"} if args.autonomy_mode != "stereo" else
                            {"/camera/depth/image_rect_raw", "/camera/depth/camera_info",
                             "/camera/color/image_raw"})
-        if args.autonomy_mode == "lidar" and args.lidar_compensation != "none":
-            required_inputs |= {"/wheel_states", "/camera/imu"}
+        if args.autonomy_mode != "stereo" and args.lidar_compensation != "none":
+            required_inputs |= {"/wheel_states", "/imu/data" if args.autonomy_mode == "local_pursuit" else "/camera/imu"}
         allowed_inputs = required_inputs | {"/clock", "/parameter_events"}
         report["sensor_only_inputs"] = required_inputs.issubset(inputs) and inputs.issubset(allowed_inputs)
-        if args.disable_tof_safety:
+        if args.autonomy_mode == "local_pursuit":
+            safety_inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node("lidar_safety", "/")}
+            expected = {"/scan", "/imu/data", "/wheel_states", "/drive"}
+            report["safety_subscriptions"] = sorted(safety_inputs)
+            report["safety_sensor_only_inputs"] = expected.issubset(safety_inputs) and safety_inputs.issubset(expected | {"/clock", "/parameter_events"})
+        elif args.disable_tof_safety:
             report["safety_subscriptions"] = []
             report["safety_sensor_only_inputs"] = None
         else:
@@ -535,7 +593,7 @@ def main():
             report["safety_sensor_only_inputs"] = (tof_inputs | {"/drive", "/wheel_states"}).issubset(safety_inputs) and safety_inputs.issubset(
                 tof_inputs | {"/drive", "/wheel_states", "/clock", "/parameter_events"})
         add_rate_metrics(report, trace, scans, state.get("scan"), args.lidar_rate_hz)
-        if args.autonomy_mode == "lidar":
+        if args.autonomy_mode != "stereo":
             source_interface_passed = report["lidar_nominal_interface_passed"]
         else:
             add_depth_metrics(report, depth_stamps, state.get("depth"), state.get("depth_info"))
@@ -545,12 +603,23 @@ def main():
         future = stop_service.call_async(SetBool.Request(data=False))
         stop_start, stable_since = state["pose"]["time"], None
         stop_origin = state["pose"]["position"].copy()
-        stop_deadline = time.monotonic() + 60
+        stop_trace, last_stop_stamp = [], -math.inf
+        stop_deadline = time.monotonic() + args.stop_wall_timeout_s
         while state["pose"]["time"] - stop_start < 6:
             if stop_requested or time.monotonic() > stop_deadline or any(p.poll() is not None for p in processes):
                 raise TimeoutError("정지 검사 중 중단·시간 초과·프로세스 종료를 확인했습니다.")
             rclpy.spin_once(node, timeout_sec=.01)
             now = state["pose"]["time"]
+            if now > last_stop_stamp:
+                stop_pose = state['pose']
+                p = stop_pose['position']
+                footprint = rectangle(p['x'], p['y'], yaw_of(stop_pose['orientation']), .20, .15)
+                hit = any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))
+                stop_trace.append({'time': now, 'x': p['x'], 'y': p['y'],
+                                   'yaw': yaw_of(stop_pose['orientation']), 'collision': hit,
+                                   'ground_speed_mps': math.hypot(state['dynamics']['truth_longitudinal_mps'],
+                                                                  state['dynamics']['truth_lateral_mps'])})
+                last_stop_stamp = now
             if (abs(state["odom"].twist.twist.linear.x) < .01 and
                     abs(state["dynamics"]["truth_longitudinal_mps"]) < .01 and
                     abs(state["dynamics"]["truth_lateral_mps"]) < .01):
@@ -566,15 +635,25 @@ def main():
             [stop_origin.get(axis, 0.) for axis in ("x", "y")],
             [state["pose"]["position"].get(axis, 0.) for axis in ("x", "y")])
         report["final_odom_speed_mps"] = state["odom"].twist.twist.linear.x
+        report['stop_collision_samples'] = sum(row['collision'] for row in stop_trace)
+        (output/'stop_trace.json').write_text(json.dumps(stop_trace, indent=2), encoding='utf-8')
         route_evidence = ({20, 30}.issubset(markers_seen) if full_lap_validation else progress >= target_progress)
-        safety_evidence = (True if args.disable_tof_safety else report["safety_sensor_only_inputs"])
-        report["passed"] = (not false_start and collision_samples == 0 and report["stop_stable"] and
+        safety_evidence = (report["safety_sensor_only_inputs"] if safety_active else True)
+        report["passed"] = (not false_start and collision_samples == 0 and report['stop_collision_samples'] == 0 and report["stop_stable"] and
                             report["sensor_only_inputs"] and safety_evidence and source_interface_passed and
                             {"red", "yellow", "green"}.issubset(signal_states) and route_evidence)
     except Exception as error:
         report["error"] = str(error)
         print(f"검사 실패: {error}", flush=True)
     finally:
+        report['sensor_delivery'] = {}
+        for name, stamps in [('rgb', rgb_stamps), ('imu', imu_stamps)]:
+            report['sensor_delivery'][name] = {
+                'samples': len(stamps),
+                'rate_sim_hz': ((len(stamps)-1)/(stamps[-1]-stamps[0])
+                                if len(stamps) > 1 and stamps[-1] > stamps[0] else None),
+                'scope': 'validator receive stamps, not detector callback rate or wall-clock FPS',
+            }
         if "tracking_metrics" not in report:
             add_rate_metrics(report, trace, scans, state.get("scan"), args.lidar_rate_hz)
         if args.autonomy_mode == "stereo" and "depth" not in report:
@@ -590,7 +669,7 @@ def main():
                 "coordinate_mode": args.lidar_compensation,
                 "scope": "published status samples, not every control cycle",
             }
-        if args.autonomy_mode == "lidar" and args.lidar_acquisition == "sequential":
+        if args.autonomy_mode != "stereo" and args.lidar_acquisition == "sequential":
             (output / "acquisition.json").write_text(json.dumps(acquisition_records, indent=2), encoding="utf-8")
             report["sequential_acquisition_verified"] = bool(acquisition_records) and all(
                 r["max_capture_time_error_s"] <= .0021001 and r["discarded_source_gaps"] == 0
@@ -628,24 +707,39 @@ def main():
             }
         node.destroy_node()
         rclpy.shutdown()
-        for process in reversed(processes):
+        report['grid_slot'] = args.grid_slot
+        report['shutdown_mode'] = args.shutdown_mode
+        if args.shutdown_mode == 'service':
+            log.flush()
+            report['gazebo_stop_service'] = stop_gazebo_service(
+                processes[0] if processes else None, log_path.read_text(errors='replace'),
+                os.environ['GZ_PARTITION'])
+        # 평가용 pose reader와 ROS launch는 별도 그룹입니다. 전체 시스템에 신호를 보내지 않습니다.
+        reader_forced = []
+        for process in reversed(processes[1:]):
             for sig, timeout in ((signal.SIGINT, 15), (signal.SIGTERM, 5), (signal.SIGKILL, 5)):
                 if process.poll() is not None:
                     break
                 try:
-                    if process is processes[0] and sig == signal.SIGINT:
-                        process.send_signal(sig)
-                    else:
-                        os.killpg(process.pid, sig)
+                    if sig != signal.SIGINT:
+                        reader_forced.append(sig.name)
+                    os.killpg(process.pid, sig)
                     process.wait(timeout=timeout)
                 except (subprocess.TimeoutExpired, ProcessLookupError):
                     continue
+        cleanup = stop_launch(processes[0] if processes else None)
         log.close()
         report["process_exit_codes"] = [process.poll() for process in processes]
         report["process_errors"] = [line for line in log_path.read_text(errors="replace").splitlines()
                                     if "[ERROR]" in line or "[Err]" in line or "Traceback" in line or "Segmentation fault" in line]
-        report["shutdown_clean"] = (bool(processes) and processes[0].poll() == 0 and
-                                    all(p.poll() in (0, -signal.SIGINT, 130) for p in processes[1:]) and not report["process_errors"])
+        report['shutdown_audit'] = audit_shutdown(log_path.read_text(errors='replace'),
+            processes[0].poll() if processes else None, cleanup or None)
+        report['remaining_test_pids'] = sorted({pid for p in processes for pid in group_processes(p.pid)})
+        report['reader_forced_cleanup'] = reader_forced
+        report["shutdown_clean"] = (report['shutdown_audit']['clean'] and
+                                    not report['remaining_test_pids'] and not reader_forced and
+                                    all(p.poll() in (0, -signal.SIGINT, 130) for p in processes[1:]) and
+                                    (args.shutdown_mode != 'service' or report['gazebo_stop_service']['verified']))
         report["passed"] = report["passed"] and report["shutdown_clean"]
         report["drive_delivery"] = {
             "samples": len(drive_stamps),

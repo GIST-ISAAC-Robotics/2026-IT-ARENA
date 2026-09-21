@@ -2,7 +2,9 @@
 
 GIST-ISAAC-Robotics의 2026 IT ARENA 자율주행 대회 참가를 위한 소프트웨어·시뮬레이션 작업 공간입니다.
 
-현재 인수인계는 [프로젝트 현황](docs/PROJECT_CONTEXT.md), 구동 모델은 [단일 모터·차동 차량 동역학](docs/simulation/VEHICLE_DYNAMICS.md), 센서 기준선은 [상부 LiDAR·하부 ToF 링](docs/sensors/TOF_RING.md), 예산별 카메라와 축소 배치는 [스테레오 카메라·최소 ToF 검토](docs/sensors/STEREO_CAMERA_AND_MINIMAL_TOF.md), 이후 조향·회피·추월 후보는 [알고리즘 검토 노트](docs/autonomy/ALGORITHM_OPTIONS.md)에서 계속 관리합니다.
+현재 인수인계는 [프로젝트 현황](docs/PROJECT_CONTEXT.md), 최신 구현은 [B0183·C1·6축 IMU 지역 Pure Pursuit](docs/autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md), 구동 모델은 [단일 모터·차동 차량 동역학](docs/simulation/VEHICLE_DYNAMICS.md), 이후 조향·회피·추월 후보는 [알고리즘 검토 노트](docs/autonomy/ALGORITHM_OPTIONS.md)에서 관리합니다. 과거 [상부 LiDAR·하부 ToF](docs/sensors/TOF_RING.md)와 [스테레오·최소 ToF 검토](docs/sensors/STEREO_CAMERA_AND_MINIMAL_TOF.md)는 이전 비교 기록입니다.
+
+새 구성은 ROS 환경을 불러온 뒤 `ros2 launch arena_bringup local_pursuit.launch.py`로 실행합니다. 깊이/ToF 없이 순차 C1과 운동 보정을 사용하고 방지턱은 이 실행에서만 임시 해제합니다. 새 9 km/h 속도 상한은 성능 보장이 아니며 주행 결과·실패는 위 구현 기록을 확인하십시오. 기존 `demo.launch.py`의 저속 비교 구성은 유지합니다.
 
 최신 규정·트랙: [v2026.09.15 문서 적용·트랙 동일 확인](docs/track/OFFICIAL_V2026_09_15_DOC_UPDATE.md) · [9/14 회의 변경과 할 일](docs/reports/OFFICIAL_UPDATE_2026_09_15.md) · [v2026.09.14 재감사](docs/track/OFFICIAL_V2026_09_14_REAUDIT.md) · [#12 게시 완료 회신](docs/track/ISSUE_12_REPLY_DRAFT_2026_09_15.md).
 보유 D435i는 #14 공식 해석상 신규 구매 집계에서 제외됩니다. 본 경기 5랩·HW/SW 비상정지 각각 1개 이상 등의 규정은 문서에 반영했으며, 해당 경기 상태/실물 안전 기능의 구현 완료를 뜻하지 않습니다.

@@ -90,6 +90,13 @@ def test_clock_reset_clears_both_streams():
     assert not adapter.history.wheels.times and not adapter.history.gyro.times
 
 
+def test_independent_imu_topic_can_replace_camera_imu():
+    node = NodeDouble({'motion_imu_topic': '/imu/data'})
+    MotionInput(node)
+    assert '/imu/data' in node.subscriptions
+    assert '/camera/imu' not in node.subscriptions
+
+
 def test_future_time_and_duplicate_rejected():
     adapter = MotionInput(NodeDouble())
     adapter.on_imu(imu(1.))

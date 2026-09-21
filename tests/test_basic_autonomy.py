@@ -239,6 +239,7 @@ def test_aruco_gate_id_is_read_from_pixels():
     gray = np.full((200, 200), 255, np.uint8)
     gray[40:160, 40:160] = make(dictionary, 20, 120)
     assert marker_ids(cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)) == [20]
+    assert set(marker_ids(cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB), .02)) == {20}
 
 
 def controller_double(monkeypatch):
@@ -267,6 +268,7 @@ def controller_double(monkeypatch):
         get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(to_msg=lambda: stamp)),
         get_logger=lambda: SimpleNamespace(info=lambda *_: None))
     monkeypatch.setattr(wall_follow, "follow_command", lambda *_: (.3, .1, {"reason": "following"}))
+    controller.command = lambda points: wall_follow.WallFollow.command(controller, points)
     return controller, commands, statuses
 
 
@@ -354,9 +356,19 @@ def test_validator_forwards_shutdown_without_inherited_terminal(monkeypatch):
     assert "lidar_rate_hz:=10" in args[0]
     assert "tof_safety:=true" in args[0]
     assert "red_duration_s:=8" in args[0]
+    assert "grid_slot:=0" in args[0]
     assert kwargs["stdin"] == validator.subprocess.DEVNULL
     assert kwargs["start_new_session"] is True
     assert kwargs["stdout"] is log and kwargs["stderr"] is log
+
+
+def test_validator_passes_requested_grid_slot(monkeypatch):
+    monkeypatch.syspath_prepend(str(REPO / "scripts"))
+    import validate_basic_autonomy as validator
+    calls = []
+    monkeypatch.setattr(validator.subprocess, 'Popen', lambda command, **kw: calls.append(command))
+    validator.start_demo_process(object(), grid_slot=3)
+    assert 'grid_slot:=3' in calls[0]
 
 
 def test_high_speed_recording_options_are_explicit_and_default_stays_protected(monkeypatch):
