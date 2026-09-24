@@ -38,9 +38,10 @@ class MotionInput:
         self.counts = {"wheels": 0, "gyro": 0, "rejected": 0, "resets": 0}
         self.last_meta = {}
         # 독립 비교의 none도 같은 입력 부하를 받는다. 일반 none에서는 생성하지 않아도 된다.
-        node.create_subscription(JointState, "/wheel_states", self.on_wheels, 100)
+        wrap = node.timing.wrap if hasattr(node, 'timing') else lambda _, callback: callback
+        node.create_subscription(JointState, "/wheel_states", wrap('wheels', self.on_wheels), 100)
         imu_topic = str(node.declare_parameter("motion_imu_topic", "/camera/imu").value)
-        node.create_subscription(Imu, imu_topic, self.on_imu, qos_profile_sensor_data)
+        node.create_subscription(Imu, imu_topic, wrap('imu', self.on_imu), qos_profile_sensor_data)
 
     def clock(self):
         now = self.node.get_clock().now().nanoseconds * 1e-9

@@ -37,6 +37,21 @@ def test_clear_path_keeps_speed():
     assert commands[-1].drive.speed == 2.
 
 
+def test_delayed_old_scan_stops_even_with_fresh_transport_and_running_command():
+    node, commands, statuses = node_double()
+    LidarSafety.control(node)
+    assert commands[-1].drive.speed == 2.
+    # 첫 점 취득 10.0 + 한 바퀴 0.1 + 추가 전송 0.3초.
+    # 방금 도착했어도 첫 점은 이미 400 ms 전 값이다. 명령은 새 값으로 유지한다.
+    node.command.header.stamp.nanosec = 400_000_000
+    node.scan_wall = node.command_wall = time.monotonic()
+    node.get_clock = lambda: SimpleNamespace(now=lambda: SimpleNamespace(
+        nanoseconds=10_400_000_000, to_msg=lambda: node.command.header.stamp))
+    LidarSafety.control(node)
+    assert commands[-1].drive.speed == 0.
+    assert json.loads(statuses[-1].data)['reason'] == 'stale_input'
+
+
 @pytest.mark.parametrize('fault', ['no_scan', 'no_command', 'old_command', 'old_scan', 'nan_command',
                                    'reverse', 'unknown_front', 'motion_gap', 'transport'])
 def test_faults_stop_independent_gate(fault):

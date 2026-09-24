@@ -362,6 +362,15 @@ def _launch_setup(context):
     if autonomy_mode not in AUTONOMY_MODES:
         raise RuntimeError(f"autonomy_mode must be one of {AUTONOMY_MODES}")
     local_mode = autonomy_mode == "local_pursuit"
+    guarded_actuation = LaunchConfiguration('actuation_mode').perform(context) == 'virtual_mcu'
+    if guarded_actuation and not local_mode:
+        raise RuntimeError('virtual_mcu는 독립 LiDAR 보호층이 있는 local_pursuit 시험 전용입니다.')
+    motion_test = LaunchConfiguration('motion_test_profile').perform(context)
+    if motion_test and not local_mode:
+        raise RuntimeError('IMU/엔코더 오류 시험은 local_pursuit 전용입니다.')
+    test_profile = LaunchConfiguration('lidar_test_profile').perform(context)
+    if test_profile and LaunchConfiguration('lidar_acquisition').perform(context) != 'sequential':
+        raise RuntimeError('LiDAR 오차/지연 시험은 sequential 취득에서만 허용합니다.')
     profile = None
     if local_mode:
         profile = yaml.safe_load((description_share / "config/b0183_c1.yaml").read_text())
@@ -650,6 +659,7 @@ def _launch_setup(context):
         executable="parameter_bridge",
         name="d435i_sensor_bridge",
         output="screen",
+        remappings=[('/imu/data', '/test/raw_imu')] if motion_test else [],
         parameters=[{"config_file": str(bringup_share / "config" /
                                         ("b0183_imu_bridge.yaml" if local_mode else
                                          "d435i_sensor_bridge.yaml" if depth_enabled else "d435i_rgb_imu_bridge.yaml"))}],
@@ -667,7 +677,7 @@ def _launch_setup(context):
 
     vehicle_interface = Node(
         package="arena_vehicle_interface",
-        executable="ackermann_to_twist",
+        executable="guarded_sim_actuator" if guarded_actuation else "ackermann_to_twist",
         output="screen",
         remappings=[("/drive", "/drive/safe")] if safety_enabled else [],
         parameters=[
@@ -678,6 +688,7 @@ def _launch_setup(context):
                     drivetrain["max_steering_angle_rad"]
                 ),
                 "use_sim_time": True,
+                **({"wall_timeout_s": sensor_wall_timeout} if guarded_actuation else {}),
             }
         ],
     )
@@ -723,6 +734,20 @@ def _launch_setup(context):
     ]
     if not render_sensors:
         actions.remove(sensor_bridge)
+    if guarded_actuation:
+        actions.extend([
+            LogInfo(msg='A1-2 virtual MCU: explicit /actuation/arm required; no automatic restart. Gazebo inner motor PI remains ideal.'),
+            Node(package='arena_vehicle_interface', executable='actuation_host', output='screen',
+                 parameters=[{'use_sim_time': True, 'wall_timeout_s': sensor_wall_timeout}]),
+            Node(package='arena_vehicle_interface', executable='virtual_mcu', output='screen', parameters=[{
+                'use_sim_time': True, 'wall_timeout_s': sensor_wall_timeout,
+                'wheel_radius_m': float(drivetrain['wheel_radius_m']),
+                'ticks_per_revolution': int(wheel_encoders['ticks_per_revolution']),
+                'max_steering_angle_rad': math.atan(float(drivetrain['wheelbase_m']) /
+                    (float(drivetrain['wheelbase_m']) / math.tan(float(drivetrain['max_steering_angle_rad'])) +
+                     float(drivetrain['track_width_m']) / 2)),
+            }]),
+        ])
     if depth_enabled and render_sensors:
         actions.append(pointcloud_bridge)
     if temporary_world is not None:
@@ -749,7 +774,8 @@ def _launch_setup(context):
             actions.append(Node(package="arena_vehicle_interface", executable="rotating_lidar",
                                 parameters=[{"use_sim_time": True, "rotation_rate_hz": lidar_rate_hz,
                                              "samples_per_scan": int(lidar["samples_per_scan"]),
-                                             "acquisition": LaunchConfiguration("lidar_acquisition").perform(context)}],
+                                             "acquisition": LaunchConfiguration("lidar_acquisition").perform(context),
+                                             "test_impairment_profile": test_profile}],
                                 output="screen"))
         actions.extend([
             Node(package="ros_gz_bridge", executable="parameter_bridge", name="lidar_bridge",
@@ -826,6 +852,7 @@ def _launch_setup(context):
             (float(drivetrain["wheelbase_m"])/math.tan(float(drivetrain["max_steering_angle_rad"])) + float(drivetrain["track_width_m"])/2))
         actions.append(Node(package="arena_autonomy", executable="lidar_safety", parameters=[{
             "use_sim_time": True, "lidar_compensation": "both", "motion_scan_timing_verified": True,
+            "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
             "motion_wheel_radius_m": float(drivetrain["wheel_radius_m"]),
             "motion_rear_axle_x_m": -float(drivetrain["wheelbase_m"])/2,
             "motion_lidar_x_m": float(lidar["xyz_m"][0]), "motion_lidar_y_m": float(lidar["xyz_m"][1]),
@@ -844,6 +871,7 @@ def _launch_setup(context):
         executable = "local_pursuit" if local_mode else "wall_follow" if autonomy_mode == "lidar" else "stereo_wall_follow"
         controller_parameters = {
             "use_sim_time": True,
+            "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
             **speed_profile,
             "control_rate_hz": control_rate,
             "wheelbase_m": float(drivetrain["wheelbase_m"]),
@@ -892,6 +920,7 @@ def _launch_setup(context):
                 package="arena_vehicle_interface",
                 executable="sim_wheel_encoder",
                 output="screen",
+                remappings=[('/wheel_states', '/test/raw_wheels')] if motion_test else [],
                 parameters=[
                     {
                         "left_joint_name": wheel_encoders["left_joint_name"],
@@ -910,6 +939,11 @@ def _launch_setup(context):
             )
         )
 
+    if motion_test:
+        actions.append(Node(package='arena_vehicle_interface', executable='motion_fault_relay',
+                            parameters=[{'use_sim_time': True, 'profile': str(Path(motion_test).resolve()),
+                                         'audit_path': str(Path(runtime_artifacts).resolve()/'motion_injection.jsonl') if runtime_artifacts else ''}],
+                            output='screen'))
     return actions
 
 
@@ -918,6 +952,8 @@ def generate_launch_description() -> LaunchDescription:
     return LaunchDescription(
         [
             DeclareLaunchArgument("lidar_compensation", default_value="none", choices=["none", "deskew", "shift", "both"]),
+            DeclareLaunchArgument('actuation_mode', default_value='legacy', choices=['legacy', 'virtual_mcu'], description='가상 MCU 계약 시험. 새 모드는 명시적 ARM 필요'),
+            DeclareLaunchArgument('timing_probe', default_value='false', choices=['true', 'false']),
             DeclareLaunchArgument("autonomy_control_rate_hz", default_value="20.0", description="자율주행 제어 주기; 센서 주기와 독립"),
             DeclareLaunchArgument("sensor_wall_timeout_s", default_value="3.0", description="오프라인 감시 벽시계 한도. 센서의 시뮬레이션 시각 제한은 유지"),
             # 이번 launch의 ROS 하위 프로세스에만 적용합니다. 별도 수신 터미널도
@@ -992,6 +1028,8 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("depth_camera", default_value="true", description="깊이 센서와 점군을 켭니다. RGB·IMU는 유지합니다."),
             DeclareLaunchArgument("speed_bump", default_value="true", description="false는 실행 사본에서만 임시 방지턱 제거"),
             DeclareLaunchArgument("runtime_artifacts", default_value="", description="검증 실행 입력 보관 폴더"),
+            DeclareLaunchArgument("lidar_test_profile", default_value="", description="시험용 거리오차/지연 JSON; 빈 값은 기존 동작"),
+            DeclareLaunchArgument("motion_test_profile", default_value="", description="시험용 IMU/엔코더 오류 JSON; 기본 비활성"),
             DeclareLaunchArgument("batch_static_visuals", default_value="false", description="정적 상자 표시만 동일 꼭짓점/재질의 메시로 묶음; 충돌체 불변"),
             DeclareLaunchArgument("chase_camera", default_value="false", description="영상 검증 전용 차량 추적 3인칭 카메라"),
             DeclareLaunchArgument("traffic_light", default_value="false", description="빨강-노랑-초록 출발 신호와 수동 제어"),

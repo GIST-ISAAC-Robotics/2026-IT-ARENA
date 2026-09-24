@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import signal
 import subprocess
+import sys
 import threading
 import time
 import zipfile
@@ -159,7 +160,8 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
                        red_duration_s=8.0, autonomy_mode="lidar", chase_camera=False,
                        lidar_acquisition="snapshot", lidar_compensation="none",
                        control_rate_hz=20.0, render_backend="system", sensor_wall_timeout_s=3.0,
-                       speed_bump=True, collision_detector="configured", runtime_artifacts="", grid_slot=0):
+                       speed_bump=True, collision_detector="configured", runtime_artifacts="", grid_slot=0,
+                       lidar_test_profile="", motion_test_profile="", actuation_mode="legacy", record_inputs=False):
     # 이 검사기는 터미널 프로세스 그룹이 아니라 ros2 launch에만 SIGINT를
     # 보냅니다. WSL의 TTY 상속 여부와 무관하게 자식에게도 전달되게 합니다.
     return subprocess.Popen(
@@ -167,12 +169,16 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
          f"speed_profile:={speed_profile}", f"lidar_rate_hz:={lidar_rate_hz:g}",
          f"tof_safety:={str(bool(tof_safety)).lower()}", f"red_duration_s:={red_duration_s:g}",
          f"autonomy_mode:={autonomy_mode}",
+         f"actuation_mode:={actuation_mode}",
+         f"timing_probe:={str(record_inputs).lower()}",
          f"lidar_acquisition:={lidar_acquisition}", f"lidar_compensation:={lidar_compensation}",
          f"autonomy_control_rate_hz:={control_rate_hz}", f"render_backend:={render_backend}",
          f"sensor_wall_timeout_s:={sensor_wall_timeout_s}",
          f"speed_bump:={str(speed_bump).lower()}", f"collision_detector:={collision_detector}",
-         f"runtime_artifacts:={runtime_artifacts}",
+         *([f"runtime_artifacts:={runtime_artifacts}"] if runtime_artifacts else []),
          f"grid_slot:={grid_slot}",
+         *([f"lidar_test_profile:={lidar_test_profile}"] if lidar_test_profile else []),
+         *([f"motion_test_profile:={motion_test_profile}"] if motion_test_profile else []),
          f"batch_static_visuals:={str(autonomy_mode == 'local_pursuit').lower()}",
          f"chase_camera:={str(bool(chase_camera)).lower()}"],
         cwd=REPO, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
@@ -180,8 +186,14 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--actuation-mode', choices=('legacy', 'virtual_mcu'), default='legacy')
+    parser.add_argument('--record-inputs', action='store_true', help='A2 MCAP 원시 센서/비교 출력 기록 및 선택형 콜백 계측')
+    parser.add_argument('--actuation-stop', choices=('software_stop', 'host_exit'), default='software_stop',
+                        help='virtual_mcu 시험 마지막 정지 방식; legacy에는 적용 안 함')
     parser.add_argument("--laps", type=int, default=2)
     parser.add_argument("--grid-slot", type=int, choices=range(6), default=0)
+    parser.add_argument('--lidar-test-profile', default='', help='합성 거리오차/지연 JSON; 기본은 비활성')
+    parser.add_argument('--motion-test-profile', default='', help='시험용 IMU/엔코더 오류 JSON')
     parser.add_argument("--shutdown-mode", choices=("sigint", "service"), default="sigint",
                         help="service는 격리된 Gazebo 정상 종료 확인 후 ROS launch를 종료합니다.")
     parser.add_argument("--lidar-acquisition", choices=("snapshot", "sequential"), default="snapshot")
@@ -211,6 +223,24 @@ def main():
     parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy_official",
                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
     args = parser.parse_args()
+    if args.record_inputs and args.autonomy_mode != 'local_pursuit':
+        raise ValueError('A2 recorder currently requires local_pursuit')
+    if args.actuation_mode == 'virtual_mcu' and args.autonomy_mode != 'local_pursuit':
+        raise ValueError('virtual_mcu requires local_pursuit with the independent safety layer')
+    motion_test_config = None
+    if args.motion_test_profile:
+        if args.autonomy_mode != 'local_pursuit' or args.lidar_compensation != 'both':
+            raise ValueError('운동 입력 시험은 local_pursuit+both 전용입니다.')
+        from arena_vehicle_interface.motion_impairment import MotionFaultConfig
+        args.motion_test_profile = str(Path(args.motion_test_profile).resolve())
+        motion_test_config = MotionFaultConfig.from_dict(json.loads(Path(args.motion_test_profile).read_text())).as_dict()
+    test_profile_config = None
+    if args.lidar_test_profile:
+        if args.lidar_acquisition != 'sequential' or args.autonomy_mode != 'local_pursuit':
+            raise ValueError('이번 거리오차/지연 검사는 순차 local_pursuit 전용입니다.')
+        from arena_vehicle_interface.lidar_impairment import ImpairmentConfig
+        args.lidar_test_profile = str(Path(args.lidar_test_profile).resolve())
+        test_profile_config = vars(ImpairmentConfig(**json.loads(Path(args.lidar_test_profile).read_text())))
     if args.wall_timeout_s is not None and (not math.isfinite(args.wall_timeout_s) or args.wall_timeout_s <= 0):
         raise ValueError("실제 시간 한도는 유한한 양수여야 합니다.")
     if not math.isfinite(args.stop_wall_timeout_s) or args.stop_wall_timeout_s <= 0:
@@ -241,7 +271,7 @@ def main():
     from nav_msgs.msg import Odometry
     from ackermann_msgs.msg import AckermannDriveStamped
     from std_msgs.msg import String
-    from std_srvs.srv import SetBool
+    from std_srvs.srv import SetBool, Trigger
 
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
     node = rclpy.create_node("basic_autonomy_validator")
@@ -296,6 +326,17 @@ def main():
             Image, "/sim/chase/image", lambda m: remember(m, "chase"), QoSProfile(depth=2)
         ))
     stop_service = node.create_client(SetBool, "/autonomy/enable")
+    actuation_trace, arm_future = [], None
+    arm_service = node.create_client(Trigger, '/actuation/arm')
+    mcu_stop_service = node.create_client(Trigger, '/actuation/stop')
+    if args.actuation_mode == 'virtual_mcu':
+        def receive_actuation(message):
+            status = json.loads(message.data)
+            state['actuation'] = status
+            actuation_trace.append(status)
+        subscriptions.append(node.create_subscription(String, '/actuation/status', receive_actuation, 100))
+        subscriptions.append(node.create_subscription(String, '/actuation/output_status',
+            lambda m: remember(json.loads(m.data), 'actuation_output'), 100))
     # demo.launch.py의 track=official과 같은 월드로 진행 거리와 충돌을 판정합니다.
     world = DEMO_WORLD
     route = np.genfromtxt(world / "centerline.csv", delimiter=",", names=True)
@@ -350,6 +391,7 @@ def main():
                                             REPO / "src/arena_bringup/launch/local_pursuit.launch.py",
                                             REPO / "src/arena_bringup/config/b0183_imu_bridge.yaml",
                                             REPO / "src/arena_vehicle_interface/arena_vehicle_interface/rotating_lidar.py",
+                                            REPO / "src/arena_vehicle_interface/arena_vehicle_interface/lidar_impairment.py",
                                             REPO / "src/arena_gazebo/src/single_motor_drive.cpp",
                                             REPO / "src/arena_gazebo/include/arena_gazebo/drivetrain.hpp",
                                             REPO / "src/arena_vehicle_interface/arena_vehicle_interface/sim_wheel_encoder.py",
@@ -359,6 +401,29 @@ def main():
                                             REPO / "src/arena_autonomy/arena_autonomy/tof_safety_core.py",
                                             REPO / "src/arena_bringup/config/wall_follow.yaml"]}}
     processes = []
+    recorder = recorder_log = None
+    if args.record_inputs:
+        for rel in ('scripts/record_sensor_bag.py',
+                    'src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py',
+                    'src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py'):
+            report['input_sha256'][rel] = hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+    if args.actuation_mode == 'virtual_mcu':
+        for name in ('actuation_ros', 'applied_guard', 'actuation_contract', 'actuation_wire'):
+            rel = f'src/arena_vehicle_interface/arena_vehicle_interface/{name}.py'
+            report['input_sha256'][rel] = hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+    if motion_test_config is not None:
+        report['requested_motion_impairment'] = motion_test_config
+        (output/'motion_test_profile.json').write_text(json.dumps(motion_test_config, indent=2))
+        report['motion_test_profile_sha256'] = hashlib.sha256(Path(args.motion_test_profile).read_bytes()).hexdigest()
+        for rel in ('src/arena_vehicle_interface/arena_vehicle_interface/motion_impairment.py',
+                    'src/arena_vehicle_interface/arena_vehicle_interface/motion_fault_relay.py',
+                    'src/arena_vehicle_interface/setup.py', 'scripts/motion_fault_audit.py'):
+            report['input_sha256'][rel] = hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+    if test_profile_config is not None:
+        report['requested_lidar_impairment'] = test_profile_config
+        profile_bytes = Path(args.lidar_test_profile).read_bytes()
+        (output/'lidar_test_profile.json').write_bytes(profile_bytes)
+        report['lidar_test_profile_sha256'] = hashlib.sha256(profile_bytes).hexdigest()
     with zipfile.ZipFile(output / "source_snapshot.zip", "w", zipfile.ZIP_DEFLATED) as archive:
         for relative in report["input_sha256"]:
             archive.write(REPO / relative, relative)
@@ -381,13 +446,24 @@ def main():
     checkpoint({"completed": False, "state": "STARTING", "pid": os.getpid(),
                 "started_at_utc": report["started_at_utc"], "input_sha256": report["input_sha256"]})
     try:
+        if args.record_inputs:
+            recorder_log = (output/'recorder.log').open('w', encoding='utf-8')
+            recorder = subprocess.Popen([sys.executable, str(REPO/'scripts/record_sensor_bag.py'),
+                '--output', str(output/'sensor_recording')], stdout=recorder_log, stderr=recorder_log,
+                stdin=subprocess.DEVNULL, start_new_session=True)
+            deadline = time.monotonic()+30
+            while not (output/'sensor_recording/ready.json').exists():
+                if recorder.poll() is not None or time.monotonic() > deadline:
+                    raise RuntimeError('A2 recorder startup failed; see recorder.log')
+                time.sleep(.1)
         processes.append(start_demo_process(log, args.speed_profile, args.lidar_rate_hz,
                                             not args.disable_tof_safety, args.red_duration_s,
                                             args.autonomy_mode, args.video, args.lidar_acquisition,
                                             args.lidar_compensation, args.control_rate_hz,
                                             args.render_backend, args.sensor_wall_timeout_s,
                                             not args.disable_speed_bump, args.collision_detector, str(output),
-                                            args.grid_slot))
+                                            args.grid_slot, args.lidar_test_profile, args.motion_test_profile,
+                                            args.actuation_mode, args.record_inputs))
         pose_process = subprocess.Popen(["gz", "topic", "-e", "-t", "/world/it_arena_track/dynamic_pose/info", "--json-output"],
                                         cwd=REPO, stdout=subprocess.PIPE, stderr=log, text=True, start_new_session=True)
         processes.append(pose_process)
@@ -413,6 +489,16 @@ def main():
         collision_samples = 0
         while True:
             rclpy.spin_once(node, timeout_sec=.005)
+            if args.actuation_mode == 'virtual_mcu' and 'actuation' in state:
+                status = state['actuation']
+                # 시험자가 한 번만 명시적으로 허가한다. 운영 노드에 자동 ARM은 없다.
+                if (arm_future is None and status['stationary_ready'] and status['output_ready'] and arm_service.service_is_ready() and
+                        status['now_us'] - actuation_trace[0]['now_us'] > 1_000_000):
+                    arm_future = arm_service.call_async(Trigger.Request())
+                if arm_future is not None and arm_future.done() and not arm_future.result().success:
+                    raise RuntimeError('MCU ARM refused: ' + arm_future.result().message)
+                if status['state'] in ('FAULT_LATCHED', 'ESTOP_LATCHED'):
+                    raise RuntimeError('MCU latched before requested stop: ' + status['reason'])
             if stop_requested:
                 raise RuntimeError("검사 중단 요청")
             if any(process.poll() is not None for process in processes):
@@ -568,6 +654,11 @@ def main():
         controller_name = "local_pursuit" if args.autonomy_mode == "local_pursuit" else "wall_follow" if args.autonomy_mode == "lidar" else "stereo_wall_follow"
         inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node(controller_name, "/")}
         report["autonomy_subscriptions"] = sorted(inputs)
+        if motion_test_config is not None:
+            publishers = {topic: sorted(i.node_name for i in node.get_publishers_info_by_topic(topic))
+                          for topic in ('/imu/data', '/wheel_states')}
+            report['motion_relay_publishers'] = publishers
+            report['motion_relay_exclusive'] = all(v == ['motion_fault_relay'] for v in publishers.values())
         required_inputs = ({"/scan", "/camera/color/image_raw"} if args.autonomy_mode != "stereo" else
                            {"/camera/depth/image_rect_raw", "/camera/depth/camera_info",
                             "/camera/color/image_raw"})
@@ -598,9 +689,29 @@ def main():
         else:
             add_depth_metrics(report, depth_stamps, state.get("depth"), state.get("depth_info"))
             source_interface_passed = report["depth_nominal_interface_passed"]
-        if not stop_service.wait_for_service(timeout_sec=3):
-            raise TimeoutError("차량 정지 서비스를 찾지 못했습니다.")
-        future = stop_service.call_async(SetBool.Request(data=False))
+        if args.actuation_mode == 'virtual_mcu':
+            host_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('actuation_host', '/')})
+            mcu_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('virtual_mcu', '/')})
+            sink_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('guarded_sim_actuator', '/')})
+            if args.actuation_stop == 'host_exit':
+                import re
+                from rclpy.task import Future
+                matches = re.findall(r'\[actuation_host-\d+\]: process started with pid \[(\d+)\]',
+                                     log_path.read_text(errors='replace'))
+                if len(matches) != 1:
+                    raise RuntimeError('isolated actuation host PID not identified')
+                os.kill(int(matches[0]), signal.SIGINT)
+                report['stopped_actuation_host_pid'] = int(matches[0])
+                future = Future()
+                future.set_result(Trigger.Response(success=True, message='host exit requested, verify MCU stop separately'))
+            else:
+                if not mcu_stop_service.wait_for_service(timeout_sec=3):
+                    raise TimeoutError('MCU STOP service unavailable')
+                future = mcu_stop_service.call_async(Trigger.Request())
+        else:
+            if not stop_service.wait_for_service(timeout_sec=3):
+                raise TimeoutError("차량 정지 서비스를 찾지 못했습니다.")
+            future = stop_service.call_async(SetBool.Request(data=False))
         stop_start, stable_since = state["pose"]["time"], None
         stop_origin = state["pose"]["position"].copy()
         stop_trace, last_stop_stamp = [], -math.inf
@@ -636,16 +747,42 @@ def main():
             [state["pose"]["position"].get(axis, 0.) for axis in ("x", "y")])
         report["final_odom_speed_mps"] = state["odom"].twist.twist.linear.x
         report['stop_collision_samples'] = sum(row['collision'] for row in stop_trace)
+        if args.actuation_mode == 'virtual_mcu':
+            report['actuation'] = {
+                'arm_acknowledged': bool(arm_future is not None and arm_future.done() and arm_future.result().success),
+                'final_mcu': state.get('actuation'), 'final_output': state.get('actuation_output'),
+                'stop_mode': args.actuation_stop,
+                'positive_commands': sum(s['target_speed_mps'] > 0 for s in actuation_trace),
+                'host_subscriptions': host_inputs, 'mcu_subscriptions': mcu_inputs,
+                'sink_subscriptions': sink_inputs,
+            }
+            required = [({'/drive/safe', '/actuation/rx'}, host_inputs),
+                        ({'/wheel_states', '/actuation/tx', '/actuation/output_status'}, mcu_inputs),
+                        ({'/actuation/status'}, sink_inputs)]
+            report['actuation']['sensor_only_inputs'] = all(
+                expected.issubset(inputs) and set(inputs).issubset(expected | {'/clock', '/parameter_events'})
+                for expected, inputs in required)
+            final = state.get('actuation', {})
+            expected_reason = 'command_expired' if args.actuation_stop == 'host_exit' else 'software_stop'
+            report['actuation_passed'] = (report['actuation']['arm_acknowledged'] and
+                report['actuation']['positive_commands'] > 0 and report['actuation']['sensor_only_inputs'] and
+                final.get('reason') == expected_reason and
+                final.get('state') in ('FAULT_LATCHED', 'ESTOP_LATCHED') and
+                state.get('actuation_output', {}).get('speed_mps') == 0.)
         (output/'stop_trace.json').write_text(json.dumps(stop_trace, indent=2), encoding='utf-8')
         route_evidence = ({20, 30}.issubset(markers_seen) if full_lap_validation else progress >= target_progress)
         safety_evidence = (report["safety_sensor_only_inputs"] if safety_active else True)
         report["passed"] = (not false_start and collision_samples == 0 and report['stop_collision_samples'] == 0 and report["stop_stable"] and
                             report["sensor_only_inputs"] and safety_evidence and source_interface_passed and
                             {"red", "yellow", "green"}.issubset(signal_states) and route_evidence)
+        if args.actuation_mode == 'virtual_mcu':
+            report['passed'] &= report['actuation_passed']
     except Exception as error:
         report["error"] = str(error)
         print(f"검사 실패: {error}", flush=True)
     finally:
+        if actuation_trace:
+            (output/'actuation_trace.json').write_text(json.dumps(actuation_trace, indent=2), encoding='utf-8')
         report['sensor_delivery'] = {}
         for name, stamps in [('rgb', rgb_stamps), ('imu', imu_stamps)]:
             report['sensor_delivery'][name] = {
@@ -675,6 +812,21 @@ def main():
                 r["max_capture_time_error_s"] <= .0021001 and r["discarded_source_gaps"] == 0
                 for r in acquisition_records)
             report["passed"] = report["passed"] and report["sequential_acquisition_verified"]
+            if test_profile_config is not None:
+                injected = [row for row in acquisition_records if 'impairment' in row]
+                verified = bool(injected) and len(injected) == len(acquisition_records) and all(
+                    row['impairment']['config'] == test_profile_config and
+                    row['injected_delay_s'] + 1e-8 >= test_profile_config['delay_s'] - test_profile_config['jitter_s'] and
+                    row['release_source_stamp_s'] >= row['last_ray_stamp_s']
+                    for row in injected)
+                report['lidar_impairment_audit'] = {
+                    'verified': verified, 'published_scan_records': len(injected),
+                    'last_error_statistics': injected[-1]['impairment'] if injected else None,
+                    'min_added_delay_s': min((r['injected_delay_s'] for r in injected), default=None),
+                    'max_added_delay_s': max((r['injected_delay_s'] for r in injected), default=None),
+                    'scope': 'synthetic range error and source-time release delay; ROS receive age may be greater',
+                }
+                report['passed'] = report['passed'] and verified
         if "rgb" in state:
             cv2.imwrite(str(output / "last_rgb.png"), cv2.cvtColor(image_array(state["rgb"]), cv2.COLOR_RGB2BGR))
         if "scan" in state:
@@ -707,6 +859,23 @@ def main():
             }
         node.destroy_node()
         rclpy.shutdown()
+        if recorder is not None:
+            forced = False
+            if recorder.poll() is None:
+                recorder.send_signal(signal.SIGINT)
+                try:
+                    recorder.wait(timeout=60)
+                except subprocess.TimeoutExpired:
+                    forced = True
+                    recorder.kill()
+                    recorder.wait(timeout=5)
+            recorder_log.close()
+            manifest_path = output/'sensor_recording/manifest.json'
+            manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
+            report['recording'] = {'complete': manifest.get('complete', False),
+                'exit_code': recorder.returncode, 'forced_cleanup': forced,
+                'path': 'sensor_recording', 'error': manifest.get('error')}
+            report['passed'] &= bool(manifest.get('complete') and recorder.returncode == 0 and not forced)
         report['grid_slot'] = args.grid_slot
         report['shutdown_mode'] = args.shutdown_mode
         if args.shutdown_mode == 'service':
@@ -741,6 +910,11 @@ def main():
                                     all(p.poll() in (0, -signal.SIGINT, 130) for p in processes[1:]) and
                                     (args.shutdown_mode != 'service' or report['gazebo_stop_service']['verified']))
         report["passed"] = report["passed"] and report["shutdown_clean"]
+        if motion_test_config is not None:
+            from motion_fault_audit import audit
+            report['motion_impairment_audit'] = audit(output/'motion_injection.jsonl', motion_test_config)
+            report['passed'] = (report['passed'] and report['motion_impairment_audit']['verified']
+                                and report.get('motion_relay_exclusive', False))
         report["drive_delivery"] = {
             "samples": len(drive_stamps),
             "measured_sim_hz": ((len(drive_stamps) - 1) / (drive_stamps[-1] - drive_stamps[0])

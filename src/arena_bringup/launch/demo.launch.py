@@ -26,6 +26,8 @@ def _include_simulation(context):
         "tof_profile": LaunchConfiguration("tof_profile"),
         "lidar_rate_hz": LaunchConfiguration("lidar_rate_hz"),
         "lidar_acquisition": LaunchConfiguration("lidar_acquisition"),
+        "lidar_test_profile": LaunchConfiguration("lidar_test_profile"),
+        "motion_test_profile": LaunchConfiguration("motion_test_profile"),
         "lidar_compensation": LaunchConfiguration("lidar_compensation"),
         "autonomy_control_rate_hz": LaunchConfiguration("autonomy_control_rate_hz"),
         "sensor_wall_timeout_s": LaunchConfiguration("sensor_wall_timeout_s"),
@@ -34,6 +36,8 @@ def _include_simulation(context):
         "tof_safety": LaunchConfiguration("tof_safety"),
         "drive_mode": LaunchConfiguration("drive_mode"),
         "autonomy_mode": mode,
+        "actuation_mode": LaunchConfiguration("actuation_mode"),
+        "timing_probe": LaunchConfiguration("timing_probe"),
         "chase_camera": LaunchConfiguration("chase_camera"),
         "speed_bump": LaunchConfiguration("speed_bump"),
         "runtime_artifacts": LaunchConfiguration("runtime_artifacts"),
@@ -44,6 +48,8 @@ def _include_simulation(context):
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument('actuation_mode', default_value='legacy', choices=['legacy', 'virtual_mcu']),
+        DeclareLaunchArgument('timing_probe', default_value='false', choices=['true', 'false']),
         DeclareLaunchArgument("headless", default_value="false"),
         DeclareLaunchArgument("render_backend", default_value="system", choices=["auto", "system", "wsl_nvidia", "software"]),
         DeclareLaunchArgument("collision_detector", default_value="configured", choices=["configured", "ode", "bullet", "fcl"]),
@@ -58,6 +64,8 @@ def generate_launch_description():
         DeclareLaunchArgument("tof_profile", default_value="configured", description="하부 ToF 영역·주기 프로필"),
         DeclareLaunchArgument("lidar_rate_hz", default_value="configured", description="라이다 주기 비교용 실행 덮어쓰기"),
         DeclareLaunchArgument("lidar_acquisition", default_value="snapshot", choices=["snapshot", "sequential"]),
+        DeclareLaunchArgument("lidar_test_profile", default_value="", description="명시적 시험용 거리오차/지연 JSON"),
+        DeclareLaunchArgument("motion_test_profile", default_value="", description="시험 전용 IMU/엔코더 오차 JSON"),
         DeclareLaunchArgument("lidar_compensation", default_value="none", choices=["none", "deskew", "shift", "both"]),
         DeclareLaunchArgument("autonomy_control_rate_hz", default_value="20.0", description="단독 고속 시험용 제어 주기; 기본 20 Hz 유지"),
         DeclareLaunchArgument("sensor_wall_timeout_s", default_value="3.0", description="느린 오프라인 시뮬레이션용 벽시계 감시 한도; 센서 취득 시각 제한은 유지"),

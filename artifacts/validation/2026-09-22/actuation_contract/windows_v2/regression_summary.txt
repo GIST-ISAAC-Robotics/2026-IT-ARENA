@@ -1,0 +1,17 @@
+Actuation contract verification results
+Date: 2026-09-22
+
+Windows unit tests
+Command: python tests/test_actuation_contract.py
+Result: 37 tests passed (exit code 0)
+
+Windows local IPC validator
+Command: python scripts/validate_actuation_contract.py --output artifacts/validation/2026-09-22/actuation_contract/windows_v2
+Result: passed=true, 11 cases, 0 failed (exit code 0)
+Detailed per-case artifacts: report.json and the individual case JSON files in this directory.
+Independent-process case: exitcode=0, forced_termination=false, residual_process=false.
+
+WSL ROS regression
+Command: python3 -m pytest tests src/arena_vehicle_interface/test -q
+Environment: Ubuntu-24.04, ROS Jazzy and workspace install overlay
+Result: 339 passed in 17.58s (exit code 0)

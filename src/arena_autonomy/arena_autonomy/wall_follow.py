@@ -12,6 +12,7 @@ from std_msgs.msg import String
 from std_srvs.srv import SetBool, Trigger
 
 from arena_vehicle_interface.node_lifecycle import run_node
+from arena_vehicle_interface.timing_probe import TimingProbe
 from arena_autonomy.core import StartSignal, follow_command, image_rgb, marker_ids, scan_points
 from arena_autonomy.lidar_motion import MODES, MotionUnavailable
 from arena_autonomy.lidar_motion_ros import MotionInput
@@ -24,6 +25,7 @@ def stamp_seconds(stamp):
 class WallFollow(Node):
     def __init__(self, node_name="wall_follow"):
         super().__init__(node_name)
+        self.timing = TimingProbe(self)
         defaults = {"wheelbase_m": .145, "lidar_x_m": -.03, "max_steering_angle_rad": .43,
                     "target_wall_distance_m": .425, "max_speed_mps": .35, "min_speed_mps": .14,
                     "scan_timeout_s": .45, "image_timeout_s": 1.0, "control_rate_hz": 20.0,
@@ -56,11 +58,11 @@ class WallFollow(Node):
         self.last_control_time = -math.inf
         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive", 10)
         self.status_publisher = self.create_publisher(String, "/autonomy/status", 10)
-        self.create_subscription(LaserScan, "/scan", self.on_scan, qos_profile_sensor_data)
-        self.create_subscription(Image, "/camera/color/image_raw", self.on_image, QoSProfile(depth=2))
+        self.create_subscription(LaserScan, "/scan", self.timing.wrap('scan', self.on_scan), qos_profile_sensor_data)
+        self.create_subscription(Image, "/camera/color/image_raw", self.timing.wrap('image', self.on_image), QoSProfile(depth=2))
         self.create_service(SetBool, "/autonomy/enable", self.on_enable)
         self.create_service(Trigger, "/autonomy/reset", self.on_reset)
-        self.create_timer(1 / self.settings["control_rate_hz"], self.control)
+        self.create_timer(1 / self.settings["control_rate_hz"], self.timing.wrap('control', self.control))
         self.get_logger().info(f"RGB 빨강→초록 대기. lidar_compensation={motion_mode}; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.")
 
     def now_s(self):

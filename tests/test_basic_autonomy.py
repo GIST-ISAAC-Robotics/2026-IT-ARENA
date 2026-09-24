@@ -357,6 +357,8 @@ def test_validator_forwards_shutdown_without_inherited_terminal(monkeypatch):
     assert "tof_safety:=true" in args[0]
     assert "red_duration_s:=8" in args[0]
     assert "grid_slot:=0" in args[0]
+    assert not any(argument.endswith(':=') for argument in args[0])
+    assert not any(argument.startswith('lidar_test_profile:=') for argument in args[0])
     assert kwargs["stdin"] == validator.subprocess.DEVNULL
     assert kwargs["start_new_session"] is True
     assert kwargs["stdout"] is log and kwargs["stderr"] is log
@@ -369,6 +371,18 @@ def test_validator_passes_requested_grid_slot(monkeypatch):
     monkeypatch.setattr(validator.subprocess, 'Popen', lambda command, **kw: calls.append(command))
     validator.start_demo_process(object(), grid_slot=3)
     assert 'grid_slot:=3' in calls[0]
+
+
+def test_validator_passes_nonempty_impairment_and_artifact_paths_as_single_arguments(monkeypatch):
+    monkeypatch.syspath_prepend(str(REPO / 'scripts'))
+    import validate_basic_autonomy as validator
+    calls = []
+    monkeypatch.setattr(validator.subprocess, 'Popen', lambda command, **kw: calls.append(command))
+    validator.start_demo_process(None, lidar_test_profile='/tmp/profile with spaces.json',
+                                 runtime_artifacts='/tmp/run with spaces')
+    assert 'lidar_test_profile:=/tmp/profile with spaces.json' in calls[0]
+    assert 'runtime_artifacts:=/tmp/run with spaces' in calls[0]
+    assert not any(argument.endswith(':=') for argument in calls[0])
 
 
 def test_high_speed_recording_options_are_explicit_and_default_stays_protected(monkeypatch):

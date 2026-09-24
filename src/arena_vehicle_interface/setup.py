@@ -23,6 +23,10 @@ setup(
             "ackermann_to_twist = arena_vehicle_interface.ackermann_to_twist:main",
             "sim_wheel_encoder = arena_vehicle_interface.sim_wheel_encoder:main",
             "rotating_lidar = arena_vehicle_interface.rotating_lidar:main",
+            "motion_fault_relay = arena_vehicle_interface.motion_fault_relay:main",
+            "actuation_host = arena_vehicle_interface.actuation_ros:host_main",
+            "virtual_mcu = arena_vehicle_interface.actuation_ros:mcu_main",
+            "guarded_sim_actuator = arena_vehicle_interface.actuation_ros:actuator_main",
         ],
     },
 )

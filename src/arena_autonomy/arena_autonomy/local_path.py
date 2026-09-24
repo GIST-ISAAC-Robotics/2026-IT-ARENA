@@ -43,7 +43,23 @@ def local_path(points, side, offset=.425, horizon=1.8):
         score = float(np.min(distances))
         if score > .35:
             continue
-        arc = np.r_[0., np.cumsum(np.linalg.norm(np.diff(wall, axis=0), axis=1))]
+        # 거리 잡음의 지그재그를 모두 더하면 직선의 호길이가 몇 배 부풀고
+        # 1.8 m 관측 예산을 실제 0.5 m 정도에서 소진한다. 연결 구간 안에서만
+        # 호길이 측정용 좌표를 평활화한다. 실제 적합/잔차와 보호층은 원시 점을 사용한다.
+        # 깨끗한 벽의 실제 모서리까지 바꾸지 않는다. 각 중간점과 양옆 점의
+        # 현 사이 수직 잔차의 중앙값으로 구간 전체에 퍼진 거칠기만 검출한다.
+        # 소수의 모서리/끝면은 이 중앙값을 올리지 않는다.
+        chord = wall[2:] - wall[:-2]
+        middle = wall[1:-1] - wall[:-2]
+        roughness = float(np.median(np.abs(chord[:, 0]*middle[:, 1] - chord[:, 1]*middle[:, 0]) /
+                                    np.maximum(1e-9, np.linalg.norm(chord, axis=1))))
+        metric = wall
+        if roughness > .003:
+            padded = np.pad(wall, ((3, 3), (0, 0)), mode='edge')
+            metric = np.column_stack([np.convolve(padded[:, axis], np.ones(7)/7, mode='valid')
+                                      for axis in (0, 1)])
+        steps = np.maximum(1e-6, np.linalg.norm(np.diff(metric, axis=0), axis=1))
+        arc = np.r_[0., np.cumsum(steps)]
         anchor_s = arc[anchor]
         first, last = max(0., anchor_s-.25), min(arc[-1], anchor_s+horizon)
         if last-anchor_s >= .28:

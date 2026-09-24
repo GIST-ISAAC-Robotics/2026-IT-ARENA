@@ -1,0 +1,286 @@
+{
+  "created_utc": "2026-09-22T08:04:57.946876+00:00",
+  "scope": "PC reference protocol and toy motor only",
+  "config": {
+    "lease_us": 100000,
+    "feedback_timeout_us": 50000,
+    "settle_us": 200000,
+    "max_control_gap_us": 50000,
+    "wheel_radius_m": 0.025,
+    "ticks_per_rev": 2048,
+    "max_speed_mps": 2.5,
+    "max_steering_rad": 0.37,
+    "stopped_wheel_mps": 0.03,
+    "max_wheel_mps": 5.0
+  },
+  "results": [
+    {
+      "case": "normal",
+      "passed": true,
+      "checks": {
+        "started_before_injection": true,
+        "no_drive_before_arm": true,
+        "positive_target_requires_armed": true,
+        "operator_controls_accepted": true,
+        "tracking_mean_error_below_015": true,
+        "no_fault": true,
+        "model_stopped": true
+      },
+      "peak_model_speed_mps": 1.4765391859817003,
+      "final_state": "ARMED"
+    },
+    {
+      "case": "host_loss",
+      "passed": true,
+      "checks": {
+        "started_before_injection": true,
+        "no_drive_before_arm": true,
+        "positive_target_requires_armed": true,
+        "operator_controls_accepted": true,
+        "zero_target_after_fault": true,
+        "model_stopped_before_recovery": true,
+        "no_automatic_restart": true
+      },
+      "peak_model_speed_mps": 1.4765391859817003,
+      "final_state": "FAULT_LATCHED"
+    },
+    {
+      "case": "duplicate_replay",
+      "passed": true,
+      "checks": {
+        "started_before_injection": true,
+        "no_drive_before_arm": true,
+        "positive_target_requires_armed": true,
+        "operator_controls_accepted": true,
+        "zero_target_after_fault": true,
+        "model_stopped_before_recovery": true,
+        "no_automatic_restart": true,
+        "old_packets_rejected": true
+      },
+      "peak_model_speed_mps": 1.4765391859817003,
+      "final_state": "FAULT_LATCHED"
+    },
+    {
+      "case": "delayed_packet",
+      "passed": true,
+      "checks": {
+        "started_before_injection": true,
+        "no_drive_before_arm": true,
+        "positive_target_requires_armed": true,
+        "operator_controls_accepted": true,
+        "zero_target_after_fault": true,
+        "model_stopped_before_recovery": true,
+        "no_automatic_restart": true,
+        "old_packets_rejected": true
+      },
+      "peak_model_speed_mps": 1.4765391859817003,
+      "final_state": "FAULT_LATCHED"
+    },
+    {
+      "case": "encoder_loss",
+      "passed": true,
+      "checks": {
+        "started_before_injection": true,
+        "no_drive_before_arm": true,
+        "positive_target_requires_armed": true,
+        "operator_controls_accepted": true,
+        "zero_target_after_fault": true,
+        "model_stopped_before_recovery": true,
+        "no_automatic_restart": true
+      },
+      "peak_model_speed_mps": 1.4765391859817003,
+      "final_state": "FAULT_LATCHED"
+    },
+    {
+      "case": "estop_release",
+      "passed": true,
+      "checks": {
+        "started_before_injection": true,
+        "no_drive_before_arm": true,
+        "positive_target_requires_armed": true,
+        "operator_controls_accepted": true,
+        "zero_target_after_fault": true,
+        "model_stopped_before_recovery": true,
+        "no_automatic_restart": true
+      },
+      "peak_model_speed_mps": 1.4765391859817003,
+      "final_state": "ESTOP_LATCHED"
+    },
+    {
+      "case": "mcu_reboot",
+      "passed": true,
+      "checks": {
+        "started_before_injection": true,
+        "no_drive_before_arm": true,
+        "positive_target_requires_armed": true,
+        "operator_controls_accepted": true,
+        "zero_target_after_fault": true,
+        "model_stopped_before_recovery": true,
+        "no_automatic_restart": true
+      },
+      "peak_model_speed_mps": 1.4765391859817003,
+      "final_state": "DISARMED"
+    },
+    {
+      "case": "host_reboot",
+      "passed": true,
+      "checks": {
+        "started_before_injection": true,
+        "no_drive_before_arm": true,
+        "positive_target_requires_armed": true,
+        "operator_controls_accepted": true,
+        "zero_target_after_fault": true,
+        "model_stopped_before_recovery": true,
+        "no_automatic_restart": true
+      },
+      "peak_model_speed_mps": 1.4765391859817003,
+      "final_state": "FAULT_LATCHED"
+    },
+    {
+      "case": "clear_without_arm",
+      "passed": true,
+      "checks": {
+        "started_before_injection": true,
+        "no_drive_before_arm": true,
+        "positive_target_requires_armed": true,
+        "operator_controls_accepted": true,
+        "zero_target_after_fault": true,
+        "model_stopped_before_recovery": true,
+        "no_automatic_restart": true
+      },
+      "peak_model_speed_mps": 1.4765391859817003,
+      "final_state": "DISARMED"
+    },
+    {
+      "case": "explicit_rearm",
+      "passed": true,
+      "checks": {
+        "started_before_injection": true,
+        "no_drive_before_arm": true,
+        "positive_target_requires_armed": true,
+        "operator_controls_accepted": true,
+        "zero_target_after_fault": true,
+        "model_stopped_before_recovery": true,
+        "resumes_only_after_explicit_arm": true
+      },
+      "peak_model_speed_mps": 1.4765391859817003,
+      "final_state": "ACTIVE"
+    },
+    {
+      "case": "independent_process_sender_silence",
+      "passed": true,
+      "arm": {
+        "ok": true,
+        "reason": "explicit_arm",
+        "state": "ARMED"
+      },
+      "checks": {
+        "moving_before_silence": true,
+        "receiver_latched_on_own_clock": true,
+        "command_timeout_reason": true,
+        "zero_target": true,
+        "old_packet_rejected": true,
+        "model_stopped": true,
+        "no_auto_restart": true
+      },
+      "before": {
+        "offer": {
+          "v": 1,
+          "boot": "61f6451872a642708344c3d51d751764",
+          "generation": 1,
+          "state": "ACTIVE",
+          "reason": "drive",
+          "owner": "e8a4631fd41e413a8089282e8427c453",
+          "accepted_seq": 103,
+          "target_speed_mps": 1.2,
+          "steering_rad": 0.1,
+          "left_wheel_mps": 1.3470129126383301,
+          "right_wheel_mps": 1.3470129126383301,
+          "feedback_valid": true,
+          "feedback_seq": 208,
+          "left_ticks": 29973,
+          "right_ticks": 29973,
+          "feedback_capture_us": 2355033,
+          "deadline_us": 2440171,
+          "estop_held": false,
+          "lease": 117,
+          "lease_issued_us": 2360141,
+          "lease_expires_us": 2460141
+        },
+        "model_speed_mps": 1.3421064869682362
+      },
+      "after": {
+        "offer": {
+          "v": 1,
+          "boot": "61f6451872a642708344c3d51d751764",
+          "generation": 2,
+          "state": "FAULT_LATCHED",
+          "reason": "command_expired",
+          "owner": null,
+          "accepted_seq": -1,
+          "target_speed_mps": 0.0,
+          "steering_rad": 0.1,
+          "left_wheel_mps": 0.8932919502407486,
+          "right_wheel_mps": 0.8932919502407486,
+          "feedback_valid": true,
+          "feedback_seq": 234,
+          "left_ticks": 34612,
+          "right_ticks": 34612,
+          "feedback_capture_us": 2660356,
+          "deadline_us": null,
+          "estop_held": false,
+          "lease": 118,
+          "lease_issued_us": 2662895,
+          "lease_expires_us": 2762895
+        },
+        "model_speed_mps": 0.8781969419376032
+      },
+      "replay": {
+        "ok": false,
+        "reason": "session",
+        "state": "FAULT_LATCHED"
+      },
+      "final": {
+        "offer": {
+          "v": 1,
+          "boot": "61f6451872a642708344c3d51d751764",
+          "generation": 2,
+          "state": "FAULT_LATCHED",
+          "reason": "command_expired",
+          "owner": null,
+          "accepted_seq": -1,
+          "target_speed_mps": 0.0,
+          "steering_rad": 0.1,
+          "left_wheel_mps": 0.0,
+          "right_wheel_mps": 0.0,
+          "feedback_valid": true,
+          "feedback_seq": 314,
+          "left_ticks": 37140,
+          "right_ticks": 37140,
+          "feedback_capture_us": 3565999,
+          "deadline_us": null,
+          "estop_held": false,
+          "lease": 119,
+          "lease_issued_us": 3565999,
+          "lease_expires_us": 3665999
+        },
+        "model_speed_mps": 0.0
+      },
+      "exit_ack": {
+        "exit": true,
+        "state": "ESTOP_LATCHED"
+      },
+      "forced_termination": false,
+      "exitcode": 0,
+      "residual_process": false
+    }
+  ],
+  "source_sha256": {
+    "scripts\\validate_actuation_contract.py": "c5201295502224b36f1d084b1d1cfe1afa1b572d937b399685b5ad9f36d7ff05",
+    "tests\\test_actuation_contract.py": "1d180eadad0fa187431d90fb9373545cb4cc1fa47e9ad68a2f1960c9171b38fd",
+    "src\\arena_vehicle_interface\\arena_vehicle_interface\\actuation_contract.py": "1a8ab487fded5ee920121dc7dea6d73e70892fb8a5f57900fd19a2daa3371106",
+    "src\\arena_vehicle_interface\\arena_vehicle_interface\\actuation_wire.py": "1410828c83ded442749ff05314b056d586d6d322a9bc0de75bcd9bcc7bf02f25",
+    "src\\arena_vehicle_interface\\arena_vehicle_interface\\mcu_speed_loop.py": "29ca8192d84f0c4d18794f2fd379950bcd821f81d8a07bf6460cd0b784633031"
+  },
+  "passed": true
+}

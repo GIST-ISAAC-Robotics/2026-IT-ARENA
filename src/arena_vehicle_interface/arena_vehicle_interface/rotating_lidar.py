@@ -5,6 +5,7 @@
 """
 import copy
 import math
+from pathlib import Path
 
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
@@ -13,6 +14,7 @@ from std_msgs.msg import String
 import json
 
 from arena_vehicle_interface.node_lifecycle import run_node
+from arena_vehicle_interface.lidar_impairment import ImpairmentConfig, ScanImpairment
 
 
 class RevolutionAssembler:
@@ -72,6 +74,8 @@ class RotatingLidar(Node):
         if self.mode not in ("sequential", "snapshot_matched"):
             raise ValueError("지원하지 않는 취득 방식")
         self.assembler = RevolutionAssembler(rate, count)
+        profile = str(self.declare_parameter('test_impairment_profile', '').value)
+        self.impairment = ScanImpairment(ImpairmentConfig(**json.loads(Path(profile).read_text()))) if profile else None
         qos = QoSProfile(depth=200, reliability=ReliabilityPolicy.RELIABLE)
         self.publisher = self.create_publisher(LaserScan, "/scan", 10)
         self.audit = self.create_publisher(String, "/sim/lidar_acquisition", 10)
@@ -79,6 +83,8 @@ class RotatingLidar(Node):
 
     def on_scan(self, message):
         stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
+        if self.impairment:
+            self.publish_ready(self.impairment.advance(stamp))
         for first, ranges, error in self.assembler.feed(stamp, message.ranges):
             scan = copy.deepcopy(message)
             sequential = self.mode == "sequential"
@@ -88,14 +94,25 @@ class RotatingLidar(Node):
             scan.intensities = []
             scan.scan_time = self.assembler.period if sequential else 0.0
             scan.time_increment = self.assembler.increment if sequential else 0.0
-            self.publisher.publish(scan)
-            self.audit.publish(String(data=json.dumps({
+            audit = {
                 "first_ray_stamp_s": first, "source_stamp_at_publish_s": stamp,
                 "last_ray_stamp_s": first + (self.assembler.samples - 1) * self.assembler.increment,
                 "max_capture_time_error_s": error,
                 "discarded_source_gaps": self.assembler.discarded,
                 "model": self.mode,
-            })))
+            }
+            if self.impairment:
+                scan.ranges = self.impairment.distort(scan.ranges, scan.range_min, scan.range_max)
+                self.impairment.enqueue(scan, stamp, audit)
+                self.publish_ready(self.impairment.advance(stamp))
+            else:
+                self.publisher.publish(scan)
+                self.audit.publish(String(data=json.dumps(audit)))
+
+    def publish_ready(self, ready):
+        for scan, audit in ready:
+            self.publisher.publish(scan)
+            self.audit.publish(String(data=json.dumps(audit)))
 
 
 def main(args=None):

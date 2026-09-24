@@ -14,11 +14,13 @@ from arena_autonomy.lidar_motion import MotionUnavailable
 from arena_autonomy.lidar_motion_ros import MotionInput, seconds
 from arena_autonomy.local_path import mask_scan, swept_limit, braking_speed
 from arena_vehicle_interface.node_lifecycle import run_node
+from arena_vehicle_interface.timing_probe import TimingProbe
 
 
 class LidarSafety(Node):
     def __init__(self):
         super().__init__("lidar_safety")
+        self.timing = TimingProbe(self)
         self.motion = MotionInput(self)
         self.wall_timeout = float(self.declare_parameter("sensor_wall_timeout_s", 3.).value)
         self.limit = float(self.declare_parameter("max_steering_angle_rad", .37).value)
@@ -35,9 +37,9 @@ class LidarSafety(Node):
         self.last_clock = None
         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive/safe", 10)
         self.status = self.create_publisher(String, "/safety/status", 10)
-        self.create_subscription(LaserScan, "/scan", self.on_scan, qos_profile_sensor_data)
-        self.create_subscription(AckermannDriveStamped, "/drive", self.on_command, 10)
-        self.create_timer(.02, self.control)
+        self.create_subscription(LaserScan, "/scan", self.timing.wrap('scan', self.on_scan), qos_profile_sensor_data)
+        self.create_subscription(AckermannDriveStamped, "/drive", self.timing.wrap('command', self.on_command), 10)
+        self.create_timer(.02, self.timing.wrap('control', self.control))
 
     def on_scan(self, msg):
         if self.scan is None or seconds(msg.header.stamp) >= seconds(self.scan.header.stamp):
