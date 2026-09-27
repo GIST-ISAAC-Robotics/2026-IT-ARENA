@@ -140,7 +140,7 @@ RGB 글로벌 셔터60fps를 갖춘 상위안이다. 335의RGB는롤링 셔터�
 335→335L은 크기만 변하는 관계가 아니며, 336/336L의핵심 차이는깊이IR-pass필터다.
 최대 입력fps와실효 깊이·RGB 동시 처리율은 별도로 검증한다.
 
-단가·구성·출처와 현재 추천의 전체 근거는 [예산안](../hardware/SENSOR_BUDGET_CASES_2026_09_05.md#ir-조건을-반영한-추천-수정)을 따른다.
+단가·구성·출처와 현재 추천의 전체 근거는 [예산안](../hardware/SENSOR_BUDGET_CASES_2026_09_05.md#9월5일-ir-조건을-반영한-추천-당시-기록)을 따른다.
 사양 근거: [Orbbec 비교표](https://www.orbbec.com/compare-products-spec/),
 [Luxonis Lite](https://checkout.luxonis.com/products/oak-d-lite-1),
 [OAK-D Pro](https://docs.luxonis.com/hardware/products/OAK-D%20Pro),
