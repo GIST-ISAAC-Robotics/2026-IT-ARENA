@@ -1,4 +1,4 @@
-"""팀 시험용 차량 후면 5 cm ArUco ID 10 형상 검사."""
+"""팀 등록 차량 후면 5 cm ArUco ID 49와 등록 PNG 일치 검사."""
 
 from pathlib import Path
 import re
@@ -34,30 +34,46 @@ def load():
 def test_rear_marker_configuration_is_explicit_and_does_not_reuse_course_ids():
     _, marker, _ = load()
     assert marker["dictionary"] == "DICT_4X4_50"
-    assert marker["id"] == 10
+    assert marker["id"] == 49
     assert marker["id"] not in {0, 20, 30, 45}
     assert marker["printed_board_size_m"] == .05
-    assert marker["black_code_size_m"] + 2 * marker["quiet_zone_each_side_m"] == .05
-    assert marker["status"].startswith("team_provisional_")
+    np.testing.assert_allclose(marker["black_code_size_m"] + 2 * marker["quiet_zone_each_side_m"],
+                               .05, rtol=0, atol=1e-12)
+    assert marker["status"] == "team_selected_registered_mount_provisional"
+    assert marker["black_code_size_m"] == .0348
 
 
-def test_rear_marker_visual_encodes_dictionary_id_10_without_changing_collision_shape():
+def test_rear_marker_visual_encodes_dictionary_id_49_without_changing_collision_shape():
     config, marker, model = load()
     chassis = model.find("link[@name='chassis']")
-    board = chassis.find("visual[@name='rear_marker_id10_board']")
+    board = chassis.find("visual[@name='rear_marker_id49_board']")
     np.testing.assert_allclose(
         list(map(float, board.findtext("geometry/box/size").split())),
         [.001, .05, .05],
     )
-    ink = [visual for visual in chassis.findall("visual") if visual.attrib["name"].startswith("rear_marker_id10_ink_")]
+    ink = [visual for visual in chassis.findall("visual") if visual.attrib["name"].startswith("rear_marker_id49_ink_")]
     rendered = np.full((6, 6), 255, dtype=np.uint8)
     for visual in ink:
-        match = re.fullmatch(r"rear_marker_id10_ink_(\d)_(\d)", visual.attrib["name"])
+        match = re.fullmatch(r"rear_marker_id49_ink_(\d)_(\d)", visual.attrib["name"])
         assert match
         rendered[int(match.group(1)), int(match.group(2))] = 0
     dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    expected = cv2.aruco.drawMarker(dictionary, 10, 6)
+    make = getattr(cv2.aruco, "generateImageMarker", None) or cv2.aruco.drawMarker
+    expected = make(dictionary, 49, 6)
     np.testing.assert_array_equal(rendered, expected)
+    # 1000 px 등록 PNG와 물리 비율/셀 배치가 같고 좌우 반전되지 않는지 대조한다.
+    source = cv2.imread(str(REPO / marker['source_image']), cv2.IMREAD_GRAYSCALE)
+    reproduced = np.full((1000, 1000), 255, dtype=np.uint8)
+    reproduced[152:848, 152:848] = np.repeat(np.repeat(rendered, 116, axis=0), 116, axis=1)
+    np.testing.assert_array_equal(reproduced, source)
+    assert marker['black_code_size_m'] / marker['printed_board_size_m'] == 696 / 1000
+    for visual in ink:
+        row, col = map(int, visual.attrib['name'].rsplit('_', 2)[1:])
+        pose = list(map(float, visual.findtext('pose').split()))
+        step = marker['black_code_size_m'] / 6
+        # 후방(-X)에서 볼 때 화면 오른쪽은 차량 -Y. 등록 PNG의 열과 일치해야 한다.
+        assert abs(pose[1] - (-marker['black_code_size_m'] / 2 + (col + .5) * step) * -1) < 1e-9
+        assert pose[0] < marker['xyz_m'][0]
     assert not [
         collision for collision in chassis.findall("collision")
         if collision.attrib["name"].startswith("rear_marker_")

@@ -13,7 +13,7 @@
   <xacro:arg name="rear_marker_z" default="0.090"/>
   <xacro:arg name="rear_marker_yaw" default="3.1415926536"/>
   <xacro:arg name="rear_marker_board_size" default="0.050"/>
-  <xacro:arg name="rear_marker_code_size" default="0.035"/>
+  <xacro:arg name="rear_marker_code_size" default="0.0348"/>
   <xacro:arg name="gear_ratio" default="8.0"/>
   <xacro:arg name="gear_efficiency" default="1.0"/>
   <xacro:arg name="motor_torque_limit" default="0.060"/>
@@ -320,14 +320,14 @@
   </xacro:macro>
 
   <!--
-    팀 시험용 후방 식별 마커: DICT_4X4_50 ID 10. 5 cm 인쇄판 안에
-    3.5 cm 코드를 두어 양쪽 7.5 mm 흰 여백을 확보합니다. 운영진이 사전·ID·
-    설치 위치를 확정하면 교체해야 하며, 현재는 충돌체가 없는 표시용 형상입니다.
+    2026-09-28 팀 등록 후방 마커: DICT_4X4_50 ID 49. 등록 PNG와 동일한
+    5 cm 판·3.48 cm 코드·양쪽 7.6 mm 흰 여백입니다. 기존 셀 렌더링을 유지하며
+    장착 위치는 임시값, 충돌체가 없는 표시용 형상입니다.
   -->
-  <xacro:macro name="rear_marker_id10_cell" params="row col">
+  <xacro:macro name="rear_marker_id49_cell" params="row col">
     <xacro:property name="marker_local_y" value="${-float('$(arg rear_marker_code_size)') / 2.0 + (float(col) + 0.5) * rear_marker_cell_size}"/>
     <xacro:property name="marker_local_z" value="${float('$(arg rear_marker_code_size)') / 2.0 - (float(row) + 0.5) * rear_marker_cell_size}"/>
-    <visual name="rear_marker_id10_ink_${row}_${col}">
+    <visual name="rear_marker_id49_ink_${row}_${col}">
       <pose>${float('$(arg rear_marker_x)') + 0.0007 * cos(float('$(arg rear_marker_yaw)')) - marker_local_y * sin(float('$(arg rear_marker_yaw)'))}
             ${float('$(arg rear_marker_y)') + 0.0007 * sin(float('$(arg rear_marker_yaw)')) + marker_local_y * cos(float('$(arg rear_marker_yaw)'))}
             ${float('$(arg rear_marker_z)') - (wheel_radius + body_height / 2.0) + marker_local_z}
@@ -362,7 +362,7 @@
         </material>
       </visual>
       <xacro:if value="$(arg rear_marker_enabled)">
-        <visual name="rear_marker_id10_board">
+        <visual name="rear_marker_id49_board">
           <pose>$(arg rear_marker_x) $(arg rear_marker_y)
                 ${float('$(arg rear_marker_z)') - (wheel_radius + body_height / 2.0)}
                 0 0 $(arg rear_marker_yaw)</pose>
@@ -372,20 +372,22 @@
           </material>
           <cast_shadows>false</cast_shadows>
         </visual>
-        <xacro:rear_marker_id10_cell row="0" col="0"/><xacro:rear_marker_id10_cell row="0" col="1"/>
-        <xacro:rear_marker_id10_cell row="0" col="2"/><xacro:rear_marker_id10_cell row="0" col="3"/>
-        <xacro:rear_marker_id10_cell row="0" col="4"/><xacro:rear_marker_id10_cell row="0" col="5"/>
-        <xacro:rear_marker_id10_cell row="1" col="0"/><xacro:rear_marker_id10_cell row="1" col="5"/>
-        <xacro:rear_marker_id10_cell row="2" col="0"/><xacro:rear_marker_id10_cell row="2" col="2"/>
-        <xacro:rear_marker_id10_cell row="2" col="3"/><xacro:rear_marker_id10_cell row="2" col="5"/>
-        <xacro:rear_marker_id10_cell row="3" col="0"/><xacro:rear_marker_id10_cell row="3" col="2"/>
-        <xacro:rear_marker_id10_cell row="3" col="3"/><xacro:rear_marker_id10_cell row="3" col="5"/>
-        <xacro:rear_marker_id10_cell row="4" col="0"/><xacro:rear_marker_id10_cell row="4" col="1"/>
-        <xacro:rear_marker_id10_cell row="4" col="2"/><xacro:rear_marker_id10_cell row="4" col="3"/>
-        <xacro:rear_marker_id10_cell row="4" col="5"/>
-        <xacro:rear_marker_id10_cell row="5" col="0"/><xacro:rear_marker_id10_cell row="5" col="1"/>
-        <xacro:rear_marker_id10_cell row="5" col="2"/><xacro:rear_marker_id10_cell row="5" col="3"/>
-        <xacro:rear_marker_id10_cell row="5" col="4"/><xacro:rear_marker_id10_cell row="5" col="5"/>
+        <xacro:rear_marker_id49_cell row="0" col="0"/><xacro:rear_marker_id49_cell row="0" col="1"/>
+        <xacro:rear_marker_id49_cell row="0" col="2"/><xacro:rear_marker_id49_cell row="0" col="3"/>
+        <xacro:rear_marker_id49_cell row="0" col="4"/><xacro:rear_marker_id49_cell row="0" col="5"/>
+        <xacro:rear_marker_id49_cell row="1" col="0"/><xacro:rear_marker_id49_cell row="1" col="1"/>
+        <xacro:rear_marker_id49_cell row="1" col="3"/><xacro:rear_marker_id49_cell row="1" col="5"/>
+        <xacro:rear_marker_id49_cell row="2" col="0"/><xacro:rear_marker_id49_cell row="2" col="1"/>
+        <xacro:rear_marker_id49_cell row="2" col="2"/><xacro:rear_marker_id49_cell row="2" col="3"/>
+        <xacro:rear_marker_id49_cell row="2" col="4"/><xacro:rear_marker_id49_cell row="2" col="5"/>
+        <xacro:rear_marker_id49_cell row="3" col="0"/><xacro:rear_marker_id49_cell row="3" col="1"/>
+        <xacro:rear_marker_id49_cell row="3" col="2"/><xacro:rear_marker_id49_cell row="3" col="3"/>
+        <xacro:rear_marker_id49_cell row="3" col="5"/>
+        <xacro:rear_marker_id49_cell row="4" col="0"/><xacro:rear_marker_id49_cell row="4" col="1"/>
+        <xacro:rear_marker_id49_cell row="4" col="2"/><xacro:rear_marker_id49_cell row="4" col="5"/>
+        <xacro:rear_marker_id49_cell row="5" col="0"/><xacro:rear_marker_id49_cell row="5" col="1"/>
+        <xacro:rear_marker_id49_cell row="5" col="2"/><xacro:rear_marker_id49_cell row="5" col="3"/>
+        <xacro:rear_marker_id49_cell row="5" col="4"/><xacro:rear_marker_id49_cell row="5" col="5"/>
       </xacro:if>
       <collision name="collision">
         <geometry>

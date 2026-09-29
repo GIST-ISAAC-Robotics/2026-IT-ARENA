@@ -21,22 +21,23 @@ vehicle:
     width_m: 0.15
     inspection_steering_state: unconfirmed
 
-  # 공식 MANUAL의 후방 5×5 cm 식별 마커 의무를 시뮬레이션에서 먼저 표현합니다.
-  # 사전·ID·정확한 위치는 아직 운영진 확정값이 아니며, 코스에서 사용하지 않는
-  # DICT_4X4_50 ID 10을 팀 시험용으로 선택했습니다. 중앙 후방 ToF와 상부 LiDAR
-  # 스캔면을 직접 가리지 않도록 차체 뒤쪽 중앙, 지면 9 cm 높이에 둡니다.
+  # 2026-09-28 팀 선택·공식 #1 등록: DICT_4X4_50 ID 49, 흰 여백 포함 5×5 cm.
+  # 공식 생성기 PNG의 코드 696/1000 px 비율을 물리 치수에 그대로 적용합니다.
+  # 후방 중앙·지면 9 cm의 장착 위치는 시뮬 임시값이며 실물 배치는 미확정입니다.
   identification_marker:
     enabled: true
     dictionary: DICT_4X4_50
-    id: 10
+    id: 49
     printed_board_size_m: 0.050
-    black_code_size_m: 0.035
-    quiet_zone_each_side_m: 0.0075
+    black_code_size_m: 0.0348
+    quiet_zone_each_side_m: 0.0076
     xyz_m: [-0.1005, 0.0, 0.090]
     rpy_rad: [0.0, 0.0, 3.1415926536]
     representation: visual_only_sdf_cells
-    purpose: provisional_vehicle_identification_marker
-    status: team_provisional_pending_organizer_dictionary_id_and_mounting_details
+    purpose: registered_team_vehicle_identification_marker
+    status: team_selected_registered_mount_provisional
+    source_image: artifacts/markers/2026-09-28/id49_preview/marker_DICT_4X4_50_id49.png
+    registration: https://github.com/MOSW626/istech-it-arena/issues/1#issuecomment-5858748518
 
   # 충돌체는 전체 평면 외형을 단순한 상자로 근사합니다.
   # 실제 섀시 판의 형상·높이·질량을 확정한 것은 아닙니다.
