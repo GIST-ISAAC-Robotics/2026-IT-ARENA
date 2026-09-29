@@ -85,6 +85,22 @@ def compare_commands(original, replayed, last_input_ns):
                 scope='zero-order previous recorded command; asynchronous timing differences included; not trajectory error')
 
 
+def active_window_continuity(original, replayed):
+    """기준 기록의 이동 구간에서 새 안전 명령의 0/역행/비유한 값을 별도 판정한다."""
+    moving = [r[0] for r in original if math.isfinite(r[1]) and r[1] > .1]
+    if not moving:
+        return dict(no_interruption=False, reason='no_reference_moving_window', samples=0)
+    start, end = min(moving), max(moving)
+    selected = [r for r in replayed if start <= r[0] <= end]
+    invalid = sum(not math.isfinite(r[1]) or not math.isfinite(r[2]) for r in selected)
+    zeros = sum(math.isfinite(r[1]) and abs(r[1]) < 1e-8 for r in selected)
+    reverse = sum(math.isfinite(r[1]) and r[1] < -1e-8 for r in selected)
+    return dict(no_interruption=bool(selected) and not (invalid or zeros or reverse),
+        reference_start_ns=start, reference_end_ns=end, samples=len(selected),
+        zero_commands=zeros, reverse_commands=reverse, invalid_commands=invalid,
+        scope='Observed commands in the reference moving window; not continuous coverage or physical motion proof')
+
+
 def load_manifest(root):
     root = Path(root).resolve()
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))

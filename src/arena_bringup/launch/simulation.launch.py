@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import copy
 import math
+import struct
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -43,6 +44,23 @@ SPEED_PROFILES = {
     # 단일 모터 3 m/s^2 제한은 그대로입니다. 고정 20 km/h 검사는 별도 LiDAR lab을 씁니다.
     "lidar_20kmh_straight": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 10.0},
 }
+
+
+def _float32_limit_not_above(limit):
+    """Ackermann float32 반올림으로 물리/MCU 상한을 넘지 않는 송신 상한."""
+    if not math.isfinite(limit) or limit <= 0:
+        raise ValueError('Command limit must be finite and positive')
+    try:
+        packed = struct.pack('<f', limit)
+    except OverflowError as error:
+        raise ValueError('Command limit cannot be represented as float32') from error
+    rounded = struct.unpack('<f', packed)[0]
+    if rounded > limit:
+        bits = struct.unpack('<I', packed)[0]
+        rounded = struct.unpack('<f', struct.pack('<I', bits-1))[0]
+    if rounded <= 0:
+        raise ValueError('Command limit is below positive float32 range')
+    return rounded
 
 
 def _dynamics_mappings(config, drive_mode="configured", differential="configured"):
@@ -343,7 +361,7 @@ def _launch_setup(context):
     rear_marker_rpy = [float(value) for value in rear_marker["rpy_rad"]]
     if (
         rear_marker["dictionary"] != "DICT_4X4_50"
-        or int(rear_marker["id"]) != 10
+        or int(rear_marker["id"]) != 49
         or not math.isclose(float(rear_marker["printed_board_size_m"]), .05, abs_tol=1e-9)
         or not math.isclose(
             float(rear_marker["black_code_size_m"])
@@ -355,7 +373,7 @@ def _launch_setup(context):
         or not math.isclose(rear_marker_rpy[0], 0.0, abs_tol=1e-9)
         or not math.isclose(rear_marker_rpy[1], 0.0, abs_tol=1e-9)
     ):
-        raise RuntimeError("현재 차량 형상은 5 cm DICT_4X4_50 ID 10 후면 마커 설정만 지원합니다.")
+        raise RuntimeError("현재 차량 형상은 5 cm DICT_4X4_50 ID 49 후면 마커 설정만 지원합니다.")
     d435i = config["sensors"]["d435i"]
     wheel_encoders = config["sensors"]["wheel_encoders"]
     autonomy_mode = LaunchConfiguration("autonomy_mode").perform(context)
@@ -710,7 +728,7 @@ def _launch_setup(context):
                      if track == "official" else "Historical reproduction / experimental course.")),
         LogInfo(msg=f"Rear identification marker: enabled={rear_marker['enabled']}; "
                     f"{rear_marker['dictionary']} ID {rear_marker['id']}; "
-                    f"board={rear_marker['printed_board_size_m']} m (team provisional)."),
+                    f"board={rear_marker['printed_board_size_m']} m (team registered; mount provisional)."),
         LogInfo(msg=f"Camera: {'B0183 + independent LSM6DSOX 208 Hz' if local_mode else 'D435i ' + d435i_profile_name}; "
                     f"RGB {color['width_px']}x{color['height_px']} @ "
                     f"{d435i_profile['color_rate_hz']} Hz; depth "
@@ -848,8 +866,10 @@ def _launch_setup(context):
     if local_mode:
         if not lidar_enabled or not wheel_encoders["enabled"]:
             raise RuntimeError("새 보호층은 C1과 후륜 엔코더가 필요합니다.")
-        equivalent_steering = math.atan(float(drivetrain["wheelbase_m"]) /
-            (float(drivetrain["wheelbase_m"])/math.tan(float(drivetrain["max_steering_angle_rad"])) + float(drivetrain["track_width_m"])/2))
+        # 수신 MCU는 원래 물리 상한을 엄격히 검사한다. 송신 상한만 안쪽으로
+        # 표현해 /drive와 /drive/safe의 float32 직렬화가 이를 넘지 않게 한다.
+        equivalent_steering = _float32_limit_not_above(math.atan(float(drivetrain["wheelbase_m"]) /
+            (float(drivetrain["wheelbase_m"])/math.tan(float(drivetrain["max_steering_angle_rad"])) + float(drivetrain["track_width_m"])/2)))
         actions.append(Node(package="arena_autonomy", executable="lidar_safety", parameters=[{
             "use_sim_time": True, "lidar_compensation": "both", "motion_scan_timing_verified": True,
             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',

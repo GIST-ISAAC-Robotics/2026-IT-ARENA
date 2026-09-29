@@ -24,6 +24,8 @@ from shapely.strtree import STRtree
 from build_experimental_track import obstacle_polygons, rectangle
 from lidar_shutdown import audit_shutdown, group_processes, stop_gazebo_service, stop_launch
 from validate_facility_visibility import image_array, yaw_of
+from recording_guard import (DEFAULT_MAX_RAW_GIB, DEFAULT_MAX_WALL_SECONDS,
+                             recorder_arguments, require_recorder_running, validate_limits)
 
 REPO = Path(__file__).resolve().parents[1]
 DEMO_TRACK = "official"
@@ -188,6 +190,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--actuation-mode', choices=('legacy', 'virtual_mcu'), default='legacy')
     parser.add_argument('--record-inputs', action='store_true', help='A2 MCAP 원시 센서/비교 출력 기록 및 선택형 콜백 계측')
+    parser.add_argument('--record-max-raw-gib', type=float, default=DEFAULT_MAX_RAW_GIB,
+                        help='기록 비압축 누적 바이트 한도. 센서율/차량 보호 기준과 무관')
+    parser.add_argument('--record-max-wall-seconds', type=float, default=DEFAULT_MAX_WALL_SECONDS,
+                        help='기록기 실제 시간 한도. 검사기 wall timeout과 별도')
     parser.add_argument('--actuation-stop', choices=('software_stop', 'host_exit'), default='software_stop',
                         help='virtual_mcu 시험 마지막 정지 방식; legacy에는 적용 안 함')
     parser.add_argument("--laps", type=int, default=2)
@@ -223,6 +229,7 @@ def main():
     parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy_official",
                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
     args = parser.parse_args()
+    validate_limits(args.record_max_raw_gib, args.record_max_wall_seconds)
     if args.record_inputs and args.autonomy_mode != 'local_pursuit':
         raise ValueError('A2 recorder currently requires local_pursuit')
     if args.actuation_mode == 'virtual_mcu' and args.autonomy_mode != 'local_pursuit':
@@ -379,6 +386,7 @@ def main():
                                             REPO / "src/arena_autonomy/arena_autonomy/wall_follow.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/local_path.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/local_pursuit.py",
+                                            REPO / "src/arena_autonomy/arena_autonomy/vision_process.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/lidar_safety.py",
                                             REPO / "src/arena_description/config/b0183_c1.yaml",
                                             REPO / "src/arena_autonomy/arena_autonomy/lidar_motion.py",
@@ -396,6 +404,8 @@ def main():
                                             REPO / "src/arena_gazebo/include/arena_gazebo/drivetrain.hpp",
                                             REPO / "src/arena_vehicle_interface/arena_vehicle_interface/sim_wheel_encoder.py",
                                             REPO / "src/arena_vehicle_interface/arena_vehicle_interface/ackermann_to_twist.py",
+                                            REPO / "src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py",
+                                            REPO / "src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py",
                                             REPO / "src/arena_bringup/config/tof_safety.yaml",
                                             REPO / "src/arena_autonomy/arena_autonomy/tof_safety.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/tof_safety_core.py",
@@ -403,9 +413,8 @@ def main():
     processes = []
     recorder = recorder_log = None
     if args.record_inputs:
-        for rel in ('scripts/record_sensor_bag.py',
-                    'src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py',
-                    'src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py'):
+        for rel in ('scripts/record_sensor_bag.py', 'scripts/recording_guard.py',
+                    'src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py'):
             report['input_sha256'][rel] = hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
     if args.actuation_mode == 'virtual_mcu':
         for name in ('actuation_ros', 'applied_guard', 'actuation_contract', 'actuation_wire'):
@@ -449,7 +458,8 @@ def main():
         if args.record_inputs:
             recorder_log = (output/'recorder.log').open('w', encoding='utf-8')
             recorder = subprocess.Popen([sys.executable, str(REPO/'scripts/record_sensor_bag.py'),
-                '--output', str(output/'sensor_recording')], stdout=recorder_log, stderr=recorder_log,
+                '--output', str(output/'sensor_recording'),
+                *recorder_arguments(args.record_max_raw_gib, args.record_max_wall_seconds)], stdout=recorder_log, stderr=recorder_log,
                 stdin=subprocess.DEVNULL, start_new_session=True)
             deadline = time.monotonic()+30
             while not (output/'sensor_recording/ready.json').exists():
@@ -489,6 +499,7 @@ def main():
         collision_samples = 0
         while True:
             rclpy.spin_once(node, timeout_sec=.005)
+            require_recorder_running(recorder)
             if args.actuation_mode == 'virtual_mcu' and 'actuation' in state:
                 status = state['actuation']
                 # 시험자가 한 번만 명시적으로 허가한다. 운영 노드에 자동 ARM은 없다.
@@ -717,6 +728,7 @@ def main():
         stop_trace, last_stop_stamp = [], -math.inf
         stop_deadline = time.monotonic() + args.stop_wall_timeout_s
         while state["pose"]["time"] - stop_start < 6:
+            require_recorder_running(recorder)
             if stop_requested or time.monotonic() > stop_deadline or any(p.poll() is not None for p in processes):
                 raise TimeoutError("정지 검사 중 중단·시간 초과·프로세스 종료를 확인했습니다.")
             rclpy.spin_once(node, timeout_sec=.01)

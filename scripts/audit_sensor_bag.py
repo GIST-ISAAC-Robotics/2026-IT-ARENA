@@ -12,13 +12,32 @@ sys.path.insert(0, str(REPO/'src/arena_vehicle_interface'))
 from arena_vehicle_interface.bag_contract import TOPICS, load_manifest, update_digest, quantiles
 
 
-def reader_for(root):
+def reader_for(root, read_info=None):
     import rosbag2_py
+    root = Path(root)
     reader = rosbag2_py.SequentialReader()
-    reader.open(rosbag2_py.StorageOptions(uri=str(root/'bag'), storage_id='mcap'),
-                rosbag2_py.ConverterOptions('', ''))
+    mode = 'directory_metadata'
+    try:
+        reader.open(rosbag2_py.StorageOptions(uri=str(root/'bag'), storage_id='mcap'),
+                    rosbag2_py.ConverterOptions('', ''))
+    except RuntimeError as error:
+        # Jazzy v9의 offered_qos_profiles는 YAML sequence이나 Humble은 문자열을 기대한다.
+        # 원본 metadata/manifest를 고치지 않고, 단일 MCAP일 때만 저장소를 직접 연다.
+        # 후속 전체 메시지 수/시각/CDR hash 감사는 그대로 수행한다.
+        import yaml
+        info = yaml.safe_load((root/'bag/metadata.yaml').read_text())['rosbag2_bagfile_information']
+        files = sorted((root/'bag').glob('*.mcap'))
+        if ('bad conversion' not in str(error) or info.get('version') != 9
+                or len(files) != 1 or info.get('relative_file_paths') != [files[0].name]):
+            raise
+        reader = rosbag2_py.SequentialReader()
+        reader.open(rosbag2_py.StorageOptions(uri=str(files[0]), storage_id='mcap'),
+                    rosbag2_py.ConverterOptions('', ''))
+        mode = 'single_mcap_metadata_v9_compat'
     if {t.name: t.type for t in reader.get_all_topics_and_types()} != TOPICS:
         raise ValueError('MCAP topic/type contract differs from manifest')
+    if read_info is not None:
+        read_info.update(mode=mode)
     return reader
 
 
@@ -31,13 +50,22 @@ def summarize_timing(rows):
             for key, values in sorted(groups.items())}
 
 
+def summarize_stages(rows):
+    groups = defaultdict(list)
+    for row in rows:
+        for name, stage in row.get('stages', {}).items():
+            groups[row['node']+'/'+row['callback']+'/'+name].append(stage['duration_ms'])
+    return {name: quantiles(values) for name, values in sorted(groups.items())}
+
+
 def audit(root):
     from rclpy.serialization import deserialize_message
     from std_msgs.msg import String
     from ackermann_msgs.msg import AckermannDriveStamped
     root = Path(root).resolve()
     manifest = load_manifest(root)
-    reader = reader_for(root)
+    read_info = {}
+    reader = reader_for(root, read_info)
     counts = Counter()
     digests = {topic: hashlib.sha256() for topic in TOPICS}
     timing, commands = [], defaultdict(list)
@@ -90,7 +118,7 @@ def audit(root):
             first_stamp, last_stamp = stat['first_'+basis+'_ns'], stat['last_'+basis+'_ns']
             rates[topic][basis+'_sim_hz'] = ((stat['count']-1)*1e9/(last_stamp-first_stamp)
                 if stat['count'] > 1 and first_stamp is not None and last_stamp > first_stamp else None)
-    result = dict(verified=True, first_ns=first, last_ns=last, duration_sim_s=(last-first)/1e9,
+    result = dict(verified=True, storage_reader=read_info, first_ns=first, last_ns=last, duration_sim_s=(last-first)/1e9,
         counts=dict(counts), raw_bytes=manifest['raw_bytes'],
         recorded_topic_rates=rates,
         source_age_ms={t: quantiles(v) for t, v in age.items()}, writer_wait_ms=quantiles(write_wait),

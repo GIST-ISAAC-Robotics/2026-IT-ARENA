@@ -21,6 +21,7 @@ def test_stop_signal_finishes_spin_before_cleanup(monkeypatch):
         events.append("callback_returned")
 
     node = Mock()
+    node.declare_parameter.return_value.value = 'legacy'
     node.destroy_node.side_effect = lambda: events.append("destroy")
     monkeypatch.setattr(node_lifecycle.signal, "signal", replace_handler)
     monkeypatch.setattr(node_lifecycle.rclpy, "init", Mock())
@@ -34,6 +35,7 @@ def test_stop_signal_finishes_spin_before_cleanup(monkeypatch):
 
 def test_real_callback_error_is_not_hidden(monkeypatch):
     node = Mock()
+    node.declare_parameter.return_value.value = 'legacy'
     shutdown = Mock()
     monkeypatch.setattr(node_lifecycle.signal, "signal", lambda *_: signal.SIG_DFL)
     monkeypatch.setattr(node_lifecycle.rclpy, "init", Mock())

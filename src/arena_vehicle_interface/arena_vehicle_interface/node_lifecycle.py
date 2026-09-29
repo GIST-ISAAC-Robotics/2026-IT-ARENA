@@ -17,19 +17,39 @@ def run_node(factory, args=None):
 
     previous_handlers = {}
     node = None
+    executor = None
     rclpy.init(args=args, signal_handler_options=SignalHandlerOptions.NO)
     try:
         for signum in (signal.SIGINT, signal.SIGTERM):
             previous_handlers[signum] = signal.signal(signum, request_stop)
         node = factory()
+        mode = str(node.declare_parameter('executor_mode', 'legacy').value)
+        if mode not in ('legacy', 'retained'):
+            raise ValueError('executor_mode must be legacy or retained')
+        # 아직 기본 동작은 바꾸지 않는다. 명시적 A/B 시험에서만 노드 등록을 유지한다.
+        if mode == 'retained':
+            from rclpy.executors import SingleThreadedExecutor
+            executor = SingleThreadedExecutor(context=node.context)
+            executor.add_node(node)
         while rclpy.ok() and not stop_requested:
-            rclpy.spin_once(node, timeout_sec=0.1)
+            if executor is None:
+                rclpy.spin_once(node, timeout_sec=0.1)
+            else:
+                executor.spin_once(timeout_sec=0.1)
     finally:
         try:
-            if node is not None:
-                node.destroy_node()
-            if rclpy.ok():
-                rclpy.shutdown()
+            try:
+                # 콜백이 반환된 뒤, ROS context가 살아 있을 때 노드의 정지 출력을 보낸다.
+                if node is not None:
+                    node.destroy_node()
+            finally:
+                try:
+                    if executor is not None:
+                        executor.remove_node(node)
+                        executor.shutdown(timeout_sec=1.)
+                finally:
+                    if rclpy.ok():
+                        rclpy.shutdown()
         finally:
             for signum, handler in previous_handlers.items():
                 signal.signal(signum, handler)

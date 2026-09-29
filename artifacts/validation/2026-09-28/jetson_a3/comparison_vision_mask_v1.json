@@ -1,0 +1,1043 @@
+[
+  {
+    "run": "vision_mask_v1_a",
+    "passed": true,
+    "functional": true,
+    "schedule": true,
+    "eof_stop": true,
+    "exits": [
+      0,
+      0
+    ],
+    "schedule_lateness_sim_ms": {
+      "count": 10157,
+      "p50": 0.40359199920203537,
+      "p95": 7.021167999482714,
+      "p99": 8.450743000139482,
+      "max": 17.82272999844281
+    },
+    "delivery": {
+      "lidar_safety/scan": {
+        "published": 209,
+        "callbacks": 209,
+        "diagnostic_rows": 209,
+        "ratio": 1.0
+      },
+      "lidar_safety/imu": {
+        "published": 5242,
+        "callbacks": 5242,
+        "diagnostic_rows": 5242,
+        "ratio": 1.0
+      },
+      "lidar_safety/wheels": {
+        "published": 2097,
+        "callbacks": 2097,
+        "diagnostic_rows": 2097,
+        "ratio": 1.0
+      },
+      "local_pursuit/scan": {
+        "published": 209,
+        "callbacks": 209,
+        "diagnostic_rows": 209,
+        "ratio": 1.0
+      },
+      "local_pursuit/imu": {
+        "published": 5242,
+        "callbacks": 5165,
+        "diagnostic_rows": 5165,
+        "ratio": 0.9853109500190766
+      },
+      "local_pursuit/wheels": {
+        "published": 2097,
+        "callbacks": 2097,
+        "diagnostic_rows": 2097,
+        "ratio": 1.0
+      },
+      "local_pursuit/image": {
+        "published": 1298,
+        "callbacks": 1293,
+        "diagnostic_rows": 1293,
+        "ratio": 0.9961479198767335
+      }
+    },
+    "durations_ms": {
+      "local_pursuit/control": {
+        "count": 1121,
+        "p50": 0.524913,
+        "p95": 5.314673,
+        "p99": 6.676927,
+        "max": 7.849894
+      },
+      "local_pursuit/image": {
+        "count": 1293,
+        "p50": 0.071202,
+        "p95": 11.993712,
+        "p99": 15.807408,
+        "max": 33.495103
+      },
+      "lidar_safety/control": {
+        "count": 1123,
+        "p50": 4.73091,
+        "p95": 5.366035,
+        "p99": 5.787809,
+        "max": 8.486683
+      }
+    },
+    "stages_ms": {
+      "local_pursuit/control/command_publish": {
+        "count": 1121,
+        "p50": 0.144645,
+        "p95": 0.21748,
+        "p99": 0.277097,
+        "max": 1.487441
+      },
+      "local_pursuit/control/motion_projection": {
+        "count": 521,
+        "p50": 1.38411,
+        "p95": 1.612246,
+        "p99": 1.700377,
+        "max": 2.755484
+      },
+      "local_pursuit/control/path_command": {
+        "count": 508,
+        "p50": 2.949954,
+        "p95": 3.54687,
+        "p99": 5.551513,
+        "max": 5.933478
+      },
+      "local_pursuit/control/state_log": {
+        "count": 5,
+        "p50": 0.049858,
+        "p95": 0.065602,
+        "p99": 0.065602,
+        "max": 0.077283
+      },
+      "local_pursuit/control/status_json": {
+        "count": 108,
+        "p50": 0.091652,
+        "p95": 0.200006,
+        "p99": 0.208839,
+        "max": 0.250152
+      },
+      "local_pursuit/control/status_publish": {
+        "count": 108,
+        "p50": 0.073698,
+        "p95": 0.129988,
+        "p99": 0.145125,
+        "max": 0.161638
+      },
+      "local_pursuit/image/image_decode": {
+        "count": 218,
+        "p50": 0.429742,
+        "p95": 0.497681,
+        "p99": 0.736121,
+        "max": 3.117768
+      },
+      "local_pursuit/image/marker_detection": {
+        "count": 218,
+        "p50": 6.052522,
+        "p95": 10.077649,
+        "p99": 11.443965,
+        "max": 11.771145
+      },
+      "local_pursuit/image/signal_detection": {
+        "count": 218,
+        "p50": 4.743934,
+        "p95": 5.964263,
+        "p99": 11.233143,
+        "max": 18.395494
+      }
+    },
+    "states": {
+      "/autonomy/status": {
+        "SENSOR_STOP": 7,
+        "WAIT_GREEN": 51,
+        "RUNNING": 48,
+        "MOTION_STOP": 2
+      },
+      "/safety/status": {
+        "missing_input": 5,
+        "clear": 961,
+        "lidar_braking": 83,
+        "motion_stale": 6,
+        "stale_input": 68
+      }
+    },
+    "control_over_20ms": {
+      "count": 0,
+      "sampled": 1121
+    },
+    "reference_active_window_s": [
+      10.96,
+      20.96
+    ],
+    "active_window_commands": 500,
+    "active_window_zero_commands": 0,
+    "active_window_speed_mps": {
+      "count": 500,
+      "p50": 1.409855604171753,
+      "p95": 2.1892917156219482,
+      "p99": 2.2157363891601562,
+      "max": 2.21893310546875
+    },
+    "scope": "Command response during original active interval, not a closed-loop trajectory or real vehicle speed",
+    "runtime": {
+      "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+      "machine": "aarch64",
+      "python": "3.10.12",
+      "ros_distro": "humble"
+    },
+    "trial": {
+      "command": [
+        "/usr/bin/python3",
+        "/home/q/it_arena_a3_20260928/scripts/replay_sensor_bag.py",
+        "/home/q/it_arena_a3_20260928/artifacts/validation/2026-09-24/record_replay/capture_v2/sensor_recording",
+        "--output",
+        "/home/q/it_arena_a3_20260928/artifacts/jetson_a3/vision_mask_v1_a/replay",
+        "--rate",
+        "1.0"
+      ],
+      "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+      "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+      "clock_ticks_per_second": 100,
+      "rate": 1.0,
+      "elapsed_wall_s": 41.82337020299747,
+      "returncode": 0,
+      "telemetry_returncode": -15,
+      "remaining_pids": [],
+      "errors": [],
+      "replay_passed": true,
+      "functional_passed": true,
+      "schedule_passed": true,
+      "measurement_passed": true,
+      "scope": "Open-loop compute replay with telemetry, no simulator, MCU or motors"
+    },
+    "timing_coverage": {
+      "lidar_safety/wheels": {
+        "received": 2097,
+        "completed_at_snapshot": 2097
+      },
+      "lidar_safety/imu": {
+        "received": 5242,
+        "completed_at_snapshot": 5242
+      },
+      "lidar_safety/control": {
+        "received": 1123,
+        "completed_at_snapshot": 1123
+      },
+      "lidar_safety/command": {
+        "received": 1121,
+        "completed_at_snapshot": 1121
+      },
+      "lidar_safety/scan": {
+        "received": 209,
+        "completed_at_snapshot": 209
+      },
+      "local_pursuit/wheels": {
+        "received": 2097,
+        "completed_at_snapshot": 2097
+      },
+      "local_pursuit/imu": {
+        "received": 5165,
+        "completed_at_snapshot": 5165
+      },
+      "local_pursuit/control": {
+        "received": 1121,
+        "completed_at_snapshot": 1121
+      },
+      "local_pursuit/image": {
+        "received": 1293,
+        "completed_at_snapshot": 1293
+      },
+      "local_pursuit/scan": {
+        "received": 209,
+        "completed_at_snapshot": 209
+      }
+    },
+    "diagnostic_sequence_coverage": {
+      "lidar_safety/wheels": {
+        "expected_through_snapshot": 2097,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "lidar_safety/imu": {
+        "expected_through_snapshot": 5242,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "lidar_safety/control": {
+        "expected_through_snapshot": 1123,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "lidar_safety/command": {
+        "expected_through_snapshot": 1121,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "lidar_safety/scan": {
+        "expected_through_snapshot": 209,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "local_pursuit/wheels": {
+        "expected_through_snapshot": 2097,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "local_pursuit/imu": {
+        "expected_through_snapshot": 5165,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "local_pursuit/control": {
+        "expected_through_snapshot": 1121,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "local_pursuit/image": {
+        "expected_through_snapshot": 1293,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "local_pursuit/scan": {
+        "expected_through_snapshot": 209,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      }
+    },
+    "measurement_passed": true,
+    "input_diagnostic_delivery_complete": true,
+    "timing_caveat": "Sequence coverage is checked through each controller snapshot; quantiles include received rows after that cutoff too. No full-run upper bound is claimed for unobserved shutdown-tail callbacks. Sensor callback loss is separate.",
+    "control_intervals_wall_ms": {
+      "count": 1120,
+      "p50": 20.291589,
+      "p95": 28.429652,
+      "p99": 34.938798,
+      "max": 53.484665
+    },
+    "source_age_ms": {
+      "local_pursuit/control": {
+        "count": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "local_pursuit/image": {
+        "count": 1293,
+        "p50": 6.45778,
+        "p95": 17.064595,
+        "p99": 21.824816,
+        "max": 33.076945
+      },
+      "local_pursuit/imu": {
+        "count": 5165,
+        "p50": 4.073665,
+        "p95": 15.064321,
+        "p99": 18.063654,
+        "max": 23.0172
+      },
+      "local_pursuit/scan": {
+        "count": 209,
+        "p50": 106.061545,
+        "p95": 113.078918,
+        "p99": 119.245194,
+        "max": 127.066163
+      },
+      "local_pursuit/wheels": {
+        "count": 2097,
+        "p50": 5.067427,
+        "p95": 57.457235,
+        "p99": 775.070937,
+        "max": 937.239515
+      }
+    },
+    "resources": {
+      "cpu_percent_one_core_100": {
+        "count": 75,
+        "p50": 248.40183828194432,
+        "p95": 307.49073174793745,
+        "p99": 312.7845459077886,
+        "max": 315.4069090404066
+      },
+      "active_cpu_percent_one_core_100": {
+        "count": 17,
+        "p50": 298.98773264030626,
+        "p95": 312.7845459077886,
+        "p99": 312.7845459077886,
+        "max": 315.4069090404066
+      },
+      "summed_rss_mib": {
+        "count": 76,
+        "p50": 349.03125,
+        "p95": 350.921875,
+        "p99": 350.921875,
+        "max": 350.921875
+      },
+      "max_reported_temperature_c": 52.593,
+      "gpu_percent": {
+        "count": 82,
+        "p50": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0.0
+      },
+      "system_ram_mb": {
+        "count": 82,
+        "p50": 2288.0,
+        "p95": 2291.0,
+        "p99": 2291.0,
+        "max": 2292.0
+      },
+      "input_power_mw": {
+        "count": 82,
+        "p50": 6219.0,
+        "p95": 7211.0,
+        "p99": 7211.0,
+        "max": 7211.0
+      },
+      "caveat": "RSS sums shared pages; CPU includes replay descendants including observer if present, excludes telemetry sampler/tegrastats; full trial includes audit/start/EOF; active CPU uses original moving window"
+    },
+    "delivery_audit": {
+      "lidar_safety/scan": {
+        "localized": true,
+        "missing": 0,
+        "unexpected": 0,
+        "first_missing_source_s": null,
+        "last_missing_source_s": null,
+        "missing_by_absolute_source_second": {}
+      },
+      "lidar_safety/imu": {
+        "localized": true,
+        "missing": 0,
+        "unexpected": 0,
+        "first_missing_source_s": null,
+        "last_missing_source_s": null,
+        "missing_by_absolute_source_second": {}
+      },
+      "lidar_safety/wheels": {
+        "localized": true,
+        "missing": 0,
+        "unexpected": 0,
+        "first_missing_source_s": null,
+        "last_missing_source_s": null,
+        "missing_by_absolute_source_second": {}
+      },
+      "local_pursuit/scan": {
+        "localized": true,
+        "missing": 0,
+        "unexpected": 0,
+        "first_missing_source_s": null,
+        "last_missing_source_s": null,
+        "missing_by_absolute_source_second": {}
+      },
+      "local_pursuit/imu": {
+        "localized": true,
+        "missing": 77,
+        "unexpected": 0,
+        "first_missing_source_s": 0.052,
+        "last_missing_source_s": 20.904,
+        "missing_by_absolute_source_second": {
+          "0": 14,
+          "1": 10,
+          "2": 3,
+          "3": 2,
+          "4": 5,
+          "5": 2,
+          "6": 1,
+          "7": 2,
+          "8": 5,
+          "9": 2,
+          "10": 6,
+          "11": 8,
+          "13": 5,
+          "15": 2,
+          "16": 4,
+          "17": 3,
+          "19": 1,
+          "20": 2
+        }
+      },
+      "local_pursuit/wheels": {
+        "localized": true,
+        "missing": 0,
+        "unexpected": 0,
+        "first_missing_source_s": null,
+        "last_missing_source_s": null,
+        "missing_by_absolute_source_second": {}
+      },
+      "local_pursuit/image": {
+        "localized": true,
+        "missing": 5,
+        "unexpected": 0,
+        "first_missing_source_s": 0.016,
+        "last_missing_source_s": 20.72,
+        "missing_by_absolute_source_second": {
+          "0": 4,
+          "20": 1
+        }
+      }
+    }
+  },
+  {
+    "run": "vision_mask_v1_b",
+    "passed": true,
+    "functional": true,
+    "schedule": true,
+    "eof_stop": true,
+    "exits": [
+      0,
+      0
+    ],
+    "schedule_lateness_sim_ms": {
+      "count": 10157,
+      "p50": 0.4345640045357868,
+      "p95": 7.386912999209017,
+      "p99": 8.886825002264231,
+      "max": 17.559900996275246
+    },
+    "delivery": {
+      "lidar_safety/scan": {
+        "published": 209,
+        "callbacks": 209,
+        "diagnostic_rows": 209,
+        "ratio": 1.0
+      },
+      "lidar_safety/imu": {
+        "published": 5242,
+        "callbacks": 5242,
+        "diagnostic_rows": 5242,
+        "ratio": 1.0
+      },
+      "lidar_safety/wheels": {
+        "published": 2097,
+        "callbacks": 2097,
+        "diagnostic_rows": 2097,
+        "ratio": 1.0
+      },
+      "local_pursuit/scan": {
+        "published": 209,
+        "callbacks": 209,
+        "diagnostic_rows": 209,
+        "ratio": 1.0
+      },
+      "local_pursuit/imu": {
+        "published": 5242,
+        "callbacks": 5158,
+        "diagnostic_rows": 5158,
+        "ratio": 0.9839755818389927
+      },
+      "local_pursuit/wheels": {
+        "published": 2097,
+        "callbacks": 2097,
+        "diagnostic_rows": 2097,
+        "ratio": 1.0
+      },
+      "local_pursuit/image": {
+        "published": 1298,
+        "callbacks": 1292,
+        "diagnostic_rows": 1292,
+        "ratio": 0.9953775038520801
+      }
+    },
+    "durations_ms": {
+      "local_pursuit/control": {
+        "count": 1119,
+        "p50": 0.567539,
+        "p95": 5.351186,
+        "p99": 6.490136,
+        "max": 8.635583
+      },
+      "local_pursuit/image": {
+        "count": 1292,
+        "p50": 0.06653,
+        "p95": 12.090515,
+        "p99": 15.963571,
+        "max": 31.808291
+      },
+      "lidar_safety/control": {
+        "count": 1123,
+        "p50": 4.745566,
+        "p95": 5.390419,
+        "p99": 5.815329,
+        "max": 7.823044
+      }
+    },
+    "stages_ms": {
+      "local_pursuit/control/command_publish": {
+        "count": 1119,
+        "p50": 0.143589,
+        "p95": 0.222343,
+        "p99": 0.392557,
+        "max": 1.183623
+      },
+      "local_pursuit/control/motion_projection": {
+        "count": 521,
+        "p50": 1.369262,
+        "p95": 1.626678,
+        "p99": 1.806044,
+        "max": 2.064293
+      },
+      "local_pursuit/control/path_command": {
+        "count": 508,
+        "p50": 2.961763,
+        "p95": 3.481652,
+        "p99": 5.714558,
+        "max": 6.199246
+      },
+      "local_pursuit/control/state_log": {
+        "count": 5,
+        "p50": 0.050913,
+        "p95": 0.064643,
+        "p99": 0.064643,
+        "max": 0.12634
+      },
+      "local_pursuit/control/status_json": {
+        "count": 108,
+        "p50": 0.096867,
+        "p95": 0.207463,
+        "p99": 0.248072,
+        "max": 0.420878
+      },
+      "local_pursuit/control/status_publish": {
+        "count": 108,
+        "p50": 0.073955,
+        "p95": 0.1273,
+        "p99": 0.137093,
+        "max": 0.344875
+      },
+      "local_pursuit/image/image_decode": {
+        "count": 218,
+        "p50": 0.426639,
+        "p95": 0.469616,
+        "p99": 0.579348,
+        "max": 2.834079
+      },
+      "local_pursuit/image/marker_detection": {
+        "count": 218,
+        "p50": 6.167629,
+        "p95": 10.262037,
+        "p99": 11.938797,
+        "max": 13.699431
+      },
+      "local_pursuit/image/signal_detection": {
+        "count": 218,
+        "p50": 4.625306,
+        "p95": 5.709309,
+        "p99": 10.235605,
+        "max": 19.237056
+      }
+    },
+    "states": {
+      "/autonomy/status": {
+        "SENSOR_STOP": 7,
+        "WAIT_GREEN": 51,
+        "RUNNING": 48,
+        "MOTION_STOP": 2
+      },
+      "/safety/status": {
+        "missing_input": 5,
+        "clear": 961,
+        "lidar_braking": 83,
+        "motion_stale": 6,
+        "stale_input": 68
+      }
+    },
+    "control_over_20ms": {
+      "count": 0,
+      "sampled": 1119
+    },
+    "reference_active_window_s": [
+      10.96,
+      20.96
+    ],
+    "active_window_commands": 500,
+    "active_window_zero_commands": 0,
+    "active_window_speed_mps": {
+      "count": 500,
+      "p50": 1.4076374769210815,
+      "p95": 2.1867589950561523,
+      "p99": 2.2164697647094727,
+      "max": 2.2170329093933105
+    },
+    "scope": "Command response during original active interval, not a closed-loop trajectory or real vehicle speed",
+    "runtime": {
+      "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+      "machine": "aarch64",
+      "python": "3.10.12",
+      "ros_distro": "humble"
+    },
+    "trial": {
+      "command": [
+        "/usr/bin/python3",
+        "/home/q/it_arena_a3_20260928/scripts/replay_sensor_bag.py",
+        "/home/q/it_arena_a3_20260928/artifacts/validation/2026-09-24/record_replay/capture_v2/sensor_recording",
+        "--output",
+        "/home/q/it_arena_a3_20260928/artifacts/jetson_a3/vision_mask_v1_b/replay",
+        "--rate",
+        "1.0"
+      ],
+      "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+      "platform": "Linux-5.15.148-tegra-aarch64-with-glibc2.35",
+      "clock_ticks_per_second": 100,
+      "rate": 1.0,
+      "elapsed_wall_s": 41.7978679470034,
+      "returncode": 0,
+      "telemetry_returncode": -15,
+      "remaining_pids": [],
+      "errors": [],
+      "replay_passed": true,
+      "functional_passed": true,
+      "schedule_passed": true,
+      "measurement_passed": true,
+      "scope": "Open-loop compute replay with telemetry, no simulator, MCU or motors"
+    },
+    "timing_coverage": {
+      "lidar_safety/imu": {
+        "received": 5242,
+        "completed_at_snapshot": 5242
+      },
+      "lidar_safety/wheels": {
+        "received": 2097,
+        "completed_at_snapshot": 2097
+      },
+      "lidar_safety/control": {
+        "received": 1123,
+        "completed_at_snapshot": 1123
+      },
+      "lidar_safety/command": {
+        "received": 1119,
+        "completed_at_snapshot": 1119
+      },
+      "lidar_safety/scan": {
+        "received": 209,
+        "completed_at_snapshot": 209
+      },
+      "local_pursuit/wheels": {
+        "received": 2097,
+        "completed_at_snapshot": 2097
+      },
+      "local_pursuit/imu": {
+        "received": 5158,
+        "completed_at_snapshot": 5158
+      },
+      "local_pursuit/control": {
+        "received": 1119,
+        "completed_at_snapshot": 1119
+      },
+      "local_pursuit/image": {
+        "received": 1292,
+        "completed_at_snapshot": 1292
+      },
+      "local_pursuit/scan": {
+        "received": 209,
+        "completed_at_snapshot": 209
+      }
+    },
+    "diagnostic_sequence_coverage": {
+      "lidar_safety/imu": {
+        "expected_through_snapshot": 5242,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "lidar_safety/wheels": {
+        "expected_through_snapshot": 2097,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "lidar_safety/control": {
+        "expected_through_snapshot": 1123,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "lidar_safety/command": {
+        "expected_through_snapshot": 1119,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "lidar_safety/scan": {
+        "expected_through_snapshot": 209,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "local_pursuit/wheels": {
+        "expected_through_snapshot": 2097,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "local_pursuit/imu": {
+        "expected_through_snapshot": 5158,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "local_pursuit/control": {
+        "expected_through_snapshot": 1119,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "local_pursuit/image": {
+        "expected_through_snapshot": 1292,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      },
+      "local_pursuit/scan": {
+        "expected_through_snapshot": 209,
+        "missing": 0,
+        "first_missing": [],
+        "duplicates": 0,
+        "invalid": 0,
+        "after_snapshot": 0,
+        "complete": true
+      }
+    },
+    "measurement_passed": true,
+    "input_diagnostic_delivery_complete": true,
+    "timing_caveat": "Sequence coverage is checked through each controller snapshot; quantiles include received rows after that cutoff too. No full-run upper bound is claimed for unobserved shutdown-tail callbacks. Sensor callback loss is separate.",
+    "control_intervals_wall_ms": {
+      "count": 1118,
+      "p50": 20.145982,
+      "p95": 29.543063,
+      "p99": 35.919498,
+      "max": 53.392336
+    },
+    "source_age_ms": {
+      "local_pursuit/control": {
+        "count": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      },
+      "local_pursuit/image": {
+        "count": 1292,
+        "p50": 6.862759,
+        "p95": 18.057121,
+        "p99": 22.762062,
+        "max": 33.581591
+      },
+      "local_pursuit/imu": {
+        "count": 5158,
+        "p50": 4.077229,
+        "p95": 14.607234,
+        "p99": 18.055208,
+        "max": 23.324563
+      },
+      "local_pursuit/scan": {
+        "count": 209,
+        "p50": 106.057553,
+        "p95": 112.173956,
+        "p99": 116.077301,
+        "max": 126.391789
+      },
+      "local_pursuit/wheels": {
+        "count": 2097,
+        "p50": 5.059606,
+        "p95": 15.073081,
+        "p99": 22.070887,
+        "max": 45.391789
+      }
+    },
+    "resources": {
+      "cpu_percent_one_core_100": {
+        "count": 75,
+        "p50": 283.0767507525991,
+        "p95": 308.0936467163609,
+        "p99": 311.54968180613474,
+        "max": 314.4007053489088
+      },
+      "active_cpu_percent_one_core_100": {
+        "count": 18,
+        "p50": 298.5915270166058,
+        "p95": 309.7509630647346,
+        "p99": 309.7509630647346,
+        "max": 311.54968180613474
+      },
+      "summed_rss_mib": {
+        "count": 76,
+        "p50": 348.99609375,
+        "p95": 352.890625,
+        "p99": 352.890625,
+        "max": 352.890625
+      },
+      "max_reported_temperature_c": 53.375,
+      "gpu_percent": {
+        "count": 82,
+        "p50": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "max": 0.0
+      },
+      "system_ram_mb": {
+        "count": 82,
+        "p50": 2287.0,
+        "p95": 2293.0,
+        "p99": 2293.0,
+        "max": 2293.0
+      },
+      "input_power_mw": {
+        "count": 82,
+        "p50": 5747.0,
+        "p95": 7211.0,
+        "p99": 7251.0,
+        "max": 7251.0
+      },
+      "caveat": "RSS sums shared pages; CPU includes replay descendants including observer if present, excludes telemetry sampler/tegrastats; full trial includes audit/start/EOF; active CPU uses original moving window"
+    },
+    "delivery_audit": {
+      "lidar_safety/scan": {
+        "localized": true,
+        "missing": 0,
+        "unexpected": 0,
+        "first_missing_source_s": null,
+        "last_missing_source_s": null,
+        "missing_by_absolute_source_second": {}
+      },
+      "lidar_safety/imu": {
+        "localized": true,
+        "missing": 0,
+        "unexpected": 0,
+        "first_missing_source_s": null,
+        "last_missing_source_s": null,
+        "missing_by_absolute_source_second": {}
+      },
+      "lidar_safety/wheels": {
+        "localized": true,
+        "missing": 0,
+        "unexpected": 0,
+        "first_missing_source_s": null,
+        "last_missing_source_s": null,
+        "missing_by_absolute_source_second": {}
+      },
+      "local_pursuit/scan": {
+        "localized": true,
+        "missing": 0,
+        "unexpected": 0,
+        "first_missing_source_s": null,
+        "last_missing_source_s": null,
+        "missing_by_absolute_source_second": {}
+      },
+      "local_pursuit/imu": {
+        "localized": true,
+        "missing": 84,
+        "unexpected": 0,
+        "first_missing_source_s": 0.036,
+        "last_missing_source_s": 20.616,
+        "missing_by_absolute_source_second": {
+          "0": 15,
+          "1": 9,
+          "2": 1,
+          "3": 4,
+          "4": 4,
+          "5": 6,
+          "6": 4,
+          "8": 8,
+          "9": 4,
+          "10": 5,
+          "12": 4,
+          "13": 5,
+          "15": 4,
+          "17": 3,
+          "18": 5,
+          "19": 2,
+          "20": 1
+        }
+      },
+      "local_pursuit/wheels": {
+        "localized": true,
+        "missing": 0,
+        "unexpected": 0,
+        "first_missing_source_s": null,
+        "last_missing_source_s": null,
+        "missing_by_absolute_source_second": {}
+      },
+      "local_pursuit/image": {
+        "localized": true,
+        "missing": 6,
+        "unexpected": 0,
+        "first_missing_source_s": 0.016,
+        "last_missing_source_s": 20.432,
+        "missing_by_absolute_source_second": {
+          "0": 5,
+          "20": 1
+        }
+      }
+    }
+  }
+]

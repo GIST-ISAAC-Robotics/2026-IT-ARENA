@@ -248,6 +248,12 @@ def depth_gap_command(depth, fx, cx, cy, side="left", max_steering=.43,
                              "gap_width_rad": width}
 
 
+def red_signal_mask(hsv):
+    """기존 엄격 부등식과 같은 uint8 범위. 채널별 임시 배열 생성을 줄인다."""
+    return cv2.bitwise_or(cv2.inRange(hsv, (0, 141, 161), (11, 255, 255)),
+                          cv2.inRange(hsv, (171, 141, 161), (255, 255, 255)))
+
+
 class StartSignal:
     """먼저 빨간 렌즈를 찾고 같은 하우징의 녹색 렌즈를 연속 확인합니다.
 
@@ -262,9 +268,12 @@ class StartSignal:
         self.observed = "unknown"
 
     def update(self, rgb):
+        # 출발 허가는 이미 고정되며 아래 분기들도 started 뒤에는 상태를 바꾸지 않는다.
+        # 같은 전체 영상 색상/윤곽 연산을 반복하지 않는다. 리셋은 새 인스턴스다.
+        if self.started:
+            return True
         hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
-        red = (((hsv[:, :, 0] < 12) | (hsv[:, :, 0] > 170)) &
-               (hsv[:, :, 1] > 140) & (hsv[:, :, 2] > 160)).astype(np.uint8) * 255
+        red = red_signal_mask(hsv)
         # 출발 상태에서 렌즈는 수평선 위에 있습니다. 하단 노면은 제외합니다.
         red[int(rgb.shape[0] * .58):] = 0
         contours, _ = cv2.findContours(red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

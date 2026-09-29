@@ -1,0 +1,33 @@
+def spin_once(
+    node: 'Node',
+    *,
+    executor: Optional['Executor'] = None,
+    timeout_sec: Optional[float] = None
+) -> None:
+    """
+    Execute one item of work or wait until a timeout expires.
+
+    One callback will be executed by the provided executor as long as that callback is ready
+    before the timeout expires.
+
+    If no executor is provided (ie. ``None``), then the global executor is used.
+    It is possible the work done is for a node other than the one provided if the global executor
+    has a partially completed coroutine.
+
+    This method should not be called from multiple threads with the same node or executor
+    argument.
+
+    :param node: A node to add to the executor to check for work.
+    :param executor: The executor to use, or the global executor if ``None``.
+    :param timeout_sec: Seconds to wait. Block forever if ``None`` or negative. Don't wait if 0.
+    """
+    executor = get_global_executor() if executor is None else executor
+    node_was_added = False
+    try:
+
+        node_was_added = executor.add_node(node)
+        executor.spin_once(timeout_sec=timeout_sec)
+    finally:
+        if node_was_added:
+            executor.remove_node(node)
+

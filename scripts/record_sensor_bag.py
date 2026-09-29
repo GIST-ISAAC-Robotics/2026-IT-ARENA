@@ -13,6 +13,7 @@ import signal
 import sys
 import threading
 import time
+from recording_guard import DEFAULT_MAX_RAW_GIB, DEFAULT_MAX_WALL_SECONDS, validate_limits
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / 'src/arena_vehicle_interface'))
@@ -22,11 +23,10 @@ from arena_vehicle_interface.bag_contract import TOPICS, REQUIRED, sha256_file, 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--max-wall-seconds', type=float, default=1200.)
-    parser.add_argument('--max-raw-gib', type=float, default=6.)
+    parser.add_argument('--max-wall-seconds', type=float, default=DEFAULT_MAX_WALL_SECONDS)
+    parser.add_argument('--max-raw-gib', type=float, default=DEFAULT_MAX_RAW_GIB)
     args = parser.parse_args()
-    if not 1 <= args.max_wall_seconds <= 7200 or not .01 <= args.max_raw_gib <= 20:
-        raise ValueError('recording limits out of range')
+    validate_limits(args.max_raw_gib, args.max_wall_seconds)
     output = args.output.resolve()
     if not output.is_relative_to(REPO / 'artifacts'):
         raise ValueError('output must be under artifacts')
@@ -199,6 +199,7 @@ def main():
         complete = (not errors and not dropped and not regressions and len(parameters) == 2 and
                     all(stats.get(t, {}).get('count', 0) > 0 for t in REQUIRED))
         manifest = dict(schema=1, complete=complete, topics=TOPICS, stats=stats, queue_drops=dict(dropped),
+                        resource_limits=dict(max_raw_gib=args.max_raw_gib, max_wall_seconds=args.max_wall_seconds),
                         clock_regressions=regressions, preclock_skipped=preclock, error=errors,
                         wall_duration_s=time.monotonic()-began, raw_bytes=total_bytes, files_sha256=files,
                         storage='mcap/zstd_fast', time_basis='bag timestamp = recorder ROS receipt, headers unchanged',
@@ -206,6 +207,7 @@ def main():
                                  'python': platform.python_version(), 'ros_distro': os.environ.get('ROS_DISTRO')},
                         loss_scope='queue losses counted; DDS source counters retained, total upstream losses not certified',
                         source_sha256={str(p.relative_to(REPO)): sha256_file(p) for p in [Path(__file__).resolve(),
+                            REPO/'scripts/recording_guard.py',
                             REPO/'src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py']})
         (output/'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
         print(json.dumps({'complete': complete, 'error': errors, 'raw_bytes': total_bytes}), flush=True)

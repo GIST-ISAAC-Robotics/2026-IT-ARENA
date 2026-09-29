@@ -13,6 +13,7 @@ from std_srvs.srv import SetBool, Trigger
 
 from arena_vehicle_interface.node_lifecycle import run_node
 from arena_vehicle_interface.timing_probe import TimingProbe
+from arena_vehicle_interface.queued_log import QueuedLog
 from arena_autonomy.core import StartSignal, follow_command, image_rgb, marker_ids, scan_points
 from arena_autonomy.lidar_motion import MODES, MotionUnavailable
 from arena_autonomy.lidar_motion_ros import MotionInput
@@ -56,6 +57,7 @@ class WallFollow(Node):
         self.last_steering = 0.0
         self.last_speed = 0.0
         self.last_control_time = -math.inf
+        self.state_log = QueuedLog(self.get_logger().info)
         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive", 10)
         self.status_publisher = self.create_publisher(String, "/autonomy/status", 10)
         self.create_subscription(LaserScan, "/scan", self.timing.wrap('scan', self.on_scan), qos_profile_sensor_data)
@@ -82,9 +84,9 @@ class WallFollow(Node):
         self.last_image_processed = stamp
         self.rgb_stamp = stamp
         self.image_wall_time = time.monotonic()
-        rgb = image_rgb(message)
-        self.signal.update(rgb)
-        self.ids = self.detect_markers(rgb)
+        rgb = self.timing.call('image_decode', image_rgb, message)
+        self.timing.call('signal_detection', self.signal.update, rgb)
+        self.ids = self.timing.call('marker_detection', self.detect_markers, rgb)
         # 현재 코스의 분기 방향만 설정한 간단한 규칙입니다. 좌표를 조회하지 않습니다.
         if 30 in self.ids:
             self.side = "right"
@@ -150,7 +152,7 @@ class WallFollow(Node):
         elif self.signal.started:
             try:
                 if self.motion:
-                    points, valid_count = self.motion.project(self.scan)
+                    points, valid_count = self.timing.call('motion_projection', self.motion.project, self.scan)
                     status["motion"] = self.motion.last_meta
                 else:
                     points, valid_count = scan_points(self.scan.ranges, self.scan.angle_min, self.scan.angle_increment,
@@ -161,7 +163,7 @@ class WallFollow(Node):
             if valid_count < 30:
                 status["state"] = "MOTION_STOP" if self.motion and self.motion.last_meta.get("reason") != "ok" else "SCAN_INVALID"
             else:
-                speed, steering, details = self.command(points)
+                speed, steering, details = self.timing.call('path_command', self.command, points)
                 status.update(details)
                 curvature = abs(math.tan(steering) / self.settings["wheelbase_m"])
                 if curvature > 1e-6:
@@ -176,17 +178,23 @@ class WallFollow(Node):
         message.header.stamp = self.get_clock().now().to_msg()
         message.header.frame_id = "base_link"
         message.drive.speed, message.drive.steering_angle = float(speed), float(steering)
-        self.publisher.publish(message)
+        self.timing.call('command_publish', self.publisher.publish, message)
         status.update(speed_command_mps=speed, steering_command_rad=steering)
+        status['text_log'] = self.state_log.snapshot()
+        if getattr(self, 'vision_pipeline', None) is not None:
+            status['vision'] = self.vision_pipeline.snapshot()
         if now - self.last_status_time > .2 or status["state"] != self.last_status:
-            self.status_publisher.publish(String(data=json.dumps(status, ensure_ascii=False, allow_nan=False)))
+            payload = self.timing.call('status_json', json.dumps, status, ensure_ascii=False, allow_nan=False)
+            self.timing.call('status_publish', self.status_publisher.publish, String(data=payload))
             self.last_status_time = now
         if status["state"] != self.last_status:
-            self.get_logger().info(f"{status['state']} / {self.side} 벽 / {self.signal.observed}")
+            self.timing.call('state_log', self.state_log.submit,
+                             f"t={now:.6f} {status['state']} / {self.side} 벽 / {self.signal.observed}")
             self.last_status = status["state"]
 
     def destroy_node(self):
         self.stop()
+        self.state_log.close()
         return super().destroy_node()
 
     def command(self, points):

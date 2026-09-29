@@ -1,0 +1,27 @@
+.F...................................................................... [ 81%]
+................                                                         [100%]
+=================================== FAILURES ===================================
+___________ test_collects_burst_without_spinning_publisher_and_stops ___________
+
+ros_nodes = (<rclpy.node.Node object at 0x712cef3c6060>, <replay_observer.ReplayObserver object at 0x712cf0b40c20>)
+
+    def test_collects_burst_without_spinning_publisher_and_stops(ros_nodes):
+        from std_msgs.msg import String
+        source, observer = ros_nodes
+        publisher = publisher_connected(source, String)
+        with pytest.raises(RuntimeError, match='while running'):
+            observer.snapshot()
+        for i in range(1, 501):
+            publisher.publish(String(data=json.dumps(row(i))))
+        observer.close()
+        rows = observer.snapshot()['timing']
+>       assert sequence_coverage(rows, {'test/imu': 500})['test/imu']['complete']
+E       assert False
+
+tests/test_replay_observer.py:65: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+[WARN] [1790606200.110143142] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1790606200.110188468] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+=========================== short test summary info ============================
+FAILED tests/test_replay_observer.py::test_collects_burst_without_spinning_publisher_and_stops
+1 failed, 87 passed in 14.99s

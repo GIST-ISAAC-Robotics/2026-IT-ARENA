@@ -1,0 +1,8 @@
+Read-only resume check — 2026-09-29
+
+Scope: check for leftover Gazebo/arena/record/validate processes associated with capture_v2.
+Command: wsl.exe -d Ubuntu-24.04 -- bash -lc "ps -eo pid=,args= | grep -E '[g]z|[a]rena|[r]ecord|[v]alidate|capture_v2|imu_long_capture'"
+Result: no matching test process was present. The only matches were the bash process running this grep and grep itself (PIDs 660 and 769).
+No process was terminated. No recording audit or test was run.
+
+Access note: the initial sandboxed WSL invocation returned E_ACCESSDENIED. The same read-only listing then completed through the authorized escalation path.

@@ -114,6 +114,19 @@ def test_red_then_consecutive_green_latches_continuous_running():
     assert signal.update(np.zeros((480, 848, 3), np.uint8))  # 신호등을 지난 뒤에도 유지
 
 
+def test_started_signal_skips_redundant_pixels_and_new_instance_rechecks(monkeypatch):
+    signal = StartSignal()
+    signal.started, signal.observed = True, 'green'
+    before = vars(signal).copy()
+    def must_not_run(*args):
+        raise AssertionError('pixel processing after latched start')
+    monkeypatch.setattr(cv2, 'cvtColor', must_not_run)
+    assert signal.update(None)
+    assert vars(signal) == before
+    with pytest.raises(AssertionError, match='pixel processing'):
+        StartSignal().update(None)
+
+
 def test_wall_fit_mirrors_and_recovers_from_small_pole_outlier():
     x = np.linspace(-.2, .65, 80)
     for side, sign in [("left", 1), ("right", -1)]:
@@ -255,6 +268,8 @@ def controller_double(monkeypatch):
     signal.started = True
     signal.observed = "green"
     controller = SimpleNamespace(
+        timing=SimpleNamespace(call=lambda name, callback, *args, **kwargs: callback(*args, **kwargs)),
+        state_log=SimpleNamespace(snapshot=lambda: {}, submit=lambda text: True),
         settings={"control_rate_hz": 20., "scan_timeout_s": .45, "image_timeout_s": 1.,
                   "lidar_x_m": -.03, "target_wall_distance_m": .425, "wheelbase_m": .145,
                   "max_steering_angle_rad": .45, "max_speed_mps": .35, "min_speed_mps": .14,
@@ -342,6 +357,29 @@ def test_late_image_is_ignored_without_clearing_start_permission():
     late.header.stamp = Time(sec=9)
     wall_follow.WallFollow.on_image(controller, late)
     assert signal.started and controller.side == "right" and controller.last_image_processed == 10.
+
+
+@pytest.mark.parametrize('condition', ['fault', 'stale', 'fresh'])
+def test_process_vision_result_reaches_existing_controller_stop_boundary(monkeypatch, condition):
+    """작업 프로세스 결과도 실제 제어 함수의 관측 나이/정지 경계를 통과한다."""
+    import json
+    from arena_autonomy.local_pursuit import LocalPursuit
+    controller, commands, statuses = controller_double(monkeypatch)
+    node = LocalPursuit.__new__(LocalPursuit)
+    node.__dict__.update(vars(controller))
+    result = dict(stamp=8. if condition == 'stale' else 9.9,
+                  received=time.monotonic())
+    pipeline = SimpleNamespace(fault='worker exited' if condition == 'fault' else None,
+        signal=controller.signal, ids=[30], pump=lambda now: result,
+        snapshot=lambda: {'mode': 'process'})
+    node.vision_pipeline = pipeline
+    LocalPursuit.control(node)
+    if condition == 'fresh':
+        assert commands[-1].drive.speed > 0 and node.side == 'right'
+        assert node.rgb_stamp == 9.9  # 결과 수신 시각 10초로 바꿔 쓰지 않는다.
+    else:
+        assert commands[-1].drive.speed == 0
+        assert json.loads(statuses[-1].data)['state'] == 'SENSOR_STOP'
 
 
 def test_validator_forwards_shutdown_without_inherited_terminal(monkeypatch):
