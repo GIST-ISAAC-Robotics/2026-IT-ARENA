@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta content='width=device-width, initial-scale=1' name='viewport'>
+<link rel="icon" type="image/png" href="https://a.pololu-files.com/assets/favicon_32x32-f40058cd34e1fec5906522ec0c9eb39b303192067c0e353a30796e859ce41106.png" sizes="32x32" />
+<link rel="icon" type="image/png" href="https://a.pololu-files.com/assets/favicon_192x192-52532413e1c353491bfa0a2dd977aacf020e8ca4104064094121739bad21c4bf.png" sizes="192x192" />
+<link rel="icon" type="image/png" href="https://a.pololu-files.com/assets/favicon_96x96-fcf7f6d6568f76d479e5ae1822ded335e0bbd75ab7efd0de7e010bb41fd83e41.png" sizes="96x96" />
+<link rel="icon" type="image/png" href="https://a.pololu-files.com/assets/favicon_16x16-13632635dc6dd0e11ba9a38071e8218d26d62e71f8ebafacd9929c3136117372.png" sizes="16x16" />
+<link rel="apple-touch-icon" type="image/png" href="https://a.pololu-files.com/assets/favicon_96x96-fcf7f6d6568f76d479e5ae1822ded335e0bbd75ab7efd0de7e010bb41fd83e41.png" />
+<link crossorigin='anonymous' href='https://a.pololu-files.com/mirror/maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css' integrity='sha256-AIodEDkC8V/bHBkfyxzolUMw57jeQ9CauwhVW6YJ9CA=' media='all' rel='stylesheet'>
+<link crossorigin='anonymous' href='https://a.pololu-files.com/mirror/cdn.jsdelivr.net/jquery.slick/1.6.0/slick.css' integrity='sha256-2RdmDD1veq0y68SwASxtC7hKE+IBoBLjNLzKS59Ghsk=' media='all' rel='stylesheet'>
+<link crossorigin='anonymous' href='https://a.pololu-files.com/mirror/cdn.jsdelivr.net/jquery.slick/1.6.0/slick-theme.css' integrity='sha256-etrwgFLGpqD4oNAFW08ZH9Bzif5ByXK2lXNHKy7LQGo=' media='all' rel='stylesheet'>
+<link rel="stylesheet" crossorigin="anonymous" href="https://a.pololu-files.com/assets/application-6c47e7bbf8b1d7a9273536f8219c3ef577a02e79df7e2ff8ba23d96132a74463.css" media="all" integrity="sha256-BhRmp00yDGd0h0qY3chly5KMMh6pKFhr4dCg9F/+SnM=" />
+<script crossorigin='anonymous' integrity='sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=' src='https://a.pololu-files.com/mirror/code.jquery.com/jquery-1.12.4.min.js'></script>
+<script crossorigin='anonymous' integrity='sha256-4Cr335oZDYg4Di3OwgUOyqSTri0jUm2+7Gf2kH3zp1I=' src='https://a.pololu-files.com/mirror/cdn.jsdelivr.net/jquery.slick/1.6.0/slick.min.js'></script>
+<script crossorigin='anonymous' integrity='sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU=' src='https://a.pololu-files.com/mirror/code.jquery.com/ui/1.12.1/jquery-ui.min.js'></script>
+<link crossorigin='anonymous' href='https://a.pololu-files.com/mirror/code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css' integrity='sha256-RPilbUJ5F7X6DdeTO6VFZ5vl5rO5MJnmSk4pwhWfV8A' media='all' rel='stylesheet'>
+<script class='braintree-gateway' src='https://js.braintreegateway.com/web/3.88.4/js/client.min.js'></script>
+<script class='braintree-gateway' src='https://js.braintreegateway.com/web/3.88.4/js/hosted-fields.min.js'></script>
+<script src="https://a.pololu-files.com/assets/application-e7b04321302c7b1cd29ca6232c9f00526fecf7e6f46a7ac51612c2f93c60ac63.js" crossorigin="anonymous" integrity="sha256-BU4VCJxbUORyOkyc5zk/oZBh8QNcA9rlggAmD7jCqkE="></script>
+<script type="importmap" data-turbo-track="reload">{
+  "integrity":
+{"https://a.pololu-files.com/assets/application_module-765f0f526c59caa9c9857c01889e68833710c17121ab6f9093f3a0a809af7bd4.js":"sha256-s+WZHcA06TsuXtPz2xeDSGgG6j+QSXvT2ghPYhJLLow=","https://a.pololu-files.com/assets/price_notification-f64b0ae30b1bb595d10d8954f34036fbff24e2c81e1c7a9e581f03692cc149c3.js":"sha256-nL1KwUBafy6EPV1yoK+yXM1O5GODfiG083pcMsXgCxs=","https://a.pololu-files.com/assets/stock_notification-87bb320c31885d5b381c69e4a05013db3f11fb479d693729b0e5de58ae356892.js":"sha256-yqOxxloFhGTJ98f3K+XH50QttcrJOBxnARzUT78kLCc=","https://a.pololu-files.com/assets/email_verification_send_handler-c06bf3ee7010809c6f7e62c9ae106d071a9373dce8c9e6c324c07aeacd069db2.js":"sha256-Rjuw+y6QuyfBGxpXeTICO2/PJRg4iMfzzleu7n7XUz8=","https://a.pololu-files.com/assets/payment_handler-49a20512068cb88565bc275464d6002af52baec06430fbdc9480f530a2c5b9a7.js":"sha256-PmVdEt5BorGjsZxOo7BfGw8aes3BCxnDQvw55paraHo="},
+  "imports": {
+    "application": "https://a.pololu-files.com/assets/application_module-765f0f526c59caa9c9857c01889e68833710c17121ab6f9093f3a0a809af7bd4.js",
+    "price_notification": "https://a.pololu-files.com/assets/price_notification-f64b0ae30b1bb595d10d8954f34036fbff24e2c81e1c7a9e581f03692cc149c3.js",
+    "stock_notification": "https://a.pololu-files.com/assets/stock_notification-87bb320c31885d5b381c69e4a05013db3f11fb479d693729b0e5de58ae356892.js",
+    "email_verification_send_handler": "https://a.pololu-files.com/assets/email_verification_send_handler-c06bf3ee7010809c6f7e62c9ae106d071a9373dce8c9e6c324c07aeacd069db2.js",
+    "payment_handler": "https://a.pololu-files.com/assets/payment_handler-49a20512068cb88565bc275464d6002af52baec06430fbdc9480f530a2c5b9a7.js",
+    "braintree": "https://js.braintreegateway.com/web/dropin/1.46.1/js/dropin.js"
+  }
+}</script>
+
+<script type="module">import "application"</script>
+<script>
+  if(document.domain.indexOf("pololu-files.com") == -1) {
+    $.ajax({
+    url: "https://www.googletagmanager.com/gtag/js?id=G-G4ENPJ5RV1",
+    dataType: "script"
+    });
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', "G-G4ENPJ5RV1");
+  }
+</script>
+
+<link rel="stylesheet" href="https://a.pololu-files.com/assets/print-ac5d562ac93a31ac3e5c942e261bf17032bf5da61b940dea46300fe83f1e72dc.css" media="print" />
+
+<title>Pololu - Lidar/Time-of-Flight Range Finders</title>
+
+<meta name="description" content="These compact lidar systems measure the time of flight (ToF) of infrared light pulses to quickly and accurately determine the absolute distance to targets up to several meters away." />
+<meta name="keywords" content="Pololu,robotics,robot electronics,robot kits,robot parts,ir beacon,servo controller,motor controller,robot sensors,robot chassis,robot gearboxes,robot tires, ball casters, tamiya parts,elenco kits" />
+<meta property="og:url" content="https://www.pololu.com/category/220/lidar-time-of-flight-range-finders" />
+<meta property="og:title" content="Pololu - Lidar/Time-of-Flight Range Finders" />
+<meta property="og:description" content="These compact lidar systems measure the time of flight (ToF) of infrared light pulses to quickly and accurately determine the absolute distance to targets up to several meters away." />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="627" />
+<meta property="og:image" content="https://a.pololu-files.com/picture/0J8677.1200x627.jpg?2ae2631a3cf1133a512eadb1d5501cea" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content="@Pololu" />
+<meta name="twitter:title" content="Pololu - Lidar/Time-of-Flight Range Finders" />
+<meta name="twitter:description" content="These compact lidar systems measure the time of flight (ToF) of infrared light pulses to quickly and accurately determine the absolute distance to targets up to several meters away." />
+<meta name="twitter:image" content="https://a.pololu-files.com/picture/0J8677.1200x627.jpg?2ae2631a3cf1133a512eadb1d5501cea" />
+
+<script src="https://a.pololu-files.com/assets/syntaxhighlight-91017fb9868118fd42306075e0164112dd3d3e16331dc462f55ad4497e7fca3d.js" defer="defer"></script>
+</head>
+
+<body class='math_ignore' onload='externalLinksNewWindow(); if(document.onLoadHandler){document.onLoadHandler();}  '>
+
+<div id='main'>
+
+<h1 id="page_title">Lidar/Time-of-Flight Range Finders</h1>
+<div data-url='/category/220/lidar-time-of-flight-range-finders' id='contents'>
+<!-- CONTENTS_BEGIN /category/220/lidar-time-of-flight-range-finders -->
+<div data-javascript-not-loaded-message='&lt;!-- javascript_not_loaded_message --&gt;&lt;strong&gt;Warning:&lt;/strong&gt; Your browser failed to load our JavaScript files, which are required for checkout.  Please check that you are not blocking or disabling our scripts and &lt;a href=&quot;/contact&quot;&gt;contact us&lt;/a&gt; if you are still unable to proceed.' id='javascript_not_loaded_message' style='display:none;'></div>
+<div data-braintree-not-loaded-message='&lt;!-- braintree_not_loaded_message --&gt;&lt;p&gt;&lt;strong&gt;Warning:&lt;/strong&gt; Your browser failed to connect to our secure payment processor, Braintree Payments.  You will be unable to enter your credit card information at  the payment step of checkout unless this is fixed.&lt;/p&gt;
+&lt;p&gt;Some things to try:&lt;/p&gt;
+&lt;ul&gt;
+	&lt;li&gt;Check for network problems or things like script blockers that could be blocking &lt;a href=&quot;https://js.braintreegateway.com/web/3.58.0/js/client.min.js&quot;&gt;this file&lt;/a&gt;.&lt;/li&gt;
+	&lt;li&gt;Try completing checkout on a device on a different network, such as a phone with Wi-Fi disabled.&lt;/li&gt;
+	&lt;li&gt;Select the option to pay with PayPal and enter your credit card on their site. (You don&amp;#8217;t need a PayPal account.)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Please &lt;a href=&quot;/contact&quot;&gt;contact us&lt;/a&gt; if you continue to have trouble with checkout!&lt;/p&gt;' id='braintree_not_loaded_message' style='display:none;'></div>
+
+<p>These compact lidar systems measure the time of flight (ToF) of invisible, eye-safe infrared light pulses to quickly and accurately determine the absolute distance to targets up to several meters away.</p>
+<p class='compare_link'>
+<span class="compare"><a href="/search/compare/220"><img alt="" src="https://a.pololu-files.com/assets/compare-cd658e4a1effbb8bf041401c86b9bef3949f6946b740d13b04703d381ec5594b.png" /></a><a title="Compare all products in Lidar/Time-of-Flight Range Finders" href="/search/compare/220">Compare all products in this category</a></span>
+</p>
+<div class='subcategories'>
+<h2>Subcategories</h2>
+<div class='subcategory'>
+<div class='picture'>
+<a title="Go to Carriers for ST Time-of-Flight (ToF) Distance Sensors" href="/category/306/carriers-for-st-time-of-flight-tof-distance-sensors"><img alt="" src="https://a.pololu-files.com/picture/0J12239.600x400.jpg?284a742371b99bce7402a89897848f4b" /></a>
+</div>
+<div class='subcategory_info'>
+<div class='product_name'>
+<div class='compare'>
+<span class="compare"><a href="/search/compare/306"><img alt="" src="https://a.pololu-files.com/assets/compare-cd658e4a1effbb8bf041401c86b9bef3949f6946b740d13b04703d381ec5594b.png" /></a><a title="Compare all products in Carriers for ST Time-of-Flight (ToF) Distance Sensors" href="/search/compare/306">Compare</a></span>
+</div>
+<h2><a href="/category/306/carriers-for-st-time-of-flight-tof-distance-sensors">Carriers for ST Time-of-Flight (ToF) Distance Sensors</a></h2>
+</div>
+<div class='description'>
+<p>These breakout boards for ST&#8217;s compact VLxxx lidar systems measure the time of flight (ToF) of eye-safe infrared light pulses to quickly and accurately determine the absolute distance to targets up to several meters away.  Configuration and operation are done through an I²C interface.</p>
+</div>
+</div>
+<div class='textfade'></div>
+</div>
+<div class='subcategory'>
+<div class='picture'>
+<a title="Go to Pololu Digital Distance Sensors" href="/category/283/pololu-digital-distance-sensors"><img alt="" src="https://a.pololu-files.com/picture/0J13355.600x400.jpg?c742ccaf45b9706adb2107aad7ced203" /></a>
+</div>
+<div class='subcategory_info'>
+<div class='product_name'>
+<div class='compare'>
+<span class="compare"><a href="/search/compare/283"><img alt="" src="https://a.pololu-files.com/assets/compare-cd658e4a1effbb8bf041401c86b9bef3949f6946b740d13b04703d381ec5594b.png" /></a><a title="Compare all products in Pololu Digital Distance Sensors" href="/search/compare/283">Compare</a></span>
+</div>
+<h2><a href="/category/283/pololu-digital-distance-sensors">Pololu Digital Distance Sensors</a></h2>
+</div>
+<div class='description'>
+<p>Lidar-based distance sensors with simple digital interfaces for detection of nearby objects.  Options are available with maximum ranges of a few centimeters to a few meters.</p>
+</div>
+</div>
+<div class='textfade'></div>
+</div>
+
+</div>
+<hr class='clear'>
+<h2>Products in category &ldquo;Lidar/Time-of-Flight Range Finders&rdquo;</h2>
+<div class='products'>
+<div class='category_product'>
+<div class='catalog_header'>
+<div class='picture'>
+<a title="Go to 3-Channel Wide FOV Time-of-Flight Distance Sensor Using OPT3101 (No Headers)" href="/product/3412"><img alt="" src="https://a.pololu-files.com/picture/0J10928.440x480.jpg?dc19bf13ad7d57d5e5d8dbee9b99b9d7" /></a>
+</div>
+<div class='order_form_wrapper'>
+<div class='order_form_container'>
+<div class='order_form' data-product-id='3412' data-product-ui='short_order_form'>
+<div>
+<span data-product-ui='short_order_form_on_sale' style='display: none'></span>
+<span class='message_positive' data-product-ui='short_order_form_new' style='display: none'>
+<!-- product_recently_added_to_website -->New!
+</span>
+</div>
+<table class='part_number_and_stock text_left'>
+<tr>
+<td class='part_number' style='white-space: nowrap'>
+<span class='label'>Pololu item #:</span>
+<span class='value'>3412</span>
+</td>
+<td class="td_right" data-product-ui="order_form_stock"><span></span></td>
+</tr>
+<tr>
+<td style='white-space: nowrap'>
+<span class='label'>Brand:</span>
+<span class='value'><a href="/brands/pololu">Pololu</a></span>
+</td>
+<td class='td_right'>
+<a data-lightbox-link="true" data-lightbox-height="25rem" data-lightbox-width="34rem" href="/product/3412/supply-outlook">supply outlook</a>
+</td>
+</tr>
+<tr>
+<td colspan='2'>
+<span class='label'>Status:</span>
+<span class='value'>Active and Preferred&nbsp;<a class="fa fa-question-circle" data-lightbox-link="true" data-lightbox-height="21rem" data-lightbox-width="27rem" href="/product-status-overview"></a></span>
+</td>
+</tr>
+<tr>
+<td>
+<a title="RoHS 3 compliant" data-lightbox-link="true" data-lightbox-height="17rem" data-lightbox-width="25rem" href="/compliance/rohs3-compliant"><img style="width: 76px; height: 16px; min-width: 76px;" alt="RoHS 3 compliant" src="https://a.pololu-files.com/assets/rohs3_compliant_yes-cde9d1a22538fcb174660dfa52f6fb93f93fcdfcf99e282ad9cf792ffa8f3124.png" /></a>
+</td>
+<td class='td_right'></td>
+</tr>
+<tr class='free_shipping_info' style='display: none'>
+<td colspan='2'>
+<a class="shipping_info_popup_link " title="This item could qualify for free shipping" data-lightbox-link="true" data-lightbox-height="17rem" data-lightbox-width="25rem" href="/ordering/potential-free-shipping-usa"><img style="width: 16px; height: 11px; min-width: 16px;" alt="This item could qualify for free shipping" src="https://a.pololu-files.com/assets/free_shipping_usa_gray-7c9ae1b4621ead73c8493cff1b11345529bb7604d4584577749f53b7c7a0628f.png" /></a>&nbsp;Free shipping in USA over $100&nbsp;<a class="shipping_info_popup_link " title="This item could qualify for free shipping" data-lightbox-link="true" data-lightbox-height="17rem" data-lightbox-width="25rem" href="/ordering/potential-free-shipping-usa"><span class="fa fa-question-circle" /></a>
+</td>
+</tr>
+
+</table>
+
+<div data-product-ui='short_order_form_prices'></div>
+<form action='/cart/add' enctype='multipart/form-data' method='post'>
+<div>
+<input type="hidden" name="session_id" value="" />
+<input name='product[id]' type='hidden' value='3412'>
+<div data-product-ui='short_order_form_out_of_stock_message' style='display: none'>
+<span class='message_negative'><!-- product_out_of_stock -->Out of stock.</span>
+</div>
+<table>
+<tr class='quantity_and_add'>
+<td>
+<div data-product-ui='short_order_form_quantity' style='display: none'>
+<span class='label'>Quantity:</span>
+<span class='value'>
+<input data-product-ui='short_order_form_quantity' name='product[quantity]' size='2' type='text'>
+</span>
+</div>
+</td>
+<td class='td_right'>
+<button alt="Add to cart" name="submit" value="add_to_cart" data-product-ui="short_order_form_add" title="Adds 3-Channel Wide FOV Time-of-Flight Distance Sensor Using OPT3101 (No Headers) to your cart." style="display: none" data-add-to-cart="true" data-freeze-cart="false" class="btn-medium btn-green">Add to cart</button>
+<button alt="Backorder" name="submit" value="backorder" data-product-ui="short_order_form_add_backorder" title="Adds 3-Channel Wide FOV Time-of-Flight Distance Sensor Using OPT3101 (No Headers) to your cart (will be backordered)." data-add-to-cart="true" data-freeze-cart="false" class="btn-medium btn-green">Backorder</button>
+</td>
+</tr>
+</table>
+</div>
+</form>
+</div>
+
+</div>
+</div>
+</div>
+<div class='product_name_and_description'>
+<div class='product_name'>
+<h2><a href="/product/3412">3-Channel Wide FOV Time-of-Flight Distance Sensor Using OPT3101 (No Headers)</a></h2>
+</div>
+<div class='description'>
+<p>This board is a 3-channel time-of-flight proximity and distance sensor module based on the OPT3101 IC from Texas Instruments.   It emits infrared light in one of three selectable directions with its six integrated LEDs and measures distance by measuring the time delay of the reflected signal.  Distance measurements can be read through a digital I²C interface.  The combined field of view of the three sensing zones is almost 180 degrees, and the maximum range is about one meter.  This module does not include any headers; we carry an <a href="/product/3680">alternate version with headers soldered</a>.</p>
+
+</div>
+</div>
+<div class='textfade'></div>
+</div>
+
+<div class='category_product'>
+<div class='catalog_header'>
+<div class='picture'>
+<a title="Go to 3-Channel Wide FOV Time-of-Flight Distance Sensor for TI-RSLK MAX Using OPT3101" href="/product/3680"><img alt="" src="https://a.pololu-files.com/picture/0J10880.440x480.jpg?733b629346cdd369a779d44b282d3aa4" /></a>
+</div>
+<div class='order_form_wrapper'>
+<div class='order_form_container'>
+<div class='order_form' data-product-id='3680' data-product-ui='short_order_form'>
+<div>
+<span data-product-ui='short_order_form_on_sale' style='display: none'></span>
+<span class='message_positive' data-product-ui='short_order_form_new' style='display: none'>
+<!-- product_recently_added_to_website -->New!
+</span>
+</div>
+<table class='part_number_and_stock text_left'>
+<tr>
+<td class='part_number' style='white-space: nowrap'>
+<span class='label'>Pololu item #:</span>
+<span class='value'>3680</span>
+</td>
+<td class="td_right" data-product-ui="order_form_stock"><span></span></td>
+</tr>
+<tr>
+<td style='white-space: nowrap'>
+<span class='label'>Brand:</span>
+<span class='value'><a href="/brands/pololu">Pololu</a></span>
+</td>
+<td class='td_right'>
+<a data-lightbox-link="true" data-lightbox-height="25rem" data-lightbox-width="34rem" href="/product/3680/supply-outlook">supply outlook</a>
+</td>
+</tr>
+<tr>
+<td colspan='2'>
+<span class='label'>Status:</span>
+<span class='value'>Active&nbsp;<a class="fa fa-question-circle" data-lightbox-link="true" data-lightbox-height="21rem" data-lightbox-width="27rem" href="/product-status-overview"></a></span>
+</td>
+</tr>
+<tr>
+<td>
+<a title="RoHS 3 compliant" data-lightbox-link="true" data-lightbox-height="17rem" data-lightbox-width="25rem" href="/compliance/rohs3-compliant"><img style="width: 76px; height: 16px; min-width: 76px;" alt="RoHS 3 compliant" src="https://a.pololu-files.com/assets/rohs3_compliant_yes-cde9d1a22538fcb174660dfa52f6fb93f93fcdfcf99e282ad9cf792ffa8f3124.png" /></a>
+</td>
+<td class='td_right'></td>
+</tr>
+<tr class='free_shipping_info' style='display: none'>
+<td colspan='2'>
+<a class="shipping_info_popup_link " title="This item could qualify for free shipping" data-lightbox-link="true" data-lightbox-height="17rem" data-lightbox-width="25rem" href="/ordering/potential-free-shipping-usa"><img style="width: 16px; height: 11px; min-width: 16px;" alt="This item could qualify for free shipping" src="https://a.pololu-files.com/assets/free_shipping_usa_gray-7c9ae1b4621ead73c8493cff1b11345529bb7604d4584577749f53b7c7a0628f.png" /></a>&nbsp;Free shipping in USA over $100&nbsp;<a class="shipping_info_popup_link " title="This item could qualify for free shipping" data-lightbox-link="true" data-lightbox-height="17rem" data-lightbox-width="25rem" href="/ordering/potential-free-shipping-usa"><span class="fa fa-question-circle" /></a>
+</td>
+</tr>
+
+</table>
+
+<div data-product-ui='short_order_form_prices'></div>
+<form action='/cart/add' enctype='multipart/form-data' method='post'>
+<div>
+<input type="hidden" name="session_id" value="" />
+<input name='product[id]' type='hidden' value='3680'>
+<div data-product-ui='short_order_form_out_of_stock_message' style='display: none'>
+<span class='message_negative'><!-- product_out_of_stock -->Out of stock.</span>
+</div>
+<table>
+<tr class='quantity_and_add'>
+<td>
+<div data-product-ui='short_order_form_quantity' style='display: none'>
+<span class='label'>Quantity:</span>
+<span class='value'>
+<input data-product-ui='short_order_form_quantity' name='product[quantity]' size='2' type='text'>
+</span>
+</div>
+</td>
+<td class='td_right'>
+<button alt="Add to cart" name="submit" value="add_to_cart" data-product-ui="short_order_form_add" title="Adds 3-Channel Wide FOV Time-of-Flight Distance Sensor for TI-RSLK MAX Using OPT3101 to your cart." style="display: none" data-add-to-cart="true" data-freeze-cart="false" class="btn-medium btn-green">Add to cart</button>
+<button alt="Backorder" name="submit" value="backorder" data-product-ui="short_order_form_add_backorder" title="Adds 3-Channel Wide FOV Time-of-Flight Distance Sensor for TI-RSLK MAX Using OPT3101 to your cart (will be backordered)." data-add-to-cart="true" data-freeze-cart="false" class="btn-medium btn-green">Backorder</button>
+</td>
+</tr>
+</table>
+</div>
+</form>
+</div>
+
+</div>
+</div>
+</div>
+<div class='product_name_and_description'>
+<div class='product_name'>
+<h2><a href="/product/3680">3-Channel Wide FOV Time-of-Flight Distance Sensor for TI-RSLK MAX Using OPT3101</a></h2>
+</div>
+<div class='description'>
+<p>This board is a 3-channel time-of-flight proximity and distance sensor module based on the OPT3101 IC from Texas Instruments.   It emits infrared light in one of three selectable directions with its six integrated LEDs and measures distance by measuring the time delay of the reflected signal.  Distance measurements can be read through a digital I²C interface.  The module is designed to mount to the front of the TI-RSLK MAX robot.  The combined field of view of the three sensing zones is almost 180 degrees, and the maximum range is about one meter.</p>
+
+</div>
+</div>
+<div class='textfade'></div>
+</div>
+
+</div>
+<script>product_ui.update();</script>
+
+<div id="small_related_items"><div><h2>Related products</h2>
+<div>
+<table class='linkable_item_list'>
+<tr>
+<td class='img'>
+<a href="/product/2474"><img alt="" src="https://a.pololu-files.com/picture/0J5782.50x40.jpg?d0dc29ca33bde495d7507411e2fa3a8d" /></a>
+</td>
+<td><a href="/product/2474">Pololu Carrier with Sharp/Socle GP2Y0A60SZLF Analog Distance Sensor 10-150cm, 5V</a></td>
+</tr>
+<tr>
+<td class='img'>
+<a href="/product/1137"><img alt="" src="https://a.pololu-files.com/picture/0J1125.50x40.jpg?41bbea967aee78df7329bc0a1261b970" /></a>
+</td>
+<td><a href="/product/1137">Sharp/Socle GP2Y0A02YK0F Analog Distance Sensor 20-150cm</a></td>
+</tr>
+<tr>
+<td class='img'>
+<a href="/product/723"><img alt="" src="https://a.pololu-files.com/picture/0J174.50x40.jpg?bb753ade644f27a1329563bf8475484f" /></a>
+</td>
+<td><a href="/product/723">Maxbotix LV-MaxSonar-EZ0 Sonar Range Finder MB1000</a></td>
+</tr>
+<tr>
+<td class='img'>
+<a href="/product/2578"><img alt="" src="https://a.pololu-files.com/picture/0J7392.50x40.jpg?a62cf72bd6e7c8a83c6a87fe48bc05a5" /></a>
+</td>
+<td><a href="/product/2578">Pololu 38 kHz IR Proximity Sensor, Fixed Gain, High Brightness</a></td>
+</tr>
+</table>
+</div>
+</div><div><h2>Related categories</h2>
+<div>
+<table class='linkable_item_list'>
+<tr>
+<td class='img'>
+<a href="/category/79/sharp-distance-sensors"><img alt="" src="https://a.pololu-files.com/picture/0J1125.50x40.jpg?41bbea967aee78df7329bc0a1261b970" /></a>
+</td>
+<td><a href="/category/79/sharp-distance-sensors">Sharp Distance Sensors</a></td>
+</tr>
+<tr>
+<td class='img'>
+<a href="/category/78/sonar-range-finders"><img alt="" src="https://a.pololu-files.com/picture/0J1963.50x40.jpg?fb18779b1596619c50aa7af5dc486550" /></a>
+</td>
+<td><a href="/category/78/sonar-range-finders">Sonar Range Finders</a></td>
+</tr>
+<tr>
+<td class='img'>
+<a href="/category/123/pololu-qtr-reflectance-sensors"><img alt="" src="https://a.pololu-files.com/picture/0J9041.50x40.jpg?0ff3b16850e6ab758114d9a981a1b155" /></a>
+</td>
+<td><a href="/category/123/pololu-qtr-reflectance-sensors">Pololu QTR Reflectance Sensors</a></td>
+</tr>
+</table>
+</div>
+</div></div>
+
+
+<!-- CONTENTS_END -->
+<div id='footer'>
+<p class='share'>
+<span class="image_text_link"><a href="/category/220/lidar-time-of-flight-range-finders?print=1"><img alt="" src="https://a.pololu-files.com/assets/printer-448cebb2a5016700db2565421ada6e98f90fabe5885d8cd3cca1a3854748e146.png" /></a><a href="/category/220/lidar-time-of-flight-range-finders?print=1">Print</a></span>
+<span class="image_text_link"><a href="mailto:?body=https%3A%2F%2Fwww.pololu.com%2Fcategory%2F220%2Flidar-time-of-flight-range-finders&amp;subject"><img alt="" src="https://a.pololu-files.com/assets/email-f2957b324fa09a7d81ed64679a6b9454647ad40514cd7b1ce501aefd946f5593.png" /></a><a href="mailto:?body=https%3A%2F%2Fwww.pololu.com%2Fcategory%2F220%2Flidar-time-of-flight-range-finders&amp;subject">Email a friend</a></span>
+<span class="image_text_link"><a href="/feeds"><img alt="" src="https://a.pololu-files.com/assets/feed-icon-12x12-ad0e7f1965647f9414a76a1f32fb46dc73c1b2d295201b0abb56f2b2cf88bfb2.png" /></a><a href="/feeds">Feeds</a></span>
+</p>
+<p class='links'>
+<a href="/">Home</a>
+|
+<a href="https://forum.pololu.com/">Forum</a>
+|
+<a href="/blog">Blog</a>
+|
+<a href="/support">Support</a>
+|
+<a href="/ordering">Ordering Information</a>
+|
+<a href="/list">Lists</a>
+|
+<a href="/distributors">Distributors</a>
+|
+<a href="/catalog/bigorderform">BIG Order Form</a>
+|
+<a href="/about">About</a>
+|
+<a href="/contact">Contact</a>
+</p>
+<p id='copyright'>&copy; 2001<a rel="nofollow" style="text-decoration: none; color: inherit;" href="/pot/0?from=https%3A%2F%2Fwww.pololu.com%2Fcategory%2F220%2Flidar-time-of-flight-range-finders">–</a>2026 Pololu Corporation</p>
+</div>
+</div>
+</div>
+<div id='right_col'>
+<div class='menu' data-my-quotes='1'></div>
+<script>quote.display_list()</script>
+<div class='menu' data-mini-cart='1'></div>
+<script>cart.display_mini_cart_content()</script>
+<div><h2>Related Products</h2>
+<div>
+<table class='linkable_item_list'>
+<tr>
+<td class='img'>
+<a href="/product/2474"><img alt="" src="https://a.pololu-files.com/picture/0J5782.50x40.jpg?d0dc29ca33bde495d7507411e2fa3a8d" /></a>
+</td>
+<td><a href="/product/2474">Pololu Carrier with Sharp/Socle GP2Y0A60SZLF Analog Distance Sensor 10-150cm, 5V</a></td>
+</tr>
+<tr>
+<td class='img'>
+<a href="/product/1137"><img alt="" src="https://a.pololu-files.com/picture/0J1125.50x40.jpg?41bbea967aee78df7329bc0a1261b970" /></a>
+</td>
+<td><a href="/product/1137">Sharp/Socle GP2Y0A02YK0F Analog Distance Sensor 20-150cm</a></td>
+</tr>
+<tr>
+<td class='img'>
+<a href="/product/723"><img alt="" src="https://a.pololu-files.com/picture/0J174.50x40.jpg?bb753ade644f27a1329563bf8475484f" /></a>
+</td>
+<td><a href="/product/723">Maxbotix LV-MaxSonar-EZ0 Sonar Range Finder MB1000</a></td>
+</tr>
+<tr>
+<td class='img'>
+<a href="/product/2578"><img alt="" src="https://a.pololu-files.com/picture/0J7392.50x40.jpg?a62cf72bd6e7c8a83c6a87fe48bc05a5" /></a>
+</td>
+<td><a href="/product/2578">Pololu 38 kHz IR Proximity Sensor, Fixed Gain, High Brightness</a></td>
+</tr>
+</table>
+</div>
+</div><div><h2>Related Categories</h2>
+<div>
+<table class='linkable_item_list'>
+<tr>
+<td class='img'>
+<a href="/category/79/sharp-distance-sensors"><img alt="" src="https://a.pololu-files.com/picture/0J1125.50x40.jpg?41bbea967aee78df7329bc0a1261b970" /></a>
+</td>
+<td><a href="/category/79/sharp-distance-sensors">Sharp Distance Sensors</a></td>
+</tr>
+<tr>
+<td class='img'>
+<a href="/category/78/sonar-range-finders"><img alt="" src="https://a.pololu-files.com/picture/0J1963.50x40.jpg?fb18779b1596619c50aa7af5dc486550" /></a>
+</td>
+<td><a href="/category/78/sonar-range-finders">Sonar Range Finders</a></td>
+</tr>
+<tr>
+<td class='img'>
+<a href="/category/123/pololu-qtr-reflectance-sensors"><img alt="" src="https://a.pololu-files.com/picture/0J9041.50x40.jpg?0ff3b16850e6ab758114d9a981a1b155" /></a>
+</td>
+<td><a href="/category/123/pololu-qtr-reflectance-sensors">Pololu QTR Reflectance Sensors</a></td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+
+<div id='lightbox_holder'>
+<div id='lightbox_gray_screen'></div>
+<div id='lightbox'>
+<div id='lightbox_gallery'></div>
+<div id='lightbox_content'></div>
+<div id='lightbox_right'><i class="fa fa-chevron-right" aria-hidden="true"></i></div>
+<div id='lightbox_left'><i class="fa fa-chevron-left" aria-hidden="true"></i></div>
+<div id='lightbox_close'>
+<a href='#' title='Close'><i class="fa fa-times" aria-hidden="true"></i></a>
+</div>
+<div id='lightbox_full'>
+<a href='#' title='View image'><i class="fa fa-expand" aria-hidden="true"></i></a>
+</div>
+</div>
+</div>
+
+<div id='header_small_top'>
+<!-- / this has to go first since it takes up 100% of the width and would block clicking on other parts -->
+<div id='header_center_right'>
+<span data-login-ui='login'>
+<a href="/account/login?account%5Burl%5D=https%3A%2F%2Fwww.pololu.com%2Fcategory%2F220%2Flidar-time-of-flight-range-finders">Log In</a>
+</span>
+<span data-login-ui='my_account'>
+<a title="My account" data-login-ui="my_account_link" href="/account"></a>
+</span>
+
+</div>
+<div id='header_small_left'>
+<a href="/"><img width="118" height="30" alt="Pololu Robotics &amp; Electronics" class="logo_pololu_only" src="https://a.pololu-files.com/assets/header_pololu_only-fff6349c8769e6b2e59624d6dceacac4422156c5ac8b8b23532f0e93678bb981.png" /></a>
+</div>
+<div id='header_small_right'>
+<a href="/cart"><img width="30" height="30" alt="Shopping cart" src="https://a.pololu-files.com/assets/cart-bf4bf66669c9b9288e6e972718067855ecdcdfc80622cfea29ac04b29478f873.png" /></a>
+</div>
+</div>
+<div id='header_small_bottom'>
+<div id='header_small_right'>
+(702) 262-6648<br/>
+<a href="/ordering">Same-day shipping, worldwide</a>
+</div>
+<div id='header_small_left'>
+<a id="menu_button" onclick="return false;" href="/catalog/menu"><img width="30" height="30" alt="Menu" src="https://a.pololu-files.com/assets/menu-2023bba099d8fd2a25d8e1803c5bdf0aa0a024d9d585000ff9aec2c8a436b29a.png" /></a>
+</div>
+</div>
+<div id='header_small_menu'>
+<div class='header_small_menu_columns'>
+<a href="/catalog/menu">Shop</a>
+<a href="/blog">Blog</a>
+<a href="https://forum.pololu.com/">Forum</a>
+<a href="/support">Support</a>
+</div>
+<!-- / specify local variable id to set an id for the form, mainly for use with testing -->
+<form action='/search' id='header_small_search'>
+<div class='search'><input autocomplete='off' class='search_input mini_search_input' data-autocomplete-search='true' id='header_small_search_input' name='query' placeholder='Search' type='text'><input alt='' class='search_button' src='https://a.pololu-files.com/assets/magglass-d28c6b7b9d1f35858a702b71e13b678bfdee962d795c7ad2426ed9b19ccac5e8.png' type='image' value='go'>
+</div>
+</form>
+
+<a title="My account" href="/account">My account</a>
+<a data-feedback="true" href="/feedback/new?account%5Burl%5D=https%3A%2F%2Fwww.pololu.com%2Fcategory%2F220%2Flidar-time-of-flight-range-finders">Comments or questions?</a>
+<a href="/about">About Pololu</a>
+<a href="/contact">Contact</a>
+<a href="/ordering">Ordering information</a>
+<a href="/distributors">Distributors</a>
+</div>
+<div id='gray_screen'></div>
+<script>
+menuInit();
+</script>
+
+<div id='header_holder'>
+<table id='header'>
+<tr id='header_top'>
+<td id='header_logo' rowspan='2'>
+<a href="/"><img width="219" height="69" alt="Pololu Robotics and Electronics" class="logo" style="max-width: 230px;" src="https://a.pololu-files.com/assets/header_pololu_no_padding-e37eb899d2ec2ded9153a53ad9e0e6e12861f762e2c3bafb4ca40e79a85d149e.png" /></a>
+</td>
+<td colspan='16' id='header_address'>
+<div id='header_account_links'>
+<span data-login-ui='login'>
+<a href="/account/login?account%5Burl%5D=https%3A%2F%2Fwww.pololu.com%2Fcategory%2F220%2Flidar-time-of-flight-range-finders">Log In</a>
+</span>
+<span data-login-ui='my_account'>
+<a title="My account" data-login-ui="my_account_link" href="/account"></a>
+|
+<a href="/account">My Account</a>
+|
+</span>
+<div data-login-ui='logout'>
+<form data-login-ui="logout" action="https://www.pololu.com/account/logout" accept-charset="UTF-8" method="post"><input type="hidden" name="utf8" value="✓" /><input type="hidden" name="session_id" value="**SESSION_ID_STUB**" /><button class="btn-link" name="log-out-button">Log Out</button></form>
+</div>
+
+|
+<a href="/cart">Shopping Cart <img width="16" height="16" alt="" src="https://a.pololu-files.com/assets/cart-bf4bf66669c9b9288e6e972718067855ecdcdfc80622cfea29ac04b29478f873.png" /></a>
+<script>dynamic_user_login.init()</script>
+</div>
+<p class='phone_number'>
+US toll free: 1-877-7-POLOLU ~
+(702) 262-6648<br/>
+<a href="/ordering">Same-day shipping, worldwide</a>
+</p>
+</td>
+</tr>
+<tr id='header_links'>
+<th class='selected'>
+<a href="/">Catalog</a>
+</th>
+<td>&nbsp;</td>
+<th>
+<a href="https://forum.pololu.com/">Forum</a>
+</th>
+<td>&nbsp;</td>
+<th class=''>
+<a href="/blog">Blog</a>
+</th>
+<td>&nbsp;</td>
+<th class=''>
+<a href="/support">Support</a>
+</th>
+<td>&nbsp;</td>
+<th class=''>
+<a href="/ordering">Ordering</a>
+</th>
+<td>&nbsp;</td>
+<th class=''>
+<a href="/distributors">Distributors</a>
+</th>
+<td>&nbsp;</td>
+<th class=''>
+<a href="/about">About</a>
+</th>
+<td>&nbsp;</td>
+<th class=''>
+<a href="/contact">Contact</a>
+</th>
+<td class='last'></td>
+</tr>
+</table>
+</div>
+<div id='left_col'>
+<div class='menu' id='menu_search'>
+<div>
+<!-- / specify local variable id to set an id for the form, mainly for use with testing -->
+<form action='/search' id='sidebar_search'>
+<div class='search'><input autocomplete='off' class='search_input mini_search_input' data-autocomplete-search='true' id='sidebar_search_input' name='query' placeholder='Search' type='text'><input alt='' class='search_button' src='https://a.pololu-files.com/assets/magglass-d28c6b7b9d1f35858a702b71e13b678bfdee962d795c7ad2426ed9b19ccac5e8.png' type='image' value='go'>
+</div>
+</form>
+
+</div>
+</div>
+<div class='menu'>
+<h2><a data-feedback="true" href="">Feedback</a></h2>
+<div>
+<a class="menu_visible_link" data-feedback="true" href="">Comments or questions?</a>
+</div>
+</div>
+<div class='menu'>
+<h2><a href="/category/31/services">Services</a></h2>
+<div>
+<ul>
+<li>
+<a href="/product/749">Custom Laser Cutting</a>
+</li>
+<li>
+<a href="/product/446">SMT Stencils</a>
+</li>
+</ul>
+</div>
+</div>
+<div class='menu'>
+<h2><a href="/">Products</a></h2>
+<div>
+<!-- sidebar_categories --><h3><a href="/category/42/new-products">New Products</a></h3>
+<h3><span class="specials_category"><a href="/specials">Specials!</a></span></h3>
+<hr />
+<h3><a href="/category/2/robot-kits">Robots</a></h3>
+<ul>
+	<li><a href="/category/76/3pi-robots-and-accessories">3pi</a></li>
+	<li><a href="/category/210/balboa-robot-and-accessories">Balboa</a></li>
+	<li><a href="/category/327/collaborative-robots">Cobot</a></li>
+	<li><a href="/category/202/romi-chassis-and-accessories">Romi</a></li>
+	<li><a href="/category/129/zumo-robots-and-accessories">Zumo</a></li>
+	<li><a href="/category/3/robot-kits-with-soldering">Kits, Soldering</a></li>
+	<li><a href="/category/4/robot-kits-without-soldering">Kits, No Soldering</a></li>
+</ul>
+<h3><a href="/category/6/electronics">Electronics</a></h3>
+<ul>
+	<li><a href="/category/125/arduino-compatible">Arduino</a></li>
+	<li><a href="/category/39/cables-and-wire">Cables and Wires</a></li>
+	<li><a href="/category/13/computer-interface">Computer Interface</a></li>
+	<li><a href="/category/19/connectors">Connectors</a></li>
+	<li><a href="/category/64/development-boards-programmable-controllers">Development Boards</a></li>
+	<li><a href="/category/334/isolation">Isolation</a></li>
+	<li><a href="/category/20/leds">LEDs</a></li>
+	<li><a href="/category/9/motion-control-modules">Motor Control</a></li>
+	<li><a href="/category/321/power">Power</a></li>
+	<li><a href="/category/14/electronics-prototyping">Prototyping</a></li>
+	<li><a href="/category/150/raspberry-pi">Raspberry Pi</a></li>
+	<li><a href="/category/135/relay-modules">Relays</a></li>
+	<li><a href="/category/7/sensors">Sensors</a></li>
+	<li><a href="/category/102/maestro-usb-servo-controllers">Servo Control</a></li>
+	<li><a href="/category/136/voltage-regulators">Voltage Regulators</a></li>
+</ul>
+<h3><a href="/category/21/mechanical-components">Mechanical</a></h3>
+<ul>
+	<li><a href="/category/231/ball-casters">Ball Casters</a></li>
+	<li><a href="/category/230/brackets">Brackets</a></li>
+	<li><a href="/category/26/chassis">Chassis</a></li>
+	<li><a href="/category/25/hardware">Hardware</a></li>
+	<li><a href="/category/127/linear-actuators">Linear Actuators</a></li>
+	<li><a href="/category/22/motors-and-gearboxes">Motors</a></li>
+	<li><a href="/category/179/motor-shaft-adapters">Motor Shaft Adapters</a></li>
+	<li><a href="/category/205/servos">Servos</a></li>
+	<li><a href="/category/87/stepper-motors">Stepper Motors</a></li>
+	<li><a href="/category/61/tamiya-products">Tamiya Products</a></li>
+	<li><a href="/category/5/tools">Tools</a></li>
+	<li><a href="/category/232/tracks">Tracks</a></li>
+	<li><a href="/category/234/wheels">Wheels</a></li>
+</ul>
+<h3><a href="/category/109/shirts">Shirts</a></h3>
+<ul>
+	<li><a href="/category/237/pololu-balboa-t-shirts">Balboa T-Shirts</a></li>
+	<li><a href="/category/194/pololu-zumo-t-shirts">Zumo T-Shirts</a></li>
+	<li><a href="/category/193/pololu-circuit-logo-t-shirts">Logo T-Shirts</a></li>
+</ul>
+</div>
+</div>
+
+<div class='menu'>
+<h2>Community</h2>
+<div>
+<ul>
+<li>
+<a data-lightbox-link="true" data-lightbox-height="34rem" data-lightbox-width="36rem" href="/account/communication-preferences">Mailing list</a>
+</li>
+<li>
+<a href="/blog">Pololu Blog</a>
+</li>
+<li>
+<a href="/blog/engage-your-brain">Engage Your Brain</a>
+</li>
+<li>
+<a href="/blog/community-projects">Community Projects</a>
+</li>
+<li>
+<span class="image_text_link"><a href="/feeds"><img alt="" src="https://a.pololu-files.com/assets/feed-icon-12x12-ad0e7f1965647f9414a76a1f32fb46dc73c1b2d295201b0abb56f2b2cf88bfb2.png" /></a><a href="/feeds">Feeds</a></span>
+</li>
+<li>
+<span class="image_text_link"><a href="mailto:?body=https%3A%2F%2Fwww.pololu.com%2Fcategory%2F220%2Flidar-time-of-flight-range-finders&amp;subject"><img alt="" src="https://a.pololu-files.com/assets/email-f2957b324fa09a7d81ed64679a6b9454647ad40514cd7b1ce501aefd946f5593.png" /></a><a href="mailto:?body=https%3A%2F%2Fwww.pololu.com%2Fcategory%2F220%2Flidar-time-of-flight-range-finders&amp;subject">Email a friend</a></span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div id='mathjax'></div>
+</body>
+</html>
