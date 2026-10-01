@@ -19,7 +19,7 @@
 | 모터 | MB4266-24180 브러시 DC, 24 V. 무부하 18,000 rpm·2 A, 정격 16,474 rpm·10.28 A·1.079 kgf·cm, 판매 요약 기동 토크 12 kgf·cm | [모터·드라이버 검토](DC_MOTOR_DRIVER_REVIEW_2026_10_01.md) |
 | 엔코더 | PGE-213 A/B, 상세 이미지 7 PPR(페이지 제목 일부 13), 공급 4.5–24 V | 같은 문서 |
 | 드라이버 | Cytron MD20A: 6–30 V, 연속 20 A, 피크 60 A. 능동 전류 제한(온도에 따라 감소), 과열·저전압 보호. 논리 High 1.5 V 이상(3.3 V 직결 가능). PWM+DIR, PWM 최대 20 kHz. PWM Low에서 출력 Low 제동. 역극성 보호 없음. 보드 테스트 버튼은 최고 속도 구동. 86×47 mm | [제품 페이지](https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver), [데이터시트 Rev 1.0](https://cdn.robotshop.com/media/c/cyt/rb-cyt-254/pdf/md20a_datasheet.pdf), [크기](https://evelta.com/20amp-6v-30v-dc-motor-driver-md20a/) |
-| 기어 구매 | 9/5 하드웨어팀 차체 견적에는 디퍼런셜 기어 셋트(13,500원, 필수)와 디퍼런셜 하우징(9,000원, 선택)만 있다. 모터→차동기 사이의 피니언·스퍼·모터 마운트는 없다. 차동기 세트의 링크는 열리지 않아 잇수를 확인하지 못했다 | `outputs/01a07090-budget/IT_ARENA_센서_예산안_2026-09-05_ToF수정.xlsx`의 「차체 견적 대조」 |
+| 기어 구매 | 9/5 하드웨어팀 차체 견적에는 디퍼렌셜 기어 셋트(13,500원, 필수)와 디퍼렌셜 하우징(9,000원, 선택)만 있다. 모터→차동기 사이의 피니언·스퍼·모터 마운트는 없다. 차동기 세트의 링크는 열리지 않아 잇수를 확인하지 못했다 | `outputs/01a07090-budget/IT_ARENA_센서_예산안_2026-09-05_ToF수정.xlsx`의 「차체 견적 대조」 |
 | 바퀴 | 같은 견적의 JConcepts Fuzz Bite LP 2.2" 2WD 앞타이어(12 mm 육각). 2.2"는 휠 림 지름(약 56 mm)이므로 타이어 바깥지름은 이보다 크다. 정확한 값은 확인하지 못했다 | [제품](https://jconcepts.net/fuzz-bite-lp-2wd-front-pre-mounted) |
 | 커넥터 | 공식 PDB 입출력은 모두 XT-30 암. XT-30은 일반적으로 연속 15 A·피크 30 A로 표기된다(판매처에 따라 다른 표기도 있음) | [PDB 요약](https://github.com/MOSW626/istech-it-arena/blob/3a9ada035f77305390217795edaa73c495687b6e/docs/hardware/power-modules.md), [Pimoroni](https://shop.pimoroni.com/en-us/products/amass-xt30-connector) |
 | 규정 | 개입은 "리셋(정지·시작)까지만"(§6). HW·SW 원격 비상정지 각 1개 이상 의무(§5). "10초 이상 정지한 차량에 한해 개입"(§6)은 사람의 직접 개입·재시작 조건이며 원격 정지를 막지 않는다 | [MANUAL](https://github.com/MOSW626/istech-it-arena/blob/3a9ada035f77305390217795edaa73c495687b6e/MANUAL.md) |
@@ -132,7 +132,7 @@ LiDAR 운동 보정에는 0.1 s 스캔 동안 약 1 cm 수준이라 영향이 �
 ## 7. MD20A 조합에서 함께 챙길 것
 
 - **비상정지:** Enable·Sleep 핀이 없다. 하드웨어 비상정지는 PWM 선을 외부 게이트로 끊거나 모터 전원을 차단하는 회로로 설계한다. MCU 부팅·리셋 중 출력을 위해 PWM 입력에 풀다운을 둔다. 데이터시트에 입력 바이어스 언급이 없다.
-- **핀 배치:** PWM+DIR 2핀이므로 [핀 검토](ESP32_S3_PIN_REVIEW_2026_09_30.md)의 ESC 1핀 가정이 20핀 사용·3핀 여유로 바뀜다. PGE-213을 MCU에 직접 연결하면 22핀·1핀이다.
+- **핀 배치:** PWM+DIR 2핀이므로 [핀 검토](ESP32_S3_PIN_REVIEW_2026_09_30.md)의 ESC 1핀 가정이 20핀 사용·3핀 여유로 바뀐다. PGE-213을 MCU에 직접 연결하면 22핀·1핀이다.
 - **엔코더:** PGE-213은 5 V로 공급하고 출력은 3.3 V로 레벨 변환해 ESP32에 연결한다. 직결하지 않는다.
 - **배선:** 역극성 보호가 없어 극성 실수 시 즉시 손상된다. 모터 라인은 굵은 선을 쓰고 XT-30 한도를 고려한다. 벤치 시험에서 테스트 버튼은 바퀴를 띄운 상태로만 쓴다.
 - **펌웨어 원칙:**
