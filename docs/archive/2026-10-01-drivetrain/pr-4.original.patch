@@ -1,0 +1,446 @@
+diff --git a/docs/activity/2026-10-01.md b/docs/activity/2026-10-01.md
+index 1d64f06da10747ee44351321fd151067a5e10ae2..a22b7460018d03b3d05efed8ec31e55a6e7fa482 100644
+--- a/docs/activity/2026-10-01.md
++++ b/docs/activity/2026-10-01.md
+@@ -1,6 +1,6 @@
+ # 2026-10-01 활동 기록
+ 
+-- **활동:** Claude의 저장소 점검 PR #3을 GPT가 검토했다. 공식 월드 입력 해시·공식 자료에 맞춘 질문 갱신·사용자 요청의 AI 표기 원칙을 채택하고, 센서 구매 조건은 B0183+C1 기준으로 보완했다. 제어기 의견의 채택·보류와 재검토 조건도 정리했다. MB4266-24180/PGE-213과 브러시 DC 드라이버를 GPT·Claude가 병렬 조사하고 공식 사양·가격·제조사 지원·기존 구동 계약을 대조했다. 예산·실제 바퀴 지름·감속비는 미정으로 두고 가격대를 비교했다.
+-- **결과:** 월드 산출물 29개 동일, `--check` 및 PC ROS Jazzy 회귀 534개 통과. 합성 전방 결측은 `NaN`이면 정지하지만 부분 `+Inf`이면 2 m/s 명령이 통과함을 실제 투영·보호 계산으로 재현했다. 기존 ESP32 속도 제어용 Pololu G2 24v21, 내장 폐루프용 RoboClaw Solo 30A, 산업용 브랜드 우선 maxon ESCON2 Compact 60/12의 조건부 세 경로에 합의했다. 모터 정격 10.28 A와 약 100 A 스톨 추정, PGE 7/13 표기 불일치 및 12 V 번들 혼동을 확인했다.
+-- **한계·후속:** 보호 코드·차량 모델은 미변경. C1 무응답 계약·정지/복구 검증을 A4 및 C2 실물 이관 전 필수 조건으로 등록했다. 실차·폐루프·A4 전체 검증은 아니며 Pure Pursuit 유지·MPC 보류도 성능 우열의 입증은 아니다. 구매·채택·배선·펌웨어·실물 시험은 하지 않았다. 후축 조립·감속·전류/열 한도·엔코더 레벨·회생/정지 회로를 확인해야 한다. 모터축 엔코더가 좌우 후륜 엔코더를 대체하지 않으며 채택 시 핀 배치를 다시 검토한다.
+-- **근거:** [점검·후속 판정과 재현](../reports/REPO_REVIEW_2026_10_01.md) · [확인 질문](../HARDWARE_AND_RULE_QUESTIONS.md) [모터·드라이버 비교와 협업 결론](../hardware/DC_MOTOR_DRIVER_REVIEW_2026_10_01.md), [현재 구성](../PROJECT_CONTEXT.md).
++- **활동:** Claude의 저장소 점검 PR #3을 GPT가 검토했다. 공식 월드 입력 해시·공식 자료에 맞춘 질문 갱신·사용자 요청의 AI 표기 원칙을 채택하고, 센서 구매 조건은 B0183+C1 기준으로 보완했다. 제어기 의견의 채택·보류와 재검토 조건도 정리했다. MB4266-24180/PGE-213과 브러시 DC 드라이버를 GPT·Claude가 병렬 조사하고 공식 사양·가격·제조사 지원·기존 구동 계약을 대조했다. 예산·실제 바퀴 지름·감속비는 미정으로 두고 가격대를 비교했다. 이후 사용자가 드라이버를 Cytron MD20A로 바꿔 MB4266-24180+PGE-213과 함께 구매하기로 정했고, 하드웨어팀이 전달한 감속비 약 2.5:1을 Claude가 선형 모터 모델로 검토했다.
++- **결과:** 월드 산출물 29개 동일, `--check` 및 PC ROS Jazzy 회귀 534개 통과. 합성 전방 결측은 `NaN`이면 정지하지만 부분 `+Inf`이면 2 m/s 명령이 통과함을 실제 투영·보호 계산으로 재현했다. 기존 ESP32 속도 제어용 Pololu G2 24v21, 내장 폐루프용 RoboClaw Solo 30A, 산업용 브랜드 우선 maxon ESCON2 Compact 60/12의 조건부 세 경로에 합의했다. 모터 정격 10.28 A와 약 100 A 스톨 추정, PGE 7/13 표기 불일치 및 12 V 번들 혼동을 확인했다. 2.5:1이 전체 비율이면 9 km/h에서 모터가 무부하 회전수의 9–14 %만 쓰는 낮은 감속비로 판단했고, 설계 최고속도 15 km/h 기준 권장 전체 감속비를 바퀴 지름(mm)×0.15로 정리했다. 계산 스크립트 회귀 4개 통과.
++- **한계·후속:** 보호 코드·차량 모델은 미변경. C1 무응답 계약·정지/복구 검증을 A4 및 C2 실물 이관 전 필수 조건으로 등록했다. 실차·폐루프·A4 전체 검증은 아니며 Pure Pursuit 유지·MPC 보류도 성능 우열의 입증은 아니다. 구매·채택·배선·펌웨어·실물 시험은 하지 않았다. 후축 조립·감속·전류/열 한도·엔코더 레벨·회생/정지 회로를 확인해야 한다. 모터축 엔코더가 좌우 후륜 엔코더를 대체하지 않으며 채택 시 핀 배치를 다시 검토한다. 감속비 검토는 실측 없는 선형 근사이며, 2.5:1의 적용 범위·바퀴 지름·축 지름은 하드웨어팀 확인 대상이다. 현황 구동 행과 모터·드라이버 검토의 MD20A 반영은 검토 PR에서 결정한다.
++- **근거:** [점검·후속 판정과 재현](../reports/REPO_REVIEW_2026_10_01.md) · [확인 질문](../HARDWARE_AND_RULE_QUESTIONS.md) [모터·드라이버 비교와 협업 결론](../hardware/DC_MOTOR_DRIVER_REVIEW_2026_10_01.md), [현재 구성](../PROJECT_CONTEXT.md), [감속비 검토](../hardware/GEAR_RATIO_REVIEW_2026_10_01.md).
+diff --git a/docs/hardware/GEAR_RATIO_REVIEW_2026_10_01.md b/docs/hardware/GEAR_RATIO_REVIEW_2026_10_01.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..ee96ad4baadb884ba21222a9cd7702d0fedb97b1
+--- /dev/null
++++ b/docs/hardware/GEAR_RATIO_REVIEW_2026_10_01.md
+@@ -0,0 +1,165 @@
++# MB4266-24180 구동부의 감속비 검토
++
++작성일: 2026-10-01. Claude의 분석이며 팀 결정이 아니다. 사용자가 MB4266-24180(뒤쪽 샤프트) + PGE-213 + Cytron MD20A를 구매하기로 정한 뒤, 하드웨어팀이 전달한 감속비 **약 2.5:1**이 이 모터에 맞는지 검토했다. GPT와의 후속 논의용 자료다. 실측·조립·펌웨어 변경은 하지 않았다.
++
++## 1. 요약
++
++- **2.5:1이 모터→바퀴 전체 비율이라면 낮다.** 9 km/h에서 모터가 배터리 공칭 전압 기준 무부하 회전수의 9–14 %만 쓴다(바퀴 지름 50–80 mm).
++- 문제는 토크 부족이 아니다. **속도가 부하에 민감해지고, 모터축 엔코더 분해능이 낮고, PWM 고착 시 폭주 속도가 높고, 가속 전류가 크다.**
++- 평소 주행 전류는 2.5:1에서도 부품 정격 안이다(순항 수 A, 접지 한계 가속 11–16 A).
++- 큰 전류 위험(정지 상태 급출발 순간, 바퀴가 막힌 상태)은 **감속비와 무관하며 펌웨어로 막아야 한다.**
++- 권장 기준: 설계 최고속도 15 km/h에서 모터가 무부하 회전수의 70 %로 돌게 한다. 이때 전체 감속비는 대략 **바퀴 지름(mm) × 0.15**다. 바퀴 50/65/80 mm이면 7.3/9.5/11.7:1이다.
++- 구매는 그대로 진행한다. 다만 나중에 감속비를 올릴 수 있도록 피니언·스퍼 단과 슬롯형 모터 마운트의 여지를 남기는 것을 권한다.
++- **가장 먼저 확인할 것:** 2.5:1이 전체 비율인지 차동기 내부 비율인지, 그리고 실제 바퀴 바깥지름.
++
++## 2. 확인된 사실
++
++| 항목 | 내용 | 근거 |
++|---|---|---|
++| 모터 | MB4266-24180 브러시 DC, 24 V. 무부하 18,000 rpm·2 A, 정격 16,474 rpm·10.28 A·1.079 kgf·cm, 판매 요약 기동 토크 12 kgf·cm | [모터·드라이버 검토](DC_MOTOR_DRIVER_REVIEW_2026_10_01.md) |
++| 엔코더 | PGE-213 A/B, 상세 이미지 7 PPR(페이지 제목 일부 13), 공급 4.5–24 V | 같은 문서 |
++| 드라이버 | Cytron MD20A: 6–30 V, 연속 20 A, 피크 60 A. 능동 전류 제한(온도에 따라 감소), 과열·저전압 보호. 논리 High 1.5 V 이상(3.3 V 직결 가능). PWM+DIR, PWM 최대 20 kHz. PWM Low에서 출력 Low 제동. 역극성 보호 없음. 보드 테스트 버튼은 최고 속도 구동. 86×47 mm | [제품 페이지](https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver), [데이터시트 Rev 1.0](https://cdn.robotshop.com/media/c/cyt/rb-cyt-254/pdf/md20a_datasheet.pdf), [크기](https://evelta.com/20amp-6v-30v-dc-motor-driver-md20a/) |
++| 기어 구매 | 9/5 하드웨어팀 차체 견적에는 디퍼렌셜 기어 셋트(13,500원, 필수)와 디퍼렌셜 하우징(9,000원, 선택)만 있다. 모터→차동기 사이의 피니언·스퍼·모터 마운트는 없다. 차동기 세트의 링크는 열리지 않아 잇수를 확인하지 못했다 | `outputs/01a07090-budget/IT_ARENA_센서_예산안_2026-09-05_ToF수정.xlsx`의 「차체 견적 대조」 |
++| 바퀴 | 같은 견적의 JConcepts Fuzz Bite LP 2.2" 2WD 앞타이어(12 mm 육각). 2.2"는 휠 림 지름(약 56 mm)이므로 타이어 바깥지름은 이보다 크다. 정확한 값은 확인하지 못했다 | [제품](https://jconcepts.net/fuzz-bite-lp-2wd-front-pre-mounted) |
++| 커넥터 | 공식 PDB 입출력은 모두 XT-30 암. XT-30은 일반적으로 연속 15 A·피크 30 A로 표기된다(판매처에 따라 다른 표기도 있음) | [PDB 요약](https://github.com/MOSW626/istech-it-arena/blob/3a9ada035f77305390217795edaa73c495687b6e/docs/hardware/power-modules.md), [Pimoroni](https://shop.pimoroni.com/en-us/products/amass-xt30-connector) |
++| 규정 | 개입은 "리셋(정지·시작)까지만"(§6). HW·SW 원격 비상정지 각 1개 이상 의무(§5). "10초 이상 정지한 차량에 한해 개입"(§6)은 사람의 직접 개입·재시작 조건이며 원격 정지를 막지 않는다 | [MANUAL](https://github.com/MOSW626/istech-it-arena/blob/3a9ada035f77305390217795edaa73c495687b6e/MANUAL.md) |
++
++## 3. 계산 방법과 가정
++
++무부하점과 정격점에서 `V = I·R + Ke·ω`, `T = Kt·(I − I0)`를 풀어 선형 DC 모터 모델을 만들었다.
++
++- 권선 저항 R ≈ 0.241 Ω, Kt ≈ 0.0128 N·m/A, Ke ≈ 0.0125 V·s/rad
++- 독립적으로 구한 Kt와 Ke가 SI 단위에서 약 2 % 안으로 일치해 모델에 자기모순이 없다.
++- 스톨 추정은 24 V에서 약 100 A·12.7 kgf·cm로, 판매 요약 기동 토크 12 kgf·cm와 같은 범위다.
++- 같은 부하 토크에서 떨어지는 회전수는 PWM과 무관하게 약 14,400 rpm/(N·m)이다.
++
++| 가정 | 값 | 비고 |
++|---|---|---|
++| 차량 질량·뒷바퀴 하중 | 2 kg·50 % | 사용자 예상 질량, 실측 아님 |
++| 마찰계수 μ | 1.0 | 접지 한계 힘 9.8 N |
++| 기어 효율 | 0.85 | 전체 감속계 |
++| 배터리 | 22.2 V 공칭 | 완충 25.2 V면 속도 수치 약 1.14배 |
++| 엔코더 | 7 PPR, 4배 계수 | 13 PPR이면 분해능 약 1.9배 |
++| 제어 주기 | 20 ms | 속도 측정 창 |
++| 바퀴 지름 | 50/65/80 mm | 실제 값 미확인 |
++
++시간 영역 과도 응답, 배터리 전압 강하, 발열, 타이어 특성, 기어 유격은 포함하지 않았다. 재현과 다른 조건의 계산:
++
++```bash
++python3 scripts/drivetrain_ratio_check.py --wheel-mm 50 65 80 --ratio 2.5 7.5
++python3 scripts/drivetrain_ratio_check.py --wheel-mm 72 --ratio 2.5 9.5 --design-top-kmh 15
++```
++
++## 4. 결과
++
++| 전체 감속비 | 바퀴 mm | 무부하 최고속도 | 9 km/h 모터 비율 | 접지 한계 가속 전류 | 고정 PWM 속도 저하(9 km/h) | PWM 0 제동력 9/20 km/h | 엔코더 mm/카운트 | 20 ms 속도 단위 |
++|---:|---:|---:|---:|---:|---:|---:|---:|---:|
++| 2.5 | 50 | 63 km/h | 14 % | 11.0 A | 41 % | 14/31 N | 2.24 | 0.112 m/s |
++| 7.5 | 50 | 21 km/h | 43 % | 5.0 A | 7 % | 127/196 N | 0.75 | 0.037 m/s |
++| 2.5 | 65 | 82 km/h | 11 % | 13.7 A | 54 % | 8/19 N | 2.92 | 0.146 m/s |
++| 7.5 | 65 | 27 km/h | 33 % | 5.9 A | 12 % | 75/150 N | 0.97 | 0.049 m/s |
++| 2.5 | 80 | 100 km/h | 9 % | 16.4 A | 64 % | 5/12 N | 3.59 | 0.180 m/s |
++| 7.5 | 80 | 33 km/h | 27 % | 6.8 A | 17 % | 49/110 N | 1.20 | 0.060 m/s |
++
++### 4.1 속도 범위와 폭주
++
++`차속 = 바퀴 둘레 × 모터 회전수 ÷ 감속비`다. 2.5:1에서는 9–15 km/h가 모터 회전 범위의 아래 10–20 %에 몰린다. PWM 1 %가 약 0.17 m/s(50 mm)에 해당해 속도가 민감하다. 펌웨어 오류나 신호 고착으로 PWM이 100 %가 되면 이론 최고속도가 수십 km/h다. 접지 한계 가속(약 4.9 m/s²)이면 1초에 약 18 km/h에 이른다.
++
++고속 주행 저항(구름 + 공기, 약 2–3 N)으로 줄어드는 회전수는 수 %라서 부하가 폭주를 막아 주지 않는다. **PWM 상한과 하드웨어 비상정지가 필요하다.**
++
++### 4.2 부하에 대한 속도 민감도
++
++같은 부하 토크에서 떨어지는 회전수는 PWM과 무관하다. 그런데 감속비가 낮으면 같은 차량 부하가 모터에 더 큰 토크로 걸리고(감속비에 반비례), 운전 회전수는 더 낮다(감속비에 비례). 그래서 **상대 속도 저하는 감속비의 제곱에 반비례**한다. 2.5:1에서는 방지턱·자갈·코너 부하마다 속도가 크게 출렁여 속도 루프의 보정 부담이 크다. 폐루프로 제어할 수는 있지만 튜닝이 어렵다.
++
++### 4.3 가속 전류
++
++모터 토크는 `바퀴 토크 ÷ (감속비 × 효율)`이고 전류는 `I0 + 토크/Kt`다. 그래서 같은 가속에 드는 전류는 감속비에 반비례한다. 무부하 전류 약 2 A가 늘 더해지므로 정확한 반비례는 아니다. 2.5:1의 11–16 A는 모터 정격 10.28 A를 짧게 넘고 MD20A 연속 20 A 안이다. 가속 구간이 1초 미만이면 열 문제는 크지 않을 것으로 본다(추정).
++
++### 4.4 PWM 0 단락 제동
++
++MD20A는 PWM Low에서 출력을 묶어 제동한다. 제동 전류는 역기전력/R이고 바퀴 제동력은 **감속비의 제곱에 비례**한다.
++- 2.5:1·50 mm·9 km/h에서 약 14 N으로 이미 접지 한계 9.8 N을 넘는다.
++- 7.5:1이면 한 자릿수 배 이상 커서 갑작스러운 0에서 뒷바퀴 잠김이 거의 확실하다.
++
++평소 감속은 속도 루프로 완만하게 하고, PWM 0 직행은 비상정지에 한정한다. 비상정지 때의 잠김·조향 상실이 허용 가능한지는 별도 판단이 필요하다.
++
++### 4.5 엔코더 분해능
++
++모터축 7 PPR에 4배 계수면 모터 1회전당 28카운트, 2.5:1에서 바퀴 1회전당 70카운트다. 20 ms 창의 속도 단위가 약 0.11–0.18 m/s라서 순항 제어는 가능하다. 그러나 0.3 m/s 이하나 정지 판정에서는 거칠다. 저속에서는 펄스 간격 측정이 필요하다.
++
++LiDAR 운동 보정에는 0.1 s 스캔 동안 약 1 cm 수준이라 영향이 작다. 다만 운동 보정은 기존 계약대로 후륜 엔코더를 사용한다. 감속비를 높이면 모터축 분해능이 비례해 좋아진다.
++
++### 4.6 감속비와 무관한 전류 위험
++
++- **급출발 순간:** 회전 전 역기전력이 없어 순간 전류는 `PWM × 전압 / R`이다. 정지 상태에서 PWM을 한 번에 크게 주면 MD20A 한도 약 60 A까지 오를 수 있고, 이는 XT-30 피크 표기를 넘는다. PWM 기울기 제한이 필요하다.
++- **바퀴 막힘:** 벽·차량에 막혀 바퀴가 돌지 않는데 속도 루프가 PWM을 올리면 전류가 PWM 10 % 약 9 A, 25 % 약 23 A, 50 % 약 46 A로 오르고 이후 60 A에서 제한된다. 원격 정지는 언제든 허용되지만 사람이 알아채기까지 시간이 걸릴 수 있다. **"PWM 높음 + 엔코더 속도 약 0이 수백 ms 지속 → PWM 차단" 스톨 차단**이 필요하다.
++
++## 5. 권장 전체 감속비
++
++설계 최고속도에서 모터가 배터리 공칭 전압 무부하 회전수의 70 %로 돌게 한다. 남는 30 %는 가속·부하·전압 강하 여유다.
++
++| 설계 최고속도 | 공식 | 50 mm | 65 mm | 80 mm | PWM 100 % 이론 최고속도 | 접지 한계 가속 전류 |
++|---|---|---:|---:|---:|---:|---:|
++| 20 km/h | 지름(mm) × 0.11 | 5.5 | 7.1 | 8.8 | 약 27 km/h | 약 6 A |
++| **15 km/h** | **지름(mm) × 0.15** | **7.3** | **9.5** | **11.7** | **약 20 km/h** | **약 5 A** |
++| 12 km/h | 지름(mm) × 0.18 | 9.2 | 11.9 | 14.6 | 약 16 km/h | 약 4.5 A |
++
++15 km/h 기준을 권하는 이유는 다음과 같다.
++- 현재 명령 상한 9 km/h에서 모터가 40 %대로 돌아 속도 민감도가 낮다.
++- 가속 전류가 정격의 절반 수준이다.
++- PWM 고착 시 이론 최고속도가 약 20 km/h로 **기구 자체가 폭주를 제한**한다.
++
++45 cm 본선과 급코너에서 15 km/h 이상을 쓸 구간이 많지 않을 것이라는 판단은 추정이다. 과거 20 km/h 목표를 유지한다면 20 km/h 줄을 쓴다.
++
++차동기 내부가 2.5:1이라면 앞 단에 필요한 비율은 `전체 ÷ 2.5`다. 예를 들어 0.5 모듈에서는 다음과 같다. 피니언 구멍과 모터 축 지름의 일치, 차체 안 공간은 확인이 필요하다.
++
++| 바퀴 지름 | 전체 감속비 | 필요한 앞 단 | 기어 조합 예 |
++|---:|---:|---:|---|
++| 50 mm | 7.3:1 | 약 2.9:1 | 15T → 45T |
++| 65 mm | 9.5:1 | 약 3.8:1 | 14T → 53T |
++| 80 mm | 11.7:1 | 약 4.7:1 | 13T → 60T |
++
++## 6. 감속비가 높을 때의 단점
++
++- 최고속도가 낮아지고, 지나치면 목표 속도에서 여유가 없다.
++- 같은 차속에서 모터가 더 빨리 돌아 브러시·베어링·기어의 마모와 소음이 커진다.
++- 기어 단이 늘면 효율 손실과 유격이 쌓여 속도 제어 응답이 둔해진다. 큰 스퍼기어가 공간과 무게를 차지한다.
++- 충돌·급정지 때 모터 관성이 감속비 제곱으로 커져 톱니에 충격이 몰린다. 플라스틱·3D 프린팅 기어에서 주의한다.
++- PWM 0 단락 제동이 감속비 제곱으로 세진다(4.4절).
++
++50–65 mm 바퀴에서 전체 15:1을 넘기 시작하면 높은 쪽 단점이 커진다고 본다.
++
++## 7. MD20A 조합에서 함께 챙길 것
++
++- **비상정지:** Enable·Sleep 핀이 없다. 하드웨어 비상정지는 PWM 선을 외부 게이트로 끊거나 모터 전원을 차단하는 회로로 설계한다. MCU 부팅·리셋 중 출력을 위해 PWM 입력에 풀다운을 둔다. 데이터시트에 입력 바이어스 언급이 없다.
++- **핀 배치:** PWM+DIR 2핀이므로 [핀 검토](ESP32_S3_PIN_REVIEW_2026_09_30.md)의 ESC 1핀 가정이 20핀 사용·3핀 여유로 바뀐다. PGE-213을 MCU에 직접 연결하면 22핀·1핀이다.
++- **엔코더:** PGE-213은 5 V로 공급하고 출력은 3.3 V로 레벨 변환해 ESP32에 연결한다. 직결하지 않는다.
++- **배선:** 역극성 보호가 없어 극성 실수 시 즉시 손상된다. 모터 라인은 굵은 선을 쓰고 XT-30 한도를 고려한다. 벤치 시험에서 테스트 버튼은 바퀴를 띄운 상태로만 쓴다.
++- **펌웨어 원칙:**
++  - PWM 상한
++  - PWM 상승 기울기 제한
++  - 주행 중 DIR 반전 금지
++  - PWM 0 직행은 비상정지에만
++  - 스톨 차단
++  - 저속 펄스 간격 측정
++- **예산:** 모터·엔코더는 금액과 무관하게 집계, MD20A(약 3.5만 원)는 3만 원 이상이라 집계된다. 피니언·스퍼는 같은 품목 합계 3만 원 미만이면 집계되지 않는다.
++
++## 8. 하드웨어팀 확인 질문
++
++1. 2.5:1은 모터→바퀴 전체 비율인가, 차동기 내부 비율인가? 모터와 차동기 사이에 피니언·스퍼 단이 있는가? 있다면 잇수는?
++2. 실제 바퀴 바깥지름
++3. MB4266 축 지름과 피니언 구멍 지름, 기어 모듈
++4. PGE-213이 24 V 모델 뒤쪽 샤프트에 장착되는가(판매 페이지 장착 옵션은 12 V 모델용), 실제 7 PPR인가 13 PPR인가
++5. 나중에 감속비를 올릴 수 있도록 슬롯형 모터 마운트·스퍼 공간을 둘 수 있는가
++
++## 9. 논의가 필요한 사항
++
++- 설계 최고속도를 12/15/20 km/h 중 무엇으로 둘지. 감속비 권장값이 이것으로 정해진다.
++- 2.5:1이 전체 비율로 확인되면, 첫 조립부터 앞 단을 추가할지 아니면 시험 주행 후 바꿀지.
++- 스톨 차단·PWM 기울기·PWM 상한·DIR 반전 금지를 [구동 계약](ACTUATION_CONTRACT_2026_09_22.md)과 MCU 펌웨어 요구사항에 넣을 위치. 비상정지 시 단락 제동(잠김)과 자유 회전 중 무엇을 기본으로 할지.
++- 원격 정지 후 재출발 절차와 10초 기준·세이브 포인트의 관계. [확인 질문](../HARDWARE_AND_RULE_QUESTIONS.md) 9번과 함께 2차 회의에서 확인한다.
++
++## 10. 검토 중 바로잡은 해석
++
++- 처음에는 "감속비와 전류는 사실상 같은 문제"로 설명했다. 그러나 감속비에 따라 달라지는 것은 가속·부하 전류뿐이고, 급출발 순간·바퀴 막힘 전류는 감속비와 무관하다(4.6절).
++- 처음에는 "10초 규정 때문에 막힌 차량을 멈출 수 없다"는 취지로 설명했다. 그러나 규정은 정지·시작 리셋을 허용하며, 10초는 직접 개입·재시작 조건이다(2절).
+diff --git a/scripts/drivetrain_ratio_check.py b/scripts/drivetrain_ratio_check.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..bb6460cbf64c38db572eff29feb4abca261c2fbc
+--- /dev/null
++++ b/scripts/drivetrain_ratio_check.py
+@@ -0,0 +1,193 @@
++"""MB4266-24180 브러시 DC 모터의 전체 감속비 검토 계산.
++
++판매처 사양의 무부하점·정격점 두 개로 선형 DC 모터 모델을 만들고, 바퀴 지름과
++전체 감속비(모터 → 바퀴)에 따른 속도 범위·가속 전류·고정 PWM 속도 저하·단락 제동·
++엔코더 분해능을 계산한다. 실측값이 아니며 차량 질량·마찰계수·효율은 가정값이다.
++
++예:
++    python3 scripts/drivetrain_ratio_check.py
++    python3 scripts/drivetrain_ratio_check.py --wheel-mm 72 --ratio 2.5 9.5 --design-top-kmh 15
++"""
++from __future__ import annotations
++
++import argparse
++from dataclasses import asdict, dataclass
++import json
++import math
++
++G = 9.80665
++
++
++@dataclass(frozen=True)
++class MotorPoints:
++    """판매처 상세 사양 판독값(24 V 기준)."""
++
++    voltage_v: float = 24.0
++    no_load_rpm: float = 18000.0
++    no_load_a: float = 2.0
++    rated_rpm: float = 16474.0
++    rated_a: float = 10.28
++    rated_torque_kgfcm: float = 1.079
++
++
++@dataclass(frozen=True)
++class Vehicle:
++    """차량·구동 가정값. 실측 전 계산 예시용."""
++
++    mass_kg: float = 2.0
++    rear_weight_fraction: float = 0.5
++    mu: float = 1.0
++    gear_efficiency: float = 0.85
++    encoder_ppr: int = 7
++    battery_v: float = 22.2
++    driver_limit_a: float = 60.0
++    control_period_s: float = 0.02
++
++
++def rpm_to_rad_s(rpm: float) -> float:
++    return rpm * 2 * math.pi / 60
++
++
++def motor_model(points: MotorPoints = MotorPoints()) -> dict:
++    """두 운전점에서 V = I·R + Ke·ω, T = Kt·(I − I0)를 푼다."""
++    w0 = rpm_to_rad_s(points.no_load_rpm)
++    wr = rpm_to_rad_s(points.rated_rpm)
++    v = points.voltage_v
++    resistance = v * (w0 - wr) / (points.rated_a * w0 - points.no_load_a * wr)
++    ke = (v - points.no_load_a * resistance) / w0
++    rated_torque = points.rated_torque_kgfcm * G / 100
++    kt = rated_torque / (points.rated_a - points.no_load_a)
++    stall_a = v / resistance
++    stall_torque = kt * (stall_a - points.no_load_a)
++    return {
++        "resistance_ohm": resistance,
++        "ke_v_s_per_rad": ke,
++        "kt_nm_per_a": kt,
++        "stall_a_at_rated_voltage": stall_a,
++        "stall_torque_nm": stall_torque,
++        "stall_torque_kgfcm": stall_torque * 100 / G,
++        # 같은 부하 토크에서 PWM과 무관하게 떨어지는 회전수
++        "speed_drop_rpm_per_nm": points.no_load_rpm / stall_torque,
++    }
++
++
++def battery_no_load_rpm(points: MotorPoints, vehicle: Vehicle) -> float:
++    return points.no_load_rpm * vehicle.battery_v / points.voltage_v
++
++
++def recommended_ratio(wheel_d_m: float, design_top_kmh: float, points: MotorPoints = MotorPoints(),
++                      vehicle: Vehicle = Vehicle(), headroom: float = 0.7) -> float:
++    """설계 최고속도에서 모터가 배터리 전압 무부하 회전수의 headroom 비율로 돌게 하는 감속비."""
++    if not 0 < headroom <= 1:
++        raise ValueError("headroom must be within (0, 1]")
++    v = design_top_kmh / 3.6
++    return headroom * battery_no_load_rpm(points, vehicle) * math.pi * wheel_d_m / (60 * v)
++
++
++def evaluate(ratio: float, wheel_d_m: float, points: MotorPoints = MotorPoints(),
++             vehicle: Vehicle = Vehicle(), speeds_kmh=(9.0, 15.0, 20.0)) -> dict:
++    if ratio <= 0 or wheel_d_m <= 0:
++        raise ValueError("ratio and wheel diameter must be positive")
++    model = motor_model(points)
++    r = wheel_d_m / 2
++    n0 = battery_no_load_rpm(points, vehicle)
++    eta = vehicle.gear_efficiency
++    kt, ke, res = model["kt_nm_per_a"], model["ke_v_s_per_rad"], model["resistance_ohm"]
++
++    def motor_rpm(kmh: float) -> float:
++        return kmh / 3.6 / (math.pi * wheel_d_m) * 60 * ratio
++
++    traction_n = vehicle.mu * vehicle.rear_weight_fraction * vehicle.mass_kg * G
++    traction_motor_nm = traction_n * r / (ratio * eta)
++    traction_a = points.no_load_a + traction_motor_nm / kt
++    drop_rpm = traction_motor_nm * model["speed_drop_rpm_per_nm"]
++
++    speeds = {}
++    for kmh in speeds_kmh:
++        n = motor_rpm(kmh)
++        w = rpm_to_rad_s(n)
++        brake_a = ke * w / res
++        speeds[f"{kmh:g}"] = {
++            "motor_rpm": n,
++            "fraction_of_battery_no_load": n / n0,
++            # 해당 속도의 무부하 PWM에 접지 한계 가속 부하를 걸었을 때 상대 저하
++            "fixed_pwm_drop_fraction_at_traction_load": drop_rpm / (n + drop_rpm),
++            # PWM 0(출력 단락 제동) 순간의 근사 전류와 바퀴 제동력
++            "short_brake_a": min(brake_a, vehicle.driver_limit_a),
++            "short_brake_wheel_n": kt * min(brake_a, vehicle.driver_limit_a) * ratio * eta / r,
++        }
++
++    counts_per_m = vehicle.encoder_ppr * 4 * ratio / (math.pi * wheel_d_m)
++    return {
++        "ratio": ratio,
++        "wheel_d_mm": wheel_d_m * 1000,
++        "battery_v": vehicle.battery_v,
++        "no_load_top_kmh": n0 / ratio / 60 * math.pi * wheel_d_m * 3.6,
++        "traction_force_n": traction_n,
++        "traction_limit_motor_a": traction_a,
++        "speeds": speeds,
++        "encoder_counts_per_wheel_rev": vehicle.encoder_ppr * 4 * ratio,
++        "encoder_mm_per_count": 1000 / counts_per_m,
++        "speed_step_mps_per_count": 1 / counts_per_m / vehicle.control_period_s,
++        # 바퀴가 막혀 역기전력이 없을 때, 기어비와 무관
++        "blocked_current_a_by_duty": {
++            f"{d:g}": min(d * vehicle.battery_v / res, vehicle.driver_limit_a) for d in (0.1, 0.25, 0.5, 1.0)
++        },
++    }
++
++
++def main(argv=None) -> int:
++    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
++    parser.add_argument("--wheel-mm", type=float, nargs="+", default=[50.0, 65.0, 80.0])
++    parser.add_argument("--ratio", type=float, nargs="+", default=[2.5])
++    parser.add_argument("--design-top-kmh", type=float, nargs="+", default=[20.0, 15.0, 12.0])
++    parser.add_argument("--mass-kg", type=float, default=Vehicle.mass_kg)
++    parser.add_argument("--rear-weight", type=float, default=Vehicle.rear_weight_fraction)
++    parser.add_argument("--mu", type=float, default=Vehicle.mu)
++    parser.add_argument("--gear-efficiency", type=float, default=Vehicle.gear_efficiency)
++    parser.add_argument("--encoder-ppr", type=int, default=Vehicle.encoder_ppr)
++    parser.add_argument("--battery-v", type=float, default=Vehicle.battery_v)
++    parser.add_argument("--json", action="store_true", help="표 대신 JSON 출력")
++    args = parser.parse_args(argv)
++
++    points = MotorPoints()
++    vehicle = Vehicle(mass_kg=args.mass_kg, rear_weight_fraction=args.rear_weight, mu=args.mu,
++                      gear_efficiency=args.gear_efficiency, encoder_ppr=args.encoder_ppr,
++                      battery_v=args.battery_v)
++    model = motor_model(points)
++    cases = [evaluate(n, d / 1000, points, vehicle) for d in args.wheel_mm for n in args.ratio]
++    rec = {f"{t:g}": {f"{d:g}": recommended_ratio(d / 1000, t, points, vehicle) for d in args.wheel_mm}
++           for t in args.design_top_kmh}
++    if args.json:
++        print(json.dumps({"motor_points": asdict(points), "vehicle": asdict(vehicle), "model": model,
++                          "cases": cases, "recommended_ratio": rec}, ensure_ascii=False, indent=2))
++        return 0
++
++    print(f"모델: R={model['resistance_ohm']:.3f} Ω, Kt={model['kt_nm_per_a']:.4f} N·m/A, "
++          f"Ke={model['ke_v_s_per_rad']:.4f} V·s/rad, 스톨 {model['stall_a_at_rated_voltage']:.0f} A·"
++          f"{model['stall_torque_kgfcm']:.1f} kgf·cm, 속도 저하 {model['speed_drop_rpm_per_nm']:.0f} rpm/(N·m)")
++    print("\n| 감속비 | 바퀴 mm | 무부하 최고 km/h | 9 km/h 모터 비율 | 접지 한계 가속 A | 고정 PWM 저하(9 km/h) | "
++          "PWM 0 제동력 9/20 km/h N | mm/카운트 | 20 ms 속도 단위 m/s |")
++    print("|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
++    for c in cases:
++        s9, s20 = c["speeds"]["9"], c["speeds"]["20"]
++        print(f"| {c['ratio']:g} | {c['wheel_d_mm']:g} | {c['no_load_top_kmh']:.0f} | "
++              f"{s9['fraction_of_battery_no_load']*100:.0f}% | {c['traction_limit_motor_a']:.1f} | "
++              f"{s9['fixed_pwm_drop_fraction_at_traction_load']*100:.0f}% | "
++              f"{s9['short_brake_wheel_n']:.0f}/{s20['short_brake_wheel_n']:.0f} | "
++              f"{c['encoder_mm_per_count']:.2f} | {c['speed_step_mps_per_count']:.3f} |")
++    print(f"\n접지 한계 힘 {cases[0]['traction_force_n']:.1f} N (μ={vehicle.mu}, 뒷바퀴 하중 "
++          f"{vehicle.rear_weight_fraction:.0%}, {vehicle.mass_kg} kg)")
++    print("\n권장 전체 감속비(설계 최고속도에서 배터리 무부하 회전수의 70%)")
++    print("| 설계 최고속도 | " + " | ".join(f"{d:g} mm" for d in args.wheel_mm) + " |")
++    print("|---:|" + "---:|" * len(args.wheel_mm))
++    for t, row in rec.items():
++        print(f"| {t} km/h | " + " | ".join(f"{v:.1f}" for v in row.values()) + " |")
++    blocked = cases[0]["blocked_current_a_by_duty"]
++    print("\n바퀴가 막혔을 때 전류(기어비 무관, 드라이버 한도 60 A로 자름): "
++          + ", ".join(f"PWM {float(k)*100:.0f}% {v:.0f} A" for k, v in blocked.items()))
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/tests/test_drivetrain_ratio_check.py b/tests/test_drivetrain_ratio_check.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..b179cf615a9a0b1a5816b6528c2880e56732cbda
+--- /dev/null
++++ b/tests/test_drivetrain_ratio_check.py
+@@ -0,0 +1,55 @@
++"""감속비 검토 계산의 모델 일관성 회귀."""
++import math
++from pathlib import Path
++import sys
++
++import pytest
++
++REPO = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(REPO / "scripts"))
++from drivetrain_ratio_check import (  # noqa: E402
++    MotorPoints, Vehicle, evaluate, main, motor_model, recommended_ratio, rpm_to_rad_s,
++)
++
++
++def test_model_reproduces_both_datasheet_points():
++    p = MotorPoints()
++    m = motor_model(p)
++    for rpm, amps in ((p.no_load_rpm, p.no_load_a), (p.rated_rpm, p.rated_a)):
++        predicted = (p.voltage_v - amps * m["resistance_ohm"]) / m["ke_v_s_per_rad"]
++        assert predicted == pytest.approx(rpm_to_rad_s(rpm), rel=1e-9)
++    # 독립적으로 구한 Kt와 Ke가 SI 단위에서 근사 일치해야 선형 모델이 자기모순이 없다.
++    assert m["kt_nm_per_a"] == pytest.approx(m["ke_v_s_per_rad"], rel=0.05)
++    # 판매 요약의 기동 토크 12 kgf·cm와 같은 범위
++    assert 11 < m["stall_torque_kgfcm"] < 14
++    assert 90 < m["stall_a_at_rated_voltage"] < 110
++
++
++def test_recommended_ratio_puts_design_speed_at_headroom_and_scales_with_wheel():
++    v = Vehicle()
++    for d in (0.05, 0.065, 0.08):
++        n = recommended_ratio(d, 15.0, vehicle=v)
++        motor_rpm = 15 / 3.6 / (math.pi * d) * 60 * n
++        no_load = MotorPoints().no_load_rpm * v.battery_v / MotorPoints().voltage_v
++        assert motor_rpm == pytest.approx(0.7 * no_load)
++    assert recommended_ratio(0.08, 15.0) / recommended_ratio(0.04, 15.0) == pytest.approx(2.0)
++    with pytest.raises(ValueError):
++        recommended_ratio(0.05, 15.0, headroom=0)
++
++
++def test_higher_ratio_lowers_acceleration_current_and_speed_sensitivity():
++    low, high = evaluate(2.5, 0.05), evaluate(7.5, 0.05)
++    assert high["traction_limit_motor_a"] < low["traction_limit_motor_a"]
++    assert (high["speeds"]["9"]["fixed_pwm_drop_fraction_at_traction_load"]
++            < low["speeds"]["9"]["fixed_pwm_drop_fraction_at_traction_load"])
++    assert high["encoder_mm_per_count"] == pytest.approx(low["encoder_mm_per_count"] / 3)
++    # 바퀴가 막힌 전류는 PWM과 권선 저항으로만 정해진다.
++    assert high["blocked_current_a_by_duty"] == low["blocked_current_a_by_duty"]
++
++
++def test_invalid_geometry_is_rejected_and_cli_runs(capsys):
++    with pytest.raises(ValueError):
++        evaluate(0, 0.05)
++    assert main(["--wheel-mm", "65", "--ratio", "2.5", "9.5", "--design-top-kmh", "15"]) == 0
++    out = capsys.readouterr().out
++    assert "권장 전체 감속비" in out and "| 9.5 | 65 |" in out
