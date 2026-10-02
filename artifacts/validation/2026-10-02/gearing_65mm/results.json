@@ -1,0 +1,380 @@
+{
+  "date_kst": "2026-10-02",
+  "kind": "근사 계산. 실측·실차 검증 아님",
+  "motor_points": {
+    "voltage_v": 24.0,
+    "no_load_rpm": 18000.0,
+    "no_load_a": 2.0,
+    "rated_rpm": 16474.0,
+    "rated_a": 10.28,
+    "rated_torque_kgfcm": 1.079
+  },
+  "motor_model": {
+    "resistance_ohm": 0.2408,
+    "ke_v_s_per_rad": 0.01248,
+    "kt_nm_per_a": 0.01278,
+    "i0_a": 2.0
+  },
+  "inputs": {
+    "wheel_outer_diameter_m": 0.065,
+    "ratios": {
+      "15": {
+        "stages": "피니언/스퍼 6:1 × 차동 2.5:1",
+        "status": "하드웨어팀 초기 구성(순정 기어)"
+      },
+      "12": {
+        "stages": "피니언/스퍼 4.8:1 × 차동 2.5:1",
+        "status": "비교안. 부품 미확인"
+      },
+      "2.5": {
+        "stages": "앞단 없이 차동 2.5:1",
+        "status": "10/1 전달값. 참고 비교"
+      }
+    },
+    "mass_kg": 2.0,
+    "rear_weight_fraction": 0.5,
+    "mu": 1.0,
+    "gear_efficiency": 0.85,
+    "cruise_resistance_n": 1.0,
+    "battery_v": {
+      "full_6s": 25.2,
+      "nominal_6s": 22.2,
+      "low": 21.0,
+      "near_cutoff": 20.0
+    },
+    "encoder_ppr_candidates": [
+      7,
+      13
+    ],
+    "quadrature_factor": 4,
+    "control_period_s": 0.02,
+    "check_speeds_kmh": [
+      9.0,
+      10.0
+    ],
+    "footprint_m": {
+      "length": 0.2,
+      "width": 0.15
+    },
+    "provisional_wheelbase_m": 0.145,
+    "provisional_track_width_m": 0.135
+  },
+  "traction_limit_force_n": 9.81,
+  "deadband_duty_motor_only_nominal": 0.0217,
+  "ratio_for_70pct_headroom": {
+    "10": 14.28,
+    "12": 11.9,
+    "15": 9.52
+  },
+  "archive_60mm_candidate_range_at_65mm": [
+    9.75,
+    13.54
+  ],
+  "cases": [
+    {
+      "ratio": 15.0,
+      "stages": "피니언/스퍼 6:1 × 차동 2.5:1",
+      "status": "하드웨어팀 초기 구성(순정 기어)",
+      "top_speed_kmh_pwm100": {
+        "full_6s": {
+          "no_load": 15.45,
+          "cruise_assumed": 15.42,
+          "traction_limit": 15.16
+        },
+        "nominal_6s": {
+          "no_load": 13.58,
+          "cruise_assumed": 13.55,
+          "traction_limit": 13.28
+        },
+        "low": {
+          "no_load": 12.83,
+          "cruise_assumed": 12.8,
+          "traction_limit": 12.53
+        },
+        "near_cutoff": {
+          "no_load": 12.2,
+          "cruise_assumed": 12.17,
+          "traction_limit": 11.91
+        }
+      },
+      "speed_per_1pct_pwm_mps_nominal": 0.0377,
+      "traction_limit_motor_a": 3.96,
+      "cruise_motor_a": 2.2,
+      "brake_current_for_traction_limit_a": 1.96,
+      "speed_checks": {
+        "9": {
+          "motor_rpm": 11018,
+          "duty_no_load": {
+            "full_6s": 0.5904,
+            "nominal_6s": 0.6702,
+            "low": 0.7085,
+            "near_cutoff": 0.7439
+          },
+          "duty_traction_limit": {
+            "full_6s": 0.6091,
+            "nominal_6s": 0.6914,
+            "low": 0.7309,
+            "near_cutoff": 0.7675
+          },
+          "fixed_pwm_drop_traction_limit": {
+            "no_load_rpm": 11018.419137131215,
+            "drop_rpm": 360.50082683675936,
+            "drop_fraction": 0.0327180171992096,
+            "stalls": false
+          },
+          "short_brake_initial_a_uncapped": 59.8,
+          "short_brake_wheel_force_n": 299.7,
+          "short_brake_over_traction_limit": 30.6
+        },
+        "10": {
+          "motor_rpm": 12243,
+          "duty_no_load": {
+            "full_6s": 0.6539,
+            "nominal_6s": 0.7422,
+            "low": 0.7846,
+            "near_cutoff": 0.8239
+          },
+          "duty_traction_limit": {
+            "full_6s": 0.6726,
+            "nominal_6s": 0.7635,
+            "low": 0.8071,
+            "near_cutoff": 0.8474
+          },
+          "fixed_pwm_drop_traction_limit": {
+            "no_load_rpm": 12242.687930145794,
+            "drop_rpm": 360.50082683675936,
+            "drop_fraction": 0.029446215479288648,
+            "stalls": false
+          },
+          "short_brake_initial_a_uncapped": 66.4,
+          "short_brake_wheel_force_n": 333.0,
+          "short_brake_over_traction_limit": 34.0
+        }
+      },
+      "encoder_motor_shaft": {
+        "7": {
+          "counts_per_wheel_rev": 420.0,
+          "mm_per_count": 0.486,
+          "counts_per_period_at_9kmh": 102.8,
+          "speed_quantum_per_period_mps": 0.0243,
+          "edge_rate_at_9kmh_hz": 5142,
+          "edge_rate_at_full_battery_no_load_hz": 8820
+        },
+        "13": {
+          "counts_per_wheel_rev": 780.0,
+          "mm_per_count": 0.262,
+          "counts_per_period_at_9kmh": 191.0,
+          "speed_quantum_per_period_mps": 0.0131,
+          "edge_rate_at_9kmh_hz": 9549,
+          "edge_rate_at_full_battery_no_load_hz": 16380
+        }
+      },
+      "equivalent_ratio_at_60mm": 13.85
+    },
+    {
+      "ratio": 12.0,
+      "stages": "피니언/스퍼 4.8:1 × 차동 2.5:1",
+      "status": "비교안. 부품 미확인",
+      "top_speed_kmh_pwm100": {
+        "full_6s": {
+          "no_load": 19.32,
+          "cruise_assumed": 19.27,
+          "traction_limit": 18.86
+        },
+        "nominal_6s": {
+          "no_load": 16.97,
+          "cruise_assumed": 16.92,
+          "traction_limit": 16.51
+        },
+        "low": {
+          "no_load": 16.03,
+          "cruise_assumed": 15.99,
+          "traction_limit": 15.57
+        },
+        "near_cutoff": {
+          "no_load": 15.25,
+          "cruise_assumed": 15.21,
+          "traction_limit": 14.79
+        }
+      },
+      "speed_per_1pct_pwm_mps_nominal": 0.0471,
+      "traction_limit_motor_a": 4.45,
+      "cruise_motor_a": 2.25,
+      "brake_current_for_traction_limit_a": 2.45,
+      "speed_checks": {
+        "9": {
+          "motor_rpm": 8815,
+          "duty_no_load": {
+            "full_6s": 0.4761,
+            "nominal_6s": 0.5405,
+            "low": 0.5714,
+            "near_cutoff": 0.5999
+          },
+          "duty_traction_limit": {
+            "full_6s": 0.4995,
+            "nominal_6s": 0.567,
+            "low": 0.5994,
+            "near_cutoff": 0.6294
+          },
+          "fixed_pwm_drop_traction_limit": {
+            "no_load_rpm": 8814.735309704973,
+            "drop_rpm": 450.6260335459492,
+            "drop_fraction": 0.05112190187376501,
+            "stalls": false
+          },
+          "short_brake_initial_a_uncapped": 47.8,
+          "short_brake_wheel_force_n": 191.8,
+          "short_brake_over_traction_limit": 19.6
+        },
+        "10": {
+          "motor_rpm": 9794,
+          "duty_no_load": {
+            "full_6s": 0.5269,
+            "nominal_6s": 0.5981,
+            "low": 0.6323,
+            "near_cutoff": 0.6639
+          },
+          "duty_traction_limit": {
+            "full_6s": 0.5503,
+            "nominal_6s": 0.6246,
+            "low": 0.6603,
+            "near_cutoff": 0.6934
+          },
+          "fixed_pwm_drop_traction_limit": {
+            "no_load_rpm": 9794.150344116635,
+            "drop_rpm": 450.6260335459492,
+            "drop_fraction": 0.04600971168638851,
+            "stalls": false
+          },
+          "short_brake_initial_a_uncapped": 53.1,
+          "short_brake_wheel_force_n": 213.1,
+          "short_brake_over_traction_limit": 21.7
+        }
+      },
+      "encoder_motor_shaft": {
+        "7": {
+          "counts_per_wheel_rev": 336.0,
+          "mm_per_count": 0.608,
+          "counts_per_period_at_9kmh": 82.3,
+          "speed_quantum_per_period_mps": 0.0304,
+          "edge_rate_at_9kmh_hz": 4114,
+          "edge_rate_at_full_battery_no_load_hz": 8820
+        },
+        "13": {
+          "counts_per_wheel_rev": 624.0,
+          "mm_per_count": 0.327,
+          "counts_per_period_at_9kmh": 152.8,
+          "speed_quantum_per_period_mps": 0.0164,
+          "edge_rate_at_9kmh_hz": 7639,
+          "edge_rate_at_full_battery_no_load_hz": 16380
+        }
+      },
+      "equivalent_ratio_at_60mm": 11.08
+    },
+    {
+      "ratio": 2.5,
+      "stages": "앞단 없이 차동 2.5:1",
+      "status": "10/1 전달값. 참고 비교",
+      "top_speed_kmh_pwm100": {
+        "full_6s": {
+          "no_load": 92.72,
+          "cruise_assumed": 91.64,
+          "traction_limit": 82.12
+        },
+        "nominal_6s": {
+          "no_load": 81.46,
+          "cruise_assumed": 80.38,
+          "traction_limit": 70.86
+        },
+        "low": {
+          "no_load": 76.96,
+          "cruise_assumed": 75.88,
+          "traction_limit": 66.36
+        },
+        "near_cutoff": {
+          "no_load": 73.21,
+          "cruise_assumed": 72.13,
+          "traction_limit": 62.61
+        }
+      },
+      "speed_per_1pct_pwm_mps_nominal": 0.2263,
+      "traction_limit_motor_a": 13.74,
+      "cruise_motor_a": 3.2,
+      "brake_current_for_traction_limit_a": 11.74,
+      "speed_checks": {
+        "9": {
+          "motor_rpm": 1836,
+          "duty_no_load": {
+            "full_6s": 0.1143,
+            "nominal_6s": 0.1298,
+            "low": 0.1372,
+            "near_cutoff": 0.1441
+          },
+          "duty_traction_limit": {
+            "full_6s": 0.2265,
+            "nominal_6s": 0.2571,
+            "low": 0.2718,
+            "near_cutoff": 0.2854
+          },
+          "fixed_pwm_drop_traction_limit": {
+            "no_load_rpm": 1836.4031895218693,
+            "drop_rpm": 2163.004961020556,
+            "drop_fraction": 1.1778486191715456,
+            "stalls": true
+          },
+          "short_brake_initial_a_uncapped": 10.0,
+          "short_brake_wheel_force_n": 8.3,
+          "short_brake_over_traction_limit": 0.8
+        },
+        "10": {
+          "motor_rpm": 2040,
+          "duty_no_load": {
+            "full_6s": 0.1249,
+            "nominal_6s": 0.1418,
+            "low": 0.1499,
+            "near_cutoff": 0.1574
+          },
+          "duty_traction_limit": {
+            "full_6s": 0.2371,
+            "nominal_6s": 0.2691,
+            "low": 0.2845,
+            "near_cutoff": 0.2987
+          },
+          "fixed_pwm_drop_traction_limit": {
+            "no_load_rpm": 2040.4479883576323,
+            "drop_rpm": 2163.004961020556,
+            "drop_fraction": 1.0600637572543912,
+            "stalls": true
+          },
+          "short_brake_initial_a_uncapped": 11.1,
+          "short_brake_wheel_force_n": 9.3,
+          "short_brake_over_traction_limit": 0.9
+        }
+      },
+      "encoder_motor_shaft": {
+        "7": {
+          "counts_per_wheel_rev": 70.0,
+          "mm_per_count": 2.917,
+          "counts_per_period_at_9kmh": 17.1,
+          "speed_quantum_per_period_mps": 0.1459,
+          "edge_rate_at_9kmh_hz": 857,
+          "edge_rate_at_full_battery_no_load_hz": 8820
+        },
+        "13": {
+          "counts_per_wheel_rev": 130.0,
+          "mm_per_count": 1.571,
+          "counts_per_period_at_9kmh": 31.8,
+          "speed_quantum_per_period_mps": 0.0785,
+          "edge_rate_at_9kmh_hz": 1592,
+          "edge_rate_at_full_battery_no_load_hz": 16380
+        }
+      },
+      "equivalent_ratio_at_60mm": 2.31
+    }
+  ],
+  "footprint": {
+    "straight_length_with_provisional_wheelbase_m": 0.21,
+    "max_wheelbase_for_length_m": 0.135,
+    "max_wheel_width_with_provisional_track_m": 0.015
+  }
+}
