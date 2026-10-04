@@ -14,6 +14,7 @@ from geometry_msgs.msg import Twist
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile
 from rclpy.task import Future
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64, String, UInt8MultiArray
@@ -22,6 +23,9 @@ from std_srvs.srv import Trigger
 from arena_vehicle_interface.actuation_contract import ActuationReceiver, CommandProducer, ContractConfig, integer
 from arena_vehicle_interface.actuation_wire import Decoder, encode
 from arena_vehicle_interface.applied_guard import AppliedGuard
+from arena_vehicle_interface.drive_feedback import (
+    MODE_LEGACY, MODE_MOTOR, TOPIC_BY_MODE, MotorEncoderSpec, parse_legacy_wheels, parse_motor_state, validate_mode,
+)
 from arena_vehicle_interface.node_lifecycle import run_node
 
 
@@ -140,20 +144,36 @@ class ActuationHost(TransportNode):
 
 
 class VirtualMCU(TransportNode):
-    """명령 수신·계수 검증만 수행. Gazebo 모터 PI는 이번 단계에서 그대로 둔다."""
+    """명령 수신·계수 검증만 수행. Gazebo 모터 PI는 이번 단계에서 그대로 둔다.
+
+    drive_motor_shaft에서는 모터축 카운트 하나만 계약에 넘긴다. 좌우 값은 만들지 않으며
+    정지 준비 판정은 평균 0만 볼 수 있다. 기본 legacy는 옛 독립 시험 재현용이다.
+    Gazebo 내부 모터 PI는 여전히 이상적 관절 속도를 쓰며 이 카운트를 사용하지 않는다.
+    """
     def __init__(self):
         super().__init__('virtual_mcu')
         self.wall_timeout = self.wall_limit()
+        self.declare_parameter('feedback_mode', MODE_LEGACY)
         self.declare_parameter('wheel_radius_m', .025)
         self.declare_parameter('ticks_per_revolution', 2048)
+        self.declare_parameter('gear_ratio', 1.)
+        self.declare_parameter('motor_no_progress_us', 500_000)
+        self.declare_parameter('motor_progress_min_command_mps', .1)
         self.declare_parameter('max_speed_mps', 2.5)
         self.declare_parameter('max_steering_angle_rad', .37)
+        mode = validate_mode(str(self.get_parameter('feedback_mode').value))
         config = ContractConfig(wheel_radius_m=float(self.get_parameter('wheel_radius_m').value),
                                 ticks_per_rev=int(self.get_parameter('ticks_per_revolution').value),
                                 max_speed_mps=float(self.get_parameter('max_speed_mps').value),
-                                max_steering_rad=float(self.get_parameter('max_steering_angle_rad').value))
+                                max_steering_rad=float(self.get_parameter('max_steering_angle_rad').value),
+                                feedback_mode=mode, gear_ratio=float(self.get_parameter('gear_ratio').value),
+                                motor_no_progress_us=int(self.get_parameter('motor_no_progress_us').value),
+                                motor_progress_min_command_mps=float(self.get_parameter('motor_progress_min_command_mps').value))
+        self.motor_feedback = mode == MODE_MOTOR
         self.receiver, self.decoder = ActuationReceiver(config), Decoder()
         self.tick_angle = math.tau / config.ticks_per_rev
+        self.motor_spec = (MotorEncoderSpec(config.ticks_per_rev, config.gear_ratio, config.wheel_radius_m)
+                           if self.motor_feedback else None)
         self.wheels = deque(maxlen=32)
         self.feedback_seq = 0
         self.last_now = self.last_tick = self.last_offer = None
@@ -162,10 +182,17 @@ class VirtualMCU(TransportNode):
         self.last_fault_publish_wall = -math.inf
         self.clock_failed = False
         self.output_ack = None
+        # 진단 전용 작은 고정 크기 기록. 판정·출력에 쓰지 않고 첫 갱신 공백 고장 때 한 번만 발행한다.
+        self.timer_entry = None
+        self.receiver_ticks = deque(maxlen=16)
+        self.deadline_report = None
         self.rx = self.create_publisher(UInt8MultiArray, '/actuation/rx', 10)
         self.status_pub = self.create_publisher(String, '/actuation/status', 10)
+        self.diagnostic_pub = self.create_publisher(
+            String, '/actuation/diagnostics', QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
         self.create_subscription(UInt8MultiArray, '/actuation/tx', self.on_tx, 10)
-        self.create_subscription(JointState, '/wheel_states', self.on_wheels, 10)
+        self.create_subscription(JointState, TOPIC_BY_MODE[mode],
+                                 self.on_motor if self.motor_feedback else self.on_wheels, 10)
         self.create_subscription(String, '/actuation/output_status', self.on_output, 10)
         self.wall_timer(.001, self.control_tick)
 
@@ -192,7 +219,29 @@ class VirtualMCU(TransportNode):
         self.status_pub.publish(String(data=json.dumps(status, allow_nan=False)))
         return status
 
+    def capture_deadline(self, callback, wall, now, previous_entry):
+        """수신기가 고정한 첫 control_deadline_missed에 MCU 쪽 벽시계 문맥을 한 번만 붙인다."""
+        snapshot = self.receiver.deadline_diagnostic
+        if snapshot is None or self.deadline_report is not None:
+            return None
+        ticks = list(self.receiver_ticks)
+        self.deadline_report = {
+            'type': 'control_deadline_diagnostic', 'v': 1, 'boot': self.receiver.boot_id,
+            'receiver': dict(snapshot), 'callback': callback, 'callback_entry_wall_s': wall,
+            'callback_now_us': now,
+            'previous_timer_entry': None if previous_entry is None else
+                {'wall_s': previous_entry[0], 'now_us': previous_entry[1]},
+            'since_previous_timer_entry_wall_s': None if previous_entry is None else wall - previous_entry[0],
+            'last_control_tick_wall_s': ticks[-1][0] if ticks else None,
+            'recent_control_ticks': [{'wall_s': w, 'now_us': n} for w, n in ticks],
+            'wall_clock': 'time.monotonic in virtual_mcu; sim times are /clock microseconds',
+            'interpretation': 'first frozen deadline miss only; wall gaps show missing timer entries, '
+                              'not which OS/DDS/executor cause delayed them'}
+        self.diagnostic_pub.publish(String(data=json.dumps(self.deadline_report, allow_nan=False)))
+        return self.deadline_report
+
     def on_tx(self, message):
+        wall = time.monotonic()
         if self.receiver.now_us is not None and self.now_us() < self.receiver.now_us:
             self.clock_failed = True
             self.receiver._fault('clock_regressed_restart_required')
@@ -211,19 +260,28 @@ class VirtualMCU(TransportNode):
                 self.send(self.rx, {'type': 'ack', 'request': request_id, 'accepted': accepted, 'reason': reason})
             if not self.clock_failed:
                 self.send_offer()
+        self.capture_deadline('on_tx', wall, self.receiver.now_us, self.timer_entry)
 
     def on_wheels(self, message):
         try:
-            indices = [message.name.index(name) for name in ('rear_left_wheel_joint', 'rear_right_wheel_joint')]
-            positions = [message.position[i] for i in indices]
-            if not all(math.isfinite(p) for p in positions):
-                return
-            self.wheels.append((stamp_us(message.header.stamp), *(round(p / self.tick_angle) for p in positions)))
-        except (ValueError, IndexError):
+            positions = parse_legacy_wheels(message.name, message.position)
+        except ValueError:
             return
+        self.wheels.append((stamp_us(message.header.stamp), *(round(p / self.tick_angle) for p in positions)))
+
+    def on_motor(self, message):
+        """모터축 위치만 카운트로 쓴다. 첫 표본의 NaN 속도는 무시하되 위치는 유한해야 한다."""
+        try:
+            position, _ = parse_motor_state(message.name, message.position, message.velocity,
+                                            require_finite=False)
+            counts = self.motor_spec.counts_from_position(position)
+        except ValueError:
+            return
+        self.wheels.append((stamp_us(message.header.stamp), counts))
 
     def control_tick(self):
         now, wall = self.now_us(), time.monotonic()
+        previous_entry, self.timer_entry = self.timer_entry, (wall, now)
         if self.last_now is not None and now < self.last_now:
             self.clock_failed = True
             self.receiver._fault('clock_regressed_restart_required')
@@ -243,11 +301,17 @@ class VirtualMCU(TransportNode):
         self.last_tick = now
         # /clock와 별도 토픽의 배송 순서를 흡수한다. 미래 취득값의 시각을 바꾸지 않는다.
         while self.wheels and self.wheels[0][0] <= now:
-            stamp, left, right = self.wheels.popleft()
+            stamp, *counts = self.wheels.popleft()
             self.feedback_seq += 1
-            self.receiver.update_encoder(now, sequence=self.feedback_seq, capture_us=stamp,
-                                         left_ticks=left, right_ticks=right)
+            if self.motor_feedback:
+                self.receiver.update_motor_encoder(now, sequence=self.feedback_seq, capture_us=stamp,
+                                                   motor_counts=counts[0])
+            else:
+                self.receiver.update_encoder(now, sequence=self.feedback_seq, capture_us=stamp,
+                                             left_ticks=counts[0], right_ticks=counts[1])
         self.receiver.tick(now)
+        self.capture_deadline('control_tick', wall, now, previous_entry)
+        self.receiver_ticks.append((wall, now))
         self.publish_status()
         if self.last_offer is None or now - self.last_offer >= 20_000:
             self.last_offer = now

@@ -24,7 +24,9 @@ def main():
             row = json.loads(line)
             if row['source_ns'] is not None:
                 observed[row['node']+'/'+row['callback']][row['source_ns']] += 1
-    topics = {'scan': '/scan', 'imu': '/imu/data', 'wheels': '/wheel_states',
+    # 'wheels'는 구동 피드백 콜백 이름. 옛 보고서에는 drive_feedback이 없으므로 legacy 토픽이다.
+    topics = {'scan': '/scan', 'imu': '/imu/data',
+              'wheels': report.get('drive_feedback', {}).get('topic', '/wheel_states'),
               'image': '/camera/color/image_raw'}
     result = {}
     for name, value in report['input_callback_delivery'].items():

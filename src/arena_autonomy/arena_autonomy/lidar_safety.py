@@ -12,6 +12,7 @@ from std_msgs.msg import String
 
 from arena_autonomy.lidar_motion import MotionUnavailable
 from arena_autonomy.lidar_motion_ros import MotionInput, seconds
+from arena_autonomy.lidar_observation import audit_front_observation
 from arena_autonomy.local_path import mask_scan, swept_limit, braking_speed
 from arena_vehicle_interface.node_lifecycle import run_node
 from arena_vehicle_interface.timing_probe import TimingProbe
@@ -61,6 +62,7 @@ class LidarSafety(Node):
         if self.command is not None and math.isfinite(self.command.drive.steering_angle):
             output.drive.steering_angle = float(np.clip(self.command.drive.steering_angle, -self.limit, self.limit))
         reason, clearance = "input_stop", 0.
+        observation = None
         try:
             if self.scan is None or self.command is None:
                 raise MotionUnavailable("missing_input")
@@ -71,12 +73,14 @@ class LidarSafety(Node):
             speed, steering = self.command.drive.speed, self.command.drive.steering_angle
             if not all(math.isfinite(v) for v in (speed, steering)) or speed < 0:
                 raise MotionUnavailable("invalid_or_reverse_command")
-            # 전방 결측을 자유 공간으로 바꾸지 않는다. +Inf는 최대 거리 밖 응답.
-            ranges = np.asarray(self.scan.ranges)
-            angles = self.scan.angle_min + np.arange(len(ranges)) * self.scan.angle_increment
-            forward = ranges[np.abs(angles) < math.radians(100)]
-            if np.any(np.isnan(forward) | np.isneginf(forward) | (forward < self.scan.range_min)):
-                raise MotionUnavailable("front_unobserved")
+            # Slamtec 드라이버의 +Inf는 raw 0/무응답도 포함한다. Gazebo의 광선
+            # 미교차와 구별할 관측 증거가 없으면 어느 쪽도 자유 공간으로 쓰지 않는다.
+            observation = audit_front_observation(
+                self.scan.ranges, self.scan.angle_min, self.scan.angle_increment,
+                self.scan.range_min, self.scan.range_max,
+                self.motion.history.config.lidar_yaw_rad)
+            if observation.reason != 'ok':
+                raise MotionUnavailable(observation.reason)
             points, count = self.motion.project(self.scan)
             if count < 30:
                 raise MotionUnavailable("scan_invalid")
@@ -90,7 +94,9 @@ class LidarSafety(Node):
             reason = str(error)
         self.publisher.publish(output)
         self.status.publish(String(data=json.dumps({"reason": reason, "safe_speed_mps": output.drive.speed,
-                                                    "swept_clearance_m": clearance, "sensor": "C1"})))
+                                                    "swept_clearance_m": clearance, "sensor": "C1",
+                                                    "no_return_policy": "unknown",
+                                                    "front_observation": vars(observation) if observation else None})))
 
 
 def main(args=None):

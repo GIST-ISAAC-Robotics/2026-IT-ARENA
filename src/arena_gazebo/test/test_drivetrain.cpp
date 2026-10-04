@@ -12,7 +12,8 @@ int main()
   arena::DriveParameters p;
   arena::SingleMotor open(p);
   auto s = open.Step(1, 10, 30, .001);
-  Require(std::abs(s.motorSpeed - 160) < 1e-12, "motor average constraint");
+  Require(std::abs(s.motorSpeed - p.ratio * 20) < 1e-12, "motor average constraint");
+  Require(p.ratio == 15.0 && p.radius == 0.0325, "defaults mirror current vehicle.yaml");
   Require(std::abs(s.leftTorque - s.rightTorque) < 1e-12, "open equal torque");
   Require(std::abs(s.lossPower) < 1e-10, "ideal power balance");
   Require(s.referenceSpeed <= .00301, "acceleration ramp");

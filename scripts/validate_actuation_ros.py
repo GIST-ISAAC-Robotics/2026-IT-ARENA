@@ -17,6 +17,8 @@ REPO = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--feedback-mode', choices=('rear_wheel_pair_legacy', 'drive_motor_shaft'),
+                        default='rear_wheel_pair_legacy')
     args = parser.parse_args()
     output = args.output.resolve()
     if not output.is_relative_to(REPO / 'artifacts'):
@@ -32,18 +34,23 @@ def main():
     from sensor_msgs.msg import JointState
     from std_msgs.msg import String
     from std_srvs.srv import Trigger
+    from arena_vehicle_interface.drive_feedback import MODE_MOTOR, TOPIC_BY_MODE, MOTOR_JOINT, MotorEncoderSpec
+
+    motor_mode = args.feedback_mode == MODE_MOTOR
+    spec = MotorEncoderSpec(28, 15., .0325)
 
     rclpy.init()
     node = rclpy.create_node('actuation_ros_validator', parameter_overrides=[Parameter('use_sim_time', value=True)])
     clock_pub = node.create_publisher(Clock, '/clock', 10)
-    wheel_pub = node.create_publisher(JointState, '/wheel_states', 10)
+    wheel_pub = node.create_publisher(JointState, TOPIC_BY_MODE[args.feedback_mode], 10)
     drive_pub = node.create_publisher(AckermannDriveStamped, '/test/safe_command', 1)
     state, events, cases, children, logs = {}, [], [], [], []
     report = {'passed': False, 'scope': 'ROS processes with synthetic encoder and simple plant, not Gazebo or hardware',
-              'cases': cases, 'source_sha256': {}}
+              'cases': cases, 'source_sha256': {}, 'feedback_mode': args.feedback_mode,
+              'motor_spec': vars(spec) if motor_mode else None}
     for relative in ['scripts/validate_actuation_ros.py', *[
             'src/arena_vehicle_interface/arena_vehicle_interface/' + name + '.py'
-            for name in ('actuation_ros', 'applied_guard', 'actuation_contract', 'actuation_wire')]]:
+            for name in ('actuation_ros', 'applied_guard', 'actuation_contract', 'actuation_wire', 'drive_feedback')]]:
         report['source_sha256'][relative] = hashlib.sha256((REPO / relative).read_bytes()).hexdigest()
     t, velocity, position = 1., 0., 0.
     send_drive = send_encoder = True
@@ -51,6 +58,9 @@ def main():
     target = .6
     last_wheel = last_drive = -1.
     sequence = 0
+    last_motor_counts = None
+    freeze_counts = False
+    held_counts = None
 
     def remember(key, value):
         state[key] = value
@@ -68,6 +78,9 @@ def main():
                    '--ros-args', '-p', 'use_sim_time:=true', '-p', 'wall_timeout_s:=0.5']
         if kind == 'host':
             command += ['-r', '/drive/safe:=/test/safe_command']
+        if kind == 'mcu' and motor_mode:
+            command += ['-p', 'feedback_mode:=drive_motor_shaft', '-p', 'wheel_radius_m:=0.0325',
+                        '-p', 'ticks_per_revolution:=28', '-p', 'gear_ratio:=15.0']
         child = subprocess.Popen(command, cwd=REPO, stdout=log, stderr=log, start_new_session=True)
         children.append(child)
         return child
@@ -83,7 +96,7 @@ def main():
                 report.setdefault('forced_pids', []).append(child.pid)
 
     def pump(wall_seconds):
-        nonlocal t, velocity, position, last_wheel, last_drive, sequence
+        nonlocal t, velocity, position, last_wheel, last_drive, sequence, last_motor_counts, held_counts
         until = time.monotonic() + wall_seconds
         while time.monotonic() < until:
             if not freeze:
@@ -98,11 +111,24 @@ def main():
                 stamp.clock.nanosec = 0
             clock_pub.publish(stamp)
             if send_encoder and t - last_wheel >= .0099:
-                counts = round(position / .025 / math.tau * 2048)
                 wheel = JointState()
                 wheel.header.stamp = stamp.clock
-                wheel.name = ['rear_left_wheel_joint', 'rear_right_wheel_joint']
-                wheel.position = [counts * math.tau / 2048] * 2
+                if motor_mode:
+                    counts = round(position / spec.mean_wheel_travel_m_per_count)
+                    if freeze_counts:
+                        held_counts = counts if held_counts is None else held_counts
+                        counts = held_counts
+                    else:
+                        held_counts = None
+                    wheel.name = [MOTOR_JOINT]
+                    wheel.position = [spec.motor_angle_from_counts(counts)]
+                    wheel.velocity = [math.nan if last_motor_counts is None else
+                                      spec.motor_rad_s_from_counts(counts - last_motor_counts, t - last_wheel)]
+                    last_motor_counts = counts
+                else:
+                    counts = round(position / .025 / math.tau * 2048)
+                    wheel.name = ['rear_left_wheel_joint', 'rear_right_wheel_joint']
+                    wheel.position = [counts * math.tau / 2048] * 2
                 wheel_pub.publish(wheel)
                 last_wheel = t
             if send_drive and t - last_drive >= .0199:
@@ -200,6 +226,14 @@ def main():
         record('encoder_loss_stop', state['mcu']['reason'] == 'encoder_timeout')
         send_encoder = True
         rearm()
+        if motor_mode:
+            freeze_counts = True
+            stationary()
+            record('fresh_stuck_counts_latched_stop', state['mcu']['reason'] == 'motor_feedback_no_progress')
+            freeze_counts = False
+            pump(.5)
+            record('stuck_counts_restore_no_restart', stopped() and state['mcu']['state'] == 'FAULT_LATCHED')
+            rearm()
         freeze = True
         pump(.8)
         record('frozen_clock_zero_output', state['applied'] == 0. and state['mcu']['state'] == 'FAULT_LATCHED')

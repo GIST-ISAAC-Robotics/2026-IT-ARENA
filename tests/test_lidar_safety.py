@@ -24,7 +24,8 @@ def node_double():
         return np.vstack((np.column_stack((x, x*0+.425)), np.column_stack((x, x*0-.425)))), 120
     node = SimpleNamespace(command=command, scan=scan, scan_wall=time.monotonic(), command_wall=time.monotonic(),
                            wall_timeout=3., limit=.37, last_clock=None, wheelbase=.145, length=.20, width=.15,
-                           motion=SimpleNamespace(project=project),
+                           motion=SimpleNamespace(project=project, history=SimpleNamespace(
+                               config=SimpleNamespace(lidar_yaw_rad=0.))),
                            publisher=SimpleNamespace(publish=commands.append), status=SimpleNamespace(publish=statuses.append),
                            get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(nanoseconds=10_100_000_000,
                              to_msg=lambda: command.header.stamp)))
@@ -88,3 +89,40 @@ def test_clock_rollback_clears_inputs_and_motion_history():
     assert resets == [True] and node.scan is None and node.command is None
     assert commands[-1].drive.speed == 0.
     assert json.loads(statuses[-1].data)['reason'] == 'missing_input'
+
+
+@pytest.mark.parametrize('steering', [0., -.3, .3])
+@pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+@pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+    node, commands, statuses = node_double()
+    node.command.drive.steering_angle = steering
+    # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+    node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+    for i in indices:
+        node.scan.ranges[i] = value
+    LidarSafety.control(node)
+    assert commands[-1].drive.speed == 0.
+    assert json.loads(statuses[-1].data)['reason'] == 'front_unobserved'
+    node.scan.ranges = [2.] * 500
+    LidarSafety.control(node)
+    assert commands[-1].drive.speed == 2.
+    assert json.loads(statuses[-1].data)['no_return_policy'] == 'unknown'
+
+
+@pytest.mark.parametrize('count', [29, 30, 31])
+def test_projected_finite_count_boundary_remains_independent_of_front_observation(count):
+    node, commands, statuses = node_double()
+    node.motion.project = lambda _: (np.full((count, 2), 20.), count)
+    LidarSafety.control(node)
+    assert commands[-1].drive.speed == (0. if count < 30 else 2.)
+    assert json.loads(statuses[-1].data)['reason'] == ('scan_invalid' if count < 30 else 'clear')
+
+
+def test_body_front_in_rotated_lidar_frame_is_not_ignored():
+    node, commands, statuses = node_double()
+    node.motion.history.config.lidar_yaw_rad = math.pi
+    node.scan.ranges[0] = math.inf
+    LidarSafety.control(node)
+    assert commands[-1].drive.speed == 0.
+    assert json.loads(statuses[-1].data)['reason'] == 'front_unobserved'

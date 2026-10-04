@@ -1,0 +1,297 @@
+........................................................................ [ 35%]
+........................................................................ [ 70%]
+..........................FFF................................            [100%]
+=================================== FAILURES ===================================
+_ test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history[range] _
+
+kind = 'range'
+
+    @pytest.mark.parametrize('kind', ['range', 'same_stamp', 'drop'])
+    def test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history(kind):
+        node = NodeDouble()
+        adapter = MotionInput(node)
+        for i in range(21):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            adapter.on_imu(imu(node.t, z=0.))
+        for i in range(21, 41):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            if kind != 'drop':
+                adapter.on_imu(imu(.1 if kind == 'same_stamp' else node.t,
+                                   z=100. if kind == 'range' else 0.))
+        assert adapter.history.gyro.times[-1] == pytest.approx(.1)
+        with pytest.raises(MotionUnavailable, match='motion_stale'):
+            adapter.history.poses([.10, .2], .2)
+        # 정상 표본 하나가 들어와도 그 이전의 긴 공백이 덮이지 않는다.
+        node.t = .205
+        adapter.on_wheels(wheel(node.t))
+        adapter.on_imu(imu(node.t, z=0.))
+        with pytest.raises(MotionUnavailable, match='motion_gap'):
+>           adapter.history.poses([.1, .205], .205)
+
+tests/test_lidar_motion_ros.py:193: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.lidar_motion.MotionHistory object at 0x7fedfd1031a0>
+query = [0.1, 0.205], now = 0.205
+
+    def poses(self, query, now):
+        """현재까지 도착하고 취득 시각도 현재 이하인 표본만 사용한다.
+    
+        표본 사이 ZOH, 마지막 표본 이후 제한된 ZOH 외삽. 장시간 공백은 거부.
+        query 순서가 달라도 동일 궤적에서 계산하며 yaw를 wrap하지 않는다.
+        """
+        q = np.atleast_1d(np.asarray(query, dtype=float))
+        if not len(q) or not np.all(np.isfinite(q)) or not math.isfinite(now):
+            raise MotionUnavailable("invalid_query")
+        if np.max(q) > now + 1e-9:
+            raise MotionUnavailable("future_query")
+        vt, vv = self.wheels.available(now)
+        wt, wv = self.gyro.available(now)
+        if not len(vt) or not len(wt):
+            raise MotionUnavailable("motion_waiting")
+        start, finish = float(np.min(q)), float(np.max(q))
+        if start < max(vt[0], wt[0]) - 1e-9:
+            raise MotionUnavailable("history_missing")
+        # 시작 시각을 지역 원점으로 잡아 오래전 공백의 영향을 다음 스캔에 전파하지 않는다.
+        for stamps in (vt, wt):
+            first = max(0, np.searchsorted(stamps, start, side="right") - 1)
+            selected = stamps[first:np.searchsorted(stamps, finish, side="right")]
+            if len(selected) > 1 and np.max(np.diff(selected)) > self.config.max_input_gap_s + 1e-9:
+                raise MotionUnavailable("motion_gap")
+            age = finish - selected[-1]
+            if age > self.config.max_extrapolation_s + 1e-9:
+>               raise MotionUnavailable("motion_stale")
+E               arena_autonomy.lidar_motion.MotionUnavailable: motion_stale
+
+src/arena_autonomy/arena_autonomy/lidar_motion.py:123: MotionUnavailable
+
+During handling of the above exception, another exception occurred:
+
+kind = 'range'
+
+    @pytest.mark.parametrize('kind', ['range', 'same_stamp', 'drop'])
+    def test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history(kind):
+        node = NodeDouble()
+        adapter = MotionInput(node)
+        for i in range(21):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            adapter.on_imu(imu(node.t, z=0.))
+        for i in range(21, 41):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            if kind != 'drop':
+                adapter.on_imu(imu(.1 if kind == 'same_stamp' else node.t,
+                                   z=100. if kind == 'range' else 0.))
+        assert adapter.history.gyro.times[-1] == pytest.approx(.1)
+        with pytest.raises(MotionUnavailable, match='motion_stale'):
+            adapter.history.poses([.10, .2], .2)
+        # 정상 표본 하나가 들어와도 그 이전의 긴 공백이 덮이지 않는다.
+        node.t = .205
+        adapter.on_wheels(wheel(node.t))
+        adapter.on_imu(imu(node.t, z=0.))
+>       with pytest.raises(MotionUnavailable, match='motion_gap'):
+E       AssertionError: Regex pattern did not match.
+E        Regex: 'motion_gap'
+E        Input: 'motion_stale'
+
+tests/test_lidar_motion_ros.py:192: AssertionError
+_ test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history[same_stamp] _
+
+kind = 'same_stamp'
+
+    @pytest.mark.parametrize('kind', ['range', 'same_stamp', 'drop'])
+    def test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history(kind):
+        node = NodeDouble()
+        adapter = MotionInput(node)
+        for i in range(21):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            adapter.on_imu(imu(node.t, z=0.))
+        for i in range(21, 41):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            if kind != 'drop':
+                adapter.on_imu(imu(.1 if kind == 'same_stamp' else node.t,
+                                   z=100. if kind == 'range' else 0.))
+        assert adapter.history.gyro.times[-1] == pytest.approx(.1)
+        with pytest.raises(MotionUnavailable, match='motion_stale'):
+            adapter.history.poses([.10, .2], .2)
+        # 정상 표본 하나가 들어와도 그 이전의 긴 공백이 덮이지 않는다.
+        node.t = .205
+        adapter.on_wheels(wheel(node.t))
+        adapter.on_imu(imu(node.t, z=0.))
+        with pytest.raises(MotionUnavailable, match='motion_gap'):
+>           adapter.history.poses([.1, .205], .205)
+
+tests/test_lidar_motion_ros.py:193: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.lidar_motion.MotionHistory object at 0x7fedfd1047a0>
+query = [0.1, 0.205], now = 0.205
+
+    def poses(self, query, now):
+        """현재까지 도착하고 취득 시각도 현재 이하인 표본만 사용한다.
+    
+        표본 사이 ZOH, 마지막 표본 이후 제한된 ZOH 외삽. 장시간 공백은 거부.
+        query 순서가 달라도 동일 궤적에서 계산하며 yaw를 wrap하지 않는다.
+        """
+        q = np.atleast_1d(np.asarray(query, dtype=float))
+        if not len(q) or not np.all(np.isfinite(q)) or not math.isfinite(now):
+            raise MotionUnavailable("invalid_query")
+        if np.max(q) > now + 1e-9:
+            raise MotionUnavailable("future_query")
+        vt, vv = self.wheels.available(now)
+        wt, wv = self.gyro.available(now)
+        if not len(vt) or not len(wt):
+            raise MotionUnavailable("motion_waiting")
+        start, finish = float(np.min(q)), float(np.max(q))
+        if start < max(vt[0], wt[0]) - 1e-9:
+            raise MotionUnavailable("history_missing")
+        # 시작 시각을 지역 원점으로 잡아 오래전 공백의 영향을 다음 스캔에 전파하지 않는다.
+        for stamps in (vt, wt):
+            first = max(0, np.searchsorted(stamps, start, side="right") - 1)
+            selected = stamps[first:np.searchsorted(stamps, finish, side="right")]
+            if len(selected) > 1 and np.max(np.diff(selected)) > self.config.max_input_gap_s + 1e-9:
+                raise MotionUnavailable("motion_gap")
+            age = finish - selected[-1]
+            if age > self.config.max_extrapolation_s + 1e-9:
+>               raise MotionUnavailable("motion_stale")
+E               arena_autonomy.lidar_motion.MotionUnavailable: motion_stale
+
+src/arena_autonomy/arena_autonomy/lidar_motion.py:123: MotionUnavailable
+
+During handling of the above exception, another exception occurred:
+
+kind = 'same_stamp'
+
+    @pytest.mark.parametrize('kind', ['range', 'same_stamp', 'drop'])
+    def test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history(kind):
+        node = NodeDouble()
+        adapter = MotionInput(node)
+        for i in range(21):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            adapter.on_imu(imu(node.t, z=0.))
+        for i in range(21, 41):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            if kind != 'drop':
+                adapter.on_imu(imu(.1 if kind == 'same_stamp' else node.t,
+                                   z=100. if kind == 'range' else 0.))
+        assert adapter.history.gyro.times[-1] == pytest.approx(.1)
+        with pytest.raises(MotionUnavailable, match='motion_stale'):
+            adapter.history.poses([.10, .2], .2)
+        # 정상 표본 하나가 들어와도 그 이전의 긴 공백이 덮이지 않는다.
+        node.t = .205
+        adapter.on_wheels(wheel(node.t))
+        adapter.on_imu(imu(node.t, z=0.))
+>       with pytest.raises(MotionUnavailable, match='motion_gap'):
+E       AssertionError: Regex pattern did not match.
+E        Regex: 'motion_gap'
+E        Input: 'motion_stale'
+
+tests/test_lidar_motion_ros.py:192: AssertionError
+_ test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history[drop] _
+
+kind = 'drop'
+
+    @pytest.mark.parametrize('kind', ['range', 'same_stamp', 'drop'])
+    def test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history(kind):
+        node = NodeDouble()
+        adapter = MotionInput(node)
+        for i in range(21):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            adapter.on_imu(imu(node.t, z=0.))
+        for i in range(21, 41):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            if kind != 'drop':
+                adapter.on_imu(imu(.1 if kind == 'same_stamp' else node.t,
+                                   z=100. if kind == 'range' else 0.))
+        assert adapter.history.gyro.times[-1] == pytest.approx(.1)
+        with pytest.raises(MotionUnavailable, match='motion_stale'):
+            adapter.history.poses([.10, .2], .2)
+        # 정상 표본 하나가 들어와도 그 이전의 긴 공백이 덮이지 않는다.
+        node.t = .205
+        adapter.on_wheels(wheel(node.t))
+        adapter.on_imu(imu(node.t, z=0.))
+        with pytest.raises(MotionUnavailable, match='motion_gap'):
+>           adapter.history.poses([.1, .205], .205)
+
+tests/test_lidar_motion_ros.py:193: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.lidar_motion.MotionHistory object at 0x7feddbd14f20>
+query = [0.1, 0.205], now = 0.205
+
+    def poses(self, query, now):
+        """현재까지 도착하고 취득 시각도 현재 이하인 표본만 사용한다.
+    
+        표본 사이 ZOH, 마지막 표본 이후 제한된 ZOH 외삽. 장시간 공백은 거부.
+        query 순서가 달라도 동일 궤적에서 계산하며 yaw를 wrap하지 않는다.
+        """
+        q = np.atleast_1d(np.asarray(query, dtype=float))
+        if not len(q) or not np.all(np.isfinite(q)) or not math.isfinite(now):
+            raise MotionUnavailable("invalid_query")
+        if np.max(q) > now + 1e-9:
+            raise MotionUnavailable("future_query")
+        vt, vv = self.wheels.available(now)
+        wt, wv = self.gyro.available(now)
+        if not len(vt) or not len(wt):
+            raise MotionUnavailable("motion_waiting")
+        start, finish = float(np.min(q)), float(np.max(q))
+        if start < max(vt[0], wt[0]) - 1e-9:
+            raise MotionUnavailable("history_missing")
+        # 시작 시각을 지역 원점으로 잡아 오래전 공백의 영향을 다음 스캔에 전파하지 않는다.
+        for stamps in (vt, wt):
+            first = max(0, np.searchsorted(stamps, start, side="right") - 1)
+            selected = stamps[first:np.searchsorted(stamps, finish, side="right")]
+            if len(selected) > 1 and np.max(np.diff(selected)) > self.config.max_input_gap_s + 1e-9:
+                raise MotionUnavailable("motion_gap")
+            age = finish - selected[-1]
+            if age > self.config.max_extrapolation_s + 1e-9:
+>               raise MotionUnavailable("motion_stale")
+E               arena_autonomy.lidar_motion.MotionUnavailable: motion_stale
+
+src/arena_autonomy/arena_autonomy/lidar_motion.py:123: MotionUnavailable
+
+During handling of the above exception, another exception occurred:
+
+kind = 'drop'
+
+    @pytest.mark.parametrize('kind', ['range', 'same_stamp', 'drop'])
+    def test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history(kind):
+        node = NodeDouble()
+        adapter = MotionInput(node)
+        for i in range(21):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            adapter.on_imu(imu(node.t, z=0.))
+        for i in range(21, 41):
+            node.t = i * .005
+            adapter.on_wheels(wheel(node.t))
+            if kind != 'drop':
+                adapter.on_imu(imu(.1 if kind == 'same_stamp' else node.t,
+                                   z=100. if kind == 'range' else 0.))
+        assert adapter.history.gyro.times[-1] == pytest.approx(.1)
+        with pytest.raises(MotionUnavailable, match='motion_stale'):
+            adapter.history.poses([.10, .2], .2)
+        # 정상 표본 하나가 들어와도 그 이전의 긴 공백이 덮이지 않는다.
+        node.t = .205
+        adapter.on_wheels(wheel(node.t))
+        adapter.on_imu(imu(node.t, z=0.))
+>       with pytest.raises(MotionUnavailable, match='motion_gap'):
+E       AssertionError: Regex pattern did not match.
+E        Regex: 'motion_gap'
+E        Input: 'motion_stale'
+
+tests/test_lidar_motion_ros.py:192: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_lidar_motion_ros.py::test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history[range]
+FAILED tests/test_lidar_motion_ros.py::test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history[same_stamp]
+FAILED tests/test_lidar_motion_ros.py::test_continuous_bad_gyro_cannot_refresh_motion_and_requires_fresh_history[drop]
+3 failed, 202 passed in 8.82s

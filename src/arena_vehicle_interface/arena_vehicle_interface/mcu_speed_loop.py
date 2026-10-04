@@ -17,15 +17,23 @@ class SpeedPI:
         self.integral = 0.
 
     def update(self, target_mps, left_mps, right_mps, dt_s, *, enabled):
+        """옛 좌우 엔코더 시험 호환용. 새 단일 축은 update_mean을 사용한다."""
+        if not all(number(v) for v in (left_mps, right_mps)):
+            self.integral = 0.
+            return MotorIntent(0., True)
+        return self.update_mean(target_mps, (left_mps + right_mps) / 2, dt_s, enabled=enabled)
+
+    def update_mean(self, target_mps, mean_wheel_mps, dt_s, *, enabled):
+        """단일 모터축에서 환산한 평균 바퀴 속도. 좌우 독립 관측을 요구하지 않는다."""
         if (type(enabled) is not bool or not all(number(v)
-                for v in (target_mps, left_mps, right_mps, dt_s)) or
+                for v in (target_mps, mean_wheel_mps, dt_s)) or
                 target_mps < 0 or not 0 < dt_s <= self.max_dt_s):
             self.integral = 0.
             return MotorIntent(0., True)
         if not enabled or target_mps == 0:
             self.integral = 0.
             return MotorIntent(0., True)
-        error = target_mps - (left_mps + right_mps) / 2
+        error = target_mps - mean_wheel_mps
         candidate = self.integral + self.ki * error * dt_s
         raw = self.kp * error + candidate
         # 포화가 더 커지는 방향의 적분만 막는다. 중지/재허가에는 적분을 남기지 않는다.

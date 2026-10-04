@@ -42,7 +42,8 @@ def test_dds_metadata_accepts_mapping_and_attributes():
     assert dds_metadata({})['publication_sequence_number'] is None
 
 
-@pytest.mark.parametrize('field,value', [('complete', False), ('schema', 2), ('queue_drops', {'/scan': 1}),
+@pytest.mark.parametrize('field,value', [('complete', False), ('schema', 2), ('schema', 3),
+    ('drive_feedback_mode', 'drive_motor_shaft'), ('queue_drops', {'/scan': 1}),
     ('error', ['disk failure']), ('clock_regressions', 1)])
 def test_reject_partial_and_loss(recording, field, value):
     root, manifest, save = recording
@@ -135,3 +136,88 @@ def test_command_comparison_excludes_eof_and_prestart():
         [[5, 100., 1.], [15, 1.5, .3], [25, 0., 0.]], 20)
     assert result['samples'] == 1
     assert result['speed_absolute_error_mps']['max'] == .5
+
+
+from arena_vehicle_interface.bag_contract import (  # noqa: E402
+    inputs_for, topics_for, required_for, manifest_feedback_mode, resolve_replay_feedback,
+)
+
+LEGACY_PARAMS = {'lidar_compensation': 'both', 'motion_imu_topic': '/imu/data', 'motion_wheel_radius_m': .025}
+MOTOR_PARAMS = {'lidar_compensation': 'both', 'motion_imu_topic': '/imu/data', 'motion_feedback_mode': 'drive_motor_shaft',
+                'motion_wheel_radius_m': .0325, 'motion_gear_ratio': 15.}
+
+
+def test_motor_contract_has_single_feedback_topic_and_no_wheel_pair():
+    inputs = inputs_for('drive_motor_shaft')
+    assert inputs['/drive_motor/encoder'] == 'sensor_msgs/msg/JointState'
+    assert '/wheel_states' not in inputs and '/wheel_states' not in topics_for('drive_motor_shaft')
+    assert '/drive_motor/encoder' in required_for('drive_motor_shaft')
+    assert INPUTS == inputs_for('rear_wheel_pair_legacy') and '/drive_motor/encoder' not in TOPICS
+    with pytest.raises(ValueError):
+        inputs_for('configured')
+    with pytest.raises(ValueError):
+        replay_topic('/drive_motor/encoder')  # legacy 기본 계약에서는 허용하지 않음
+    assert replay_topic('/drive_motor/encoder', 'drive_motor_shaft') == '/replay/drive_motor/encoder'
+
+
+def test_schema2_motor_manifest_loads_with_declared_mode(recording):
+    root, manifest, save = recording
+    manifest.update(schema=2, drive_feedback_mode='drive_motor_shaft', topics=topics_for('drive_motor_shaft'),
+                    stats={t: dict(count=1) for t in required_for('drive_motor_shaft')})
+    save()
+    assert manifest_feedback_mode(load_manifest(root)) == 'drive_motor_shaft'
+    manifest['topics'] = TOPICS  # 모드와 다른 토픽 계약
+    save()
+    with pytest.raises(ValueError, match='Topic contract'):
+        load_manifest(root)
+
+
+def test_schema_mode_rules():
+    assert manifest_feedback_mode({'schema': 1}) == 'rear_wheel_pair_legacy'
+    for bad in ({'schema': 1, 'drive_feedback_mode': 'rear_wheel_pair_legacy'}, {'schema': 2},
+                {'schema': 2, 'drive_feedback_mode': 'configured'}, {'schema': 3, 'drive_feedback_mode': 'drive_motor_shaft'}):
+        with pytest.raises(ValueError):
+            manifest_feedback_mode(bad)
+
+
+def test_old_recording_replays_with_recorded_legacy_geometry_not_current_yaml():
+    feedback, params = resolve_replay_feedback({'schema': 1}, {'local_pursuit': dict(LEGACY_PARAMS),
+                                                               'lidar_safety': dict(LEGACY_PARAMS)})
+    assert feedback == dict(mode='rear_wheel_pair_legacy', topic='/wheel_states', wheel_radius_m=.025, gear_ratio=None,
+                            geometry_source='recorded_parameters', current_vehicle_yaml_used=False)
+    assert all(p['motion_feedback_mode'] == 'rear_wheel_pair_legacy' and p['motion_wheel_radius_m'] == .025
+               for p in params.values())
+    missing = {k: v for k, v in LEGACY_PARAMS.items() if k != 'motion_wheel_radius_m'}
+    feedback, params = resolve_replay_feedback({'schema': 1}, {'a': dict(missing), 'b': dict(missing)})
+    assert feedback['geometry_source'] == 'legacy_controller_default' and feedback['wheel_radius_m'] == .025
+
+
+def test_motor_recording_requires_recorded_ratio_and_matching_mode():
+    manifest = {'schema': 2, 'drive_feedback_mode': 'drive_motor_shaft'}
+    feedback, params = resolve_replay_feedback(manifest, {'a': dict(MOTOR_PARAMS), 'b': dict(MOTOR_PARAMS)})
+    assert feedback['topic'] == '/drive_motor/encoder' and feedback['gear_ratio'] == 15.
+    bad_sets = [
+        {**MOTOR_PARAMS, 'motion_gear_ratio': None},
+        {k: v for k, v in MOTOR_PARAMS.items() if k != 'motion_gear_ratio'},
+        {k: v for k, v in MOTOR_PARAMS.items() if k != 'motion_wheel_radius_m'},
+        {k: v for k, v in MOTOR_PARAMS.items() if k != 'motion_feedback_mode'},
+        {**MOTOR_PARAMS, 'motion_feedback_mode': 'rear_wheel_pair_legacy'},
+        {**MOTOR_PARAMS, 'motion_gear_ratio': float('nan')},
+        {**MOTOR_PARAMS, 'motion_gear_ratio': 0},
+    ]
+    for bad in bad_sets:
+        with pytest.raises(ValueError):
+            resolve_replay_feedback(manifest, {'a': dict(MOTOR_PARAMS), 'b': bad})
+    with pytest.raises(ValueError):
+        resolve_replay_feedback({'schema': 1}, {'a': dict(MOTOR_PARAMS), 'b': dict(MOTOR_PARAMS)})
+    with pytest.raises(ValueError, match='disagree'):
+        resolve_replay_feedback(manifest, {'a': dict(MOTOR_PARAMS), 'b': {**MOTOR_PARAMS, 'motion_gear_ratio': 12.}})
+
+
+def test_replay_and_record_scripts_do_not_read_current_vehicle_yaml():
+    scripts = Path(__file__).resolve().parents[1] / 'scripts'
+    for name in ('replay_sensor_bag.py', 'audit_sensor_bag.py'):
+        source = (scripts / name).read_text(encoding='utf-8')
+        assert 'vehicle.yaml' not in source and 'vehicle_config' not in source
+    replay = (scripts / 'replay_sensor_bag.py').read_text(encoding='utf-8')
+    assert 'resolve_replay_feedback(' in replay and "'/wheel_states'" not in replay

@@ -1,0 +1,51 @@
+{
+  "scope": "synthetic ROS messages; actual MotionInput.project and LidarSafety.control; no ROS graph or vehicle",
+  "driver_refs": {
+    "sllidar_ros2": "34300099fadfc772965962dec837bf436706188f",
+    "rplidar_ros": "24cc9b6dea97e045bda1408eaa867ce730fd3fc3"
+  },
+  "source_sha256": {
+    "src/arena_autonomy/arena_autonomy/lidar_safety.py": "18599637b577e6627b7ad6d558e431d52b4b21dbe4e4cb17520b7cae8d82afaa",
+    "src/arena_autonomy/arena_autonomy/lidar_motion.py": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5",
+    "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py": "fbd097306ac7b30ea336da8d591441ecfdc8ef1d7ddcfe31217cf0ebfc90a9d4"
+  },
+  "no_return_risk_reproduced": true,
+  "cases": [
+    {
+      "case": "finite_obstacle",
+      "modified_rays": 55,
+      "finite_rays": 500,
+      "reason": "lidar_braking",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1"
+    },
+    {
+      "case": "nan_sector",
+      "modified_rays": 55,
+      "finite_rays": 445,
+      "reason": "front_unobserved",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1"
+    },
+    {
+      "case": "positive_inf_sector",
+      "modified_rays": 55,
+      "finite_rays": 445,
+      "reason": "clear",
+      "safe_speed_mps": 2.0,
+      "swept_clearance_m": 3.0,
+      "sensor": "C1"
+    },
+    {
+      "case": "all_positive_inf",
+      "modified_rays": 500,
+      "finite_rays": 0,
+      "reason": "scan_invalid",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1"
+    }
+  ]
+}

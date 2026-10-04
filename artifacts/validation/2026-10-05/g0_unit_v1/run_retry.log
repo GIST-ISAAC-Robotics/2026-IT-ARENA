@@ -1,0 +1,181 @@
+=== targeted unit tests ===
+.............................FFFFF.............                          [100%]
+=================================== FAILURES ===================================
+______ test_eight_cases_preregistered_and_sensor_configuration_unchanged _______
+
+    def test_eight_cases_preregistered_and_sensor_configuration_unchanged():
+>       suite = g0.load_suite()
+
+tests/test_multi_vehicle_g0.py:14: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/config/tests/multi_vehicle_g0.json')
+
+    def load_suite(path=CONFIG):
+        suite = json.loads(Path(path).read_text(encoding='utf-8'))
+        if suite.get('schema_version') != 1 or suite.get('seed') not in (0, 1, 2):
+            raise ValueError('unsupported schema or fixed seed')
+        cases = suite['cases']
+        if not cases or len({c['name'] for c in cases}) != len(cases):
+            raise ValueError('empty/duplicate cases')
+        if suite['road_width_m'] + 2*suite['grass_each_side_m'] != suite['wall_gap_m']:
+>           raise ValueError('road/grass/wall contract mismatch')
+E           ValueError: road/grass/wall contract mismatch
+
+scripts/validate_multi_vehicle_g0.py:46: ValueError
+________________ test_trajectory_units_and_stop_restart_phases _________________
+
+    def test_trajectory_units_and_stop_restart_phases():
+>       case = g0.select_cases(g0.load_suite(), 'stop_restart')[0]
+
+tests/test_multi_vehicle_g0.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/config/tests/multi_vehicle_g0.json')
+
+    def load_suite(path=CONFIG):
+        suite = json.loads(Path(path).read_text(encoding='utf-8'))
+        if suite.get('schema_version') != 1 or suite.get('seed') not in (0, 1, 2):
+            raise ValueError('unsupported schema or fixed seed')
+        cases = suite['cases']
+        if not cases or len({c['name'] for c in cases}) != len(cases):
+            raise ValueError('empty/duplicate cases')
+        if suite['road_width_m'] + 2*suite['grass_each_side_m'] != suite['wall_gap_m']:
+>           raise ValueError('road/grass/wall contract mismatch')
+E           ValueError: road/grass/wall contract mismatch
+
+scripts/validate_multi_vehicle_g0.py:46: ValueError
+_____________ test_analytic_cases_scope_and_preregistered_geometry _____________
+
+    def test_analytic_cases_scope_and_preregistered_geometry():
+>       suite = g0.load_suite()
+
+tests/test_multi_vehicle_g0.py:26: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/config/tests/multi_vehicle_g0.json')
+
+    def load_suite(path=CONFIG):
+        suite = json.loads(Path(path).read_text(encoding='utf-8'))
+        if suite.get('schema_version') != 1 or suite.get('seed') not in (0, 1, 2):
+            raise ValueError('unsupported schema or fixed seed')
+        cases = suite['cases']
+        if not cases or len({c['name'] for c in cases}) != len(cases):
+            raise ValueError('empty/duplicate cases')
+        if suite['road_width_m'] + 2*suite['grass_each_side_m'] != suite['wall_gap_m']:
+>           raise ValueError('road/grass/wall contract mismatch')
+E           ValueError: road/grass/wall contract mismatch
+
+scripts/validate_multi_vehicle_g0.py:46: ValueError
+_____________________ test_bad_case_does_not_create_output _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_bad_case_does_not_create_0')
+
+    def test_bad_case_does_not_create_output(tmp_path):
+        with pytest.raises(ValueError, match='unknown case'):
+>           g0.main(['--case', 'typo', '--output', str(tmp_path/'not-created')])
+
+tests/test_multi_vehicle_g0.py:38: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_multi_vehicle_g0.py:241: in main
+    suite = load_suite(args.config)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/config/tests/multi_vehicle_g0.json')
+
+    def load_suite(path=CONFIG):
+        suite = json.loads(Path(path).read_text(encoding='utf-8'))
+        if suite.get('schema_version') != 1 or suite.get('seed') not in (0, 1, 2):
+            raise ValueError('unsupported schema or fixed seed')
+        cases = suite['cases']
+        if not cases or len({c['name'] for c in cases}) != len(cases):
+            raise ValueError('empty/duplicate cases')
+        if suite['road_width_m'] + 2*suite['grass_each_side_m'] != suite['wall_gap_m']:
+>           raise ValueError('road/grass/wall contract mismatch')
+E           ValueError: road/grass/wall contract mismatch
+
+scripts/validate_multi_vehicle_g0.py:46: ValueError
+
+During handling of the above exception, another exception occurred:
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_bad_case_does_not_create_0')
+
+    def test_bad_case_does_not_create_output(tmp_path):
+>       with pytest.raises(ValueError, match='unknown case'):
+E       AssertionError: Regex pattern did not match.
+E        Regex: 'unknown case'
+E        Input: 'road/grass/wall contract mismatch'
+
+tests/test_multi_vehicle_g0.py:37: AssertionError
+_________ test_cli_failure_source_is_separate_and_report_is_preserved __________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_cli_failure_source_is_sep0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a8457b68170>
+
+    def test_cli_failure_source_is_separate_and_report_is_preserved(tmp_path, monkeypatch):
+        monkeypatch.setattr(g0, 'REPO', tmp_path)
+        monkeypatch.setattr(g0, 'snapshot', lambda *_: {})
+        monkeypatch.setattr(g0, 'baseline_comparison', lambda *_: {'unchanged': True})
+        def unavailable(_):
+            raise ImportError('test missing yaml')
+        monkeypatch.setattr(g0, 'verify_sensor_config', unavailable)
+        output = tmp_path/'artifacts/new'
+>       assert g0.main(['--output', str(output)]) == 1
+
+tests/test_multi_vehicle_g0.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_multi_vehicle_g0.py:241: in main
+    suite = load_suite(args.config)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/config/tests/multi_vehicle_g0.json')
+
+    def load_suite(path=CONFIG):
+        suite = json.loads(Path(path).read_text(encoding='utf-8'))
+        if suite.get('schema_version') != 1 or suite.get('seed') not in (0, 1, 2):
+            raise ValueError('unsupported schema or fixed seed')
+        cases = suite['cases']
+        if not cases or len({c['name'] for c in cases}) != len(cases):
+            raise ValueError('empty/duplicate cases')
+        if suite['road_width_m'] + 2*suite['grass_each_side_m'] != suite['wall_gap_m']:
+>           raise ValueError('road/grass/wall contract mismatch')
+E           ValueError: road/grass/wall contract mismatch
+
+scripts/validate_multi_vehicle_g0.py:46: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_multi_vehicle_g0.py::test_eight_cases_preregistered_and_sensor_configuration_unchanged
+FAILED tests/test_multi_vehicle_g0.py::test_trajectory_units_and_stop_restart_phases
+FAILED tests/test_multi_vehicle_g0.py::test_analytic_cases_scope_and_preregistered_geometry
+FAILED tests/test_multi_vehicle_g0.py::test_bad_case_does_not_create_output
+FAILED tests/test_multi_vehicle_g0.py::test_cli_failure_source_is_separate_and_report_is_preserved
+5 failed, 42 passed in 1.60s
+pytest_returncode=1
+=== analytic CLI help ===
+usage: validate_multi_vehicle_g0.py [-h] [--mode {analytic,gazebo}]
+                                    [--case CASE] --output OUTPUT
+                                    [--config CONFIG] [--baseline BASELINE]
+                                    [--render-backend {system,software,wsl_nvidia}]
+
+G0-a 평가 전용: 합성 기하/관측과 실제 Gazebo 광선 probe. 구동 출력 없음.
+
+options:
+  -h, --help            show this help message and exit
+  --mode {analytic,gazebo}
+  --case CASE
+  --output OUTPUT
+  --config CONFIG
+  --baseline BASELINE
+  --render-backend {system,software,wsl_nvidia}
+analytic_help_returncode=0
+=== analytic run ===
+Traceback (most recent call last):
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/scripts/validate_multi_vehicle_g0.py", line 281, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/scripts/validate_multi_vehicle_g0.py", line 241, in main
+    suite = load_suite(args.config)
+            ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/scripts/validate_multi_vehicle_g0.py", line 46, in load_suite
+    raise ValueError('road/grass/wall contract mismatch')
+ValueError: road/grass/wall contract mismatch
+analytic_returncode=1

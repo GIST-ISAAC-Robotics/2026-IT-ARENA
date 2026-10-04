@@ -1,4 +1,7 @@
-"""/drive 요청을 ToF/바퀴 엔코더만으로 제한해 /drive/safe에 전달합니다."""
+"""/drive 요청을 ToF/구동 엔코더만으로 제한해 /drive/safe에 전달합니다.
+
+구동 엔코더는 기본 모터축 한 채널(평균 바퀴 속도) 또는 명시 legacy 좌우 후륜 쌍이다.
+"""
 import json
 import math
 from pathlib import Path
@@ -13,6 +16,9 @@ from sensor_msgs.msg import JointState, PointCloud2
 from std_msgs.msg import String
 
 from arena_vehicle_interface.node_lifecycle import run_node
+from arena_vehicle_interface.drive_feedback import (
+    MODE_MOTOR, TOPIC_BY_MODE, parse_legacy_wheels, parse_motor_state, validate_mode,
+)
 from arena_autonomy.tof_safety_core import SafetyGeometry, cloud_xyz, safe_speed, swept_clearance, to_body
 
 
@@ -43,8 +49,15 @@ class TofSafety(Node):
         self.steering_limit = math.atan(float(drive["wheelbase_m"]) /
             (float(drive["wheelbase_m"]) / math.tan(float(drive["max_steering_angle_rad"])) +
              float(drive["track_width_m"]) / 2))
-        encoders = config["sensors"]["wheel_encoders"]
-        self.wheel_names = (encoders["left_joint_name"], encoders["right_joint_name"])
+        feedback = config["sensors"]["drive_feedback"]
+        # launch가 선택한 모드를 명시 전달한다. 설정 파일의 기본 모드와 다르면 그 값을 따른다.
+        self.feedback_mode = validate_mode(str(self.declare_parameter(
+            "drive_feedback_mode", feedback["mode"]).value))
+        legacy = feedback["legacy_rear_wheel_encoders"]
+        self.wheel_names = (legacy["left_joint_name"], legacy["right_joint_name"])
+        self.gear_ratio = float(drive["motor"]["gear_ratio"])
+        if not math.isfinite(self.gear_ratio) or self.gear_ratio <= 0:
+            raise ValueError("감속비는 유한한 양수여야 합니다.")
         configured_modules = config["sensors"]["tof_ring"]["modules"]
         active_names = list(self.declare_parameter(
             "active_modules", [module["name"] for module in configured_modules]
@@ -73,7 +86,9 @@ class TofSafety(Node):
         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive/safe", 10)
         self.status_publisher = self.create_publisher(String, "/safety/status", 10)
         self.create_subscription(AckermannDriveStamped, "/drive", self.on_drive, 10)
-        self.create_subscription(JointState, "/wheel_states", self.on_wheels, qos_profile_sensor_data)
+        self.create_subscription(JointState, TOPIC_BY_MODE[self.feedback_mode],
+                                 self.on_drive_motor if self.feedback_mode == MODE_MOTOR else self.on_wheels,
+                                 qos_profile_sensor_data)
         for module in self.modules:
             self.create_subscription(PointCloud2, f"{module['topic']}/points",
                 lambda message, module=module: self.on_cloud(message, module), qos_profile_sensor_data)
@@ -101,11 +116,25 @@ class TofSafety(Node):
         stamp = seconds(message.header.stamp)
         if stamp < self.encoder_at:
             return
-        values = dict(zip(message.name, message.velocity))
-        if not all(name in values and math.isfinite(values[name]) for name in self.wheel_names):
+        try:
+            left, right = parse_legacy_wheels(message.name, message.velocity, *self.wheel_names)
+        except ValueError:
             self.encoder_at = -math.inf
             return
-        self.measured_speed = sum(values[name] for name in self.wheel_names) * self.radius / 2
+        self.measured_speed = (left + right) * self.radius / 2
+        self.encoder_at, self.encoder_wall = stamp, time.monotonic()
+
+    def on_drive_motor(self, message):
+        """모터축 한 채널의 평균 바퀴 속도. 좌우 차이는 관측하지 않는다."""
+        stamp = seconds(message.header.stamp)
+        if stamp < self.encoder_at:
+            return
+        try:
+            _, motor_rad_s = parse_motor_state(message.name, message.position, message.velocity)
+        except ValueError:
+            self.encoder_at = -math.inf
+            return
+        self.measured_speed = motor_rad_s / self.gear_ratio * self.radius
         self.encoder_at, self.encoder_wall = stamp, time.monotonic()
 
     def on_cloud(self, message, module):
@@ -186,6 +215,7 @@ class TofSafety(Node):
         self.publisher.publish(message)
         status = {"state": reason, "sim_time_s": now, "requested_speed_mps": requested,
                   "safe_speed_mps": output, "wheel_speed_mps": self.measured_speed,
+                  "drive_feedback_mode": self.feedback_mode,
                   "clearance_m": clearance if math.isfinite(clearance) else None,
                   "speed_limit_mps": limit, "cloud_age_s": age, "stale_modules": stale,
                   "obstacle_latched": self.latched, "model": "flat_ground_static_obstacle"}

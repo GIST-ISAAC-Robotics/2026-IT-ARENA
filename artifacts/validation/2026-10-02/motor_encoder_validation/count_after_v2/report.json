@@ -1,0 +1,652 @@
+{
+  "scope": "deterministic count/contract and optional toy PI; not Gazebo or hardware",
+  "spec": {
+    "counts_per_motor_revolution": 28,
+    "gear_ratio": 15.0,
+    "wheel_radius_m": 0.0325
+  },
+  "contract": {
+    "lease_us": 100000,
+    "feedback_timeout_us": 50000,
+    "settle_us": 200000,
+    "max_control_gap_us": 50000,
+    "wheel_radius_m": 0.0325,
+    "ticks_per_rev": 28,
+    "max_speed_mps": 2.5,
+    "max_steering_rad": 0.37,
+    "stopped_wheel_mps": 0.03,
+    "max_wheel_mps": 5.0,
+    "feedback_mode": "drive_motor_shaft",
+    "gear_ratio": 15.0,
+    "motor_no_progress_us": 500000,
+    "motor_progress_min_command_mps": 0.1
+  },
+  "source_sha256": {
+    "scripts/validate_motor_encoder.py": "d3234ba27bd1f79c4d10e466f5ca5eab89b2d653a42e37a3c899628d05810a7a",
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_contract.py": "eb436648fde5be587ac414a97809959b4d564e22ea77c63b80008c7074683e02",
+    "src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504",
+    "src/arena_vehicle_interface/arena_vehicle_interface/mcu_speed_loop.py": "a14a025ef8dcf51094b4a10470b4a9262535dbaa6f448d44dce599e865e4caf4"
+  },
+  "quantization": [
+    {
+      "speed_mps": 0.0,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": 0.0,
+      "max_abs_error_mps": 0.0,
+      "zero_sample_fraction": 1.0,
+      "stationary_ready_fraction": 1.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.001,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": -2.760227388887355e-05,
+      "max_abs_error_mps": 0.04761988630555632,
+      "zero_sample_fraction": 0.98,
+      "stationary_ready_fraction": 0.5606469002695418,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.005,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": -1.6461653680476593e-05,
+      "max_abs_error_mps": 0.04361988630555633,
+      "zero_sample_fraction": 0.8975,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.01,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": -3.2923307360954074e-05,
+      "max_abs_error_mps": 0.03861988630555632,
+      "zero_sample_fraction": 0.795,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.02,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": 5.570310104198338e-05,
+      "max_abs_error_mps": 0.028619886305556324,
+      "zero_sample_fraction": 0.5875,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.03,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": 2.2779793681031396e-05,
+      "max_abs_error_mps": 0.03,
+      "zero_sample_fraction": 0.3825,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.05,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": -4.306682104087951e-05,
+      "max_abs_error_mps": 0.047239772611112646,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.1,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": 3.5416073682131395e-05,
+      "max_abs_error_mps": 0.04585965891666896,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.3,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": -1.5301494717475663e-05,
+      "max_abs_error_mps": 0.0403392041388943,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.6,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": -3.0602989434951325e-05,
+      "max_abs_error_mps": 0.032058521972232246,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 1.4,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": 9.626168494470955e-06,
+      "max_abs_error_mps": 0.038643183444422746,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 2.5,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": 3.4553831706141125e-05,
+      "max_abs_error_mps": 0.028234087888928894,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 4.08,
+      "sample_period_ms": 10.0,
+      "mean_error_mps": 5.930904652257096e-05,
+      "max_abs_error_mps": 0.04454943663882549,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.0,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": 0.0,
+      "max_abs_error_mps": 0.0,
+      "zero_sample_fraction": 1.0,
+      "stationary_ready_fraction": 1.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.001,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": -2.7602273888873567e-05,
+      "max_abs_error_mps": 0.02330994315277816,
+      "zero_sample_fraction": 0.96,
+      "stationary_ready_fraction": 1.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.005,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": -1.6461653680477037e-05,
+      "max_abs_error_mps": 0.01930994315277816,
+      "zero_sample_fraction": 0.795,
+      "stationary_ready_fraction": 1.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.01,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": -3.2923307360953715e-05,
+      "max_abs_error_mps": 0.014309943152778162,
+      "zero_sample_fraction": 0.59,
+      "stationary_ready_fraction": 1.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.02,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": 5.570310104198338e-05,
+      "max_abs_error_mps": 0.02,
+      "zero_sample_fraction": 0.175,
+      "stationary_ready_fraction": 1.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.03,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": 2.2779793681031396e-05,
+      "max_abs_error_mps": 0.018619886305556325,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.05,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": -4.3066821040879704e-05,
+      "max_abs_error_mps": 0.02292982945833448,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.1,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": 3.541607368213219e-05,
+      "max_abs_error_mps": 0.02154971576389081,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.3,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": -1.5301494717475663e-05,
+      "max_abs_error_mps": 0.016029260986116123,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 0.6,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": -3.0602989434913574e-05,
+      "max_abs_error_mps": 0.016561364333324113,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 1.4,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": 9.626168494425436e-06,
+      "max_abs_error_mps": 0.014333240291644733,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 2.5,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": 3.4553831706141125e-05,
+      "max_abs_error_mps": 0.020385798416627576,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    },
+    {
+      "speed_mps": 4.08,
+      "sample_period_ms": 20.0,
+      "mean_error_mps": 5.9309046522644235e-05,
+      "max_abs_error_mps": 0.02023949348604681,
+      "zero_sample_fraction": 0.0,
+      "stationary_ready_fraction": 0.0,
+      "passed": true
+    }
+  ],
+  "faults": [
+    {
+      "case": "baseline",
+      "passed": true,
+      "first_fault": null,
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_target_mps": 1.0,
+      "max_accepted_age_ms": 0.0,
+      "largest_count_delta": 21,
+      "reported_mean_mps": 1.0000736613927508,
+      "final_stationary_ready": false
+    },
+    {
+      "case": "delay_2ms",
+      "passed": true,
+      "first_fault": null,
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_target_mps": 1.0,
+      "max_accepted_age_ms": 2.0,
+      "largest_count_delta": 21,
+      "reported_mean_mps": 1.0000736613927508,
+      "final_stationary_ready": false
+    },
+    {
+      "case": "delay_20ms",
+      "passed": true,
+      "first_fault": null,
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_target_mps": 1.0,
+      "max_accepted_age_ms": 20.0,
+      "largest_count_delta": 21,
+      "reported_mean_mps": 1.0000736613927508,
+      "final_stationary_ready": false
+    },
+    {
+      "case": "delay_50ms",
+      "passed": true,
+      "first_fault": null,
+      "final_state": "DISARMED",
+      "final_reason": "boot",
+      "final_target_mps": 0.0,
+      "max_accepted_age_ms": 0.0,
+      "largest_count_delta": 0,
+      "reported_mean_mps": null,
+      "final_stationary_ready": false
+    },
+    {
+      "case": "jitter_reorder",
+      "passed": true,
+      "first_fault": null,
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_target_mps": 1.0,
+      "max_accepted_age_ms": 4.0,
+      "largest_count_delta": 42,
+      "reported_mean_mps": 1.0001805182857302,
+      "final_stationary_ready": false
+    },
+    {
+      "case": "one_packet_lost",
+      "passed": true,
+      "first_fault": null,
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_target_mps": 1.0,
+      "max_accepted_age_ms": 0.0,
+      "largest_count_delta": 41,
+      "reported_mean_mps": 1.0000997543549899,
+      "final_stationary_ready": false
+    },
+    {
+      "case": "burst_60ms",
+      "passed": true,
+      "first_fault": {
+        "time_us": 840000,
+        "reason": "encoder_timeout"
+      },
+      "final_state": "FAULT_LATCHED",
+      "final_reason": "encoder_timeout",
+      "final_target_mps": 0.0,
+      "max_accepted_age_ms": 0.0,
+      "largest_count_delta": 164,
+      "reported_mean_mps": 1.0000675801061585,
+      "final_stationary_ready": false
+    },
+    {
+      "case": "counter_reset",
+      "passed": true,
+      "first_fault": {
+        "time_us": 800000,
+        "reason": "encoder_implausible"
+      },
+      "final_state": "FAULT_LATCHED",
+      "final_reason": "encoder_implausible",
+      "final_target_mps": 0.0,
+      "max_accepted_age_ms": 0.0,
+      "largest_count_delta": 100905,
+      "reported_mean_mps": 1.0000138215326824,
+      "final_stationary_ready": false
+    },
+    {
+      "case": "signed32_wrap",
+      "passed": true,
+      "first_fault": {
+        "time_us": 330000,
+        "reason": "encoder_implausible"
+      },
+      "final_state": "FAULT_LATCHED",
+      "final_reason": "encoder_implausible",
+      "final_target_mps": 0.0,
+      "max_accepted_age_ms": 0.0,
+      "largest_count_delta": 4294967172,
+      "reported_mean_mps": 1.0000736613927508,
+      "final_stationary_ready": false
+    },
+    {
+      "case": "stuck_counts",
+      "passed": true,
+      "first_fault": {
+        "time_us": 1300000,
+        "reason": "motor_feedback_no_progress"
+      },
+      "final_state": "FAULT_LATCHED",
+      "final_reason": "motor_feedback_no_progress",
+      "final_target_mps": 0.0,
+      "max_accepted_age_ms": 0.0,
+      "largest_count_delta": 21,
+      "reported_mean_mps": 0.23075746038867886,
+      "final_stationary_ready": true
+    },
+    {
+      "case": "pulse_loss_10pct",
+      "passed": true,
+      "first_fault": null,
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_target_mps": 1.0,
+      "max_accepted_age_ms": 0.0,
+      "largest_count_delta": 19,
+      "reported_mean_mps": 0.9002158949036467,
+      "final_stationary_ready": false
+    },
+    {
+      "case": "one_count_noise",
+      "passed": true,
+      "first_fault": null,
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_target_mps": 1.0,
+      "max_accepted_age_ms": 0.0,
+      "largest_count_delta": 22,
+      "reported_mean_mps": 1.0000736613927508,
+      "final_stationary_ready": false
+    }
+  ],
+  "toy_pi": [
+    {
+      "target_mps": 0.05,
+      "condition": "ideal_reference",
+      "steady_mean_mps": 0.05004969809530044,
+      "steady_peak_to_peak_mps": 0.0001929559534212047,
+      "steady_mean_error_mps": 4.969809530043501e-05,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.05,
+      "condition": "quantized",
+      "steady_mean_mps": 0.049963711892033524,
+      "steady_peak_to_peak_mps": 0.02577561249802443,
+      "steady_mean_error_mps": -3.628810796647841e-05,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.05,
+      "condition": "delay_20ms",
+      "steady_mean_mps": 0.0498962434615738,
+      "steady_peak_to_peak_mps": 0.024478381975001573,
+      "steady_mean_error_mps": -0.00010375653842620292,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.05,
+      "condition": "pulse_loss_10pct",
+      "steady_mean_mps": 0.055652169060490315,
+      "steady_peak_to_peak_mps": 0.02488869085368519,
+      "steady_mean_error_mps": 0.005652169060490313,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.1,
+      "condition": "ideal_reference",
+      "steady_mean_mps": 0.10009939619060088,
+      "steady_peak_to_peak_mps": 0.0003859119068424094,
+      "steady_mean_error_mps": 9.939619060087002e-05,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.1,
+      "condition": "quantized",
+      "steady_mean_mps": 0.09988972699380863,
+      "steady_peak_to_peak_mps": 0.02887797689511032,
+      "steady_mean_error_mps": -0.00011027300619137481,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.1,
+      "condition": "delay_20ms",
+      "steady_mean_mps": 0.09974577526865444,
+      "steady_peak_to_peak_mps": 0.028583442840634923,
+      "steady_mean_error_mps": -0.0002542247313455648,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.1,
+      "condition": "pulse_loss_10pct",
+      "steady_mean_mps": 0.11088426334243567,
+      "steady_peak_to_peak_mps": 0.027897709745895352,
+      "steady_mean_error_mps": 0.010884263342435668,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.6,
+      "condition": "ideal_reference",
+      "steady_mean_mps": 0.6005963771436051,
+      "steady_peak_to_peak_mps": 0.002315471441053152,
+      "steady_mean_error_mps": 0.0005963771436051646,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.6,
+      "condition": "quantized",
+      "steady_mean_mps": 0.6004497694297064,
+      "steady_peak_to_peak_mps": 0.0025719162045602095,
+      "steady_mean_error_mps": 0.00044976942970642586,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.6,
+      "condition": "delay_20ms",
+      "steady_mean_mps": 0.6004336632188991,
+      "steady_peak_to_peak_mps": 0.0029876125382996,
+      "steady_mean_error_mps": 0.0004336632188991496,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 0.6,
+      "condition": "pulse_loss_10pct",
+      "steady_mean_mps": 0.66744225300176,
+      "steady_peak_to_peak_mps": 0.0037175654970167393,
+      "steady_mean_error_mps": 0.06744225300175999,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 1.4,
+      "condition": "ideal_reference",
+      "steady_mean_mps": 1.401391546668412,
+      "steady_peak_to_peak_mps": 0.005402766695792316,
+      "steady_mean_error_mps": 0.0013915466684120137,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 1.4,
+      "condition": "quantized",
+      "steady_mean_mps": 1.401376850935498,
+      "steady_peak_to_peak_mps": 0.006715792766643469,
+      "steady_mean_error_mps": 0.0013768509354981084,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 1.4,
+      "condition": "delay_20ms",
+      "steady_mean_mps": 1.4013173691393404,
+      "steady_peak_to_peak_mps": 0.007479999472766341,
+      "steady_mean_error_mps": 0.0013173691393404408,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 1.4,
+      "condition": "pulse_loss_10pct",
+      "steady_mean_mps": 1.5580789767360175,
+      "steady_peak_to_peak_mps": 0.009865706281624309,
+      "steady_mean_error_mps": 0.15807897673601756,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 2.5,
+      "condition": "ideal_reference",
+      "steady_mean_mps": 2.501741747539899,
+      "steady_peak_to_peak_mps": 0.00586809493996121,
+      "steady_mean_error_mps": 0.0017417475398988636,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 2.5,
+      "condition": "quantized",
+      "steady_mean_mps": 2.5017808200128635,
+      "steady_peak_to_peak_mps": 0.006721819718830346,
+      "steady_mean_error_mps": 0.0017808200128635043,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 2.5,
+      "condition": "delay_20ms",
+      "steady_mean_mps": 2.501853062167673,
+      "steady_peak_to_peak_mps": 0.007221322577280809,
+      "steady_mean_error_mps": 0.001853062167672892,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    },
+    {
+      "target_mps": 2.5,
+      "condition": "pulse_loss_10pct",
+      "steady_mean_mps": 2.780064835756805,
+      "steady_peak_to_peak_mps": 0.01587046080089749,
+      "steady_mean_error_mps": 0.28006483575680496,
+      "final_speed_mps": 0.0,
+      "output_bounded": true,
+      "stopped": true,
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "Plausible pulse loss, slow counter reset, noisy stuck feedback and opposite wheel rotation remain ambiguous.",
+    "Stationary-ready means low mean motor-shaft speed only, not actual vehicle standstill.",
+    "Toy PI passes mean bounded effort and eventual model stop, not hardware tuning or tracking certification."
+  ],
+  "passed": true
+}

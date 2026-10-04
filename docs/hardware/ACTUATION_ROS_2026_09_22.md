@@ -1,5 +1,7 @@
 # A1-2: ROS 구동 경로와 가상 MCU 연결
 
+> 2026-10-02 후속: 현재 기본 센서는 [단일 모터축 엔코더](../decisions/0026-motor-shaft-encoder-baseline.md)다. 아래 좌우 엔코더·양쪽 저속 관측과 시험 수치는 9/22 조건이다. 현재 모터축 ROS 시험·무진행 감시·주행 결과는 [새 검증 보고서](../autonomy/MOTOR_ENCODER_VALIDATION_2026_10_02.md)에 구분한다. MB4266·MD20A·PGE-213 선정은 완료했지만 실물 속도/제동 루프와 Gazebo 내부의 이상적 관절 피드백 한계는 남는다. [구성 변경](DRIVETRAIN_GEARING_2026_10_02.md#9-시뮬레이션-반영-후속).
+
 날짜: 2026-09-22. 상태: **선택형 ROS/가상 MCU 연결·고장 14조건·Gazebo 부분 주행 2회 검증 완료**. [A1-1 PC 계약](ACTUATION_CONTRACT_2026_09_22.md)의 후속이며 실물 구동/안전 검증이 아니다.
 
 ## 이번 범위

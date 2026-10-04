@@ -48,6 +48,9 @@ def main():
                 continue
             if e['kind']=='wheels':
                 h.add_wheels(e['stamp_s'], *e['values'])
+            elif e['kind']=='drive_motor':
+                # [모터 rad/s, 평균 바퀴 rad/s]. 기록 당시 감속비로 환산한 평균만 사용한다.
+                h.add_mean_wheel(e['stamp_s'], e['values'][1])
             else:
                 h.add_gyro(e['stamp_s'], e['values'][2])  # 독립 시험장 IMU 장착 roll/pitch=0
         while si < len(scans) and scans[si]['received_s'] < now - 1e-9:

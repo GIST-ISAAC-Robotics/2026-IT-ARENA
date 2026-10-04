@@ -1,4 +1,10 @@
-"""A2 기록/재생 허용 목록과 ROS 독립 무결성 검사. 명령은 재생하지 않는다."""
+"""A2 기록/재생 허용 목록과 ROS 독립 무결성 검사. 명령은 재생하지 않는다.
+
+schema 1은 구동 피드백 모드 필드가 없던 옛 기록이며 좌우 후륜 /wheel_states로만 읽는다.
+schema 2는 drive_feedback_mode를 명시하고 그 모드의 피드백 토픽 하나만 허용한다.
+재생은 기록된 제어기 매개변수(또는 옛 기록의 legacy 기본값)를 쓰며 현재 vehicle.yaml을
+읽어 옛 입력을 새 반지름·감속비로 다시 환산하지 않는다.
+"""
 import hashlib
 import json
 from pathlib import Path
@@ -7,13 +13,15 @@ from bisect import bisect_right
 import math
 from collections.abc import Mapping
 
-INPUTS = {
+from arena_vehicle_interface.drive_feedback import MODE_LEGACY, MODE_MOTOR, MODES, TOPIC_BY_MODE
+
+SENSOR_INPUTS = {
     '/camera/color/image_raw': 'sensor_msgs/msg/Image',
     '/camera/color/camera_info': 'sensor_msgs/msg/CameraInfo',
     '/scan': 'sensor_msgs/msg/LaserScan',
     '/imu/data': 'sensor_msgs/msg/Imu',
-    '/wheel_states': 'sensor_msgs/msg/JointState',
 }
+LEGACY_DEFAULT_WHEEL_RADIUS_M = .025  # 모드 필드 이전 제어기 기본값. 현재 차량값이 아니다.
 OBSERVATIONS = {
     '/drive': 'ackermann_msgs/msg/AckermannDriveStamped',
     '/drive/safe': 'ackermann_msgs/msg/AckermannDriveStamped',
@@ -23,8 +31,38 @@ OBSERVATIONS = {
     '/actuation/output_status': 'std_msgs/msg/String',
     '/diagnostics/timing': 'std_msgs/msg/String',
 }
-TOPICS = {**INPUTS, **OBSERVATIONS}
-REQUIRED = set(INPUTS) | {'/drive', '/drive/safe', '/autonomy/status', '/safety/status', '/diagnostics/timing'}
+REQUIRED_OBSERVATIONS = {'/drive', '/drive/safe', '/autonomy/status', '/safety/status', '/diagnostics/timing'}
+
+
+def inputs_for(mode):
+    if mode not in MODES:
+        raise ValueError('Unknown drive feedback mode: ' + repr(mode))
+    return {**SENSOR_INPUTS, TOPIC_BY_MODE[mode]: 'sensor_msgs/msg/JointState'}
+
+
+def topics_for(mode):
+    return {**inputs_for(mode), **OBSERVATIONS}
+
+
+def required_for(mode):
+    return set(inputs_for(mode)) | REQUIRED_OBSERVATIONS
+
+
+# schema 1(legacy) 계약. 새 기록/재생은 manifest의 모드로 topics_for()를 사용한다.
+INPUTS = inputs_for(MODE_LEGACY)
+TOPICS = topics_for(MODE_LEGACY)
+REQUIRED = required_for(MODE_LEGACY)
+
+
+def manifest_feedback_mode(manifest):
+    """schema 1은 legacy로 고정, schema 2는 명시 모드만 허용한다."""
+    if manifest.get('schema') == 1:
+        if 'drive_feedback_mode' in manifest:
+            raise ValueError('Schema 1 recording cannot declare a drive feedback mode')
+        return MODE_LEGACY
+    if manifest.get('schema') == 2 and manifest.get('drive_feedback_mode') in MODES:
+        return manifest['drive_feedback_mode']
+    raise ValueError('Incomplete or unsupported recording')
 
 
 def dds_metadata(info):
@@ -37,10 +75,45 @@ def dds_metadata(info):
     return result
 
 
-def replay_topic(topic):
-    if topic not in INPUTS:
+def replay_topic(topic, mode=MODE_LEGACY):
+    if topic not in inputs_for(mode):
         raise ValueError('Only allowlisted sensors may be replayed: ' + topic)
     return '/replay' + topic
+
+
+def resolve_replay_feedback(manifest, parameters):
+    """기록 모드와 제어기 매개변수를 대조해 재생용 명시 매개변수를 만든다.
+
+    현재 vehicle.yaml은 읽지 않는다. 옛 schema 1에 모드가 없으면 legacy, 반지름이 없으면
+    당시 기본값 0.025 m를 명시한다. 모드가 서로 다르거나 모터축 기하가 없으면 거절한다.
+    """
+    mode = manifest_feedback_mode(manifest)
+    resolved, geometry = {}, set()
+    for name, values in parameters.items():
+        declared = values.get('motion_feedback_mode')
+        if declared is None and manifest['schema'] != 1:
+            raise ValueError('Recorded controller lacks motion_feedback_mode: ' + name)
+        if (declared or MODE_LEGACY) != mode:
+            raise ValueError('Controller feedback mode differs from recording: ' + name)
+        params = dict(values, motion_feedback_mode=mode)
+        source = 'recorded_parameters'
+        if 'motion_wheel_radius_m' not in params:
+            if mode != MODE_LEGACY:
+                raise ValueError('Recorded motor-shaft controller lacks wheel radius: ' + name)
+            params['motion_wheel_radius_m'], source = LEGACY_DEFAULT_WHEEL_RADIUS_M, 'legacy_controller_default'
+        radius = params['motion_wheel_radius_m']
+        ratio = params.get('motion_gear_ratio') if mode == MODE_MOTOR else None
+        # 모터축 모드는 감속비 없이는 평균 바퀴 속도를 만들 수 없다. 누락/None도 거절한다.
+        for value in (radius, ratio) if mode == MODE_MOTOR else (radius,):
+            if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
+                raise ValueError('Recorded drive feedback geometry invalid: ' + name)
+        geometry.add((float(radius), None if ratio is None else float(ratio), source))
+        resolved[name] = params
+    if len(geometry) != 1:
+        raise ValueError('Controllers disagree on recorded drive feedback geometry')
+    radius, ratio, source = geometry.pop()
+    return dict(mode=mode, topic=TOPIC_BY_MODE[mode], wheel_radius_m=radius, gear_ratio=ratio,
+                geometry_source=source, current_vehicle_yaml_used=False), resolved
 
 
 def update_digest(digest, payload, timestamp):
@@ -104,13 +177,14 @@ def active_window_continuity(original, replayed):
 def load_manifest(root):
     root = Path(root).resolve()
     manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
-    if manifest.get('schema') != 1 or manifest.get('complete') is not True:
+    if manifest.get('complete') is not True:
         raise ValueError('Incomplete or unsupported recording')
+    mode = manifest_feedback_mode(manifest)
     if manifest.get('queue_drops') or manifest.get('error') or manifest.get('clock_regressions'):
         raise ValueError('Recording contains known loss/error/clock regression')
-    if manifest.get('topics') != TOPICS:
+    if manifest.get('topics') != topics_for(mode):
         raise ValueError('Topic contract mismatch')
-    if not REQUIRED.issubset({t for t, s in manifest['stats'].items() if s['count'] > 0}):
+    if not required_for(mode).issubset({t for t, s in manifest['stats'].items() if s['count'] > 0}):
         raise ValueError('Required topics missing')
     for relative, digest in manifest['files_sha256'].items():
         path = (root / relative).resolve()

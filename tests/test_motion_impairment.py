@@ -68,6 +68,7 @@ def test_wheel_gain_named_not_raw_tick_dropout():
 def relay_double(config):
     node = object.__new__(MotionFaultRelay)
     node.config = config
+    node.feedback_mode = 'rear_wheel_pair_legacy'
     node.pending = {k: deque() for k in ('imu', 'wheels')}
     node.rng = {k: random.Random(1) for k in node.pending}
     node.sequence = 0
@@ -143,3 +144,16 @@ def test_validator_forwards_motion_profile(monkeypatch):
     monkeypatch.setattr(validator.subprocess, 'Popen', lambda cmd, **kw: calls.append(cmd))
     validator.start_demo_process(None, motion_test_profile='/tmp/motion with spaces.json')
     assert 'motion_test_profile:=/tmp/motion with spaces.json' in calls[0]
+
+
+def test_motor_shaft_relay_scales_only_the_single_channel():
+    msg = JointState(name=['drive_motor_shaft'], position=[28.], velocity=[150.])
+    result, before, after = alter_message('wheels', msg, StreamFault(scale=1.05), 'drive_motor_shaft')
+    assert before == [150.] and after == pytest.approx([157.5])
+    assert list(result.name) == ['drive_motor_shaft'] and list(result.position) == pytest.approx([29.4])
+    for bad in (JointState(name=['rear_left_wheel_joint', 'rear_right_wheel_joint'], velocity=[1., 2.]),
+                JointState(name=['drive_motor_shaft'], velocity=[])):
+        with pytest.raises(ValueError):
+            alter_message('wheels', bad, StreamFault(), 'drive_motor_shaft')
+    with pytest.raises(ValueError):
+        alter_message('wheels', msg, StreamFault(), 'rear_wheel_pair_legacy')

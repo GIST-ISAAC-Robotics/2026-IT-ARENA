@@ -1,0 +1,386 @@
+FFFFFFFFFFFFFFFFFFFFF                                                    [100%]
+=================================== FAILURES ===================================
+_ test_review_zero_target_needs_valid_fixture_observations[0-417-True-empty_r0_corridor] _
+
+case_name = 'empty_r0_corridor', unknown = 0, returns = 417, expected = True
+
+    @pytest.mark.parametrize('case_name', ['empty_r0_corridor', 'low_target'])
+    @pytest.mark.parametrize('unknown,returns,expected', [
+        (0, 417, True), (417, 0, False), (1, 416, False), (0, 0, False),
+    ])
+    def test_review_zero_target_needs_valid_fixture_observations(case_name, unknown, returns, expected):
+        # 닫힌 무잡음 회랑에서는 표적이 없어도 배경 벽 반환이 있어야 한다.
+        # 후방 장착 마스크는 unknown이 아니므로 정상 마스크 자체를 실패로 보지 않는다.
+        case = g0.select_cases(g0.load_suite(), case_name)[0]
+        metrics = dict(visible_target_rays=0, masked_target_rays=0,
+                       unknown_rays=unknown, return_rays=returns, masked_rays=83)
+        result = g0.visibility_verdict(metrics, case['expected'])
+        assert result['passed'] is expected
+>       assert result['checks']['fixture_observation_complete'] is expected
+E       KeyError: 'fixture_observation_complete'
+
+tests/test_multi_vehicle_g0.py:39: KeyError
+_ test_review_zero_target_needs_valid_fixture_observations[0-417-True-low_target] _
+
+case_name = 'low_target', unknown = 0, returns = 417, expected = True
+
+    @pytest.mark.parametrize('case_name', ['empty_r0_corridor', 'low_target'])
+    @pytest.mark.parametrize('unknown,returns,expected', [
+        (0, 417, True), (417, 0, False), (1, 416, False), (0, 0, False),
+    ])
+    def test_review_zero_target_needs_valid_fixture_observations(case_name, unknown, returns, expected):
+        # 닫힌 무잡음 회랑에서는 표적이 없어도 배경 벽 반환이 있어야 한다.
+        # 후방 장착 마스크는 unknown이 아니므로 정상 마스크 자체를 실패로 보지 않는다.
+        case = g0.select_cases(g0.load_suite(), case_name)[0]
+        metrics = dict(visible_target_rays=0, masked_target_rays=0,
+                       unknown_rays=unknown, return_rays=returns, masked_rays=83)
+        result = g0.visibility_verdict(metrics, case['expected'])
+        assert result['passed'] is expected
+>       assert result['checks']['fixture_observation_complete'] is expected
+E       KeyError: 'fixture_observation_complete'
+
+tests/test_multi_vehicle_g0.py:39: KeyError
+_ test_review_zero_target_needs_valid_fixture_observations[417-0-False-empty_r0_corridor] _
+
+case_name = 'empty_r0_corridor', unknown = 417, returns = 0, expected = False
+
+    @pytest.mark.parametrize('case_name', ['empty_r0_corridor', 'low_target'])
+    @pytest.mark.parametrize('unknown,returns,expected', [
+        (0, 417, True), (417, 0, False), (1, 416, False), (0, 0, False),
+    ])
+    def test_review_zero_target_needs_valid_fixture_observations(case_name, unknown, returns, expected):
+        # 닫힌 무잡음 회랑에서는 표적이 없어도 배경 벽 반환이 있어야 한다.
+        # 후방 장착 마스크는 unknown이 아니므로 정상 마스크 자체를 실패로 보지 않는다.
+        case = g0.select_cases(g0.load_suite(), case_name)[0]
+        metrics = dict(visible_target_rays=0, masked_target_rays=0,
+                       unknown_rays=unknown, return_rays=returns, masked_rays=83)
+        result = g0.visibility_verdict(metrics, case['expected'])
+>       assert result['passed'] is expected
+E       assert True is False
+
+tests/test_multi_vehicle_g0.py:38: AssertionError
+_ test_review_zero_target_needs_valid_fixture_observations[417-0-False-low_target] _
+
+case_name = 'low_target', unknown = 417, returns = 0, expected = False
+
+    @pytest.mark.parametrize('case_name', ['empty_r0_corridor', 'low_target'])
+    @pytest.mark.parametrize('unknown,returns,expected', [
+        (0, 417, True), (417, 0, False), (1, 416, False), (0, 0, False),
+    ])
+    def test_review_zero_target_needs_valid_fixture_observations(case_name, unknown, returns, expected):
+        # 닫힌 무잡음 회랑에서는 표적이 없어도 배경 벽 반환이 있어야 한다.
+        # 후방 장착 마스크는 unknown이 아니므로 정상 마스크 자체를 실패로 보지 않는다.
+        case = g0.select_cases(g0.load_suite(), case_name)[0]
+        metrics = dict(visible_target_rays=0, masked_target_rays=0,
+                       unknown_rays=unknown, return_rays=returns, masked_rays=83)
+        result = g0.visibility_verdict(metrics, case['expected'])
+>       assert result['passed'] is expected
+E       assert True is False
+
+tests/test_multi_vehicle_g0.py:38: AssertionError
+_ test_review_zero_target_needs_valid_fixture_observations[1-416-False-empty_r0_corridor] _
+
+case_name = 'empty_r0_corridor', unknown = 1, returns = 416, expected = False
+
+    @pytest.mark.parametrize('case_name', ['empty_r0_corridor', 'low_target'])
+    @pytest.mark.parametrize('unknown,returns,expected', [
+        (0, 417, True), (417, 0, False), (1, 416, False), (0, 0, False),
+    ])
+    def test_review_zero_target_needs_valid_fixture_observations(case_name, unknown, returns, expected):
+        # 닫힌 무잡음 회랑에서는 표적이 없어도 배경 벽 반환이 있어야 한다.
+        # 후방 장착 마스크는 unknown이 아니므로 정상 마스크 자체를 실패로 보지 않는다.
+        case = g0.select_cases(g0.load_suite(), case_name)[0]
+        metrics = dict(visible_target_rays=0, masked_target_rays=0,
+                       unknown_rays=unknown, return_rays=returns, masked_rays=83)
+        result = g0.visibility_verdict(metrics, case['expected'])
+>       assert result['passed'] is expected
+E       assert True is False
+
+tests/test_multi_vehicle_g0.py:38: AssertionError
+_ test_review_zero_target_needs_valid_fixture_observations[1-416-False-low_target] _
+
+case_name = 'low_target', unknown = 1, returns = 416, expected = False
+
+    @pytest.mark.parametrize('case_name', ['empty_r0_corridor', 'low_target'])
+    @pytest.mark.parametrize('unknown,returns,expected', [
+        (0, 417, True), (417, 0, False), (1, 416, False), (0, 0, False),
+    ])
+    def test_review_zero_target_needs_valid_fixture_observations(case_name, unknown, returns, expected):
+        # 닫힌 무잡음 회랑에서는 표적이 없어도 배경 벽 반환이 있어야 한다.
+        # 후방 장착 마스크는 unknown이 아니므로 정상 마스크 자체를 실패로 보지 않는다.
+        case = g0.select_cases(g0.load_suite(), case_name)[0]
+        metrics = dict(visible_target_rays=0, masked_target_rays=0,
+                       unknown_rays=unknown, return_rays=returns, masked_rays=83)
+        result = g0.visibility_verdict(metrics, case['expected'])
+>       assert result['passed'] is expected
+E       assert True is False
+
+tests/test_multi_vehicle_g0.py:38: AssertionError
+_ test_review_zero_target_needs_valid_fixture_observations[0-0-False-empty_r0_corridor] _
+
+case_name = 'empty_r0_corridor', unknown = 0, returns = 0, expected = False
+
+    @pytest.mark.parametrize('case_name', ['empty_r0_corridor', 'low_target'])
+    @pytest.mark.parametrize('unknown,returns,expected', [
+        (0, 417, True), (417, 0, False), (1, 416, False), (0, 0, False),
+    ])
+    def test_review_zero_target_needs_valid_fixture_observations(case_name, unknown, returns, expected):
+        # 닫힌 무잡음 회랑에서는 표적이 없어도 배경 벽 반환이 있어야 한다.
+        # 후방 장착 마스크는 unknown이 아니므로 정상 마스크 자체를 실패로 보지 않는다.
+        case = g0.select_cases(g0.load_suite(), case_name)[0]
+        metrics = dict(visible_target_rays=0, masked_target_rays=0,
+                       unknown_rays=unknown, return_rays=returns, masked_rays=83)
+        result = g0.visibility_verdict(metrics, case['expected'])
+>       assert result['passed'] is expected
+E       assert True is False
+
+tests/test_multi_vehicle_g0.py:38: AssertionError
+_ test_review_zero_target_needs_valid_fixture_observations[0-0-False-low_target] _
+
+case_name = 'low_target', unknown = 0, returns = 0, expected = False
+
+    @pytest.mark.parametrize('case_name', ['empty_r0_corridor', 'low_target'])
+    @pytest.mark.parametrize('unknown,returns,expected', [
+        (0, 417, True), (417, 0, False), (1, 416, False), (0, 0, False),
+    ])
+    def test_review_zero_target_needs_valid_fixture_observations(case_name, unknown, returns, expected):
+        # 닫힌 무잡음 회랑에서는 표적이 없어도 배경 벽 반환이 있어야 한다.
+        # 후방 장착 마스크는 unknown이 아니므로 정상 마스크 자체를 실패로 보지 않는다.
+        case = g0.select_cases(g0.load_suite(), case_name)[0]
+        metrics = dict(visible_target_rays=0, masked_target_rays=0,
+                       unknown_rays=unknown, return_rays=returns, masked_rays=83)
+        result = g0.visibility_verdict(metrics, case['expected'])
+>       assert result['passed'] is expected
+E       assert True is False
+
+tests/test_multi_vehicle_g0.py:38: AssertionError
+______ test_review_no_return_analytic_case_cannot_pass[empty_r0_corridor] ______
+
+case_name = 'empty_r0_corridor'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x795caed99af0>
+
+    @pytest.mark.parametrize('case_name', ['empty_r0_corridor', 'low_target'])
+    def test_review_no_return_analytic_case_cannot_pass(case_name, monkeypatch):
+        suite = g0.load_suite()
+        monkeypatch.setattr(g0, 'ray_box_distance', lambda *_args, **_kwargs: None)
+        result = g0.analytic_case(suite, g0.select_cases(suite, case_name)[0], .135)
+        assert result['observation_prediction']['unknown_rays'] > 0
+        assert result['observation_prediction']['return_rays'] == 0
+>       assert not result['analytic_contract_passed']
+E       assert not True
+
+tests/test_multi_vehicle_g0.py:49: AssertionError
+_________ test_review_no_return_analytic_case_cannot_pass[low_target] __________
+
+case_name = 'low_target'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x795caed99370>
+
+    @pytest.mark.parametrize('case_name', ['empty_r0_corridor', 'low_target'])
+    def test_review_no_return_analytic_case_cannot_pass(case_name, monkeypatch):
+        suite = g0.load_suite()
+        monkeypatch.setattr(g0, 'ray_box_distance', lambda *_args, **_kwargs: None)
+        result = g0.analytic_case(suite, g0.select_cases(suite, case_name)[0], .135)
+        assert result['observation_prediction']['unknown_rays'] > 0
+        assert result['observation_prediction']['return_rays'] == 0
+>       assert not result['analytic_contract_passed']
+E       assert not True
+
+tests/test_multi_vehicle_g0.py:49: AssertionError
+_______ test_review_unsupported_pitch_rejected_when_loading_suite[0.05] ________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_review_unsupported_pitch_0')
+pitch = 0.05
+
+    @pytest.mark.parametrize('pitch', [.05, -.05, 1e-12, math.nan, math.inf, True, '0'])
+    def test_review_unsupported_pitch_rejected_when_loading_suite(tmp_path, pitch):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = pitch
+        path = tmp_path/'tilted.json'
+        path.write_text(json.dumps(suite), encoding='utf-8')
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:58: Failed
+_______ test_review_unsupported_pitch_rejected_when_loading_suite[-0.05] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_review_unsupported_pitch_1')
+pitch = -0.05
+
+    @pytest.mark.parametrize('pitch', [.05, -.05, 1e-12, math.nan, math.inf, True, '0'])
+    def test_review_unsupported_pitch_rejected_when_loading_suite(tmp_path, pitch):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = pitch
+        path = tmp_path/'tilted.json'
+        path.write_text(json.dumps(suite), encoding='utf-8')
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:58: Failed
+_______ test_review_unsupported_pitch_rejected_when_loading_suite[1e-12] _______
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_review_unsupported_pitch_2')
+pitch = 1e-12
+
+    @pytest.mark.parametrize('pitch', [.05, -.05, 1e-12, math.nan, math.inf, True, '0'])
+    def test_review_unsupported_pitch_rejected_when_loading_suite(tmp_path, pitch):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = pitch
+        path = tmp_path/'tilted.json'
+        path.write_text(json.dumps(suite), encoding='utf-8')
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:58: Failed
+________ test_review_unsupported_pitch_rejected_when_loading_suite[nan] ________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_review_unsupported_pitch_3')
+pitch = nan
+
+    @pytest.mark.parametrize('pitch', [.05, -.05, 1e-12, math.nan, math.inf, True, '0'])
+    def test_review_unsupported_pitch_rejected_when_loading_suite(tmp_path, pitch):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = pitch
+        path = tmp_path/'tilted.json'
+        path.write_text(json.dumps(suite), encoding='utf-8')
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:58: Failed
+________ test_review_unsupported_pitch_rejected_when_loading_suite[inf] ________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_review_unsupported_pitch_4')
+pitch = inf
+
+    @pytest.mark.parametrize('pitch', [.05, -.05, 1e-12, math.nan, math.inf, True, '0'])
+    def test_review_unsupported_pitch_rejected_when_loading_suite(tmp_path, pitch):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = pitch
+        path = tmp_path/'tilted.json'
+        path.write_text(json.dumps(suite), encoding='utf-8')
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:58: Failed
+_______ test_review_unsupported_pitch_rejected_when_loading_suite[True] ________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_review_unsupported_pitch_5')
+pitch = True
+
+    @pytest.mark.parametrize('pitch', [.05, -.05, 1e-12, math.nan, math.inf, True, '0'])
+    def test_review_unsupported_pitch_rejected_when_loading_suite(tmp_path, pitch):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = pitch
+        path = tmp_path/'tilted.json'
+        path.write_text(json.dumps(suite), encoding='utf-8')
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:58: Failed
+_________ test_review_unsupported_pitch_rejected_when_loading_suite[0] _________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_review_unsupported_pitch_6')
+pitch = '0'
+
+    @pytest.mark.parametrize('pitch', [.05, -.05, 1e-12, math.nan, math.inf, True, '0'])
+    def test_review_unsupported_pitch_rejected_when_loading_suite(tmp_path, pitch):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = pitch
+        path = tmp_path/'tilted.json'
+        path.write_text(json.dumps(suite), encoding='utf-8')
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:58: Failed
+_______ test_review_direct_scene_call_cannot_silently_flatten_tilt[0.05] _______
+
+pitch = 0.05
+
+    @pytest.mark.parametrize('pitch', [.05, -.05])
+    def test_review_direct_scene_call_cannot_silently_flatten_tilt(pitch):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = pitch
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:66: Failed
+______ test_review_direct_scene_call_cannot_silently_flatten_tilt[-0.05] _______
+
+pitch = -0.05
+
+    @pytest.mark.parametrize('pitch', [.05, -.05])
+    def test_review_direct_scene_call_cannot_silently_flatten_tilt(pitch):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = pitch
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:66: Failed
+____ test_review_tilted_cli_rejected_before_output_or_simulation[analytic] _____
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_review_tilted_cli_rejecte0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x795caedc80e0>
+mode = 'analytic'
+
+    @pytest.mark.parametrize('mode', ['analytic', 'gazebo'])
+    def test_review_tilted_cli_rejected_before_output_or_simulation(tmp_path, monkeypatch, mode):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = .05
+        config_path = tmp_path/'tilted.json'
+        config_path.write_text(json.dumps(suite), encoding='utf-8')
+        monkeypatch.setattr(g0, 'REPO', tmp_path)
+        def must_not_launch(*_args, **_kwargs):
+            pytest.fail('invalid fixture started a simulation')
+        monkeypatch.setattr(g0, 'gazebo_case', must_not_launch)
+        output = tmp_path/'artifacts/not-created'
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:81: Failed
+----------------------------- Captured stdout call -----------------------------
+{"passed": false, "report": "/tmp/pytest-of-jinhyeong/pytest-0/test_review_tilted_cli_rejecte0/artifacts/not-created/report.json"}
+_____ test_review_tilted_cli_rejected_before_output_or_simulation[gazebo] ______
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_review_tilted_cli_rejecte1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x795caedcbe30>
+mode = 'gazebo'
+
+    @pytest.mark.parametrize('mode', ['analytic', 'gazebo'])
+    def test_review_tilted_cli_rejected_before_output_or_simulation(tmp_path, monkeypatch, mode):
+        suite = g0.load_suite()
+        suite['lidar']['pitch_rad'] = .05
+        config_path = tmp_path/'tilted.json'
+        config_path.write_text(json.dumps(suite), encoding='utf-8')
+        monkeypatch.setattr(g0, 'REPO', tmp_path)
+        def must_not_launch(*_args, **_kwargs):
+            pytest.fail('invalid fixture started a simulation')
+        monkeypatch.setattr(g0, 'gazebo_case', must_not_launch)
+        output = tmp_path/'artifacts/not-created'
+>       with pytest.raises(ValueError, match='horizontal scan'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_multi_vehicle_g0.py:81: Failed
+----------------------------- Captured stdout call -----------------------------
+{"passed": false, "report": "/tmp/pytest-of-jinhyeong/pytest-0/test_review_tilted_cli_rejecte1/artifacts/not-created/report.json"}
+=========================== short test summary info ============================
+FAILED tests/test_multi_vehicle_g0.py::test_review_zero_target_needs_valid_fixture_observations[0-417-True-empty_r0_corridor]
+FAILED tests/test_multi_vehicle_g0.py::test_review_zero_target_needs_valid_fixture_observations[0-417-True-low_target]
+FAILED tests/test_multi_vehicle_g0.py::test_review_zero_target_needs_valid_fixture_observations[417-0-False-empty_r0_corridor]
+FAILED tests/test_multi_vehicle_g0.py::test_review_zero_target_needs_valid_fixture_observations[417-0-False-low_target]
+FAILED tests/test_multi_vehicle_g0.py::test_review_zero_target_needs_valid_fixture_observations[1-416-False-empty_r0_corridor]
+FAILED tests/test_multi_vehicle_g0.py::test_review_zero_target_needs_valid_fixture_observations[1-416-False-low_target]
+FAILED tests/test_multi_vehicle_g0.py::test_review_zero_target_needs_valid_fixture_observations[0-0-False-empty_r0_corridor]
+FAILED tests/test_multi_vehicle_g0.py::test_review_zero_target_needs_valid_fixture_observations[0-0-False-low_target]
+FAILED tests/test_multi_vehicle_g0.py::test_review_no_return_analytic_case_cannot_pass[empty_r0_corridor]
+FAILED tests/test_multi_vehicle_g0.py::test_review_no_return_analytic_case_cannot_pass[low_target]
+FAILED tests/test_multi_vehicle_g0.py::test_review_unsupported_pitch_rejected_when_loading_suite[0.05]
+FAILED tests/test_multi_vehicle_g0.py::test_review_unsupported_pitch_rejected_when_loading_suite[-0.05]
+FAILED tests/test_multi_vehicle_g0.py::test_review_unsupported_pitch_rejected_when_loading_suite[1e-12]
+FAILED tests/test_multi_vehicle_g0.py::test_review_unsupported_pitch_rejected_when_loading_suite[nan]
+FAILED tests/test_multi_vehicle_g0.py::test_review_unsupported_pitch_rejected_when_loading_suite[inf]
+FAILED tests/test_multi_vehicle_g0.py::test_review_unsupported_pitch_rejected_when_loading_suite[True]
+FAILED tests/test_multi_vehicle_g0.py::test_review_unsupported_pitch_rejected_when_loading_suite[0]
+FAILED tests/test_multi_vehicle_g0.py::test_review_direct_scene_call_cannot_silently_flatten_tilt[0.05]
+FAILED tests/test_multi_vehicle_g0.py::test_review_direct_scene_call_cannot_silently_flatten_tilt[-0.05]
+FAILED tests/test_multi_vehicle_g0.py::test_review_tilted_cli_rejected_before_output_or_simulation[analytic]
+FAILED tests/test_multi_vehicle_g0.py::test_review_tilted_cli_rejected_before_output_or_simulation[gazebo]
+21 failed, 22 deselected in 1.43s

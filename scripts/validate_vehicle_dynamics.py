@@ -189,7 +189,9 @@ def main():
     subscriptions = [
         node.create_subscription(String, "/sim/drivetrain", lambda m: receive(m, "dynamics"), 20),
         node.create_subscription(String, "/safety/status", lambda m: receive(m, "safety"), 20),
-        node.create_subscription(JointState, "/wheel_states", lambda m: current.update(encoder=m), qos_profile_sensor_data),
+        # 구동 피드백 수신 여부만 확인한다. 현재 기본은 모터축 한 채널이다.
+        *(node.create_subscription(JointState, topic, lambda m: current.update(encoder=m), qos_profile_sensor_data)
+          for topic in ("/drive_motor/encoder", "/wheel_states")),
     ]
     publisher = node.create_publisher(AckermannDriveStamped, "/drive", 10)
     report = {"case": args.case, "started_at_utc": stamp, "passed": False, "safe_racing_verified": False,
@@ -203,6 +205,7 @@ def main():
                              REPO / "src/arena_bringup/config/tof_safety.yaml",
                              REPO / "src/arena_vehicle_interface/arena_vehicle_interface/ackermann_to_twist.py",
                              REPO / "src/arena_vehicle_interface/arena_vehicle_interface/sim_wheel_encoder.py",
+                             REPO / "src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py",
                              REPO / "src/arena_autonomy/arena_autonomy/tof_safety.py",
                              REPO / "src/arena_autonomy/arena_autonomy/tof_safety_core.py",
                              Path(__file__).resolve(), config_path, world]}}

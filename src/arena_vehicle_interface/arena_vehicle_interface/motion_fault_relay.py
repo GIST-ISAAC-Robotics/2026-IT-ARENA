@@ -1,7 +1,9 @@
 """시험 입력만 중계: 공개 토픽은 두 소비자에게 동일, 원래 취득 시각 유지.
 
 stamp_offset_s만 명시적인 잘못된 시계 시험이다. /sim 정답을 읽지 않는다.
-gyro z의 bias/gain, 양쪽 휠 gain, FIFO 전송 지연과 명시 구간 누락을 지원한다.
+gyro z의 bias/gain, 구동 피드백 gain, FIFO 전송 지연과 명시 구간 누락을 지원한다.
+설정 키 'wheels'는 기존 프로필 호환 이름이며 feedback_mode가 실제 표현을 정한다.
+drive_motor_shaft에서는 모터축 한 채널만 바꾸고 좌우 값을 만들지 않는다.
 """
 from collections import deque
 import copy
@@ -14,6 +16,9 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Imu, JointState
 
+from arena_vehicle_interface.drive_feedback import (
+    LEGACY_JOINTS, MODE_LEGACY, MODE_MOTOR, MOTOR_JOINT, TOPIC_BY_MODE, validate_mode,
+)
 from arena_vehicle_interface.motion_impairment import MotionFaultConfig
 from arena_vehicle_interface.node_lifecycle import run_node
 
@@ -22,7 +27,10 @@ def stamp_s(msg):
     return msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
 
 
-def alter_message(kind, original, fault):
+RAW_FEEDBACK_TOPIC = {MODE_MOTOR: '/test/raw_drive_motor', MODE_LEGACY: '/test/raw_wheels'}
+
+
+def alter_message(kind, original, fault, feedback_mode=MODE_LEGACY):
     msg = copy.deepcopy(original)
     stamp = stamp_s(original)
     if kind == 'imu':
@@ -30,10 +38,17 @@ def alter_message(kind, original, fault):
         msg.angular_velocity.z = fault.transform(before[0], stamp)
         after = [msg.angular_velocity.z]
     else:
-        targets = {'rear_left_wheel_joint', 'rear_right_wheel_joint'}
-        indices = [i for i, name in enumerate(msg.name) if name.split('::')[-1] in targets]
-        if len(indices) != 2 or any(i >= len(msg.velocity) for i in indices):
-            raise ValueError('both named wheel velocities are required')
+        if validate_mode(feedback_mode) == MODE_MOTOR:
+            if list(msg.name) != [MOTOR_JOINT]:
+                raise ValueError('drive motor feedback must contain only the motor-shaft joint')
+            indices = [0]
+            if len(msg.velocity) != 1:
+                raise ValueError('drive motor velocity is required')
+        else:
+            targets = set(LEGACY_JOINTS)
+            indices = [i for i, name in enumerate(msg.name) if name.split('::')[-1] in targets]
+            if len(indices) != 2 or any(i >= len(msg.velocity) for i in indices):
+                raise ValueError('both named wheel velocities are required')
         before = [original.velocity[i] for i in indices]
         for i in indices:
             msg.velocity[i] = fault.transform(original.velocity[i], stamp)
@@ -48,20 +63,22 @@ def alter_message(kind, original, fault):
 class MotionFaultRelay(Node):
     def __init__(self):
         super().__init__('motion_fault_relay')
+        self.feedback_mode = validate_mode(str(self.declare_parameter('feedback_mode', MODE_LEGACY).value))
         profile = Path(str(self.declare_parameter('profile', '').value))
         self.config = MotionFaultConfig.from_dict(json.loads(profile.read_text()))
         audit = str(self.declare_parameter('audit_path', '').value)
         self.audit = Path(audit).open('x', encoding='utf-8', buffering=1) if audit else None
-        self.emit({'event': 'config', 'config': self.config.as_dict()})
+        self.emit({'event': 'config', 'config': self.config.as_dict(), 'feedback_mode': self.feedback_mode})
         self.pending = {kind: deque() for kind in ('imu', 'wheels')}
         self.rng = {kind: random.Random(self.config.seed + i) for i, kind in enumerate(self.pending)}
         self.sequence = 0
         self.last_clock = None
         self.outputs = {
             'imu': self.create_publisher(Imu, '/imu/data', qos_profile_sensor_data),
-            'wheels': self.create_publisher(JointState, '/wheel_states', 100)}
+            'wheels': self.create_publisher(JointState, TOPIC_BY_MODE[self.feedback_mode], 100)}
         self.create_subscription(Imu, '/test/raw_imu', lambda msg: self.capture('imu', msg), qos_profile_sensor_data)
-        self.create_subscription(JointState, '/test/raw_wheels', lambda msg: self.capture('wheels', msg), 100)
+        self.create_subscription(JointState, RAW_FEEDBACK_TOPIC[self.feedback_mode],
+                                 lambda msg: self.capture('wheels', msg), 100)
         self.create_timer(.002, self.release)
 
     def emit(self, record):
@@ -87,7 +104,7 @@ class MotionFaultRelay(Node):
         if fault.drop and base['fault_active']:
             self.emit({**base, 'event': 'drop'})
             return
-        msg, before, after = alter_message(kind, original, fault)
+        msg, before, after = alter_message(kind, original, fault, self.feedback_mode)
         delay = fault.delay(source_stamp, self.rng[kind])
         row = {**base, 'event': 'publish', 'claimed_stamp_s': stamp_s(msg), 'delay_s': delay,
                'due_s': now + delay,

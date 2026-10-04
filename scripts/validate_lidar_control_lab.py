@@ -54,6 +54,21 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
 
 
+FEEDBACK_TOPICS = {"drive_motor_shaft": "/drive_motor/encoder", "rear_wheel_pair_legacy": "/wheel_states"}
+
+
+def lab_feedback_parameters(config_path=REPO / "src/arena_description/config/vehicle.yaml"):
+    """시험장 조향기의 구동 피드백 매개변수. 현재 차량 설정의 모드·반지름·감속비를 명시한다."""
+    import yaml
+    vehicle = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))["vehicle"]
+    drive = vehicle["drivetrain"]
+    mode = vehicle["sensors"]["drive_feedback"]["mode"]
+    if mode not in FEEDBACK_TOPICS:
+        raise ValueError("unknown drive feedback mode")
+    return {"motion_feedback_mode": mode, "motion_wheel_radius_m": float(drive["wheel_radius_m"]),
+            "motion_gear_ratio": float(drive["motor"]["gear_ratio"])}
+
+
 def make_world(output, case):
     root = ET.parse(REPO / "src/arena_gazebo/worlds/vehicle_dynamics_lab/world.sdf")
     world = root.getroot().find("world")
@@ -265,7 +280,9 @@ def main():
 
     class LidarOnlyController(Node):
         def __init__(self):
-            super().__init__("lidar_lab_controller", parameter_overrides=[Parameter("use_sim_time", value=True)])
+            # MotionConfig의 옛 기본 반지름(0.025 m)이 아니라 현재 차량 설정의 피드백 계약을 쓴다.
+            super().__init__("lidar_lab_controller", parameter_overrides=[Parameter("use_sim_time", value=True),
+                *(Parameter(name, value=value) for name, value in lab_feedback_parameters().items())])
             self.scan = None
             self.started_at = None
             self.stop_at = None
@@ -441,8 +458,10 @@ def main():
         topics = sorted(
             name for name, _ in observer.get_subscriber_names_and_types_by_node("lidar_lab_controller", "/"))
         report["controller_subscriptions"] = topics
-        report["sensor_only_control"] = (set(topics) <= {"/scan", "/clock", "/parameter_events", "/wheel_states", "/camera/imu"}
-            and {"/scan", "/wheel_states", "/camera/imu"} <= set(topics))
+        feedback_topic = controller.motion.feedback_topic
+        report["drive_feedback_mode"] = controller.motion.feedback_mode
+        report["sensor_only_control"] = (set(topics) <= {"/scan", "/clock", "/parameter_events", feedback_topic, "/camera/imu"}
+            and {"/scan", feedback_topic, "/camera/imu"} <= set(topics))
         report["metrics"] = summarize(trace, commands, scans, case, args.rate)
         active_motion = [r["motion"] for r in commands if r["phase"] == "running"]
         report["motion_verified"] = bool(active_motion) and all(r.get("reason") == "ok" for r in active_motion)

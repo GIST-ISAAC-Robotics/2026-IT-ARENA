@@ -1,0 +1,126 @@
+.............FFFFFFF...................F..                               [100%]
+=================================== FAILURES ===================================
+__ test_motor_finite_speed_spike_is_rejected_without_refreshing_history[5.01] __
+
+speed_mps = 5.01
+
+    @pytest.mark.parametrize('speed_mps', [5.01, -5.01, 1000.])
+    def test_motor_finite_speed_spike_is_rejected_without_refreshing_history(speed_mps):
+        node = NodeDouble(dict(MOTOR))
+        adapter = MotionInput(node)
+        adapter.on_drive_motor(motor(t=0., velocity=150.))
+        node.t = .01
+        adapter.on_drive_motor(motor(t=.01, velocity=speed_mps / .0325 * 15.))
+>       assert adapter.history.wheels.times == [0.]
+E       assert [0.0, 0.01] == [0.0]
+E         Left contains one more item: 0.01
+E         Use -v to get more diff
+
+tests/test_lidar_motion_ros.py:191: AssertionError
+_ test_motor_finite_speed_spike_is_rejected_without_refreshing_history[-5.01] __
+
+speed_mps = -5.01
+
+    @pytest.mark.parametrize('speed_mps', [5.01, -5.01, 1000.])
+    def test_motor_finite_speed_spike_is_rejected_without_refreshing_history(speed_mps):
+        node = NodeDouble(dict(MOTOR))
+        adapter = MotionInput(node)
+        adapter.on_drive_motor(motor(t=0., velocity=150.))
+        node.t = .01
+        adapter.on_drive_motor(motor(t=.01, velocity=speed_mps / .0325 * 15.))
+>       assert adapter.history.wheels.times == [0.]
+E       assert [0.0, 0.01] == [0.0]
+E         Left contains one more item: 0.01
+E         Use -v to get more diff
+
+tests/test_lidar_motion_ros.py:191: AssertionError
+_ test_motor_finite_speed_spike_is_rejected_without_refreshing_history[1000.0] _
+
+speed_mps = 1000.0
+
+    @pytest.mark.parametrize('speed_mps', [5.01, -5.01, 1000.])
+    def test_motor_finite_speed_spike_is_rejected_without_refreshing_history(speed_mps):
+        node = NodeDouble(dict(MOTOR))
+        adapter = MotionInput(node)
+        adapter.on_drive_motor(motor(t=0., velocity=150.))
+        node.t = .01
+        adapter.on_drive_motor(motor(t=.01, velocity=speed_mps / .0325 * 15.))
+>       assert adapter.history.wheels.times == [0.]
+E       assert [0.0, 0.01] == [0.0]
+E         Left contains one more item: 0.01
+E         Use -v to get more diff
+
+tests/test_lidar_motion_ros.py:191: AssertionError
+____________ test_invalid_motor_speed_sanity_bound_is_rejected[0.0] ____________
+
+value = 0.0
+
+    @pytest.mark.parametrize('value', [0., -1., float('nan'), float('inf')])
+    def test_invalid_motor_speed_sanity_bound_is_rejected(value):
+>       with pytest.raises(ValueError):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_lidar_motion_ros.py:197: Failed
+___________ test_invalid_motor_speed_sanity_bound_is_rejected[-1.0] ____________
+
+value = -1.0
+
+    @pytest.mark.parametrize('value', [0., -1., float('nan'), float('inf')])
+    def test_invalid_motor_speed_sanity_bound_is_rejected(value):
+>       with pytest.raises(ValueError):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_lidar_motion_ros.py:197: Failed
+____________ test_invalid_motor_speed_sanity_bound_is_rejected[nan] ____________
+
+value = nan
+
+    @pytest.mark.parametrize('value', [0., -1., float('nan'), float('inf')])
+    def test_invalid_motor_speed_sanity_bound_is_rejected(value):
+>       with pytest.raises(ValueError):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_lidar_motion_ros.py:197: Failed
+____________ test_invalid_motor_speed_sanity_bound_is_rejected[inf] ____________
+
+value = inf
+
+    @pytest.mark.parametrize('value', [0., -1., float('nan'), float('inf')])
+    def test_invalid_motor_speed_sanity_bound_is_rejected(value):
+>       with pytest.raises(ValueError):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_lidar_motion_ros.py:197: Failed
+______________ test_mcu_motor_position_requires_count_grid[0.25] _______________
+
+count = 0.25
+
+    @pytest.mark.parametrize('count', [0., 42., -42., .25, float('nan'), float('inf')])
+    def test_mcu_motor_position_requires_count_grid(count):
+        from sensor_msgs.msg import JointState
+        spec = MotorEncoderSpec(28, 15., .0325)
+        obj = SimpleNamespace(wheels=deque(), tick_angle=spec.motor_rad_per_count, motor_spec=spec)
+        msg = JointState(name=['drive_motor_shaft'], position=[count * spec.motor_rad_per_count],
+                         velocity=[float('nan')])  # 첫 속도가 미관측이어도 위치는 사용 가능하다.
+        msg.header.stamp.sec = 1
+        VirtualMCU.on_motor(obj, msg)
+        if math.isfinite(count) and count == round(count):
+            assert list(obj.wheels) == [(1_000_000, round(count))]
+        else:
+>           assert not obj.wheels
+E           assert not deque([(1000000, 0)])
+E            +  where deque([(1000000, 0)]) = namespace(wheels=deque([(1000000, 0)]), tick_angle=0.2243994752564138, motor_spec=MotorEncoderSpec(counts_per_motor_revolution=28, gear_ratio=15.0, wheel_radius_m=0.0325)).wheels
+
+tests/test_actuation_ros_nodes.py:130: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_lidar_motion_ros.py::test_motor_finite_speed_spike_is_rejected_without_refreshing_history[5.01]
+FAILED tests/test_lidar_motion_ros.py::test_motor_finite_speed_spike_is_rejected_without_refreshing_history[-5.01]
+FAILED tests/test_lidar_motion_ros.py::test_motor_finite_speed_spike_is_rejected_without_refreshing_history[1000.0]
+FAILED tests/test_lidar_motion_ros.py::test_invalid_motor_speed_sanity_bound_is_rejected[0.0]
+FAILED tests/test_lidar_motion_ros.py::test_invalid_motor_speed_sanity_bound_is_rejected[-1.0]
+FAILED tests/test_lidar_motion_ros.py::test_invalid_motor_speed_sanity_bound_is_rejected[nan]
+FAILED tests/test_lidar_motion_ros.py::test_invalid_motor_speed_sanity_bound_is_rejected[inf]
+FAILED tests/test_actuation_ros_nodes.py::test_mcu_motor_position_requires_count_grid[0.25]
+8 failed, 34 passed in 3.11s
+EXIT_CODE=
+RECORDED_PYTEST_EXIT_CODE=1 (8 failed, 34 passed)

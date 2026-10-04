@@ -17,7 +17,8 @@ from recording_guard import DEFAULT_MAX_RAW_GIB, DEFAULT_MAX_WALL_SECONDS, valid
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / 'src/arena_vehicle_interface'))
-from arena_vehicle_interface.bag_contract import TOPICS, REQUIRED, sha256_file, update_digest, dds_metadata
+from arena_vehicle_interface.bag_contract import topics_for, required_for, sha256_file, update_digest, dds_metadata
+from arena_vehicle_interface.drive_feedback import MODE_MOTOR, MODES
 
 
 def main():
@@ -25,7 +26,10 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--max-wall-seconds', type=float, default=DEFAULT_MAX_WALL_SECONDS)
     parser.add_argument('--max-raw-gib', type=float, default=DEFAULT_MAX_RAW_GIB)
+    parser.add_argument('--drive-feedback-mode', choices=MODES, default=MODE_MOTOR,
+                        help='기록할 구동 피드백 표현. 제어기 motion_feedback_mode와 같아야 완료로 판정')
     args = parser.parse_args()
+    TOPICS, REQUIRED = topics_for(args.drive_feedback_mode), required_for(args.drive_feedback_mode)
     validate_limits(args.max_raw_gib, args.max_wall_seconds)
     output = args.output.resolve()
     if not output.is_relative_to(REPO / 'artifacts'):
@@ -192,13 +196,18 @@ def main():
         if worker.is_alive():
             errors.append('writer did not finish within 60 seconds')
         (output/'parameters.json').write_text(json.dumps(parameters, indent=2), encoding='utf-8')
+        mismatched = sorted(name for name, values in parameters.items()
+                            if values.get('motion_feedback_mode') != args.drive_feedback_mode)
+        if mismatched:
+            errors.append('controller motion_feedback_mode differs from recorded contract: ' + ','.join(mismatched))
         for topic, stat in stats.items():
             stat['cdr_sha256'] = digests[topic].hexdigest()
         files = {str(p.relative_to(output)): sha256_file(p) for p in sorted(output.rglob('*'))
                  if p.is_file() and p.name != 'manifest.json'}
         complete = (not errors and not dropped and not regressions and len(parameters) == 2 and
                     all(stats.get(t, {}).get('count', 0) > 0 for t in REQUIRED))
-        manifest = dict(schema=1, complete=complete, topics=TOPICS, stats=stats, queue_drops=dict(dropped),
+        manifest = dict(schema=2, drive_feedback_mode=args.drive_feedback_mode,
+                        complete=complete, topics=TOPICS, stats=stats, queue_drops=dict(dropped),
                         resource_limits=dict(max_raw_gib=args.max_raw_gib, max_wall_seconds=args.max_wall_seconds),
                         clock_regressions=regressions, preclock_skipped=preclock, error=errors,
                         wall_duration_s=time.monotonic()-began, raw_bytes=total_bytes, files_sha256=files,
@@ -208,7 +217,8 @@ def main():
                         loss_scope='queue losses counted; DDS source counters retained, total upstream losses not certified',
                         source_sha256={str(p.relative_to(REPO)): sha256_file(p) for p in [Path(__file__).resolve(),
                             REPO/'scripts/recording_guard.py',
-                            REPO/'src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py']})
+                            REPO/'src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py',
+                            REPO/'src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py']})
         (output/'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
         print(json.dumps({'complete': complete, 'error': errors, 'raw_bytes': total_bytes}), flush=True)
     return 0 if complete else 1

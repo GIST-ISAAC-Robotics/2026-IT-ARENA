@@ -9,12 +9,26 @@ import sys
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO/'src/arena_vehicle_interface'))
-from arena_vehicle_interface.bag_contract import TOPICS, load_manifest, update_digest, quantiles
+from arena_vehicle_interface.bag_contract import load_manifest, manifest_feedback_mode, topics_for, update_digest, quantiles
+from arena_vehicle_interface.drive_feedback import MODE_LEGACY
 
 
-def reader_for(root, read_info=None):
+# manifest 없는 옛 단독 bag(schema 1) 기본 계약. 기록 감사는 manifest의 모드를 사용한다.
+TOPICS = topics_for(MODE_LEGACY)
+
+
+def recorded_topics(root):
+    """manifest의 피드백 모드에 맞는 토픽 계약. manifest가 없는 옛 단독 bag 검사는 schema 1(legacy)."""
+    path = Path(root) / 'manifest.json'
+    if not path.is_file():
+        return TOPICS
+    return topics_for(manifest_feedback_mode(json.loads(path.read_text(encoding='utf-8'))))
+
+
+def reader_for(root, read_info=None, topics=None):
     import rosbag2_py
     root = Path(root)
+    expected = recorded_topics(root) if topics is None else topics
     reader = rosbag2_py.SequentialReader()
     mode = 'directory_metadata'
     try:
@@ -34,7 +48,7 @@ def reader_for(root, read_info=None):
         reader.open(rosbag2_py.StorageOptions(uri=str(files[0]), storage_id='mcap'),
                     rosbag2_py.ConverterOptions('', ''))
         mode = 'single_mcap_metadata_v9_compat'
-    if {t.name: t.type for t in reader.get_all_topics_and_types()} != TOPICS:
+    if {t.name: t.type for t in reader.get_all_topics_and_types()} != expected:
         raise ValueError('MCAP topic/type contract differs from manifest')
     if read_info is not None:
         read_info.update(mode=mode)
@@ -64,8 +78,9 @@ def audit(root):
     from ackermann_msgs.msg import AckermannDriveStamped
     root = Path(root).resolve()
     manifest = load_manifest(root)
+    TOPICS = topics_for(manifest_feedback_mode(manifest))
     read_info = {}
-    reader = reader_for(root, read_info)
+    reader = reader_for(root, read_info, TOPICS)
     counts = Counter()
     digests = {topic: hashlib.sha256() for topic in TOPICS}
     timing, commands = [], defaultdict(list)
@@ -119,6 +134,8 @@ def audit(root):
             rates[topic][basis+'_sim_hz'] = ((stat['count']-1)*1e9/(last_stamp-first_stamp)
                 if stat['count'] > 1 and first_stamp is not None and last_stamp > first_stamp else None)
     result = dict(verified=True, storage_reader=read_info, first_ns=first, last_ns=last, duration_sim_s=(last-first)/1e9,
+        manifest_schema=manifest['schema'], drive_feedback_mode=manifest_feedback_mode(manifest),
+        declared_drive_feedback_mode=manifest.get('drive_feedback_mode'),
         counts=dict(counts), raw_bytes=manifest['raw_bytes'],
         recorded_topic_rates=rates,
         source_age_ms={t: quantiles(v) for t, v in age.items()}, writer_wait_ms=quantiles(write_wait),

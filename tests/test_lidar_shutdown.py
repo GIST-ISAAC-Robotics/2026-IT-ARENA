@@ -126,3 +126,32 @@ def test_reused_server_pid_does_not_count_as_owned_process(monkeypatch):
     monkeypatch.setattr(shutdown.subprocess, 'run', lambda *a, **kw: SimpleNamespace(
         returncode=0, stdout='data: true\n', stderr=''))
     assert shutdown.stop_gazebo_service(process, log, partition)['verified']
+
+
+def test_fault_exit_targets_only_verified_node(monkeypatch):
+    process = SimpleNamespace(pid=42, poll=lambda: None)
+    row = {'ppid': 42, 'start': '10'}
+    monkeypatch.setattr(shutdown, 'group_processes', lambda _: {43: row})
+    calls = []
+    monkeypatch.setattr(shutdown.os, 'kill', lambda *args: calls.append(args))
+    result = shutdown.request_owned_node_exit(process,
+        '[INFO] [lidar_safety-3]: process started with pid [43]', 'lidar_safety')
+    assert calls == [(43, signal.SIGINT)]
+    assert result['identity'] == row and result['scope'].endswith('no STOP service call')
+
+
+@pytest.mark.parametrize('fault', ['missing', 'duplicate', 'outside_group', 'wrong_parent', 'pid_reused', 'exited'])
+def test_fault_exit_refuses_ambiguous_or_changed_target(monkeypatch, fault):
+    process = SimpleNamespace(pid=42, poll=lambda: 0 if fault == 'exited' else None)
+    log = '[INFO] [lidar_safety-3]: process started with pid [43]'
+    if fault == 'missing':
+        log = ''
+    elif fault == 'duplicate':
+        log += '\n' + log
+    before = {} if fault == 'outside_group' else {43: {'ppid': 99 if fault == 'wrong_parent' else 42, 'start': '10'}}
+    after = {43: {'ppid': 42, 'start': '11'}} if fault == 'pid_reused' else before
+    rows = iter([before, after])
+    monkeypatch.setattr(shutdown, 'group_processes', lambda _: next(rows))
+    monkeypatch.setattr(shutdown.os, 'kill', lambda *args: pytest.fail('unverified signal'))
+    with pytest.raises(RuntimeError):
+        shutdown.request_owned_node_exit(process, log, 'lidar_safety')

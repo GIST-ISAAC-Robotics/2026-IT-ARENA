@@ -58,12 +58,18 @@ vehicle:
     layout: rear_wheel_drive_ackermann
     simulation_drive_mode: single_motor
     # 직진 시 바퀴 바깥 치수: 축거 + 지름, 윤거 + 바퀴 폭.
-    # 현재 바퀴로는 각각 0.195 m, 0.147 m이며 제작 전 임시 배치입니다.
-    # 조향 시 바퀴가 목표 외형 밖으로 나갈 수 있으므로 충돌 판단은 별도입니다.
-    wheelbase_m: 0.145
+    # 2026-10-02: 바퀴 바깥지름 65 mm는 하드웨어팀 확정(반지름 0.0325 m, 하중별
+    # 유효 구름 반지름은 미측정). 실제 축거는 미확정이며 기존 0.145 m로는 길이
+    # 0.210 m가 되므로 길이 20 cm 목표에 맞춘 임시값 0.135 m를 사용합니다
+    # (0.135 + 0.065 = 0.200 m, 공차 여유 없음). 윤거·바퀴 폭은 기존 임시값이고
+    # 직진 폭은 0.147 m입니다. 조향 시 돌출과 충돌 판단은 별도입니다.
+    wheelbase_m: 0.135
+    wheelbase_status: provisional_fit_to_200mm_length_no_tolerance
     track_width_m: 0.135
-    wheel_radius_m: 0.025
+    wheel_radius_m: 0.0325
+    wheel_radius_status: confirmed_65mm_outer_diameter_effective_rolling_radius_unmeasured
     wheel_width_m: 0.012
+    wheel_width_status: provisional_unconfirmed
     max_steering_angle_rad: 0.45
     # 하드웨어팀의 20 km/h 목표를 시험 상한으로 사용. 실차 성능 보증 아님.
     max_speed_mps: 5.5555555556
@@ -91,11 +97,32 @@ vehicle:
           coupling_nm_per_rad_s: 0.002
           coupling_limit_nm: 0.030
     motor:
-      # 아래 값은 특정 구매 모터/ESC 사양이 아니라 민감도 시험용입니다.
-      gear_ratio: 8.0
+      # 2026-10-02 선정: MB4266-24180 후면축형 브러시 DC + Cytron MD20A(PWM+DIR).
+      # 판매처 사양 두 점(실측 아님): 24 V 무부하 18,000 rpm/2.0 A,
+      # 정격 16,474 rpm/10.28 A/1.079 kgf·cm(약 0.1058 N·m).
+      # Gazebo 플러그인은 `torque_limit × (1 − |ω|/free_speed)`의 근사 외피만 씁니다.
+      # free_speed는 24 V 무부하 사양을 그대로 쓴 값이며 배터리 전압·PWM·드라이버
+      # 강하·전류/열·단락 제동·회전자 반사 관성은 모델에 없습니다.
+      # torque_limit 0.060 N·m은 기존 임시 상한을 유지한 것입니다. 정격 토크보다
+      # 낮고, 두 사양점의 선형 외삽 정지 토크(약 1.25 N·m)로 올리지 않습니다.
+      # 제동 상한 0.045 N·m도 MD20A 단락 제동 모델이 아닌 임시값입니다.
+      model_reference: MB4266-24180_rear_shaft
+      driver_reference: Cytron_MD20A_PWM_DIR_not_modeled
+      specification_points_not_measured:
+        supply_voltage_v: 24.0
+        no_load_rpm: 18000.0
+        no_load_current_a: 2.0
+        rated_rpm: 16474.0
+        rated_current_a: 10.28
+        rated_torque_nm: 0.1058
+      # LaTrax 피니언·스퍼 6:1 × 차동 2.5:1, 팀 전달 초기 구성(잇수·조립 미확인).
+      gear_ratio: 15.0
+      gear_ratio_status: team_initial_configuration_6x2.5_assembly_unverified
       torque_limit_nm: 0.060
+      torque_limit_status: provisional_simulation_cap_not_stall_capability
       brake_torque_limit_nm: 0.045
-      free_speed_rad_s: 2200.0
+      free_speed_rad_s: 1884.9555921539
+      free_speed_status: vendor_24v_no_load_18000rpm_not_measured
       response_time_s: 0.040
       speed_kp: 0.10
       speed_ki: 0.20
@@ -119,19 +146,39 @@ vehicle:
       joint_viscous_damping_nm_per_rad_s: 0.000005
 
   sensors:
-    # Candidate real-car baseline: one quadrature encoder per driven rear wheel.
-    # Gazebo exposes ideal wheel joints; sim_wheel_encoder converts them into
-    # finite-resolution, sampled and delayed feedback behind stable ROS topics.
-    wheel_encoders:
+    # 구동 피드백. 2026-10-02 공간 문제로 좌우 후륜 엔코더 2개 대신 모터 뒤축
+    # PGE-213 하나를 기준으로 합니다. Gazebo의 이상적 좌우 바퀴 관절 각을
+    # 모터 각 = gear_ratio × (좌 + 우) / 2로 합성한 뒤 모터축 카운트로 양자화하여
+    # /drive_motor/encoder 한 채널만 발행합니다. 이 하나로는 평균 바퀴 운동만
+    # 관측하며 좌우 차이·개별 슬립·기어 유격·좌우 반대 회전은 알 수 없습니다.
+    # 회전량은 IMU 자이로가 담당합니다. legacy 모드는 이전 2개 계약의 명시적
+    # 비교·옛 기록 호환용이며 실차 센서 구성이 아닙니다.
+    drive_feedback:
       enabled: true
-      left_joint_name: rear_left_wheel_joint
-      right_joint_name: rear_right_wheel_joint
-      ticks_per_revolution: 2048
-      sample_rate_hz: 100.0
-      latency_ms: 2.0
-      dropout_probability: 0.0
-      mount_note: two rear wheel output encoders after the mechanical differential; hardware mounting pending
-      status: two_rear_wheel_measurements_selected_resolution_provisional
+      mode: drive_motor_shaft
+      drive_motor_encoder:
+        model_reference: PGE-213
+        mount: MB4266-24180 rear shaft; exact assembly position unconfirmed
+        # 판매 사양 7 PPR × A/B 양 에지 4체배 = 모터 1회전 28카운트.
+        # 납품품 PPR(일부 페이지 13 CPR 표기)·출력 회로는 실물 확인 필요.
+        pulses_per_revolution_per_channel: 7
+        quadrature_edges_per_pulse: 4
+        counts_per_motor_revolution: 28
+        resolution_status: vendor_7ppr_x4_delivered_unit_unverified
+        # 아래 표본·지연·누락은 MCU 미구현 상태의 시뮬레이션 임시값입니다.
+        sample_rate_hz: 100.0
+        latency_ms: 2.0
+        dropout_probability: 0.0
+        timing_status: provisional_simulation_values_not_mcu_measured
+        simulation_source_joints: [rear_left_wheel_joint, rear_right_wheel_joint]
+      legacy_rear_wheel_encoders:
+        left_joint_name: rear_left_wheel_joint
+        right_joint_name: rear_right_wheel_joint
+        ticks_per_revolution: 2048
+        sample_rate_hz: 100.0
+        latency_ms: 2.0
+        dropout_probability: 0.0
+        status: superseded_2026_10_02_explicit_comparison_and_old_recordings_only
     d435i:
       enabled: true
       xyz_m: [0.055, 0.0, 0.075]

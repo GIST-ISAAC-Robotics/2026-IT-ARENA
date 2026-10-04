@@ -123,9 +123,12 @@ def test_vehicle_dimensions_and_steered_envelope(prepared):
     _, result, _, footprint, _ = prepared
     config = yaml.safe_load((REPO / "src/arena_description/config/vehicle.yaml").read_text(encoding="utf-8"))["vehicle"]
     drive = config["drivetrain"]
-    assert drive["wheelbase_m"] == .145
+    # 2026-10-02: 65 mm 바퀴에 맞춘 임시 축거 0.135 m. 길이 0.200 m로 공차 여유가 없다.
+    assert drive["wheelbase_m"] == .135
+    assert drive["wheel_radius_m"] == .0325
     assert drive["track_width_m"] == .135
-    assert drive["wheelbase_m"] + 2 * drive["wheel_radius_m"] <= footprint["length_m"]
+    assert drive["wheelbase_m"] + 2 * drive["wheel_radius_m"] == pytest.approx(footprint["length_m"], abs=1e-12)
+    assert drive["wheelbase_m"] + 2 * drive["wheel_radius_m"] <= footprint["length_m"] + 1e-12
     assert drive["track_width_m"] + drive["wheel_width_m"] <= footprint["width_m"]
     model = ET.fromstring(xacro.process_file(str(REPO / "src/arena_description/models/arena_car/model.sdf.xacro")).toxml())
     plugin = model.find("./model/plugin[@name='arena::SingleMotorDrive']")
@@ -137,8 +140,18 @@ def test_vehicle_dimensions_and_steered_envelope(prepared):
     swept = {"length_m": max(footprint["length_m"], drive["wheelbase_m"] + 2 * half_x),
              "width_m": max(footprint["width_m"], drive["track_width_m"] + 2 * half_y)}
     assert swept["width_m"] > footprint["width_m"]  # 조향 돌출을 검차 위반으로 판정하지 않습니다.
+    assert inspect_geometry(DESTINATION / "world.sdf", result, footprint)["static_footprint_checks_pass"]
     report = inspect_geometry(DESTINATION / "world.sdf", result, swept)
-    assert report["static_footprint_checks_pass"], report
+    # 2026-10-02 65 mm 바퀴·축거 0.135 m: 최대 조향 바퀴 외형 bbox가 약 201.1 x 174.1 mm가 되어
+    # 실험 트랙의 엇갈린 출발칸(가로 약 168.7 mm·세로 약 201.2 mm 간격, 약 0.007 rad 기울기)끼리
+    # 겹친다. 장애물/경로 표본 충돌은 0이다. 이전 바퀴(약 200.0 x 167.6 mm)에서는 통과했으며
+    # 원인 근거는 artifacts/validation/2026-10-02/motor_encoder_baseline/geometry_diagnostic_v4.json.
+    # 트랙·출발칸·차량을 줄여 통과시키지 않고, 의미를 장애물 충돌과 출발칸 상호 겹침으로 나눠 검사한다.
+    assert swept["length_m"] == pytest.approx(.2011, abs=1e-4) and swept["width_m"] == pytest.approx(.1741, abs=1e-4)
+    assert not report["blocked_grid_slots"]
+    assert all(not check["blocked_samples"] for check in report["routes"].values())
+    assert report["overlapping_grid_pairs"] == [(0, 3), (1, 4), (2, 5)]
+    assert not report["static_footprint_checks_pass"]
 
 
 def test_launch_exposes_official_and_legacy_profiles():

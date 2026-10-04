@@ -55,7 +55,7 @@ def main() -> int:
     from geometry_msgs.msg import Twist
     from nav_msgs.msg import Odometry
     from rclpy.qos import QoSProfile, qos_profile_sensor_data
-    from sensor_msgs.msg import CameraInfo, Image, Imu, PointCloud2
+    from sensor_msgs.msg import CameraInfo, Image, Imu, JointState, PointCloud2
     from std_msgs.msg import Int64MultiArray
     import yaml
 
@@ -101,7 +101,7 @@ def main() -> int:
         ("/camera/color/camera_info", CameraInfo, "rgb_info"),
         ("/camera/depth/camera_info", CameraInfo, "depth_info"),
         ("/camera/depth/color/points", PointCloud2, "points"),
-        ("/wheel_encoder_ticks", Int64MultiArray, "ticks"), ("/sim/cmd_vel", Twist, "command"),
+        ("/drive_motor/encoder", JointState, "ticks"), ("/sim/cmd_vel", Twist, "command"),
     ):
         # 영상은 브리지와 같은 reliable 정책으로 계측하고, 작은 센서 메시지는
         # 일반 센서 QoS를 사용합니다. 구독자의 best-effort 누락을 혼동하지 않습니다.
@@ -295,14 +295,16 @@ def main() -> int:
         report["pointcloud_fields"] = [field.name for field in state["points"].fields]
         report["pointcloud_size"] = [state["points"].width, state["points"].height]
         initial = pose()
-        initial_ticks = list(state["ticks"].data)
+        # 모터축 한 채널: 위치를 카운트로 환산. 좌우 차이는 관측할 수 없다.
+        counts_per_rev = int(sensor_config["drive_feedback"]["drive_motor_encoder"]["counts_per_motor_revolution"])
+        initial_ticks = [round(state["ticks"].position[0] * counts_per_rev / (2 * math.pi))]
         print(f"[{args.track}] 직진 검사", flush=True)
         drive(.20, 0., 1.2)
         after_straight = pose()
         print(f"[{args.track}] 조향 검사", flush=True)
         drive(.20, .15, 1.0)
         after_turn = pose()
-        end_ticks = list(state["ticks"].data)
+        end_ticks = [round(state["ticks"].position[0] * counts_per_rev / (2 * math.pi))]
         print(f"[{args.track}] 명령 중단 정지 검사", flush=True)
         stopped_at = sim_time()
         wait_for(lambda: sim_time() - stopped_at >= 2.0
@@ -313,15 +315,15 @@ def main() -> int:
         if forward_distance < .10 or abs(yaw_change) < .01:
             raise AssertionError(f"이동 또는 회전이 부족합니다: {forward_distance}, {yaw_change}")
         deltas = [end - start for start, end in zip(initial_ticks, end_ticks)]
-        if len(deltas) != 2 or not all(abs(delta) > 10 for delta in deltas) or deltas[0] == deltas[1]:
-            raise AssertionError(f"좌우 엔코더 변화가 예상과 다릅니다: {deltas}")
+        if len(deltas) != 1 or abs(deltas[0]) <= 10:
+            raise AssertionError(f"모터축 엔코더 변화가 예상과 다릅니다: {deltas}")
         if "command" not in state or state["command"].linear.x != 0 or state["command"].angular.z != 0:
             raise AssertionError("명령 수신 중단 감시 기능이 정지 명령을 보내지 않았습니다.")
         if abs(state["odom"].twist.twist.linear.x) >= .01:
             raise AssertionError("정지 대기 후에도 차량 속도가 큽니다.")
         report.update({
             "passed": True, "straight_distance_m": forward_distance, "turn_yaw_change_rad": yaw_change,
-            "encoder_tick_deltas": deltas, "rgb_size": [state["rgb"].width, state["rgb"].height],
+            "drive_motor_count_deltas": deltas, "rgb_size": [state["rgb"].width, state["rgb"].height],
             "depth_encoding": state["depth"].encoding, "imu_received": True,
             "watchdog_stop_observed": True, "stopped_speed_mps": state["odom"].twist.twist.linear.x,
         })

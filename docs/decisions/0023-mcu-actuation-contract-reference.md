@@ -1,5 +1,7 @@
 # ADR 0023: MCU 속도 제어·정지 계약의 PC 참조 구현
 
+> 2026-10-02 후속: MB4266 브러시 DC·MD20A와 모터축 엔코더 하나를 [ADR 0026](0026-motor-shaft-encoder-baseline.md)에서 채택했다. 아래 BLDC/ESC·좌우 엔코더 가정과 검증 수치는 당시 기록이며, 단일 축의 저속 관측은 양쪽 바퀴 정지를 보장하지 않는다.
+
 - 날짜: 2026-09-22
 - 상태: 사용자 역할 분담을 반영한 **PC 참조 구현·시험 완료**. 실물 보드/ESC·최종 전송 형식·펌웨어는 미확정이다.
 - 선행: [ADR 0002](0002-jetson-esp32-actuation-boundary.md), [ADR 0008](0008-single-motor-mechanical-differential.md), [전체 계획 A1](../reports/DEVELOPMENT_PLAN_2026_09_22.md).

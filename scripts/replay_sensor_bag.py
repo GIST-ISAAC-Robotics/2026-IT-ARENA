@@ -19,7 +19,8 @@ from replay_observer import ReplayObserver, sequence_coverage
 from replay_timing import load_export
 from replay_imu_probe import ImuProbe, NODE_NAME as IMU_PROBE_NAME
 from replay_transport import MODES, configure as configure_transport, audit_current
-from arena_vehicle_interface.bag_contract import INPUTS, TOPICS, replay_topic, quantiles, sha256_file, eof_stopped, compare_commands, active_window_continuity
+from arena_vehicle_interface.bag_contract import (inputs_for, topics_for, replay_topic, resolve_replay_feedback, quantiles,
+    sha256_file, eof_stopped, compare_commands, active_window_continuity)
 
 
 def main():
@@ -71,6 +72,13 @@ def main():
     for values in parameters.values():
         if values.get('lidar_compensation') != 'both' or values.get('motion_imu_topic') != '/imu/data':
             raise ValueError('Unexpected motion input contract')
+    # 기록 당시 모드/기하만 사용한다. 옛 schema 1은 legacy 좌우 후륜·당시 반지름으로 읽는다.
+    recorded_manifest = {'schema': original['manifest_schema']}
+    if original['declared_drive_feedback_mode'] is not None:
+        recorded_manifest['drive_feedback_mode'] = original['declared_drive_feedback_mode']
+    feedback, parameters = resolve_replay_feedback(recorded_manifest, parameters)
+    INPUTS, TOPICS = inputs_for(feedback['mode']), topics_for(feedback['mode'])
+    (output/'drive_feedback.json').write_text(json.dumps(feedback, indent=2))
     # 자율주행/보호층 외에는 시작하지 않는다. 실행 중인 차량 도메인도 상속하지 않는다.
     domain = random.SystemRandom().randrange(120, 160)
     os.environ.update(ROS_DOMAIN_ID=str(domain), ROS_LOCALHOST_ONLY='1', ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
@@ -120,7 +128,7 @@ def main():
     last_clock_ns = -1
     tail_ns = original['last_ns']
     types = {topic: get_message(name) for topic, name in INPUTS.items()}
-    publishers = {topic: node.create_publisher(types[topic], replay_topic(topic),
+    publishers = {topic: node.create_publisher(types[topic], replay_topic(topic, feedback['mode']),
         QoSProfile(depth=100, reliability=ReliabilityPolicy.RELIABLE)) for topic in INPUTS}
     clock = node.create_publisher(Clock, '/replay/clock', 10)
     def advance(ns):
@@ -176,8 +184,8 @@ def main():
             processes.append(subprocess.Popen(command, stdout=log, stderr=log, stdin=subprocess.DEVNULL,
                                                start_new_session=True))
         deadline = time.monotonic()+20
-        required_subscribers = {'/scan': 2, '/imu/data': 3 if imu_probe else 2, '/wheel_states': 2}
-        while not all(node.count_subscribers(replay_topic(t)) >= n for t, n in required_subscribers.items()) or node.count_subscribers('/replay/camera/color/image_raw') < 1:
+        required_subscribers = {'/scan': 2, '/imu/data': 3 if imu_probe else 2, feedback['topic']: 2}
+        while not all(node.count_subscribers(replay_topic(t, feedback['mode'])) >= n for t, n in required_subscribers.items()) or node.count_subscribers('/replay/camera/color/image_raw') < 1:
             if any(p.poll() is not None for p in processes) or time.monotonic() > deadline:
                 raise RuntimeError('Replay controllers failed to connect')
             spin_for(.05)
@@ -195,7 +203,7 @@ def main():
                     continue
                 inputs = {t for t, _ in subscriptions}
                 outputs = {t for t, _ in publications}
-                required_inputs = {'/replay/scan', '/replay/imu/data', '/replay/wheel_states', '/replay/clock'}
+                required_inputs = {'/replay/scan', '/replay/imu/data', '/replay'+feedback['topic'], '/replay/clock'}
                 required_inputs.add('/replay/drive' if name == 'lidar_safety' else '/replay/camera/color/image_raw')
                 required_outputs = {'/replay/diagnostics/timing', '/replay/drive/safe' if name == 'lidar_safety' else '/replay/drive'}
                 if not required_inputs <= inputs or not required_outputs <= outputs:
@@ -239,7 +247,7 @@ def main():
                     raise RuntimeError('Missing live transport audit: '+name)
         advance(simulation_ns)
         spin_for(.2)
-        reader = reader_for(root)
+        reader = reader_for(root, topics=TOPICS)
         start_wall = time.monotonic()
         first_ns = original['first_ns']
         last_clock_wall = 0.
@@ -252,7 +260,7 @@ def main():
             # 다시 실행하면 느린 시뮬레이션의 wall watchdog 상태가 큰 부하가 된다.
             if topic not in INPUTS:
                 continue
-            trace_rows = (wheel_publications if args.trace_wheels_publication and topic == '/wheel_states'
+            trace_rows = (wheel_publications if args.trace_wheels_publication and topic == feedback['topic']
                           else imu_publications if args.trace_imu_publication and topic == '/imu/data' else None)
             trace_source_ns = None
             if trace_rows is not None:
@@ -365,7 +373,7 @@ def main():
         errors.append('source changed during replay')
     source_counts = {t: original['counts'][t] for t in INPUTS}
     sample_counts = Counter(r['node']+'/'+r['callback'] for r in timing)
-    callback_topics = {'scan': '/scan', 'imu': '/imu/data', 'wheels': '/wheel_states',
+    callback_topics = {'scan': '/scan', 'imu': '/imu/data', 'wheels': feedback['topic'],
                        'image': '/camera/color/image_raw'}
     delivery = {name+'/'+callback: dict(published=source_counts[topic],
         callbacks=completed_counts.get(name+'/'+callback),
@@ -386,7 +394,7 @@ def main():
     report = dict(passed=bool(functional and schedule_ok), functional_passed=bool(functional),
         active_window_continuity=continuity,
         operational_passed=bool(functional and schedule_ok and measurement_ok and continuity['no_interruption']),
-        executor_mode_override=args.executor_mode,
+        executor_mode_override=args.executor_mode, drive_feedback=feedback,
         timing_mode=args.timing_mode, timing_exports=timing_exports,
         dds_transport=transport_config,
         wheel_publication_trace_count=len(wheel_publications),

@@ -103,7 +103,8 @@ def main():
         with (args.recording/'receipt.jsonl').open(encoding='utf-8') as stream:
             for line in stream:
                 row = json.loads(line)
-                if row['topic'] == '/wheel_states' and row['source_ns'] in wanted:
+                # 한 기록에는 legacy 또는 모터축 피드백 토픽 하나만 있다.
+                if row['topic'] in ('/wheel_states', '/drive_motor/encoder') and row['source_ns'] in wanted:
                     original[row['source_ns']].append(dict(source_ns=row['source_ns'],
                         receive_ros_ns=row['receive_ros_ns'],
                         recorded_source_age_ms=(row['receive_ros_ns']-row['source_ns'])/1e6))

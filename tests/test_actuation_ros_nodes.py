@@ -2,6 +2,8 @@
 from pathlib import Path
 import sys
 from types import SimpleNamespace
+from collections import deque
+import math
 
 import pytest
 pytest.importorskip('rclpy')
@@ -10,6 +12,7 @@ from ackermann_msgs.msg import AckermannDriveStamped
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src/arena_vehicle_interface'))
 from arena_vehicle_interface.actuation_contract import ActuationReceiver, CommandProducer
 from arena_vehicle_interface.actuation_ros import ActuationHost, VirtualMCU, stamp_us
+from arena_vehicle_interface.drive_feedback import MotorEncoderSpec
 
 
 def host():
@@ -110,3 +113,46 @@ def test_malformed_ack_is_ignored_without_crashing_host():
     obj.decoder, obj.pending = Decoder(), {}
     ActuationHost.on_rx(obj, SimpleNamespace(data=encode({'type': 'ack', 'request': []})))
     assert obj.pending == {}
+
+
+@pytest.mark.parametrize('count', [0., 42., -42., .25, float('nan'), float('inf')])
+def test_mcu_motor_position_requires_count_grid(count):
+    from sensor_msgs.msg import JointState
+    spec = MotorEncoderSpec(28, 15., .0325)
+    obj = SimpleNamespace(wheels=deque(), tick_angle=spec.motor_rad_per_count, motor_spec=spec)
+    msg = JointState(name=['drive_motor_shaft'], position=[count * spec.motor_rad_per_count],
+                     velocity=[float('nan')])  # 첫 속도가 미관측이어도 위치는 사용 가능하다.
+    msg.header.stamp.sec = 1
+    VirtualMCU.on_motor(obj, msg)
+    if math.isfinite(count) and count == round(count):
+        assert list(obj.wheels) == [(1_000_000, round(count))]
+    else:
+        assert not obj.wheels
+
+
+def test_mcu_rejects_huge_finite_position_without_crashing_callback():
+    from sensor_msgs.msg import JointState
+    spec = MotorEncoderSpec(28, 15., .0325)
+    obj = SimpleNamespace(wheels=deque(), motor_spec=spec)
+    VirtualMCU.on_motor(obj, JointState(name=['drive_motor_shaft'], position=[1e308], velocity=[0.]))
+    assert not obj.wheels
+
+
+def test_mcu_deadline_report_publishes_first_frozen_snapshot_once():
+    from arena_vehicle_interface.actuation_contract import ContractConfig
+    receiver = ActuationReceiver(ContractConfig(), boot_id='b')
+    published = []
+    obj = SimpleNamespace(receiver=receiver, deadline_report=None,
+                          receiver_ticks=deque([(10.000, 100_000), (10.005, 105_000)], maxlen=16),
+                          diagnostic_pub=SimpleNamespace(publish=published.append))
+    assert VirtualMCU.capture_deadline(obj, 'control_tick', 10.4, 160_000, (10.006, 105_000)) is None
+    receiver.deadline_diagnostic = dict(origin='tick', now_us=160_000, last_control_us=105_000, gap_us=55_000)
+    report = VirtualMCU.capture_deadline(obj, 'control_tick', 10.4, 160_000, (10.006, 105_000))
+    assert len(published) == 1 and report['callback'] == 'control_tick'
+    assert report['last_control_tick_wall_s'] == 10.005
+    assert abs(report['since_previous_timer_entry_wall_s'] - .394) < 1e-9
+    assert report['receiver']['gap_us'] == 55_000 and len(report['recent_control_ticks']) == 2
+    receiver.deadline_diagnostic['gap_us'] = -1  # 원본 변경이 이미 발행한 사본을 바꾸지 않는다.
+    assert report['receiver']['gap_us'] == 55_000
+    assert VirtualMCU.capture_deadline(obj, 'on_tx', 11., 200_000, (10.9, 195_000)) is None
+    assert len(published) == 1

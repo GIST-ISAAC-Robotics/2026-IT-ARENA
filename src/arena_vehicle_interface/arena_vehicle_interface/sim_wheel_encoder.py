@@ -1,4 +1,10 @@
-"""Turn Gazebo wheel-joint truth into a configurable encoder-like interface."""
+"""Turn Gazebo wheel-joint truth into a configurable encoder-like interface.
+
+기본 `drive_motor_shaft` 모드는 모터 뒤축 엔코더 하나를 흉내 낸다. 이상적 좌우 바퀴
+관절 각에서 모터 각 = 감속비 × 평균 바퀴 각을 먼저 만들고, 그 한 축을 모터축
+카운트로 양자화해 /drive_motor/encoder 한 채널만 발행한다. 좌우 값은 발행하지 않는다.
+`rear_wheel_pair_legacy`는 이전 좌우 후륜 엔코더 2개 계약의 명시 비교용이다.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +18,10 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Int64MultiArray
 
+from arena_vehicle_interface.drive_feedback import (
+    LEGACY_TICKS_TOPIC, LEGACY_TOPIC, MODE_LEGACY, MODE_MOTOR, MOTOR_FRAME, MOTOR_JOINT, MOTOR_TOPIC,
+    MotorEncoderSpec, motor_angle_from_wheels, validate_mode,
+)
 from arena_vehicle_interface.node_lifecycle import run_node
 
 
@@ -41,30 +51,34 @@ class PendingSample:
     capture_time_ns: int
     due_time_ns: int
     stamp: Time
-    left_ticks: int
-    right_ticks: int
+    left_ticks: int | None = None
+    right_ticks: int | None = None
+    motor_counts: int | None = None
 
 
 class SimWheelEncoder(Node):
-    """Publish sampled wheel ticks and quantized wheel position / velocity."""
+    """Publish sampled drive feedback: one motor-shaft channel or the legacy wheel pair."""
 
     def __init__(self) -> None:
         super().__init__("sim_wheel_encoder")
 
+        # 모드는 launch가 명시해야 한다. 기본값으로 옛 2개 계약을 몰래 고르지 않는다.
+        self.declare_parameter("feedback_mode", "")
         self.declare_parameter("left_joint_name", "rear_left_wheel_joint")
         self.declare_parameter("right_joint_name", "rear_right_wheel_joint")
         self.declare_parameter("ticks_per_revolution", 2048)
+        self.declare_parameter("counts_per_motor_revolution", 0)
+        self.declare_parameter("gear_ratio", 0.0)
+        self.declare_parameter("wheel_radius_m", 0.0)
         self.declare_parameter("sample_rate_hz", 100.0)
         self.declare_parameter("latency_ms", 2.0)
         self.declare_parameter("dropout_probability", 0.0)
         self.declare_parameter("random_seed", 2026)
 
+        self._mode = validate_mode(str(self.get_parameter("feedback_mode").value))
         self._joint_names = (
             str(self.get_parameter("left_joint_name").value),
             str(self.get_parameter("right_joint_name").value),
-        )
-        self._ticks_per_revolution = int(
-            self.get_parameter("ticks_per_revolution").value
         )
         sample_rate_hz = float(self.get_parameter("sample_rate_hz").value)
         latency_ms = float(self.get_parameter("latency_ms").value)
@@ -72,16 +86,27 @@ class SimWheelEncoder(Node):
             self.get_parameter("dropout_probability").value
         )
 
-        if sample_rate_hz <= 0.0:
+        if not math.isfinite(sample_rate_hz) or sample_rate_hz <= 0.0:
             raise ValueError("sample_rate_hz must be positive")
-        if latency_ms < 0.0:
+        if not math.isfinite(latency_ms) or latency_ms < 0.0:
             raise ValueError("latency_ms cannot be negative")
         if not 0.0 <= self._dropout_probability <= 1.0:
             raise ValueError("dropout_probability must be within [0, 1]")
 
+        self._spec: MotorEncoderSpec | None = None
+        self._radians_per_tick = 0.0
+        if self._mode == MODE_MOTOR:
+            self._spec = MotorEncoderSpec(
+                int(self.get_parameter("counts_per_motor_revolution").value),
+                float(self.get_parameter("gear_ratio").value),
+                float(self.get_parameter("wheel_radius_m").value),
+            )
+        else:
+            self._ticks_per_revolution = int(self.get_parameter("ticks_per_revolution").value)
+            self._radians_per_tick = radians_per_tick(self._ticks_per_revolution)
+
         self._sample_period_ns = round(1_000_000_000 / sample_rate_hz)
         self._latency_ns = round(latency_ms * 1_000_000)
-        self._radians_per_tick = radians_per_tick(self._ticks_per_revolution)
         self._random = random.Random(int(self.get_parameter("random_seed").value))
         self._pending: deque[PendingSample] = deque()
         self._last_capture_time_ns: int | None = None
@@ -89,12 +114,11 @@ class SimWheelEncoder(Node):
         self._last_published: PendingSample | None = None
         self._warned_missing_joint = False
 
-        self._wheel_state_publisher = self.create_publisher(
-            JointState, "/wheel_states", 20
-        )
-        self._tick_publisher = self.create_publisher(
-            Int64MultiArray, "/wheel_encoder_ticks", 20
-        )
+        if self._mode == MODE_MOTOR:
+            self._motor_publisher = self.create_publisher(JointState, MOTOR_TOPIC, 20)
+        else:
+            self._wheel_state_publisher = self.create_publisher(JointState, LEGACY_TOPIC, 20)
+            self._tick_publisher = self.create_publisher(Int64MultiArray, LEGACY_TICKS_TOPIC, 20)
         self.create_subscription(
             JointState, "/sim/joint_states_raw", self._capture, 50
         )
@@ -102,11 +126,21 @@ class SimWheelEncoder(Node):
         # incoming joint-state messages and constrained by _sample_period_ns.
         self.create_timer(0.001, self._publish_due_samples)
 
-        self.get_logger().info(
-            "Simulated rear encoders ready: "
-            f"{self._ticks_per_revolution} ticks/rev, {sample_rate_hz:g} Hz, "
-            f"{latency_ms:g} ms latency"
-        )
+        if self._mode == MODE_MOTOR:
+            spec = self._spec
+            self.get_logger().info(
+                "Simulated drive motor encoder ready (single channel; left/right difference unobservable): "
+                f"{spec.counts_per_motor_revolution} counts/motor rev x {spec.gear_ratio:g}:1 = "
+                f"{spec.counts_per_wheel_revolution:g} counts/mean wheel rev, "
+                f"{spec.mean_wheel_travel_m_per_count * 1000:.4f} mm/count, "
+                f"{sample_rate_hz:g} Hz, {latency_ms:g} ms latency (provisional)"
+            )
+        else:
+            self.get_logger().warning(
+                "LEGACY rear wheel pair encoders selected explicitly: "
+                f"{self._ticks_per_revolution} ticks/rev, {sample_rate_hz:g} Hz, "
+                f"{latency_ms:g} ms latency; not the selected hardware feedback"
+            )
 
     def _find_joint_index(self, message: JointState, target: str) -> int | None:
         for index, name in enumerate(message.name):
@@ -152,21 +186,17 @@ class SimWheelEncoder(Node):
             self._last_capture_time_ns = capture_ns
             return
 
-        left_ticks = position_to_ticks(
-            message.position[left_index], self._radians_per_tick
-        )
-        right_ticks = position_to_ticks(
-            message.position[right_index], self._radians_per_tick
-        )
-        self._pending.append(
-            PendingSample(
-                capture_time_ns=capture_ns,
-                due_time_ns=capture_ns + self._latency_ns,
-                stamp=message.header.stamp,
-                left_ticks=left_ticks,
-                right_ticks=right_ticks,
-            )
-        )
+        left, right = message.position[left_index], message.position[right_index]
+        if self._mode == MODE_MOTOR:
+            # 좌우 정답은 여기서 평균 모터 각으로 합쳐진 뒤 버려진다.
+            motor_angle = motor_angle_from_wheels(left, right, self._spec.gear_ratio)
+            sample = PendingSample(capture_ns, capture_ns + self._latency_ns, message.header.stamp,
+                                   motor_counts=self._spec.counts_from_motor_angle(motor_angle))
+        else:
+            sample = PendingSample(capture_ns, capture_ns + self._latency_ns, message.header.stamp,
+                                   left_ticks=position_to_ticks(left, self._radians_per_tick),
+                                   right_ticks=position_to_ticks(right, self._radians_per_tick))
+        self._pending.append(sample)
         self._last_capture_time_ns = capture_ns
 
     def _check_clock_reset(self, now_ns: int) -> None:
@@ -183,7 +213,28 @@ class SimWheelEncoder(Node):
             sample = self._pending.popleft()
             self._publish(sample)
 
+    def _motor_state(self, sample: PendingSample) -> JointState:
+        """모터축 한 채널. 첫 표본/재시작 직후 속도는 기준이 없으므로 0이 아니라 NaN이다."""
+        velocity = math.nan
+        previous = self._last_published
+        if previous is not None and previous.motor_counts is not None:
+            delta_time_s = (sample.capture_time_ns - previous.capture_time_ns) / 1_000_000_000
+            if delta_time_s > 0.0:
+                velocity = self._spec.motor_rad_s_from_counts(
+                    sample.motor_counts - previous.motor_counts, delta_time_s)
+        state = JointState()
+        state.header.stamp = sample.stamp
+        state.header.frame_id = MOTOR_FRAME
+        state.name = [MOTOR_JOINT]
+        state.position = [self._spec.motor_angle_from_counts(sample.motor_counts)]
+        state.velocity = [velocity]
+        return state
+
     def _publish(self, sample: PendingSample) -> None:
+        if self._mode == MODE_MOTOR:
+            self._motor_publisher.publish(self._motor_state(sample))
+            self._last_published = sample
+            return
         positions = [
             sample.left_ticks * self._radians_per_tick,
             sample.right_ticks * self._radians_per_tick,

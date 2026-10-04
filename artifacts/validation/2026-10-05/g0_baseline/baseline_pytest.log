@@ -1,0 +1,25 @@
+Command (run once, WSL Ubuntu-24.04):
+wsl.exe -d Ubuntu-24.04 -- bash -lc 'cd /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT\ ARENA\ local && source /opt/ros/jazzy/setup.bash && source install/local_setup.bash && export PYTHONPATH="$PWD/src/arena_autonomy:$PWD/src/arena_vehicle_interface${PYTHONPATH:+:$PYTHONPATH}" && python3 -m pytest tests/test_local_pursuit.py tests/test_lidar_safety.py tests/test_lidar_observation.py tests/test_lidar_motion.py tests/test_rotating_lidar.py -q'
+
+Result: exit code 1 during collection; no tests executed.
+
+==================================== ERRORS ====================================
+_________________ ERROR collecting tests/test_local_pursuit.py _________________
+ImportError while importing test module '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_local_pursuit.py'.
+tests/test_local_pursuit.py:10: in <module>
+    import xacro
+E   ModuleNotFoundError: No module named 'xacro'
+__________________ ERROR collecting tests/test_lidar_safety.py __________________
+ImportError while importing test module '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_lidar_safety.py'.
+tests/test_lidar_safety.py:8: in <module>
+    from ackermann_msgs.msg import AckermannDriveStamped
+E   ModuleNotFoundError: No module named 'ackermann_msgs'
+________________ ERROR collecting tests/test_rotating_lidar.py _________________
+ImportError while importing test module '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_rotating_lidar.py'.
+src/arena_vehicle_interface/arena_vehicle_interface/rotating_lidar.py:10: in <module>
+    from rclpy.node import Node
+E   ModuleNotFoundError: No module named 'rclpy'
+
+3 collection errors in 1.01s. tests/test_lidar_observation.py and tests/test_lidar_motion.py were collected without a reported collection error, but no tests ran because collection stopped.
+
+Environment check: WSL Ubuntu-24.04, ROS Jazzy setup file and install/local_setup.bash exist; Python 3.12.3 and pytest 7.4.4 are available. Sourcing those setups returned success, but this test process could not import xacro, ackermann_msgs, or rclpy. No package installation or source changes were attempted. No Gazebo launch was performed.

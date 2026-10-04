@@ -2,11 +2,20 @@
 
 모든 now_us는 수신 MCU의 단조 시각이다. 임대 토큰은 시계 동기화 없이
 명령의 최대 잔여 수명을 제한한다. CRC/토큰은 통신 인증을 대신하지 않는다.
+
+피드백은 feedback_mode로 명시한다. drive_motor_shaft는 모터축 누적 카운트 하나만
+받아 평균 바퀴 속도를 계산하며, 정지 판정도 평균 0만 볼 수 있다(좌우 반대 회전 미검출).
+rear_wheel_pair_legacy는 이전 좌우 후륜 2개 계약이며 ContractConfig 기본값은 과거
+참조 시험 재현을 위해 legacy로 둔다. 현재 launch는 모터축 모드를 명시한다.
 """
 from dataclasses import dataclass
 from enum import Enum
 import math
 import uuid
+
+from arena_vehicle_interface.drive_feedback import (
+    LEGACY_STATIONARY_SCOPE, MODE_LEGACY, MODE_MOTOR, MODES, MOTOR_STATIONARY_SCOPE,
+)
 
 
 def integer(value, minimum=0, maximum=2**63 - 1):
@@ -37,21 +46,36 @@ class ContractConfig:
     settle_us: int = 200_000
     max_control_gap_us: int = 50_000
     wheel_radius_m: float = .025
+    # legacy: 바퀴 1회전당 틱. drive_motor_shaft: 모터 1회전당 카운트.
     ticks_per_rev: int = 2048
     max_speed_mps: float = 2.5
     max_steering_rad: float = .37
     stopped_wheel_mps: float = .03
     max_wheel_mps: float = 5.
+    feedback_mode: str = MODE_LEGACY
+    # 모터→바퀴 전체 감속비. legacy 바퀴 틱에는 1이어야 한다.
+    gear_ratio: float = 1.
+    # 모터축 모드 한정 임시 무진행 감시. 실물 응답 확인 전의 보수적 개발값이다.
+    motor_no_progress_us: int = 500_000
+    motor_progress_min_command_mps: float = .1
 
     def __post_init__(self):
-        for key in ("lease_us", "feedback_timeout_us", "settle_us", "max_control_gap_us", "ticks_per_rev"):
+        if self.feedback_mode not in MODES:
+            raise ValueError("invalid feedback_mode")
+        if not number(self.gear_ratio) or self.gear_ratio <= 0:
+            raise ValueError("invalid gear_ratio")
+        if self.feedback_mode == MODE_LEGACY and self.gear_ratio != 1:
+            raise ValueError("legacy wheel ticks require gear_ratio 1")
+        for key in ("lease_us", "feedback_timeout_us", "settle_us", "max_control_gap_us", "ticks_per_rev", "motor_no_progress_us"):
             if not integer(getattr(self, key), 1, 10_000_000):
                 raise ValueError(f"invalid {key}")
-        for key in ("wheel_radius_m", "max_speed_mps", "max_steering_rad", "stopped_wheel_mps", "max_wheel_mps"):
+        for key in ("wheel_radius_m", "max_speed_mps", "max_steering_rad", "stopped_wheel_mps", "max_wheel_mps", "motor_progress_min_command_mps"):
             if not number(getattr(self, key)) or getattr(self, key) <= 0:
                 raise ValueError(f"invalid {key}")
         if self.stopped_wheel_mps >= self.max_speed_mps or self.max_speed_mps > self.max_wheel_mps:
             raise ValueError("inconsistent speed limits")
+        if self.motor_progress_min_command_mps > self.max_speed_mps:
+            raise ValueError("motor progress threshold exceeds command limit")
 
 
 class ActuationReceiver:
@@ -70,11 +94,18 @@ class ActuationReceiver:
         self.last_control_us = None
         self.feedback = None
         self.feedback_valid = False
-        self.left_mps = self.right_mps = 0.
+        self.motor_feedback = self.config.feedback_mode == MODE_MOTOR
+        # 모터축 모드에는 좌우 값이 존재하지 않는다. 0으로도 채우지 않는다.
+        self.left_mps = self.right_mps = None if self.motor_feedback else 0.
+        self.mean_wheel_mps = 0.
         self.zero_since_us = None
         self.estop_held = False
         self._leases = {}
         self._lease_sequence = 0
+        self._motor_progress_since_us = None
+        # 진단 전용. 첫 control_deadline_missed 직전 값을 한 번만 고정하며 판정에는 쓰지 않는다.
+        self.deadline_diagnostic = None
+        self.deadline_miss_count = 0
 
     @property
     def armed(self):
@@ -88,6 +119,7 @@ class ActuationReceiver:
         self.owner, self.sequence = None, -1
         self.generation += 1
         self._leases.clear()
+        self._motor_progress_since_us = None
 
     def _fault(self, reason):
         if self.state not in (State.ESTOP, State.FAULT):
@@ -114,38 +146,70 @@ class ActuationReceiver:
         return (self._fresh_feedback(now_us) and self.zero_since_us is not None and
                 now_us - self.zero_since_us >= self.config.settle_us)
 
-    def _check(self, now_us):
+    def _check(self, now_us, origin="check"):
         if not self._clock(now_us):
             return False
         if (self.armed and (self.last_control_us is None or
                 now_us - self.last_control_us > self.config.max_control_gap_us)):
+            self.deadline_miss_count += 1
+            if self.deadline_diagnostic is None:
+                # last_control_us 갱신·상태 전환 전에 고정한다. 이후 정리/시간 초과로 바꾸지 않는다.
+                self.deadline_diagnostic = {
+                    "origin": origin, "now_us": now_us, "last_control_us": self.last_control_us,
+                    "gap_us": None if self.last_control_us is None else now_us - self.last_control_us,
+                    "threshold_us": self.config.max_control_gap_us,
+                    "state_before": self.state.value, "reason_before": self.reason,
+                    "generation_before": self.generation, "deadline_us_before": self.deadline_us}
             self._fault("control_deadline_missed")
         if self.armed:
             if not self._fresh_feedback(now_us):
                 self._fault("encoder_timeout")
             elif self.deadline_us is None or now_us >= self.deadline_us:
                 self._fault("command_expired")
+            elif (self.motor_feedback and self._motor_progress_since_us is not None and
+                  now_us - self._motor_progress_since_us >= self.config.motor_no_progress_us):
+                # 신선한 시각만 반복되는 고착/구동 정체. 어느 쪽인지는 단일 축으로 판별 불가.
+                self._fault("motor_feedback_no_progress")
         return True
 
     def tick(self, now_us):
         # 통신 수신/상태 발행이 아니라 실제 제어 작업만 이 시각을 갱신한다.
-        if self._check(now_us):
+        if self._check(now_us, "tick"):
             self.last_control_us = now_us
         return self.status()
 
     def update_encoder(self, now_us, *, sequence, capture_us, left_ticks, right_ticks):
-        """MCU에서 같은 시각에 캡처한 좌우 누적 카운트. 도착 시각으로 차분하지 않는다."""
+        """legacy: MCU에서 같은 시각에 캡처한 좌우 누적 카운트. 도착 시각으로 차분하지 않는다."""
+        if self.motor_feedback:
+            return self._mode_mismatch(now_us)
+        return self._ingest(now_us, sequence, capture_us, (left_ticks, right_ticks))
+
+    def update_motor_encoder(self, now_us, *, sequence, capture_us, motor_counts):
+        """모터축 엔코더 한 채널의 누적 카운트. 평균 바퀴 운동만 계산한다."""
+        if not self.motor_feedback:
+            return self._mode_mismatch(now_us)
+        return self._ingest(now_us, sequence, capture_us, (motor_counts,))
+
+    def _mode_mismatch(self, now_us):
+        if not self._clock(now_us):
+            return False
+        self.feedback_valid, self.zero_since_us = False, None
+        if self.armed:
+            self._fault("feedback_mode_mismatch")
+        return False
+
+    def _ingest(self, now_us, sequence, capture_us, counts):
         if not self._clock(now_us):
             return False
         valid = (integer(sequence) and integer(capture_us) and capture_us <= now_us and
                  now_us - capture_us < self.config.feedback_timeout_us and
-                 integer(left_ticks, -(2**63)) and integer(right_ticks, -(2**63)))
+                 all(integer(count, -(2**63)) for count in counts))
         if not valid:
             self.feedback_valid, self.zero_since_us = False, None
             if self.armed:
                 self._fault("invalid_encoder")
             return False
-        sample = (sequence, capture_us, left_ticks, right_ticks)
+        sample = (sequence, capture_us, *counts)
         previous = self.feedback
         if previous is None:
             self.feedback = sample
@@ -159,17 +223,25 @@ class ActuationReceiver:
             if self.armed:
                 self._fault("encoder_gap")
             return False
-        scale = math.tau * self.config.wheel_radius_m / self.config.ticks_per_rev * 1e6 / dt_us
-        left, right = (left_ticks - previous[2]) * scale, (right_ticks - previous[3]) * scale
-        if max(abs(left), abs(right)) > self.config.max_wheel_mps:
+        scale = (math.tau * self.config.wheel_radius_m /
+                 (self.config.ticks_per_rev * self.config.gear_ratio) * 1e6 / dt_us)
+        speeds = [(count - old) * scale for count, old in zip(counts, previous[2:])]
+        if max(abs(v) for v in speeds) > self.config.max_wheel_mps:
             self.feedback_valid, self.zero_since_us = False, None
             if self.armed:
                 self._fault("encoder_implausible")
             return False
         self.feedback = sample
         self.feedback_valid = True
-        self.left_mps, self.right_mps = left, right
-        if max(abs(left), abs(right)) <= self.config.stopped_wheel_mps:
+        if self.motor_feedback:
+            self.mean_wheel_mps = speeds[0]
+            if counts[0] != previous[2] and self._motor_progress_since_us is not None:
+                self._motor_progress_since_us = max(self._motor_progress_since_us, capture_us)
+        else:
+            self.left_mps, self.right_mps = speeds
+            self.mean_wheel_mps = (speeds[0] + speeds[1]) / 2
+        # 모터축 모드의 정지 준비는 평균 0뿐이다. 좌우 반대 회전은 여기서 검출되지 않는다.
+        if max(abs(v) for v in speeds) <= self.config.stopped_wheel_mps:
             if self.zero_since_us is None:
                 self.zero_since_us = capture_us
         else:
@@ -187,7 +259,7 @@ class ActuationReceiver:
 
     def offer(self, now_us):
         """MCU가 발행하는 짧은 유효기간 토큰. 토큰 수신만으로 watchdog을 먹이지 않는다."""
-        if not self._check(now_us):
+        if not self._check(now_us, "offer"):
             raise ValueError("clock invalid")
         self._lease_sequence += 1
         issued, expires = now_us, now_us + self.config.lease_us
@@ -198,7 +270,7 @@ class ActuationReceiver:
                 "lease_expires_us": expires}
 
     def receive(self, message, now_us):
-        if not self._check(now_us) or type(message) is not dict or type(message.get("v")) is not int or message["v"] != 1:
+        if not self._check(now_us, "receive") or type(message) is not dict or type(message.get("v")) is not int or message["v"] != 1:
             return False, "invalid_message"
         kind = message.get("kind")
         if kind == "STOP" and set(message) == {"v", "kind"}:
@@ -251,6 +323,11 @@ class ActuationReceiver:
         if now_us >= deadline:
             return False, "source_expired"
         self.sequence = message["seq"]
+        if self.motor_feedback:
+            if speed < self.config.motor_progress_min_command_mps:
+                self._motor_progress_since_us = None
+            elif self._motor_progress_since_us is None:
+                self._motor_progress_since_us = now_us
         self.target_speed, self.steering = float(speed), float(angle)
         self.deadline_us = deadline
         self.state = State.ACTIVE if speed > 0 else State.ARMED
@@ -262,11 +339,14 @@ class ActuationReceiver:
                 "state": self.state.value, "reason": self.reason, "owner": self.owner,
                 "accepted_seq": self.sequence, "target_speed_mps": self.target_speed,
                 "steering_rad": self.steering, "left_wheel_mps": self.left_mps,
-                "right_wheel_mps": self.right_mps,
+                "right_wheel_mps": self.right_mps, "mean_wheel_mps": self.mean_wheel_mps,
+                "feedback_mode": self.config.feedback_mode,
+                "stationary_scope": MOTOR_STATIONARY_SCOPE if self.motor_feedback else LEGACY_STATIONARY_SCOPE,
                 "feedback_valid": self._fresh_feedback(self.now_us or 0),
                 "feedback_seq": None if self.feedback is None else self.feedback[0],
-                "left_ticks": None if self.feedback is None else self.feedback[2],
-                "right_ticks": None if self.feedback is None else self.feedback[3],
+                "left_ticks": None if self.feedback is None or self.motor_feedback else self.feedback[2],
+                "right_ticks": None if self.feedback is None or self.motor_feedback else self.feedback[3],
+                "motor_counts": None if self.feedback is None or not self.motor_feedback else self.feedback[2],
                 "feedback_capture_us": None if self.feedback is None else self.feedback[1],
                 "deadline_us": self.deadline_us, "estop_held": self.estop_held}
 

@@ -1,0 +1,59 @@
+........................................................................ [ 21%]
+........................................................................ [ 42%]
+........................................................................ [ 63%]
+........................................................................ [ 84%]
+...............................FF..................                      [100%]
+=================================== FAILURES ===================================
+___________________ test_normal_directory_path_is_unchanged ____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_normal_directory_path_is_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729531dfc710>
+
+    def test_normal_directory_path_is_unchanged(tmp_path, monkeypatch):
+        calls = reader_double(monkeypatch, failure=None)
+        mode = {}
+>       audit.reader_for(tmp_path, mode)
+
+tests/test_bag_reader_compat.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/audit_sensor_bag.py:47: in reader_for
+    if {t.name: t.type for t in reader.get_all_topics_and_types()} != expected:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_bag_reader_compat.reader_double.<locals>.Reader object at 0x729531dfc320>
+
+    def get_all_topics_and_types(self):
+>       values = audit.TOPICS if topics is None else topics
+E       AttributeError: module 'a3_audit' has no attribute 'TOPICS'
+
+tests/test_bag_reader_compat.py:24: AttributeError
+_______________ test_v9_single_mcap_fallback_preserves_original ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_v9_single_mcap_fallback_p0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x729531dff6e0>
+
+    def test_v9_single_mcap_fallback_preserves_original(tmp_path, monkeypatch):
+        recording(tmp_path)
+        path = tmp_path/'bag/metadata.yaml'
+        before = path.read_bytes()
+        calls = reader_double(monkeypatch)
+        mode = {}
+>       audit.reader_for(tmp_path, mode)
+
+tests/test_bag_reader_compat.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/audit_sensor_bag.py:47: in reader_for
+    if {t.name: t.type for t in reader.get_all_topics_and_types()} != expected:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_bag_reader_compat.reader_double.<locals>.Reader object at 0x729531dfc1a0>
+
+    def get_all_topics_and_types(self):
+>       values = audit.TOPICS if topics is None else topics
+E       AttributeError: module 'a3_audit' has no attribute 'TOPICS'
+
+tests/test_bag_reader_compat.py:24: AttributeError
+=========================== short test summary info ============================
+FAILED tests/test_bag_reader_compat.py::test_normal_directory_path_is_unchanged
+FAILED tests/test_bag_reader_compat.py::test_v9_single_mcap_fallback_preserves_original
+2 failed, 337 passed in 19.78s

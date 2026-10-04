@@ -1,0 +1,184 @@
+........................................................................ [ 13%]
+..............................................FF...F.................... [ 26%]
+........................................................................ [ 39%]
+........................................................................ [ 53%]
+............................................................F........... [ 66%]
+........................................................................ [ 79%]
+....................................................................F... [ 92%]
+......................................                                   [100%]
+=================================== FAILURES ===================================
+___________________ test_normal_directory_path_is_unchanged ____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-1/test_normal_directory_path_is_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad055c8680>
+
+    def test_normal_directory_path_is_unchanged(tmp_path, monkeypatch):
+        calls = reader_double(monkeypatch, failure=None)
+        mode = {}
+>       audit.reader_for(tmp_path, mode)
+
+tests/test_bag_reader_compat.py:43: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/audit_sensor_bag.py:37: in reader_for
+    expected = topics_for(manifest_feedback_mode(load_manifest(root)))
+src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py:179: in load_manifest
+    manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/tmp/pytest-of-jinhyeong/pytest-1/test_normal_directory_path_is_0/manifest.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+E       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-jinhyeong/pytest-1/test_normal_directory_path_is_0/manifest.json'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+_______________ test_v9_single_mcap_fallback_preserves_original ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-1/test_v9_single_mcap_fallback_p0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad055cb290>
+
+    def test_v9_single_mcap_fallback_preserves_original(tmp_path, monkeypatch):
+        recording(tmp_path)
+        path = tmp_path/'bag/metadata.yaml'
+        before = path.read_bytes()
+        calls = reader_double(monkeypatch)
+        mode = {}
+>       audit.reader_for(tmp_path, mode)
+
+tests/test_bag_reader_compat.py:54: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/audit_sensor_bag.py:37: in reader_for
+    expected = topics_for(manifest_feedback_mode(load_manifest(root)))
+src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py:179: in load_manifest
+    manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/tmp/pytest-of-jinhyeong/pytest-1/test_v9_single_mcap_fallback_p0/manifest.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+E       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-jinhyeong/pytest-1/test_v9_single_mcap_fallback_p0/manifest.json'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+__________________ test_fallback_still_checks_topic_contract ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-1/test_fallback_still_checks_top0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77ad055c9bb0>
+
+    def test_fallback_still_checks_topic_contract(tmp_path, monkeypatch):
+        recording(tmp_path)
+        reader_double(monkeypatch, topics={'/drive': 'unexpected'})
+        with pytest.raises(ValueError, match='topic/type'):
+>           audit.reader_for(tmp_path)
+
+tests/test_bag_reader_compat.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/audit_sensor_bag.py:37: in reader_for
+    expected = topics_for(manifest_feedback_mode(load_manifest(root)))
+src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py:179: in load_manifest
+    manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/tmp/pytest-of-jinhyeong/pytest-1/test_fallback_still_checks_top0/manifest.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+E       FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-jinhyeong/pytest-1/test_fallback_still_checks_top0/manifest.json'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+________________ test_official_runtime_hash_manifest_is_current ________________
+
+    def test_official_runtime_hash_manifest_is_current():
+>       assert check(DESTINATION)["status"] == "ok"
+
+tests/test_official_track.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+destination = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_gazebo/worlds/it_arena_official')
+profile_path = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/config/tracks/official_v2026.09.14.yaml')
+
+    def check(destination: Path = DESTINATION, profile_path: Path = PROFILE) -> dict:
+        archive = verify_archive()
+        saved = json.loads((destination / "provenance.json").read_text(encoding="utf-8"))
+        if saved["upstream"]["sha256"] != archive["sha256"]:
+            raise ValueError("생성된 월드의 공식 입력 해시가 현재 ZIP과 다릅니다.")
+        expected_inputs = {
+            "profile": sha256(profile_path), "builder": sha256(Path(__file__)),
+            "vehicle_config": sha256(VEHICLE),
+            "geometry_inspector": sha256(REPO / "scripts/build_experimental_track.py"),
+            "runtime_builder": sha256(REPO / "scripts/build_runtime_world.py"),
+            "facility_builder": sha256(REPO / "scripts/experimental_facilities.py"),
+        }
+        if saved["input_sha256"] != expected_inputs:
+>           raise ValueError("공식 실행 월드를 재생성해야 하는 입력 변경이 있습니다.")
+E           ValueError: 공식 실행 월드를 재생성해야 하는 입력 변경이 있습니다.
+
+scripts/build_official_track.py:312: ValueError
+_________________ test_vehicle_dimensions_and_steered_envelope _________________
+
+prepared = (<module 'organizer_track_generator' from '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/assets/track/source... 빨강 단독 점등', ...], 'derivation_script_sha256': '2036ff1598e52ec9bff995714cdb8bfdd9f135f5f6561b5a2dd6f0d6fbcfe751', ...})
+
+    def test_vehicle_dimensions_and_steered_envelope(prepared):
+        _, result, _, footprint, _ = prepared
+        config = yaml.safe_load((REPO / "src/arena_description/config/vehicle.yaml").read_text(encoding="utf-8"))["vehicle"]
+        drive = config["drivetrain"]
+        # 2026-10-02: 65 mm 바퀴에 맞춘 임시 축거 0.135 m. 길이 0.200 m로 공차 여유가 없다.
+        assert drive["wheelbase_m"] == .135
+        assert drive["wheel_radius_m"] == .0325
+        assert drive["track_width_m"] == .135
+        assert drive["wheelbase_m"] + 2 * drive["wheel_radius_m"] == pytest.approx(footprint["length_m"], abs=1e-12)
+        assert drive["wheelbase_m"] + 2 * drive["wheel_radius_m"] <= footprint["length_m"] + 1e-12
+        assert drive["track_width_m"] + drive["wheel_width_m"] <= footprint["width_m"]
+        model = ET.fromstring(xacro.process_file(str(REPO / "src/arena_description/models/arena_car/model.sdf.xacro")).toxml())
+        plugin = model.find("./model/plugin[@name='arena::SingleMotorDrive']")
+        assert float(plugin.findtext("wheelbase")) == drive["wheelbase_m"]
+        assert float(plugin.findtext("track_width")) == drive["track_width_m"]
+        angles = np.linspace(0, drive["max_steering_angle_rad"], 2001)
+        half_x = max(drive["wheel_radius_m"] * np.cos(angles) + drive["wheel_width_m"] / 2 * np.sin(angles))
+        half_y = max(drive["wheel_radius_m"] * np.sin(angles) + drive["wheel_width_m"] / 2 * np.cos(angles))
+        swept = {"length_m": max(footprint["length_m"], drive["wheelbase_m"] + 2 * half_x),
+                 "width_m": max(footprint["width_m"], drive["track_width_m"] + 2 * half_y)}
+        assert swept["width_m"] > footprint["width_m"]  # 조향 돌출을 검차 위반으로 판정하지 않습니다.
+        report = inspect_geometry(DESTINATION / "world.sdf", result, swept)
+>       assert report["static_footprint_checks_pass"], report
+E       AssertionError: {'blocked_grid_slots': [], 'branch_centerlines_simple': [True, True], 'centerline_simple': True, 'grid_slots_checked': 6, ...}
+E       assert False
+
+tests/test_track_variants.py:144: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_bag_reader_compat.py::test_normal_directory_path_is_unchanged
+FAILED tests/test_bag_reader_compat.py::test_v9_single_mcap_fallback_preserves_original
+FAILED tests/test_bag_reader_compat.py::test_fallback_still_checks_topic_contract
+FAILED tests/test_official_track.py::test_official_runtime_hash_manifest_is_current
+FAILED tests/test_track_variants.py::test_vehicle_dimensions_and_steered_envelope
+5 failed, 537 passed in 51.59s

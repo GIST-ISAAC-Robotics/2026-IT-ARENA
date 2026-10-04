@@ -27,6 +27,28 @@ def group_processes(pgid):
     return rows
 
 
+def request_owned_node_exit(process, log_text, node_name):
+    """격리 launch의 단일 노드만 종료 요청한다. 실제 정지는 호출자가 따로 검사한다."""
+    if node_name not in ('actuation_host', 'lidar_safety'):
+        raise ValueError('unsupported fault injection target')
+    if process is None or process.poll() is not None:
+        raise RuntimeError('isolated launch is not running')
+    matches = re.findall(r'\[' + re.escape(node_name) + r'-\d+\]: process started with pid \[(\d+)\]', log_text)
+    if len(matches) != 1:
+        raise RuntimeError('isolated node PID not uniquely identified')
+    pid = int(matches[0])
+    before = group_processes(process.pid).get(pid)
+    if before is None or before['ppid'] != process.pid:
+        raise RuntimeError('node does not belong to this launch')
+    # 같은 PID로 교체된 다른 작업을 종료하지 않는다.
+    current = group_processes(process.pid).get(pid)
+    if current != before:
+        raise RuntimeError('node identity changed before fault injection')
+    os.kill(pid, signal.SIGINT)
+    return dict(node=node_name, pid=pid, identity=before, signal='SIGINT',
+                requested_wall_s=time.monotonic(), scope='single owned node; no STOP service call')
+
+
 def stop_gazebo_service(process, log_text, partition, timeout_s=20.):
     """본 검사 전용 transport 파티션에서 정상 종료 요청 후 실제 서버 소멸을 기다립니다.
 

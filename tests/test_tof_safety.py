@@ -67,7 +67,7 @@ def gate():
         modules=[{"name": n} for n in ("front", "fl", "rl", "rear", "rr", "fr")],
         clouds={n: (9.98, wall, np.array([[.3, 0, 0.]])) for n in ("front", "fl", "rl", "rear", "rr", "fr")},
         request=request, request_at=10., request_wall=wall, encoder_at=9.99, encoder_wall=wall,
-        measured_speed=.35, steering_limit=.375, geometry=SafetyGeometry(),
+        measured_speed=.35, steering_limit=.375, feedback_mode="drive_motor_shaft", geometry=SafetyGeometry(),
         last_time=10., last_cloud_stamps={}, latched=False, clear_since=None, last_status="",
         now_s=lambda: 10., publisher=SimpleNamespace(publish=commands.append),
         status_publisher=SimpleNamespace(publish=statuses.append),

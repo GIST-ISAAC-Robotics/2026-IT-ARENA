@@ -1,0 +1,118 @@
+{
+  "scope": "synthetic adapter comparison and host-only helper microbenchmark; not Gazebo or Jetson",
+  "imu": [
+    {
+      "case": "single_spike",
+      "before": {
+        "accepted": 41,
+        "rejected": 0,
+        "integrated_yaw_rad": 0.01999999999999999,
+        "rejection_reasons": {}
+      },
+      "after": {
+        "accepted": 40,
+        "rejected": 1,
+        "integrated_yaw_rad": 0.0,
+        "rejection_reasons": {
+          "gyro_slew": 1
+        }
+      },
+      "scope": "synthetic 200 Hz input; not measured hardware error distribution"
+    },
+    {
+      "case": "two_spikes",
+      "before": {
+        "accepted": 41,
+        "rejected": 0,
+        "integrated_yaw_rad": 0.04000000000000001,
+        "rejection_reasons": {}
+      },
+      "after": {
+        "accepted": 39,
+        "rejected": 2,
+        "integrated_yaw_rad": 0.0,
+        "rejection_reasons": {
+          "gyro_slew": 2
+        }
+      },
+      "scope": "synthetic 200 Hz input; not measured hardware error distribution"
+    },
+    {
+      "case": "normal_ramp",
+      "before": {
+        "accepted": 41,
+        "rejected": 0,
+        "integrated_yaw_rad": 0.39,
+        "rejection_reasons": {}
+      },
+      "after": {
+        "accepted": 41,
+        "rejected": 0,
+        "integrated_yaw_rad": 0.39,
+        "rejection_reasons": {}
+      },
+      "scope": "same sensor values cannot distinguish real from false ramp"
+    },
+    {
+      "case": "slow_false_ramp",
+      "before": {
+        "accepted": 41,
+        "rejected": 0,
+        "integrated_yaw_rad": 0.39,
+        "rejection_reasons": {}
+      },
+      "after": {
+        "accepted": 41,
+        "rejected": 0,
+        "integrated_yaw_rad": 0.39,
+        "rejection_reasons": {}
+      },
+      "scope": "same sensor values cannot distinguish real from false ramp"
+    },
+    {
+      "case": "fresh_stuck_zero",
+      "before": {
+        "accepted": 41,
+        "rejected": 0,
+        "integrated_yaw_rad": 0.0,
+        "rejection_reasons": {}
+      },
+      "after": {
+        "accepted": 41,
+        "rejected": 0,
+        "integrated_yaw_rad": 0.0,
+        "rejection_reasons": {}
+      },
+      "scope": "fresh zero can mean straight driving or a stuck sensor"
+    },
+    {
+      "case": "small_noise",
+      "before": {
+        "accepted": 41,
+        "rejected": 0,
+        "integrated_yaw_rad": 1.6679080024496053e-05,
+        "rejection_reasons": {}
+      },
+      "after": {
+        "accepted": 41,
+        "rejected": 0,
+        "integrated_yaw_rad": 1.6679080024496053e-05,
+        "rejection_reasons": {}
+      },
+      "scope": "synthetic 200 Hz input; not measured hardware error distribution"
+    }
+  ],
+  "front_audit_ms": {
+    "50": 0.10995499999921776,
+    "95": 0.26332625000016197,
+    "99": 0.39995194999370653,
+    "100": 0.5566769999987287
+  },
+  "benchmark_iterations": 2000,
+  "source_sha256": {
+    "artifacts/validation/2026-10-04/sensor_input_validation/probe_inputs.py": "e8e85b7812d01dc751e9c2f989d48d0da3a1dd9b1bd06ad3e4ca8e2329047d2d",
+    "artifacts/validation/2026-10-04/sensor_input_validation/before_sources/lidar_motion_ros.py": "fbd097306ac7b30ea336da8d591441ecfdc8ef1d7ddcfe31217cf0ebfc90a9d4",
+    "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py": "6430166162696b8beb7103f36e69dc4324063d884748e673e46049ff08a71a7e",
+    "src/arena_autonomy/arena_autonomy/lidar_observation.py": "0312840eb5b1e81f6c3f04cf014c9d5746b776f9de1c78968e2a1655287f273c"
+  }
+}

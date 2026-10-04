@@ -30,6 +30,11 @@ TOF_MODULE_NAMES = {"front", "front_left", "rear_left", "rear", "rear_right", "f
 AUTONOMY_MODES = ("lidar", "stereo", "local_pursuit")
 SENSOR_LAYOUT_BY_MODE = {"lidar": "lidar_tof6", "stereo": "stereo_tof4", "local_pursuit": "none"}
 DIFFERENTIAL_PROFILES = ("ideal_open", "lossy_open", "viscous_lsd")
+# arena_vehicle_interface.drive_feedback와 같은 문자열. launch는 그 패키지를 import하지 않는다.
+DRIVE_FEEDBACK_MODES = ("drive_motor_shaft", "rear_wheel_pair_legacy")
+DRIVE_FEEDBACK_TOPICS = {"drive_motor_shaft": "/drive_motor/encoder", "rear_wheel_pair_legacy": "/wheel_states"}
+DRIVE_FEEDBACK_RAW_TEST_TOPICS = {"drive_motor_shaft": "/test/raw_drive_motor",
+                                  "rear_wheel_pair_legacy": "/test/raw_wheels"}
 SPEED_PROFILES = {
     "local_fast": {"max_speed_mps": 2.5, "min_speed_mps": .2, "acceleration_mps2": 1.5,
                    "lateral_acceleration_limit_mps2": 3.5},
@@ -99,6 +104,61 @@ def _dynamics_mappings(config, drive_mode="configured", differential="configured
     if not 0 < float(values["gear_efficiency"]) <= 1:
         raise ValueError("기어 효율은 (0, 1] 범위여야 합니다.")
     return {"drive_mode": mode, **{key: str(value) for key, value in values.items()}}
+
+
+def _positive(value, name):
+    value = float(value)
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError(f"{name} must be finite and positive")
+    return value
+
+
+def _drive_feedback(config, requested="configured"):
+    """구동 피드백 표현과 소비자별 매개변수.
+
+    drive_motor_shaft: 모터축 PGE-213 한 채널. 평균 바퀴 운동만 관측하며 좌우 독립
+    측정을 만들지 않는다. rear_wheel_pair_legacy: 이전 좌우 후륜 2개 계약의 명시 비교용.
+    표본율·지연·누락은 MCU 미구현 상태의 임시값이며 모델 분해능과 별개다.
+    """
+    feedback = config["sensors"]["drive_feedback"]
+    mode = feedback["mode"] if requested == "configured" else requested
+    if mode not in DRIVE_FEEDBACK_MODES:
+        raise ValueError(f"drive_feedback_mode must be one of {DRIVE_FEEDBACK_MODES}")
+    drive = config["drivetrain"]
+    radius = _positive(drive["wheel_radius_m"], "wheel_radius_m")
+    ratio = _positive(drive["motor"]["gear_ratio"], "gear_ratio")
+    if mode == "drive_motor_shaft":
+        encoder = feedback["drive_motor_encoder"]
+        counts = int(encoder["counts_per_motor_revolution"])
+        if counts <= 0 or counts != (int(encoder["pulses_per_revolution_per_channel"])
+                                     * int(encoder["quadrature_edges_per_pulse"])):
+            raise ValueError("모터축 카운트는 채널 PPR × 4체배 에지 수와 같아야 합니다.")
+        left, right = encoder["simulation_source_joints"]
+        node = {"feedback_mode": mode, "left_joint_name": str(left), "right_joint_name": str(right),
+                "counts_per_motor_revolution": counts, "gear_ratio": ratio, "wheel_radius_m": radius}
+        mcu = {"feedback_mode": mode, "wheel_radius_m": radius, "ticks_per_revolution": counts,
+               "gear_ratio": ratio}
+        resolution = {"counts_per_motor_revolution": counts, "counts_per_mean_wheel_revolution": counts * ratio,
+                      "mean_wheel_travel_m_per_count": 2 * math.pi * radius / (counts * ratio)}
+    else:
+        encoder = feedback["legacy_rear_wheel_encoders"]
+        ticks = int(encoder["ticks_per_revolution"])
+        if ticks <= 0:
+            raise ValueError("legacy ticks_per_revolution must be positive")
+        node = {"feedback_mode": mode, "left_joint_name": str(encoder["left_joint_name"]),
+                "right_joint_name": str(encoder["right_joint_name"]), "ticks_per_revolution": ticks}
+        mcu = {"feedback_mode": mode, "wheel_radius_m": radius, "ticks_per_revolution": ticks, "gear_ratio": 1.0}
+        resolution = {"ticks_per_wheel_revolution": ticks, "wheel_travel_m_per_tick": 2 * math.pi * radius / ticks}
+    rate = _positive(encoder["sample_rate_hz"], "sample_rate_hz")
+    latency = float(encoder["latency_ms"])
+    dropout = float(encoder["dropout_probability"])
+    if not math.isfinite(latency) or latency < 0 or not 0 <= dropout <= 1:
+        raise ValueError("encoder latency/dropout invalid")
+    node.update(sample_rate_hz=rate, latency_ms=latency, dropout_probability=dropout)
+    return {"mode": mode, "enabled": bool(feedback["enabled"]), "topic": DRIVE_FEEDBACK_TOPICS[mode],
+            "raw_test_topic": DRIVE_FEEDBACK_RAW_TEST_TOPICS[mode], "encoder_node": node, "mcu": mcu,
+            "motion": {"motion_feedback_mode": mode, "motion_gear_ratio": ratio, "motion_wheel_radius_m": radius},
+            "resolution": resolution}
 
 
 def _as_bool(value: str) -> bool:
@@ -375,7 +435,7 @@ def _launch_setup(context):
     ):
         raise RuntimeError("현재 차량 형상은 5 cm DICT_4X4_50 ID 49 후면 마커 설정만 지원합니다.")
     d435i = config["sensors"]["d435i"]
-    wheel_encoders = config["sensors"]["wheel_encoders"]
+    feedback = _drive_feedback(config, LaunchConfiguration("drive_feedback_mode").perform(context))
     autonomy_mode = LaunchConfiguration("autonomy_mode").perform(context)
     if autonomy_mode not in AUTONOMY_MODES:
         raise RuntimeError(f"autonomy_mode must be one of {AUTONOMY_MODES}")
@@ -721,6 +781,12 @@ def _launch_setup(context):
         LogInfo(msg=f"Drive: {drive_mappings['drive_mode']}; differential: "
                     f"{LaunchConfiguration('differential_profile').perform(context)}; "
                     f"safety={'LiDAR' if local_mode else 'ToF'} enabled={safety_enabled}. Motor/tire properties are provisional."),
+        LogInfo(msg=f"Drive feedback: {feedback['mode']} on {feedback['topic']}; resolution={feedback['resolution']}; "
+                    f"rate/latency provisional. "
+                    + ("Single motor-shaft channel: mean wheel motion only; left/right difference, slip, "
+                       "backlash and opposite rotation unobservable; yaw from IMU."
+                       if feedback['mode'] == 'drive_motor_shaft' else
+                       "LEGACY rear wheel pair selected explicitly; not the selected hardware.")),
         LogInfo(msg=f"Track: {track}; main width: {scene['track']['width_m']} m; "
                     f"shortcut widths: {[branch['width_m'] for branch in scene['branches']]} m. "
                     + ("Official v2026.09.14 track and complete gantry markers are preserved; "
@@ -754,13 +820,14 @@ def _launch_setup(context):
         actions.remove(sensor_bridge)
     if guarded_actuation:
         actions.extend([
-            LogInfo(msg='A1-2 virtual MCU: explicit /actuation/arm required; no automatic restart. Gazebo inner motor PI remains ideal.'),
+            LogInfo(msg='A1-2 virtual MCU: explicit /actuation/arm required; no automatic restart. '
+                        f'MCU feedback={feedback["mode"]} (motor-shaft stationary check is mean-only). '
+                        'Gazebo inner motor PI still uses ideal joint velocities.'),
             Node(package='arena_vehicle_interface', executable='actuation_host', output='screen',
                  parameters=[{'use_sim_time': True, 'wall_timeout_s': sensor_wall_timeout}]),
             Node(package='arena_vehicle_interface', executable='virtual_mcu', output='screen', parameters=[{
                 'use_sim_time': True, 'wall_timeout_s': sensor_wall_timeout,
-                'wheel_radius_m': float(drivetrain['wheel_radius_m']),
-                'ticks_per_revolution': int(wheel_encoders['ticks_per_revolution']),
+                **feedback['mcu'],
                 'max_steering_angle_rad': math.atan(float(drivetrain['wheelbase_m']) /
                     (float(drivetrain['wheelbase_m']) / math.tan(float(drivetrain['max_steering_angle_rad'])) +
                      float(drivetrain['track_width_m']) / 2)),
@@ -777,12 +844,13 @@ def _launch_setup(context):
         actions.append(gazebo_gui)
 
     if safety_enabled and not local_mode:
-        if not active_tof_modules or not wheel_encoders["enabled"]:
-            raise RuntimeError("ToF 안전층은 ToF 링과 좌우 바퀴 엔코더가 필요합니다.")
+        if not active_tof_modules or not feedback["enabled"]:
+            raise RuntimeError("ToF 안전층은 ToF 링과 구동 엔코더가 필요합니다.")
         actions.append(Node(package="arena_autonomy", executable="tof_safety", output="screen",
                             parameters=[str(bringup_share / "config/tof_safety.yaml"),
                                         {"use_sim_time": True, "vehicle_config": str(config_path),
                                          "sensor_wall_timeout_s": sensor_wall_timeout,
+                                         "drive_feedback_mode": feedback["mode"],
                                          "active_modules": [module["name"] for module in active_tof_modules]}]))
 
     if lidar_enabled and render_sensors:
@@ -864,8 +932,8 @@ def _launch_setup(context):
                                          "red_duration_s": float(LaunchConfiguration("red_duration_s").perform(context)),
                                          "yellow_duration_s": 2.0}], output="screen"))
     if local_mode:
-        if not lidar_enabled or not wheel_encoders["enabled"]:
-            raise RuntimeError("새 보호층은 C1과 후륜 엔코더가 필요합니다.")
+        if not lidar_enabled or not feedback["enabled"]:
+            raise RuntimeError("새 보호층은 C1과 구동 엔코더가 필요합니다.")
         # 수신 MCU는 원래 물리 상한을 엄격히 검사한다. 송신 상한만 안쪽으로
         # 표현해 /drive와 /drive/safe의 float32 직렬화가 이를 넘지 않게 한다.
         equivalent_steering = _float32_limit_not_above(math.atan(float(drivetrain["wheelbase_m"]) /
@@ -873,10 +941,11 @@ def _launch_setup(context):
         actions.append(Node(package="arena_autonomy", executable="lidar_safety", parameters=[{
             "use_sim_time": True, "lidar_compensation": "both", "motion_scan_timing_verified": True,
             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
-            "motion_wheel_radius_m": float(drivetrain["wheel_radius_m"]),
+            **feedback["motion"],
             "motion_rear_axle_x_m": -float(drivetrain["wheelbase_m"])/2,
             "motion_lidar_x_m": float(lidar["xyz_m"][0]), "motion_lidar_y_m": float(lidar["xyz_m"][1]),
             "motion_lidar_yaw_rad": float(lidar["rpy_rad"][2]), "motion_imu_topic": "/imu/data",
+            "motion_gyro_abs_limit_rad_s": math.radians(float(profile['imu']['gyro_full_scale_dps'])),
             "sensor_wall_timeout_s": sensor_wall_timeout, "max_steering_angle_rad": equivalent_steering,
             "wheelbase_m": float(drivetrain["wheelbase_m"]),
             "vehicle_length_m": float(config['footprint']['length_m']),
@@ -902,7 +971,7 @@ def _launch_setup(context):
             controller_parameters.update(
                 lidar_compensation=LaunchConfiguration("lidar_compensation").perform(context),
                 motion_scan_timing_verified=True,  # 이 launch의 시뮬레이션 어댑터에 한정
-                motion_wheel_radius_m=float(drivetrain["wheel_radius_m"]),
+                **feedback["motion"],
                 motion_rear_axle_x_m=-float(drivetrain["wheelbase_m"]) / 2,
                 motion_lidar_x_m=float(lidar["xyz_m"][0]),
                 motion_lidar_y_m=float(lidar["xyz_m"][1]),
@@ -913,6 +982,7 @@ def _launch_setup(context):
             )
             if local_mode:
                 controller_parameters["motion_imu_topic"] = "/imu/data"
+                controller_parameters["motion_gyro_abs_limit_rad_s"] = math.radians(float(profile['imu']['gyro_full_scale_dps']))
                 # 새 IMU는 카메라와 독립이며 현재 차체 축과 나란히 고정한다.
                 controller_parameters['motion_imu_roll_rad'] = 0.
                 controller_parameters['motion_imu_pitch_rad'] = 0.
@@ -934,34 +1004,21 @@ def _launch_setup(context):
                                         controller_parameters],
                             output="screen"))
 
-    if wheel_encoders["enabled"]:
+    if feedback["enabled"]:
         actions.append(
             Node(
                 package="arena_vehicle_interface",
                 executable="sim_wheel_encoder",
                 output="screen",
-                remappings=[('/wheel_states', '/test/raw_wheels')] if motion_test else [],
-                parameters=[
-                    {
-                        "left_joint_name": wheel_encoders["left_joint_name"],
-                        "right_joint_name": wheel_encoders["right_joint_name"],
-                        "ticks_per_revolution": int(
-                            wheel_encoders["ticks_per_revolution"]
-                        ),
-                        "sample_rate_hz": float(wheel_encoders["sample_rate_hz"]),
-                        "latency_ms": float(wheel_encoders["latency_ms"]),
-                        "dropout_probability": float(
-                            wheel_encoders["dropout_probability"]
-                        ),
-                        "use_sim_time": True,
-                    }
-                ],
+                remappings=[(feedback["topic"], feedback["raw_test_topic"])] if motion_test else [],
+                parameters=[{**feedback["encoder_node"], "use_sim_time": True}],
             )
         )
 
     if motion_test:
         actions.append(Node(package='arena_vehicle_interface', executable='motion_fault_relay',
                             parameters=[{'use_sim_time': True, 'profile': str(Path(motion_test).resolve()),
+                                         'feedback_mode': feedback['mode'],
                                          'audit_path': str(Path(runtime_artifacts).resolve()/'motion_injection.jsonl') if runtime_artifacts else ''}],
                             output='screen'))
     return actions
@@ -974,6 +1031,9 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("lidar_compensation", default_value="none", choices=["none", "deskew", "shift", "both"]),
             DeclareLaunchArgument('actuation_mode', default_value='legacy', choices=['legacy', 'virtual_mcu'], description='가상 MCU 계약 시험. 새 모드는 명시적 ARM 필요'),
             DeclareLaunchArgument('timing_probe', default_value='false', choices=['true', 'false']),
+            DeclareLaunchArgument('drive_feedback_mode', default_value='configured',
+                                  choices=['configured', *DRIVE_FEEDBACK_MODES],
+                                  description='configured=vehicle_config 모터축 1채널. rear_wheel_pair_legacy는 이전 2개 계약 명시 비교'),
             DeclareLaunchArgument("autonomy_control_rate_hz", default_value="20.0", description="자율주행 제어 주기; 센서 주기와 독립"),
             DeclareLaunchArgument("sensor_wall_timeout_s", default_value="3.0", description="오프라인 감시 벽시계 한도. 센서의 시뮬레이션 시각 제한은 유지"),
             # 이번 launch의 ROS 하위 프로세스에만 적용합니다. 별도 수신 터미널도

@@ -51,7 +51,7 @@ public:
     parameters.carrierDrag = get("carrier_drag", 0);
     parameters.differentialViscosity = get("differential_viscosity", 0);
     parameters.differentialTorqueLimit = get("differential_torque_limit", 0);
-    wheelbase = get("wheelbase", 0.145);
+    wheelbase = get("wheelbase", 0.135);  // SDF 누락 시 대체값. 실행값은 vehicle.yaml 주입
     track = get("track_width", 0.135);
     wheelLimit = get("steering_limit", 0.45);
     servoGain = get("steering_gain", 0.40);

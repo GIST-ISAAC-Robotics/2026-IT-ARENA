@@ -1,0 +1,69 @@
+........................................................................ [ 21%]
+........................................................................ [ 43%]
+.............................................F.......................... [ 64%]
+.......................................F................................ [ 86%]
+.............................................                            [100%]
+=================================== FAILURES ===================================
+_________________ test_vehicle_dimensions_and_steered_envelope _________________
+
+prepared = (<module 'organizer_track_generator' from '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/assets/track/source... 빨강 단독 점등', ...], 'derivation_script_sha256': '2036ff1598e52ec9bff995714cdb8bfdd9f135f5f6561b5a2dd6f0d6fbcfe751', ...})
+
+    def test_vehicle_dimensions_and_steered_envelope(prepared):
+        _, result, _, footprint, _ = prepared
+        config = yaml.safe_load((REPO / "src/arena_description/config/vehicle.yaml").read_text(encoding="utf-8"))["vehicle"]
+        drive = config["drivetrain"]
+        # 2026-10-02: 65 mm 바퀴에 맞춘 임시 축거 0.135 m. 길이 0.200 m로 공차 여유가 없다.
+        assert drive["wheelbase_m"] == .135
+        assert drive["wheel_radius_m"] == .0325
+        assert drive["track_width_m"] == .135
+        assert drive["wheelbase_m"] + 2 * drive["wheel_radius_m"] == pytest.approx(footprint["length_m"], abs=1e-12)
+        assert drive["wheelbase_m"] + 2 * drive["wheel_radius_m"] <= footprint["length_m"] + 1e-12
+        assert drive["track_width_m"] + drive["wheel_width_m"] <= footprint["width_m"]
+        model = ET.fromstring(xacro.process_file(str(REPO / "src/arena_description/models/arena_car/model.sdf.xacro")).toxml())
+        plugin = model.find("./model/plugin[@name='arena::SingleMotorDrive']")
+        assert float(plugin.findtext("wheelbase")) == drive["wheelbase_m"]
+        assert float(plugin.findtext("track_width")) == drive["track_width_m"]
+        angles = np.linspace(0, drive["max_steering_angle_rad"], 2001)
+        half_x = max(drive["wheel_radius_m"] * np.cos(angles) + drive["wheel_width_m"] / 2 * np.sin(angles))
+        half_y = max(drive["wheel_radius_m"] * np.sin(angles) + drive["wheel_width_m"] / 2 * np.cos(angles))
+        swept = {"length_m": max(footprint["length_m"], drive["wheelbase_m"] + 2 * half_x),
+                 "width_m": max(footprint["width_m"], drive["track_width_m"] + 2 * half_y)}
+        assert swept["width_m"] > footprint["width_m"]  # 조향 돌출을 검차 위반으로 판정하지 않습니다.
+        report = inspect_geometry(DESTINATION / "world.sdf", result, swept)
+>       assert report["static_footprint_checks_pass"], report
+E       AssertionError: {'blocked_grid_slots': [], 'branch_centerlines_simple': [True, True], 'centerline_simple': True, 'grid_slots_checked': 6, ...}
+E       assert False
+
+tests/test_track_variants.py:144: AssertionError
+________________ test_official_runtime_hash_manifest_is_current ________________
+
+    def test_official_runtime_hash_manifest_is_current():
+>       assert check(DESTINATION)["status"] == "ok"
+
+tests/test_official_track.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+destination = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_gazebo/worlds/it_arena_official')
+profile_path = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/config/tracks/official_v2026.09.14.yaml')
+
+    def check(destination: Path = DESTINATION, profile_path: Path = PROFILE) -> dict:
+        archive = verify_archive()
+        saved = json.loads((destination / "provenance.json").read_text(encoding="utf-8"))
+        if saved["upstream"]["sha256"] != archive["sha256"]:
+            raise ValueError("생성된 월드의 공식 입력 해시가 현재 ZIP과 다릅니다.")
+        expected_inputs = {
+            "profile": sha256(profile_path), "builder": sha256(Path(__file__)),
+            "vehicle_config": sha256(VEHICLE),
+            "geometry_inspector": sha256(REPO / "scripts/build_experimental_track.py"),
+            "runtime_builder": sha256(REPO / "scripts/build_runtime_world.py"),
+            "facility_builder": sha256(REPO / "scripts/experimental_facilities.py"),
+        }
+        if saved["input_sha256"] != expected_inputs:
+>           raise ValueError("공식 실행 월드를 재생성해야 하는 입력 변경이 있습니다.")
+E           ValueError: 공식 실행 월드를 재생성해야 하는 입력 변경이 있습니다.
+
+scripts/build_official_track.py:312: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_track_variants.py::test_vehicle_dimensions_and_steered_envelope
+FAILED tests/test_official_track.py::test_official_runtime_hash_manifest_is_current
+2 failed, 331 passed in 19.34s
