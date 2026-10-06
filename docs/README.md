@@ -16,7 +16,7 @@
 | 공식 트랙·시설 변경 | [9/15 문서 적용](track/OFFICIAL_V2026_09_15_DOC_UPDATE.md), [9/14 재감사](track/OFFICIAL_V2026_09_14_REAUDIT.md) | [ADR 0019](decisions/0019-official-v2026-09-14-gantry-markers.md), `config/tracks/official_v2026.09.14.yaml`. 초기판 재현에는 [초기 감사](track/TRACK_AUDIT.md) |
 | 차량·구동 물리 | [현행 모터축 엔코더·65 mm/15:1 반영](hardware/DRIVETRAIN_GEARING_2026_10_02.md#9-시뮬레이션-반영-후속), [차량 동역학](simulation/VEHICLE_DYNAMICS.md) | [ADR 0026](decisions/0026-motor-shaft-encoder-baseline.md), [기존 ADR 0008](decisions/0008-single-motor-mechanical-differential.md), `src/arena_description/config/vehicle.yaml`. 이전 감속비·전류 검토는 [보류 메모와 PR 원본](archive/2026-10-01-drivetrain/README.md) |
 | 부품 구매·배치 | [확정 구매안·ESP32·인터페이스](hardware/ESP32_BUDGET_REVIEW_2026_10_02.md), [IMU 검토](hardware/IMU_SELECTION_2026_09_19.md) | [B0183/C1 선택](decisions/0020-b0183-c1-procurement-baseline.md), [배치 기하](sensors/SENSOR_PLACEMENT_GEOMETRY.md), `hardware/`의 날짜별 가격 조사 |
-| 규정·지원품·외부 질문 | [규정/지원품 기록](reports/OFFICIAL_UPDATE_2026_09_15.md), [10/4 주행 규정 재검토](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md#2-규칙과-공간이-먼저-제한하는-것) | [확인 질문](HARDWARE_AND_RULE_QUESTIONS.md), [원격 STOP](hardware/EMERGENCY_STOP_AND_TELEMETRY_REVIEW_2026_09_18.md). 새 판정은 공식 최신 원문 대조 |
+| 규정·지원품·외부 질문 | [10/6 2차 회의·공식 업데이트](reports/OFFICIAL_UPDATE_2026_10_06.md), [규정/지원품 기록](reports/OFFICIAL_UPDATE_2026_09_15.md), [10/4 주행 규정 재검토](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md#2-규칙과-공간이-먼저-제한하는-것) | [확인 질문](HARDWARE_AND_RULE_QUESTIONS.md), [원격 STOP](hardware/EMERGENCY_STOP_AND_TELEMETRY_REVIEW_2026_09_18.md). 새 판정은 공식 최신 원문 대조 |
 | 기존 비교·경위 확인 | [기존 데모](autonomy/BASIC_DEMO.md), [스테레오/ToF 검토](sensors/STEREO_CAMERA_AND_MINIMAL_TOF.md) | [활동 기록](activity/), [정리 이전 보관본](archive/2026-09-27/README.md) |
 
 ## 기록 위치와 갱신 시점
