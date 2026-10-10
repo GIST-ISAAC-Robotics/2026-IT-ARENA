@@ -1,0 +1,60 @@
+{
+  "base": "artifacts/validation/2026-10-09/command_apply_trace_v1",
+  "purpose": "Gate A: 정상 기준 1회 → 평가 전용 지연주입 기대 실패 1회 → 다음 사례 미실행 확인",
+  "cases": [
+    {
+      "name": "a1_base",
+      "expect": "pass",
+      "args": [
+        "--surface",
+        "official",
+        "--zero-speed-mode",
+        "passive_damping",
+        "--command-schedule",
+        "sim_grid",
+        "--schedule-phase-ms",
+        "10",
+        "--command-profile",
+        "artifacts/validation/2026-10-08/braking_ab_v1/command_profile.json"
+      ]
+    },
+    {
+      "name": "a2_inject_late",
+      "expect": "expected_failure",
+      "args": [
+        "--surface",
+        "official",
+        "--zero-speed-mode",
+        "passive_damping",
+        "--command-schedule",
+        "sim_grid",
+        "--schedule-phase-ms",
+        "10",
+        "--command-profile",
+        "artifacts/validation/2026-10-08/braking_ab_v1/command_profile.json",
+        "--evaluation-schedule-fault",
+        "late",
+        "--evaluation-schedule-fault-at-ms",
+        "2920",
+        "--evaluation-schedule-fault-delay-ms",
+        "15"
+      ]
+    },
+    {
+      "name": "a3_sentinel",
+      "expect": "pass",
+      "args": [
+        "--surface",
+        "official",
+        "--zero-speed-mode",
+        "passive_damping",
+        "--command-schedule",
+        "sim_grid",
+        "--schedule-phase-ms",
+        "10",
+        "--command-profile",
+        "artifacts/validation/2026-10-08/braking_ab_v1/command_profile.json"
+      ]
+    }
+  ]
+}

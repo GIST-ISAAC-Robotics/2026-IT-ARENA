@@ -1,0 +1,26 @@
+........................................................................ [ 54%]
+................................................F............            [100%]
+=================================== FAILURES ===================================
+____ test_current_g1b_r0_contract_allows_only_the_registered_launch_change _____
+
+    def test_current_g1b_r0_contract_allows_only_the_registered_launch_change():
+        approved = json.loads((ROOT/'config/tests/g1b_r0_sha256.json').read_text())
+        old = json.loads((ROOT/approved['original_baseline']).read_text())['sha256']
+        current = approved['sha256']
+        assert set(current) == set(old)
+        changed = {path for path in old if current[path] != old[path]}
+        assert changed == set(approved['approved_changes']) == {'src/arena_bringup/launch/simulation.launch.py'}
+        for path in changed:
+            assert approved['approved_changes'][path]['before'] == old[path]
+            assert approved['approved_changes'][path]['after'] == current[path]
+>       assert {path: hashlib.sha256((ROOT/path).read_bytes()).hexdigest() for path in current} == current
+E       AssertionError: assert {'src/arena_a...595c24e', ...} == {'src/arena_a...595c24e', ...}
+E         Omitting 6 identical items, use -vv to show
+E         Differing items:
+E         {'src/arena_bringup/launch/simulation.launch.py': '5e115f0b61878b0d0e7a3c5fa54c4ce97c0bbe631e79e66ea465c73063ba6fef'} != {'src/arena_bringup/launch/simulation.launch.py': '1bd06e589b376c41b6ee27ee89ec54ca81d0a8e8c80331940bf76aae55beaebb'}
+E         Use -v to get more diff
+
+tests/test_r0_safety_contract.py:44: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_r0_safety_contract.py::test_current_g1b_r0_contract_allows_only_the_registered_launch_change
+1 failed, 132 passed in 21.80s

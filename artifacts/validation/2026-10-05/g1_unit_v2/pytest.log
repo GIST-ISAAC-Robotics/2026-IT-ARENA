@@ -1,0 +1,21 @@
+................................F....................................... [ 20%]
+........................................................................ [ 40%]
+........................................................................ [ 60%]
+........................................................................ [ 80%]
+.....................................................................    [100%]
+=================================== FAILURES ===================================
+____ test_boundary_memory_does_not_turn_same_source_into_fresh_observation _____
+
+    def test_boundary_memory_does_not_turn_same_source_into_fresh_observation():
+        ctl, h = LocalFollow(), history()
+        settle(ctl, h)
+        _, _, first = ctl.command(scene(.8), h, .5, 'left')
+        _, _, repeated = ctl.command(scene(.82, source=.7), h, .5, 'left')
+        assert first['path_source_s'] == pytest.approx(.7)
+>       assert repeated['path_source_s'] == pytest.approx(.7)
+E       KeyError: 'path_source_s'
+
+tests/test_local_follow.py:237: KeyError
+=========================== short test summary info ============================
+FAILED tests/test_local_follow.py::test_boundary_memory_does_not_turn_same_source_into_fresh_observation
+1 failed, 356 passed in 19.67s

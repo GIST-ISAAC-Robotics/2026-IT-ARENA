@@ -1,0 +1,469 @@
+diff --git a/.gitignore b/.gitignore
+index 20b6b8b..b158ef7 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -38,3 +38,16 @@ artifacts/validation/2026-10-05/multi_vehicle_g0_*/**/sequential_scans.jsonl
+ # 빌드 기록 본문은 보존하고, 실행마다 바뀌는 colcon 바로가기만 제외합니다.
+ artifacts/validation/**/build_logs/latest
+ artifacts/validation/**/build_logs/latest_build
++artifacts/validation/**/g1_build_v*/latest
++artifacts/validation/**/g1_build_v*/latest_build
++
++# G1-b 상대차 시험의 고빈도 자세·접촉·스캔·상태 기록은 로컬 보존하고 report.json의 해시만 추적합니다.
++artifacts/validation/2026-10-07/g1b_*/**/ego_poses.jsonl
++artifacts/validation/2026-10-07/g1b_*/**/actor_poses.jsonl
++artifacts/validation/2026-10-07/g1b_*/**/actor_contacts.jsonl
++artifacts/validation/2026-10-07/g1b_*/**/scans_received.jsonl
++artifacts/validation/2026-10-07/g1b_*/**/autonomy_status.jsonl
++artifacts/validation/2026-10-07/g1b_*/**/trace.json
++artifacts/validation/2026-10-07/g1b_*/**/trajectory.jsonl
++artifacts/validation/2026-10-07/g1b_*/**/actuation_trace.json
++artifacts/validation/2026-10-07/g1b_*/**/acquisition.json
+diff --git a/docs/PROJECT_CONTEXT.md b/docs/PROJECT_CONTEXT.md
+index 5d21152..c9fb198 100644
+--- a/docs/PROJECT_CONTEXT.md
++++ b/docs/PROJECT_CONTEXT.md
+@@ -1,6 +1,6 @@
+ # 현재 현황과 다음 작업
+ 
+-개발 상태 기준: **2026-10-05**. [다중 차량 설계](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md)와 [전체 개발 계획](reports/DEVELOPMENT_PLAN_2026_10_04.md)의 **G0-a 관측 계약·단면 기하·고정 센서 시험 기반을 검증 완료**했습니다. 관련 회귀 239개와 Gazebo 개별 8사례를 확인했으며, G0 전체나 G1 추종/우회 제어 완료는 아닙니다. [결과·최초 실패·한계·재현](autonomy/MULTI_VEHICLE_G0_2026_10_05.md)에 기록했습니다. 기존 지역 Pure Pursuit와 독립 보호 경계는 유지합니다. 사용자 적극 참여는 10/24부터, 하드웨어는 부품 구매 후 설계 전입니다. 앞선 A4 제한 검증과 `control_deadline_missed` 원인 미해결, 신선한 오측정·실물/전체 랩 미검증은 아래 결과와 관련 보고서에 보존했습니다. A3 `topic` 유지·`buffered` 미채택·집중 최적화 보류, 기본 `system`/`legacy`·QoS·보호 시간도 그대로입니다. 읽기 경로는 [문서 안내](README.md), 정리 이전 현황은 [보관본](archive/2026-09-27/PROJECT_CONTEXT.before.md), 게시 상태는 Git/PR을 기준으로 확인합니다.
++개발 상태 기준: **2026-10-07**. [다중 차량 설계](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md)와 [전체 개발 계획](reports/DEVELOPMENT_PLAN_2026_10_04.md)의 선택형 G1-a 기반에 **Gazebo 앞차 G1-b를 연결해 정지 앞차 seed 0은 통과했으나 등속 앞차 seed 0은 경계 미확인 정체로 행동 실패**했습니다. 관련 회귀 412개와 signed 역방향 HOLD·시험기 coverage 보강, 실행/소스·정지/정상 종료는 확인했습니다. 사용자 요청으로 잠시 중단했으며 재출발·나머지 seed/R0 10개는 미실행입니다. **G1-b 행렬·전체 G1 단계 통과는 아니며 기존 단독 모드와 G1 기본 꺼짐을 유지**합니다. [G1-b 결과·실패·재개 지점](autonomy/LOCAL_FOLLOW_G1B_2026_10_07.md), 앞선 합성/단독 가림·코너·종료 이력은 [G1-a 보고서](autonomy/LOCAL_FOLLOW_G1_2026_10_05.md)에 보존했습니다. 사용자 적극 참여는 10/24부터, 하드웨어는 부품 구매 후 설계 전입니다. 앞선 A4 제한 검증과 `control_deadline_missed` 원인 미해결, 신선한 오측정·실물/전체 랩 미검증은 아래 결과와 관련 보고서에 보존했습니다. A3 `topic` 유지·`buffered` 미채택·집중 최적화 보류, 기본 `system`/`legacy`·QoS·보호 시간도 그대로입니다. 읽기 경로는 [문서 안내](README.md), 정리 이전 현황은 [보관본](archive/2026-09-27/PROJECT_CONTEXT.before.md), 게시 상태는 Git/PR을 기준으로 확인합니다.
+ 
+ 기록·재생/Jetson 작업을 처음 인계받거나 다시 조사할 때는 [통합 인수인계 보고서](reports/RECORD_REPLAY_JETSON_HANDOFF_2026_09_29.md)를 먼저 읽습니다. 최초 목표·실패→수정 흐름·채택/미채택·남은 문제·원시 입력 위치·재현 조건을 모았으며, 상세 시험 근거는 기존 A2/A3 보고서에 보존했습니다. 9/29 문서 정리는 로컬 회수본으로 수행했고 꺼 둔 Jetson에 추가 접속하지 않았습니다.
+ 
+@@ -11,6 +11,7 @@
+ | 환경 | PC는 WSL2 Ubuntu 24.04 / ROS 2 Jazzy / Gazebo Harmonic. Jetson의 Ubuntu 22.04.5 / L4T 36.4.4를 유지하고 Humble 설치·두 제어 패키지 빌드·기준 재생을 확인했다. MAXN_SUPER 유지, 실물 센서/모터·장시간 검증은 남음. [ADR 0001](decisions/0001-simulation-platform.md), [A3 결과](simulation/JETSON_REPLAY_2026_09_28.md) |
+ | 센서 | B0183 RGB + RPLIDAR C1은 사용자 선택. 10/2 확정 구매안에 독립 6축 IMU **Adafruit 4438 LSM6DSOX**를 지원 30만 원 안으로 포함했다. 새 주행 모드는 깊이/ToF를 제외한다. 10/4 사용자 전달로 부품은 구매했으며 품목별 수령/납품 사양·설치·실물 성능은 미확인이다. [ADR 0020](decisions/0020-b0183-c1-procurement-baseline.md), [확정 구매안](hardware/ESP32_BUDGET_REVIEW_2026_10_02.md) |
+ | 주행 | `local_pursuit.launch.py`: 순차 C1 10 Hz·엔코더/자이로 결합 보정·관측 벽에서 만든 지역 경로·Pure Pursuit·독립 LiDAR 보호층. RGB 신호/ArUco 인식은 별도 프로세스가 계산하고 부모가 시각·세대를 검사해 채택한다. 지도/정답 자세는 제어 입력이 아니다. [ADR 0022](decisions/0022-b0183-c1-local-pursuit-prototype.md), [영상 분리 ADR 0025](decisions/0025-isolated-vision-processing.md) |
++| 선택형 G1-a/G1-b | `g1_follow.launch.py` 또는 평가기 `--g1-follow`에서만 경계/점유 분리·최대 0.3초 경계 기억·간격 기반 `CRUISE/FOLLOW/HOLD`를 사용한다. 유한 signed 음수는 현재 관측/경계를 갱신하며 0명령 HOLD·정상 복귀 뒤 2 fresh 확인을 요구한다. 시험 상한 1.0 m/s, 우회·추월 없음. 기본 단독 프로필·센서/보호 한도·G1 기본 꺼짐 유지. [G1-a](autonomy/LOCAL_FOLLOW_G1_2026_10_05.md), [G1-b 실패·재개](autonomy/LOCAL_FOLLOW_G1B_2026_10_07.md) |
+ | 실행 경계 | 새 모드만 방지턱을 실행 사본에서 임시 해제하고 ArUco 0.02·중복 ID 제거를 사용한다. 9 km/h는 명령 상한이다. 기존 `lidar`/`stereo`, D435i·ToF와 원본/실험 월드는 비교·회귀용으로 유지한다. |
+ | 구동 | **MB4266-24180 후면축형 브러시 DC + MD20A(PWM+DIR)**, 전체 **15:1**(팀 전달 6:1 × 2.5:1)을 설정에 반영한다. 공간 문제로 좌우 후륜 엔코더 대신 **모터축 PGE-213 1개**, 7 PPR·4체배=28카운트/모터 회전을 채택했다. 10/4 부품 구매 전달과 별개로 납품 사양·수령/장착·실물 성능은 미확인이다. 단일 모터·기계식 차동, Jetson 목표 속도/조향각 → MCU 경계는 유지한다. 전류/열·PWM+DIR 핀·MD20A 제동은 미검증이며 임시 토크/제동 모델과 구분한다. [선정·반영·후속](hardware/DRIVETRAIN_GEARING_2026_10_02.md#9-시뮬레이션-반영-후속), [ADR 0026](decisions/0026-motor-shaft-encoder-baseline.md) |
+ | 차량 | 외형 20×15 cm는 팀 설계 목표. 확정 바퀴 지름 **65 mm**를 반영하고 직진 길이 20 cm를 맞추기 위해 **축거 13.5 cm를 임시 사용**한다(실차 축거 미확정·공차 여유 없음). 윤거 13.5 cm·바퀴 폭 1.2 cm·총 약 2 kg·질량/CG·센서 배치·물성은 임시값이다. 타이어 폭·실제 구름 반지름·조향 중 검차 범위는 미확정이다. 전체 실조립 외형 적합성을 보장하지 않으며 차량 축소로 통로 문제를 해결하지 않는다. |
+@@ -22,6 +23,8 @@
+ 
+ | 항목 | 확인한 결과 | 남은 한계·근거 |
+ |---|---|---|
++| 10/7 G1-b 앞차 제한 파일럿 | 관련 회귀 412개. 고정 소스의 정지 앞차 seed 0은 최소 간격 0.384268 m·HOLD 6.17초·명시 STOP/정상 종료 통과. 등속 seed 0도 실행/간격/정지/종료·사후 감사 통과 | 등속은 진행 2.29977 m·정체 7.282초·끝 간격 3.28137 m로 행동 실패. sim 8.020초 경계 미확인 전환의 원인 미확정. 사용자 요청 중단, 재출발·seed 1/2·R0 미실행 10개. dynamics/safe-drive 개별 원천 시각·전체 G1/실차 미검증. [보고서](autonomy/LOCAL_FOLLOW_G1B_2026_10_07.md) |
++| 10/5 G1-a 선택형 연결 | 관련 회귀 366개, 최종 합성 4사례×3seed 추종·대기·재개, Gazebo 단독 12.10 m·명시 STOP·정상 종료 통과. 주행/정지 벽 충돌과 차체 노면 이탈 표본 0 | 최초 가림/종료·코너 정체 실패 보존. Gazebo 상대차·전체 랩·Jetson 추가 부하·실차는 미검증. PC 합성 처리도 일부 20 ms 초과, 기본 모드로 채택하지 않음. [보고서](autonomy/LOCAL_FOLLOW_G1_2026_10_05.md) |
+ | 10/5 G0-a 관측 기반 | 최초 회귀 239개·합성 기하 8사례·Gazebo 관측/정상 종료 개별 8사례 통과. 사후 입력 무효 판정 보강·비수평 평가 거절 후 회귀 260개와 보존 8사례 재평가 통과. 기존 코드/설정 148파일 보존 | 후속 수정본의 Gazebo 실행은 하지 않았다. 고정 센서 관측이며 주행/정지/충돌 안전 시험이 아니다. 낮은 표적·후방 사각의 미관측은 한계 재현이고, 비수평 XY 투영·실시간 처리 비용은 미검증. 중단·최초 실패 보존. [보고서](autonomy/MULTI_VEHICLE_G0_2026_10_05.md) |
+ | 10/4 RGB·프로세스 A4 통합 | 최종 ROS 34조건·관련 회귀 267개, Gazebo 12.02 m 후 보호층 종료·MCU 만료 고정·모델 정지·정상 종료 통과 | 최초 그래프 중복 조회 실패, 보완 1차 MCU 갱신 공백 실패를 보존. 같은 조건 재실행과 실패 구간 표적 재현 3회는 통과했으나 간헐 지연 원인은 미해결이며, 첫 공백 진단 기록만 추가했다. 상위 입력/제어기 일시 복구는 자동 재개, 영상 고장·MCU 만료는 고정. 실차·완전 고착 검증 아님. [상세](autonomy/PIPELINE_FAULT_VALIDATION_2026_10_04.md) |
+ | 10/4 C1·IMU A4 후속 | 전방 단일/연속 무응답 0명령·IMU 범위/변화율 거절. ROS 22조건, 12.24 m·최고 8.07 km/h·명시 정지·정상 종료 통과 | 단발 튐은 합성 대조에서 개선됐지만 신선한 고착·그럴듯한 오측정은 미검출. 보수적 C1 정책의 실물 가용성·전체 랩·Jetson은 미검증. [보고서](autonomy/SENSOR_INPUT_GUARDS_2026_10_04.md) |
+@@ -47,7 +50,8 @@ A2의 단계 계측에서는 ROS 상태 로거의 호출 위치/파일 경로 
+ 
+ ## 공식 입력과 팀 임시 요소
+ 
+-- 실행 트랙은 `config/tracks/official_v2026.09.14.yaml`과 보존한 `v2026.09.14` ZIP 기준이다. 9/15 릴리스는 문서만 갱신됐고 ZIP의 README 외 22파일은 동일하다. 10/4 재조회한 공식 main은 기존과 같은 `3a9ada035f77305390217795edaa73c495687b6e`이며 트랙 변경은 하지 않았다. [9/15 반영](track/OFFICIAL_V2026_09_15_DOC_UPDATE.md), [현행 계획의 규정·관측 검토](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md#2-규칙과-공간이-먼저-제한하는-것)
++- 실행 트랙은 `config/tracks/official_v2026.09.14.yaml`과 보존한 `v2026.09.14` ZIP 기준이다. 9/15 릴리스는 문서만 갱신됐고 ZIP의 README 외 22파일은 동일하다. 10/6 23:52 KST에 확인한 공식 main은 `d7410aa59f08b7870da5e58431e5dbae8f977adb`, 릴리스 `v2026.10.06`은 9/15 ZIP 대비 `README.md`·`track_gen.py`·`traffic_light.py`만 다르고 `world.sdf`·`scene.json`은 동일해 트랙 변경은 하지 않았다(새 ZIP 보존은 후속). [9/15 반영](track/OFFICIAL_V2026_09_15_DOC_UPDATE.md), [현행 계획의 규정·관측 검토](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md#2-규칙과-공간이-먼저-제한하는-것)
++- **10/6 2차 회의·공식 반영:** 차량 높이 40 cm 이하(마커 하단 때문에 실질 35 cm 권고), 프리랩 무벌점 주행 후 잔디 이탈 횟수 × 5%를 본경기에 적용, 잔디 진입은 바퀴 2개까지 무벌점·진입마다 1회·장시간은 심판 재량, 예산은 고장·호환 문제 부품의 미사용 증명 후 자체 예산 교체 구매와 잔액 내 추가 구매(총액 30만 원 이내)로 나뉘어 허용됐고, 결산안 11/13·젯슨 반납이 추가됐다. 공식 시뮬 신호등은 **단색 N개 순차 점등 후 전부 소등 = 출발**로 바뀌었으나 LED 수·랜덤 범위는 플레이스홀더이고 실물 사양은 미공개다. 팀 임시 빨강→초록 출발 인식은 이 구조와 반대이므로 사양 공개 후 재설계가 필요하다(이번에는 코드 변경 없음). ROD 마커 ID 14/11 표기 불일치는 미확정이며 우리 ID 49는 확정 목록에 있다. [10/6 공식 업데이트](reports/OFFICIAL_UPDATE_2026_10_06.md)
+ - 공식 본선 45 cm·지름길 각각 20 cm, 벽 40 cm. 코스 마커는 갠트리형 `DICT_4X4_50` ID 0/20/30/45, 판 10 cm·코드 7 cm·중심 40 cm·하단 35 cm다. 공식 PNG/SDF를 보존하며 옛 벽 부착·기울임/셀 보완을 현재 기본값으로 되돌리지 않는다. 신호등·방지턱·체크무늬·별도 지지는 팀 임시 요소다. 공식 벽의 `mu=mu2=0.8`과 미지정 도로/잔디 마찰, 실물 실측 물성을 구분한다. [재감사](track/OFFICIAL_V2026_09_14_REAUDIT.md), [ADR 0019](decisions/0019-official-v2026-09-14-gantry-markers.md)
+ - 본 경기 5랩·프리랩 1랩, 카메라로 직접 출발 신호 인식, HW/SW 비상정지 각각 1개 이상 등의 규정은 확인했으나 경기 상태기계·실물 정지 기능 완료를 뜻하지 않는다. **10/2 사용자 재확인에 따라 HW는 차량 장착 물리 버튼, SW는 PC 원격 접속 정지로 계획한다.** 보유 버튼을 사용하므로 정지용 추가 ESP32·휴대 송신기·버튼 구매는 제외한다. 연결·정지/통신 단절 동작은 실물 검증 전이다. [현재 정지 구성과 이전 검토안](hardware/EMERGENCY_STOP_AND_TELEMETRY_REVIEW_2026_09_18.md), [지급품·패널티](reports/OFFICIAL_UPDATE_2026_09_15.md).
+ - **예산은 주요 부품 지원 30만 원 + 제외되는 기타 제작비 자체 약 10만 원**으로 구분한다. 공식 MANUAL §3와 #14의 신규 구매 집계 기준을 적용한다. 10/2 사용자 확정 Excel은 **VCC-GND Studio VND018 N16R8·IMU·MD20A·Bus Servo Adapter (A)를 포함해 299,919원, 잔액 81원**이다. 서보 어댑터를 제작비에서 지원 구매안으로 옮겼으며, 엔코더 변환 IC·기판은 기타 제작비 후보로 남는다. 구매안 확정과 주문·수령·실물 검증을 구분한다. [확정 품목·가격·핀·USB 연결](hardware/ESP32_BUDGET_REVIEW_2026_10_02.md).
+@@ -56,12 +60,12 @@ A2의 단계 계측에서는 ROS 상태 로거의 호출 위치/파일 경로 
+ 
+ ## 다음 작업과 진행 범위
+ 
+-1. **G0-a 기반을 보존하고 G1 최소 추종/대기로 이어간다.** 관측 계약에 엔코더/자이로 운동 이력을 연결하고, 필요한 G0 높이·피치·가림/통과 외곽 조합을 추가한 뒤 경계·점유 분리와 짧은 경계 기억·보수적 간격 제어를 검증한다. 이번 고정 센서 8사례는 전체 코스 다중 차량 폐루프나 우회 경로 가능성을 보장하지 않는다. [완료 범위·후속](autonomy/MULTI_VEHICLE_G0_2026_10_05.md#다음-작업), [상세 설계](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md).
++1. **잠시 중단한 G1-b 등속 정체부터 재개한다.** 실제 순차 광선·보호층·가상 MCU의 정지 앞차 seed 0은 통과했지만 등속은 sim 8.020초 `follow_boundary_unconfirmed` 뒤 정체했다. 보존 scan·raw 상태의 경계 기억/지원 관측·후보 거절 원인을 먼저 확인하고 최소 수정/동일 조건 재시험 후 재출발 seed 0·G1 seed 1/2 6개·R0 3개를 진행한다. 사전 수치·센서/물성·기본 G1 꺼짐 유지. 자동 재개/추가 job 없음. 초기 양측 가림·코너·옆차/분기·G0 높이/피치·전체 랩/Jetson은 별도 남는다. [G1-b 결과·재개 지점](autonomy/LOCAL_FOLLOW_G1B_2026_10_07.md), [G1-a](autonomy/LOCAL_FOLLOW_G1_2026_10_05.md), [상세 설계](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md).
+ 2. A3는 현재 입력/속도의 기능 개발 기준선으로 보존한다. topic 계측·명시적 SHM 16 MiB 후보 조건의 정상 입력/소스/판정을 재사용하고 buffered 개선안은 채택하지 않는다. 제어기/필터/영상 변경 또는 실물 드라이버/MCU 통합 시 비교를 재개한다. 새 반복 보호 정지·누적 적체·정지 실패는 우선 해결하되 모든 누락의 내부 원인 규명으로 다음 개발을 무기한 막지 않는다. [결과·재현·한계](simulation/JETSON_REPLAY_2026_09_28.md#상세-진단-발행-비용-비교--929)
+-3. G1 추종/대기에서 같은 지역 계획 구조의 G2 제한 우회로 확장한다. **이동 추월은 영구 제외하지 않고 G3 조건부 후보로 재개**한다. 다만 공간·시야·응답·선행 검증 없이는 활성화하지 않는다. 고속화·지름길·전체 제어 스택 교체는 기본 범위가 아니다. 시험기간의 작업 경계와 10/24 팀 검토는 [전체 계획](reports/DEVELOPMENT_PLAN_2026_10_04.md#4-시험기간의-작업-경계와-점검-시점)을 따른다.
++3. G1 추종/대기에서 같은 지역 계획 구조의 G2 제한 우회로 확장한다. **이동 추월은 영구 제외하지 않고 G3 조건부 후보로 재개**한다. 다만 공간·시야·응답·선행 검증 없이는 활성화하지 않는다. 고속화·지름길·전체 제어 스택 교체는 기본 범위가 아니다. 10/6 잔디 판정(바퀴 2개까지 무벌점)을 주행 여유로 쓰자는 사용자 메모는 **미채택 후속 검토**로만 남기며, 시간 여유가 생기거나 G3 추월을 구현할 때 [체크포인트](reports/OFFICIAL_UPDATE_2026_10_06.md#후속-메모-잔디-판정을-이용한-주행-여유--미채택)를 재검토한다. 시험기간의 작업 경계와 10/24 팀 검토는 [전체 계획](reports/DEVELOPMENT_PLAN_2026_10_04.md#4-시험기간의-작업-경계와-점검-시점)을 따른다.
+ 4. `ros_v2` MCU 갱신 지연은 원인 미확정이다. 새 시험기는 `/actuation/diagnostics`를 종료 전에 회수하고 재발하면 먼저 조사한다. 입력 자동 복구와 영상/MCU 고정 고장·경기 재출발 정책은 B3에서 통일한다. 신선한 고착/그럴듯한 IMU 오측정·단일 모터축의 슬립/펄스 손실 한계는 [C1/IMU](autonomy/SENSOR_INPUT_GUARDS_2026_10_04.md), [모터축](autonomy/MOTOR_ENCODER_VALIDATION_2026_10_02.md), [프로세스 고장](autonomy/PIPELINE_FAULT_VALIDATION_2026_10_04.md)에 남는다. 조향 명령을 실제 운동의 정답으로 쓰지 않는다.
+ 5. 낮은 차량/측후방 사각·실물 센서/MCU 시간 계약·기구/전원·조향/제동, 공식 LED/재출발·원격 STOP·5랩/방지턱은 계속 필수 확인 항목이다. 부품 구매와 실물 관측/정지 검증은 다르다. 하드웨어팀 전달·Jetson 전원/접속·실물 시험 구간 확보가 필요한 시점을 [계획](reports/DEVELOPMENT_PLAN_2026_10_04.md)에 표시했다.
+ 
+-사용자는 **10/5부터 시험기간이며 10/24부터 적극 참여 가능**하다. 10/5 요청에 따라 **센서·배치는 기존 설정을 유지**한다(B0183·C1·LSM6DSOX, C1 임시 측정면 9.5 cm·전방 6 cm·후방 60° 마스크). 대체 카메라/ToF 구매와 개방층 기구 제안은 채택하지 않았다. 이 유지 결정이 실차 장착 확정·관측 안전 보장은 아니다. 사용자 승인으로 **GPT 주 에이전트는 설계/최종 검토, Claude Opus 5.5는 기본 구현, Sonnet 5.5는 단순 실행·대기**를 맡는다. Sol/Luna 조합은 별도 사용자 지시에만 사용하며 사용량 한도로 자동 전환하지 않는다. [작업 규칙](../AGENTS.md)이 기준이다. 이번에는 사용자가 허용한 주 에이전트의 제한된 마무리로 검증을 끝냈으며, 초기화 대기·자동 실행 예약·외부 게시·Jetson 실행은 하지 않았다.
++사용자는 **10/5부터 시험기간이며 10/24부터 적극 참여 가능**하다. 10/5 요청에 따라 **센서·배치는 기존 설정을 유지**한다(B0183·C1·LSM6DSOX, C1 임시 측정면 9.5 cm·전방 6 cm·후방 60° 마스크). 대체 카메라/ToF 구매와 개방층 기구 제안은 채택하지 않았다. 이 유지 결정이 실차 장착 확정·관측 안전 보장은 아니다. 기본 역할은 [작업 규칙](../AGENTS.md)의 GPT 설계/검토·Claude 구현/실행이며, **10/7 G1-b는 Claude 사용량 한도 뒤 사용자 명시 지시로 GPT 설계/검토·GPT-6.1 Sol 수정/문서·GPT-6 Luna 실행/회수로 이관했다.** 사용자가 직접 Turbo 전원 모드로 복구한 상태에서 새 파일럿을 수행했고, “하던 것까지 하고 잠시 중단” 요청에 따라 등속 실패의 정지/종료·기록까지 마쳤다. 초기화 대기·자동 재개/예약·커밋/푸시·외부 게시·Jetson 실행은 하지 않았다.
+ 
+-[10/4 전체 개발 계획](reports/DEVELOPMENT_PLAN_2026_10_04.md)이 현재 작업 순서의 근거이며 9/22 계획은 이력으로 보존한다. A3 집중 최적화 보류와 A4 제한 시험은 모든 지연·센서 고장의 해결이나 실차 안전 보증이 아니다. 다중 차량 관측 기반은 구현했으나 실제 추종/우회 주행 제어는 아직 설계 단계다. 작업 범위는 사용자의 현재 요청을 따르고 이전 세션의 게시·중단 지시를 누적하지 않는다.
++[10/4 전체 개발 계획](reports/DEVELOPMENT_PLAN_2026_10_04.md)이 현재 작업 순서의 근거이며 9/22 계획은 이력으로 보존한다. A3 집중 최적화 보류와 A4 제한 시험은 모든 지연·센서 고장의 해결이나 실차 안전 보증이 아니다. G1-a/G1-b 추종·대기는 선택형 제한 검증과 등속 진행성 미해결 단계이고 우회/추월은 설계 단계다. 작업 범위는 사용자의 현재 요청을 따르고 이전 세션의 게시·중단 지시를 누적하지 않는다.
+diff --git a/docs/README.md b/docs/README.md
+index 671393d..380be78 100644
+--- a/docs/README.md
++++ b/docs/README.md
+@@ -7,7 +7,7 @@
+ | 작업 | 먼저 볼 문서 | 필요할 때 확인할 근거 |
+ |---|---|---|
+ | 전체 계획·다중 차량 | [10/4 현행 개발 계획](reports/DEVELOPMENT_PLAN_2026_10_04.md), [다중 차량 전략·설계](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md), [G0 관측·기하 시험](autonomy/MULTI_VEHICLE_G0_2026_10_05.md) | [알고리즘 비교 이력](autonomy/ALGORITHM_OPTIONS.md), [9/22 이전 계획](reports/DEVELOPMENT_PLAN_2026_09_22.md) |
+-| 주행·지역 경로·보호층 | [지역 Pure Pursuit](autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md) | [ADR 0022](decisions/0022-b0183-c1-local-pursuit-prototype.md), [알고리즘 선택](autonomy/ALGORITHM_OPTIONS.md) |
++| 주행·지역 경로·보호층 | [지역 Pure Pursuit](autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md), [G1-a 선택형 추종·대기](autonomy/LOCAL_FOLLOW_G1_2026_10_05.md), [G1-b Gazebo 앞차 폐루프](autonomy/LOCAL_FOLLOW_G1B_2026_10_07.md) | [ADR 0022](decisions/0022-b0183-c1-local-pursuit-prototype.md), [알고리즘 선택](autonomy/ALGORITHM_OPTIONS.md) |
+ | LiDAR 운동/시간 보정 | [구현과 입력 계약](sensors/LIDAR_MOTION_IMPLEMENTATION.md) | [ADR 0018](decisions/0018-sensor-based-lidar-motion-compensation.md), [순차 취득 시험](sensors/C1_SEQUENTIAL_SPEED_EXPERIMENT.md) |
+ | 센서 잡음·누락·지연 | [C1 무응답·IMU 이상치 보호](autonomy/SENSOR_INPUT_GUARDS_2026_10_04.md), [모터축 엔코더·고착 1차 검증](autonomy/MOTOR_ENCODER_VALIDATION_2026_10_02.md), [LiDAR 내성](autonomy/LIDAR_ROBUSTNESS_2026_09_22.md), [기존 IMU·엔코더 내성](autonomy/MOTION_SENSOR_ROBUSTNESS_2026_09_22.md) | 각 보고서의 실행 설정·실패·JSON |
+ | Jetson–MCU 구동·정지 | [구동 계약](hardware/ACTUATION_CONTRACT_2026_09_22.md), [ROS 연결](hardware/ACTUATION_ROS_2026_09_22.md), [RGB/프로세스 중단·정지/복구](autonomy/PIPELINE_FAULT_VALIDATION_2026_10_04.md) | [ADR 0002](decisions/0002-jetson-esp32-actuation-boundary.md), [ADR 0023](decisions/0023-mcu-actuation-contract-reference.md) |
+@@ -16,7 +16,7 @@
+ | 공식 트랙·시설 변경 | [9/15 문서 적용](track/OFFICIAL_V2026_09_15_DOC_UPDATE.md), [9/14 재감사](track/OFFICIAL_V2026_09_14_REAUDIT.md) | [ADR 0019](decisions/0019-official-v2026-09-14-gantry-markers.md), `config/tracks/official_v2026.09.14.yaml`. 초기판 재현에는 [초기 감사](track/TRACK_AUDIT.md) |
+ | 차량·구동 물리 | [현행 모터축 엔코더·65 mm/15:1 반영](hardware/DRIVETRAIN_GEARING_2026_10_02.md#9-시뮬레이션-반영-후속), [차량 동역학](simulation/VEHICLE_DYNAMICS.md) | [ADR 0026](decisions/0026-motor-shaft-encoder-baseline.md), [기존 ADR 0008](decisions/0008-single-motor-mechanical-differential.md), `src/arena_description/config/vehicle.yaml`. 이전 감속비·전류 검토는 [보류 메모와 PR 원본](archive/2026-10-01-drivetrain/README.md) |
+ | 부품 구매·배치 | [확정 구매안·ESP32·인터페이스](hardware/ESP32_BUDGET_REVIEW_2026_10_02.md), [IMU 검토](hardware/IMU_SELECTION_2026_09_19.md) | [B0183/C1 선택](decisions/0020-b0183-c1-procurement-baseline.md), [배치 기하](sensors/SENSOR_PLACEMENT_GEOMETRY.md), `hardware/`의 날짜별 가격 조사 |
+-| 규정·지원품·외부 질문 | [규정/지원품 기록](reports/OFFICIAL_UPDATE_2026_09_15.md), [10/4 주행 규정 재검토](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md#2-규칙과-공간이-먼저-제한하는-것) | [확인 질문](HARDWARE_AND_RULE_QUESTIONS.md), [원격 STOP](hardware/EMERGENCY_STOP_AND_TELEMETRY_REVIEW_2026_09_18.md). 새 판정은 공식 최신 원문 대조 |
++| 규정·지원품·외부 질문 | [10/6 2차 회의·공식 업데이트](reports/OFFICIAL_UPDATE_2026_10_06.md), [규정/지원품 기록](reports/OFFICIAL_UPDATE_2026_09_15.md), [10/4 주행 규정 재검토](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md#2-규칙과-공간이-먼저-제한하는-것) | [확인 질문](HARDWARE_AND_RULE_QUESTIONS.md), [원격 STOP](hardware/EMERGENCY_STOP_AND_TELEMETRY_REVIEW_2026_09_18.md). 새 판정은 공식 최신 원문 대조 |
+ | 기존 비교·경위 확인 | [기존 데모](autonomy/BASIC_DEMO.md), [스테레오/ToF 검토](sensors/STEREO_CAMERA_AND_MINIMAL_TOF.md) | [활동 기록](activity/), [정리 이전 보관본](archive/2026-09-27/README.md) |
+ 
+ ## 기록 위치와 갱신 시점
+diff --git a/docs/activity/2026-10-05.md b/docs/activity/2026-10-05.md
+index 6579170..730ff08 100644
+--- a/docs/activity/2026-10-05.md
++++ b/docs/activity/2026-10-05.md
+@@ -1,8 +1,8 @@
+ # 2026-10-05 활동 기록
+ 
+-- **활동:** 기존 센서·배치를 유지한 다중 차량 첫 작업으로, 취득 시각·광선 원점/방향·미관측을 보존하는 관측 계약과 통과 단면 기하·Gazebo 표적 시험기를 구현했다. 사용자 승인으로 GPT 설계/검토 + Claude Opus 5.5 구현·Sonnet 5.5 실행을 기본 역할로 변경했다. 사후 코드 검토 요청으로 표적 0개와 입력 전체 무효의 구분 및 미지원 비수평 평가 거절을 추가했다.
+-- **결과:** 최초 회귀 239개, 합성 기하 8사례, 고정 센서 Gazebo 관측·정상 종료 개별 8사례를 확인했다. 실행 묶음 중단 후 완료된 4개는 보존하고 남은 4개만 주 에이전트가 마무리했다. G0 이전 코드/설정 148파일과 실행 소스 19파일의 해시를 대조했다. 사후 수정은 새 회귀 21조건의 수정 전 실패·수정 후 총 260개 통과 및 보존 스캔 8사례 재평가로 확인했으며 새 Gazebo 실행은 하지 않았다.
+-- **한계·후속:** 최초 숫자 비교·ROS 문맥·토픽·시각 경계 실패와 중단 자료를 보존했다. 낮은 표적/후방 사각의 미관측은 안전 성공이 아니다. 자차 운동 이력 연결·가림/외곽 시험·G1 추종/대기는 후속이며, 주행·Jetson·실차 검증과 외부 게시는 하지 않았다.
+-- **근거:** [G0-a 보고서](../autonomy/MULTI_VEHICLE_G0_2026_10_05.md), [결과·출처 감사](../../artifacts/validation/2026-10-05/g0_parent_finish_v1/collection_report.json), [역할 기본 지침](../../AGENTS.md).
++- **활동:** 기존 센서·배치를 유지한 다중 차량 첫 작업으로, 취득 시각·광선 원점/방향·미관측을 보존하는 관측 계약과 통과 단면 기하·Gazebo 표적 시험기를 구현했다. 사용자 승인으로 GPT 설계/검토 + Claude Opus 5.5 구현·Sonnet 5.5 실행을 기본 역할로 변경했다. 사후 코드 검토 요청으로 표적 0개와 입력 전체 무효의 구분 및 미지원 비수평 평가 거절을 추가했다. 이후 사용자 별도 지시에 따라 GPT 주 에이전트가 G1-a 운동 이력·경계 확인/기억·점유 분리·거리 기반 추종/대기를 직접 구현하고 GPT-6 Luna가 합성/시뮬 실행·대기를 맡았다.
++- **결과:** 최초 회귀 239개, 합성 기하 8사례, 고정 센서 Gazebo 관측·정상 종료 개별 8사례를 확인했다. 실행 묶음 중단 후 완료된 4개는 보존하고 남은 4개만 주 에이전트가 마무리했다. G0 이전 코드/설정 148파일과 실행 소스 19파일의 해시를 대조했다. 사후 수정은 새 회귀 21조건의 수정 전 실패·수정 후 총 260개 통과 및 보존 스캔 8사례 재평가로 확인했으며 그 사후 수정만을 위한 새 Gazebo 실행은 하지 않았다. 후속 G1-a는 회귀 366개, 최종 합성 앞차 12조건, 공식 코스 단독 12.10 m·명시 정지·정상 종료를 확인했다. 주행/정지 충돌·차체 노면 이탈 표본은 0이며 소스 ZIP/trace를 별도 대조했다.
++- **한계·후속:** G0 최초 숫자 비교·ROS 문맥·토픽·시각 경계 실패와 중단 자료를 보존했다. G1의 첫 가림/종료·코너 정체 실패도 보존하고 현재 관측·경계 이력을 사용한 후보 선택과 launch 문맥을 수정했다. 임계값·센서·물성은 완화하지 않았다. 낮은 표적/후방 사각의 미관측은 안전 성공이 아니다. G1은 기본 꺼짐·저속 선택형이며 Gazebo 상대차 폐루프·전체 랩·Jetson 추가 부하·실차는 후속이다. 이 G1 작업은 커밋/푸시·외부 게시 없이 로컬에 정리했다.
++- **근거:** [G0-a 보고서](../autonomy/MULTI_VEHICLE_G0_2026_10_05.md), [G0 결과·출처 감사](../../artifacts/validation/2026-10-05/g0_parent_finish_v1/collection_report.json), [G1-a 보고서](../autonomy/LOCAL_FOLLOW_G1_2026_10_05.md), [G1 최종 출처 감사](../../artifacts/validation/2026-10-05/g1_review_v1/collection_final.json), [역할 기본 지침](../../AGENTS.md).
+ 
+ 같은 날 사용자의 전체 main 반영 요청에 따라 여러 세션의 미반영 코드·문서·검증 자료를 함께 점검했다. 원격의 구매안 문서 변경은 보존하고, 원시 센서 기록·빌드 결과·설치 의존성 등 기존 제외 정책은 유지한다. 공개 후보와 ZIP 내부의 자격증명 패턴·코드 구문·문서 링크를 확인했으며, 과거 진단의 연결 JSON 출력은 기록으로 원형 보존한다. 실제 게시 커밋과 원격 일치 여부는 Git 기록을 기준으로 확인한다.
+diff --git a/scripts/validate_basic_autonomy.py b/scripts/validate_basic_autonomy.py
+index 6c6505c..c1db90d 100644
+--- a/scripts/validate_basic_autonomy.py
++++ b/scripts/validate_basic_autonomy.py
+@@ -171,11 +171,13 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
+                        lidar_acquisition="snapshot", lidar_compensation="none",
+                        control_rate_hz=20.0, render_backend="system", sensor_wall_timeout_s=3.0,
+                        speed_bump=True, collision_detector="configured", runtime_artifacts="", grid_slot=0,
+-                       lidar_test_profile="", motion_test_profile="", actuation_mode="legacy", record_inputs=False):
++                       lidar_test_profile="", motion_test_profile="", actuation_mode="legacy", record_inputs=False,
++                       g1_follow=False, extra_arguments=()):
+     # 이 검사기는 터미널 프로세스 그룹이 아니라 ros2 launch에만 SIGINT를
+     # 보냅니다. WSL의 TTY 상속 여부와 무관하게 자식에게도 전달되게 합니다.
+     return subprocess.Popen(
+-        ["ros2", "launch", "--noninteractive", "arena_bringup", "demo.launch.py", "headless:=true",
++        ["ros2", "launch", "--noninteractive", "arena_bringup",
++         "g1_follow.launch.py" if g1_follow else "demo.launch.py", "headless:=true",
+          f"speed_profile:={speed_profile}", f"lidar_rate_hz:={lidar_rate_hz:g}",
+          f"tof_safety:={str(bool(tof_safety)).lower()}", f"red_duration_s:={red_duration_s:g}",
+          f"autonomy_mode:={autonomy_mode}",
+@@ -190,7 +192,7 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
+          *([f"lidar_test_profile:={lidar_test_profile}"] if lidar_test_profile else []),
+          *([f"motion_test_profile:={motion_test_profile}"] if motion_test_profile else []),
+          f"batch_static_visuals:={str(autonomy_mode == 'local_pursuit').lower()}",
+-         f"chase_camera:={str(bool(chase_camera)).lower()}"],
++         f"chase_camera:={str(bool(chase_camera)).lower()}", *extra_arguments],
+         cwd=REPO, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
+ 
+ 
+@@ -230,6 +232,7 @@ def main():
+                         help="검사 시작 전 빨간 신호 유지 시간. 기본 데모와 같은 8초입니다.")
+     parser.add_argument("--autonomy-mode", choices=("lidar", "stereo", "local_pursuit"), default="lidar",
+                         help="lidar=C1+ToF6, stereo=전방 D435i 깊이+측면 ToF4")
++    parser.add_argument('--g1-follow', action='store_true', help='G1-a 선택형 추종기. 이 검사에서는 단독 회귀만 평가')
+     parser.add_argument("--video", action="store_true",
+                         help="제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.")
+     parser.add_argument("--disable-speed-bump", action="store_true")
+@@ -237,6 +240,9 @@ def main():
+     parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy_official",
+                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
+     args = parser.parse_args()
++    if args.g1_follow and (args.autonomy_mode != 'local_pursuit' or args.lidar_compensation != 'both'
++                          or args.lidar_acquisition != 'sequential' or not args.disable_speed_bump):
++        raise ValueError('G1-a는 local_pursuit+both+sequential, 방지턱 비활성 시험 전용입니다.')
+     validate_limits(args.record_max_raw_gib, args.record_max_wall_seconds)
+     if args.record_inputs and args.autonomy_mode != 'local_pursuit':
+         raise ValueError('A2 recorder currently requires local_pursuit')
+@@ -281,7 +287,7 @@ def main():
+     os.environ.setdefault("FASTDDS_BUILTIN_TRANSPORTS", "LARGE_DATA")
+     import rclpy
+     from rclpy.signals import SignalHandlerOptions
+-    from rclpy.qos import QoSProfile, qos_profile_sensor_data
++    from rclpy.qos import DurabilityPolicy, QoSProfile, qos_profile_sensor_data
+     from sensor_msgs.msg import CameraInfo, Image, LaserScan, Imu
+     from nav_msgs.msg import Odometry
+     from ackermann_msgs.msg import AckermannDriveStamped
+@@ -352,7 +358,7 @@ def main():
+             Image, "/sim/chase/image", lambda m: remember(m, "chase"), QoSProfile(depth=2)
+         ))
+     stop_service = node.create_client(SetBool, "/autonomy/enable")
+-    actuation_trace, arm_future = [], None
++    actuation_trace, actuation_diagnostics, arm_future = [], [], None
+     arm_service = node.create_client(Trigger, '/actuation/arm')
+     mcu_stop_service = node.create_client(Trigger, '/actuation/stop')
+     if args.actuation_mode == 'virtual_mcu':
+@@ -363,6 +369,11 @@ def main():
+         subscriptions.append(node.create_subscription(String, '/actuation/status', receive_actuation, 100))
+         subscriptions.append(node.create_subscription(String, '/actuation/output_status',
+             lambda m: remember(json.loads(m.data), 'actuation_output'), 100))
++        # 고장 때 한 번 발행되는 진단은 late join에도 회수한다. 정상 실행에서는
++        # 메시지가 없는 것이 정상이며, status/실제 정지 판정을 대신하지 않는다.
++        subscriptions.append(node.create_subscription(String, '/actuation/diagnostics',
++            lambda m: actuation_diagnostics.append(json.loads(m.data)),
++            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)))
+     # demo.launch.py의 track=official과 같은 월드로 진행 거리와 충돌을 판정합니다.
+     world = DEMO_WORLD
+     route = np.genfromtxt(world / "centerline.csv", delimiter=",", names=True)
+@@ -432,6 +443,12 @@ def main():
+                                             REPO / "src/arena_autonomy/arena_autonomy/tof_safety_core.py",
+                                             REPO / "src/arena_bringup/config/wall_follow.yaml"]}}
+     processes = []
++    if args.g1_follow:
++        for relative in ('src/arena_autonomy/arena_autonomy/local_follow.py',
++                         'src/arena_autonomy/arena_autonomy/scene_motion.py',
++                         'src/arena_autonomy/arena_autonomy/local_scene.py',
++                         'src/arena_bringup/launch/g1_follow.launch.py'):
++            report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
+     recorder = recorder_log = None
+     if args.record_inputs:
+         for rel in ('scripts/record_sensor_bag.py', 'scripts/recording_guard.py',
+@@ -494,7 +511,7 @@ def main():
+                                             args.render_backend, args.sensor_wall_timeout_s,
+                                             not args.disable_speed_bump, args.collision_detector, str(output),
+                                             args.grid_slot, args.lidar_test_profile, args.motion_test_profile,
+-                                            args.actuation_mode, args.record_inputs))
++                                            args.actuation_mode, args.record_inputs, args.g1_follow))
+         pose_process = subprocess.Popen(["gz", "topic", "-e", "-t", "/world/it_arena_track/dynamic_pose/info", "--json-output"],
+                                         cwd=REPO, stdout=subprocess.PIPE, stderr=log, text=True, start_new_session=True)
+         processes.append(pose_process)
+@@ -818,12 +835,37 @@ def main():
+         report["passed"] = (not false_start and collision_samples == 0 and report['stop_collision_samples'] == 0 and report["stop_stable"] and
+                             report["sensor_only_inputs"] and safety_evidence and source_interface_passed and
+                             {"red", "yellow", "green"}.issubset(signal_states) and route_evidence)
++        if args.g1_follow:
++            running_rows = [row['autonomy'] for row in trace if row['autonomy']['state'] == 'RUNNING']
++            report['g1_runtime_verified'] = bool(running_rows) and all(
++                row.get('mode') == 'g1_follow' and row.get('passing_enabled') is False
++                for row in running_rows)
++            report['g1_behavior_counts'] = {name: sum(row['autonomy'].get('behavior') == name for row in trace)
++                                           for name in ('CRUISE', 'FOLLOW', 'HOLD')}
++            report['passed'] &= report['g1_runtime_verified']
+         if args.actuation_mode == 'virtual_mcu':
+             report['passed'] &= report['actuation_passed']
+     except Exception as error:
+         report["error"] = str(error)
+         print(f"검사 실패: {error}", flush=True)
+     finally:
++        if args.actuation_mode == 'virtual_mcu':
++            # status와 별도 토픽이므로 고장 status가 먼저 도착해 루프가 끝날 수 있다.
++            # 차는 이미 고정 정지 상태다. 첫 진단만 최대 1초 회수하고 새 ARM은 하지 않는다.
++            if state.get('actuation', {}).get('reason') == 'control_deadline_missed':
++                diagnostic_deadline = time.monotonic()+1.
++                while not actuation_diagnostics and time.monotonic() < diagnostic_deadline:
++                    rclpy.spin_once(node, timeout_sec=.01)
++            (output/'actuation_diagnostics.json').write_text(
++                json.dumps(actuation_diagnostics, indent=2), encoding='utf-8')
++            report['actuation_diagnostics'] = {
++                'subscribed': True, 'samples': len(actuation_diagnostics),
++                'control_deadline_samples': sum(
++                    row.get('type') == 'control_deadline_diagnostic' for row in actuation_diagnostics),
++                'scope': 'pre-shutdown fault diagnostics; no message alone does not prove no delay',
++            }
++            if report['actuation_diagnostics']['control_deadline_samples']:
++                report['passed'] = False
+         if actuation_trace:
+             (output/'actuation_trace.json').write_text(json.dumps(actuation_trace, indent=2), encoding='utf-8')
+             # 목표 거리 전에 실패해도 MCU 상태와 허가 결과를 최종 요약에 남긴다.
+diff --git a/src/arena_autonomy/arena_autonomy/local_pursuit.py b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+index 0e7c12c..cff8e86 100644
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -4,6 +4,9 @@ from arena_autonomy.core import marker_ids
+ from arena_autonomy.wall_follow import WallFollow
+ from arena_autonomy.vision_process import VisionPipeline, VisionProcess
+ from arena_vehicle_interface.node_lifecycle import run_node
++from arena_autonomy.local_follow import FollowConfig, LocalFollow
++from arena_autonomy.scene_motion import motion_scene
++from arena_autonomy.lidar_motion import MotionUnavailable
+ 
+ 
+ class LocalPursuit(WallFollow):
+@@ -14,6 +17,15 @@ class LocalPursuit(WallFollow):
+             raise ValueError('rear_blind_half_angle_deg must be within 0..80')
+         if self.motion is None:
+             raise ValueError("local_pursuit는 엔코더/IMU 운동 보정이 필요합니다.")
++        self.g1_enabled = bool(self.declare_parameter('g1_follow_enabled', False).value)
++        if self.g1_enabled and (self.motion.mode != 'both' or not self.motion.verified):
++            raise ValueError('G1은 검증된 순차 취득과 both 운동 보정이 필요합니다.')
++        self.follow = LocalFollow(FollowConfig(
++            wheelbase_m=float(self.settings['wheelbase_m']),
++            max_steering_rad=float(self.settings['max_steering_angle_rad']),
++            max_speed_mps=min(1., float(self.settings['max_speed_mps'])),
++            lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),
++            wall_offset_m=float(self.settings['target_wall_distance_m']))) if self.g1_enabled else None
+         self.vision_execution = str(self.declare_parameter('vision_execution', 'process').value)
+         if self.vision_execution not in ('inline', 'process'):
+             raise ValueError('vision_execution must be inline or process')
+@@ -29,6 +41,8 @@ class LocalPursuit(WallFollow):
+         self.vision_pipeline.offer(message)
+ 
+     def on_reset(self, request, response):
++        if getattr(self, 'follow', None) is not None:
++            self.follow.reset()
+         if self.vision_pipeline is not None:
+             self.vision_pipeline.reset()
+         return super().on_reset(request, response)
+@@ -54,7 +68,11 @@ class LocalPursuit(WallFollow):
+                     self.side = 'right'
+                 elif any(marker in self.ids for marker in (0, 20, 45)):
+                     self.side = 'left'
+-        return super().control()
++        result = super().control()
++        if getattr(self, 'follow', None) is not None and self.last_status in (
++                'WAIT_GREEN', 'DISABLED', 'SENSOR_STOP', 'MOTION_STOP', 'SCAN_INVALID'):
++            self.follow.reset()
++        return result
+ 
+     def destroy_node(self):
+         # 영상 정리를 기다리기 전에 주행 출력은 먼저 정지한다.
+@@ -74,6 +92,17 @@ class LocalPursuit(WallFollow):
+     def command(self, points):
+         # 명령 속도가 아니라 엔코더 관측으로 선행 거리를 정한다.
+         speed = self.motion.history.wheels.values[-1] if self.motion.history.wheels.values else 0.
++        if getattr(self, 'follow', None) is not None:
++            try:
++                scene = motion_scene(self.scan, self.motion.history,
++                    self.motion.last_meta['reference_stamp_s'], timing_verified=self.motion.verified,
++                    epoch=self.motion.counts['resets'], rear_half_angle_deg=self.rear_blind_half_angle)
++                return self.follow.command(scene, self.motion.history, speed, self.side,
++                                           self.last_steering, 1/self.settings['control_rate_hz'])
++            except (MotionUnavailable, ValueError) as error:
++                self.follow.reset()
++                return 0., 0., {'reason': 'follow_input_stop', 'behavior': 'HOLD',
++                               'input_error': str(error), 'mode': 'g1_follow'}
+         return pursuit_command(points, self.side, speed,
+                                self.settings["wheelbase_m"], self.settings["max_steering_angle_rad"],
+                                self.settings["max_speed_mps"],
+diff --git a/src/arena_bringup/launch/simulation.launch.py b/src/arena_bringup/launch/simulation.launch.py
+index 3fc56b6..a2116f9 100644
+--- a/src/arena_bringup/launch/simulation.launch.py
++++ b/src/arena_bringup/launch/simulation.launch.py
+@@ -41,6 +41,8 @@ SPEED_PROFILES = {
+     "cautious": {"max_speed_mps": .35, "min_speed_mps": .14, "acceleration_mps2": .5},
+     "brisk": {"max_speed_mps": .70, "min_speed_mps": .18, "acceleration_mps2": .8},
+     "exploratory": {"max_speed_mps": 1.40, "min_speed_mps": .20, "acceleration_mps2": 1.0},
++    # G1-b 비교 전용: exploratory와 같고 명령 상한만 G1 시험 상한 1.0 m/s로 맞춘다.
++    "g1_compare_1mps": {"max_speed_mps": 1.0, "min_speed_mps": .20, "acceleration_mps2": 1.0},
+     "hardware_target": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 1.5},
+     # 라이다 주기 비교용 목표 속도 상한입니다. 20 km/h 실측 도달을 보장하지 않습니다.
+     # 전방 거리·곡률 감속이 남아 있으며 실제 모터 가속도나 안전 속도도 아닙니다.
+@@ -330,10 +332,42 @@ def _batch_static_visuals(world, destination):
+     return total
+ 
+ 
+-def _runtime_world_overrides(source, destination, detector, scene_broadcaster, speed_bump=True, batch_visuals=False):
++EVALUATION_WORLD_PLUGINS = {"gz-sim-contact-system": "gz::sim::systems::Contact"}
++
++
++def _evaluation_models(path, world):
++    """평가 전용 정적 actor 조각을 검사한다. 제어 입력이 아니며 원본 월드는 바꾸지 않는다."""
++    root = ET.parse(path).getroot()
++    if root.tag != "sdf":
++        raise RuntimeError("evaluation_actor_sdf의 최상위 요소는 sdf여야 합니다.")
++    existing = {model.get("name") for model in world.findall("model")}
++    models, plugins = [], []
++    for child in root:
++        if child.tag == "model":
++            name = child.get("name", "")
++            if not name.startswith("eval_") or name in existing or child.findtext("static") != "true":
++                raise RuntimeError(f"평가 actor는 이름 eval_*·정적·기존 이름과 비중복이어야 합니다: {name}")
++            existing.add(name)
++            models.append(child)
++        elif child.tag == "plugin" and EVALUATION_WORLD_PLUGINS.get(child.get("filename")) == child.get("name"):
++            plugins.append(child)
++        else:
++            raise RuntimeError(f"허용되지 않은 평가 월드 요소: {child.tag} {child.attrib}")
++    if not models:
++        raise RuntimeError("evaluation_actor_sdf에 평가 actor 모델이 없습니다.")
++    return models, plugins
++
++
++def _runtime_world_overrides(source, destination, detector, scene_broadcaster, speed_bump=True, batch_visuals=False,
++                             evaluation_models=None):
+     """형상·물성은 보존하고 선택형 런타임 설정만 사본에 적용합니다."""
+     tree = ET.parse(source)
+     world = tree.getroot().find("world")
++    if evaluation_models:
++        models, plugins = _evaluation_models(evaluation_models, world)
++        present = {plugin.get("filename") for plugin in world.findall("plugin")}
++        world.extend(plugin for plugin in plugins if plugin.get("filename") not in present)
++        world.extend(models)
+     if not speed_bump:
+         for parent in world.iter():
+             for child in list(parent):
+@@ -641,10 +675,18 @@ def _launch_setup(context):
+     temporary_world = None
+     speed_bump = _as_bool(LaunchConfiguration("speed_bump").perform(context))
+     batch_visuals = _as_bool(LaunchConfiguration("batch_static_visuals").perform(context))
+-    if collision_detector != "configured" or not scene_broadcaster or not speed_bump or batch_visuals:
++    evaluation_actor = LaunchConfiguration("evaluation_actor_sdf").perform(context)
++    if evaluation_actor:
++        # 평가기가 정답 자세를 움직이는 표적. 공식 원본은 그대로 두고 실행 사본에만 넣는다.
++        evaluation_actor = Path(evaluation_actor).resolve()
++        if not local_mode or track != "official" or world_override or not evaluation_actor.is_file():
++            raise RuntimeError("evaluation_actor_sdf는 official local_pursuit 실행 사본에서만 사용합니다.")
++    if (collision_detector != "configured" or not scene_broadcaster or not speed_bump or batch_visuals
++            or evaluation_actor):
+         temporary_world = tempfile.TemporaryDirectory(prefix="arena_world_")
+         runtime_path = Path(temporary_world.name) / "world.sdf"
+-        _runtime_world_overrides(world_path, runtime_path, collision_detector, scene_broadcaster, speed_bump, batch_visuals)
++        _runtime_world_overrides(world_path, runtime_path, collision_detector, scene_broadcaster, speed_bump, batch_visuals,
++                                 evaluation_actor or None)
+         world_path = runtime_path
+     if runtime_artifacts:
+         (evidence / "runtime_world.sdf").write_bytes(world_path.read_bytes())
+@@ -1108,6 +1150,8 @@ def generate_launch_description() -> LaunchDescription:
+             DeclareLaunchArgument("depth_camera", default_value="true", description="깊이 센서와 점군을 켭니다. RGB·IMU는 유지합니다."),
+             DeclareLaunchArgument("speed_bump", default_value="true", description="false는 실행 사본에서만 임시 방지턱 제거"),
+             DeclareLaunchArgument("runtime_artifacts", default_value="", description="검증 실행 입력 보관 폴더"),
++            DeclareLaunchArgument("evaluation_actor_sdf", default_value="",
++                                  description="평가 전용 정적 actor SDF 조각. official local_pursuit 실행 사본에만 삽입"),
+             DeclareLaunchArgument("lidar_test_profile", default_value="", description="시험용 거리오차/지연 JSON; 빈 값은 기존 동작"),
+             DeclareLaunchArgument("motion_test_profile", default_value="", description="시험용 IMU/엔코더 오류 JSON; 기본 비활성"),
+             DeclareLaunchArgument("batch_static_visuals", default_value="false", description="정적 상자 표시만 동일 꼭짓점/재질의 메시로 묶음; 충돌체 불변"),
+diff --git a/tests/test_multi_vehicle_g0.py b/tests/test_multi_vehicle_g0.py
+index afcc5ea..ae9939e 100644
+--- a/tests/test_multi_vehicle_g0.py
++++ b/tests/test_multi_vehicle_g0.py
+@@ -16,7 +16,16 @@ def test_eight_cases_preregistered_and_sensor_configuration_unchanged():
+     suite = g0.load_suite()
+     assert len(suite['cases']) == 8 and suite['seed'] == 0
+     assert all(g0.verify_sensor_config(suite)['checks'].values())
+-    assert g0.baseline_comparison()['unchanged']
++    # 현재 기능 회귀는 승인된 후속 소스 계약을 명시한다. G0 기본 비교는
++    # 여전히 pre-G0 bytes를 뜻하며 기존 기록/manifest를 소급 변경하지 않는다.
++    assert g0.baseline_comparison(ROOT/'config/tests/g1b_r0_sha256.json')['unchanged']
++
++
++def test_g0_default_baseline_retains_original_meaning_after_g1b_launch_change():
++    result = g0.baseline_comparison()
++    assert not result['unchanged']
++    assert {p for p, row in result['files'].items() if not row['matches']} == {
++        'src/arena_bringup/launch/simulation.launch.py'}
+ 
+ 
+ def test_trajectory_units_and_stop_restart_phases():
+diff --git a/tests/test_r0_safety_contract.py b/tests/test_r0_safety_contract.py
+index 2e8a748..2210657 100644
+--- a/tests/test_r0_safety_contract.py
++++ b/tests/test_r0_safety_contract.py
+@@ -20,11 +20,28 @@ ROOT = Path(__file__).resolve().parents[1]
+ 
+ def test_pre_g0_working_tree_hashes_preserved():
+     baseline = json.loads((ROOT/'config/tests/multi_vehicle_g0_r0_sha256.json').read_text())['sha256']
+-    assert {path: hashlib.sha256((ROOT/path).read_bytes()).hexdigest() for path in baseline} == baseline
+     manifest = ROOT/'artifacts/validation/2026-10-05/g0_baseline/sha256_manifest.json'
+-    if manifest.exists():
+-        original = {row['path']: row['sha256'] for row in json.loads(manifest.read_text())['files']}
+-        assert {path: original[path] for path in baseline} == baseline
++    assert manifest.exists()
++    captured = json.loads(manifest.read_text())
++    original = {row['path']: row['sha256'] for row in captured['files']}
++    assert {path: original[path] for path in baseline} == baseline
++    assert hashlib.sha256((manifest.parent/captured['source_archive']).read_bytes()).hexdigest() == captured['archive_sha256']
++    approved = json.loads((ROOT/'config/tests/g1b_r0_sha256.json').read_text())
++    assert hashlib.sha256((ROOT/approved['original_baseline']).read_bytes()).hexdigest() == approved['original_baseline_sha256']
++    assert hashlib.sha256(manifest.read_bytes()).hexdigest() == approved['original_source_manifest_sha256']
++
++
++def test_current_g1b_r0_contract_allows_only_the_registered_launch_change():
++    approved = json.loads((ROOT/'config/tests/g1b_r0_sha256.json').read_text())
++    old = json.loads((ROOT/approved['original_baseline']).read_text())['sha256']
++    current = approved['sha256']
++    assert set(current) == set(old)
++    changed = {path for path in old if current[path] != old[path]}
++    assert changed == set(approved['approved_changes']) == {'src/arena_bringup/launch/simulation.launch.py'}
++    for path in changed:
++        assert approved['approved_changes'][path]['before'] == old[path]
++        assert approved['approved_changes'][path]['after'] == current[path]
++    assert {path: hashlib.sha256((ROOT/path).read_bytes()).hexdigest() for path in current} == current
+ 
+ 
+ @pytest.mark.parametrize('distance,age,deceleration', [(.5, 0., 2.), (.5, .2, 2.), (3., .3, 2.), (.06, .2, 2.), (.5, -1., 2.)])

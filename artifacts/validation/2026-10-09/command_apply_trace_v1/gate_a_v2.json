@@ -1,0 +1,94 @@
+{
+  "status": "artifacts/validation/2026-10-09/command_apply_trace_v1/status_gate_a_v2.json",
+  "cases": [
+    {
+      "rc": 0,
+      "report_passed": true,
+      "input_valid": true,
+      "common_checks_failed": [],
+      "request_audit_failed": [],
+      "all_ticks_failed": [],
+      "class": "pass",
+      "name": "a1_base",
+      "expect": "pass",
+      "residual_after": []
+    },
+    {
+      "rc": 1,
+      "report_passed": false,
+      "input_valid": false,
+      "common_checks_failed": [],
+      "request_audit_failed": [
+        "lateness_within_limit"
+      ],
+      "all_ticks_failed": [
+        "all_ticks_lateness_within_limit"
+      ],
+      "injection": {
+        "kind": "late",
+        "target_scheduled_ns": 4930000000,
+        "delay_ns": 15000000,
+        "withheld_polls": 63,
+        "first_withheld_ns": 4936000000,
+        "released_ns": 4945000000,
+        "target_tick": {
+          "sim_s": 4.945,
+          "speed_mps": 0.0,
+          "steering_rad": 0.0,
+          "scheduled_ns": 4930000000,
+          "observed_ns": 4945000000,
+          "header_ns": 4945000000,
+          "index": 196,
+          "lateness_ns": 15000000,
+          "missed_before": 0,
+          "clock_msg_ns": 4944000000,
+          "wall_ns": 269867905015
+        },
+        "following_tick": {
+          "sim_s": 4.95,
+          "speed_mps": 0.0,
+          "steering_rad": 0.0,
+          "scheduled_ns": 4950000000,
+          "observed_ns": 4950000000,
+          "header_ns": 4950000000,
+          "index": 197,
+          "lateness_ns": 0,
+          "missed_before": 0,
+          "clock_msg_ns": 4949000000,
+          "wall_ns": 269925126316
+        },
+        "applied": true,
+        "expected_failed_checks": {
+          "request_audit": [
+            "lateness_within_limit"
+          ],
+          "request_audit_all_ticks": [
+            "all_ticks_lateness_within_limit"
+          ]
+        },
+        "scope": "평가기 발행 poll 보류만. 제어기·보호층·MCU·플러그인 미변경, 사후 JSON 변조 없음"
+      },
+      "expected_failed_checks": {
+        "request_audit": [
+          "lateness_within_limit"
+        ],
+        "request_audit_all_ticks": [
+          "all_ticks_lateness_within_limit"
+        ]
+      },
+      "class": "expected_injected_failure",
+      "name": "a2_inject_late",
+      "expect": "expected_failure",
+      "residual_after": []
+    }
+  ],
+  "checks": {
+    "all_started_cases_as_expected": true,
+    "stopped_at_first_expected_failure": true,
+    "batch_exit_nonzero": true,
+    "later_cases_not_started": true,
+    "no_residual_after_any_case": true
+  },
+  "passed": true,
+  "scope": "Gate A: 실행기·배치의 실패 전파와 기대 실패 구분. 물리 결과의 재현성 판정이 아니다."
+}

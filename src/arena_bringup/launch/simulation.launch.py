@@ -41,6 +41,8 @@ SPEED_PROFILES = {
     "cautious": {"max_speed_mps": .35, "min_speed_mps": .14, "acceleration_mps2": .5},
     "brisk": {"max_speed_mps": .70, "min_speed_mps": .18, "acceleration_mps2": .8},
     "exploratory": {"max_speed_mps": 1.40, "min_speed_mps": .20, "acceleration_mps2": 1.0},
+    # G1-b 비교 전용: exploratory와 같고 명령 상한만 G1 시험 상한 1.0 m/s로 맞춘다.
+    "g1_compare_1mps": {"max_speed_mps": 1.0, "min_speed_mps": .20, "acceleration_mps2": 1.0},
     "hardware_target": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 1.5},
     # 라이다 주기 비교용 목표 속도 상한입니다. 20 km/h 실측 도달을 보장하지 않습니다.
     # 전방 거리·곡률 감속이 남아 있으며 실제 모터 가속도나 안전 속도도 아닙니다.
@@ -330,10 +332,45 @@ def _batch_static_visuals(world, destination):
     return total
 
 
-def _runtime_world_overrides(source, destination, detector, scene_broadcaster, speed_bump=True, batch_visuals=False):
+EVALUATION_WORLD_PLUGINS = {"gz-sim-contact-system": "gz::sim::systems::Contact"}
+
+
+def _evaluation_models(path, world):
+    """평가 전용 정적 actor 조각을 검사한다. 제어 입력이 아니며 원본 월드는 바꾸지 않는다."""
+    root = ET.parse(path).getroot()
+    if root.tag != "sdf":
+        raise RuntimeError("evaluation_actor_sdf의 최상위 요소는 sdf여야 합니다.")
+    existing = {model.get("name") for model in world.findall("model")}
+    models, plugins = [], []
+    for child in root:
+        if child.tag == "model":
+            name = child.get("name", "")
+            if not name.startswith("eval_") or name in existing or child.findtext("static") != "true":
+                raise RuntimeError(f"평가 actor는 이름 eval_*·정적·기존 이름과 비중복이어야 합니다: {name}")
+            existing.add(name)
+            models.append(child)
+        elif child.tag == "plugin" and EVALUATION_WORLD_PLUGINS.get(child.get("filename")) == child.get("name"):
+            plugins.append(child)
+        else:
+            raise RuntimeError(f"허용되지 않은 평가 월드 요소: {child.tag} {child.attrib}")
+    if not models:
+        raise RuntimeError("evaluation_actor_sdf에 평가 actor 모델이 없습니다.")
+    return models, plugins
+
+
+def _runtime_world_overrides(source, destination, detector, scene_broadcaster, speed_bump=True, batch_visuals=False,
+                             evaluation_models=None, evaluation_wheel_contacts=False, evaluation_physics_step=""):
     """형상·물성은 보존하고 선택형 런타임 설정만 사본에 적용합니다."""
     tree = ET.parse(source)
     world = tree.getroot().find("world")
+    _evaluation_physics_step(world, evaluation_physics_step)
+    if evaluation_wheel_contacts and world.find("plugin[@name='gz::sim::systems::Contact']") is None:
+        ET.SubElement(world, "plugin", filename="gz-sim-contact-system", name="gz::sim::systems::Contact")
+    if evaluation_models:
+        models, plugins = _evaluation_models(evaluation_models, world)
+        present = {plugin.get("filename") for plugin in world.findall("plugin")}
+        world.extend(plugin for plugin in plugins if plugin.get("filename") not in present)
+        world.extend(models)
     if not speed_bump:
         for parent in world.iter():
             for child in list(parent):
@@ -359,6 +396,127 @@ def _runtime_world_overrides(source, destination, detector, scene_broadcaster, s
     if batch_visuals:
         _batch_static_visuals(world, destination)
     tree.write(destination, encoding="utf-8", xml_declaration=True)
+
+
+ZERO_SPEED_MODES = ("legacy", "reset_integral", "no_lag", "passive_damping")
+# 평가 전용 물리 step 민감도. 빈 값이 기본이며 월드 원본/기본 실행 사본은 바꾸지 않습니다.
+BASELINE_PHYSICS_STEP = "0.001"
+EVALUATION_PHYSICS_STEPS = ("0.0005", "0.00025")
+
+
+def _check_evaluation_physics_step(step, evidence_path):
+    if not step:
+        return
+    if step not in EVALUATION_PHYSICS_STEPS:
+        raise ValueError("허용되지 않은 평가용 물리 step")
+    if not evidence_path:
+        raise ValueError("평가용 물리 step에는 runtime_artifacts 경로가 필요합니다.")
+
+
+def _evaluation_physics_step(world, step):
+    """기준 1 ms 월드의 max_step_size 하나만 바꿉니다. 실시간 비율·센서 주기·물성은 유지합니다."""
+    if not step:
+        return
+    if step not in EVALUATION_PHYSICS_STEPS:
+        raise ValueError("허용되지 않은 평가용 물리 step")
+    physics = world.findall("physics")
+    fields = physics[0].findall("max_step_size") if len(physics) == 1 else []
+    if len(fields) != 1 or (fields[0].text or "").strip() != BASELINE_PHYSICS_STEP:
+        raise ValueError("기준 1 ms 물리 step 하나를 가진 월드에서만 평가용 step을 바꿉니다.")
+    fields[0].text = step
+
+
+def _check_evaluation_startup(mode, evidence_path, headless, local_mode, guarded, autonomy):
+    if mode == "service":
+        return
+    if mode != "embedded_paused" or not evidence_path or not headless or not local_mode or not guarded or autonomy:
+        raise ValueError("embedded_paused는 증거 경로가 있는 headless local_pursuit 가상 MCU 평가 전용입니다(autonomy=false).")
+
+
+def _embed_evaluation_vehicle(world_path, model_xml, x, y, yaw):
+    """이미 생성한 실행 사본에만 모델을 삽입한다. 기존 월드 노드는 변경하지 않는다."""
+    if not all(math.isfinite(v) for v in (x, y, yaw)):
+        raise ValueError("initial pose must be finite")
+    tree = ET.parse(world_path)
+    world = tree.getroot().find("world")
+    model_root = ET.fromstring(model_xml)
+    models = model_root.findall("model")
+    if world is None or len(models) != 1 or models[0].get("name") != "arena_car":
+        raise ValueError("expected one arena_car SDF model and one world")
+    if world.find("model[@name='arena_car']") is not None or world.findall("include"):
+        raise ValueError("existing vehicle/include is not allowed in evaluation world")
+    model = copy.deepcopy(models[0])
+    if model.find("pose") is not None:
+        raise ValueError("model pose must be supplied only by the evaluation spawn")
+    ET.SubElement(model, "pose").text = f"{x} {y} 0.01 0 0 {yaw}"
+    world.append(model)
+    tree.write(world_path, encoding="utf-8", xml_declaration=True)
+
+
+def _evaluation_server_flags(startup):
+    return [] if startup == "embedded_paused" else ["-r"]
+
+
+def _evaluation_zero_speed_mode(model_xml, mode, evidence_path):
+    """기본 모델 불변. 명시적 평가 출력 경로가 있을 때만 실험용 플러그인 설정 추가."""
+    if mode not in ZERO_SPEED_MODES:
+        raise ValueError("알 수 없는 평가용 0속도 모드")
+    if mode == "legacy":
+        return model_xml
+    if not evidence_path:
+        raise ValueError("평가용 0속도 모드에는 runtime_artifacts 경로가 필요합니다.")
+    root = ET.fromstring(model_xml)
+    plugin = root.find("model/plugin[@name='arena::SingleMotorDrive']")
+    if plugin is None or plugin.find('evaluation_zero_speed_mode') is not None:
+        raise ValueError("단일 모터 플러그인 누락 또는 평가 모드 중복")
+    ET.SubElement(plugin, 'evaluation_zero_speed_mode').text = mode
+    return ET.tostring(root, encoding='unicode')
+
+
+def _evaluation_command_trace(model_xml, enabled, evidence_path):
+    """기본 모델 불변. 명시적 평가 출력 경로가 있을 때만 플러그인 명령 전환 이벤트 계측을 켠다."""
+    if not enabled:
+        return model_xml
+    if not evidence_path:
+        raise ValueError("평가용 명령 전환 계측에는 runtime_artifacts 경로가 필요합니다.")
+    root = ET.fromstring(model_xml)
+    plugin = root.find("model/plugin[@name='arena::SingleMotorDrive']")
+    if plugin is None or plugin.find('evaluation_command_trace') is not None:
+        raise ValueError("단일 모터 플러그인 누락 또는 명령 전환 계측 중복")
+    ET.SubElement(plugin, 'evaluation_command_trace').text = 'true'
+    return ET.tostring(root, encoding='unicode')
+
+
+def _evaluation_scheduled_apply(model_xml, enabled, evidence, startup, headless, local, guarded, autonomy, wall_timeout):
+    if not enabled:
+        return model_xml
+    if not evidence or startup!='embedded_paused' or not headless or not local or not guarded or autonomy:
+        raise ValueError('scheduled apply requires isolated headless embedded_paused virtual_mcu evaluation')
+    root=ET.fromstring(model_xml)
+    plugin=root.find("model/plugin[@name='arena::SingleMotorDrive']")
+    if plugin is None or plugin.findtext('evaluation_command_trace')!='true' or plugin.find('evaluation_scheduled_apply') is not None:
+        raise ValueError('scheduled apply requires unique traced single motor plugin')
+    ET.SubElement(plugin,'evaluation_scheduled_apply').text='true'
+    ET.SubElement(plugin,'evaluation_wall_timeout').text=str(wall_timeout)
+    return ET.tostring(root,encoding='unicode')
+
+
+def _evaluation_wheel_contacts(model_xml):
+    """실행 사본에만 평가 접촉 센서 추가. 형상/물성/제어 피드백은 유지한다."""
+    root = ET.fromstring(model_xml)
+    for wheel in ("front_left_wheel", "front_right_wheel", "rear_left_wheel", "rear_right_wheel"):
+        link = root.find(f"model/link[@name='{wheel}']")
+        if link is None or link.find("collision[@name='collision']") is None:
+            raise ValueError(f"평가 바퀴 충돌체를 찾을 수 없습니다: {wheel}")
+        if link.find("sensor[@name='eval_wheel_contact']") is not None:
+            raise ValueError("평가 접촉 센서 중복")
+        sensor = ET.SubElement(link, "sensor", name="eval_wheel_contact", type="contact")
+        ET.SubElement(sensor, "always_on").text = "true"
+        ET.SubElement(sensor, "update_rate").text = "200"
+        contact = ET.SubElement(sensor, "contact")
+        ET.SubElement(contact, "collision").text = "collision"
+        ET.SubElement(contact, "topic").text = "/eval/wheels/contact"
+    return ET.tostring(root, encoding="unicode")
 
 
 def _b0183_model(model_xml, profile):
@@ -605,6 +763,20 @@ def _launch_setup(context):
     if local_mode:
         model_xml = _b0183_model(model_xml, profile)
     runtime_artifacts = LaunchConfiguration("runtime_artifacts").perform(context)
+    model_xml = _evaluation_zero_speed_mode(model_xml,
+        LaunchConfiguration("evaluation_zero_speed_mode").perform(context), runtime_artifacts)
+    model_xml = _evaluation_command_trace(model_xml,
+        _as_bool(LaunchConfiguration("evaluation_command_trace").perform(context)), runtime_artifacts)
+    scheduled_apply=_as_bool(LaunchConfiguration('evaluation_scheduled_apply').perform(context))
+    model_xml=_evaluation_scheduled_apply(model_xml,scheduled_apply,runtime_artifacts,
+        LaunchConfiguration('evaluation_startup').perform(context),
+        _as_bool(LaunchConfiguration('headless').perform(context)),local_mode,guarded_actuation,
+        _as_bool(LaunchConfiguration('autonomy').perform(context)),sensor_wall_timeout)
+    evaluation_wheel_contacts = _as_bool(LaunchConfiguration("evaluation_wheel_contacts").perform(context))
+    if evaluation_wheel_contacts:
+        if not runtime_artifacts:
+            raise ValueError("평가 접촉 계측에는 runtime_artifacts 보존 경로가 필요합니다.")
+        model_xml = _evaluation_wheel_contacts(model_xml)
     if runtime_artifacts:
         evidence = Path(runtime_artifacts).resolve()
         evidence.mkdir(parents=True, exist_ok=True)
@@ -634,6 +806,9 @@ def _launch_setup(context):
         if not all(math.isfinite(v) for v in (spawn_x, spawn_y, spawn_yaw)):
             raise ValueError("시험 시작 위치는 유한한 수여야 합니다.")
     headless = _as_bool(LaunchConfiguration("headless").perform(context))
+    startup = LaunchConfiguration("evaluation_startup").perform(context)
+    _check_evaluation_startup(startup, runtime_artifacts, headless, local_mode, guarded_actuation,
+                             _as_bool(LaunchConfiguration("autonomy").perform(context)))
     collision_detector = LaunchConfiguration("collision_detector").perform(context)
     scene_broadcaster = _as_bool(LaunchConfiguration("scene_broadcaster").perform(context))
     if not scene_broadcaster and not headless:
@@ -641,11 +816,23 @@ def _launch_setup(context):
     temporary_world = None
     speed_bump = _as_bool(LaunchConfiguration("speed_bump").perform(context))
     batch_visuals = _as_bool(LaunchConfiguration("batch_static_visuals").perform(context))
-    if collision_detector != "configured" or not scene_broadcaster or not speed_bump or batch_visuals:
+    evaluation_actor = LaunchConfiguration("evaluation_actor_sdf").perform(context)
+    physics_step = LaunchConfiguration("evaluation_physics_step").perform(context)
+    _check_evaluation_physics_step(physics_step, runtime_artifacts)
+    if evaluation_actor:
+        # 평가기가 정답 자세를 움직이는 표적. 공식 원본은 그대로 두고 실행 사본에만 넣는다.
+        evaluation_actor = Path(evaluation_actor).resolve()
+        if not local_mode or track != "official" or world_override or not evaluation_actor.is_file():
+            raise RuntimeError("evaluation_actor_sdf는 official local_pursuit 실행 사본에서만 사용합니다.")
+    if (collision_detector != "configured" or not scene_broadcaster or not speed_bump or batch_visuals
+            or evaluation_actor or evaluation_wheel_contacts or physics_step or startup == "embedded_paused"):
         temporary_world = tempfile.TemporaryDirectory(prefix="arena_world_")
         runtime_path = Path(temporary_world.name) / "world.sdf"
-        _runtime_world_overrides(world_path, runtime_path, collision_detector, scene_broadcaster, speed_bump, batch_visuals)
+        _runtime_world_overrides(world_path, runtime_path, collision_detector, scene_broadcaster, speed_bump, batch_visuals,
+                                 evaluation_actor or None, evaluation_wheel_contacts, physics_step)
         world_path = runtime_path
+    if startup == "embedded_paused":
+        _embed_evaluation_vehicle(world_path, model_xml, spawn_x, spawn_y, spawn_yaw)
     if runtime_artifacts:
         (evidence / "runtime_world.sdf").write_bytes(world_path.read_bytes())
         for mesh in world_path.parent.glob("batched_*.obj"):
@@ -674,7 +861,7 @@ def _launch_setup(context):
     # launcher uses a shell wrapper, which can leave the actual Gazebo process
     # orphaned when ROS launch is interrupted.
     gazebo_server = ExecuteProcess(
-        cmd=["gz", "sim", "-r", "-s", "-v", "3", *(["--headless-rendering"] if local_mode and headless else []), str(world_path)],
+        cmd=["gz", "sim", *_evaluation_server_flags(startup), "-s", "-v", "3", *(["--headless-rendering"] if local_mode and headless else []), str(world_path)],
         additional_env=render_env,
         sigterm_timeout=LaunchConfiguration("gazebo_sigterm_timeout"),
         output="screen",
@@ -721,7 +908,10 @@ def _launch_setup(context):
             "/model/arena_car/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry",
             "/model/arena_car/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
             "/model/arena_car/joint_state@sensor_msgs/msg/JointState@gz.msgs.Model",
-        ],
+        ] + ([
+            '/model/arena_car/eval/scheduled_command@std_msgs/msg/String]gz.msgs.StringMsg',
+            '/model/arena_car/eval/scheduled_events@std_msgs/msg/String[gz.msgs.StringMsg',
+        ] if scheduled_apply else []),
         remappings=[
             ("/model/arena_car/cmd_vel", "/sim/cmd_vel"),
             ("/model/arena_car/steer_angle", "/sim/steering_angle"),
@@ -755,7 +945,7 @@ def _launch_setup(context):
 
     vehicle_interface = Node(
         package="arena_vehicle_interface",
-        executable="guarded_sim_actuator" if guarded_actuation else "ackermann_to_twist",
+        executable="scheduled_sim_actuator" if scheduled_apply else "guarded_sim_actuator" if guarded_actuation else "ackermann_to_twist",
         output="screen",
         remappings=[("/drive", "/drive/safe")] if safety_enabled else [],
         parameters=[
@@ -814,7 +1004,7 @@ def _launch_setup(context):
         bridge,
         sensor_bridge,
         vehicle_interface,
-        TimerAction(period=2.0, actions=[spawn_vehicle]),
+        *([TimerAction(period=2.0, actions=[spawn_vehicle])] if startup == "service" else []),
     ]
     if not render_sensors:
         actions.remove(sensor_bridge)
@@ -1108,6 +1298,20 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("depth_camera", default_value="true", description="깊이 센서와 점군을 켭니다. RGB·IMU는 유지합니다."),
             DeclareLaunchArgument("speed_bump", default_value="true", description="false는 실행 사본에서만 임시 방지턱 제거"),
             DeclareLaunchArgument("runtime_artifacts", default_value="", description="검증 실행 입력 보관 폴더"),
+            DeclareLaunchArgument("evaluation_scheduled_apply", default_value="false", choices=["true", "false"],
+                                 description="Evaluation-only paired command deadline/ack; native default unchanged"),
+            DeclareLaunchArgument("evaluation_startup", default_value="service", choices=["service", "embedded_paused"],
+                                  description="평가 전용 초기 차량 포함·paused 시작. 별도 평가기가 준비 확인 후 재생해야 함"),
+            DeclareLaunchArgument("evaluation_zero_speed_mode", default_value="legacy", choices=ZERO_SPEED_MODES,
+                                  description="평가 전용 0속도 구동 특성 대조. 실물 제동 모드 아님"),
+            DeclareLaunchArgument("evaluation_physics_step", default_value="", choices=["", *EVALUATION_PHYSICS_STEPS],
+                                  description="평가 전용 물리 step 민감도. 빈 값은 월드 기본 1 ms; 증거 경로 필요"),
+            DeclareLaunchArgument("evaluation_command_trace", default_value="false", choices=["true", "false"],
+                                  description="평가 전용 플러그인 명령 수신/적용 전환 이벤트. 제어 입력 아님; 증거 경로 필요"),
+            DeclareLaunchArgument("evaluation_actor_sdf", default_value="",
+                                  description="평가 전용 정적 actor SDF 조각. official local_pursuit 실행 사본에만 삽입"),
+            DeclareLaunchArgument("evaluation_wheel_contacts", default_value="false", choices=["true", "false"],
+                                  description="실행 사본의 평가 전용 바퀴 접촉 계측. 제어 입력 아님"),
             DeclareLaunchArgument("lidar_test_profile", default_value="", description="시험용 거리오차/지연 JSON; 빈 값은 기존 동작"),
             DeclareLaunchArgument("motion_test_profile", default_value="", description="시험용 IMU/엔코더 오류 JSON; 기본 비활성"),
             DeclareLaunchArgument("batch_static_visuals", default_value="false", description="정적 상자 표시만 동일 꼭짓점/재질의 메시로 묶음; 충돌체 불변"),

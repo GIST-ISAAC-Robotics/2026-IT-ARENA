@@ -353,11 +353,13 @@ def add_traffic_light(model, res):
     # 로컬 X는 진행 방향, Y는 횡단 방향입니다. 가로대는 Y축으로 뻗습니다.
     yaw, width = light["yaw"], light["width"]
     post_offset = width / 2 + .11
-    px, py = local_to_world(light["x"], light["y"], yaw, 0, post_offset)
-    post = link_at(model, "tl_post", px, py, yaw=yaw)
-    box(post, "post", (0, 0, config["gantry_height_m"] / 2), (.025, .025, config["gantry_height_m"]),
-        STEEL, collision=True)
-    box(post, "foot", (0, 0, .008), (.07, .07, .016), STEEL, collision=True)
+    # 옛 실험 프로필은 종전 형상을 유지합니다. 현행 공식 파생본만 명시적으로 끕니다.
+    if config.get("ground_post_enabled", True):
+        px, py = local_to_world(light["x"], light["y"], yaw, 0, post_offset)
+        post = link_at(model, "tl_post", px, py, yaw=yaw)
+        box(post, "post", (0, 0, config["gantry_height_m"] / 2), (.025, .025, config["gantry_height_m"]),
+            STEEL, collision=True)
+        box(post, "foot", (0, 0, .008), (.07, .07, .016), STEEL, collision=True)
     beam = link_at(model, "tl_beam", light["x"], light["y"], yaw=yaw)
     box(beam, "cross_track_beam", (0, 0, config["gantry_height_m"]),
         (.035, 2 * post_offset + .04, .035), STEEL, collision=True)
@@ -536,7 +538,7 @@ def replace_facilities(world_path, res, generator):
         name = link.attrib["name"]
         replace_marker = name.startswith("aruco_") and not preserve_official_markers
         replace_grid = name.startswith("grid_slot_") and not preserve_official_grid
-        if name.startswith(("bump_", "lamp_")) or replace_grid or replace_marker or name in ("tl_post", "tl_beam"):
+        if name.startswith(("bump_", "lamp_", "team_gantry_support_")) or replace_grid or replace_marker or name in ("tl_post", "tl_beam"):
             model.remove(link)
     add_bumps(model, res, world_path.parent)
     add_grid_and_finish(model, res, generator)
@@ -564,6 +566,8 @@ def update_scene(scene, res, generator):
                                   "lamp_poses": res["traffic_light"]["lamp_poses"],
                                   "beam_axis": "local_y_across_route", "udp_visual_controller_connected": False})
     scene["traffic_light"].pop("udp_port", None)
+    if "ground_post_enabled" in config["traffic_light"]:
+        scene["traffic_light"]["ground_post_enabled"] = config["traffic_light"]["ground_post_enabled"]
     if "route_offset_m" in config["traffic_light"]:
         light = res["traffic_light"]
         scene["traffic_light"]["pose"] = {"x": light["x"], "y": light["y"], "yaw_rad": light["yaw"]}
@@ -649,6 +653,8 @@ def update_scene(scene, res, generator):
             "marker_links_unchanged": True, "collision": True,
             "note": "기둥·상부 가로대·판 가장자리 연결대. 실물 구조/재질/강성 검증 아님.",
         }
+    else:
+        scene.pop("team_gantry_supports", None)
 
 
 def profile_status(config):

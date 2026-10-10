@@ -1,0 +1,121 @@
+{
+  "scope": "원시 상태·동시각 구동 진단의 사후 순서 대조. 원인 확정 또는 새 폐루프 시험 아님.",
+  "run_valid": true,
+  "preserved_passed": false,
+  "failed_gates": [
+    "progress",
+    "clears_side_actor"
+  ],
+  "events": {
+    "reached_command_1mps": {
+      "sim_time_s": 5.260000000000001,
+      "reason": "local_follow",
+      "behavior": "CRUISE",
+      "speed_command_mps": 1.0,
+      "source_first_s": 5.102,
+      "observed_path_ahead_m": 0.8138477206455259,
+      "boundary_age_s": 0.15800000000000036,
+      "boundary_candidate_reason": null,
+      "boundary_candidate_ahead_m": null,
+      "measured_speed_mps": 1.0210176124166828
+    },
+    "first_published_reduction_after_1mps": {
+      "sim_time_s": 5.48,
+      "reason": "local_follow",
+      "behavior": "CRUISE",
+      "speed_command_mps": 0.9771847410002867,
+      "source_first_s": 5.302,
+      "observed_path_ahead_m": 0.57037986250903,
+      "boundary_age_s": 0.17800000000000082,
+      "boundary_candidate_reason": null,
+      "boundary_candidate_ahead_m": null,
+      "measured_speed_mps": 1.0210176124166828
+    },
+    "first_mismatch_at_least_0_35mps": {
+      "sim_time_s": 5.769,
+      "reference_speed_mps": 0.589298784733,
+      "truth_longitudinal_mps": 1.01839556918,
+      "wheel_surface_speed_mps": 0.621590887572,
+      "left_speed_rad_s": 7.39814957905,
+      "right_speed_rad_s": 30.8535973484,
+      "motor_torque_nm": -0.000295398585284,
+      "left_torque_nm": -0.00221548938963,
+      "right_torque_nm": -0.00221548938963
+    },
+    "first_published_boundary_hold": {
+      "sim_time_s": 5.82,
+      "reason": "follow_boundary_unconfirmed",
+      "behavior": "HOLD",
+      "speed_command_mps": 0.0,
+      "source_first_s": 5.702,
+      "observed_path_ahead_m": null,
+      "boundary_age_s": null,
+      "boundary_candidate_reason": "local_path",
+      "boundary_candidate_ahead_m": 0.7764959467996092,
+      "measured_speed_mps": 0.5348187493611196
+    },
+    "first_reverse_wheel_while_body_forward": {
+      "sim_time_s": 5.852,
+      "reference_speed_mps": 0,
+      "truth_longitudinal_mps": 1.01142289104,
+      "wheel_surface_speed_mps": 0.282562819996,
+      "left_speed_rad_s": -13.1771657606,
+      "right_speed_rad_s": 30.5656469911,
+      "motor_torque_nm": -0.00690930190755,
+      "left_torque_nm": -0.0518197643067,
+      "right_torque_nm": -0.0518197643067
+    },
+    "first_near_stationary_sample_after_hold": {
+      "sim_time_s": 6.311,
+      "reference_speed_mps": 0,
+      "truth_longitudinal_mps": 0.00690614548612,
+      "wheel_surface_speed_mps": 0.00689158674248,
+      "left_speed_rad_s": 0.211714434739,
+      "right_speed_rad_s": 0.212383210952,
+      "motor_torque_nm": -0.00220449876809,
+      "left_torque_nm": -0.0165337407607,
+      "right_torque_nm": -0.0165337407607
+    },
+    "first_published_release": {
+      "sim_time_s": 8.42,
+      "reason": "local_follow",
+      "behavior": "CRUISE",
+      "speed_command_mps": 0.02,
+      "source_first_s": 8.302,
+      "observed_path_ahead_m": 0.5806466007362179,
+      "boundary_age_s": 0.11800000000000033,
+      "boundary_candidate_reason": "local_path",
+      "boundary_candidate_ahead_m": 1.0952208067726823,
+      "measured_speed_mps": 0.0
+    },
+    "first_forward_over_0_1_after_release": {
+      "sim_time_s": 8.601,
+      "reference_speed_mps": 0.159999996424,
+      "truth_longitudinal_mps": 0.121309887308,
+      "wheel_surface_speed_mps": 0.121624734683,
+      "left_speed_rad_s": 3.71322222345,
+      "right_speed_rad_s": 3.77137683399,
+      "motor_torque_nm": 0.0056725483206,
+      "left_torque_nm": 0.0425441124045,
+      "right_torque_nm": 0.0425441124045
+    }
+  },
+  "same_sample_drivetrain_checks": {
+    "samples": 318,
+    "no_reverse_reference_requested": true,
+    "equal_left_right_torque": true,
+    "single_motor_speed_is_ratio15_times_wheel_mean": true
+  },
+  "input_sha256": {
+    "report.json": "d9d004319868a78f4c92d751f670edf9194b656da4e0ec6ee4a55f03eb432ce4",
+    "autonomy_status.jsonl": "701da9073797c6a1c38cd6c0ddf6580f703db0ed73aad9b63f02fd63194438f0",
+    "braking_diagnostics.jsonl": "712edd872c7ea1ef89cdb02564457a36694b8847a3a00e87756993029c5027a9"
+  },
+  "analysis_sha256": "152a2dff0af3ba93f7266f3ea5040deaec88ff696f4dd71d20bef75c206e9901",
+  "limits": [
+    "일반 상태 발행 약 0.2초/전이 시점, 구동 진단 약 0.02초. first는 수신된 첫 표본이며 실제 내부 최초 시각과 다를 수 있다.",
+    "0.35 m/s는 원인 조사 전환 기준이고 실물 센서나 구동 허용 오차가 아니다.",
+    "휠 차이와 단기 운동 보정의 결합 가능성은 남는다. 같은 명령/초기 상태의 노면 대조 없이 단일 원인을 확정하지 않는다.",
+    "접촉 메시지 부재는 하중 0으로 해석하지 않는다. 별도 left_braking_contacts.json의 null과 구분한다."
+  ]
+}

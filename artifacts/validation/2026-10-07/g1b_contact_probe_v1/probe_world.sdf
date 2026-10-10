@@ -1,0 +1,23 @@
+<?xml version='1.0'?>
+<sdf version='1.9'><world name='actor_probe'>
+  <physics name='p' type='ode'><max_step_size>0.001</max_step_size><real_time_factor>1</real_time_factor></physics>
+  <plugin filename='gz-sim-physics-system' name='gz::sim::systems::Physics'/>
+  <plugin filename='gz-sim-user-commands-system' name='gz::sim::systems::UserCommands'/>
+  <plugin filename='gz-sim-scene-broadcaster-system' name='gz::sim::systems::SceneBroadcaster'/>
+  <plugin filename='gz-sim-contact-system' name='gz::sim::systems::Contact'/>
+  <gravity>0 0 -9.8</gravity>
+  <model name='ground'><static>true</static><link name='l'><collision name='c'><geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry></collision></link></model>
+  <model name='eval_actor'><static>true</static><pose>0 0 0.06 0 0 0</pose>
+    <link name='body'>
+      <collision name='collision'><geometry><box><size>0.20 0.15 0.12</size></box></geometry></collision>
+      <visual name='visual'><geometry><box><size>0.20 0.15 0.12</size></box></geometry></visual>
+      <sensor name='contact' type='contact'><always_on>true</always_on><update_rate>200</update_rate>
+        <contact><collision>collision</collision><topic>/probe/actor_contact</topic></contact></sensor>
+    </link></model>
+  <model name='mover'><pose>1.0 0 0.05 0 0 0</pose>
+    <link name='body'><inertial><mass>0.5</mass><inertia><ixx>0.001</ixx><iyy>0.001</iyy><izz>0.001</izz></inertia></inertial>
+      <collision name='c'><geometry><box><size>0.1 0.1 0.1</size></box></geometry></collision></link></model>
+  <model name='dropper'><pose>0 0.6 0.30 0 0 0</pose>
+    <link name='body'><inertial><mass>0.5</mass><inertia><ixx>0.001</ixx><iyy>0.001</iyy><izz>0.001</izz></inertia></inertial>
+      <collision name='c'><geometry><box><size>0.1 0.1 0.1</size></box></geometry></collision></link></model>
+</world></sdf>

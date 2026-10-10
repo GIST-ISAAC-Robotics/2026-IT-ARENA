@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "registered_at": "2026-10-07, G1-c initial occlusion and first-curve tests; before execution",
+  "scope": "저속 G1-c 제한 시험: 가까운 앞차에 의한 초기 시야 가림 및 첫 U자 코너 추종. 최대 1 m/s. 완전 가림, 다수 차량, 추월, 전체 코스, 센서 오차 및 실차 안전 검증은 아님.",
+  "ground_truth_allowlist_evaluation_only": [
+    "actor_schedule",
+    "actor_pose",
+    "ego_model_pose",
+    "centerline",
+    "road_polygon",
+    "wall_polygons",
+    "traffic_light_state_for_actor_anchor",
+    "contact_sensor"
+  ],
+  "launch": {
+    "entry_g1": "g1_follow.launch.py",
+    "entry_r0": "demo.launch.py (same arguments as the existing validator's local_pursuit path, g1_follow_enabled unset=false)",
+    "autonomy_mode": "local_pursuit",
+    "lidar_acquisition": "sequential",
+    "lidar_compensation": "both",
+    "control_rate_hz": 50,
+    "lidar_rate_hz": 10,
+    "render_backend": "wsl_nvidia",
+    "collision_detector": "configured",
+    "shutdown_mode": "service",
+    "sensor_wall_timeout_s": 30,
+    "speed_bump": false,
+    "red_duration_s": 1,
+    "grid_slot": 3,
+    "actuation_mode": "virtual_mcu",
+    "actuation_stop": "software_stop",
+    "speed_profile": "g1_compare_1mps",
+    "speed_profile_note": "max 1.0 m/s, min 0.20, accel 1.0 = exploratory except the cap. G1 effective cap is min(1.0, profile) = 1.0 in both profiles; R0 receives the same 1.0 m/s command cap.",
+    "temporary_traffic_light_trigger": "existing provisional RGB red->green detector is used only as this low-speed control test trigger; the official 10/6 lights-out start is a separate unresolved redesign"
+  },
+  "vehicle_and_sensor_unchanged": "B0183+C1+LSM6DSOX, 20x15 cm, about 2 kg, motor shaft 28 counts x 15:1, 65 mm wheel, 0.135 m wheelbase, C1 plane 0.095 m / front 0.06 m / rear 60 deg mask",
+  "actor": {
+    "model_name": "eval_g1b_actor",
+    "length_m": 0.2,
+    "width_m": 0.15,
+    "height_m": 0.12,
+    "bottom_m": 0,
+    "lateral_offset_m": 0,
+    "visible_section": "the C1 scan plane z=0.095 m crosses the box (0..0.12 m), so the full 0.20x0.15 m rectangle is observable from the side facing the sensor. A vehicle lower than the scan plane is NOT represented; results do not extend to invisible low vehicles.",
+    "physics": "static model moved by evaluator set_pose (teleport); collision geometry and contact sensor follow the commanded pose (g1b_contact_probe_v1). Infinite-mass blocker, not a vehicle dynamics model.",
+    "command_hz": 50,
+    "pose_publish_hz": 100,
+    "start_center_gap_m": 1.6,
+    "start_center_gap_note": "same as the G1-a synthetic suite; ego body front to actor rear is 1.40 m"
+  },
+  "seeds": {
+    "0": {
+      "actor_start_offset_m": 0
+    },
+    "1": {
+      "actor_start_offset_m": -0.1
+    },
+    "2": {
+      "actor_start_offset_m": 0.1
+    }
+  },
+  "seed_note": "Gazebo has no injected noise here; a seed fixes a deterministic actor start offset along the centerline so that scan/command phase differs between repetitions.",
+  "schedule_anchor": "sim time at which the evaluator first observes applied=green on /sim/traffic_light/state (evaluator only; the controller detects green from its own camera)",
+  "cases": [
+    {
+      "name": "initial_occlusion",
+      "behavior_kind": "stop_restart",
+      "route_kind": "straight",
+      "actor_start_center_gap_m": 0.55,
+      "duration_s": 10,
+      "schedule": [
+        {
+          "from_s": 0,
+          "to_s": 3,
+          "speed_mps": 0
+        },
+        {
+          "from_s": 3,
+          "to_s": 10,
+          "speed_mps": 0.35
+        }
+      ],
+      "expected": "가까운 앞차(초기 차체 간격 약 0.35 m) 뒤에서 대기하고 앞차 출발 후 재진행. 실제 벽 가림 범위는 기록에서 별도 확인."
+    },
+    {
+      "name": "first_curve",
+      "behavior_kind": "slow_lead",
+      "route_kind": "first_curve",
+      "duration_s": 35,
+      "schedule": [
+        {
+          "from_s": 0,
+          "to_s": 35,
+          "speed_mps": 0.35
+        }
+      ],
+      "expected": "앞차를 따라 첫 U자 코너 출구 s=9.8 m까지 통과. 코너 이전에 멈추면 실패."
+    }
+  ],
+  "straight_section_check": "straight 사례만 기존 코너 이전 제한 적용. first_curve는 시작~최종 actor 차체가 도로 안·벽 밖인지 1 cm 간격으로 사전 검사하며 s=12.1 m 이내로 제한.",
+  "first_corner_s_m": 5.3,
+  "acceptance": {
+    "minimum_body_gap_m": 0.15,
+    "minimum_body_gap_basis": "G1-a pre-registered minimum body gap (config/tests/g1_follow_v1.json); applied to BOTH the sampled gap and the conservative swept lower bound",
+    "swept_max_curvature_per_m": 3,
+    "swept_note": "lower bound assumes rigid planar motion with monotonic yaw between ego pose samples and path curvature <= tan(0.37)/0.135 = 2.9 /m",
+    "actor_contact_messages_with_ego": 0,
+    "wall_collision_samples": 0,
+    "outside_road_samples": 0,
+    "outside_road_basis": "existing conservative 20x15 cm body-outside-SDF-road criterion; the 10/6 two-wheel grass relaxation memo is not adopted",
+    "stopped_center": {
+      "minimum_continuous_hold_s": 3,
+      "maximum_final_gap_m": 0.7,
+      "basis": "HOLD at G1 swept clearance <= 0.20 m (+ about 0.06-0.13 m padding) predicts a 0.2-0.45 m body gap (synthetic 0.405 m). 0.70 m is half of the 1.40 m initial gap: it separates an approach-and-hold from a stall near the start. 3.0 s of continuous zero speed within a 10 s window."
+    },
+    "slow_lead": {
+      "minimum_progress_m": 2.5,
+      "maximum_stationary_while_lead_moves_s": 2.5,
+      "maximum_final_gap_m": 1.2,
+      "basis": "lead travels 4.2 m; following must not degenerate into a permanent stall. 2.5 s reuses the G1-a restart limit. Final gap must be below the 1.40 m start gap."
+    },
+    "stop_restart": {
+      "hold_window_s": [
+        4,
+        9
+      ],
+      "minimum_hold_s": 1,
+      "maximum_restart_delay_s": 2.5,
+      "restart_speed_mps": 0.1,
+      "minimum_progress_after_restart_m": 1,
+      "maximum_final_gap_m": 1.2,
+      "basis": "G1-a restart limit 2.5 s; lead travels 2.1 m after restart"
+    },
+    "stationary_definition": "model ground speed < 0.01 m/s, /drive/safe speed == 0 and (G1) behavior HOLD; R0 has no behavior field",
+    "stop": {
+      "maximum_wait_sim_s": 6,
+      "stable_hold_sim_s": 0.5,
+      "mcu_reason": "software_stop",
+      "mcu_state": "ESTOP_LATCHED"
+    },
+    "harness": {
+      "actor_command_max_interval_s": 0.1,
+      "actor_moving_tracking_error_max_m": 0.035,
+      "actor_static_error_max_m": 0.005,
+      "basis": "G0 command interval limit; 0.035 m = about 0.1 s of 0.35 m/s lag. A harness failure invalidates the run instead of counting as a controller result."
+    },
+    "threshold_status": "pre-registered before execution; not measured real vehicle guarantees. Do not relax after results; a change needs a new config version and a rerun.",
+    "initial_occlusion": {
+      "hold_window_s": [
+        0,
+        3
+      ],
+      "minimum_hold_s": 1,
+      "maximum_restart_delay_s": 2.5,
+      "restart_speed_mps": 0.1,
+      "minimum_progress_after_restart_m": 1,
+      "maximum_final_gap_m": 1.2,
+      "basis": "기존 정지/재출발 판정선 유지. 초기 간격만 축소하여 기억 경로가 없는 출발 상황을 검사."
+    },
+    "first_curve": {
+      "minimum_progress_m": 11.7,
+      "maximum_stationary_while_lead_moves_s": 2.5,
+      "maximum_final_gap_m": 1.2,
+      "required_exit_s_m": 9.8,
+      "maximum_actor_s_m": 12.1,
+      "minimum_heading_change_deg": 150,
+      "basis": "시작 s≈44.646에서 첫 U자 코너 출구 s=9.8까지 약 11.79 m. 진행량 및 출구 도달과 실제 방향 전환을 모두 요구. 기존 정지/차간격/잔디/접촉 판정선 유지."
+    }
+  },
+  "matrix": {
+    "g1": {
+      "cases": [
+        "initial_occlusion",
+        "first_curve"
+      ],
+      "seeds": [
+        0
+      ]
+    },
+    "pilot": "초기 가림 1회 후 첫 코너 1회. 이상이 있으면 원인 구분 후 필요한 범위만 후속 시험."
+  },
+  "timeouts": {
+    "max_sim_after_green_margin_s": 20,
+    "startup_wall_timeout_s": 150,
+    "wall_timeout_s": 2400,
+    "stop_wall_timeout_s": 120
+  }
+}

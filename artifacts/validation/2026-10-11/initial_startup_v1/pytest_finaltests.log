@@ -1,0 +1,104 @@
+........................................................................ [  5%]
+........................................................................ [ 10%]
+........................................................................ [ 15%]
+........................................................................ [ 21%]
+........................................................................ [ 26%]
+........................................................................ [ 31%]
+........................................................................ [ 36%]
+........................................................................ [ 42%]
+........................................................................ [ 47%]
+........................................................................ [ 52%]
+........................................................................ [ 57%]
+........................................................................ [ 63%]
+............................F........................................... [ 68%]
+........................................................................ [ 73%]
+........................F............................................... [ 79%]
+........................................................................ [ 84%]
+........................................................................ [ 89%]
+........................................................................ [ 94%]
+.......................................................................  [100%]
+=================================== FAILURES ===================================
+______ test_eight_cases_preregistered_and_sensor_configuration_unchanged _______
+
+    def test_eight_cases_preregistered_and_sensor_configuration_unchanged():
+        suite = g0.load_suite()
+        assert len(suite['cases']) == 8 and suite['seed'] == 0
+        assert all(g0.verify_sensor_config(suite)['checks'].values())
+        # 현재 기능 회귀는 승인된 후속 소스 계약을 명시한다. G0 기본 비교는
+        # 여전히 pre-G0 bytes를 뜻하며 기존 기록/manifest를 소급 변경하지 않는다.
+        # 2026-10-09 launch 추적 인자 추가는 scheduled_command r2 계약이 연결한다(physics_step 계약은 소급 수정 없음).
+>       assert g0.baseline_comparison(ROOT/'config/tests/scheduled_command_r2_sha256.json')['unchanged']
+E       assert False
+
+tests/test_multi_vehicle_g0.py:22: AssertionError
+____ test_current_g1b_r0_contract_allows_only_the_registered_launch_change _____
+
+    def test_current_g1b_r0_contract_allows_only_the_registered_launch_change():
+        approved = json.loads((ROOT/'config/tests/g1b_r0_sha256.json').read_text())
+        old = json.loads((ROOT/approved['original_baseline']).read_text())['sha256']
+        current = approved['sha256']
+        assert set(current) == set(old)
+        changed = {path for path in old if current[path] != old[path]}
+        assert changed == set(approved['approved_changes']) == {'src/arena_bringup/launch/simulation.launch.py'}
+        for path in changed:
+            assert approved['approved_changes'][path]['before'] == old[path]
+            assert approved['approved_changes'][path]['after'] == current[path]
+        # 이후 계측 확장은 별도 계약에 연결한다. 당시 G1-b manifest는 덮어쓰지 않는다.
+        successor = json.loads((ROOT/'config/tests/braking_contact_r0_sha256.json').read_text())
+        assert successor['parent_contract'] == 'config/tests/g1b_r0_sha256.json'
+        assert hashlib.sha256((ROOT/successor['parent_contract']).read_bytes()).hexdigest() == successor['parent_contract_sha256']
+        expected = dict(current)
+        assert set(successor['approved_changes']) == {'src/arena_bringup/launch/simulation.launch.py'}
+        for path, change in successor['approved_changes'].items():
+            assert change['before'] == current[path]
+            expected[path] = change['after']
+        assert successor['sha256'] == expected
+        zero = json.loads((ROOT/'config/tests/zero_speed_r0_sha256.json').read_text())
+        assert zero['parent_contract'] == 'config/tests/braking_contact_r0_sha256.json'
+        assert hashlib.sha256((ROOT/zero['parent_contract']).read_bytes()).hexdigest() == zero['parent_contract_sha256']
+        assert set(zero['approved_changes']) == {'src/arena_bringup/launch/simulation.launch.py'}
+        for path, change in zero['approved_changes'].items():
+            assert change['before'] == expected[path]
+            expected[path] = change['after']
+        # 0속도 계약의 구현 해시는 이후 계약 연결의 시작값이다(현재 파일 대조는 마지막 후속 계약에서 한다).
+        assert zero['sha256'] == expected
+        # 10/8 물리 step 민감도 계약. 0속도 계약은 소급 수정하지 않고 다음 계약에 연결한다.
+        step = json.loads((ROOT/'config/tests/physics_step_r0_sha256.json').read_text())
+        assert step['parent_contract'] == 'config/tests/zero_speed_r0_sha256.json'
+        assert hashlib.sha256((ROOT/step['parent_contract']).read_bytes()).hexdigest() == step['parent_contract_sha256']
+        assert set(step['approved_changes']) == {'src/arena_bringup/launch/simulation.launch.py'}
+        for path, change in step['approved_changes'].items():
+            assert change['before'] == expected[path]
+            expected[path] = change['after']
+        assert step['implementation_sha256'] == zero['implementation_sha256']
+        assert step['sha256'] == expected
+        # 10/8 격자 발행 r0/r1(런타임 불변)과 10/9 r2(launch 추적 인자·플러그인 계측)를 차례로 연결한다.
+        implementation, parent = dict(step['implementation_sha256']), 'config/tests/physics_step_r0_sha256.json'
+        for name in ('scheduled_command_r0_sha256.json', 'scheduled_command_r1_sha256.json',
+                     'scheduled_command_r2_sha256.json'):
+            successor = json.loads((ROOT/'config/tests'/name).read_text())
+            assert successor['parent_contract'] == parent
+            assert hashlib.sha256((ROOT/parent).read_bytes()).hexdigest() == successor['parent_contract_sha256']
+            for path, change in successor['approved_changes'].items():
+                assert change['before'] == expected[path]
+                expected[path] = change['after']
+            for path, change in successor.get('approved_implementation_changes', {}).items():
+                assert change['before'] == implementation.get(path)
+                implementation[path] = change['after']
+            assert successor['sha256'] == expected and successor['implementation_sha256'] == implementation
+            parent = 'config/tests/'+name
+        assert set(successor['approved_changes']) == {'src/arena_bringup/launch/simulation.launch.py'}
+        for path, value in implementation.items():
+            assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest() == value
+>       assert {path: hashlib.sha256((ROOT/path).read_bytes()).hexdigest() for path in expected} == expected
+E       AssertionError: assert {'src/arena_a...595c24e', ...} == {'src/arena_a...595c24e', ...}
+E         Omitting 6 identical items, use -vv to show
+E         Differing items:
+E         {'src/arena_bringup/launch/simulation.launch.py': '1ef79360556573adfc364a7b007a15ded3820d1b5ed3f4dcd9870a2e793d1f60'} != {'src/arena_bringup/launch/simulation.launch.py': '3b61d1d6570e49e1a071ca8f5eb46c2bf158760998d55377e1f7ac9062c1e1b2'}
+E         Use -v to get more diff
+
+tests/test_r0_safety_contract.py:91: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_multi_vehicle_g0.py::test_eight_cases_preregistered_and_sensor_configuration_unchanged
+FAILED tests/test_r0_safety_contract.py::test_current_g1b_r0_contract_allows_only_the_registered_launch_change
+2 failed, 1365 passed in 57.78s

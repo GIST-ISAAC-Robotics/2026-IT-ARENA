@@ -1,0 +1,60 @@
+..FF.................................................................... [ 48%]
+........................................................................ [ 97%]
+....                                                                     [100%]
+=================================== FAILURES ===================================
+_________ test_side_case_keeps_gap_and_road_gates_but_not_behind_rule __________
+
+    def test_side_case_keeps_gap_and_road_gates_but_not_behind_rule():
+>       result = side_fixture()
+
+tests/test_g1_side_occlusion.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_g1_side_occlusion.py:42: in side_fixture
+    return synthetic_run(3.2, config=config, case=case, actor=actor, s0=1.5,
+tests/test_g1_traffic_eval.py:113: in synthetic_run
+    return ev.evaluate_run(**inputs)
+scripts/g1_traffic_eval.py:350: in evaluate_run
+    moving = [row for row in actor_tracking_errors(window_tuples(actor, t_green, t_end), schedule_pose)]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+observed = [(10.0, 0.32, 1.5, 1.5707963267948966), (10.01, 0.32, 1.5, 1.5707963267948966), (10.02, 0.32, 1.5, 1.5707963267948966)...3, 0.32, 1.5, 1.5707963267948966), (10.04, 0.32, 1.5, 1.5707963267948966), (10.05, 0.32, 1.5, 1.5707963267948966), ...]
+schedule_pose = (0.32, 1.5)
+
+    def actor_tracking_errors(observed, schedule_pose):
+        """관측 actor 자세와 같은 시각 일정 자세의 차이. 이동 표적 구현 오차 평가용."""
+        rows = []
+        for t, x, y, _ in observed:
+>           tx, ty = schedule_pose(t)
+E           TypeError: 'tuple' object is not callable
+
+scripts/g1_traffic_eval.py:286: TypeError
+__________ test_side_case_cannot_waive_road_or_gap_or_lateral_limits ___________
+
+    def test_side_case_cannot_waive_road_or_gap_or_lateral_limits():
+>       assert not side_fixture(actor_x=.1)['gates']['actor_stays_offroad']
+
+tests/test_g1_side_occlusion.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_g1_side_occlusion.py:42: in side_fixture
+    return synthetic_run(3.2, config=config, case=case, actor=actor, s0=1.5,
+tests/test_g1_traffic_eval.py:113: in synthetic_run
+    return ev.evaluate_run(**inputs)
+scripts/g1_traffic_eval.py:350: in evaluate_run
+    moving = [row for row in actor_tracking_errors(window_tuples(actor, t_green, t_end), schedule_pose)]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+observed = [(10.0, 0.1, 1.5, 1.5707963267948966), (10.01, 0.1, 1.5, 1.5707963267948966), (10.02, 0.1, 1.5, 1.5707963267948966), (10.03, 0.1, 1.5, 1.5707963267948966), (10.04, 0.1, 1.5, 1.5707963267948966), (10.05, 0.1, 1.5, 1.5707963267948966), ...]
+schedule_pose = (0.1, 1.5)
+
+    def actor_tracking_errors(observed, schedule_pose):
+        """관측 actor 자세와 같은 시각 일정 자세의 차이. 이동 표적 구현 오차 평가용."""
+        rows = []
+        for t, x, y, _ in observed:
+>           tx, ty = schedule_pose(t)
+E           TypeError: 'tuple' object is not callable
+
+scripts/g1_traffic_eval.py:286: TypeError
+=========================== short test summary info ============================
+FAILED tests/test_g1_side_occlusion.py::test_side_case_keeps_gap_and_road_gates_but_not_behind_rule
+FAILED tests/test_g1_side_occlusion.py::test_side_case_cannot_waive_road_or_gap_or_lateral_limits
+2 failed, 146 passed in 30.33s

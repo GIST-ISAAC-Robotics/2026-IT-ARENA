@@ -27,6 +27,7 @@ setup(
             "actuation_host = arena_vehicle_interface.actuation_ros:host_main",
             "virtual_mcu = arena_vehicle_interface.actuation_ros:mcu_main",
             "guarded_sim_actuator = arena_vehicle_interface.actuation_ros:actuator_main",
+            "scheduled_sim_actuator = arena_vehicle_interface.scheduled_actuator:main",
         ],
     },
 )

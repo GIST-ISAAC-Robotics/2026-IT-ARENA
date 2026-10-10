@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-08 evaluation-only sim-clock integer-ns command schedule (opt-in sim_grid, 20 ms period, registered phase 0/10 ms) for the fixed braking probe; default poll publishing, legacy drive, default 1 ms world, runtime sources and drive plugin retained",
+  "parent_contract": "config/tests/physics_step_r0_sha256.json",
+  "parent_contract_sha256": "52ce0cfc1dc066128097d5ee9a1313b3203ba5f25dc060db7c1bab9eba8805c0",
+  "approved_changes": {},
+  "approved_evaluation_scripts": {
+    "scripts/probe_braking_contact.py": {
+      "before": "ff7309ce97c4e218d3f1a9d20b9b2996cb657047ef6889e47cbbbf249d81cf70",
+      "after": "fc4e0ab8f2735f0705ec91ceeddc4fc39e78c976c7810f43faf0ee92acaa1e4c",
+      "reason": "optional --command-schedule sim_grid/--schedule-phase-ms; default poll branch, launch arguments, subscriptions and report keys unchanged; grid mode adds /clock, /actuation/status, /actuation/output_status recording only"
+    },
+    "scripts/scheduled_command.py": {
+      "before": null,
+      "after": "665bbb638bb16b78df7678cee368cdd45714181b84fb3174620f9381b28326ea",
+      "reason": "new pure integer-ns grid scheduler and scheduled request audit; legacy audit_requests untouched"
+    }
+  },
+  "sha256": {
+    "src/arena_autonomy/arena_autonomy/local_path.py": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e",
+    "src/arena_autonomy/arena_autonomy/lidar_safety.py": "446324511ce3d305b162ea14951f4baa8a8670581bc95590bfaa82b5507aa5b9",
+    "src/arena_autonomy/arena_autonomy/lidar_motion.py": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5",
+    "src/arena_autonomy/arena_autonomy/lidar_observation.py": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6",
+    "src/arena_description/config/b0183_c1.yaml": "65cc314ff87a588814126095f9250fb6a033a5122356ef709a663bb758edce17",
+    "src/arena_description/config/vehicle.yaml": "a9b6530c6eea883ce8e73f5e50b32161d47459699cb52c1d8c15a14aca458b24",
+    "src/arena_bringup/launch/simulation.launch.py": "efa88e3eb124d9ae592613c8c7a3929e4b384b92f1933e6ce1e7c91393089fda"
+  },
+  "implementation_sha256": {
+    "src/arena_gazebo/src/single_motor_drive.cpp": "9cd1e84e7cb1de8ae52f1783b60f96899609d7d87eaf8e010addf47b328cd88d",
+    "src/arena_gazebo/include/arena_gazebo/drivetrain.hpp": "3fd02294ef92bb8dfcc0bb5b0bf83b4b326b52bf85263d88d31c0adaf1bbe512"
+  }
+}

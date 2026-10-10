@@ -3,10 +3,21 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace arena
 {
+// 원인 분리용 선택 옵션. Legacy가 기본이며 실제 드라이버 출력 모드가 아닙니다.
+enum class ZeroSpeedMode { Legacy, ResetIntegral, NoLag, PassiveDamping };
+inline ZeroSpeedMode ParseZeroSpeedMode(const std::string &name)
+{
+  if (name == "legacy") return ZeroSpeedMode::Legacy;
+  if (name == "reset_integral") return ZeroSpeedMode::ResetIntegral;
+  if (name == "no_lag") return ZeroSpeedMode::NoLag;
+  if (name == "passive_damping") return ZeroSpeedMode::PassiveDamping;
+  throw std::invalid_argument("알 수 없는 평가용 0속도 모드");
+}
 // 질량 없는 강체 기어의 축약 모델. 바퀴 관성/접촉은 Gazebo가 적분합니다.
 // 모터 회전자 반사 관성, 기어 유격, 전기/열/PWM/단락 제동 회로를 재현하는 모델은 아닙니다.
 // 실행값은 vehicle.yaml → SDF로 주입합니다. 아래 기본값은 2026-10-02 설정과 같게 둔
@@ -48,12 +59,14 @@ struct DriveState
 {
   double motorSpeed{}, motorTorque{}, carrierSpeed{}, leftTorque{}, rightTorque{};
   double differentialTorque{}, referenceSpeed{}, speedError{}, lossPower{};
+  double targetSpeed{}, integralBefore{}, integralAfter{}, rawDemand{}, limitedDemand{};
 };
 
 class SingleMotor
 {
 public:
-  explicit SingleMotor(DriveParameters parameters = {}) : p(parameters) { p.Validate(); }
+  explicit SingleMotor(DriveParameters parameters = {}, ZeroSpeedMode mode = ZeroSpeedMode::Legacy)
+    : p(parameters), zeroMode(mode) { p.Validate(); }
   void Reset() { integral = torque = reference = 0; }
 
   DriveState Step(double target, double leftSpeed, double rightSpeed, double dt)
@@ -65,23 +78,37 @@ public:
     s.carrierSpeed = (leftSpeed + rightSpeed) / 2;
     s.motorSpeed = p.ratio * s.carrierSpeed;
     target = std::clamp(target, -p.maxSpeed, p.maxSpeed);
+    s.targetSpeed = target;
     // 증속만 램프 제한합니다. 정지/감속 요청은 실제 토크 한계로 제동합니다.
     if (target * reference < 0 || std::abs(target) <= std::abs(reference)) reference = target;
     else reference += std::clamp(target - reference, -p.acceleration * dt, p.acceleration * dt);
     s.referenceSpeed = reference;
     s.speedError = reference - p.radius * s.carrierSpeed;
+    const bool resetAtZero = target == 0 &&
+      (zeroMode == ZeroSpeedMode::ResetIntegral || zeroMode == ZeroSpeedMode::PassiveDamping);
+    if (resetAtZero) integral = 0;
+    s.integralBefore = integral;
     const double raw = p.speedKp * s.speedError + integral;
     const bool braking = raw * s.motorSpeed < 0;
     const double limit = braking ? p.brakeTorqueLimit :
       p.torqueLimit * std::max(0.0, 1.0 - std::abs(s.motorSpeed) / p.freeSpeed);
     const double demand = std::clamp(raw, -limit, limit);
     // 포화 시 같은 방향의 적분 누적을 막습니다.
-    if (std::abs(raw) <= limit || raw * s.speedError < 0)
+    if (!resetAtZero && (std::abs(raw) <= limit || raw * s.speedError < 0))
       integral = std::clamp(integral + p.speedKi * s.speedError * dt,
                             -p.torqueLimit, p.torqueLimit);
     if (target == 0 && std::abs(s.carrierSpeed * p.radius) < 0.008) integral = 0;
     torque += (demand - torque) * (1 - std::exp(-dt / p.responseTime));
     torque = std::clamp(torque, -limit, limit);
+    if (target == 0 && zeroMode == ZeroSpeedMode::NoLag) torque = demand;
+    // 기존 Kp를 저항 계수로 쓰는 비교용 근사. 전기 회로/전류/정지 유지는 재현하지 않습니다.
+    // τ=-Kp*v이므로 같은 계산 시점에 τ*ω <= 0. 정답 차체 속도는 쓰지 않습니다.
+    if (target == 0 && zeroMode == ZeroSpeedMode::PassiveDamping)
+      torque = std::clamp(-p.speedKp * p.radius * s.carrierSpeed,
+                           -p.brakeTorqueLimit, p.brakeTorqueLimit);
+    s.integralAfter = integral;
+    s.rawDemand = raw;
+    s.limitedDemand = demand;
     s.motorTorque = torque;
     // 역구동에서도 손실이 에너지를 생성하지 않도록 동력 방향을 구분합니다.
     const bool backDriven = torque * s.motorSpeed < 0;
@@ -98,6 +125,7 @@ public:
   }
 private:
   DriveParameters p;
+  ZeroSpeedMode zeroMode;
   double integral{}, torque{}, reference{};
 };
 

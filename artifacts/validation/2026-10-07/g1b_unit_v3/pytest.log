@@ -1,0 +1,33 @@
+........................................................................ [ 17%]
+............................................F........................... [ 35%]
+...............F........................................................ [ 52%]
+........................................................................ [ 70%]
+........................................................................ [ 87%]
+..................................................                       [100%]
+=================================== FAILURES ===================================
+______ test_eight_cases_preregistered_and_sensor_configuration_unchanged _______
+
+    def test_eight_cases_preregistered_and_sensor_configuration_unchanged():
+        suite = g0.load_suite()
+        assert len(suite['cases']) == 8 and suite['seed'] == 0
+        assert all(g0.verify_sensor_config(suite)['checks'].values())
+>       assert g0.baseline_comparison()['unchanged']
+E       assert False
+
+tests/test_multi_vehicle_g0.py:19: AssertionError
+__________________ test_pre_g0_working_tree_hashes_preserved ___________________
+
+    def test_pre_g0_working_tree_hashes_preserved():
+        baseline = json.loads((ROOT/'config/tests/multi_vehicle_g0_r0_sha256.json').read_text())['sha256']
+>       assert {path: hashlib.sha256((ROOT/path).read_bytes()).hexdigest() for path in baseline} == baseline
+E       AssertionError: assert {'src/arena_a...595c24e', ...} == {'src/arena_a...595c24e', ...}
+E         Omitting 6 identical items, use -vv to show
+E         Differing items:
+E         {'src/arena_bringup/launch/simulation.launch.py': '1bd06e589b376c41b6ee27ee89ec54ca81d0a8e8c80331940bf76aae55beaebb'} != {'src/arena_bringup/launch/simulation.launch.py': '32806d5483a498df2f9ded4db37c6fbee9894789368cdb9bdac6427c47333848'}
+E         Use -v to get more diff
+
+tests/test_r0_safety_contract.py:23: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_multi_vehicle_g0.py::test_eight_cases_preregistered_and_sensor_configuration_unchanged
+FAILED tests/test_r0_safety_contract.py::test_pre_g0_working_tree_hashes_preserved
+2 failed, 408 passed in 36.55s

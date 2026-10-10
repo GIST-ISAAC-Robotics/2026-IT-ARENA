@@ -171,11 +171,13 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
                        lidar_acquisition="snapshot", lidar_compensation="none",
                        control_rate_hz=20.0, render_backend="system", sensor_wall_timeout_s=3.0,
                        speed_bump=True, collision_detector="configured", runtime_artifacts="", grid_slot=0,
-                       lidar_test_profile="", motion_test_profile="", actuation_mode="legacy", record_inputs=False):
+                       lidar_test_profile="", motion_test_profile="", actuation_mode="legacy", record_inputs=False,
+                       g1_follow=False, extra_arguments=()):
     # 이 검사기는 터미널 프로세스 그룹이 아니라 ros2 launch에만 SIGINT를
     # 보냅니다. WSL의 TTY 상속 여부와 무관하게 자식에게도 전달되게 합니다.
     return subprocess.Popen(
-        ["ros2", "launch", "--noninteractive", "arena_bringup", "demo.launch.py", "headless:=true",
+        ["ros2", "launch", "--noninteractive", "arena_bringup",
+         "g1_follow.launch.py" if g1_follow else "demo.launch.py", "headless:=true",
          f"speed_profile:={speed_profile}", f"lidar_rate_hz:={lidar_rate_hz:g}",
          f"tof_safety:={str(bool(tof_safety)).lower()}", f"red_duration_s:={red_duration_s:g}",
          f"autonomy_mode:={autonomy_mode}",
@@ -190,7 +192,7 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
          *([f"lidar_test_profile:={lidar_test_profile}"] if lidar_test_profile else []),
          *([f"motion_test_profile:={motion_test_profile}"] if motion_test_profile else []),
          f"batch_static_visuals:={str(autonomy_mode == 'local_pursuit').lower()}",
-         f"chase_camera:={str(bool(chase_camera)).lower()}"],
+         f"chase_camera:={str(bool(chase_camera)).lower()}", *extra_arguments],
         cwd=REPO, stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
 
 
@@ -230,6 +232,7 @@ def main():
                         help="검사 시작 전 빨간 신호 유지 시간. 기본 데모와 같은 8초입니다.")
     parser.add_argument("--autonomy-mode", choices=("lidar", "stereo", "local_pursuit"), default="lidar",
                         help="lidar=C1+ToF6, stereo=전방 D435i 깊이+측면 ToF4")
+    parser.add_argument('--g1-follow', action='store_true', help='G1-a 선택형 추종기. 이 검사에서는 단독 회귀만 평가')
     parser.add_argument("--video", action="store_true",
                         help="제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.")
     parser.add_argument("--disable-speed-bump", action="store_true")
@@ -237,6 +240,9 @@ def main():
     parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy_official",
                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
     args = parser.parse_args()
+    if args.g1_follow and (args.autonomy_mode != 'local_pursuit' or args.lidar_compensation != 'both'
+                          or args.lidar_acquisition != 'sequential' or not args.disable_speed_bump):
+        raise ValueError('G1-a는 local_pursuit+both+sequential, 방지턱 비활성 시험 전용입니다.')
     validate_limits(args.record_max_raw_gib, args.record_max_wall_seconds)
     if args.record_inputs and args.autonomy_mode != 'local_pursuit':
         raise ValueError('A2 recorder currently requires local_pursuit')
@@ -281,7 +287,7 @@ def main():
     os.environ.setdefault("FASTDDS_BUILTIN_TRANSPORTS", "LARGE_DATA")
     import rclpy
     from rclpy.signals import SignalHandlerOptions
-    from rclpy.qos import QoSProfile, qos_profile_sensor_data
+    from rclpy.qos import DurabilityPolicy, QoSProfile, qos_profile_sensor_data
     from sensor_msgs.msg import CameraInfo, Image, LaserScan, Imu
     from nav_msgs.msg import Odometry
     from ackermann_msgs.msg import AckermannDriveStamped
@@ -352,7 +358,7 @@ def main():
             Image, "/sim/chase/image", lambda m: remember(m, "chase"), QoSProfile(depth=2)
         ))
     stop_service = node.create_client(SetBool, "/autonomy/enable")
-    actuation_trace, arm_future = [], None
+    actuation_trace, actuation_diagnostics, arm_future = [], [], None
     arm_service = node.create_client(Trigger, '/actuation/arm')
     mcu_stop_service = node.create_client(Trigger, '/actuation/stop')
     if args.actuation_mode == 'virtual_mcu':
@@ -363,6 +369,11 @@ def main():
         subscriptions.append(node.create_subscription(String, '/actuation/status', receive_actuation, 100))
         subscriptions.append(node.create_subscription(String, '/actuation/output_status',
             lambda m: remember(json.loads(m.data), 'actuation_output'), 100))
+        # 고장 때 한 번 발행되는 진단은 late join에도 회수한다. 정상 실행에서는
+        # 메시지가 없는 것이 정상이며, status/실제 정지 판정을 대신하지 않는다.
+        subscriptions.append(node.create_subscription(String, '/actuation/diagnostics',
+            lambda m: actuation_diagnostics.append(json.loads(m.data)),
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)))
     # demo.launch.py의 track=official과 같은 월드로 진행 거리와 충돌을 판정합니다.
     world = DEMO_WORLD
     route = np.genfromtxt(world / "centerline.csv", delimiter=",", names=True)
@@ -432,6 +443,12 @@ def main():
                                             REPO / "src/arena_autonomy/arena_autonomy/tof_safety_core.py",
                                             REPO / "src/arena_bringup/config/wall_follow.yaml"]}}
     processes = []
+    if args.g1_follow:
+        for relative in ('src/arena_autonomy/arena_autonomy/local_follow.py',
+                         'src/arena_autonomy/arena_autonomy/scene_motion.py',
+                         'src/arena_autonomy/arena_autonomy/local_scene.py',
+                         'src/arena_bringup/launch/g1_follow.launch.py'):
+            report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
     recorder = recorder_log = None
     if args.record_inputs:
         for rel in ('scripts/record_sensor_bag.py', 'scripts/recording_guard.py',
@@ -494,7 +511,7 @@ def main():
                                             args.render_backend, args.sensor_wall_timeout_s,
                                             not args.disable_speed_bump, args.collision_detector, str(output),
                                             args.grid_slot, args.lidar_test_profile, args.motion_test_profile,
-                                            args.actuation_mode, args.record_inputs))
+                                            args.actuation_mode, args.record_inputs, args.g1_follow))
         pose_process = subprocess.Popen(["gz", "topic", "-e", "-t", "/world/it_arena_track/dynamic_pose/info", "--json-output"],
                                         cwd=REPO, stdout=subprocess.PIPE, stderr=log, text=True, start_new_session=True)
         processes.append(pose_process)
@@ -818,12 +835,37 @@ def main():
         report["passed"] = (not false_start and collision_samples == 0 and report['stop_collision_samples'] == 0 and report["stop_stable"] and
                             report["sensor_only_inputs"] and safety_evidence and source_interface_passed and
                             {"red", "yellow", "green"}.issubset(signal_states) and route_evidence)
+        if args.g1_follow:
+            running_rows = [row['autonomy'] for row in trace if row['autonomy']['state'] == 'RUNNING']
+            report['g1_runtime_verified'] = bool(running_rows) and all(
+                row.get('mode') == 'g1_follow' and row.get('passing_enabled') is False
+                for row in running_rows)
+            report['g1_behavior_counts'] = {name: sum(row['autonomy'].get('behavior') == name for row in trace)
+                                           for name in ('CRUISE', 'FOLLOW', 'HOLD')}
+            report['passed'] &= report['g1_runtime_verified']
         if args.actuation_mode == 'virtual_mcu':
             report['passed'] &= report['actuation_passed']
     except Exception as error:
         report["error"] = str(error)
         print(f"검사 실패: {error}", flush=True)
     finally:
+        if args.actuation_mode == 'virtual_mcu':
+            # status와 별도 토픽이므로 고장 status가 먼저 도착해 루프가 끝날 수 있다.
+            # 차는 이미 고정 정지 상태다. 첫 진단만 최대 1초 회수하고 새 ARM은 하지 않는다.
+            if state.get('actuation', {}).get('reason') == 'control_deadline_missed':
+                diagnostic_deadline = time.monotonic()+1.
+                while not actuation_diagnostics and time.monotonic() < diagnostic_deadline:
+                    rclpy.spin_once(node, timeout_sec=.01)
+            (output/'actuation_diagnostics.json').write_text(
+                json.dumps(actuation_diagnostics, indent=2), encoding='utf-8')
+            report['actuation_diagnostics'] = {
+                'subscribed': True, 'samples': len(actuation_diagnostics),
+                'control_deadline_samples': sum(
+                    row.get('type') == 'control_deadline_diagnostic' for row in actuation_diagnostics),
+                'scope': 'pre-shutdown fault diagnostics; no message alone does not prove no delay',
+            }
+            if report['actuation_diagnostics']['control_deadline_samples']:
+                report['passed'] = False
         if actuation_trace:
             (output/'actuation_trace.json').write_text(json.dumps(actuation_trace, indent=2), encoding='utf-8')
             # 목표 거리 전에 실패해도 MCU 상태와 허가 결과를 최종 요약에 남긴다.

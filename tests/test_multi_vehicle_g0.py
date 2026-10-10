@@ -16,7 +16,17 @@ def test_eight_cases_preregistered_and_sensor_configuration_unchanged():
     suite = g0.load_suite()
     assert len(suite['cases']) == 8 and suite['seed'] == 0
     assert all(g0.verify_sensor_config(suite)['checks'].values())
-    assert g0.baseline_comparison()['unchanged']
+    # 현재 기능 회귀는 승인된 후속 소스 계약을 명시한다. G0 기본 비교는
+    # 여전히 pre-G0 bytes를 뜻하며 기존 기록/manifest를 소급 변경하지 않는다.
+    # 2026-10-11 선택형 초기 배치·준비 검사까지 r6 계약으로 연결한다. G0 원본 의미는 다음 시험에서 유지한다.
+    assert g0.baseline_comparison(ROOT/'config/tests/scheduled_command_r7_sha256.json')['unchanged']
+
+
+def test_g0_default_baseline_retains_original_meaning_after_g1b_launch_change():
+    result = g0.baseline_comparison()
+    assert not result['unchanged']
+    assert {p for p, row in result['files'].items() if not row['matches']} == {
+        'src/arena_bringup/launch/simulation.launch.py'}
 
 
 def test_trajectory_units_and_stop_restart_phases():

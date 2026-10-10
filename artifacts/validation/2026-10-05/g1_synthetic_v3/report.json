@@ -1,0 +1,824 @@
+{
+  "created_at": "2026-10-05T10:50:35.272802+00:00",
+  "source_sha256": {
+    "scripts/validate_local_follow.py": "7e5a302b639ac2ade0ef6ae3efac4b150aa32c45200854d8a29fbbc017958fbf",
+    "config/tests/g1_follow_v1.json": "404ae5b4ead78e6021dae4b73564b63667212e3ac792bf5bdcfd4a3181fedfea",
+    "scripts/g0_geometry.py": "a79904f7fcefbf79224cdf466f35b92882c53a44ae272800e7405f159558e4ff",
+    "src/arena_autonomy/arena_autonomy/local_follow.py": "3ea9633d0e8498dc51ef532bf819c19d36c935fe75a94ae0603d6e5c132ebd25",
+    "src/arena_autonomy/arena_autonomy/scene_motion.py": "41dd3567500b21d487aa292874f1e24f79301811616fa1d62b846d1d2bc4dddb",
+    "src/arena_autonomy/arena_autonomy/local_scene.py": "4720821f897806a962091fcbb98e17bc4d66581ea3f66555251935886a633a15",
+    "src/arena_autonomy/arena_autonomy/local_path.py": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e",
+    "src/arena_autonomy/arena_autonomy/lidar_motion.py": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5",
+    "src/arena_autonomy/arena_autonomy/lidar_observation.py": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6"
+  },
+  "source_unchanged": true,
+  "configuration": {
+    "schema_version": 1,
+    "scope": "G1-a low-speed longitudinal following prototype; not G1 gate completion or vehicle safety certification",
+    "synthetic_plant": {
+      "dt_s": 0.01,
+      "control_hz": 50,
+      "scan_hz": 10,
+      "points_per_scan": 500,
+      "wheelbase_m": 0.135,
+      "length_m": 0.2,
+      "width_m": 0.15,
+      "mass_and_tire_dynamics": "not simulated",
+      "acceleration_mps2": 0.8,
+      "deceleration_mps2": 2.0,
+      "steering_slew_rad_s": 3.0,
+      "motor_gyro_feedback": "ideal measured plant speed/yaw rate; not command values; no quantization or delay",
+      "lidar_range_noise_uniform_m": 0.03,
+      "noise_note": "test assumption, not a measured C1 probability distribution",
+      "seeds": [
+        0,
+        1,
+        2
+      ]
+    },
+    "geometry": {
+      "wall_y_m": 0.425,
+      "road_half_width_m": 0.225,
+      "end_caps_x_m": [
+        -2.0,
+        8.0
+      ]
+    },
+    "acceptance": {
+      "minimum_body_gap_m": 0.15,
+      "maximum_lateral_center_error_m": 0.05,
+      "minimum_empty_progress_m": 3.0,
+      "minimum_follow_progress_m": 1.5,
+      "minimum_hold_duration_s": 0.4,
+      "maximum_restart_delay_s": 2.5,
+      "threshold_status": "pre-registered prototype test gates; not measured real vehicle guarantees"
+    },
+    "cases": [
+      {
+        "name": "empty",
+        "duration_s": 5.0,
+        "actor": "none"
+      },
+      {
+        "name": "stopped",
+        "duration_s": 7.0,
+        "actor": "x=1.6"
+      },
+      {
+        "name": "moving",
+        "duration_s": 7.0,
+        "actor": "x=1.6+0.35*t"
+      },
+      {
+        "name": "stop_restart",
+        "duration_s": 10.0,
+        "actor": "0.35m/s until 2s; stopped 2..5s; 0.45m/s after 5s"
+      }
+    ],
+    "gazebo_solo": {
+      "target_progress_m": 12.0,
+      "max_sim_seconds": 60.0,
+      "wall_timeout_s": 1200.0,
+      "speed_profile": "exploratory",
+      "g1_max_speed_mps": 1.0,
+      "grid_slot": 3,
+      "actuation_mode": "virtual_mcu",
+      "shutdown_mode": "service",
+      "note": "one bounded empty-traffic official-course partial regression; same existing stop/collision/source gates"
+    }
+  },
+  "controller_config": {
+    "wheelbase_m": 0.135,
+    "length_m": 0.2,
+    "width_m": 0.15,
+    "wall_offset_m": 0.425,
+    "max_steering_rad": 0.37,
+    "max_speed_mps": 1.0,
+    "lateral_acceleration_mps2": 3.5,
+    "memory_ttl_s": 0.3,
+    "memory_motion_limit_m": 0.45,
+    "boundary_min_ahead_m": 0.65,
+    "boundary_anchor_error_m": 0.12,
+    "boundary_agreement_m": 0.08,
+    "measurement_padding_m": 0.03,
+    "object_motion_bound_mps": 0.5,
+    "standstill_gap_m": 0.16,
+    "hold_clearance_m": 0.2,
+    "resume_clearance_m": 0.28,
+    "headway_s": 0.8,
+    "confirmations": 2
+  },
+  "results": [
+    {
+      "case": "empty",
+      "mode": "r0",
+      "seed": 0,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 4.279992120275597,
+      "min_body_gap_m": null,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0014459979722916084,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 4.816864000005694,
+        "p99": 5.917782299984254,
+        "max": 6.418547999999191
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "empty_0_r0.json",
+      "trace_sha256": "97f671b07e26969b0e88f2f8a038bf927480d645e339b07e7b42fe43b19e0f37"
+    },
+    {
+      "case": "empty",
+      "mode": "g1",
+      "seed": 0,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 4.079991932002872,
+      "min_body_gap_m": null,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0006927094314733136,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 14.340217499992036,
+        "p99": 20.609613649995143,
+        "max": 24.863498000001982
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "empty_0_g1.json",
+      "trace_sha256": "214503769aa47b8b90ab7ef776c893b2e8201a70fddaf59295d5b033305d3f30"
+    },
+    {
+      "case": "empty",
+      "mode": "r0",
+      "seed": 1,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 4.279993578474233,
+      "min_body_gap_m": null,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0015222735091288734,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 4.462881999998558,
+        "p99": 4.725165849997381,
+        "max": 5.221635999987484
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "empty_1_r0.json",
+      "trace_sha256": "c59a72897093b9af6a613ff3016bc448c2b4f8403d307b7100f772334eb4932d"
+    },
+    {
+      "case": "empty",
+      "mode": "g1",
+      "seed": 1,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 4.079992243613926,
+      "min_body_gap_m": null,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.001708273136212424,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 13.479649500013124,
+        "p99": 19.61149449999198,
+        "max": 22.134436000015967
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "empty_1_g1.json",
+      "trace_sha256": "9a4904b51cc70dd5ae29b43fcf51e4128ceb96f33685a80cc2deaf570f728880"
+    },
+    {
+      "case": "empty",
+      "mode": "r0",
+      "seed": 2,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 4.279990790388408,
+      "min_body_gap_m": null,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0014129036399940472,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 4.582361999993623,
+        "p99": 5.18297265001735,
+        "max": 6.398855999975694
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "empty_2_r0.json",
+      "trace_sha256": "2a18542c50c9bb8821c557bac11b88d67f6fc2335c57b66258679aa2136534c6"
+    },
+    {
+      "case": "empty",
+      "mode": "g1",
+      "seed": 2,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 4.079987546898819,
+      "min_body_gap_m": null,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0018465313630039344,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 14.355908499993575,
+        "p99": 20.676465000006772,
+        "max": 22.84528699999555
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "empty_2_g1.json",
+      "trace_sha256": "c60ce77a0792300a6d71c8f48598344764e7135528dbab98a3c28846a1ecbd56"
+    },
+    {
+      "case": "stopped",
+      "mode": "r0",
+      "seed": 0,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": false,
+        "hold": true
+      },
+      "passed": false,
+      "progress_m": 1.2695197974734789,
+      "min_body_gap_m": 0.13042815813769856,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0011328502371335326,
+      "hold_samples": 174,
+      "longest_hold_s": 1.98,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 2.5786964999952033,
+        "p99": 3.832099599988226,
+        "max": 3.9988130000097044
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stopped_0_r0.json",
+      "trace_sha256": "60fb66204bb0cd6075858c7917d741006a003dbcb00d045379bc4077755cbe37"
+    },
+    {
+      "case": "stopped",
+      "mode": "g1",
+      "seed": 0,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "hold": true
+      },
+      "passed": true,
+      "progress_m": 0.9944732981763247,
+      "min_body_gap_m": 0.4054740375446559,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0006123901278225468,
+      "hold_samples": 176,
+      "longest_hold_s": 3.5,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 9.718237500010218,
+        "p99": 16.223038500010034,
+        "max": 17.431598000001713
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stopped_0_g1.json",
+      "trace_sha256": "55e090504ebd6417f14a9d98f03503f0290cce6c354ee27a14cebfac851cc445"
+    },
+    {
+      "case": "stopped",
+      "mode": "r0",
+      "seed": 1,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": false,
+        "hold": true
+      },
+      "passed": false,
+      "progress_m": 1.269375841540181,
+      "min_body_gap_m": 0.13050187349030207,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0004141483026959508,
+      "hold_samples": 176,
+      "longest_hold_s": 3.5,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 2.58810100000062,
+        "p99": 3.5034886000005376,
+        "max": 3.7605429999985063
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stopped_1_r0.json",
+      "trace_sha256": "1aa5a8aee160965460aed1f1e4300ea1dd5ceda16913d82bf205770d937c8990"
+    },
+    {
+      "case": "stopped",
+      "mode": "g1",
+      "seed": 1,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "hold": true
+      },
+      "passed": true,
+      "progress_m": 0.993392284422296,
+      "min_body_gap_m": 0.40660676133921,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0010456668742843448,
+      "hold_samples": 176,
+      "longest_hold_s": 3.5,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 9.513128999998344,
+        "p99": 16.071171549995714,
+        "max": 16.761552999980722
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stopped_1_g1.json",
+      "trace_sha256": "a4cf055b3296fc0a57008f5dbc28ea80355f51004d546348baf40a6415cfaa37"
+    },
+    {
+      "case": "stopped",
+      "mode": "r0",
+      "seed": 2,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": false,
+        "hold": true
+      },
+      "passed": false,
+      "progress_m": 1.2692996626248974,
+      "min_body_gap_m": 0.13049513590987605,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0005137302111330469,
+      "hold_samples": 176,
+      "longest_hold_s": 3.5,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 2.5557355000103144,
+        "p99": 3.7954378999884852,
+        "max": 3.9096290000202316
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stopped_2_r0.json",
+      "trace_sha256": "e6e12897e4c75bf329874c3df193ac0005d97bf9b6f6d8fd8c8b937b856f0b80"
+    },
+    {
+      "case": "stopped",
+      "mode": "g1",
+      "seed": 2,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "hold": true
+      },
+      "passed": true,
+      "progress_m": 0.994455816077997,
+      "min_body_gap_m": 0.40544988635245643,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0007823828661561175,
+      "hold_samples": 176,
+      "longest_hold_s": 3.5,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 9.666193499995757,
+        "p99": 16.111626999997956,
+        "max": 19.46373100000187
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stopped_2_g1.json",
+      "trace_sha256": "6d92fcd088d8799ff48239fc13221e37dfc633b58700358873e98276fce31af4"
+    },
+    {
+      "case": "moving",
+      "mode": "r0",
+      "seed": 0,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 3.550692909492576,
+      "min_body_gap_m": 0.2916957980352066,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0011387903211703377,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 2.765695500016818,
+        "p99": 3.8794579999944294,
+        "max": 4.251705000001493
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "moving_0_r0.json",
+      "trace_sha256": "0031eb21987dfa231261399812f01018baa75ecc58bfcdd59a22757715b69cd0"
+    },
+    {
+      "case": "moving",
+      "mode": "g1",
+      "seed": 0,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 3.1880759431368433,
+      "min_body_gap_m": 0.6563617246769998,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0008248783734176553,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 9.998095000014473,
+        "p99": 17.06921455000554,
+        "max": 18.5512170000095
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "moving_0_g1.json",
+      "trace_sha256": "ccabbba6d7660b29bf8b9d90393d0a878b5d6b13b35cad2e9365eeabad0a941d"
+    },
+    {
+      "case": "moving",
+      "mode": "r0",
+      "seed": 1,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 3.5545125734859693,
+      "min_body_gap_m": 0.29393883220710965,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0009365314082892687,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 2.822562000005746,
+        "p99": 3.7664659499995423,
+        "max": 3.964162000016813
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "moving_1_r0.json",
+      "trace_sha256": "b79c0714ac6d5719a7146a96de9f541a11b28376b9875765adfe6b4901314e7b"
+    },
+    {
+      "case": "moving",
+      "mode": "g1",
+      "seed": 1,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 3.1931125264911824,
+      "min_body_gap_m": 0.6552349724888437,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0011859482555606335,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 10.252380000011385,
+        "p99": 16.46146659999914,
+        "max": 19.60633100000564
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "moving_1_g1.json",
+      "trace_sha256": "dc0172dc3edfbc361c9af83f3fc4a9a699a1a3b26497745fd5b0b179dfa3b4b1"
+    },
+    {
+      "case": "moving",
+      "mode": "r0",
+      "seed": 2,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 3.5554567024607238,
+      "min_body_gap_m": 0.29176946457767894,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0011897805409999624,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 2.8578459999977213,
+        "p99": 4.305745300003139,
+        "max": 4.463355999973828
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "moving_2_r0.json",
+      "trace_sha256": "46c0f05d14246cc651815ab83c1d7d372ca69a578e1908c74366bbc0c7437aff"
+    },
+    {
+      "case": "moving",
+      "mode": "g1",
+      "seed": 2,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true
+      },
+      "passed": true,
+      "progress_m": 3.190550478769131,
+      "min_body_gap_m": 0.655032765183146,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0013685588078661945,
+      "hold_samples": 0,
+      "longest_hold_s": 0.0,
+      "restart_delay_s": null,
+      "processing_ms": {
+        "p50": 10.039053499994566,
+        "p99": 16.77878744998794,
+        "max": 18.776470999995354
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "moving_2_g1.json",
+      "trace_sha256": "d65cdfd6e19918f0e602c2550eaef1300b4f4b2de66645a8749598f59d2ce8dc"
+    },
+    {
+      "case": "stop_restart",
+      "mode": "r0",
+      "seed": 0,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": false,
+        "progress": true,
+        "hold": true,
+        "restart": true
+      },
+      "passed": false,
+      "progress_m": 3.9953431775228543,
+      "min_body_gap_m": 0.1311881109092633,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0011387903211703377,
+      "hold_samples": 68,
+      "longest_hold_s": 1.26,
+      "restart_delay_s": 0.2599999999999998,
+      "processing_ms": {
+        "p50": 2.817671999991944,
+        "p99": 4.015809650003633,
+        "max": 11.358059999992065
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stop_restart_0_r0.json",
+      "trace_sha256": "f54caf5bd2d75b0214f4a69af13113c9f36c888083788f8d4de7d9cc314f33d1"
+    },
+    {
+      "case": "stop_restart",
+      "mode": "g1",
+      "seed": 0,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true,
+        "hold": true,
+        "restart": true
+      },
+      "passed": true,
+      "progress_m": 3.596611560086772,
+      "min_body_gap_m": 0.4074533807022619,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0009731635845388885,
+      "hold_samples": 51,
+      "longest_hold_s": 1.0,
+      "restart_delay_s": 0.4400000000000004,
+      "processing_ms": {
+        "p50": 9.849528499984217,
+        "p99": 16.22336959999018,
+        "max": 20.730492000012646
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stop_restart_0_g1.json",
+      "trace_sha256": "d6738f24c94af82863f27bf0bdb667bcaf5949a4613cc2635f7e2c458e5b1d39"
+    },
+    {
+      "case": "stop_restart",
+      "mode": "r0",
+      "seed": 1,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": false,
+        "progress": true,
+        "hold": true,
+        "restart": true
+      },
+      "passed": false,
+      "progress_m": 3.99960423767898,
+      "min_body_gap_m": 0.12903763694660014,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0007189343053532597,
+      "hold_samples": 68,
+      "longest_hold_s": 1.34,
+      "restart_delay_s": 0.2599999999999998,
+      "processing_ms": {
+        "p50": 2.8177724999949305,
+        "p99": 3.6978637499956335,
+        "max": 4.025514999995039
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stop_restart_1_r0.json",
+      "trace_sha256": "d85822cf8a791f0d61faea2611b9aa3d0f8071b538c7cbb5e0292097f59dcb7d"
+    },
+    {
+      "case": "stop_restart",
+      "mode": "g1",
+      "seed": 1,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true,
+        "hold": true,
+        "restart": true
+      },
+      "passed": true,
+      "progress_m": 3.5980479711086817,
+      "min_body_gap_m": 0.4096874972172344,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0016265725816377993,
+      "hold_samples": 51,
+      "longest_hold_s": 1.0,
+      "restart_delay_s": 0.4400000000000004,
+      "processing_ms": {
+        "p50": 10.020040000000563,
+        "p99": 17.31981184998831,
+        "max": 20.45682499999657
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stop_restart_1_g1.json",
+      "trace_sha256": "d809f06acd1b878694aa684f9040769ce4c0952982f57feb7ab8d96c7b488511"
+    },
+    {
+      "case": "stop_restart",
+      "mode": "r0",
+      "seed": 2,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": false,
+        "progress": true,
+        "hold": true,
+        "restart": true
+      },
+      "passed": false,
+      "progress_m": 3.996050395142537,
+      "min_body_gap_m": 0.13118730702992565,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0013956497453042015,
+      "hold_samples": 68,
+      "longest_hold_s": 1.1400000000000001,
+      "restart_delay_s": 0.2599999999999998,
+      "processing_ms": {
+        "p50": 2.8136149999937743,
+        "p99": 3.7588979500227993,
+        "max": 4.122716000011906
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stop_restart_2_r0.json",
+      "trace_sha256": "9d3392af8558eecc44b82b801cd59d9ee5b47c47f4469c6f95d65e1f0958c206"
+    },
+    {
+      "case": "stop_restart",
+      "mode": "g1",
+      "seed": 2,
+      "checks": {
+        "no_sampled_collision": true,
+        "inside_road_samples": true,
+        "lateral_path_held": true,
+        "body_gap": true,
+        "progress": true,
+        "hold": true,
+        "restart": true
+      },
+      "passed": true,
+      "progress_m": 3.5963142209416117,
+      "min_body_gap_m": 0.4099738960722541,
+      "collision_samples": 0,
+      "offroad_samples": 0,
+      "max_lateral_error_m": 0.0013650096745054137,
+      "hold_samples": 51,
+      "longest_hold_s": 1.0,
+      "restart_delay_s": 0.4400000000000004,
+      "processing_ms": {
+        "p50": 9.961505500001522,
+        "p99": 16.674070799996343,
+        "max": 21.63520599998492
+      },
+      "sampling_scope": "synthetic kinematic plant at 100 Hz; not continuous collision or actuator proof",
+      "trace": "stop_restart_2_g1.json",
+      "trace_sha256": "a029855519c0f1aed2cc49d949e7b8332e1555a4d501c1252a78b8916b94bdd0"
+    }
+  ],
+  "passed": true,
+  "scope": "synthetic closed-loop only; R0 comparison is not required to pass G1 headway gates",
+  "gazebo_or_real_vehicle_verified": false
+}

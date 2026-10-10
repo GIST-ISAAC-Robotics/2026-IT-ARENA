@@ -1,0 +1,80 @@
+{
+  "gate_a": {
+    "status": "passed",
+    "evidence": [
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/gate_a_v2.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/status_gate_a_v2.json"
+    ],
+    "facts": {
+      "a1_base": "pass rc0, window max 6 ms, all-tick max 9 ms",
+      "a2_inject_late": "expected_injected_failure rc1; failed only lateness_within_limit + all_ticks_lateness_within_limit; 63 withheld polls; target 2920 ms tick 15 ms late; STOP/stop/clean shutdown true",
+      "a3_sentinel": "not started",
+      "residual": "none"
+    },
+    "attempt0": "runner wrapper bug (set -u before ROS setup); no Gazebo case started; preserved run_batch.sh, fixed run_batch_v2.sh"
+  },
+  "natural_lateness": {
+    "status": "narrowed_not_confirmed",
+    "observation": "every tick >=5 ms late in a1/a2/c1/c2 lies inside an evaluator Python generation-2 GC pause; 8 gen-2 collections per run, the >=20 ms ones grow ~42->142 ms wall (~4-14 ms sim at RTF ~0.097)",
+    "c2_failure": "post-profile zero-hold tick (rel 4.24 s) 13 ms late after a 142.6 ms gen-2 pause; failed r2 all-tick audit (registered window audit max 0 ms)",
+    "not_excluded": "OS scheduling/DDS/bridge delays; 10/8 R4/R6 had no GC instrumentation",
+    "evidence": [
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/timing_a_v1.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/timing_gc_a_v1.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/timing_c_v1.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/timing_gc_c_v1.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/timing_c3_v1.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/timing_gc_c3_v1.json"
+    ]
+  },
+  "gate_b": {
+    "status": "passed_with_limits",
+    "facts": {
+      "events": "16 speed + 11 steering transitions captured and matched in c1/c2/c3; sequence contiguous; first_update/summary present",
+      "receive_to_apply": "every transition applied at the first PreUpdate after receipt (steps_after_rx=1), superseded receive transitions 0",
+      "stage_lags": "apply-output 0..+1 step, apply-MCU 6..7 ms",
+      "sim_time_semantics": "UpdateInfo.simTime at PreUpdate == iteration*dt for every event",
+      "default_off": "a1 (new build, trace off) runtime vehicle byte-identical to 10/8 R1, world identical except temp mesh dir, diagnostic keys identical; a1 diagnostics identical to R1 until rel 557 ms (same spawn class)",
+      "trace_on_vs_off": "runtime copy differs only by evaluation_command_trace element; a1 (off) vs c1 (on) diagnostics identical until rel 1081 ms",
+      "cost": "trace bookkeeping ~13-15 ns per unchanged step (harness, excludes steady_clock call and event publish)"
+    },
+    "limits": "transport publish cost of ~35 events/run not separately measured; RTF 0.0968-0.0979 across runs (reference only)",
+    "evidence": [
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/apply_trace_v1.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/apply_trace_v2.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/preservation_a_v2.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/trace_bench_v1.jsonl",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/cross_a_v1.json"
+    ]
+  },
+  "gate_c": {
+    "status": "registered_pair_classified",
+    "registered_pair": "c1 vs c3 (both valid, same spawn iteration 2)",
+    "classification": "divergence_onset_not_before_first_application_difference",
+    "facts": {
+      "first_application_difference_rel_ms": 656,
+      "first_diagnostic_divergence_rel_ms": 658,
+      "application_differences": "speed 5/16, steering 3/11 by +/-1 ms",
+      "metrics": "all 7 primary metrics outside tolerance (e.g. before-zero 0.546 vs 0.010 m/s, stop chord 0.294 vs 0.051 m)"
+    },
+    "c1_vs_c2": "spawn differs (2 vs 3) and c2 invalid; supplementary only",
+    "hypotheses": {
+      "H1_spawn": "observed: spawn iteration 2 or 3 varies between runs; different spawn -> diagnostics differ from the first sample",
+      "H2_application": "consistent: in every same-spawn pair the divergence starts right after a transition with a stage/application difference; traced pair confirms order",
+      "H3_other": "not observed in the traced same-spawn pair; not excluded in general (n=1 traced pair)"
+    },
+    "runs_used": 5,
+    "cap": 6,
+    "evidence": [
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/apply_trace_v2.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/onset_context_v1.json",
+      "artifacts/validation/2026-10-09/command_apply_trace_v1/retro_divergence_v1.json"
+    ]
+  },
+  "not_done": [
+    "0.25 ms repeats",
+    "G1 closed loop / left occlusion / right / G2 / high speed",
+    "AppliedGuard policy change (review only)",
+    "default adoption of any evaluation option"
+  ]
+}

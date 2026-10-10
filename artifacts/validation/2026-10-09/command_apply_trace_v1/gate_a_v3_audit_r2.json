@@ -1,0 +1,65 @@
+{
+  "status": "artifacts/validation/2026-10-09/command_apply_trace_v1/status_gate_a_v2.json",
+  "plan": "artifacts/validation/2026-10-09/command_apply_trace_v1/plan_gate_a.json",
+  "revision": 2,
+  "cases": [
+    {
+      "rc": 0,
+      "report_passed": true,
+      "input_valid": true,
+      "evidence_failed": [],
+      "request_audit_failed": [],
+      "all_ticks_failed": [],
+      "class": "pass",
+      "name": "a1_base",
+      "expect": "pass",
+      "residual_after": []
+    },
+    {
+      "rc": 1,
+      "report_passed": false,
+      "input_valid": false,
+      "evidence_failed": [],
+      "request_audit_failed": [
+        "lateness_within_limit"
+      ],
+      "all_ticks_failed": [
+        "all_ticks_lateness_within_limit"
+      ],
+      "injection_evidence": {
+        "valid": true,
+        "checks": {
+          "kind_matches": true,
+          "delay_matches": true,
+          "target_matches": true,
+          "self_description_matches_contract": true,
+          "withheld_polls_positive": true,
+          "applied_flag": true,
+          "target_tick_late_by_delay": true
+        },
+        "kind": "late",
+        "contract_window": [
+          "lateness_within_limit"
+        ],
+        "contract_all_ticks": [
+          "all_ticks_lateness_within_limit"
+        ]
+      },
+      "class": "expected_injected_failure",
+      "name": "a2_inject_late",
+      "expect": "expected_failure",
+      "residual_after": []
+    }
+  ],
+  "checks": {
+    "status_is_plan_prefix_through_first_expected_failure": true,
+    "baseline_present_before_expected_failure": true,
+    "all_started_cases_as_expected": true,
+    "stopped_at_first_expected_failure": true,
+    "batch_exit_nonzero": true,
+    "later_cases_not_started": true,
+    "no_residual_after_any_case": true
+  },
+  "passed": true,
+  "scope": "Gate A 실패 전파·기대 실패 구분(fail-closed revision 2). 물리 재현성 판정이 아니다."
+}

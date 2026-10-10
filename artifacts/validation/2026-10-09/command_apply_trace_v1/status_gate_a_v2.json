@@ -1,0 +1,171 @@
+{
+  "plan": {
+    "base": "artifacts/validation/2026-10-09/command_apply_trace_v1",
+    "purpose": "Gate A: 정상 기준 1회 → 평가 전용 지연주입 기대 실패 1회 → 다음 사례 미실행 확인",
+    "cases": [
+      {
+        "name": "a1_base",
+        "expect": "pass",
+        "args": [
+          "--surface",
+          "official",
+          "--zero-speed-mode",
+          "passive_damping",
+          "--command-schedule",
+          "sim_grid",
+          "--schedule-phase-ms",
+          "10",
+          "--command-profile",
+          "artifacts/validation/2026-10-08/braking_ab_v1/command_profile.json"
+        ]
+      },
+      {
+        "name": "a2_inject_late",
+        "expect": "expected_failure",
+        "args": [
+          "--surface",
+          "official",
+          "--zero-speed-mode",
+          "passive_damping",
+          "--command-schedule",
+          "sim_grid",
+          "--schedule-phase-ms",
+          "10",
+          "--command-profile",
+          "artifacts/validation/2026-10-08/braking_ab_v1/command_profile.json",
+          "--evaluation-schedule-fault",
+          "late",
+          "--evaluation-schedule-fault-at-ms",
+          "2920",
+          "--evaluation-schedule-fault-delay-ms",
+          "15"
+        ]
+      },
+      {
+        "name": "a3_sentinel",
+        "expect": "pass",
+        "args": [
+          "--surface",
+          "official",
+          "--zero-speed-mode",
+          "passive_damping",
+          "--command-schedule",
+          "sim_grid",
+          "--schedule-phase-ms",
+          "10",
+          "--command-profile",
+          "artifacts/validation/2026-10-08/braking_ab_v1/command_profile.json"
+        ]
+      }
+    ]
+  },
+  "started_wall_s": 1791556008.1790214,
+  "cases": [
+    {
+      "name": "a1_base",
+      "expect": "pass",
+      "args": [
+        "--surface",
+        "official",
+        "--zero-speed-mode",
+        "passive_damping",
+        "--command-schedule",
+        "sim_grid",
+        "--schedule-phase-ms",
+        "10",
+        "--command-profile",
+        "artifacts/validation/2026-10-08/braking_ab_v1/command_profile.json"
+      ],
+      "started": true,
+      "rc": 0,
+      "residual_after": [],
+      "summary": {
+        "passed": true,
+        "input_valid": true,
+        "stopped": true,
+        "shutdown_clean": true,
+        "stop_acknowledged": true,
+        "source_unchanged": true,
+        "error": null,
+        "wall_elapsed_s": 89.43300061200001,
+        "request_audit_checks": {
+          "start_on_grid": true,
+          "every_registered_tick_once": true,
+          "values_match_scheduled_sample": true,
+          "not_backdated": true,
+          "header_is_observed_clock": true,
+          "lateness_within_limit": true,
+          "no_missed_ticks": true
+        },
+        "all_ticks_checks": {
+          "all_ticks_contiguous_from_origin": true,
+          "all_ticks_not_backdated": true,
+          "all_ticks_lateness_within_limit": true,
+          "all_ticks_no_missed": true
+        },
+        "max_lateness_ns": 6000000,
+        "fault_injection_applied": null,
+        "plugin_trace_valid": null
+      }
+    },
+    {
+      "name": "a2_inject_late",
+      "expect": "expected_failure",
+      "args": [
+        "--surface",
+        "official",
+        "--zero-speed-mode",
+        "passive_damping",
+        "--command-schedule",
+        "sim_grid",
+        "--schedule-phase-ms",
+        "10",
+        "--command-profile",
+        "artifacts/validation/2026-10-08/braking_ab_v1/command_profile.json",
+        "--evaluation-schedule-fault",
+        "late",
+        "--evaluation-schedule-fault-at-ms",
+        "2920",
+        "--evaluation-schedule-fault-delay-ms",
+        "15"
+      ],
+      "started": true,
+      "rc": 1,
+      "residual_after": [],
+      "summary": {
+        "passed": false,
+        "input_valid": false,
+        "stopped": true,
+        "shutdown_clean": true,
+        "stop_acknowledged": true,
+        "source_unchanged": true,
+        "error": null,
+        "wall_elapsed_s": 86.95739162499999,
+        "request_audit_checks": {
+          "start_on_grid": true,
+          "every_registered_tick_once": true,
+          "values_match_scheduled_sample": true,
+          "not_backdated": true,
+          "header_is_observed_clock": true,
+          "lateness_within_limit": false,
+          "no_missed_ticks": true
+        },
+        "all_ticks_checks": {
+          "all_ticks_contiguous_from_origin": true,
+          "all_ticks_not_backdated": true,
+          "all_ticks_lateness_within_limit": false,
+          "all_ticks_no_missed": true
+        },
+        "max_lateness_ns": 15000000,
+        "fault_injection_applied": true,
+        "plugin_trace_valid": null
+      }
+    }
+  ],
+  "stopped_at": "a2_inject_late",
+  "not_started": [
+    "a3_sentinel"
+  ],
+  "exit_code": 1,
+  "finished_wall_s": 1791556190.7444763
+}

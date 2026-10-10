@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "scope": "G1-a low-speed longitudinal following prototype; not G1 gate completion or vehicle safety certification",
+  "synthetic_plant": {
+    "dt_s": 0.01,
+    "control_hz": 50,
+    "scan_hz": 10,
+    "points_per_scan": 500,
+    "wheelbase_m": 0.135,
+    "length_m": 0.20,
+    "width_m": 0.15,
+    "mass_and_tire_dynamics": "not simulated",
+    "acceleration_mps2": 0.8,
+    "deceleration_mps2": 2.0,
+    "steering_slew_rad_s": 3.0,
+    "motor_gyro_feedback": "ideal measured plant speed/yaw rate; not command values; no quantization or delay",
+    "lidar_range_noise_uniform_m": 0.03,
+    "noise_note": "test assumption, not a measured C1 probability distribution",
+    "seeds": [0, 1, 2]
+  },
+  "geometry": {"wall_y_m": 0.425, "road_half_width_m": 0.225, "end_caps_x_m": [-2.0, 8.0]},
+  "acceptance": {
+    "minimum_body_gap_m": 0.15,
+    "maximum_lateral_center_error_m": 0.05,
+    "minimum_empty_progress_m": 3.0,
+    "minimum_follow_progress_m": 1.5,
+    "minimum_hold_duration_s": 0.4,
+    "maximum_restart_delay_s": 2.5,
+    "threshold_status": "pre-registered prototype test gates; not measured real vehicle guarantees"
+  },
+  "cases": [
+    {"name": "empty", "duration_s": 5.0, "actor": "none"},
+    {"name": "stopped", "duration_s": 7.0, "actor": "x=1.6"},
+    {"name": "moving", "duration_s": 7.0, "actor": "x=1.6+0.35*t"},
+    {"name": "stop_restart", "duration_s": 10.0, "actor": "0.35m/s until 2s; stopped 2..5s; 0.45m/s after 5s"}
+  ],
+  "gazebo_solo": {"target_progress_m": 12.0, "max_sim_seconds": 60.0, "wall_timeout_s": 1200.0,
+    "speed_profile": "exploratory", "g1_max_speed_mps": 1.0, "grid_slot": 3,
+    "actuation_mode": "virtual_mcu", "shutdown_mode": "service",
+    "note": "one bounded empty-traffic official-course partial regression; same existing stop/collision/source gates"}
+}

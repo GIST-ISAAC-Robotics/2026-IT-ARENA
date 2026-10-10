@@ -1,0 +1,24 @@
+........................................................................ [ 12%]
+........................................................................ [ 25%]
+......................F................................................. [ 37%]
+........................................................................ [ 50%]
+........................................................................ [ 62%]
+........................................................................ [ 75%]
+........................................................................ [ 87%]
+.....................................................................    [100%]
+=================================== FAILURES ===================================
+______ test_eight_cases_preregistered_and_sensor_configuration_unchanged _______
+
+    def test_eight_cases_preregistered_and_sensor_configuration_unchanged():
+        suite = g0.load_suite()
+        assert len(suite['cases']) == 8 and suite['seed'] == 0
+        assert all(g0.verify_sensor_config(suite)['checks'].values())
+        # 현재 기능 회귀는 승인된 후속 소스 계약을 명시한다. G0 기본 비교는
+        # 여전히 pre-G0 bytes를 뜻하며 기존 기록/manifest를 소급 변경하지 않는다.
+>       assert g0.baseline_comparison(ROOT/'config/tests/g1b_r0_sha256.json')['unchanged']
+E       assert False
+
+tests/test_multi_vehicle_g0.py:21: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_multi_vehicle_g0.py::test_eight_cases_preregistered_and_sensor_configuration_unchanged
+1 failed, 572 passed in 54.23s

@@ -1,4 +1,6 @@
+#include "arena_gazebo/command_trace.hpp"
 #include "arena_gazebo/drivetrain.hpp"
+#include "arena_gazebo/scheduled_apply.hpp"
 
 #include <chrono>
 #include <iomanip>
@@ -65,7 +67,13 @@ public:
       if (!std::isfinite(value) || value <= 0)
         throw std::invalid_argument("조향/감시 매개변수는 유한한 양수여야 합니다.");
     if (wheelLimit >= 1.4) throw std::invalid_argument("조향 한계는 1.4 rad 미만이어야 합니다.");
-    motor = std::make_unique<SingleMotor>(parameters);
+    zeroSpeedMode = sdf->Get<std::string>("evaluation_zero_speed_mode", "legacy").first;
+    // 평가 전용 명령 전환 이벤트. 기본 SDF에는 없으며 꺼져 있으면 아래 추적 분기는 실행되지 않습니다.
+    traceEnabled = sdf->Get<bool>("evaluation_command_trace", false).first;
+    scheduledEnabled = sdf->Get<bool>("evaluation_scheduled_apply", false).first;
+    if (scheduledEnabled && !traceEnabled) throw std::invalid_argument("scheduled apply requires trace");
+    scheduled.wallTimeoutNs = static_cast<int64_t>(get("evaluation_wall_timeout", 30) * 1e9);
+    motor = std::make_unique<SingleMotor>(parameters, ParseZeroSpeedMode(zeroSpeedMode));
     for (const auto &name : {"rear_left_wheel_joint", "rear_right_wheel_joint",
                             "front_left_steering_joint", "front_right_steering_joint"})
     {
@@ -78,11 +86,21 @@ public:
     chassis = model.LinkByName(ecm, "chassis");
     gz::sim::Link(chassis).EnableVelocityChecks(ecm);
     const auto prefix = "/model/" + model.Name(ecm);
-    transport.Subscribe(prefix + "/cmd_vel", &SingleMotorDrive::OnCommand, this);
-    transport.Subscribe(prefix + "/steer_angle", &SingleMotorDrive::OnSteering, this);
+    if (scheduledEnabled) {
+      transport.Subscribe(prefix + "/eval/scheduled_command", &SingleMotorDrive::OnScheduled, this);
+      scheduledTopic=transport.Advertise<gz::msgs::StringMsg>(prefix+"/eval/scheduled_events");
+    } else {
+      transport.Subscribe(prefix + "/cmd_vel", &SingleMotorDrive::OnCommand, this);
+      transport.Subscribe(prefix + "/steer_angle", &SingleMotorDrive::OnSteering, this);
+    }
     telemetry = transport.Advertise<gz::msgs::StringMsg>(prefix + "/drivetrain");
     odometry = transport.Advertise<gz::msgs::Odometry>(prefix + "/odometry");
     transform = transport.Advertise<gz::msgs::Pose_V>(prefix + "/tf");
+    if (traceEnabled)
+    {
+      traceTopic = transport.Advertise<gz::msgs::StringMsg>(prefix + "/eval/command_trace");
+      gzmsg << "평가 전용 명령 수신/적용 전환 계측 켜짐: " << prefix << "/eval/command_trace\n";
+    }
     gzmsg << "단일 모터 토크 구동: 좌우 뒷바퀴 + 기계식 차동, 속도 강제 지정 없음\n";
   }
 
@@ -91,12 +109,20 @@ public:
     std::lock_guard<std::mutex> lock(mutex);
     commandSpeed = std::isfinite(message.linear().x()) ? message.linear().x() : 0;
     commandPending = true;
+    if (traceEnabled) speedRx.Received(commandSpeed, SteadyNs(), traceIteration, traceSimNs);
+  }
+
+  void OnScheduled(const gz::msgs::StringMsg &message)
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    scheduled.Receive(message.data(), std::max<int64_t>(0,traceSimNs/1000),SteadyNs(),traceIteration);
   }
   void OnSteering(const gz::msgs::Double &message)
   {
     std::lock_guard<std::mutex> lock(mutex);
     commandSteering = std::isfinite(message.data()) ? message.data() : 0;
     steeringPending = true;
+    if (traceEnabled) steeringRx.Received(commandSteering, SteadyNs(), traceIteration, traceSimNs);
   }
 
   static double JointValue(const gz::sim::EntityComponentManager &ecm, gz::sim::Entity joint,
@@ -119,7 +145,10 @@ public:
     if (dt <= 0 || now < lastTime)
     {
       motor->Reset();
+      zeroPositiveWork = 0;
+      zeroPositivePowerSteps = zeroSteps = 0;
       std::lock_guard<std::mutex> lock(mutex);
+      if (scheduledEnabled) scheduled.Fault("clock_reset",static_cast<int64_t>(now*1e6));
       commandSpeed = commandSteering = 0;
       commandPending = steeringPending = false;
       lastCommand = lastSteering = -1e9;
@@ -128,19 +157,48 @@ public:
       lastTime = now;
       for (int i = 0; i < 2; ++i) { servoReference[i] = 0; servoIntegral[i] = 0; }
       for (const auto joint : joints) gz::sim::Joint(joint).SetForce(ecm, {0});
+      if (traceEnabled) applyTrace.Reset(TraceInfo(info), traceEvents);
       return;
     }
     lastTime = now;
     double speed, steering;
+    ReceiveSnapshot speedSnapshot, steeringSnapshot;
     {
       std::lock_guard<std::mutex> lock(mutex);
+      if (scheduledEnabled) {
+        scheduled.Step(std::chrono::duration_cast<std::chrono::microseconds>(info.simTime).count(),
+                       std::chrono::duration_cast<std::chrono::microseconds>(info.dt).count(),SteadyNs());
+        speed=scheduled.speed; steering=scheduled.steering; stale=!scheduled.active;
+        // 예약 모드의 수신 표지는 실제 적용된 envelope의 콜백 경계다. 전체 receipt는 별도 ACK가 기준이다.
+        const auto &p=scheduled.applied;
+        const ReceiveMark mark{static_cast<uint64_t>(p.seq),p.rxWall,p.rxIteration,p.rxSim};
+        speedSnapshot=steeringSnapshot={mark,static_cast<uint64_t>(p.seq),0,0};
+      } else {
       if (commandPending) { lastCommand = now; commandPending = false; }
       if (steeringPending) { lastSteering = now; steeringPending = false; }
       stale = now - lastCommand >= timeout || now - lastSteering >= timeout;
       speed = stale ? 0 : commandSpeed;
       steering = stale ? 0 : commandSteering;
+      }
+      if (traceEnabled)
+      {
+        // 같은 잠금 구역에서 읽은 값의 수신 표지만 복사합니다. 값 샘플 시점과 잠금 경계는 그대로입니다.
+        if (!scheduledEnabled) {speedSnapshot = speedRx.Take(); steeringSnapshot = steeringRx.Take();}
+        traceIteration = info.iterations;
+        traceSimNs = std::chrono::duration_cast<std::chrono::nanoseconds>(info.simTime).count();
+      }
     }
+    if (traceEnabled)
+      applyTrace.Step(TraceInfo(info), speed, steering, stale, speedSnapshot, steeringSnapshot, traceEvents);
     state = motor->Step(speed, JointValue(ecm, joints[0]), JointValue(ecm, joints[1]), dt);
+    // 토크 계산 직전 속도와 동시각 동력. PostUpdate 속도와 곱한 값과 구분합니다.
+    if (state.targetSpeed == 0)
+    {
+      const double power = state.motorTorque * state.motorSpeed;
+      zeroPositiveWork += std::max(0.0, power) * dt;
+      zeroPositivePowerSteps += power > 1e-9 ? 1 : 0;
+      ++zeroSteps;
+    }
     gz::sim::Joint(joints[0]).SetForce(ecm, {state.leftTorque});
     gz::sim::Joint(joints[1]).SetForce(ecm, {state.rightTorque});
     const auto angles = SteeringAngles(steering, wheelbase, track, wheelLimit);
@@ -167,6 +225,22 @@ public:
   void PostUpdate(const gz::sim::UpdateInfo &info, const gz::sim::EntityComponentManager &ecm) override
   {
     if (info.paused || !motor) return;
+    if (scheduledEnabled) {
+      std::vector<std::string> events;
+      {std::lock_guard<std::mutex> lock(mutex);events=scheduled.TakeEvents();}
+      for (const auto &text:events) {gz::msgs::StringMsg event;event.set_data(text);scheduledTopic.Publish(event);}
+    }
+    if (traceEnabled && !traceEvents.empty())
+    {
+      // PreUpdate에서 만든 저빈도 전환 이벤트만 같은 iteration의 PostUpdate에서 발행합니다.
+      for (const auto &text : traceEvents)
+      {
+        gz::msgs::StringMsg event;
+        event.set_data(text);
+        traceTopic.Publish(event);
+      }
+      traceEvents.clear();
+    }
     const double now = std::chrono::duration<double>(info.simTime).count();
     const double dt = std::chrono::duration<double>(info.dt).count();
     if (dt <= 0) return;
@@ -212,6 +286,17 @@ public:
     json << std::setprecision(12) << "{\"sim_time_s\":" << now
       << ",\"motor_speed_rad_s\":" << parameters.ratio * (wl + wr) / 2
       << ",\"motor_torque_nm\":" << state.motorTorque
+      << ",\"evaluation_zero_speed_mode\":\"" << zeroSpeedMode << "\""
+      << ",\"applied_target_mps\":" << state.targetSpeed
+      << ",\"pre_motor_speed_rad_s\":" << state.motorSpeed
+      << ",\"pre_motor_power_w\":" << state.motorTorque * state.motorSpeed
+      << ",\"pi_integral_before_nm\":" << state.integralBefore
+      << ",\"pi_integral_after_nm\":" << state.integralAfter
+      << ",\"raw_demand_nm\":" << state.rawDemand
+      << ",\"limited_demand_nm\":" << state.limitedDemand
+      << ",\"zero_positive_work_j\":" << zeroPositiveWork
+      << ",\"zero_positive_power_steps\":" << zeroPositivePowerSteps
+      << ",\"zero_steps\":" << zeroSteps
       << ",\"left_torque_nm\":" << state.leftTorque << ",\"right_torque_nm\":" << state.rightTorque
       << ",\"differential_torque_nm\":" << state.differentialTorque
       << ",\"loss_power_w\":" << state.lossPower << ",\"reference_speed_mps\":" << state.referenceSpeed
@@ -230,8 +315,22 @@ public:
     gz::msgs::StringMsg diagnostic; diagnostic.set_data(json.str()); telemetry.Publish(diagnostic);
   }
 private:
+  static int64_t SteadyNs()
+  {
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+  }
+  static TraceStep TraceInfo(const gz::sim::UpdateInfo &info)
+  {
+    return {info.iterations, std::chrono::duration_cast<std::chrono::nanoseconds>(info.simTime).count(),
+            std::chrono::duration_cast<std::chrono::nanoseconds>(info.dt).count(), SteadyNs()};
+  }
+
   DriveParameters parameters;
   DriveState state;
+  std::string zeroSpeedMode{"legacy"};
+  double zeroPositiveWork{};
+  uint64_t zeroPositivePowerSteps{}, zeroSteps{};
   std::unique_ptr<SingleMotor> motor;
   gz::transport::Node transport;
   gz::transport::Node::Publisher telemetry, odometry, transform;
@@ -243,6 +342,17 @@ private:
   double wheelbase{}, track{}, wheelLimit{}, servoGain{}, servoIntegralGain{}, servoDamping{}, servoTorque{}, servoRate{}, timeout{};
   double servoReference[2]{}, servoIntegral[2]{};
   double lastTime{}, lastPublish{-1e9}, odomX{}, odomY{}, odomYaw{};
+  // 평가 전용 추적 상태. traceIteration/traceSimNs와 *Rx는 mutex 안에서만 접근합니다.
+  bool traceEnabled{};
+  bool scheduledEnabled{};
+  ScheduledApply scheduled;
+  gz::transport::Node::Publisher scheduledTopic;
+  ChannelReceiveTrace speedRx, steeringRx;
+  CommandApplyTrace applyTrace;
+  std::vector<std::string> traceEvents;
+  uint64_t traceIteration{};
+  int64_t traceSimNs{-1};
+  gz::transport::Node::Publisher traceTopic;
 };
 }  // namespace arena
 

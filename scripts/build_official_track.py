@@ -204,7 +204,12 @@ def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict
             "camera-visible low traffic-light body and deterministic simulator sequence",
             "5 cm raised-cosine speed-bump cross-section pending MeKENic STL",
             "checker finish paint at the official s=0 start/finish pose",
-            "separate user-requested gantry posts and overhead beams; official marker links unchanged",
+            ("separate provisional gantry posts and overhead beams; official marker links unchanged"
+             if facility_config.get("gantry_supports", {}).get("enabled", False)
+             else "no added marker supports pending real construction photos; official marker links unchanged"),
+            ("provisional traffic-light ground post retained for legacy stress comparison"
+             if facility_config["traffic_light"].get("ground_post_enabled", True)
+             else "provisional traffic-light ground post omitted; lamp and overhead assembly unchanged"),
         ],
         "friction": "official wall collisions retain mu=mu2=0.8; road, grass and bump have no injected coefficient",
     }

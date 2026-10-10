@@ -45,3 +45,20 @@ artifacts/validation/2026-10-04/pipeline_fault_validation/** -text -whitespace
 
 # G0 기준선과 시험 소스/로그의 기록된 해시를 유지합니다.
 artifacts/validation/2026-10-05/** -text -whitespace
+
+# G1-b·제동/명령 적용 검증의 소스 사본·로그·실행 입력 해시도 보존합니다.
+artifacts/validation/2026-10-07/** -text -whitespace
+artifacts/validation/2026-10-08/** -text -whitespace
+artifacts/validation/2026-10-09/** -text -whitespace
+artifacts/validation/2026-10-11/** -text -whitespace
+
+# 기존 실행이 CRLF 원본으로 기록한 계약/소스는 소급 정규화하지 않습니다.
+config/tests/*_sha256.json -text whitespace=cr-at-eol
+scripts/analyze_scheduled_phase.py -text whitespace=cr-at-eol
+scripts/scheduled_command.py -text whitespace=cr-at-eol
+scripts/validate_g1_traffic.py -text whitespace=cr-at-eol
+tests/test_physics_step_option.py -text whitespace=cr-at-eol
+
+# 동결된 GC 검증 소스의 마지막 빈 줄도 기존 해시의 일부입니다.
+scripts/evaluation_gc.py whitespace=-blank-at-eof
+tests/test_evaluation_gc.py whitespace=-blank-at-eof

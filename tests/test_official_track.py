@@ -92,21 +92,39 @@ def test_marker_preservation_guard_rejects_yaw_change(tmp_path):
         official_builder.verify_preserved_markers(raw, DESTINATION / "world.sdf")
 
 
-def test_provisional_gantry_supports_are_separate_and_clear_of_the_printed_face():
+def test_default_has_no_assumed_ground_posts_or_marker_supports():
+    scene = json.loads((DESTINATION / "scene.json").read_text(encoding="utf-8"))
     model = ET.parse(DESTINATION / "world.sdf").find("./world/model[@name='it_arena_track_static']")
+    assert model.find("link[@name='tl_post']") is None
     supports = [link for link in model.findall("link") if link.attrib['name'].startswith('team_gantry_support_')]
+    assert not supports
+    assert 'team_gantry_supports' not in scene
+    assert scene['traffic_light']['ground_post_enabled'] is False
+    assert model.find("link[@name='tl_beam']") is not None
+    assert all(model.find(f"link[@name='lamp_{color}']") is not None for color in ('red', 'yellow', 'green'))
+
+
+def test_legacy_profile_can_still_generate_pillar_stress_geometry():
+    import copy
+    import yaml
+    from experimental_facilities import add_gantry_supports, add_traffic_light
+
+    config = yaml.safe_load(official_builder.PROFILE.read_text(encoding='utf-8'))['facilities']
+    legacy = copy.deepcopy(config)
+    legacy['traffic_light'].pop('ground_post_enabled')
+    legacy['gantry_supports']['enabled'] = True
+    scene = json.loads((DESTINATION / 'scene.json').read_text(encoding='utf-8'))
+    model = ET.parse(DESTINATION / 'world.sdf').find("./world/model[@name='it_arena_track_static']")
+    # 다른 생성 시설을 변경하지 않고 옛 프로필의 생략 시 호환을 독립 확인합니다.
+    lights = ET.Element('model', name='test_lights')
+    res = {'experimental_facilities': legacy, 'meta': {'track_w': .45},
+           'traffic_light': {**scene['traffic_light']['pose'], 'yaw': scene['traffic_light']['pose']['yaw_rad'], 'width': .45}}
+    add_traffic_light(lights, res)
+    assert len(lights.findall("link[@name='tl_post']/collision")) == 2
+    add_gantry_supports(model, res)
+    supports = [link for link in model.findall('link') if link.attrib['name'].startswith('team_gantry_support_')]
     assert len(supports) == 4
-    for link in supports:
-        assert len(link.findall('collision')) == (6 if link.attrib['name'].endswith('_30') else 7)
-        for collision in link.findall('collision'):
-            xyz = list(map(float, collision.findtext('pose').split()))
-            size = list(map(float, collision.findtext('geometry/box/size').split()))
-            if 'post' in collision.attrib['name']:
-                assert abs(xyz[1]) - size[1] / 2 >= .29 - 1e-9
-            elif 'beam' in collision.attrib['name']:
-                assert xyz[2] - size[2] / 2 > .45
-            else:
-                assert abs(xyz[1]) - size[1] / 2 >= .05 - 1e-9
+    assert [len(link.findall('collision')) for link in supports] == [7, 7, 6, 7]
 
 
 def test_only_official_walls_carry_track_friction_coefficients():

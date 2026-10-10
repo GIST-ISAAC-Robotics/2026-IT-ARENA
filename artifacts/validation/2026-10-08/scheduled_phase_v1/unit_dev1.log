@@ -1,0 +1,68 @@
+......................F....F..F.....................................F... [ 42%]
+........................................................................ [ 84%]
+...........................                                              [100%]
+=================================== FAILURES ===================================
+______________________ test_float_seconds_map_to_exact_ns ______________________
+
+    def test_float_seconds_map_to_exact_ns():
+        assert seconds_to_ns(.1+.2) == 300*MS
+        assert seconds_to_ns(.336) == 336*MS
+        assert seconds_to_ns(2.256) == 2256*MS
+>       with pytest.raises(ValueError):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_scheduled_command.py:115: Failed
+__________ test_actual_time_sample_difference_is_reported_not_hidden ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_actual_time_sample_differ0')
+
+    def test_actual_time_sample_difference_is_reported_not_hidden(tmp_path):
+        prof = profile(tmp_path)
+        sampler = ProfileSampler(prof)
+        start = 2_020*MS
+        rows = []
+        for k in range(26):
+            scheduled = start+k*PERIOD
+            observed = scheduled+(19*MS if k == 5 else 0)  # 100 ms 전환 직전 tick이 늦게 발행됨
+            speed, steering = sampler.at_ns(scheduled-start)
+            rows.append(dict(speed_mps=speed, steering_rad=steering, scheduled_ns=scheduled, observed_ns=observed,
+                             header_ns=observed, missed_before=0))
+        result = audit_scheduled_requests(rows, sampler, start, start+sampler.duration_ns, PERIOD, 0, late_limit_ns=PERIOD)
+        assert result['passed']
+>       assert result['actual_time_sample_differs']['count'] == 1
+E       assert 0 == 1
+
+tests/test_scheduled_command.py:202: AssertionError
+________________ test_legacy_poll_audit_unchanged_for_old_rows _________________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_legacy_poll_audit_unchang0')
+
+    def test_legacy_poll_audit_unchanged_for_old_rows(tmp_path):
+        prof = profile(tmp_path)
+        rows = [dict(sim_s=10.+i*.02, speed_mps=prof.at(i*.02)[0], steering_rad=prof.at(i*.02)[1]) for i in range(26)]
+>       assert audit_requests(rows, prof, 10., 10.5)['passed']
+E       assert False
+
+tests/test_scheduled_command.py:226: AssertionError
+_______________ test_contract_records_evaluation_script_changes ________________
+
+    def test_contract_records_evaluation_script_changes():
+        contract = json.loads((ROOT/'config/tests/physics_step_r0_sha256.json').read_text())
+        scripts = contract['approved_evaluation_scripts']
+        assert set(scripts) == {'scripts/probe_braking_contact.py', 'scripts/validate_g1_traffic.py'}
+        # 직전 1 ms 실행이 기록한 실행 소스 해시가 변경 전 값이다.
+        previous = json.loads((PREVIOUS_RUN/'report.json').read_text())['source_sha256']
+        for path, change in scripts.items():
+            assert change['before'] == previous[path]
+>           assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest() == change['after']
+E           AssertionError: assert 'fc4e0ab8f273...0ee92acaa1e4c' == 'ff7309ce97c4...bbf249d81cf70'
+E             - ff7309ce97c4e218d3f1a9d20b9b2996cb657047ef6889e47cbbbf249d81cf70
+E             + fc4e0ab8f2735f0705ec91ceeddc4fc39e78c976c7810f43faf0ee92acaa1e4c
+
+tests/test_physics_step_option.py:145: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_scheduled_command.py::test_float_seconds_map_to_exact_ns - ...
+FAILED tests/test_scheduled_command.py::test_actual_time_sample_difference_is_reported_not_hidden
+FAILED tests/test_scheduled_command.py::test_legacy_poll_audit_unchanged_for_old_rows
+FAILED tests/test_physics_step_option.py::test_contract_records_evaluation_script_changes
+4 failed, 167 passed in 10.56s
