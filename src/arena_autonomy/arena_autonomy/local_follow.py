@@ -12,10 +12,14 @@ import numpy as np
 from arena_autonomy.lidar_motion import MotionUnavailable
 from arena_autonomy.local_path import local_path, braking_speed, swept_limit
 from arena_autonomy.scene_motion import transport_points
+from arena_autonomy.boundary_evidence import fragment_evidence
+from arena_autonomy.occupancy_timing import per_ray_padding
 
 
 @dataclass(frozen=True)
 class FollowConfig:
+    boundary_evidence_mode: str = 'connected'
+    occupancy_timing_mode: str = 'oldest'
     wheelbase_m: float = .135
     length_m: float = .20
     width_m: float = .15
@@ -38,7 +42,12 @@ class FollowConfig:
     confirmations: int = 2
 
     def __post_init__(self):
-        if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for v in vars(self).values()):
+        if self.boundary_evidence_mode not in ('connected', 'fragmented_candidate'):
+            raise ValueError('invalid boundary evidence mode')
+        if self.occupancy_timing_mode not in ('oldest', 'per_ray_candidate'):
+            raise ValueError('invalid occupancy timing mode')
+        if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode')):
             raise ValueError('follow configuration must be finite and positive')
         if (self.memory_ttl_s > .3 or self.max_speed_mps > 2.5 or self.confirmations < 2
                 or not isinstance(self.confirmations, int)
@@ -47,9 +56,21 @@ class FollowConfig:
 
 
 def path_agrees(candidate, reference, tolerance):
-    """가까운 전방 구간의 대칭 거리. 짧은 한 점 접촉을 형상 일치로 보지 않는다."""
+    """실제로 겹치는 가까운 전방 구간의 대칭 거리.
+
+    가림으로 한쪽 경로가 짧을 때 다른 쪽에만 있는 구간의 끝점 거리를
+    형상 오차로 세지 않는다. 공통 구간도 0.25 m/각 5점을 요구하며
+    외삽·보간·미관측 채우기를 하지 않는다. 점유 검사는 별도로 유지한다.
+    """
     paths = [np.asarray(p)[(np.asarray(p)[:, 0] >= .05) & (np.asarray(p)[:, 0] <= .65)]
              for p in (candidate, reference)]
+    if any(len(p) < 5 or np.ptp(p[:, 0]) < .25 for p in paths):
+        return False
+    lo = max(float(np.min(p[:, 0])) for p in paths)
+    hi = min(float(np.max(p[:, 0])) for p in paths)
+    if hi-lo < .25:
+        return False
+    paths = [p[(p[:, 0] >= lo-1e-12) & (p[:, 0] <= hi+1e-12)] for p in paths]
     if any(len(p) < 5 or np.ptp(p[:, 0]) < .25 for p in paths):
         return False
     distances = np.linalg.norm(paths[0][:, None, :]-paths[1][None, :, :], axis=2)
@@ -267,6 +288,23 @@ class LocalFollow:
                             detail.update(bilateral_reference='opposite_support',
                                           opposite_support_points=support['boundary_support_points'],
                                           opposite_protrusions_removed=support['boundary_protrusions_removed'])
+                if not eligible and cfg.boundary_evidence_mode == 'fragmented_candidate':
+                    # 긴 반대 벽은 그대로 관측되어야 한다. 선호 벽의 각 실제 조각이
+                    # 그 형상을 지지해야 하며 가림 간격은 길이/자유 공간 증거가 아니다.
+                    opposite, other = opposite_wall()
+                    if sufficient(opposite, other):
+                        evidence = fragment_evidence(points, opposite, side, cfg)
+                        agrees_memory = carried is None or path_agrees(opposite, carried, cfg.boundary_agreement_m)
+                        detail['fragmented_boundary_evidence'] = {**evidence,
+                            'fragments': [{k: v for k, v in part.items() if k != 'source_indices'}
+                                          for part in evidence['fragments']]}
+                        detail['fragmented_agrees_memory'] = bool(agrees_memory)
+                        if evidence['supported'] and agrees_memory:
+                            candidate, info, candidate_wall = opposite, other, other_side
+                            eligible, bilateral = True, True
+                            detail['boundary_selection'] = 'bilateral_observed_fragments'
+                            detail['boundary_candidate_reason'] = info['reason']
+                            detail['boundary_candidate_ahead_m'] = info.get('boundary_observed_ahead_m')
                 if eligible:
                     confirmed = carried is not None
                     if not confirmed:
@@ -291,6 +329,12 @@ class LocalFollow:
             # WallFollow의 3 rad/s 명령 변화율을 반영한 실제 이번 발행각도 평가한다.
             steering = float(np.clip(desired, previous_steering-3*control_dt, previous_steering+3*control_dt))
             margin = .025 + cfg.measurement_padding_m + cfg.object_motion_bound_mps*age
+            if cfg.occupancy_timing_mode == 'per_ray_candidate':
+                margin = per_ray_padding(scene, .025+cfg.measurement_padding_m, cfg.object_motion_bound_mps)
+                detail.update(occupancy_timing_mode=cfg.occupancy_timing_mode,
+                    occupancy_padding_min_m=float(np.min(margin)),
+                    occupancy_padding_max_m=float(np.max(margin)),
+                    occupancy_padding_points=len(margin))
             clearance = min(swept_limit(points, angle, cfg.wheelbase_m, horizon=2.5, margin=margin,
                                          length=cfg.length_m, width=cfg.width_m)
                             for angle in (steering, previous_steering))
@@ -299,7 +343,7 @@ class LocalFollow:
             detail.update(path_source_s=self.path_source, boundary_age_s=memory_age,
                 boundary_from_memory=self.path_source != scene.source_first_s, path_wall=self.path_wall,
                 wall_fallback=self.path_wall != side, path_points=carried.tolist(), observed_path_ahead_m=remaining,
-                swept_clearance_m=clearance, occupancy_padding_m=margin, occupied_points=len(points),
+                swept_clearance_m=clearance, occupancy_padding_m=float(np.max(margin)), occupied_points=len(points),
                 unfiltered_occupancy=True, target_speed_before_hold_mps=target)
             if speed < 0.:
                 # 유한한 signed 피드백은 입력 무효/시간 세대 변경이 아니다. 현재

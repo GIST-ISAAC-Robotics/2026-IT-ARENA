@@ -1,0 +1,20 @@
+............................................................F........... [ 40%]
+........................................................................ [ 80%]
+....................................                                     [100%]
+=================================== FAILURES ===================================
+__ test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract __
+
+    def test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract():
+        root = Path(__file__).resolve().parents[1]
+        contract = json.loads((root/'config/tests/dense_stop_evidence_r0_sha256.json').read_text())
+        assert hashlib.sha256((root/contract['parent_contract']).read_bytes()).hexdigest() == contract['parent_contract_sha256']
+        for name, entry in contract['approved_evaluation_scripts'].items():
+>           assert hashlib.sha256((root/name).read_bytes()).hexdigest() == entry['after']
+E           AssertionError: assert 'e75e92e93abf...60c2233ddf609' == '735eb3f56204...b5a21334adbdd'
+E             - 735eb3f5620401a454c2186df3e856f1f415b8e253f36d4e109b5a21334adbdd
+E             + e75e92e93abfd2bc42725508b473c323c15c0b25f5a413e9f6660c2233ddf609
+
+tests/test_g1_dense_stop.py:73: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_g1_dense_stop.py::test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract
+1 failed, 179 passed in 15.93s

@@ -1,0 +1,17 @@
+........F............................................................... [ 57%]
+.....................................................                    [100%]
+=================================== FAILURES ===================================
+____________ test_newer_unrelated_ray_never_refreshes_old_obstacle _____________
+
+    def test_newer_unrelated_ray_never_refreshes_old_obstacle():
+        points = np.array([[.30,.20],[2.,1.]])
+        margins = per_ray_padding(scene(times=(1.,1.19), statuses=('return','return')), .055, .5)
+        assert margins[0] == pytest.approx(.155)
+>       assert swept_limit(points, 0., margin=margins) == 0.
+E       assert 0.04 == 0.0
+E        +  where 0.04 = swept_limit(array([[0.3, 0.2],\n       [2. , 1. ]]), 0.0, margin=array([0.155, 0.06 ]))
+
+tests/test_occupancy_timing.py:41: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_occupancy_timing.py::test_newer_unrelated_ray_never_refreshes_old_obstacle
+1 failed, 124 passed in 4.87s

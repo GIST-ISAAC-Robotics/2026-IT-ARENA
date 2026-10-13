@@ -1,0 +1,2461 @@
+{
+  "scope": "virtual_delivery_clock_actual_pixel_recognition_not_benchmark_or_live_render",
+  "source_hashes": {
+    "scripts/validate_start_signal_timing.py": "423b35ab2dca043bb12cbff05ba274f958db3f1fa23d09403fe55235151f1030",
+    "scripts/audit_start_signal_layout.py": "0cd6d9543abe94db6aca9c308857be8a96f0846c5506bf6d02f46af234454528",
+    "src/arena_autonomy/arena_autonomy/vision_process.py": "9fb49a496536884be3bedd13bc0d35deabfb13fbcea51f6d2d75e61e12d4baf9",
+    "src/arena_autonomy/arena_autonomy/race_start.py": "6db739457378a216e791f5c61c71447116b3b058f903c57edb4dfefd5d45491f",
+    "src/arena_autonomy/arena_autonomy/core.py": "37fdb7f707211f5378c17cdfe5176a572bad0bfc0c7523ac8bd645dfa299adfb",
+    "tests/test_start_signal_timing.py": "8cf4ce14085a3b3781a0f35c551c4c422cc7001840299458c5ac20d1c3418246",
+    "artifacts/validation/2026-10-13/race_start_render_v2/run/grid2_off.png": "2daf06b6dd56acd3d7e7d82f0551447f08773a657882d468b600d475d8181b6c",
+    "artifacts/validation/2026-10-13/race_start_render_v2/run/grid2_red4.png": "3549d9af08de06c9b58bce6c91314443ffc80f401fb8e26147aeceea1406a716",
+    "artifacts/validation/2026-10-13/race_start_render_v2/run/grid2_green.png": "530c5723ceb33afb3aa5ec39877ed81c2ab577a12c3705c904479d6e3e06413a",
+    "artifacts/validation/2026-10-13/race_start_render_v2/run/grid3_off.png": "e56165aca7e3244e87dda1b4d1ff4fc8214bbf0f0506542c017e24e88a484cda",
+    "artifacts/validation/2026-10-13/race_start_render_v2/run/grid3_red4.png": "7f644333e1aafad43c49e755437ac2e6fa076f9588ddf36c8c3669f546a19467",
+    "artifacts/validation/2026-10-13/race_start_render_v2/run/grid3_green.png": "5e7e5ceb878215b696dc6c13a0f90cf5329e7bdb5bbca51bf554a91c01632887"
+  },
+  "source_unchanged": true,
+  "passed": true,
+  "cases": 30,
+  "required": 25,
+  "assumptions": [
+    "60 Hz nominal input, actual pipeline throttles to about 10 Hz",
+    "worker delivery delays are invented scenarios, not Jetson measurements",
+    "5 ms evaluation scheduler, no ROS/Gazebo/MCU execution",
+    "captured inputs are static diagnostic scenes; red1..3 replaced by off",
+    "official random-stage durations sampled at 1, 2, 3 seconds, not every real value"
+  ],
+  "rows": [
+    {
+      "scenario": {
+        "name": "nominal_r3_1.0_r4_1.0",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": 5.24,
+      "first_start_capture_s": 5.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 631,
+        "throttled": 525,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 105,
+        "completed": 105,
+        "accepted": 105,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.04,
+          "capture_s": 5.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.24,
+          "capture_s": 5.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "nominal_r3_1.0_r4_2.0",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 2.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 6.0,
+      "first_accepted_start_s": 6.24,
+      "first_start_capture_s": 6.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 691,
+        "throttled": 575,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 115,
+        "completed": 115,
+        "accepted": 115,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.04,
+          "capture_s": 6.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.24,
+          "capture_s": 6.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "nominal_r3_1.0_r4_3.0",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 3.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 7.0,
+      "first_accepted_start_s": 7.24,
+      "first_start_capture_s": 7.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 751,
+        "throttled": 625,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 125,
+        "completed": 125,
+        "accepted": 125,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 7.04,
+          "capture_s": 7.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 7.24,
+          "capture_s": 7.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "nominal_r3_2.0_r4_1.0",
+        "expected": "start",
+        "red3_s": 2.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 6.0,
+      "first_accepted_start_s": 6.24,
+      "first_start_capture_s": 6.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 691,
+        "throttled": 575,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 115,
+        "completed": 115,
+        "accepted": 115,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.04,
+          "capture_s": 5.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.14,
+          "capture_s": 5.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.04,
+          "capture_s": 6.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.24,
+          "capture_s": 6.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "nominal_r3_2.0_r4_2.0",
+        "expected": "start",
+        "red3_s": 2.0,
+        "red4_s": 2.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 7.0,
+      "first_accepted_start_s": 7.24,
+      "first_start_capture_s": 7.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 751,
+        "throttled": 625,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 125,
+        "completed": 125,
+        "accepted": 125,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.04,
+          "capture_s": 5.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.14,
+          "capture_s": 5.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 7.04,
+          "capture_s": 7.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 7.24,
+          "capture_s": 7.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "nominal_r3_2.0_r4_3.0",
+        "expected": "start",
+        "red3_s": 2.0,
+        "red4_s": 3.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 8.0,
+      "first_accepted_start_s": 8.24,
+      "first_start_capture_s": 8.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 811,
+        "throttled": 675,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 135,
+        "completed": 135,
+        "accepted": 135,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.04,
+          "capture_s": 5.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.14,
+          "capture_s": 5.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 8.04,
+          "capture_s": 8.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 8.24,
+          "capture_s": 8.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "nominal_r3_3.0_r4_1.0",
+        "expected": "start",
+        "red3_s": 3.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 7.0,
+      "first_accepted_start_s": 7.24,
+      "first_start_capture_s": 7.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 751,
+        "throttled": 625,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 125,
+        "completed": 125,
+        "accepted": 125,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.04,
+          "capture_s": 6.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.14,
+          "capture_s": 6.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 7.04,
+          "capture_s": 7.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 7.24,
+          "capture_s": 7.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "nominal_r3_3.0_r4_2.0",
+        "expected": "start",
+        "red3_s": 3.0,
+        "red4_s": 2.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 8.0,
+      "first_accepted_start_s": 8.24,
+      "first_start_capture_s": 8.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 811,
+        "throttled": 675,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 135,
+        "completed": 135,
+        "accepted": 135,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.04,
+          "capture_s": 6.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.14,
+          "capture_s": 6.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 8.04,
+          "capture_s": 8.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 8.24,
+          "capture_s": 8.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "nominal_r3_3.0_r4_3.0",
+        "expected": "start",
+        "red3_s": 3.0,
+        "red4_s": 3.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 9.0,
+      "first_accepted_start_s": 9.24,
+      "first_start_capture_s": 9.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 871,
+        "throttled": 725,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 145,
+        "completed": 145,
+        "accepted": 145,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.04,
+          "capture_s": 6.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.14,
+          "capture_s": 6.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 9.04,
+          "capture_s": 9.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 9.24,
+          "capture_s": 9.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "latency_0.08",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.08,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": 5.3,
+      "first_start_capture_s": 5.216666667,
+      "decision_delay_s": 0.2999999999999998,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 631,
+        "throttled": 525,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 105,
+        "completed": 105,
+        "accepted": 105,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.08,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.1,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.1,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.2,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.1,
+          "capture_s": 5.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.3,
+          "capture_s": 5.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "latency_0.15",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.15,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": 5.57,
+      "first_start_capture_s": 5.416666667,
+      "decision_delay_s": 0.5700000000000003,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.16666666700000002,
+      "stats": {
+        "received": 631,
+        "throttled": 350,
+        "out_of_order": 0,
+        "replaced": 209,
+        "submitted": 70,
+        "completed": 69,
+        "accepted": 69,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.15,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.22,
+          "capture_s": 1.066666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.22,
+          "capture_s": 4.066666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.37,
+          "capture_s": 4.216666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.27,
+          "capture_s": 5.116666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.57,
+          "capture_s": 5.416666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "latency_0.25",
+        "expected": "exploratory",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.25,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": null,
+      "started": true,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": 5.75,
+      "first_start_capture_s": 5.5,
+      "decision_delay_s": 0.75,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.25,
+      "stats": {
+        "received": 631,
+        "throttled": 210,
+        "out_of_order": 0,
+        "replaced": 378,
+        "submitted": 43,
+        "completed": 42,
+        "accepted": 42,
+        "rejected_epoch": 0,
+        "rejected_stale": 0,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.25,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.25,
+          "capture_s": 1.0,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.25,
+          "capture_s": 4.0,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.5,
+          "capture_s": 4.25,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.25,
+          "capture_s": 5.0,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.75,
+          "capture_s": 5.5,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "latency_0.3",
+        "expected": "exploratory",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.3,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": null,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 0.316666667,
+      "stats": {
+        "received": 631,
+        "throttled": 175,
+        "out_of_order": 0,
+        "replaced": 419,
+        "submitted": 35,
+        "completed": 34,
+        "accepted": 34,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.3,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.52,
+          "capture_s": 1.216666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.52,
+          "capture_s": 4.216666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.82,
+          "capture_s": 4.516666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.42,
+          "capture_s": 5.116666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.02,
+          "capture_s": 5.716666667,
+          "observed": "transition_expired",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.32,
+          "capture_s": 6.016666667,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "latency_0.4",
+        "expected": "exploratory",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.4,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": null,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 0.40000000000000036,
+      "stats": {
+        "received": 631,
+        "throttled": 135,
+        "out_of_order": 0,
+        "replaced": 468,
+        "submitted": 27,
+        "completed": 26,
+        "accepted": 26,
+        "rejected_epoch": 0,
+        "rejected_stale": 0,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.4,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.6,
+          "capture_s": 1.2,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.4,
+          "capture_s": 4.0,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.6,
+          "capture_s": 5.2,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "duplicates",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "duplicates",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": 5.24,
+      "first_start_capture_s": 5.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 1893,
+        "throttled": 525,
+        "out_of_order": 1262,
+        "replaced": 0,
+        "submitted": 105,
+        "completed": 105,
+        "accepted": 105,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.04,
+          "capture_s": 5.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.24,
+          "capture_s": 5.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "old_frame",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "old_frame",
+        "grid": null
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": 5.24,
+      "first_start_capture_s": 5.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 1231,
+        "throttled": 525,
+        "out_of_order": 600,
+        "replaced": 0,
+        "submitted": 105,
+        "completed": 105,
+        "accepted": 105,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.04,
+          "capture_s": 5.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.24,
+          "capture_s": 5.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "drop_transition",
+        "expected": "no_start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "drop_transition",
+        "grid": null
+      },
+      "passed": true,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 0.5499999999999998,
+      "stats": {
+        "received": 600,
+        "throttled": 498,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 101,
+        "completed": 101,
+        "accepted": 101,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.39,
+          "capture_s": 5.366666667,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "drop_red4",
+        "expected": "no_start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "drop_red4",
+        "grid": null
+      },
+      "passed": true,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 1.0833333329999997,
+      "stats": {
+        "received": 571,
+        "throttled": 474,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 96,
+        "completed": 95,
+        "accepted": 95,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.02,
+          "capture_s": 5.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "green_only",
+        "expected": "no_start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "green_only",
+        "grid": null
+      },
+      "passed": true,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 631,
+        "throttled": 525,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 105,
+        "completed": 105,
+        "accepted": 105,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "no_green",
+        "expected": "no_start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "no_green",
+        "grid": null
+      },
+      "passed": true,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 631,
+        "throttled": 525,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 105,
+        "completed": 105,
+        "accepted": 105,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.04,
+          "capture_s": 5.016666667,
+          "observed": "waiting_green",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.84,
+          "capture_s": 5.816666667,
+          "observed": "transition_expired",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.94,
+          "capture_s": 5.916666667,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "green_flash",
+        "expected": "no_start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "green_flash",
+        "grid": null
+      },
+      "passed": true,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 631,
+        "throttled": 525,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 105,
+        "completed": 105,
+        "accepted": 105,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.04,
+          "capture_s": 5.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.14,
+          "capture_s": 5.116666667,
+          "observed": "waiting_green",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.84,
+          "capture_s": 5.816666667,
+          "observed": "transition_expired",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.94,
+          "capture_s": 5.916666667,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "frozen_green_stamp",
+        "expected": "no_start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "frozen_green_stamp",
+        "grid": null
+      },
+      "passed": true,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 5.083333333,
+      "stats": {
+        "received": 631,
+        "throttled": 275,
+        "out_of_order": 299,
+        "replaced": 0,
+        "submitted": 56,
+        "completed": 55,
+        "accepted": 55,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 10.02,
+          "capture_s": 10.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "reset_on_green",
+        "expected": "no_start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "reset_on_green",
+        "grid": null
+      },
+      "passed": true,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 631,
+        "throttled": 524,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 106,
+        "completed": 105,
+        "accepted": 105,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 1
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.04,
+          "capture_s": 1.016666667,
+          "observed": "red_partial_or_ambiguous",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.02,
+          "capture_s": 5.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "worker_watchdog",
+        "expected": "no_start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 1.1,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": null
+      },
+      "passed": true,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": "RuntimeError: Vision processing watchdog expired",
+      "accepted_gap_max_s": null,
+      "stats": {
+        "received": 631,
+        "throttled": 575,
+        "out_of_order": 0,
+        "replaced": 54,
+        "submitted": 1,
+        "completed": 0,
+        "accepted": 0,
+        "rejected_epoch": 0,
+        "rejected_stale": 0,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 1.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": "RuntimeError: Vision processing watchdog expired"
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "captured_grid_2_0.02",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": 2
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": 5.24,
+      "first_start_capture_s": 5.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 631,
+        "throttled": 525,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 105,
+        "completed": 105,
+        "accepted": 105,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.04,
+          "capture_s": 5.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.24,
+          "capture_s": 5.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "captured_grid_2_0.15",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.15,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": 2
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": 5.57,
+      "first_start_capture_s": 5.416666667,
+      "decision_delay_s": 0.5700000000000003,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.16666666700000002,
+      "stats": {
+        "received": 631,
+        "throttled": 350,
+        "out_of_order": 0,
+        "replaced": 209,
+        "submitted": 70,
+        "completed": 69,
+        "accepted": 69,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.15,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.22,
+          "capture_s": 4.066666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.37,
+          "capture_s": 4.216666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.27,
+          "capture_s": 5.116666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.57,
+          "capture_s": 5.416666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "captured_grid_2_0.3",
+        "expected": "exploratory",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.3,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": 2
+      },
+      "passed": null,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 0.316666667,
+      "stats": {
+        "received": 631,
+        "throttled": 175,
+        "out_of_order": 0,
+        "replaced": 419,
+        "submitted": 35,
+        "completed": 34,
+        "accepted": 34,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.3,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.52,
+          "capture_s": 4.216666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.82,
+          "capture_s": 4.516666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.42,
+          "capture_s": 5.116666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.02,
+          "capture_s": 5.716666667,
+          "observed": "transition_expired",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.32,
+          "capture_s": 6.016666667,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "captured_grid_3_0.02",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.02,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": 3
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": 5.24,
+      "first_start_capture_s": 5.216666667,
+      "decision_delay_s": 0.2400000000000002,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.116666667,
+      "stats": {
+        "received": 631,
+        "throttled": 525,
+        "out_of_order": 0,
+        "replaced": 0,
+        "submitted": 105,
+        "completed": 105,
+        "accepted": 105,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.02,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.04,
+          "capture_s": 4.016666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.14,
+          "capture_s": 4.116666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.04,
+          "capture_s": 5.016666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.24,
+          "capture_s": 5.216666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "captured_grid_3_0.15",
+        "expected": "start",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.15,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": 3
+      },
+      "passed": true,
+      "started": true,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": 5.57,
+      "first_start_capture_s": 5.416666667,
+      "decision_delay_s": 0.5700000000000003,
+      "off_keeps_start": true,
+      "fault": null,
+      "accepted_gap_max_s": 0.16666666700000002,
+      "stats": {
+        "received": 631,
+        "throttled": 350,
+        "out_of_order": 0,
+        "replaced": 209,
+        "submitted": 70,
+        "completed": 69,
+        "accepted": 69,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.15,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.22,
+          "capture_s": 4.066666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.37,
+          "capture_s": 4.216666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.27,
+          "capture_s": 5.116666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.57,
+          "capture_s": 5.416666667,
+          "observed": "green_confirmed",
+          "started": true,
+          "fault": null
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "name": "captured_grid_3_0.3",
+        "expected": "exploratory",
+        "red3_s": 1.0,
+        "red4_s": 1.0,
+        "work_delay_s": 0.3,
+        "camera_hz": 60.0,
+        "fault": "",
+        "grid": 3
+      },
+      "passed": null,
+      "started": false,
+      "false_start": false,
+      "green_s": 5.0,
+      "first_accepted_start_s": null,
+      "first_start_capture_s": null,
+      "decision_delay_s": null,
+      "off_keeps_start": false,
+      "fault": null,
+      "accepted_gap_max_s": 0.316666667,
+      "stats": {
+        "received": 631,
+        "throttled": 175,
+        "out_of_order": 0,
+        "replaced": 419,
+        "submitted": 35,
+        "completed": 34,
+        "accepted": 34,
+        "rejected_epoch": 0,
+        "rejected_stale": 1,
+        "resets": 0
+      },
+      "transitions": [
+        {
+          "time_s": 0.0,
+          "capture_s": null,
+          "observed": "unknown",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 0.3,
+          "capture_s": 0.0,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.52,
+          "capture_s": 4.216666667,
+          "observed": "red4_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 4.82,
+          "capture_s": 4.516666667,
+          "observed": "red4_confirmed",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 5.42,
+          "capture_s": 5.116666667,
+          "observed": "green_candidate",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.02,
+          "capture_s": 5.716666667,
+          "observed": "transition_expired",
+          "started": false,
+          "fault": null
+        },
+        {
+          "time_s": 6.32,
+          "capture_s": 6.016666667,
+          "observed": "waiting_red4",
+          "started": false,
+          "fault": null
+        }
+      ]
+    }
+  ]
+}

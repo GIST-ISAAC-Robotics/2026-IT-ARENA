@@ -1,0 +1,460 @@
+{
+  "scope": "기록 전용. 새 Gazebo 주행/제어 연결 없음. 정적 구조 가정과 sweep 상한은 미보증.",
+  "settings": {
+    "max_range_m": 3.0,
+    "min_range_m": 0.08,
+    "field_half_deg": 130.0,
+    "min_points": 35,
+    "max_points": 180,
+    "normal_half_window": 8,
+    "segment_max_m": 0.2,
+    "correspondence_m": 0.24,
+    "huber_m": 0.025,
+    "max_rmse_m": 0.04,
+    "min_fraction": 0.65,
+    "min_x_support": 12,
+    "min_x_support_span_m": 0.35,
+    "min_eigen_ratio": 0.003,
+    "max_translation_m": 0.55,
+    "max_yaw_rad": 0.16,
+    "max_iterations": 16,
+    "seed_offset_m": 0.18,
+    "bidirectional_m": 0.04,
+    "bidirectional_rad": 0.025,
+    "range_uncertainty_m": 0.03,
+    "sweep_speed_bound_mps": 1.5,
+    "sweep_yaw_bound_rad_s": 0.5,
+    "encoder_distance_tolerance_m": 0.002,
+    "rear_to_lidar_m": 0.1275
+  },
+  "synthetic": [
+    {
+      "name": "stationary_room",
+      "sensor_model": "sequential_raycast",
+      "expected": "compatible_under_assumptions",
+      "expectation_met": false,
+      "result": {
+        "classification": "unknown",
+        "reason": "insufficient_multistart_agreement",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.0010075111686643995,
+            -2.903591775472098e-08,
+            4.1090089572606216e-07
+          ],
+          "rmse_m": 0.0013673458060669372,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 0.13517469961527578,
+          "x_support": 15,
+          "x_support_span_m": 0.7416858845907314,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 2
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 25.74790600000032
+      }
+    },
+    {
+      "name": "honest_straight",
+      "sensor_model": "sequential_raycast",
+      "expected": "compatible_under_assumptions",
+      "expectation_met": false,
+      "result": {
+        "classification": "unknown",
+        "reason": "insufficient_multistart_agreement",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.4200277439500342,
+            0.00011011634324488972,
+            -0.00046104017903000124
+          ],
+          "rmse_m": 0.0037195020387352567,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 0.09963981136293831,
+          "x_support": 21,
+          "x_support_span_m": 0.6988206067335562,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 4
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 43.27449999999988
+      }
+    },
+    {
+      "name": "zero_encoder_sliding",
+      "sensor_model": "sequential_raycast",
+      "expected": "inconsistent_candidate",
+      "expectation_met": false,
+      "result": {
+        "classification": "unknown",
+        "reason": "insufficient_multistart_agreement",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.4200277439500342,
+            0.00011011634324488972,
+            -0.00046104017903000124
+          ],
+          "rmse_m": 0.0037195020387352567,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 0.09963981136293831,
+          "x_support": 21,
+          "x_support_span_m": 0.6988206067335562,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 4
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 44.76372599999934
+      }
+    },
+    {
+      "name": "parallel_corridor",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            2.180156186391911e-35,
+            4.447812620902822e-19,
+            -3.1891956218250806e-17
+          ],
+          "rmse_m": 6.614179793179962e-17,
+          "inlier_fraction": 0.9585798816568047,
+          "inliers": 162,
+          "eigen_ratio": 1.3407523667522794e-31,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 1
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 33.60782399999973
+      }
+    },
+    {
+      "name": "stationary_parallel_corridor",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            2.180156186391911e-35,
+            4.447812620902822e-19,
+            -3.1891956218250806e-17
+          ],
+          "rmse_m": 6.614179793179962e-17,
+          "inlier_fraction": 0.9585798816568047,
+          "inliers": 162,
+          "eigen_ratio": 1.3407523667522794e-31,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 1
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 33.16113599999948
+      }
+    },
+    {
+      "name": "small_moving_front",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            6.304306714630201e-35,
+            1.6750514541197429e-18,
+            -2.9889208350324674e-17
+          ],
+          "rmse_m": 6.177198703304898e-17,
+          "inlier_fraction": 0.9152542372881356,
+          "inliers": 162,
+          "eigen_ratio": 1.3171613462750828e-31,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 1
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 34.72992300000044
+      }
+    },
+    {
+      "name": "small_static_front",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            6.304306714630201e-35,
+            1.6750514541197429e-18,
+            -2.9889208350324674e-17
+          ],
+          "rmse_m": 6.177198703304898e-17,
+          "inlier_fraction": 0.9257142857142857,
+          "inliers": 162,
+          "eigen_ratio": 1.3171613462750828e-31,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 1
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 34.29125099999997
+      }
+    },
+    {
+      "name": "turn_without_gyro",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "registration_failed",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": null,
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 23.106261999999766
+      }
+    },
+    {
+      "name": "front_dropout",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -2.7951467946681717e-33,
+            1.0904843320478266e-18,
+            1.6158070064527108e-17
+          ],
+          "rmse_m": 5.710900830749025e-17,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 1.5620800414933762e-31,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 5,
+          "converged": true,
+          "iterations": 1
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 18.28272799999997
+      }
+    },
+    {
+      "name": "noise_stationary_corridor_0",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "registration_failed",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": null,
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 43.72691799999995
+      }
+    },
+    {
+      "name": "noise_stationary_corridor_1",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "registration_failed",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": null,
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 32.631480000000046
+      }
+    },
+    {
+      "name": "noise_stationary_corridor_2",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "poor_overlap_or_fit",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.13850418974718579,
+            0.004476799860737655,
+            -0.00572887534679012
+          ],
+          "rmse_m": 0.010359911190489337,
+          "inlier_fraction": 0.38461538461538464,
+          "inliers": 65,
+          "eigen_ratio": 0.001185988173590482,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 60.93784200000041
+      }
+    },
+    {
+      "name": "noise_stationary_room_0",
+      "expected": "not_inconsistent",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "poor_overlap_or_fit",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.00945499591366471,
+            -0.004090461584423094,
+            0.001537748123136863
+          ],
+          "rmse_m": 0.014755744895664119,
+          "inlier_fraction": 0.5537190082644629,
+          "inliers": 67,
+          "eigen_ratio": 0.06537303812668137,
+          "x_support": 14,
+          "x_support_span_m": 0.6810439746801111,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 10
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 40.476338999999584
+      }
+    },
+    {
+      "name": "noise_stationary_room_1",
+      "expected": "not_inconsistent",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.45953019947940454,
+            -0.001873465310962127,
+            0.008072442219759859
+          ],
+          "rmse_m": 0.017578417900884293,
+          "inlier_fraction": 0.7933884297520661,
+          "inliers": 96,
+          "eigen_ratio": 0.00611366714596796,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 4,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 41.71075999999996
+      }
+    },
+    {
+      "name": "noise_stationary_room_2",
+      "expected": "not_inconsistent",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "poor_overlap_or_fit",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.009636148715472512,
+            -0.0076238141195546895,
+            0.009245166482610267
+          ],
+          "rmse_m": 0.014712609318904854,
+          "inlier_fraction": 0.5537190082644629,
+          "inliers": 67,
+          "eigen_ratio": 0.06559678199812194,
+          "x_support": 14,
+          "x_support_span_m": 0.6910836688139428,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 37.03987699999978
+      }
+    }
+  ],
+  "synthetic_expectations_met": false,
+  "g1": [],
+  "g1_executed": false,
+  "g1_classifications": {},
+  "g1_reasons": {},
+  "input_source_sha256": {
+    "scripts/validate_scan_motion_diagnostic.py": "c7bce295538f6909035b45a539deefc3250f3f7abb3af61a46b7c41d9e22e10e",
+    "scripts/scan_motion_diagnostic.py": "0f679fe2b6325dafa5b26bd01b4540ea6347ed08968dc7d0f73c4397d33c9d3f",
+    "tests/test_scan_motion_diagnostic.py": "46f5365abe691a4d90d2470612b0f3f90820220ca08477cfde766e8c05e38b99",
+    "artifacts/validation/2026-10-07/g1b_side_v1/side_left_s0/scans_received.jsonl": "606c1edbf311c0a0fe9c21d4e160c11486c97cd1de7fcdae3c64b8226d129138",
+    "artifacts/validation/2026-10-07/g1b_side_v1/side_left_s0/actuation_trace.json": "f654800d12a30c33e91a654537a2ffe1faeb3b086f80e271eee82f4180367820"
+  },
+  "inputs_unchanged": true,
+  "runtime_not_connected": true
+}

@@ -1,0 +1,3028 @@
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF...... [ 84%]
+.............                                                            [100%]
+=================================== FAILURES ===================================
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_1_left-temporary_3light] _
+
+case = {'expected_ids': [1], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 1)], 'name': 'vehicle_4x4_1_left', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc8b74d0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc822ac0>), rgb_stamp=1.0, image_wall_time=536.915960687)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_1_left-official_4red_candidate] _
+
+case = {'expected_ids': [1], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 1)], 'name': 'vehicle_4x4_1_left', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7cee40>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cc680>), rgb_stamp=1.0, image_wall_time=537.136485064)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_1_right-temporary_3light] _
+
+case = {'expected_ids': [1], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 1)], 'name': 'vehicle_4x4_1_right', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7db560>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cd080>), rgb_stamp=1.0, image_wall_time=537.164834688)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_1_right-official_4red_candidate] _
+
+case = {'expected_ids': [1], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 1)], 'name': 'vehicle_4x4_1_right', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7d9100>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cd9e0>), rgb_stamp=1.0, image_wall_time=537.193239634)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_7_left-temporary_3light] _
+
+case = {'expected_ids': [7], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 7)], 'name': 'vehicle_4x4_7_left', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc9f8110>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cdd00>), rgb_stamp=1.0, image_wall_time=537.221876529)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_7_left-official_4red_candidate] _
+
+case = {'expected_ids': [7], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 7)], 'name': 'vehicle_4x4_7_left', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7ce180>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cd940>), rgb_stamp=1.0, image_wall_time=537.246949731)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_7_right-temporary_3light] _
+
+case = {'expected_ids': [7], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 7)], 'name': 'vehicle_4x4_7_right', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7db530>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cdc60>), rgb_stamp=1.0, image_wall_time=537.272878233)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_7_right-official_4red_candidate] _
+
+case = {'expected_ids': [7], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 7)], 'name': 'vehicle_4x4_7_right', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7d9d30>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6ce5c0>), rgb_stamp=1.0, image_wall_time=537.298091366)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_11_left-temporary_3light] _
+
+case = {'expected_ids': [11], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 11)], 'name': 'vehicle_4x4_11_left', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7d9760>, last_control_time=0...=<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cea20>), rgb_stamp=1.0, image_wall_time=537.32576126)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_11_left-official_4red_candidate] _
+
+case = {'expected_ids': [11], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 11)], 'name': 'vehicle_4x4_11_left', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7da5a0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cede0>), rgb_stamp=1.0, image_wall_time=537.352075698)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_11_right-temporary_3light] _
+
+case = {'expected_ids': [11], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 11)], 'name': 'vehicle_4x4_11_right', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7d9760>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cf060>), rgb_stamp=1.0, image_wall_time=537.377384586)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_11_right-official_4red_candidate] _
+
+case = {'expected_ids': [11], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 11)], 'name': 'vehicle_4x4_11_right', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7da240>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6ce020>), rgb_stamp=1.0, image_wall_time=537.399998549)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_14_left-temporary_3light] _
+
+case = {'expected_ids': [14], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 14)], 'name': 'vehicle_4x4_14_left', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7da630>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cdb20>), rgb_stamp=1.0, image_wall_time=537.423337492)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_14_left-official_4red_candidate] _
+
+case = {'expected_ids': [14], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 14)], 'name': 'vehicle_4x4_14_left', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09be421af0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cf100>), rgb_stamp=1.0, image_wall_time=537.446699958)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_14_right-temporary_3light] _
+
+case = {'expected_ids': [14], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 14)], 'name': 'vehicle_4x4_14_right', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc804440>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cf920>), rgb_stamp=1.0, image_wall_time=537.469908568)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_14_right-official_4red_candidate] _
+
+case = {'expected_ids': [14], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 14)], 'name': 'vehicle_4x4_14_right', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc807d70>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cfec0>), rgb_stamp=1.0, image_wall_time=537.494686986)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_49_left-temporary_3light] _
+
+case = {'expected_ids': [49], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 49)], 'name': 'vehicle_4x4_49_left', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7ce150>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cf2e0>), rgb_stamp=1.0, image_wall_time=537.519235176)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_49_left-official_4red_candidate] _
+
+case = {'expected_ids': [49], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 49)], 'name': 'vehicle_4x4_49_left', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7da1b0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cf1a0>), rgb_stamp=1.0, image_wall_time=537.543697978)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_49_right-temporary_3light] _
+
+case = {'expected_ids': [49], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 49)], 'name': 'vehicle_4x4_49_right', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc807b90>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6ce020>), rgb_stamp=1.0, image_wall_time=537.568666346)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_49_right-official_4red_candidate] _
+
+case = {'expected_ids': [49], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 49)], 'name': 'vehicle_4x4_49_right', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc805820>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cfe20>), rgb_stamp=1.0, image_wall_time=537.593886808)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot0-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px36_rot0', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc82b620>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc774540>), rgb_stamp=1.0, image_wall_time=537.617808251)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot0-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px36_rot0', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc82ae40>, last_control_time=0...=<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc774860>), rgb_stamp=1.0, image_wall_time=537.64753893)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot1-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px36_rot1', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc8059d0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cd940>), rgb_stamp=1.0, image_wall_time=537.675045083)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot1-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px36_rot1', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7d8b00>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cf2e0>), rgb_stamp=1.0, image_wall_time=537.699868152)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot2-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px36_rot2', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc82af60>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc7742c0>), rgb_stamp=1.0, image_wall_time=537.724547836)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot2-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px36_rot2', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc82b020>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc774400>), rgb_stamp=1.0, image_wall_time=537.749071911)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot3-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px36_rot3', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc828fb0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc774ea0>), rgb_stamp=1.0, image_wall_time=537.774730956)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot3-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px36_rot3', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc829b50>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc7751c0>), rgb_stamp=1.0, image_wall_time=537.801549037)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot0-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px72_rot0', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc8299a0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6ce020>), rgb_stamp=1.0, image_wall_time=537.828078623)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot0-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px72_rot0', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc82ad20>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc774c20>), rgb_stamp=1.0, image_wall_time=537.852563076)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot1-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px72_rot1', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7cc7a0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc774ea0>), rgb_stamp=1.0, image_wall_time=537.877083068)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot1-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px72_rot1', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc83dc40>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc7749a0>), rgb_stamp=1.0, image_wall_time=537.902757116)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot2-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px72_rot2', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc83fa10>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc775800>), rgb_stamp=1.0, image_wall_time=537.927642741)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot2-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px72_rot2', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc83c080>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc775b20>), rgb_stamp=1.0, image_wall_time=537.952354204)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot3-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px72_rot3', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7dbbf0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc775bc0>), rgb_stamp=1.0, image_wall_time=537.977589182)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot3-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px72_rot3', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc829550>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc775580>), rgb_stamp=1.0, image_wall_time=538.002640265)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot0-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px144_rot0', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc83d070>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc7749a0>), rgb_stamp=1.0, image_wall_time=538.027716803)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot0-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px144_rot0', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc83d790>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc775300>), rgb_stamp=1.0, image_wall_time=538.051732754)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot1-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px144_rot1', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc83d6a0>, last_control_time=0...=<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776160>), rgb_stamp=1.0, image_wall_time=538.07837363)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot1-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px144_rot1', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc73ec30>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776480>), rgb_stamp=1.0, image_wall_time=538.104449457)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot2-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px144_rot2', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc83cda0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776660>), rgb_stamp=1.0, image_wall_time=538.131526805)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot2-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px144_rot2', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc83cef0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776020>), rgb_stamp=1.0, image_wall_time=538.157206931)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot3-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px144_rot3', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc829550>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc7749a0>), rgb_stamp=1.0, image_wall_time=538.179380593)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot3-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [('DICT_7X7_100', 91)], 'name': 'vehicle_7x7_91_px144_rot3', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc73fbf0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc7758a0>), rgb_stamp=1.0, image_wall_time=538.202237108)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_0_vehicle_49-temporary_3light] _
+
+case = {'expected_ids': [0, 49], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 0), ('DICT_4X4_50', 49)], 'name': 'course_0_vehicle_49', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc73ec00>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776ac0>), rgb_stamp=1.0, image_wall_time=538.225210194)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_0_vehicle_49-official_4red_candidate] _
+
+case = {'expected_ids': [0, 49], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 0), ('DICT_4X4_50', 49)], 'name': 'course_0_vehicle_49', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc73e180>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776de0>), rgb_stamp=1.0, image_wall_time=538.250559121)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_0_vehicle_91-temporary_3light] _
+
+case = {'expected_ids': [0], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 0), ('DICT_7X7_100', 91)], 'name': 'course_0_vehicle_91', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7ccf50>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc777100>), rgb_stamp=1.0, image_wall_time=538.277345548)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_0_vehicle_91-official_4red_candidate] _
+
+case = {'expected_ids': [0], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 0), ('DICT_7X7_100', 91)], 'name': 'course_0_vehicle_91', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc828f50>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc6cf9c0>), rgb_stamp=1.0, image_wall_time=538.330910801)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_20_vehicle_49-temporary_3light] _
+
+case = {'expected_ids': [20, 49], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 20), ('DICT_4X4_50', 49)], 'name': 'course_20_vehicle_49', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc804620>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc775d00>), rgb_stamp=1.0, image_wall_time=538.358095986)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_20_vehicle_49-official_4red_candidate] _
+
+case = {'expected_ids': [20, 49], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 20), ('DICT_4X4_50', 49)], 'name': 'course_20_vehicle_49', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7cd100>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776ac0>), rgb_stamp=1.0, image_wall_time=538.384245529)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_20_vehicle_91-temporary_3light] _
+
+case = {'expected_ids': [20], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 20), ('DICT_7X7_100', 91)], 'name': 'course_20_vehicle_91', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7db230>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776480>), rgb_stamp=1.0, image_wall_time=538.411313747)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_20_vehicle_91-official_4red_candidate] _
+
+case = {'expected_ids': [20], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 20), ('DICT_7X7_100', 91)], 'name': 'course_20_vehicle_91', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc83deb0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc774cc0>), rgb_stamp=1.0, image_wall_time=538.438335173)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_30_vehicle_49-temporary_3light] _
+
+case = {'expected_ids': [30, 49], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 30), ('DICT_4X4_50', 49)], 'name': 'course_30_vehicle_49', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc83ec30>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc775080>), rgb_stamp=1.0, image_wall_time=538.462706551)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_30_vehicle_49-official_4red_candidate] _
+
+case = {'expected_ids': [30, 49], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 30), ('DICT_4X4_50', 49)], 'name': 'course_30_vehicle_49', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7a3f20>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776340>), rgb_stamp=1.0, image_wall_time=538.487851595)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_30_vehicle_91-temporary_3light] _
+
+case = {'expected_ids': [30], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 30), ('DICT_7X7_100', 91)], 'name': 'course_30_vehicle_91', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7daab0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc775c60>), rgb_stamp=1.0, image_wall_time=538.513594657)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_30_vehicle_91-official_4red_candidate] _
+
+case = {'expected_ids': [30], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 30), ('DICT_7X7_100', 91)], 'name': 'course_30_vehicle_91', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc829430>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776ca0>), rgb_stamp=1.0, image_wall_time=538.540339421)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_45_vehicle_49-temporary_3light] _
+
+case = {'expected_ids': [45, 49], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 45), ('DICT_4X4_50', 49)], 'name': 'course_45_vehicle_49', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc73d340>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc774360>), rgb_stamp=1.0, image_wall_time=538.565482267)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_45_vehicle_49-official_4red_candidate] _
+
+case = {'expected_ids': [45, 49], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 45), ('DICT_4X4_50', 49)], 'name': 'course_45_vehicle_49', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc73e810>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc776840>), rgb_stamp=1.0, image_wall_time=538.588791069)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_45_vehicle_91-temporary_3light] _
+
+case = {'expected_ids': [45], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 45), ('DICT_7X7_100', 91)], 'name': 'course_45_vehicle_91', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc73f3e0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc777420>), rgb_stamp=1.0, image_wall_time=538.611632551)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[course_45_vehicle_91-official_4red_candidate] _
+
+case = {'expected_ids': [45], 'expected_side': 'left', 'markers': [('DICT_4X4_50', 45), ('DICT_7X7_100', 91)], 'name': 'course_45_vehicle_91', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc804c20>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc777240>), rgb_stamp=1.0, image_wall_time=538.633879172)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[no_marker_keeps_previous_side-temporary_3light] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [], 'name': 'no_marker_keeps_previous_side', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc7db2c0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc774ea0>), rgb_stamp=1.0, image_wall_time=538.657156802)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[no_marker_keeps_previous_side-official_4red_candidate] _
+
+case = {'expected_ids': [], 'expected_side': 'right', 'markers': [], 'name': 'no_marker_keeps_previous_side', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc73d5e0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc775c60>), rgb_stamp=1.0, image_wall_time=538.680502235)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[two_course_ids_current_right_precedence-temporary_3light] _
+
+case = {'expected_ids': [20, 30], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 20), ('DICT_4X4_50', 30)], 'name': 'two_course_ids_current_right_precedence', ...}
+mode = 'temporary_3light'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc73f410>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc7776a0>), rgb_stamp=1.0, image_wall_time=538.704276405)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_ test_registered_synthetic_roles_keep_actual_route_policy[two_course_ids_current_right_precedence-official_4red_candidate] _
+
+case = {'expected_ids': [20, 30], 'expected_side': 'right', 'markers': [('DICT_4X4_50', 20), ('DICT_4X4_50', 30)], 'name': 'two_course_ids_current_right_precedence', ...}
+mode = 'official_4red_candidate'
+
+    @pytest.mark.parametrize('mode', ['temporary_3light', 'official_4red_candidate'])
+    @pytest.mark.parametrize('case', list(scenarios()), ids=lambda case: case['name'])
+    def test_registered_synthetic_roles_keep_actual_route_policy(case, mode):
+>       result = evaluate(case, mode)
+
+tests/test_marker_roles.py:10: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:106: in evaluate
+    result = choose_with_current_node(marker_scene(case['markers'], case['size'], case['rotation']),
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc6981a0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc777c40>), rgb_stamp=1.0, image_wall_time=538.726267274)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+____________ test_duplicate_vehicle_ids_do_not_select_course_branch ____________
+
+    def test_duplicate_vehicle_ids_do_not_select_course_branch():
+>       result = choose_with_current_node(marker_scene([('DICT_4X4_50', 49)]*2), 'right')
+
+tests/test_marker_roles.py:15: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc6980b0>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc777e20>), rgb_stamp=1.0, image_wall_time=538.748374626)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+_________ test_id_only_routing_cannot_distinguish_course_id_on_vehicle _________
+
+    def test_id_only_routing_cannot_distinguish_course_id_on_vehicle():
+        # 이 API에는 표식이 붙은 물체의 정체를 알려 주는 입력이 없다.
+>       result = choose_with_current_node(marker_scene([('DICT_4X4_50', 30)]), 'left')
+
+tests/test_marker_roles.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+scripts/validate_marker_roles.py:72: in choose_with_current_node
+    LocalPursuit.control(state)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(vision_pipeline=<arena_autonomy.vision_process.VisionPipeline object at 0x7c09bc73f560>, last_control_time=0...<function choose_with_current_node.<locals>.<lambda> at 0x7c09bc7777e0>), rgb_stamp=1.0, image_wall_time=538.767494143)
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                was_enabled = self.enabled
+                self.on_reset(None, Trigger.Response())
+                self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if 30 in self.ids:
+                    self.side = 'right'
+                elif any(marker in self.ids for marker in (0, 20, 45)):
+                    self.side = 'left'
+>       result = super().control()
+E       TypeError: super(type, obj): obj must be an instance or subtype of type
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:92: TypeError
+=========================== short test summary info ============================
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_1_left-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_1_left-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_1_right-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_1_right-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_7_left-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_7_left-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_7_right-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_7_right-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_11_left-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_11_left-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_11_right-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_11_right-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_14_left-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_14_left-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_14_right-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_14_right-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_49_left-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_49_left-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_49_right-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_4x4_49_right-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot0-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot0-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot1-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot1-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot2-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot2-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot3-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px36_rot3-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot0-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot0-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot1-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot1-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot2-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot2-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot3-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px72_rot3-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot0-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot0-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot1-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot1-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot2-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot2-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot3-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[vehicle_7x7_91_px144_rot3-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_0_vehicle_49-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_0_vehicle_49-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_0_vehicle_91-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_0_vehicle_91-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_20_vehicle_49-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_20_vehicle_49-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_20_vehicle_91-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_20_vehicle_91-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_30_vehicle_49-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_30_vehicle_49-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_30_vehicle_91-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_30_vehicle_91-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_45_vehicle_49-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_45_vehicle_49-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_45_vehicle_91-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[course_45_vehicle_91-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[no_marker_keeps_previous_side-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[no_marker_keeps_previous_side-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[two_course_ids_current_right_precedence-temporary_3light]
+FAILED tests/test_marker_roles.py::test_registered_synthetic_roles_keep_actual_route_policy[two_course_ids_current_right_precedence-official_4red_candidate]
+FAILED tests/test_marker_roles.py::test_duplicate_vehicle_ids_do_not_select_course_branch
+FAILED tests/test_marker_roles.py::test_id_only_routing_cannot_distinguish_course_id_on_vehicle
+66 failed, 19 passed in 8.31s

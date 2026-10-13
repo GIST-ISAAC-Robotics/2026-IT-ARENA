@@ -1,0 +1,57 @@
+........................................................................ [  4%]
+........................................................................ [  9%]
+........................................................................ [ 13%]
+........................................................................ [ 18%]
+........................................................................ [ 22%]
+........................................................................ [ 27%]
+........................................................................ [ 32%]
+........................................................................ [ 36%]
+........................................................................ [ 41%]
+........................................................................ [ 45%]
+........................................................................ [ 50%]
+........................................................................ [ 55%]
+........................................................................ [ 59%]
+........................................................................ [ 64%]
+........................................................................ [ 68%]
+....................F................................................... [ 73%]
+........................................................................ [ 78%]
+........................................................................ [ 82%]
+........................................................................ [ 87%]
+........................................................................ [ 91%]
+........................................................................ [ 96%]
+.......................................................                  [100%]
+=================================== FAILURES ===================================
+_______________ test_contract_records_evaluation_script_changes ________________
+
+    def test_contract_records_evaluation_script_changes():
+        contract = json.loads((ROOT/'config/tests/physics_step_r0_sha256.json').read_text())
+        scripts = contract['approved_evaluation_scripts']
+        assert set(scripts) == {'scripts/probe_braking_contact.py', 'scripts/validate_g1_traffic.py'}
+        # 직전 1 ms 실행이 기록한 실행 소스 해시가 변경 전 값이다.
+        previous = json.loads((PREVIOUS_RUN/'report.json').read_text())['source_sha256']
+        # 10/8 격자 발행 후속 계약이 probe의 다음 변경을 등록한다. 이 계약은 소급 수정하지 않는다.
+        chain, parent = [], 'config/tests/physics_step_r0_sha256.json'
+        for name in ('scheduled_command_r0_sha256.json', 'scheduled_command_r1_sha256.json', 'scheduled_command_r2_sha256.json',
+                     'scheduled_command_r3_sha256.json', 'scheduled_command_r4_sha256.json', 'scheduled_command_r5_sha256.json',
+                     'scheduled_command_r6_sha256.json', 'scheduled_command_r7_sha256.json'):
+            successor = json.loads((ROOT/'config/tests'/name).read_text())
+            assert successor['parent_contract'] == parent
+            chain.append(successor)
+            parent = 'config/tests/'+name
+        for path, change in scripts.items():
+            assert change['before'] == previous[path]
+            latest = change
+            for successor in chain:
+                later = successor['approved_evaluation_scripts'].get(path)
+                if later:
+                    assert later['before'] == latest['after']
+                    latest = later
+>           assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest() == latest['after']
+E           AssertionError: assert '7e38ebe1290b...43d504c04df97' == '45a6799ebe90...83f7c680dba36'
+E             - 45a6799ebe904b9dffde0d7a99df9d7646efdf1ba57b19f2d1483f7c680dba36
+E             + 7e38ebe1290bf3bb63e087ca48f70c97561836e982a57b039f343d504c04df97
+
+tests/test_physics_step_option.py:160: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_physics_step_option.py::test_contract_records_evaluation_script_changes
+1 failed, 1566 passed in 72.14s (0:01:12)

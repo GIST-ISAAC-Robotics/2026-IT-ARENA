@@ -1,0 +1,171 @@
+{
+  "schema": "g1_post_case_evidence_v6",
+  "checks": {
+    "green_and_stop_recorded": true,
+    "raw_status_received": true,
+    "dense_ego_received": true,
+    "raw_status_finite_ordered": true,
+    "trace_raw_status_matches": true,
+    "status_age_within_existing_observation_ttl": true,
+    "boundary_times_valid": true,
+    "boundary_reference_progresses": true,
+    "boundary_source_progresses": true,
+    "stop_matches_dense_pose": true,
+    "original_run_passed": true,
+    "registered_hold_dense_evidence": true,
+    "no_observed_motion_after_settled_zero_target": true
+  },
+  "passed": true,
+  "legacy_sparse_hold_check": {
+    "passed": true,
+    "contradictions": [],
+    "meaning": "diagnostic only: two asynchronous low-speed samples are not a stationary declaration"
+  },
+  "legacy_audit": {
+    "audit_version": "g1c_post_coverage_v5_shared_stop_pose_evidence",
+    "checks": {
+      "green_and_stop_recorded": true,
+      "raw_status_received": true,
+      "dense_ego_received": true,
+      "raw_status_finite_ordered": true,
+      "trace_raw_status_matches": true,
+      "status_age_within_existing_observation_ttl": true,
+      "boundary_times_valid": true,
+      "boundary_reference_progresses": true,
+      "boundary_source_progresses": true,
+      "hold_matches_dense_pose": true,
+      "stop_matches_dense_pose": true
+    },
+    "applicability": {
+      "hold_pose_check": "not_applicable_no_hold_in_case",
+      "hold_required_by_case": false
+    },
+    "passed": true,
+    "trace_rows_in_case": 65,
+    "raw_status_samples": 65,
+    "raw_status_max_gap_s": 0.22000000000000064,
+    "trace_status_max_age_s": 0.20500000000000007,
+    "missing_raw_status_times": [],
+    "trace_status_mismatch_times": [],
+    "boundary_time_errors": [],
+    "rejected_observation_times": [],
+    "source_epochs": [
+      0
+    ],
+    "held_pose_segments": 0,
+    "max_held_pose_speed_mps": 0.0,
+    "hold_pose_contradictions": [],
+    "stop_last_half_second_pose_segments": 250,
+    "stop_max_pose_speed_mps": 0.009424995525359517,
+    "stop_pose_coverage": {
+      "complete": true,
+      "passed": true,
+      "reason": "covered",
+      "required_first_s": 10.769,
+      "required_last_s": 11.269,
+      "covered_first_s": 10.768,
+      "covered_last_s": 11.269,
+      "segment_count": 250,
+      "maximum_gap_s": 0.0030000000000001137,
+      "maximum_allowed_gap_s": 0.05,
+      "maximum_speed_mps": 0.009424995525359517
+    },
+    "limits": [
+      "autonomy publishes every 0.2 s or state transition, not at 50 Hz",
+      "individual drivetrain diagnostic and safe_drive source timestamps were not recorded; their freshness is unverified",
+      "dense pose finite differences are planar sampled motion, not instantaneous velocity or real vehicle safety",
+      "post-audit does not alter the preserved run verdict or relax registered behavior thresholds"
+    ]
+  },
+  "hold_evidence": {
+    "schema": "g1_hold_evidence_v1",
+    "requirement": {
+      "first_s": 3.601,
+      "last_s": 10.100999999999999,
+      "required_hold_s": null,
+      "kind": "side_occlusion",
+      "speed_below_mps": 0.01
+    },
+    "hold_requirement_applicable": false,
+    "dense_hold_requirement_met": null,
+    "longest_dense_hold_s": 0.15799999999999992,
+    "dense_hold_intervals": [
+      [
+        3.841,
+        3.999
+      ]
+    ],
+    "commanded_hold_intervals": [
+      [
+        3.8400000000000003,
+        4.0
+      ],
+      [
+        10.34,
+        10.600000000000001
+      ],
+      [
+        10.66,
+        10.9
+      ],
+      [
+        11.0,
+        11.100000000000001
+      ]
+    ],
+    "sampled_zero_target_episodes": [
+      {
+        "first_s": 0.002,
+        "last_s": 4.04,
+        "settled_after_s": 0.502,
+        "longest_low_speed_s": 4.037,
+        "maximum_speed_mps": 0.0007166947453645624,
+        "movement_after_settled": false,
+        "first_movement_after_settled": []
+      },
+      {
+        "first_s": 10.31,
+        "last_s": 11.268,
+        "settled_after_s": 11.257,
+        "longest_low_speed_s": 0.5099999999999998,
+        "maximum_speed_mps": 0.9969691342824242,
+        "movement_after_settled": false,
+        "first_movement_after_settled": []
+      }
+    ],
+    "original_verdict_changed": false,
+    "driving_authorized": false,
+    "limits": [
+      "HOLD is a zero-speed request, not an established stationary flag",
+      "only complete pose segments count; no gap fill or speed interpolation",
+      "sampled targets bracket intervals; unrecorded faster target toggles are not excluded",
+      "pose secants are sampled averages, not instantaneous or continuous velocity",
+      "no physical cause attribution or real vehicle braking claim"
+    ]
+  },
+  "original_verdict_changed": false,
+  "driving_authorized": false,
+  "limits": [
+    "versioned replacement of an invalid sparse-sample implication, not a new controller result",
+    "all other legacy checks and original run gates remain required",
+    "registered stationary speed/duration/window and STOP limits are unchanged",
+    "sampled evidence only; no continuous motion, contact or hardware safety proof"
+  ],
+  "input_sha256": {
+    "report.json": "a77b5ca6666f4e0df686671de2a8c0b06d0753ef5ef2267e930c948713de1461",
+    "trace.json": "175d28a3d974adc76bd44e96ffcf13c1a6656a42dd476862b5ab3b493e0339f0",
+    "autonomy_status.jsonl": "c590caeca2f465964dc9cbfdbe50d0ab64327a5e8e98d4871d6eb91994dfdbb6",
+    "ego_poses.jsonl": "45c7058f3cf84ff58b9e1a7c6d9c7748bab9207062c12ee511c49b46b1de461e",
+    "stop_trace.json": "5465a8a18af57865097c8025b3b32432283b4193abfa72ed60bd456417f019ca",
+    "braking_diagnostics.jsonl": "fdb49b6a8e73707d4e82bd01a6ea00ff17774fb90f5ae4a55459b4b5aa204bf4",
+    "follow_decisions.jsonl": "0dc27014f1f2977707126eb91e110f37c87d37b265ba2c5d73b7154b8475fb87",
+    "config": "582a503e436da51ce47000839dc93f5b04f34b00cf154931c335c87663f32b28"
+  },
+  "inputs_unchanged": true,
+  "source_sha256": {
+    "audit_g1_case_evidence.py": "c02fd859cbe216abc5c29ac0add2630cbaebb37eff596d6da15f4e48648e97a5",
+    "audit_g1_hold_evidence.py": "69d488e2672d1d10343ba533fe7617d56df9df9e5867441ae371d8a4b6eb954b",
+    "audit_g1_traffic_coverage.py": "87c4150c411bbe900d6cbb6ab0e754047b19bca6e6bc458f5a3df2d0a2330a17",
+    "g1_traffic_eval.py": "bba827ef2658b9b23c301380eeefb086450746d9dc2b0557f2127fd659b553a5"
+  }
+}

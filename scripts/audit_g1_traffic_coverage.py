@@ -12,21 +12,25 @@ import json
 import math
 from pathlib import Path
 
+from g1_traffic_eval import kinematic_speed_segments, pose_window_coverage
 
-AUDIT_VERSION = 'g1c_post_coverage_v3_initial_hold'
+
+AUDIT_VERSION = 'g1c_post_coverage_v5_shared_stop_pose_evidence'
 
 
 def finite(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
-def kinematic_speed_segments(ego):
-    result = []
-    for (t0, x0, y0, _), (t1, x1, y1, _) in zip(ego, ego[1:]):
-        if not all(finite(v) for v in (t0, x0, y0, t1, x1, y1)) or t1 <= t0:
-            raise ValueError('invalid/nonincreasing ego pose')
-        result.append({'t0': t0, 't1': t1, 'average_speed_mps': math.hypot(x1-x0, y1-y0)/(t1-t0)})
-    return result
+def stop_pose_window(segments, stop_trace):
+    """기존 0.5초·0.01 m/s에 완전 구간 계측을 추가한다. 부분/빈 자료는 통과 아님."""
+    times = [row.get('time') for row in stop_trace]
+    ordered = len(times) >= 2 and all(finite(t) for t in times) and all(
+        b > a for a, b in zip(times, times[1:]))
+    if not ordered:
+        return dict(complete=False, reason='invalid_stop_trace_times', segment_count=0,
+                    maximum_speed_mps=None)
+    return pose_window_coverage(segments, times[-1]-.5, times[-1])
 
 
 def audit_rows(report, trace, statuses, ego, stop_trace):
@@ -99,15 +103,14 @@ def audit_rows(report, trace, statuses, ego, stop_trace):
         if maximum > .01+1e-8:
             contradictions.append({'t0': previous['t'], 't1': row['t'], 'max_pose_speed_mps': maximum})
     # STOP 중 최초 감속은 허용하고 마지막 실제 0.5초 안정 구간을 검사한다.
-    stop_end = max((r['time'] for r in stop_trace), default=None)
-    stop_segments = [s for s in segments if finite(stop_end) and s['t0'] >= stop_end-.5 and s['t1'] <= stop_end]
-    stop_max = max((s['average_speed_mps'] for s in stop_segments), default=None)
+    stop_coverage = stop_pose_window(segments, stop_trace)
+    stop_max = stop_coverage['maximum_speed_mps']
     hold_required = report.get('case') in ('stopped_center', 'stop_restart', 'initial_occlusion')
     hold_applicable = held_segments > 0 or hold_required
     applicability = {'hold_pose_check': 'applicable' if hold_applicable else 'not_applicable_no_hold_in_case',
                      'hold_required_by_case': hold_required}
     checks.update(hold_matches_dense_pose=(held_segments > 0 and not contradictions) if hold_applicable else True,
-                  stop_matches_dense_pose=stop_max is not None and stop_max < .01)
+                  stop_matches_dense_pose=stop_coverage['complete'] and stop_max is not None and stop_max < .01)
     return {'audit_version': AUDIT_VERSION, 'checks': checks, 'applicability': applicability, 'passed': all(checks.values()),
         'trace_rows_in_case': len(rows), 'raw_status_samples': len(statuses),
         'raw_status_max_gap_s': max((b-a for a, b in zip(status_times, status_times[1:])), default=None),
@@ -116,7 +119,8 @@ def audit_rows(report, trace, statuses, ego, stop_trace):
         'rejected_observation_times': rejected_observations[:20],
         'source_epochs': sorted(epochs), 'held_pose_segments': held_segments,
         'max_held_pose_speed_mps': maximum_held_speed, 'hold_pose_contradictions': contradictions[:20],
-        'stop_last_half_second_pose_segments': len(stop_segments), 'stop_max_pose_speed_mps': stop_max,
+        'stop_last_half_second_pose_segments': stop_coverage['segment_count'], 'stop_max_pose_speed_mps': stop_max,
+        'stop_pose_coverage': stop_coverage,
         'limits': ['autonomy publishes every 0.2 s or state transition, not at 50 Hz',
                    'individual drivetrain diagnostic and safe_drive source timestamps were not recorded; their freshness is unverified',
                    'dense pose finite differences are planar sampled motion, not instantaneous velocity or real vehicle safety',

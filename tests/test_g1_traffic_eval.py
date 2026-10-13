@@ -172,7 +172,7 @@ def verdict_base(gates=None, behavior_rows=0, g1_rows=0):
             'drive_publishers': ['local_pursuit'], 'safe_drive_publishers': ['lidar_safety'],
             'sequential_acquisition_verified': True, 'lidar_nominal_interface_passed': True, 'source_unchanged': True,
             'signal_states': ['green', 'red', 'yellow'], 'false_start': False, 'shutdown_clean': True,
-            'stop': {'stable': True, 'wall_collision_samples': 0}, 'actuation_stop_passed': True,
+            'stop': {'stable': True, 'wall_collision_samples': 0, 'pose_evidence': {'passed': True}}, 'actuation_stop_passed': True,
             'abort': None, 'actuation_diagnostics': {'control_deadline_samples': 0}, 'wall_collision_samples': 0}
     base['evaluation_readers'] = {'valid': True}
     base['contact_evidence'] = {'validated_source': True}

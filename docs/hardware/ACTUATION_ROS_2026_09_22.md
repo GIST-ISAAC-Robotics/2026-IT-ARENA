@@ -44,13 +44,15 @@ CRC 프레임은 시험용 ROS byte array로 전달한다. UART/CAN/USB 드라�
 
 ## 실행
 
+현행 모터축의 `stationary_ready`는 차체 정지가 아니라 평균 저속 준비 조건이다. 아래 명시 서비스 절차를 지키며, 움직이는 차체를 엔코더 평균만으로 안전하다고 판단하지 않는다. [10/13 경로 감사](../autonomy/MOTOR_MOTION_OBSERVABILITY_2026_10_13.md).
+
 ROS 환경과 작업 공간을 로드한 후:
 
 ```bash
 ros2 launch arena_bringup local_pursuit.launch.py actuation_mode:=virtual_mcu
 ros2 service call /actuation/arm std_srvs/srv/Trigger '{}'
 ros2 service call /actuation/stop std_srvs/srv/Trigger '{}'
-# 양쪽 바퀴의 저속 지속 관측 이후에만:
+# 해당 모드의 저속 준비 조건 이후에만(현행 모터축 평균, 차체 정지 증명 아님):
 ros2 service call /actuation/clear_stop std_srvs/srv/Trigger '{}'
 ros2 service call /actuation/arm std_srvs/srv/Trigger '{}'
 ```

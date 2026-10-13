@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-13 점별 실제 취득 시각 점유 팽창 후보. oldest 기본 및 모든 반환·기본 여유·동일 물체 이동 상한 보존",
+  "parent_contract": "config/tests/lidar_stress_eval_r0_sha256.json",
+  "parent_contract_sha256": "06f14f0ce654be66c70508121f2e02d099559d775d79feebcaf39fbb136b1c20",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "cc5b54971742117c0a0df990befbf942ce5d64407c5be90cd6cd80844b0972c6",
+      "after": "760b8e232fd7ba372d689b06b6ba2797f103cc0aed378c56e7229c584d625082",
+      "reason": "선택형 per_ray_candidate의 팽창 시간만 점별로 계산. 기본 oldest 출력 재생 일치·모든 점유/운동 상한 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "7614f3d334eccafafb5e988e37edb5a67abe92f5c0db8da0802546de6cba8807",
+      "after": "51128c2dc34a9842bea35441a021bb0856cc1ab3bd8a5db829e84a8242296776",
+      "reason": "선택형 G1 파라미터 전달. 단독 모드에서 후보 선택 거부"
+    },
+    "src/arena_bringup/launch/g1_follow.launch.py": {
+      "before": "6c04780b03b59737684a8f3e51c4df849e81852ba9f26d5d89b6c1876ce27a92",
+      "after": "e9776085342b9f387ad7ff8b209a75b5f1feca2361fd254c2d21f8010e64189f",
+      "reason": "g1_occupancy_timing_mode 옵션 추가, oldest 기본"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "e75e92e93abfd2bc42725508b473c323c15c0b25f5a413e9f6660c2233ddf609",
+      "after": "79f8bf1fab40d1d47e16db293b81561342422551e88c1ee0500d24f571a25363",
+      "reason": "선택형 파라미터·보고서 모드·새 의존성 스냅샷. 기존 판정선 유지"
+    }
+  },
+  "evidence": ["artifacts/validation/2026-10-13/g1_per_ray_v1/README.md"]
+}

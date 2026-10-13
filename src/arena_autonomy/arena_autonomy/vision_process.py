@@ -10,19 +10,32 @@ import numpy as np
 from arena_autonomy.core import StartSignal, image_rgb, marker_ids
 
 
+def make_start_signal(mode):
+    if mode == 'temporary_3light':
+        return StartSignal()
+    if mode == 'official_4red_candidate':
+        from arena_autonomy.race_start import OfficialStartSignal
+        return OfficialStartSignal()
+    raise ValueError('unsupported visual start mode')
+
+
 def recognize(request, data):
     """상태 변경은 후보로만 반환한다. 부모가 채택하지 않은 결과는 누적되지 않는다."""
     began = time.perf_counter_ns()
     rgb = image_rgb(SimpleNamespace(data=data, **request['image']))
     decoded = time.perf_counter_ns()
-    start = StartSignal()
+    signal_mode = request.get('signal_mode', 'temporary_3light')
+    start = make_start_signal(signal_mode)
     start.__dict__.update(copy.deepcopy(request['signal']))
-    start.update(rgb)
+    if signal_mode == 'official_4red_candidate':
+        start.update(rgb, request['stamp'])
+    else:
+        start.update(rgb)
     signaled = time.perf_counter_ns()
     ids = sorted(set(marker_ids(rgb, .02)))
     ended = time.perf_counter_ns()
     return dict(epoch=request['epoch'], sequence=request['sequence'], stamp=request['stamp'],
-        signal=vars(start), ids=ids, stages_ms=dict(decode=(decoded-began)/1e6,
+        signal=vars(start), signal_mode=signal_mode, ids=ids, stages_ms=dict(decode=(decoded-began)/1e6,
         signal=(signaled-decoded)/1e6, markers=(ended-signaled)/1e6),
         duration_ms=(ended-began)/1e6)
 
@@ -110,7 +123,7 @@ class VisionProcess:
 
 class VisionPipeline:
     """부모 단일 executor 전용. 결과의 세대·촬영 시각·수신 후 나이를 함께 검사한다."""
-    def __init__(self, worker, image_timeout=1., wall_timeout=3., work_timeout=1.):
+    def __init__(self, worker, image_timeout=1., wall_timeout=3., work_timeout=1., signal_mode='temporary_3light'):
         if min(image_timeout, wall_timeout, work_timeout) <= 0:
             raise ValueError('Vision timeouts must be positive')
         self.worker = worker
@@ -119,7 +132,8 @@ class VisionPipeline:
         self.sequence = 0
         self.inflight = None
         self.pending = None
-        self.signal = StartSignal()
+        self.signal_mode = signal_mode
+        self.signal = make_start_signal(signal_mode)
         self.ids = []
         self.last_submitted = float('-inf')
         self.last_received = float('-inf')
@@ -133,7 +147,7 @@ class VisionPipeline:
     def reset(self):
         self.epoch += 1
         self.pending = None
-        self.signal = StartSignal()
+        self.signal = make_start_signal(self.signal_mode)
         self.ids = []
         self.last_submitted = self.last_received = self.last_accepted = float('-inf')
         self.last_result = None
@@ -175,6 +189,8 @@ class VisionPipeline:
                 self.processing['over_20ms'] += result['duration_ms'] > 20.
                 if request is None or any(result.get(k) != request[k] for k in ('epoch', 'sequence', 'stamp')):
                     raise RuntimeError('Vision result identity mismatch')
+                if result.get('signal_mode') != self.signal_mode:
+                    raise RuntimeError('Vision signal mode mismatch')
                 if request['epoch'] != self.epoch:
                     self.stats['rejected_epoch'] += 1
                 elif (not self.fresh(request['stamp'], request['received'], now, wall_now)
@@ -206,6 +222,7 @@ class VisionPipeline:
                     self.sequence += 1
                     request = dict(epoch=self.epoch, sequence=self.sequence, stamp=stamp,
                         received=received, submitted=wall_now, image=image,
+                        signal_mode=self.signal_mode,
                         signal=copy.deepcopy(vars(self.signal)))
                     self.worker.submit(request, message.data)
                     self.inflight = request
@@ -218,7 +235,7 @@ class VisionPipeline:
         return accepted
 
     def snapshot(self):
-        return dict(mode='process', epoch=self.epoch, fault=self.fault, stats=dict(self.stats),
+        return dict(mode='process', signal_mode=self.signal_mode, epoch=self.epoch, fault=self.fault, stats=dict(self.stats),
                     inflight=self.inflight is not None, pending=self.pending is not None,
                     last_result=self.last_result, processing=dict(self.processing),
                     worker_pid=getattr(getattr(self.worker, 'process', None), 'pid', None))

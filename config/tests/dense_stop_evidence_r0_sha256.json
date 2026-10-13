@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-13 G1 실행 STOP의 밀집 자세 증거 강화. 제어/물성/기존 속도 및 안정 시간 불변. 과거 실행의 새 판정 소급 금지",
+  "parent_contract": "config/tests/fragmented_boundary_r0_sha256.json",
+  "parent_contract_sha256": "77bff5503f4cf2e92da1149786b01daae72f52238cd7f14df3205e8edc89d0f3",
+  "approved_changes": {},
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "892a68dc2187c0e64977255cd47010070d176e702d8b44eadee5d32a3c36b479",
+      "after": "735eb3f5620401a454c2186df3e856f1f415b8e253f36d4e109b5a21334adbdd",
+      "reason": "STOP 저속 진단/ACK에 밀집 pose 전 구간 증거를 추가 요구. 원천 시각 기록, 종료 기준 자세와 거리 시각 일치. controller/physics inputs untouched"
+    },
+    "scripts/g1_traffic_eval.py": {
+      "before": "044e0b13d1c83511bc976b2379ed176079c8ce701c04acce07c44865e8ecc464",
+      "after": "bba827ef2658b9b23c301380eeefb086450746d9dc2b0557f2127fd659b553a5",
+      "reason": "공유 순수 STOP 증거 함수 및 필수 dense_pose_stop_evidence gate. .01 m/s/.5초와 기존 .05초 pose 계측 간격 유지"
+    }
+  },
+  "evidence": [
+    "docs/autonomy/G1_FRAGMENTED_BOUNDARY_2026_10_13.md",
+    "artifacts/validation/2026-10-13/g1_stop_coverage_v1/README.md",
+    "artifacts/validation/2026-10-13/g1_dense_stop_v1/README.md"
+  ]
+}

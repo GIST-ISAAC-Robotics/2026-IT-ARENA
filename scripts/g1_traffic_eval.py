@@ -11,7 +11,7 @@ import numpy as np
 from shapely.geometry import MultiPoint, Polygon
 
 EGO_LENGTH_M, EGO_WIDTH_M = .20, .15
-EVALUATOR_VERSION = 'g1d_eval_v6_side_grass'
+EVALUATOR_VERSION = 'g1d_eval_v7_dense_stop_evidence'
 LATCHED_STATES = ('FAULT_LATCHED', 'ESTOP_LATCHED')
 # 누락을 성공으로 해석하지 않는 평가 계측 조건. 기존 행동 판정선은 그대로다.
 POSE_MAX_GAP_S = .05  # 기존 actor_pose_stream_continuous 기준을 자차/짝맞춤에도 적용
@@ -20,6 +20,47 @@ TRACE_MAX_GAP_S = .20  # 10 Hz trace의 두 발행 주기; 그보다 긴 공백�
 
 def _finite(value):
     return not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value)
+
+
+def kinematic_speed_segments(ego):
+    """평가용 실제 pose의 평면 구간 평균속도. 센서/순간 속도 추정값은 아니다."""
+    if not all(len(row) == 4 and all(_finite(v) for v in row) for row in ego):
+        raise ValueError('invalid ego pose shape/values')
+    result = []
+    for (t0, x0, y0, _), (t1, x1, y1, _) in zip(ego, ego[1:]):
+        if t1 <= t0:
+            raise ValueError('invalid/nonincreasing ego pose')
+        result.append({'t0': t0, 't1': t1, 'average_speed_mps': math.hypot(x1-x0, y1-y0)/(t1-t0)})
+    return result
+
+
+def pose_window_coverage(segments, first, end):
+    """STOP의 기존 계측 간격(.05초)과 속도(.01 m/s) 검사. 구간 양 끝도 요구한다."""
+    if not (_finite(first) and _finite(end) and end > first):
+        return dict(complete=False, passed=False, reason='invalid_window', segment_count=0,
+                    maximum_speed_mps=None)
+    selected = [s for s in segments if s['t1'] > first+1e-9 and s['t0'] < end-1e-9]
+    begin = selected[0]['t0'] if selected else None
+    last = selected[-1]['t1'] if selected else None
+    gap = max((s['t1']-s['t0'] for s in selected), default=None)
+    valid = all(all(_finite(s.get(k)) for k in ('t0', 't1', 'average_speed_mps'))
+                and 0 < s['t1']-s['t0'] and s['average_speed_mps'] >= 0 for s in selected)
+    contiguous = all(abs(b['t0']-a['t1']) <= 1e-9 for a, b in zip(selected, selected[1:]))
+    complete = bool(selected and valid and contiguous and begin <= first+1e-9 and last >= end-1e-9
+                    and gap <= POSE_MAX_GAP_S+1e-9)
+    peak = max((s['average_speed_mps'] for s in selected), default=None)
+    return dict(complete=complete, passed=bool(complete and peak < .01),
+                reason='covered' if complete else 'incomplete_pose_window',
+                required_first_s=first, required_last_s=end, covered_first_s=begin,
+                covered_last_s=last, segment_count=len(selected), maximum_gap_s=gap,
+                maximum_allowed_gap_s=POSE_MAX_GAP_S, maximum_speed_mps=peak)
+
+
+def stop_pose_evidence(ego, end_s, hold_s):
+    """실행기와 사후 감사가 공유하는 평가-only STOP 증거. 구동으로 전달하지 않는다."""
+    if not _finite(hold_s) or hold_s <= 0 or not _finite(end_s):
+        raise ValueError('finite stop time and positive hold duration required')
+    return pose_window_coverage(kinematic_speed_segments(ego), end_s-hold_s, end_s)
 
 
 def fresh_clock_ns(spin, state, monotonic, timeout_s=1.):
@@ -570,6 +611,7 @@ def finalize_verdict(report, mode):
     actuation = report.get('actuation', {})
     stop_checks = {
         'model_stop_stable': stop.get('stable') is True,
+        'dense_pose_stop_evidence': (stop.get('pose_evidence') or {}).get('passed') is True,
         'explicit_mcu_stop': report.get('actuation_stop_passed') is True,
         'no_mcu_latch_before_stop': ((actuation.get('stop_latch_timing') or {}).get('valid') is True
                                      and actuation.get('latched_before_stop_samples', 1) == 0 and report.get('abort') is None),

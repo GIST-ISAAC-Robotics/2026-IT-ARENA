@@ -1,0 +1,37 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+_________ test_stop_pose_tail_truncation_is_not_a_complete_half_second _________
+
+    def test_stop_pose_tail_truncation_is_not_a_complete_half_second():
+        report, trace, raw, ego, stop = stationary_fixture()
+        ego = [p for p in ego if p[0] <= 2.55]
+        result = audit.audit_rows(report, trace, raw, ego, stop)
+>       assert not result['checks']['stop_matches_dense_pose']
+E       assert not True
+
+tests/test_g1_stop_pose_coverage.py:10: AssertionError
+_____________ test_stop_pose_internal_gap_is_not_zero_motion_proof _____________
+
+    def test_stop_pose_internal_gap_is_not_zero_motion_proof():
+        report, trace, raw, ego, stop = stationary_fixture()
+        ego = [p for p in ego if not 2.60 < p[0] < 2.91]
+        result = audit.audit_rows(report, trace, raw, ego, stop)
+>       assert not result['checks']['stop_matches_dense_pose']
+E       assert not True
+
+tests/test_g1_stop_pose_coverage.py:17: AssertionError
+___________ test_late_tiny_stop_segment_does_not_cover_missing_start ___________
+
+    def test_late_tiny_stop_segment_does_not_cover_missing_start():
+        report, trace, raw, ego, stop = stationary_fixture()
+        ego = [p for p in ego if p[0] <= 2.40 or p[0] >= 2.96]
+        result = audit.audit_rows(report, trace, raw, ego, stop)
+>       assert not result['checks']['stop_matches_dense_pose']
+E       assert not True
+
+tests/test_g1_stop_pose_coverage.py:24: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_g1_stop_pose_coverage.py::test_stop_pose_tail_truncation_is_not_a_complete_half_second
+FAILED tests/test_g1_stop_pose_coverage.py::test_stop_pose_internal_gap_is_not_zero_motion_proof
+FAILED tests/test_g1_stop_pose_coverage.py::test_late_tiny_stop_segment_does_not_cover_missing_start
+3 failed in 0.11s

@@ -23,7 +23,8 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 DT = .005
 MODULES = {
-    'arena_autonomy': ('local_pursuit', 'wall_follow', 'vision_process', 'core', 'local_path',
+    'arena_autonomy': ('local_pursuit', 'wall_follow', 'vision_process', 'race_start', 'core', 'local_path',
+                       'local_follow', 'boundary_evidence', 'occupancy_timing', 'scene_motion', 'local_scene', 'follow_trace',
                        'lidar_safety', 'lidar_motion', 'lidar_motion_ros', 'lidar_observation'),
     'arena_vehicle_interface': ('actuation_ros', 'actuation_contract', 'actuation_wire',
                                 'applied_guard', 'drive_feedback', 'node_lifecycle',
@@ -31,6 +32,7 @@ MODULES = {
 }
 SOURCES = [f'src/{package}/{package}/{name}.py'
            for package, names in MODULES.items() for name in names]
+FIXTURE_SOURCES = ['scripts/audit_start_signal_layout.py']
 PROVENANCE = ['tests/test_pipeline_fault_validation.py', 'src/arena_description/config/vehicle.yaml',
               'config/tracks/official_v2026.09.14.yaml']
 ZERO_TOPICS = ('applied', 'sink', 'mcu')
@@ -48,8 +50,14 @@ def stamp_parts(seconds):
     return divmod(round(seconds * 1e9), 1_000_000_000)
 
 
-def signal_rgb(color):
+def signal_rgb(color, mode='temporary_3light'):
     """테스트 모듈에 의존하지 않는 실제 픽셀 신호등 (rgb8)."""
+    if mode == 'official_4red_candidate':
+        from audit_start_signal_layout import light_image
+        reds = {'red1': 1, 'red2': 2, 'red3': 3, 'red': 4, 'green': 0, 'off': 0}[color]
+        return light_image(reds, color == 'green', diameter=12, paired=True).tobytes()
+    if mode != 'temporary_3light':
+        raise ValueError('unsupported signal fixture mode')
     import cv2
     import numpy as np
     rgb = np.full((480, 848, 3), 100, np.uint8)
@@ -260,6 +268,8 @@ class OwnedProcesses:
             parameters.update(vision_execution='process', max_speed_mps=.6,
                               target_wall_distance_m=.425, lidar_x_m=.06,
                               image_timeout_s=1., control_rate_hz=50.)
+            if self.report.get('signal_mode', 'temporary_3light') != 'temporary_3light':
+                parameters['start_signal_mode'] = self.report['signal_mode']
         if role == 'mcu':
             parameters.update(feedback_mode='drive_motor_shaft', wheel_radius_m=.0325,
                               ticks_per_revolution=28, gear_ratio=15.)
@@ -401,7 +411,8 @@ class OwnedProcesses:
 
 
 class PipelineValidator:
-    def __init__(self, output, wall_cap=480., sleep_s=.005, scenario='full', cycles=1):
+    def __init__(self, output, wall_cap=480., sleep_s=.005, scenario='full', cycles=1,
+                 signal_mode='temporary_3light'):
         import rclpy
         from ackermann_msgs.msg import AckermannDriveStamped
         from geometry_msgs.msg import Twist
@@ -416,7 +427,7 @@ class PipelineValidator:
                                            motor=JointState, scan=LaserScan)
         self.Trigger = Trigger
         self.output, self.sleep_s = output, sleep_s
-        self.scenario, self.cycles = scenario, cycles
+        self.scenario, self.cycles, self.signal_mode = scenario, cycles, signal_mode
         self.deadline = time.monotonic() + wall_cap
         self.t, self.plant, self.monitor = 1., ToyPlant(), Monitor()
         self.history = deque([(self.t, 0.)], maxlen=2000)
@@ -429,7 +440,7 @@ class PipelineValidator:
                            'sequential rays use toy motion history; steering is not integrated; no fixed world course',
                            timing=dict(dt_sim_s=DT, sleep_wall_s=sleep_s, scan_hz=10, imu_hz=200,
                                        encoder_hz=100, rgb_hz=10), ros_domain_id=os.environ['ROS_DOMAIN_ID'],
-                           scenario=scenario, cycles=cycles, mcu_deadline_diagnostics=[])
+                           scenario=scenario, cycles=cycles, signal_mode=signal_mode, mcu_deadline_diagnostics=[])
         self.children = OwnedProcesses(output, self.report)
         self.node = rclpy.create_node('pipeline_fault_validator',
                                      parameter_overrides=[Parameter('use_sim_time', value=True)])
@@ -457,7 +468,8 @@ class PipelineValidator:
                         [('arm', '/actuation/arm'), ('clear_stop', '/actuation/clear_stop'),
                          ('stop', '/actuation/stop'), ('reset', '/autonomy/reset')]}
         self.color, self.images, self.held_stamp = 'green', True, None
-        self.rgb = {name: signal_rgb(name) for name in ('red', 'green')}
+        colors = ('red', 'green', 'red1', 'red2', 'red3', 'off') if signal_mode == 'official_4red_candidate' else ('red', 'green')
+        self.rgb = {name: signal_rgb(name, signal_mode) for name in colors}
         self.last = {key: -math.inf for key in ('scan', 'image', 'motor')}
         self.last_counts = None
         self.last_motor_t = None
@@ -663,7 +675,8 @@ class PipelineValidator:
     def red_green(self):
         self.images, self.held_stamp, self.color = True, None, 'red'
         baseline = self.monitor.sequence
-        self.wait(lambda: self.fresh('autonomy', baseline, lambda v: v['signal'] == 'red'), 'actual red pixels')
+        observed = 'red4_confirmed' if self.signal_mode == 'official_4red_candidate' else 'red'
+        self.wait(lambda: self.fresh('autonomy', baseline, lambda v: v['signal'] == observed), 'actual red pixels')
         self.pump(.8)
         self.color = 'green'
         self.moving('fresh_red_to_green_recovery')
@@ -744,6 +757,9 @@ class PipelineValidator:
         self.stop_case('boot_disarmed', lambda: None, {'mcu': lambda v: v['state'] == 'DISARMED'}, no_resume=True)
         self.stop_case('armed_green_only_cannot_start', lambda: self.call('arm'),
                        {'autonomy': lambda v: not v['started'] and v['speed_command_mps'] == 0.}, no_resume=True)
+        if self.scenario == 'start_contract':
+            self.run_start_contract()
+            return
         self.red_green()
         self.stop_case('rgb_drop_sensor_stop', lambda: setattr(self, 'images', False),
                        {'autonomy': lambda v: v['state'] == 'SENSOR_STOP',
@@ -807,6 +823,35 @@ class PipelineValidator:
                        {'autonomy': lambda v: bool(v['vision']['fault']) and not v['started']}, no_resume=True)
         self.restart_controller()
 
+    def run_start_contract(self):
+        """선택형 공식 픽셀→기존 ROS 보호/MCU 경계. 새 RacePermission은 미연결."""
+        if self.signal_mode != 'official_4red_candidate':
+            raise ValueError('start_contract requires official candidate')
+        for color in ('off', 'red1', 'red2', 'red3', 'red'):
+            self.stop_case('official_'+color+'_no_start', lambda color=color: setattr(self, 'color', color),
+                           {'autonomy': lambda v: not v['started'] and v['speed_command_mps'] == 0.}, no_resume=True)
+        self.stop_case('official_reds_off_without_green_no_start', lambda: setattr(self, 'color', 'off'),
+                       {'autonomy': lambda v: not v['started']}, no_resume=True)
+        self.red_green()
+        self.color = 'off'
+        self.moving('official_green_extinguished_keeps_race_start')
+        self.stop_case('official_rgb_gap_stops', lambda: setattr(self, 'images', False),
+                       {'autonomy': lambda v: v['state'] == 'SENSOR_STOP',
+                        'drive': lambda v: v == 0., 'safe': lambda v: v == 0.})
+        self.images = True
+        self.moving('official_fresh_off_image_restores_existing_permit')
+        self.stop_case('official_controller_exit_stops_before_restart',
+                       lambda: self.children.send('controller', signal.SIGINT, phase='cleanup'),
+                       {'safe': lambda v: v == 0.})
+        self.restart_controller()
+        self.stop_case('official_explicit_stop_latches', lambda: self.call('stop'),
+                       {'mcu': lambda v: v['state'] == 'ESTOP_LATCHED', 'sink': lambda v: v['blocked']})
+        self.stop_case('official_clear_alone_is_disarmed', lambda: self.call('clear_stop'),
+                       {'mcu': lambda v: v['state'] == 'DISARMED'}, no_resume=True)
+        self.call('arm')
+        self.moving('official_separate_rearm_after_existing_visual_start')
+        self.final_stop()
+
     def final_stop(self):
         self.stop_case('final_explicit_software_stop', lambda: self.call('stop'),
                        {'mcu': lambda v: v['state'] == 'ESTOP_LATCHED' and v['reason'] == 'software_stop',
@@ -835,10 +880,26 @@ class PipelineValidator:
                                          exit_code=o['child'].poll()) for o in self.children.children]
         self.report['failure_state'] = state
 
+    def stop_after_failure(self):
+        """진단 실패는 보존하고 정리 전에 별도 STOP을 시도한다. 실패 판정은 불변."""
+        outcome = self.report['failure_stop'] = dict(attempted=True, acknowledged=False,
+                                                     fresh_zero_and_model_stopped=False)
+        # 이미 실패한 no-resume 감시가 STOP 전달 자체를 차단하지 않게 한다.
+        # 감시의 기존 증거/실패 사례는 지우거나 통과로 바꾸지 않는다.
+        self.monitor.zero_watch = None
+        baseline = self.monitor.sequence
+        try:
+            self.call('stop')
+            outcome['acknowledged'] = True
+            self.wait(lambda: self.stopped(baseline), 'failure STOP fresh zero', timeout=5.)
+            outcome['fresh_zero_and_model_stopped'] = True
+        except Exception as error:
+            outcome['error'] = repr(error)
+
     def snapshot_sources(self):
-        names = ['scripts/validate_pipeline_faults_ros.py', *SOURCES, *PROVENANCE]
+        names = ['scripts/validate_pipeline_faults_ros.py', *SOURCES, *FIXTURE_SOURCES, *PROVENANCE]
         self.report['source_snapshot_scope'] = dict(runtime_modules=SOURCES,
-            validator='scripts/validate_pipeline_faults_ros.py', provenance_only=PROVENANCE,
+            validator='scripts/validate_pipeline_faults_ros.py', fixture_helpers=FIXTURE_SOURCES, provenance_only=PROVENANCE,
             provenance_interpretation='test and configuration metadata; vehicle/track files are not loaded by this fixture')
         self.report['source_sha256'] = {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
                                         for name in names}
@@ -882,10 +943,13 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--wall-cap', type=float, default=480.)
     parser.add_argument('--sleep-wall', type=float, default=.005)
-    parser.add_argument('--scenario', choices=('full', 'restart_repro'), default='full',
+    parser.add_argument('--scenario', choices=('full', 'restart_repro', 'start_contract'), default='full',
                         help='restart_repro: ros_v2 failure segment only; not the 34-condition validation')
     parser.add_argument('--cycles', type=int, default=1, choices=(1, 2, 3))
+    parser.add_argument('--signal-mode', choices=('temporary_3light', 'official_4red_candidate'), default='temporary_3light')
     args = parser.parse_args()
+    if (args.scenario == 'start_contract') != (args.signal_mode == 'official_4red_candidate'):
+        parser.error('official candidate is limited to start_contract scenario')
     if os.name != 'posix' or not Path('/proc').is_dir():
         parser.error('Linux ROS environment with /proc is required')
     if not 300 <= args.wall_cap <= 600 or not .005 <= args.sleep_wall <= .01:
@@ -900,7 +964,7 @@ def main():
     rclpy.init()
     validator = None
     try:
-        validator = PipelineValidator(output, args.wall_cap, args.sleep_wall, args.scenario, args.cycles)
+        validator = PipelineValidator(output, args.wall_cap, args.sleep_wall, args.scenario, args.cycles, args.signal_mode)
         validator.snapshot_sources()
         validator.run()
         validator.report['passed'] = True
@@ -914,6 +978,7 @@ def main():
                     case.update(error=repr(error), failed_wall_s=time.monotonic(), failed_sim_s=validator.t,
                                 model_speed_mps=validator.plant.speed,
                                 model_displacement_m=validator.plant.distance - case['position_at_injection_m'])
+            validator.stop_after_failure()
         else:
             (output / 'report.json').write_text(json.dumps(dict(passed=False, error=repr(error))), encoding='utf-8')
     finally:

@@ -1,0 +1,11 @@
+WSL distribution: Ubuntu-24.04
+Working directory: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local
+Environment:
+  source /opt/ros/jazzy/setup.bash
+  source install/local_setup.bash
+  export PYTHONPATH="$PWD/src/arena_autonomy:$PWD/src/arena_vehicle_interface:$PWD/scripts${PYTHONPATH:+:$PYTHONPATH}"
+  export PYTHONDONTWRITEBYTECODE=1
+Probe command:
+  python3 -B scripts/probe_clock_bounds.py --output artifacts/validation/2026-10-13/clock_bounds_v1/results
+Full regression command (only after successful probe):
+  python3 -B -m pytest -q tests

@@ -1,0 +1,4531 @@
+{
+  "scope": "기록 전용. 새 Gazebo 주행/제어 연결 없음. 정적 구조 가정과 sweep 상한은 미보증.",
+  "settings": {
+    "max_range_m": 3.0,
+    "min_range_m": 0.08,
+    "field_half_deg": 130.0,
+    "min_points": 35,
+    "max_points": 180,
+    "normal_half_window": 8,
+    "segment_max_m": 0.2,
+    "correspondence_m": 0.24,
+    "huber_m": 0.025,
+    "max_rmse_m": 0.04,
+    "min_fraction": 0.65,
+    "min_x_support": 12,
+    "min_x_support_span_m": 0.35,
+    "min_eigen_ratio": 0.003,
+    "max_translation_m": 0.55,
+    "max_yaw_rad": 0.16,
+    "max_iterations": 16,
+    "seed_offset_m": 0.18,
+    "bidirectional_m": 0.04,
+    "bidirectional_rad": 0.025,
+    "range_uncertainty_m": 0.03,
+    "sweep_speed_bound_mps": 1.5,
+    "sweep_yaw_bound_rad_s": 0.5,
+    "encoder_distance_tolerance_m": 0.002,
+    "rear_to_lidar_m": 0.1275
+  },
+  "synthetic": [
+    {
+      "name": "stationary_room",
+      "sensor_model": "sequential_raycast",
+      "expected": "compatible_under_assumptions",
+      "expectation_met": true,
+      "result": {
+        "classification": "compatible_under_assumptions",
+        "reason": "residual_within_budget_not_motion_proof",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.0010075111686643995,
+            -2.903591775472098e-08,
+            4.1090089572606216e-07
+          ],
+          "rmse_m": 0.0013673458060669372,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 0.13517469961527578,
+          "x_support": 15,
+          "x_support_span_m": 0.7416858845907314,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 2
+        },
+        "reverse": {
+          "transform": [
+            -0.0010075111686643995,
+            -2.903591775472098e-08,
+            4.1090089572606216e-07
+          ],
+          "rmse_m": 0.0013673458060669372,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 0.13517469961527578,
+          "x_support": 15,
+          "x_support_span_m": 0.7416858845907314,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 2
+        },
+        "reference_interval_s": 0.30000000000000004,
+        "encoder_travel_m": 0.0,
+        "scan_forward_travel_m": -0.0010075111686536414,
+        "distance_residual_m": -0.0010075111686536414,
+        "comparison_budget_m": 0.36413469161213385,
+        "raw_sweep_budget_m": 0.2994,
+        "range_pair_budget_m": 0.06,
+        "fit_budget_m": 0.0027346916121338744,
+        "processing_ms": 97.2774799999998
+      }
+    },
+    {
+      "name": "honest_straight",
+      "sensor_model": "sequential_raycast",
+      "expected": "compatible_under_assumptions",
+      "expectation_met": true,
+      "result": {
+        "classification": "compatible_under_assumptions",
+        "reason": "residual_within_budget_not_motion_proof",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.4200277439500342,
+            0.00011011634324488972,
+            -0.00046104017903000124
+          ],
+          "rmse_m": 0.0037195020387352567,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 0.09963981136293831,
+          "x_support": 21,
+          "x_support_span_m": 0.6988206067335562,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 4
+        },
+        "reverse": {
+          "transform": [
+            -0.4207612285345015,
+            -0.00022385902159245566,
+            0.0006722507073323631
+          ],
+          "rmse_m": 0.0010277715298548941,
+          "inlier_fraction": 0.8016528925619835,
+          "inliers": 97,
+          "eigen_ratio": 0.09637161981412276,
+          "x_support": 17,
+          "x_support_span_m": 0.8103605083786818,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 3
+        },
+        "reference_interval_s": 0.30000000000000004,
+        "encoder_travel_m": 0.42,
+        "scan_forward_travel_m": 0.42002775750060944,
+        "distance_residual_m": 2.7757500609459917e-05,
+        "comparison_budget_m": 0.3688390040774705,
+        "raw_sweep_budget_m": 0.2994,
+        "range_pair_budget_m": 0.06,
+        "fit_budget_m": 0.0074390040774705134,
+        "processing_ms": 111.06099000000036
+      }
+    },
+    {
+      "name": "zero_encoder_sliding",
+      "sensor_model": "sequential_raycast",
+      "expected": "inconsistent_candidate",
+      "expectation_met": true,
+      "result": {
+        "classification": "inconsistent_candidate",
+        "reason": "residual_exceeds_budget",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.4200277439500342,
+            0.00011011634324488972,
+            -0.00046104017903000124
+          ],
+          "rmse_m": 0.0037195020387352567,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 0.09963981136293831,
+          "x_support": 21,
+          "x_support_span_m": 0.6988206067335562,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 4
+        },
+        "reverse": {
+          "transform": [
+            -0.4207612285345015,
+            -0.00022385902159245566,
+            0.0006722507073323631
+          ],
+          "rmse_m": 0.0010277715298548941,
+          "inlier_fraction": 0.8016528925619835,
+          "inliers": 97,
+          "eigen_ratio": 0.09637161981412276,
+          "x_support": 17,
+          "x_support_span_m": 0.8103605083786818,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 3
+        },
+        "reference_interval_s": 0.30000000000000004,
+        "encoder_travel_m": 0.0,
+        "scan_forward_travel_m": 0.42002775750060944,
+        "distance_residual_m": 0.42002775750060944,
+        "comparison_budget_m": 0.3688390040774705,
+        "raw_sweep_budget_m": 0.2994,
+        "range_pair_budget_m": 0.06,
+        "fit_budget_m": 0.0074390040774705134,
+        "processing_ms": 111.27506600000015
+      }
+    },
+    {
+      "name": "parallel_corridor",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            2.180156186391911e-35,
+            4.447812620902822e-19,
+            -3.1891956218250806e-17
+          ],
+          "rmse_m": 6.614179793179962e-17,
+          "inlier_fraction": 0.9585798816568047,
+          "inliers": 162,
+          "eigen_ratio": 1.3407523667522794e-31,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 1
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 29.640324000000717
+      }
+    },
+    {
+      "name": "stationary_parallel_corridor",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            2.180156186391911e-35,
+            4.447812620902822e-19,
+            -3.1891956218250806e-17
+          ],
+          "rmse_m": 6.614179793179962e-17,
+          "inlier_fraction": 0.9585798816568047,
+          "inliers": 162,
+          "eigen_ratio": 1.3407523667522794e-31,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 1
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 29.285619999999568
+      }
+    },
+    {
+      "name": "small_moving_front",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            6.304306714630201e-35,
+            1.6750514541197429e-18,
+            -2.9889208350324674e-17
+          ],
+          "rmse_m": 6.177198703304898e-17,
+          "inlier_fraction": 0.9152542372881356,
+          "inliers": 162,
+          "eigen_ratio": 1.3171613462750828e-31,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 1
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 29.988083999999304
+      }
+    },
+    {
+      "name": "small_static_front",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            6.304306714630201e-35,
+            1.6750514541197429e-18,
+            -2.9889208350324674e-17
+          ],
+          "rmse_m": 6.177198703304898e-17,
+          "inlier_fraction": 0.9257142857142857,
+          "inliers": 162,
+          "eigen_ratio": 1.3171613462750828e-31,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 1
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 30.210144999999855
+      }
+    },
+    {
+      "name": "turn_without_gyro",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "turning_without_gyro_history",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.08736598611656148,
+            0.025538556056619605,
+            0.14748986275114637
+          ],
+          "rmse_m": 0.0023304001817321006,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 0.1361232824078374,
+          "x_support": 15,
+          "x_support_span_m": 0.6871768758256271,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": {
+          "transform": [
+            -0.09086628789188558,
+            -0.012147541982543522,
+            -0.14808084688531845
+          ],
+          "rmse_m": 0.0008674394186212597,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 0.13454665838766092,
+          "x_support": 15,
+          "x_support_span_m": 0.723798369668913,
+          "angular_sectors": 7,
+          "converged": true,
+          "iterations": 7
+        },
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 144.79509299999992
+      }
+    },
+    {
+      "name": "front_dropout",
+      "sensor_model": "sequential_raycast",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -2.7951467946681717e-33,
+            1.0904843320478266e-18,
+            1.6158070064527108e-17
+          ],
+          "rmse_m": 5.710900830749025e-17,
+          "inlier_fraction": 1.0,
+          "inliers": 121,
+          "eigen_ratio": 1.5620800414933762e-31,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 5,
+          "converged": true,
+          "iterations": 1
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 16.588062000000292
+      }
+    },
+    {
+      "name": "noise_stationary_corridor_0",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "registration_failed",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": null,
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 39.81541399999955
+      }
+    },
+    {
+      "name": "noise_stationary_corridor_1",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "registration_failed",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": null,
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 31.863121999999855
+      }
+    },
+    {
+      "name": "noise_stationary_corridor_2",
+      "expected": "unknown",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "poor_overlap_or_fit",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.13850418974718579,
+            0.004476799860737655,
+            -0.00572887534679012
+          ],
+          "rmse_m": 0.010359911190489337,
+          "inlier_fraction": 0.38461538461538464,
+          "inliers": 65,
+          "eigen_ratio": 0.001185988173590482,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 55.46681899999939
+      }
+    },
+    {
+      "name": "noise_stationary_room_0",
+      "expected": "not_inconsistent",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "poor_overlap_or_fit",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.00945499591366471,
+            -0.004090461584423094,
+            0.001537748123136863
+          ],
+          "rmse_m": 0.014755744895664119,
+          "inlier_fraction": 0.5537190082644629,
+          "inliers": 67,
+          "eigen_ratio": 0.06537303812668137,
+          "x_support": 14,
+          "x_support_span_m": 0.6810439746801111,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 10
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 45.117488000000705
+      }
+    },
+    {
+      "name": "noise_stationary_room_1",
+      "expected": "not_inconsistent",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.45953019947940454,
+            -0.001873465310962127,
+            0.008072442219759859
+          ],
+          "rmse_m": 0.017578417900884293,
+          "inlier_fraction": 0.7933884297520661,
+          "inliers": 96,
+          "eigen_ratio": 0.00611366714596796,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 4,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 46.06069799999979
+      }
+    },
+    {
+      "name": "noise_stationary_room_2",
+      "expected": "not_inconsistent",
+      "expectation_met": true,
+      "result": {
+        "classification": "unknown",
+        "reason": "poor_overlap_or_fit",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.009637202314292432,
+            -0.007623084972929284,
+            0.009244373730469158
+          ],
+          "rmse_m": 0.0147126265807693,
+          "inlier_fraction": 0.5537190082644629,
+          "inliers": 67,
+          "eigen_ratio": 0.06559678032223795,
+          "x_support": 14,
+          "x_support_span_m": 0.6910836886413184,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000004,
+        "processing_ms": 38.96392900000034
+      }
+    }
+  ],
+  "synthetic_expectations_met": true,
+  "g1": [
+    {
+      "lag": 1,
+      "start_s": 3.6518999987394203,
+      "end_s": 3.75189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.12877487573648197,
+            1.1792484185138223e-05,
+            0.0005380811345086314
+          ],
+          "rmse_m": 0.004049215616915259,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.0004725660582778736,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 197.26364200000023
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 3.75189999873942,
+      "end_s": 3.85189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.12877487573648197,
+            1.1792484185138223e-05,
+            0.0005380811345086314
+          ],
+          "rmse_m": 0.004049215616915259,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.0004725660582778736,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000009,
+        "processing_ms": 197.74612799999946
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 3.85189999873942,
+      "end_s": 3.95189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.12877487573648197,
+            1.1792484185138223e-05,
+            0.0005380811345086314
+          ],
+          "rmse_m": 0.004049215616915259,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.0004725660582778736,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000009,
+        "processing_ms": 197.34374399999945
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 3.95189999873942,
+      "end_s": 4.05189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.12884532928643033,
+            6.185007291839505e-06,
+            0.0005051226580749812
+          ],
+          "rmse_m": 0.004049004393836624,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.00047207402403933607,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 195.7193110000004
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 4.05189999873942,
+      "end_s": 4.15189999873942,
+      "encoder_travel_m": 0.0018913135159969179,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.14872592014477412,
+            0.00038575655204008065,
+            0.004176660386062519
+          ],
+          "rmse_m": 0.003022693872751854,
+          "inlier_fraction": 0.9294117647058824,
+          "inliers": 158,
+          "eigen_ratio": 0.00036925426140844286,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 195.98984499999972
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 4.15189999873942,
+      "end_s": 4.25189999873942,
+      "encoder_travel_m": 0.014479002019216097,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.15872661313632563,
+            0.0016930780539951558,
+            0.01990145576199743
+          ],
+          "rmse_m": 0.0023890912326861927,
+          "inlier_fraction": 0.9235294117647059,
+          "inliers": 157,
+          "eigen_ratio": 0.00024777202276603,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 193.85565400000004
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 4.25189999873942,
+      "end_s": 4.35189999873942,
+      "encoder_travel_m": 0.020746105302713085,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.1900814777737429,
+            -4.529701192485837e-05,
+            0.031338377293249
+          ],
+          "rmse_m": 0.0040131095518936895,
+          "inlier_fraction": 0.9235294117647059,
+          "inliers": 157,
+          "eigen_ratio": 0.0003929341442705361,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 207.4725190000004
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 4.35189999873942,
+      "end_s": 4.45189999873942,
+      "encoder_travel_m": 0.0364114327929419,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.19555502496861607,
+            -0.002769157181761488,
+            0.03918611079214498
+          ],
+          "rmse_m": 0.002217545451001955,
+          "inlier_fraction": 0.9235294117647059,
+          "inliers": 157,
+          "eigen_ratio": 0.0003756516104971643,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 213.20401399999955
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 4.45189999873942,
+      "end_s": 4.55189999873942,
+      "encoder_travel_m": 0.03592523392988626,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.16179017904194645,
+            -0.007424993821547978,
+            0.030034886641756593
+          ],
+          "rmse_m": 0.004281840433301572,
+          "inlier_fraction": 0.9352941176470588,
+          "inliers": 159,
+          "eigen_ratio": 0.0005363323630014754,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 213.71569500000032
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 4.55189999873942,
+      "end_s": 4.65189999873942,
+      "encoder_travel_m": 0.037870029382108955,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.1522823981088026,
+            -0.01042749665708178,
+            0.024679347921738027
+          ],
+          "rmse_m": 0.005510707289105225,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.0007807448561588252,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 202.86003000000008
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 4.65189999873942,
+      "end_s": 4.75189999873942,
+      "encoder_travel_m": 0.04894563935993535,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.19388772300809465,
+            -0.01878018924705543,
+            0.018267667567399948
+          ],
+          "rmse_m": 0.0033091586672689653,
+          "inlier_fraction": 0.9230769230769231,
+          "inliers": 156,
+          "eigen_ratio": 0.00034453067819582893,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 167.3882819999992
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 4.75189999873942,
+      "end_s": 4.85189999873942,
+      "encoder_travel_m": 0.05974897821960892,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.2034783083458827,
+            -0.02257056713437231,
+            0.007992579118723232
+          ],
+          "rmse_m": 0.0030847716615955132,
+          "inlier_fraction": 0.9117647058823529,
+          "inliers": 155,
+          "eigen_ratio": 0.000374381052723503,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 163.86731000000054
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 4.85189999873942,
+      "end_s": 4.95189999873942,
+      "encoder_travel_m": 0.07082458819743614,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.21777511305710182,
+            -0.02599245690520496,
+            -0.003130803774130019
+          ],
+          "rmse_m": 0.0025744056213420573,
+          "inlier_fraction": 0.9058823529411765,
+          "inliers": 154,
+          "eigen_ratio": 0.0003936845916586516,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 201.5354589999987
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 4.95189999873942,
+      "end_s": 5.05189999873942,
+      "encoder_travel_m": 0.084058921372387,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.2249480344977463,
+            -0.027046387640878234,
+            -0.013230617715601935
+          ],
+          "rmse_m": 0.004336623881734505,
+          "inlier_fraction": 0.9230769230769231,
+          "inliers": 156,
+          "eigen_ratio": 0.0005483803931550784,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 188.07733800000113
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 5.05189999873942,
+      "end_s": 5.15189999873942,
+      "encoder_travel_m": 0.08595023488838477,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.1918120342005475,
+            -0.019851468848528817,
+            -0.019765503394415768
+          ],
+          "rmse_m": 0.0063602627727628175,
+          "inlier_fraction": 0.9171597633136095,
+          "inliers": 155,
+          "eigen_ratio": 0.0004937216911007266,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 184.42529600000057
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 5.15189999873942,
+      "end_s": 5.25189999873942,
+      "encoder_travel_m": 0.10199479736921668,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.2881144550833535,
+            -0.03056788239728004,
+            -0.026717522109494758
+          ],
+          "rmse_m": 0.0025256088389245448,
+          "inlier_fraction": 0.893491124260355,
+          "inliers": 151,
+          "eigen_ratio": 0.00033010935631605726,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 173.3335950000008
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 5.25189999873942,
+      "end_s": 5.35189999873942,
+      "encoder_travel_m": 0.10264144204094916,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.1611860698902705,
+            -0.011089360032705256,
+            -0.027545600679466088
+          ],
+          "rmse_m": 0.005701103212845297,
+          "inlier_fraction": 0.9058823529411765,
+          "inliers": 154,
+          "eigen_ratio": 0.00029395232385740866,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 163.95609799999988
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 5.35189999873942,
+      "end_s": 5.45189999873942,
+      "encoder_travel_m": 0.1030206770315542,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.09455111696834491,
+            -0.0036252360824959506,
+            -0.023462810552912116
+          ],
+          "rmse_m": 0.003799898532953265,
+          "inlier_fraction": 0.9349112426035503,
+          "inliers": 158,
+          "eigen_ratio": 0.06076435977002511,
+          "x_support": 10,
+          "x_support_span_m": 0.1809406842966926,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 90.40439600000028
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 5.45189999873942,
+      "end_s": 5.55189999873942,
+      "encoder_travel_m": 0.09929153193578555,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.0921316786616771,
+            -0.0026720846308841044,
+            -0.0188378224725139
+          ],
+          "rmse_m": 0.005184037657795058,
+          "inlier_fraction": 0.9235294117647059,
+          "inliers": 157,
+          "eigen_ratio": 0.060227132099042596,
+          "x_support": 10,
+          "x_support_span_m": 0.1400398496945435,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 11
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 105.21982399999885
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 5.55189999873942,
+      "end_s": 5.65189999873942,
+      "encoder_travel_m": 0.09053995240078619,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.09461737866340417,
+            -0.002495783598774101,
+            -0.018029803111774347
+          ],
+          "rmse_m": 0.004779661919324251,
+          "inlier_fraction": 0.9117647058823529,
+          "inliers": 155,
+          "eigen_ratio": 0.07400308287215802,
+          "x_support": 12,
+          "x_support_span_m": 0.15081915331801748,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 5
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 106.08098799999865
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 5.65189999873942,
+      "end_s": 5.75189999873942,
+      "encoder_travel_m": 0.07795226389756564,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.0909118944613264,
+            -0.003326602617470862,
+            -0.019183168677892007
+          ],
+          "rmse_m": 0.007707839042869601,
+          "inlier_fraction": 0.8994082840236687,
+          "inliers": 152,
+          "eigen_ratio": 0.08676792212327747,
+          "x_support": 14,
+          "x_support_span_m": 0.13799806548252747,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 5
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 73.56875400000007
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 5.75189999873942,
+      "end_s": 5.85189999873942,
+      "encoder_travel_m": 0.05428896541651969,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.10552054504528867,
+            -0.004143574926183729,
+            -0.022367525681996684
+          ],
+          "rmse_m": 0.001506688822157138,
+          "inlier_fraction": 0.888235294117647,
+          "inliers": 151,
+          "eigen_ratio": 0.05748702102809809,
+          "x_support": 9,
+          "x_support_span_m": 0.12512319016942874,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 127.90542900000013
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 5.85189999873942,
+      "end_s": 5.95189999873942,
+      "encoder_travel_m": 0.002742163058575606,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.0882038453633424,
+            -0.0008545047280171851,
+            -0.001541630659014161
+          ],
+          "rmse_m": 0.0026213199028032666,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.0532820096223261,
+          "x_support": 9,
+          "x_support_span_m": 0.17239054818439875,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 66.49640200000029
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 5.95189999873942,
+      "end_s": 6.05189999873942,
+      "encoder_travel_m": 0.021558057220148173,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.07121272629340385,
+            -0.00012986235420225315,
+            0.0004900257806349845
+          ],
+          "rmse_m": 0.002424130976631465,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.040524514022807795,
+          "x_support": 7,
+          "x_support_span_m": 0.1692224455543206,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 95.57105200000038
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 6.05189999873942,
+      "end_s": 6.15189999873942,
+      "encoder_travel_m": 0.01594246004541013,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.046991721392743546,
+            -0.00014913820884088157,
+            0.001878498139069824
+          ],
+          "rmse_m": 0.002429151229744854,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.0398880392417772,
+          "x_support": 7,
+          "x_support_span_m": 0.18002451521790053,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 113.62136900000053
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 6.15189999873942,
+      "end_s": 6.25189999873942,
+      "encoder_travel_m": 0.01112909191405263,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.017372241031773875,
+            -9.970518194191263e-05,
+            0.0016427673978970762
+          ],
+          "rmse_m": 0.0022380754530370098,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.039605576858197246,
+          "x_support": 7,
+          "x_support_span_m": 0.1798563398292458,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 146.65897000000072
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 6.25189999873942,
+      "end_s": 6.35189999873942,
+      "encoder_travel_m": -0.0008654338536604756,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.0018016537487099667,
+            -6.686824400143833e-05,
+            0.0011558108283591406
+          ],
+          "rmse_m": 0.00155585878544087,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.04484212422745501,
+          "x_support": 8,
+          "x_support_span_m": 0.17986382192701594,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 134.4603889999991
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 6.35189999873942,
+      "end_s": 6.45189999873942,
+      "encoder_travel_m": -0.00048619886305556324,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -7.319752068114605e-05,
+            -3.002127452166708e-05,
+            0.0011056456312042524
+          ],
+          "rmse_m": 0.0015883884278012903,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.04485049835214893,
+          "x_support": 8,
+          "x_support_span_m": 0.1798637600086982,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 135.74762200000023
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 6.45189999873942,
+      "end_s": 6.55189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -4.38165110307227e-06,
+            -3.2549008420301345e-05,
+            0.0011082008972276738
+          ],
+          "rmse_m": 0.0015922013082073888,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.04481097759837368,
+          "x_support": 8,
+          "x_support_span_m": 0.17986530514377969,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 131.6713060000012
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 6.55189999873942,
+      "end_s": 6.65189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.02029619598455789,
+            -0.0005764446907228122,
+            0.0009973353980368975
+          ],
+          "rmse_m": 0.0016742514333727247,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.05048775772231679,
+          "x_support": 9,
+          "x_support_span_m": 0.18007295339709406,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 14
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 131.4099389999992
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 6.65189999873942,
+      "end_s": 6.75189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.03751221623116553,
+            -0.0010206022944418483,
+            0.0009025197000290163
+          ],
+          "rmse_m": 0.001977939985940617,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.05695411092196506,
+          "x_support": 10,
+          "x_support_span_m": 0.179569694370832,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 10
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 122.44164899999888
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 6.75189999873942,
+      "end_s": 6.85189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.027610657070001488,
+            -0.0007791726549829104,
+            0.0009141298836730955
+          ],
+          "rmse_m": 0.001991754652541775,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.057477012068654944,
+          "x_support": 10,
+          "x_support_span_m": 0.17892836415781438,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 90.54290899999984
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 6.85189999873942,
+      "end_s": 6.95189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.033699092051482325,
+            -0.0008732998150628043,
+            0.0009070909606323584
+          ],
+          "rmse_m": 0.0023069761919855755,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.06330285445256907,
+          "x_support": 11,
+          "x_support_span_m": 0.18030838096860544,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 111.04302600000082
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 6.95189999873942,
+      "end_s": 7.05189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.03890854795127321,
+            -0.001094956210958798,
+            0.0008317368714074754
+          ],
+          "rmse_m": 0.001984712077108988,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.05849140938104374,
+          "x_support": 10,
+          "x_support_span_m": 0.18071507021393288,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 84.5376420000008
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 7.05189999873942,
+      "end_s": 7.15189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.031098131764558487,
+            -0.0009590097256198851,
+            0.0008533936042912242
+          ],
+          "rmse_m": 0.001932951050472464,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.06400625382861266,
+          "x_support": 11,
+          "x_support_span_m": 0.18150244779767652,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 84.03951699999901
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 7.15189999873942,
+      "end_s": 7.25189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.03976570471890031,
+            -0.001182690170846752,
+            0.0006886037430102656
+          ],
+          "rmse_m": 0.0018208223959004022,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.058748577338106484,
+          "x_support": 10,
+          "x_support_span_m": 0.14395212471415003,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 10
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 84.49626300000013
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 7.25189999873942,
+      "end_s": 7.35189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.02986380722248657,
+            -0.0009187850004912045,
+            0.0008121173323042853
+          ],
+          "rmse_m": 0.0019088092793881526,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.06449472860143667,
+          "x_support": 11,
+          "x_support_span_m": 0.1758658629314913,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 83.29788900000068
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 7.35189999873942,
+      "end_s": 7.45189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.037538468194272985,
+            -0.0010313481226282566,
+            0.00110393092699864
+          ],
+          "rmse_m": 0.0019231849304929144,
+          "inlier_fraction": 0.9470588235294117,
+          "inliers": 161,
+          "eigen_ratio": 0.06499833583561115,
+          "x_support": 11,
+          "x_support_span_m": 0.172980361851175,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 79.73265299999888
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 7.45189999873942,
+      "end_s": 7.55189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.038923213995843066,
+            -0.0011328367097031772,
+            0.001274050504167244
+          ],
+          "rmse_m": 0.0025714288723594388,
+          "inlier_fraction": 0.9470588235294117,
+          "inliers": 161,
+          "eigen_ratio": 0.05970796752000496,
+          "x_support": 10,
+          "x_support_span_m": 0.17276471904536866,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 4
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 81.0105580000009
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 7.55189999873942,
+      "end_s": 7.65189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.03365224974549829,
+            -0.0010477095116775616,
+            0.00126248086832808
+          ],
+          "rmse_m": 0.003261954365256149,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.06030209655758553,
+          "x_support": 10,
+          "x_support_span_m": 0.17926019302144403,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 3
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 80.7503839999999
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 7.65189999873942,
+      "end_s": 7.75189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.03245675031470744,
+            -0.0009707241032163382,
+            3.558831900171682e-05
+          ],
+          "rmse_m": 0.0017284482156232667,
+          "inlier_fraction": 0.9235294117647059,
+          "inliers": 157,
+          "eigen_ratio": 0.049221336652096014,
+          "x_support": 8,
+          "x_support_span_m": 0.11785756180219958,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 167.48339299999947
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 7.75189999873942,
+      "end_s": 7.85189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.04197580126025508,
+            -0.0012949888694830118,
+            -0.0003621833980226394
+          ],
+          "rmse_m": 0.003704194970771352,
+          "inlier_fraction": 0.9294117647058824,
+          "inliers": 158,
+          "eigen_ratio": 0.055363879337050774,
+          "x_support": 9,
+          "x_support_span_m": 0.16779785439737882,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 165.55062399999974
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 7.85189999873942,
+      "end_s": 7.95189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.03916723631141943,
+            -0.001224717298471376,
+            -0.0006262023442950349
+          ],
+          "rmse_m": 0.002627191628671214,
+          "inlier_fraction": 0.9294117647058824,
+          "inliers": 158,
+          "eigen_ratio": 0.04336595158530482,
+          "x_support": 7,
+          "x_support_span_m": 0.10682394206077139,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 4
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 64.69621499999967
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 7.95189999873942,
+      "end_s": 8.05189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.04147628313980428,
+            -0.0011077869500613837,
+            3.0917225714322554e-05
+          ],
+          "rmse_m": 0.006426705383694403,
+          "inlier_fraction": 0.9235294117647059,
+          "inliers": 157,
+          "eigen_ratio": 0.07178358643098216,
+          "x_support": 12,
+          "x_support_span_m": 0.18279240977847622,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000053,
+        "processing_ms": 92.8060740000003
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 8.05189999873942,
+      "end_s": 8.15189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.04469005383677911,
+            -0.0011529543476429909,
+            -0.0008297034826861868
+          ],
+          "rmse_m": 0.0034612445253232762,
+          "inlier_fraction": 0.9294117647058824,
+          "inliers": 158,
+          "eigen_ratio": 0.060381494401094325,
+          "x_support": 10,
+          "x_support_span_m": 0.14826721911596402,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 110.09337399999986
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 8.15189999873942,
+      "end_s": 8.25189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.04639121502273625,
+            -0.001204915468988015,
+            -0.0004278455448265194
+          ],
+          "rmse_m": 0.004993085162472073,
+          "inlier_fraction": 0.9352941176470588,
+          "inliers": 159,
+          "eigen_ratio": 0.06045315076430735,
+          "x_support": 10,
+          "x_support_span_m": 0.18055160176867957,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 108.78685800000021
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 8.25189999873942,
+      "end_s": 8.35189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.037423229622507714,
+            -0.0009694578458964993,
+            0.00013514019382653141
+          ],
+          "rmse_m": 0.0028941418604301696,
+          "inlier_fraction": 0.9294117647058824,
+          "inliers": 158,
+          "eigen_ratio": 0.05374421741067763,
+          "x_support": 9,
+          "x_support_span_m": 0.14635240280331097,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 4
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 96.31354100000067
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 8.35189999873942,
+      "end_s": 8.45189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.045200078548963525,
+            -0.001136163367371546,
+            -0.0004701431158415279
+          ],
+          "rmse_m": 0.00428768807586329,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.05902731679944011,
+          "x_support": 10,
+          "x_support_span_m": 0.18076674822207706,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 99.62634799999925
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 8.45189999873942,
+      "end_s": 8.55189999873942,
+      "encoder_travel_m": 0.0018913135159969274,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.04420207796964309,
+            -0.0011926321116023052,
+            0.000248281299239417
+          ],
+          "rmse_m": 0.0025284841453497666,
+          "inlier_fraction": 0.9352941176470588,
+          "inliers": 159,
+          "eigen_ratio": 0.047909555798053886,
+          "x_support": 8,
+          "x_support_span_m": 0.14293710939905224,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 11
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000142,
+        "processing_ms": 89.04497600000028
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 8.55189999873942,
+      "end_s": 8.65189999873942,
+      "encoder_travel_m": 0.012480724630768445,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.028603408162119412,
+            -0.0009239494606790257,
+            0.00134881843375983
+          ],
+          "rmse_m": 0.0060449752089818815,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.05271393068155285,
+          "x_support": 9,
+          "x_support_span_m": 0.1785977340723484,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 10
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 107.18095700000063
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 8.65189999873942,
+      "end_s": 8.75189999873942,
+      "encoder_travel_m": 0.024742660079608396,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.025465768921153768,
+            -0.0007956804657080429,
+            0.002487430110806599
+          ],
+          "rmse_m": 0.00421456970232623,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.047529139261191226,
+          "x_support": 8,
+          "x_support_span_m": 0.1359048049991632,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 5
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 114.28880599999935
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 8.75189999873942,
+      "end_s": 8.85189999873942,
+      "encoder_travel_m": 0.032901076879102105,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.013967291422712485,
+            -0.0005057616215423921,
+            0.003375208601724371
+          ],
+          "rmse_m": 0.0035247341559725112,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.04717576608713467,
+          "x_support": 8,
+          "x_support_span_m": 0.14077055686388923,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 110.33254800000059
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 8.85189999873942,
+      "end_s": 8.95189999873942,
+      "encoder_travel_m": 0.04510953039171674,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.0015626538413125407,
+            -0.0002943671955891007,
+            0.00527615396631806
+          ],
+          "rmse_m": 0.006225968586349465,
+          "inlier_fraction": 0.9467455621301775,
+          "inliers": 160,
+          "eigen_ratio": 0.053428749378618356,
+          "x_support": 9,
+          "x_support_span_m": 0.1777506271804566,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 98.8148080000002
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 8.95189999873942,
+      "end_s": 9.05189999873942,
+      "encoder_travel_m": 0.04716128971638963,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.006164455662304623,
+            5.99987998065111e-05,
+            0.004677452599481858
+          ],
+          "rmse_m": 0.00380172775058171,
+          "inlier_fraction": 0.9352941176470588,
+          "inliers": 159,
+          "eigen_ratio": 0.04785418292435628,
+          "x_support": 8,
+          "x_support_span_m": 0.1356335871521307,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000142,
+        "processing_ms": 105.60760999999985
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 9.05189999873942,
+      "end_s": 9.15189999873942,
+      "encoder_travel_m": 0.04570269312722295,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.0032751089511998343,
+            0.000252655754833201,
+            0.004057305439479433
+          ],
+          "rmse_m": 0.0035868384605995157,
+          "inlier_fraction": 0.9352941176470588,
+          "inliers": 159,
+          "eigen_ratio": 0.047074725795268405,
+          "x_support": 8,
+          "x_support_span_m": 0.13518657373914633,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 106.88551600000018
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 9.15189999873942,
+      "end_s": 9.25189999873942,
+      "encoder_travel_m": 0.04521649426416738,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.002994144413413391,
+            0.0003298274070960899,
+            0.003322288395661409
+          ],
+          "rmse_m": 0.0036303208009433783,
+          "inlier_fraction": 0.9408284023668639,
+          "inliers": 159,
+          "eigen_ratio": 0.04691821372652834,
+          "x_support": 8,
+          "x_support_span_m": 0.13418257759916757,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 119.60123799999955
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 9.25189999873942,
+      "end_s": 9.35189999873942,
+      "encoder_travel_m": 0.048619886305556324,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.00566538602333147,
+            0.00027253853632063825,
+            0.003514931986651343
+          ],
+          "rmse_m": 0.004649561357771648,
+          "inlier_fraction": 0.9408284023668639,
+          "inliers": 159,
+          "eigen_ratio": 0.04644706160444469,
+          "x_support": 8,
+          "x_support_span_m": 0.12676730095231487,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 117.3137870000005
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 9.35189999873942,
+      "end_s": 9.45189999873942,
+      "encoder_travel_m": 0.05099739868460859,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.0017359883199746815,
+            0.00028319261769065485,
+            0.002215380184574165
+          ],
+          "rmse_m": 0.003418373939734634,
+          "inlier_fraction": 0.9349112426035503,
+          "inliers": 158,
+          "eigen_ratio": 0.05251257696287111,
+          "x_support": 9,
+          "x_support_span_m": 0.17835995769953544,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 112.6555059999994
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 9.45189999873942,
+      "end_s": 9.55189999873942,
+      "encoder_travel_m": 0.05348187493611218,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.006870986718979501,
+            0.00024227480011558404,
+            0.0025083901648657015
+          ],
+          "rmse_m": 0.0036661078399516495,
+          "inlier_fraction": 0.9349112426035503,
+          "inliers": 158,
+          "eigen_ratio": 0.053603494606825945,
+          "x_support": 9,
+          "x_support_span_m": 0.1478861328758883,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000142,
+        "processing_ms": 111.75021800000096
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 9.55189999873942,
+      "end_s": 9.65189999873942,
+      "encoder_travel_m": 0.05202327834694504,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.010557304312356942,
+            0.00015765637304894053,
+            0.00219560671922449
+          ],
+          "rmse_m": 0.00478707032639353,
+          "inlier_fraction": 0.9349112426035503,
+          "inliers": 158,
+          "eigen_ratio": 0.05994566806777856,
+          "x_support": 10,
+          "x_support_span_m": 0.18005158472268076,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 103.07639600000051
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 9.65189999873942,
+      "end_s": 9.75189999873942,
+      "encoder_travel_m": 0.048673368241781874,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.0018159449898202855,
+            0.0003758725061710725,
+            0.0013049798481930832
+          ],
+          "rmse_m": 0.005267654143824207,
+          "inlier_fraction": 0.9349112426035503,
+          "inliers": 158,
+          "eigen_ratio": 0.059717079052418694,
+          "x_support": 10,
+          "x_support_span_m": 0.18144037381282546,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 10
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 114.64398999999936
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 9.75189999873942,
+      "end_s": 9.85189999873942,
+      "encoder_travel_m": 0.04910608516861189,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.002625143850071463,
+            0.00035214034122955007,
+            0.0008316193073976708
+          ],
+          "rmse_m": 0.00548269789383945,
+          "inlier_fraction": 0.9349112426035503,
+          "inliers": 158,
+          "eigen_ratio": 0.05958777305173988,
+          "x_support": 10,
+          "x_support_span_m": 0.14748021527441002,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 100.03710800000043
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 9.85189999873942,
+      "end_s": 9.95189999873942,
+      "encoder_travel_m": 0.04910608516861189,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.005728688402521958,
+            0.00018750518589538906,
+            0.0005077800562351888
+          ],
+          "rmse_m": 0.006505466349948687,
+          "inlier_fraction": 0.9349112426035503,
+          "inliers": 158,
+          "eigen_ratio": 0.06617836299704824,
+          "x_support": 11,
+          "x_support_span_m": 0.18353355123169107,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 101.76794300000047
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 9.95189999873942,
+      "end_s": 10.05189999873942,
+      "encoder_travel_m": 0.049538802095442126,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.004608481446188865,
+            0.00020022936495203952,
+            -0.00018130451144076742
+          ],
+          "rmse_m": 0.0041169193625707635,
+          "inlier_fraction": 0.9289940828402367,
+          "inliers": 157,
+          "eigen_ratio": 0.0604855157046764,
+          "x_support": 10,
+          "x_support_span_m": 0.14844503501672682,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.10000000000000142,
+        "processing_ms": 116.99808699999892
+      }
+    },
+    {
+      "lag": 1,
+      "start_s": 10.05189999873942,
+      "end_s": 10.15189999873942,
+      "encoder_travel_m": 0.056778303105050026,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.03368105334874052,
+            -0.00011134636818511795,
+            0.000651951913836809
+          ],
+          "rmse_m": 0.0067922545284854925,
+          "inlier_fraction": 0.9289940828402367,
+          "inliers": 157,
+          "eigen_ratio": 0.07282256886087159,
+          "x_support": 12,
+          "x_support_span_m": 0.18309492287043672,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.09999999999999964,
+        "processing_ms": 76.90186099999963
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 3.6518999987394203,
+      "end_s": 3.95189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.12877487573648197,
+            1.1792484185138223e-05,
+            0.0005380811345086314
+          ],
+          "rmse_m": 0.004049215616915259,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.0004725660582778736,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 196.4828900000004
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 3.75189999873942,
+      "end_s": 4.05189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.12884532928643033,
+            6.185007291839505e-06,
+            0.0005051226580749812
+          ],
+          "rmse_m": 0.004049004393836624,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.00047207402403933607,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 198.3952899999988
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 3.85189999873942,
+      "end_s": 4.15189999873942,
+      "encoder_travel_m": 0.0018913135159969179,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.14930561912610701,
+            0.00037720911687165947,
+            0.0041314707494473826
+          ],
+          "rmse_m": 0.0030228393952511437,
+          "inlier_fraction": 0.9294117647058824,
+          "inliers": 158,
+          "eigen_ratio": 0.00036844527336014004,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.30000000000000027,
+        "processing_ms": 199.27150299999852
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 3.95189999873942,
+      "end_s": 4.25189999873942,
+      "encoder_travel_m": 0.016370315535213016,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.15595977500698954,
+            0.0027469305829014383,
+            0.0226060272638046
+          ],
+          "rmse_m": 0.003784380416193938,
+          "inlier_fraction": 0.9352941176470588,
+          "inliers": 159,
+          "eigen_ratio": 0.0004261409045091218,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 197.57083499999874
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 4.05189999873942,
+      "end_s": 4.35189999873942,
+      "encoder_travel_m": 0.0371164208379261,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.17346776690613455,
+            0.0070783400259394795,
+            0.05230033624705604
+          ],
+          "rmse_m": 0.004279500442618026,
+          "inlier_fraction": 0.9294117647058824,
+          "inliers": 158,
+          "eigen_ratio": 0.00037995025794103484,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 199.20780100000002
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 4.15189999873942,
+      "end_s": 4.45189999873942,
+      "encoder_travel_m": 0.07163654011487108,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.19713688474116192,
+            0.013319683326616429,
+            0.08819244841518392
+          ],
+          "rmse_m": 0.0024413269058705857,
+          "inlier_fraction": 0.9176470588235294,
+          "inliers": 156,
+          "eigen_ratio": 0.00026079100021770375,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 196.72033999999883
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 4.25189999873942,
+      "end_s": 4.55189999873942,
+      "encoder_travel_m": 0.09308277202554123,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.24791192436701476,
+            0.013570044266100577,
+            0.09892658255318336
+          ],
+          "rmse_m": 0.0020536269989025243,
+          "inlier_fraction": 0.9176470588235294,
+          "inliers": 156,
+          "eigen_ratio": 0.0004099664533361939,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 5,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 200.84283400000123
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 4.35189999873942,
+      "end_s": 4.65189999873942,
+      "encoder_travel_m": 0.11020669610493711,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.25960307572596986,
+            0.009475808933421566,
+            0.09213931477293207
+          ],
+          "rmse_m": 0.003678081391374435,
+          "inlier_fraction": 0.9294117647058824,
+          "inliers": 158,
+          "eigen_ratio": 0.000507639858978676,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 5,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 177.20417099999787
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 4.45189999873942,
+      "end_s": 4.75189999873942,
+      "encoder_travel_m": 0.12274090267193057,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.19226537168785765,
+            0.007768934696133444,
+            0.07118976498225792
+          ],
+          "rmse_m": 0.005976267562653689,
+          "inlier_fraction": 0.9349112426035503,
+          "inliers": 158,
+          "eigen_ratio": 0.0005575950618836041,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 194.84864799999713
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 4.55189999873942,
+      "end_s": 4.85189999873942,
+      "encoder_travel_m": 0.14656464696165328,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.4726067748714816,
+            0.0861869484914951,
+            0.05369480102961764
+          ],
+          "rmse_m": 0.00842781818635728,
+          "inlier_fraction": 0.6764705882352942,
+          "inliers": 115,
+          "eigen_ratio": 4.288870501727517e-05,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 8,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 196.7132780000007
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 4.65189999873942,
+      "end_s": 4.95189999873942,
+      "encoder_travel_m": 0.17951920577698044,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.3172385864637771,
+            -0.014193554679230714,
+            0.02313769288072394
+          ],
+          "rmse_m": 0.0034301547583920405,
+          "inlier_fraction": 0.9058823529411765,
+          "inliers": 154,
+          "eigen_ratio": 0.0003625227809984326,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 5,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 194.2236219999991
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 4.75189999873942,
+      "end_s": 5.05189999873942,
+      "encoder_travel_m": 0.21463248778943209,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.35052941639920493,
+            -0.0241384493703006,
+            -0.008523409600600846
+          ],
+          "rmse_m": 0.0032840997331330794,
+          "inlier_fraction": 0.9053254437869822,
+          "inliers": 153,
+          "eigen_ratio": 0.0005058777871443675,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 5,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 190.83079299999994
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 4.85189999873942,
+      "end_s": 5.15189999873942,
+      "encoder_travel_m": 0.24083374445820793,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.3861551333460729,
+            -0.034265434908207215,
+            -0.03638512345213045
+          ],
+          "rmse_m": 0.003860946063386816,
+          "inlier_fraction": 0.8994082840236687,
+          "inliers": 152,
+          "eigen_ratio": 0.0005554075059561671,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 4,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 190.86902600000144
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 4.95189999873942,
+      "end_s": 5.25189999873942,
+      "encoder_travel_m": 0.27200395362998847,
+      "result": {
+        "classification": "unknown",
+        "reason": "geometric_degeneracy",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.40755319956262587,
+            -0.04010269299375314,
+            -0.06007393291918227
+          ],
+          "rmse_m": 0.006819497865918494,
+          "inlier_fraction": 0.9053254437869822,
+          "inliers": 153,
+          "eigen_ratio": 0.0007912238929949948,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 4,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 155.17988799999927
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 5.05189999873942,
+      "end_s": 5.35189999873942,
+      "encoder_travel_m": 0.2905864742985506,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.3901820281712547,
+            -0.03666479867419701,
+            -0.07318814982704153
+          ],
+          "rmse_m": 0.007700976783410104,
+          "inlier_fraction": 0.9,
+          "inliers": 153,
+          "eigen_ratio": 0.0007381693940579363,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 4,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 188.23962599999788
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 5.15189999873942,
+      "end_s": 5.45189999873942,
+      "encoder_travel_m": 0.30765691644172005,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.45645082006711163,
+            -0.04341914384890257,
+            -0.07616360600958728
+          ],
+          "rmse_m": 0.0030367670401110795,
+          "inlier_fraction": 0.863905325443787,
+          "inliers": 146,
+          "eigen_ratio": 0.00045038660492095913,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 4,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 159.37283999999963
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 5.25189999873942,
+      "end_s": 5.55189999873942,
+      "encoder_travel_m": 0.3049536510082889,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.48751417599756935,
+            -0.03947279225861557,
+            -0.06701104432236642
+          ],
+          "rmse_m": 0.0037118624443783508,
+          "inlier_fraction": 0.8352941176470589,
+          "inliers": 142,
+          "eigen_ratio": 0.0004791852787119543,
+          "x_support": 0,
+          "x_support_span_m": 0.0,
+          "angular_sectors": 4,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 158.57418400000256
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 5.35189999873942,
+      "end_s": 5.65189999873942,
+      "encoder_travel_m": 0.2928521613681259,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.2992596191305248,
+            -0.01622208035910607,
+            -0.05807400551669927
+          ],
+          "rmse_m": 0.005239985646601677,
+          "inlier_fraction": 0.9,
+          "inliers": 153,
+          "eigen_ratio": 0.07257402592083313,
+          "x_support": 12,
+          "x_support_span_m": 0.15294396384586187,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 94.58380799999944
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 5.45189999873942,
+      "end_s": 5.75189999873942,
+      "encoder_travel_m": 0.26778374823413736,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.295301384042611,
+            -0.014262726097555562,
+            -0.05493372451460242
+          ],
+          "rmse_m": 0.009058384354654206,
+          "inlier_fraction": 0.893491124260355,
+          "inliers": 151,
+          "eigen_ratio": 0.08333464422676487,
+          "x_support": 14,
+          "x_support_span_m": 0.14099658825642497,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 11
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 90.34867999999818
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 5.55189999873942,
+      "end_s": 5.85189999873942,
+      "encoder_travel_m": 0.22278118171487152,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.29611852753426343,
+            -0.015040745878669748,
+            -0.06051930958373229
+          ],
+          "rmse_m": 0.010344640860826317,
+          "inlier_fraction": 0.8647058823529412,
+          "inliers": 147,
+          "eigen_ratio": 0.09993559764848266,
+          "x_support": 17,
+          "x_support_span_m": 0.14852558204072547,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 89.32318500000136
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 5.65189999873942,
+      "end_s": 5.95189999873942,
+      "encoder_travel_m": 0.13498339237266094,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.26502833649222396,
+            -0.013214596293945589,
+            -0.04624646253976869
+          ],
+          "rmse_m": 0.013187757689933646,
+          "inlier_fraction": 0.8352941176470589,
+          "inliers": 142,
+          "eigen_ratio": 0.10939121132025294,
+          "x_support": 19,
+          "x_support_span_m": 0.14153986483367675,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 120.9758069999971
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 5.75189999873942,
+      "end_s": 6.05189999873942,
+      "encoder_travel_m": 0.07858918569524348,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.26164865064392706,
+            -0.008884046781568367,
+            -0.026818228037362012
+          ],
+          "rmse_m": 0.0022872797892981144,
+          "inlier_fraction": 0.8411764705882353,
+          "inliers": 143,
+          "eigen_ratio": 0.03485385791665694,
+          "x_support": 5,
+          "x_support_span_m": 0.11812931611594771,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 59.44435800000036
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 5.85189999873942,
+      "end_s": 6.15189999873942,
+      "encoder_travel_m": 0.04024268032413391,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.20095100905822222,
+            -0.0014893933744431394,
+            -0.0025179120241842433
+          ],
+          "rmse_m": 0.002607213182430002,
+          "inlier_fraction": 0.9,
+          "inliers": 153,
+          "eigen_ratio": 0.018986498614366805,
+          "x_support": 3,
+          "x_support_span_m": 0.11377487372396333,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 70.62645999999972
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 5.95189999873942,
+      "end_s": 6.25189999873942,
+      "encoder_travel_m": 0.048629609179610934,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.13634187450125446,
+            -0.00018999562063139075,
+            0.00047708853419851184
+          ],
+          "rmse_m": 0.002422247725450563,
+          "inlier_fraction": 0.9294117647058824,
+          "inliers": 158,
+          "eigen_ratio": 0.023899817074737165,
+          "x_support": 4,
+          "x_support_span_m": 0.16031925738994052,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 14
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 104.54411199999925
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 6.05189999873942,
+      "end_s": 6.35189999873942,
+      "encoder_travel_m": 0.026206118105802284,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.06027019819569672,
+            -0.00040757927434187797,
+            0.0019363738866709586
+          ],
+          "rmse_m": 0.0023915173951581372,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.03422584692143598,
+          "x_support": 6,
+          "x_support_span_m": 0.17984958779580063,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 10
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 119.88717099999846
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 6.15189999873942,
+      "end_s": 6.45189999873942,
+      "encoder_travel_m": 0.00977745919733659,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.0174057541640271,
+            -0.00014337956230375533,
+            0.0016617642274101892
+          ],
+          "rmse_m": 0.0022398828944301162,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.039607144392650125,
+          "x_support": 7,
+          "x_support_span_m": 0.17985363551631645,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 142.9678249999995
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 6.25189999873942,
+      "end_s": 6.55189999873942,
+      "encoder_travel_m": -0.001351632716716039,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.0007919821004204707,
+            -6.776896016186745e-05,
+            0.0011402488689126959
+          ],
+          "rmse_m": 0.0015328143813409792,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.04478820508132268,
+          "x_support": 8,
+          "x_support_span_m": 0.17986472320481184,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 136.38231699999892
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 6.35189999873942,
+      "end_s": 6.65189999873942,
+      "encoder_travel_m": -0.00048619886305556324,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.021088778344784478,
+            -0.0005785661203283578,
+            0.000980465925838617
+          ],
+          "rmse_m": 0.0017178361960428984,
+          "inlier_fraction": 0.9529411764705882,
+          "inliers": 162,
+          "eigen_ratio": 0.05049904147754652,
+          "x_support": 9,
+          "x_support_span_m": 0.18007340002617658,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 15
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 114.4657819999999
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 6.45189999873942,
+      "end_s": 6.75189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.0570430309488852,
+            -0.0014885880698295656,
+            0.00019310891709990483
+          ],
+          "rmse_m": 0.002215336328673889,
+          "inlier_fraction": 0.9588235294117647,
+          "inliers": 163,
+          "eigen_ratio": 0.06105122668055855,
+          "x_support": 11,
+          "x_support_span_m": 0.17958153611616443,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 14
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 137.53736900000035
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 6.55189999873942,
+      "end_s": 6.85189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.08634628840048447,
+            -0.0022344384618788846,
+            -0.00048451238648683243
+          ],
+          "rmse_m": 0.002477722802548996,
+          "inlier_fraction": 0.9588235294117647,
+          "inliers": 163,
+          "eigen_ratio": 0.06691960199796769,
+          "x_support": 12,
+          "x_support_span_m": 0.17894597926716413,
+          "angular_sectors": 8,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 129.60184900000016
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 6.65189999873942,
+      "end_s": 6.95189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10236888294472395,
+            -0.0026385420488820917,
+            8.128458746264094e-06
+          ],
+          "rmse_m": 0.002966524176593912,
+          "inlier_fraction": 0.9647058823529412,
+          "inliers": 164,
+          "eigen_ratio": 0.07271892883471619,
+          "x_support": 13,
+          "x_support_span_m": 0.1805033922549883,
+          "angular_sectors": 8,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 122.9614560000023
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 6.75189999873942,
+      "end_s": 7.05189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10236000090478699,
+            -0.002658617573159308,
+            -2.4400821877869682e-05
+          ],
+          "rmse_m": 0.002971756930921119,
+          "inlier_fraction": 0.9647058823529412,
+          "inliers": 164,
+          "eigen_ratio": 0.0680218978504785,
+          "x_support": 12,
+          "x_support_span_m": 0.18071202027990857,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 110.88663900000029
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 6.85189999873942,
+      "end_s": 7.15189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10335254704775594,
+            -0.0026889144163333586,
+            3.275793593692835e-05
+          ],
+          "rmse_m": 0.00272960674589824,
+          "inlier_fraction": 0.9647058823529412,
+          "inliers": 164,
+          "eigen_ratio": 0.06860286266497886,
+          "x_support": 12,
+          "x_support_span_m": 0.1815030204986557,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 113.46795800000109
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 6.95189999873942,
+      "end_s": 7.25189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10913828433476107,
+            -0.0029153097526151326,
+            -5.026301791157804e-05
+          ],
+          "rmse_m": 0.0027204928799004313,
+          "inlier_fraction": 0.9647058823529412,
+          "inliers": 164,
+          "eigen_ratio": 0.06339967927610957,
+          "x_support": 11,
+          "x_support_span_m": 0.17919867287950483,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 94.4003699999989
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 7.05189999873942,
+      "end_s": 7.35189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.1008957910423169,
+            -0.0027179757882921846,
+            4.347988492528503e-06
+          ],
+          "rmse_m": 0.0027644625964587653,
+          "inlier_fraction": 0.9647058823529412,
+          "inliers": 164,
+          "eigen_ratio": 0.06326909922391705,
+          "x_support": 11,
+          "x_support_span_m": 0.1758627658391182,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 4
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 89.54149899999919
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 7.15189999873942,
+      "end_s": 7.45189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.1065965152772298,
+            -0.0028343398162379166,
+            -0.00014836217308902757
+          ],
+          "rmse_m": 0.0025980534450947778,
+          "inlier_fraction": 0.9647058823529412,
+          "inliers": 164,
+          "eigen_ratio": 0.057871315279575335,
+          "x_support": 10,
+          "x_support_span_m": 0.14370759703049202,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 11
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 88.53436700000117
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 7.25189999873942,
+      "end_s": 7.55189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10624559284092917,
+            -0.0028088423972713063,
+            -2.18478201085783e-05
+          ],
+          "rmse_m": 0.0031641223034913563,
+          "inlier_fraction": 0.9647058823529412,
+          "inliers": 164,
+          "eigen_ratio": 0.05795715559647938,
+          "x_support": 10,
+          "x_support_span_m": 0.17274013906743158,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 11
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 82.94576100000128
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 7.35189999873942,
+      "end_s": 7.65189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10876215493907246,
+            -0.0028629685246542367,
+            0.00022613692661485604
+          ],
+          "rmse_m": 0.003984534854340783,
+          "inlier_fraction": 0.9647058823529412,
+          "inliers": 164,
+          "eigen_ratio": 0.06370448504605628,
+          "x_support": 11,
+          "x_support_span_m": 0.1792316950620657,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 12
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 89.17053400000086
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 7.45189999873942,
+      "end_s": 7.75189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10176186107070265,
+            -0.0026931358335531286,
+            0.00028864793229072244
+          ],
+          "rmse_m": 0.0031836792737046133,
+          "inlier_fraction": 0.9647058823529412,
+          "inliers": 164,
+          "eigen_ratio": 0.052524582991373026,
+          "x_support": 9,
+          "x_support_span_m": 0.1604982658697114,
+          "angular_sectors": 8,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 106.53121300000024
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 7.55189999873942,
+      "end_s": 7.85189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10252453494647519,
+            -0.002739321866684352,
+            0.0002962774114011037
+          ],
+          "rmse_m": 0.0037730876768085854,
+          "inlier_fraction": 0.9647058823529412,
+          "inliers": 164,
+          "eigen_ratio": 0.05267774414453049,
+          "x_support": 9,
+          "x_support_span_m": 0.16781703089690525,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 5
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 85.87031100000075
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 7.65189999873942,
+      "end_s": 7.95189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10820273933791501,
+            -0.002802311528504132,
+            -0.0013919658917642326
+          ],
+          "rmse_m": 0.002373937946767238,
+          "inlier_fraction": 0.9352941176470588,
+          "inliers": 159,
+          "eigen_ratio": 0.04845889020753443,
+          "x_support": 8,
+          "x_support_span_m": 0.12275906413251952,
+          "angular_sectors": 8,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 167.5292490000011
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 7.75189999873942,
+      "end_s": 8.05189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10888239394128585,
+            -0.0028995545235360755,
+            -0.0018801794186891054
+          ],
+          "rmse_m": 0.003467011478733493,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.05462000093097588,
+          "x_support": 9,
+          "x_support_span_m": 0.16620263265422625,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 83.69761799999864
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 7.85189999873942,
+      "end_s": 8.15189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10640739937568101,
+            -0.0028272437015379966,
+            -0.00206216864762398
+          ],
+          "rmse_m": 0.0029739381581392523,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.042545557296266225,
+          "x_support": 7,
+          "x_support_span_m": 0.113780463985452,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 4
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 78.05209400000024
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 7.95189999873942,
+      "end_s": 8.25189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.11469242103028186,
+            -0.0029518387414368455,
+            -0.0013313969056872883
+          ],
+          "rmse_m": 0.005250108515171405,
+          "inlier_fraction": 0.9352941176470588,
+          "inliers": 159,
+          "eigen_ratio": 0.06053245768465873,
+          "x_support": 10,
+          "x_support_span_m": 0.18052394961303259,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.2999999999999998,
+        "processing_ms": 106.49820000000076
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 8.05189999873942,
+      "end_s": 8.35189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.11173689528088447,
+            -0.002852087162747298,
+            -0.001576617563278103
+          ],
+          "rmse_m": 0.006698996626404912,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.05979902198960511,
+          "x_support": 10,
+          "x_support_span_m": 0.14641020633877572,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.29999999999999893,
+        "processing_ms": 84.43378500000165
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 8.15189999873942,
+      "end_s": 8.45189999873942,
+      "encoder_travel_m": 0.0,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.1106196226597241,
+            -0.002828376197778313,
+            -0.001441568116741895
+          ],
+          "rmse_m": 0.003985156783060839,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.054257742210246436,
+          "x_support": 9,
+          "x_support_span_m": 0.14457396079109058,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.29999999999999893,
+        "processing_ms": 88.59685600000233
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 8.25189999873942,
+      "end_s": 8.55189999873942,
+      "encoder_travel_m": 0.0018913135159969274,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.11038814373358338,
+            -0.0028324071587451185,
+            -0.001282798912701906
+          ],
+          "rmse_m": 0.0028543410525883168,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.047466076952350715,
+          "x_support": 8,
+          "x_support_span_m": 0.14296856224677107,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 88.11246600000189
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 8.35189999873942,
+      "end_s": 8.65189999873942,
+      "encoder_travel_m": 0.014372038146765374,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.10043527390023636,
+            -0.002691553820998436,
+            0.0002726225059572993
+          ],
+          "rmse_m": 0.0061728485533827,
+          "inlier_fraction": 0.9470588235294117,
+          "inliers": 161,
+          "eigen_ratio": 0.05320132790105205,
+          "x_support": 9,
+          "x_support_span_m": 0.1785546863277952,
+          "angular_sectors": 8,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 99.8640299999991
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 8.45189999873942,
+      "end_s": 8.75189999873942,
+      "encoder_travel_m": 0.03911469822637377,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.07769183692979925,
+            -0.0022891927832527762,
+            0.002958264708835969
+          ],
+          "rmse_m": 0.004372146533886871,
+          "inlier_fraction": 0.9470588235294117,
+          "inliers": 161,
+          "eigen_ratio": 0.04749699453354455,
+          "x_support": 8,
+          "x_support_span_m": 0.13587969267829575,
+          "angular_sectors": 7,
+          "converged": true,
+          "iterations": 5
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 109.21214099999688
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 8.55189999873942,
+      "end_s": 8.85189999873942,
+      "encoder_travel_m": 0.07012446158947895,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.04539591684967311,
+            -0.0016748353894949109,
+            0.006567025375828638
+          ],
+          "rmse_m": 0.0037430768173349754,
+          "inlier_fraction": 0.9411764705882353,
+          "inliers": 160,
+          "eigen_ratio": 0.04737748382831067,
+          "x_support": 8,
+          "x_support_span_m": 0.1406376480912463,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 7
+        },
+        "reverse": null,
+        "reference_interval_s": 0.29999999999999893,
+        "processing_ms": 113.50638000000046
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 8.65189999873942,
+      "end_s": 8.95189999873942,
+      "encoder_travel_m": 0.10275326735042722,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            -0.01611049898290554,
+            -0.0010673548653568358,
+            0.010486060078960836
+          ],
+          "rmse_m": 0.006083472936459709,
+          "inlier_fraction": 0.9467455621301775,
+          "inliers": 160,
+          "eigen_ratio": 0.04764872344776563,
+          "x_support": 8,
+          "x_support_span_m": 0.13176647839172134,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.29999999999999893,
+        "processing_ms": 92.57995499999794
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 8.75189999873942,
+      "end_s": 9.05189999873942,
+      "encoder_travel_m": 0.12517189698720846,
+      "result": {
+        "classification": "unknown",
+        "reason": "not_converged",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.009621331667795057,
+            -3.313636215878201e-05,
+            0.012099591341929446
+          ],
+          "rmse_m": 0.0039360417289579655,
+          "inlier_fraction": 0.9352941176470588,
+          "inliers": 159,
+          "eigen_ratio": 0.0474003567099621,
+          "x_support": 8,
+          "x_support_span_m": 0.13530881713265408,
+          "angular_sectors": 6,
+          "converged": false,
+          "iterations": 16
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 177.193441
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 8.85189999873942,
+      "end_s": 9.15189999873942,
+      "encoder_travel_m": 0.1379735132353293,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.022471340626368602,
+            0.0005597602033274897,
+            0.012358632792983982
+          ],
+          "rmse_m": 0.0036156414875988044,
+          "inlier_fraction": 0.9352941176470588,
+          "inliers": 159,
+          "eigen_ratio": 0.04828940829921697,
+          "x_support": 8,
+          "x_support_span_m": 0.13484747583834733,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 105.59735999999731
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 8.95189999873942,
+      "end_s": 9.25189999873942,
+      "encoder_travel_m": 0.13808047710777996,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.02327886721534595,
+            0.0008105080573738944,
+            0.011512348339816255
+          ],
+          "rmse_m": 0.0037680609554174354,
+          "inlier_fraction": 0.9408284023668639,
+          "inliers": 159,
+          "eigen_ratio": 0.04796684824396401,
+          "x_support": 8,
+          "x_support_span_m": 0.13385703892869616,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 108.78121300000032
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 9.05189999873942,
+      "end_s": 9.35189999873942,
+      "encoder_travel_m": 0.13953907369694665,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.019469332758559416,
+            0.0009723103215945764,
+            0.010233223053073292
+          ],
+          "rmse_m": 0.0049433868464904135,
+          "inlier_fraction": 0.9408284023668639,
+          "inliers": 159,
+          "eigen_ratio": 0.052423491589328644,
+          "x_support": 9,
+          "x_support_span_m": 0.17622470331165246,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 9
+        },
+        "reverse": null,
+        "reference_interval_s": 0.29999999999999893,
+        "processing_ms": 105.84175400000007
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 9.15189999873942,
+      "end_s": 9.45189999873942,
+      "encoder_travel_m": 0.1448337792543323,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.029482621855781925,
+            0.0010359820731171117,
+            0.008175885017335125
+          ],
+          "rmse_m": 0.003288018870321893,
+          "inlier_fraction": 0.9349112426035503,
+          "inliers": 158,
+          "eigen_ratio": 0.04732898845412504,
+          "x_support": 8,
+          "x_support_span_m": 0.1332466635265353,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 5
+        },
+        "reverse": null,
+        "reference_interval_s": 0.29999999999999893,
+        "processing_ms": 98.72365500000058
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 9.25189999873942,
+      "end_s": 9.55189999873942,
+      "encoder_travel_m": 0.1530991599262771,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.03661323203970657,
+            0.0012501223481292136,
+            0.007582840291772506
+          ],
+          "rmse_m": 0.00463640298684664,
+          "inlier_fraction": 0.9289940828402367,
+          "inliers": 157,
+          "eigen_ratio": 0.04677145269071946,
+          "x_support": 8,
+          "x_support_span_m": 0.1261781934206153,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 10
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 110.56102100000231
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 9.35189999873942,
+      "end_s": 9.65189999873942,
+      "encoder_travel_m": 0.1565025519676658,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.04023610877578236,
+            0.0011921163507805767,
+            0.005668380923931461
+          ],
+          "rmse_m": 0.005008175603499478,
+          "inlier_fraction": 0.9289940828402367,
+          "inliers": 157,
+          "eigen_ratio": 0.057712844398275204,
+          "x_support": 10,
+          "x_support_span_m": 0.18015755549606693,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 96.43315799999996
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 9.45189999873942,
+      "end_s": 9.75189999873942,
+      "encoder_travel_m": 0.1541785215248391,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.03549073295342609,
+            0.0011672665699345758,
+            0.004708773807120832
+          ],
+          "rmse_m": 0.005572335316623297,
+          "inlier_fraction": 0.9289940828402367,
+          "inliers": 157,
+          "eigen_ratio": 0.05883687202614902,
+          "x_support": 10,
+          "x_support_span_m": 0.18156097068795923,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 100.69713999999763
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 9.55189999873942,
+      "end_s": 9.85189999873942,
+      "encoder_travel_m": 0.1498027317573388,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.03567062677161702,
+            0.0010875155252401227,
+            0.0032982946064368454
+          ],
+          "rmse_m": 0.005621788611392978,
+          "inlier_fraction": 0.9289940828402367,
+          "inliers": 157,
+          "eigen_ratio": 0.060271011367389576,
+          "x_support": 10,
+          "x_support_span_m": 0.14743914698597982,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 5
+        },
+        "reverse": null,
+        "reference_interval_s": 0.29999999999999893,
+        "processing_ms": 95.07678299999966
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 9.65189999873942,
+      "end_s": 9.95189999873942,
+      "encoder_travel_m": 0.14688553857900563,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.027190638756746013,
+            0.0009984490536216494,
+            0.0033580207375031295
+          ],
+          "rmse_m": 0.007060727250408449,
+          "inlier_fraction": 0.9349112426035503,
+          "inliers": 158,
+          "eigen_ratio": 0.06539312479941986,
+          "x_support": 11,
+          "x_support_span_m": 0.18354892059767916,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.29999999999999893,
+        "processing_ms": 102.05273300000073
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 9.75189999873942,
+      "end_s": 10.05189999873942,
+      "encoder_travel_m": 0.14775097243266588,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.033850448155032554,
+            0.0008800321360052281,
+            0.002168736070788821
+          ],
+          "rmse_m": 0.0042949719670480465,
+          "inlier_fraction": 0.9289940828402367,
+          "inliers": 157,
+          "eigen_ratio": 0.06002281681582353,
+          "x_support": 10,
+          "x_support_span_m": 0.1483359767956985,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 8
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 108.01332499999816
+      }
+    },
+    {
+      "lag": 3,
+      "start_s": 9.85189999873942,
+      "end_s": 10.15189999873942,
+      "encoder_travel_m": 0.15542319036910401,
+      "result": {
+        "classification": "unknown",
+        "reason": "localized_motion_support",
+        "stationary_confirmed": false,
+        "static_scene_assumption_verified": false,
+        "forward": {
+          "transform": [
+            0.06624055189589556,
+            0.00050130896793388,
+            0.0006403089008887334
+          ],
+          "rmse_m": 0.006859045478901953,
+          "inlier_fraction": 0.9230769230769231,
+          "inliers": 156,
+          "eigen_ratio": 0.07150205648032514,
+          "x_support": 12,
+          "x_support_span_m": 0.18309462407627153,
+          "angular_sectors": 6,
+          "converged": true,
+          "iterations": 6
+        },
+        "reverse": null,
+        "reference_interval_s": 0.3000000000000007,
+        "processing_ms": 72.21986399999736
+      }
+    }
+  ],
+  "g1_executed": true,
+  "g1_classifications": {
+    "unknown": 128
+  },
+  "g1_reasons": {
+    "not_converged": 47,
+    "localized_motion_support": 80,
+    "geometric_degeneracy": 1
+  },
+  "input_source_sha256": {
+    "scripts/validate_scan_motion_diagnostic.py": "c7bce295538f6909035b45a539deefc3250f3f7abb3af61a46b7c41d9e22e10e",
+    "scripts/scan_motion_diagnostic.py": "061f901c9812560c15c5859e27fb5523097c52e57e6afd6123b41c968875052d",
+    "tests/test_scan_motion_diagnostic.py": "25e11c1a7d940bbbf5f2537f210fd5902c44663e2f66f68e1248e8b5fb517dba",
+    "artifacts/validation/2026-10-07/g1b_side_v1/side_left_s0/scans_received.jsonl": "606c1edbf311c0a0fe9c21d4e160c11486c97cd1de7fcdae3c64b8226d129138",
+    "artifacts/validation/2026-10-07/g1b_side_v1/side_left_s0/actuation_trace.json": "f654800d12a30c33e91a654537a2ffe1faeb3b086f80e271eee82f4180367820"
+  },
+  "inputs_unchanged": true,
+  "runtime_not_connected": true
+}

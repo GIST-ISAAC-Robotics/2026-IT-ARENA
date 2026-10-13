@@ -1,0 +1,109 @@
+{
+  "schema": "arena_hardware_capture_v1",
+  "scope": "passive_record_audit_not_driver_calibration_or_safety_authorization",
+  "origin": "synthetic",
+  "record_integrity_valid": true,
+  "issues": [],
+  "counts": {
+    "encoder": 5,
+    "imu": 5
+  },
+  "boots": [
+    "synthetic-boot"
+  ],
+  "streams": [
+    {
+      "boot": "synthetic-boot",
+      "kind": "encoder",
+      "samples": 5,
+      "missing_sequence_numbers": 0,
+      "capture_interval_s": {
+        "minimum": 0.01,
+        "median": 0.01,
+        "maximum": 0.01
+      },
+      "receive_interval_s": {
+        "minimum": 0.01,
+        "median": 0.01,
+        "maximum": 0.01
+      },
+      "host_minus_device_elapsed_ms": 0.0,
+      "mean_wheel_speed_mps": {
+        "minimum": 0.0,
+        "median": 0.0,
+        "maximum": 0.0
+      },
+      "one_count_speed_quantum_mps": {
+        "minimum": 0.048619886305556324,
+        "median": 0.048619886305556324,
+        "maximum": 0.048619886305556324
+      },
+      "positive_count_steps": 0,
+      "negative_count_steps": 0,
+      "unchanged_count_steps": 4
+    },
+    {
+      "boot": "synthetic-boot",
+      "kind": "imu",
+      "samples": 5,
+      "missing_sequence_numbers": 0,
+      "capture_interval_s": {
+        "minimum": 0.01,
+        "median": 0.01,
+        "maximum": 0.01
+      },
+      "receive_interval_s": {
+        "minimum": 0.01,
+        "median": 0.01,
+        "maximum": 0.01
+      },
+      "host_minus_device_elapsed_ms": 0.0
+    }
+  ],
+  "boot_changes_require_explicit_rearm": false,
+  "mean_wheel_travel_mm_per_count": 0.48619886305556326,
+  "counts_per_mean_wheel_revolution": 420.0,
+  "stationary_windows": [
+    {
+      "window": {
+        "boot": "synthetic-boot",
+        "first_us": 100000,
+        "last_us": 140000,
+        "basis": "synthetic stationary fixture, not a real bench measurement"
+      },
+      "imu_samples": 5,
+      "encoder_samples": 5,
+      "motor_count_span": 0,
+      "candidate_only": true,
+      "candidate_bias_rad_s": [
+        0.01,
+        -0.02,
+        0.03
+      ],
+      "gyro_std_rad_s": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "applied": false,
+      "chassis_stationarity_verified": false
+    }
+  ],
+  "absolute_transport_delay_measured": false,
+  "automatic_clock_mapping_or_bias_application": false,
+  "ready_to_drive": false,
+  "limits": [
+    "Unequal clock epochs cannot be subtracted as transport latency.",
+    "Elapsed-clock difference includes transport variation and drift; it is not a drift estimate.",
+    "Missing sequence numbers identify record gaps, not sensor vs transport loss cause.",
+    "Counter wrap must already be extended by the producer; no guessed unwrap is applied.",
+    "Motor mean and unchanged counts do not prove chassis rest or both-wheel rest.",
+    "Gyro candidates need independent immobilization, axis/temperature and hardware verification."
+  ],
+  "input_sha256": "be26bf9651a6db5eb45b865be5133613942ab19f6bd838ad18bfead0340185a3",
+  "input_unchanged": true,
+  "source_sha256": {
+    "audit_hardware_capture.py": "272d91425a7b43bda30c316aca2d29e39d83c464ab527fd97297b6ef7fab2dd6",
+    "drive_feedback.py": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504"
+  }
+}

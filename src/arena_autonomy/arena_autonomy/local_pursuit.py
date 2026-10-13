@@ -18,9 +18,17 @@ class LocalPursuit(WallFollow):
         if self.motion is None:
             raise ValueError("local_pursuit는 엔코더/IMU 운동 보정이 필요합니다.")
         self.g1_enabled = bool(self.declare_parameter('g1_follow_enabled', False).value)
+        boundary_mode = str(self.declare_parameter('g1_boundary_evidence_mode', 'connected').value)
+        occupancy_mode = str(self.declare_parameter('g1_occupancy_timing_mode', 'oldest').value)
+        if occupancy_mode not in ('oldest', 'per_ray_candidate') or (not self.g1_enabled and occupancy_mode != 'oldest'):
+            raise ValueError('per-ray occupancy candidate requires G1')
+        if boundary_mode not in ('connected', 'fragmented_candidate') or (not self.g1_enabled and boundary_mode != 'connected'):
+            raise ValueError('fragmented boundary candidate requires G1')
         if self.g1_enabled and (self.motion.mode != 'both' or not self.motion.verified):
             raise ValueError('G1은 검증된 순차 취득과 both 운동 보정이 필요합니다.')
         self.follow = LocalFollow(FollowConfig(
+            boundary_evidence_mode=boundary_mode,
+            occupancy_timing_mode=occupancy_mode,
             wheelbase_m=float(self.settings['wheelbase_m']),
             max_steering_rad=float(self.settings['max_steering_angle_rad']),
             max_speed_mps=min(1., float(self.settings['max_speed_mps'])),
@@ -29,11 +37,28 @@ class LocalPursuit(WallFollow):
         self.vision_execution = str(self.declare_parameter('vision_execution', 'process').value)
         if self.vision_execution not in ('inline', 'process'):
             raise ValueError('vision_execution must be inline or process')
+        self.start_signal_mode = str(self.declare_parameter('start_signal_mode', 'temporary_3light').value)
+        if self.start_signal_mode not in ('temporary_3light', 'official_4red_candidate'):
+            raise ValueError('unsupported start_signal_mode')
+        if self.start_signal_mode != 'temporary_3light' and self.vision_execution != 'process':
+            raise ValueError('official start candidate requires process vision')
         self.vision_pipeline = None
         if self.vision_execution == 'process':
             self.vision_pipeline = VisionPipeline(VisionProcess(),
                 image_timeout=self.settings['image_timeout_s'],
-                wall_timeout=self.settings['sensor_wall_timeout_s'])
+                wall_timeout=self.settings['sensor_wall_timeout_s'], signal_mode=self.start_signal_mode)
+        self.follow_trace = None
+        trace_path = str(self.declare_parameter('g1_trace_path', '').value)
+        if trace_path:
+            if self.follow is None:
+                raise ValueError('g1_trace_path requires g1_follow_enabled')
+            from arena_autonomy.follow_trace import FollowTrace
+            self.follow_trace = FollowTrace(trace_path, self.motion.history.config, self.follow.config)
+
+    def reset_follow(self, reason):
+        self.follow.reset()
+        if getattr(self, 'follow_trace', None) is not None:
+            self.follow_trace.emit('reset', {'reason': reason})
 
     def on_image(self, message):
         if self.vision_pipeline is None:
@@ -42,7 +67,7 @@ class LocalPursuit(WallFollow):
 
     def on_reset(self, request, response):
         if getattr(self, 'follow', None) is not None:
-            self.follow.reset()
+            self.reset_follow('autonomy_reset')
         if self.vision_pipeline is not None:
             self.vision_pipeline.reset()
         return super().on_reset(request, response)
@@ -71,12 +96,17 @@ class LocalPursuit(WallFollow):
         result = super().control()
         if getattr(self, 'follow', None) is not None and self.last_status in (
                 'WAIT_GREEN', 'DISABLED', 'SENSOR_STOP', 'MOTION_STOP', 'SCAN_INVALID'):
-            self.follow.reset()
+            self.reset_follow(self.last_status)
         return result
 
     def destroy_node(self):
         # 영상 정리를 기다리기 전에 주행 출력은 먼저 정지한다.
         self.stop()
+        if getattr(self, 'follow_trace', None) is not None:
+            try:
+                self.follow_trace.close()
+            except Exception as error:
+                self.get_logger().warning('G1 trace close failed: '+str(error))
         if self.vision_pipeline is not None:
             cleanup = self.vision_pipeline.close()
             if cleanup and (cleanup['forced'] or cleanup['exitcode'] != 0):
@@ -97,12 +127,18 @@ class LocalPursuit(WallFollow):
                 scene = motion_scene(self.scan, self.motion.history,
                     self.motion.last_meta['reference_stamp_s'], timing_verified=self.motion.verified,
                     epoch=self.motion.counts['resets'], rear_half_angle_deg=self.rear_blind_half_angle)
-                return self.follow.command(scene, self.motion.history, speed, self.side,
-                                           self.last_steering, 1/self.settings['control_rate_hz'])
+                output = self.follow.command(scene, self.motion.history, speed, self.side,
+                                             self.last_steering, 1/self.settings['control_rate_hz'])
             except (MotionUnavailable, ValueError) as error:
                 self.follow.reset()
-                return 0., 0., {'reason': 'follow_input_stop', 'behavior': 'HOLD',
-                               'input_error': str(error), 'mode': 'g1_follow'}
+                output = 0., 0., {'reason': 'follow_input_stop', 'behavior': 'HOLD',
+                                 'input_error': str(error), 'mode': 'g1_follow'}
+            if getattr(self, 'follow_trace', None) is not None:
+                self.follow_trace.record_call(self.scan, self.motion.history,
+                    self.motion.last_meta.get('reference_stamp_s'), self.motion.counts['resets'],
+                    speed, self.side, self.last_steering, 1/self.settings['control_rate_hz'],
+                    self.motion.verified, self.rear_blind_half_angle, output)
+            return output
         return pursuit_command(points, self.side, speed,
                                self.settings["wheelbase_m"], self.settings["max_steering_angle_rad"],
                                self.settings["max_speed_mps"],

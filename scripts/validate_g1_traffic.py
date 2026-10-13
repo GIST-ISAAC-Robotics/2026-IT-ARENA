@@ -31,6 +31,7 @@ from validate_basic_autonomy import (DEMO_WORLD, REPO, add_rate_metrics, configu
                                      early_start_detected, start_demo_process)
 from validate_facility_visibility import yaw_of
 import g1_traffic_eval as ev
+from g1_lidar_stress import load_test_profile, audit_injection, require_injection_evidence
 
 CONFIG = REPO/'config/tests/g1_traffic_v1.json'
 WORLD_NAME = 'it_arena_track'
@@ -38,6 +39,7 @@ SET_POSE_SERVICE = f'/world/{WORLD_NAME}/set_pose'
 CONTACT_TOPIC = '/eval/g1b_actor/contact'
 CONTACT_PROBE_REPORT = REPO/'artifacts/validation/2026-10-07/g1b_contact_probe_v1/report.json'
 SOURCE_FILES = [
+    'scripts/g1_lidar_stress.py',
     'scripts/validate_g1_traffic.py', 'scripts/g1_traffic_eval.py', 'scripts/validate_basic_autonomy.py',
     'scripts/lidar_shutdown.py', 'scripts/audit_local_pursuit_road.py', 'scripts/probe_static_actor_contact.py',
     'config/tests/g1_traffic_v1.json', 'config/tests/g1b_r0_sha256.json',
@@ -50,9 +52,10 @@ SOURCE_FILES = [
     'src/arena_bringup/config/b0183_imu_bridge.yaml',
     *[f'src/arena_autonomy/arena_autonomy/{name}.py' for name in (
         'core', 'wall_follow', 'local_path', 'local_pursuit', 'local_follow', 'scene_motion', 'local_scene',
-        'vision_process', 'lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros')],
+        'vision_process', 'lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'follow_trace',
+        'boundary_evidence', 'occupancy_timing', 'race_start')],
     *[f'src/arena_vehicle_interface/arena_vehicle_interface/{name}.py' for name in (
-        'rotating_lidar', 'sim_wheel_encoder', 'ackermann_to_twist', 'timing_probe', 'queued_log',
+        'rotating_lidar', 'lidar_impairment', 'sim_wheel_encoder', 'ackermann_to_twist', 'timing_probe', 'queued_log',
         'actuation_ros', 'applied_guard', 'actuation_contract', 'actuation_wire')],
     'src/arena_gazebo/src/single_motor_drive.cpp', 'src/arena_gazebo/include/arena_gazebo/drivetrain.hpp',
     'src/arena_gazebo/scripts/traffic_light_controller.py',
@@ -174,10 +177,11 @@ def check_route(config, centerline, case, s0, road=None, obstacles=()):
             'actor_road_wall_samples': len(samples), 'maximum_sample_step_m': .01}
 
 
-def source_paths(config_path):
+def source_paths(config_path, lidar_profile=None):
     """사용자 지정 시험 설정도 소스 사본에 포함하며 저장소 내부 경로만 허용한다."""
     relative = Path(config_path).resolve().relative_to(REPO).as_posix()
-    return list(dict.fromkeys([*SOURCE_FILES, relative]))
+    extra = [Path(lidar_profile).resolve().relative_to(REPO).as_posix()] if lidar_profile else []
+    return list(dict.fromkeys([*SOURCE_FILES, relative, *extra]))
 
 
 def actor_lateral_offset(config, case):
@@ -291,20 +295,39 @@ def main():
     parser.add_argument('--mode', choices=('g1', 'r0'), required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--config', type=Path, default=CONFIG)
+    parser.add_argument('--lidar-test-profile', type=Path,
+                        help='선택형 G1 시험용 거리오차/추가 지연. 기본 무주입, 취득 시각 유지')
     parser.add_argument('--record-braking-diagnostics', action='store_true',
                         help='평가 전용 바퀴/차체/토크 시계열 보존; 제어 및 판정은 변경하지 않음')
     parser.add_argument('--record-wheel-contacts', action='store_true',
                         help='실행 사본에 평가용 바퀴 접촉 센서를 추가하여 원시 접촉 메시지 보존')
+    parser.add_argument('--record-follow-decisions', action='store_true',
+                        help='선택형 G1 판단 시점의 스캔/운동 이력/출력을 기록; 제어 변경 없음')
+    parser.add_argument('--boundary-evidence', choices=('connected', 'fragmented_candidate'), default='connected',
+                        help='G1 경계 증거 후보; 기본 connected 유지, fragmented는 명시 선택형')
+    parser.add_argument('--occupancy-timing', choices=('oldest', 'per_ray_candidate'), default='oldest',
+                        help='점별 취득 시각 팽창 후보. 기본 oldest 유지, 점/거리 여유/운동 상한 유지')
     parser.add_argument('--zero-speed-mode', choices=ZERO_SPEED_MODES, default='legacy',
                         help='평가 전용 0목표 구동 특성 대조. 기본 legacy는 실행 인자를 추가하지 않음')
     parser.add_argument('--physics-step', choices=PHYSICS_STEPS,
                         help='평가 전용 물리 step. 생략하면 월드 기본 1 ms')
     args = parser.parse_args()
+    if args.occupancy_timing != 'oldest' and (args.mode != 'g1' or not args.record_follow_decisions):
+        parser.error('--occupancy-timing candidate requires G1 with decision recording')
+    if args.lidar_test_profile and (args.mode != 'g1' or not args.record_follow_decisions):
+        parser.error('--lidar-test-profile requires G1 with decision recording')
+    lidar_profile, lidar_requested = load_test_profile(args.lidar_test_profile, REPO)
+    if args.record_follow_decisions and args.mode != 'g1':
+        parser.error('--record-follow-decisions requires --mode g1')
+    if args.boundary_evidence != 'connected' and (args.mode != 'g1' or not args.record_follow_decisions):
+        parser.error('fragmented candidate requires G1 with decision recording')
     if (args.zero_speed_mode != 'legacy' or args.physics_step) and not args.record_braking_diagnostics:
         parser.error('구동 평가 옵션은 --record-braking-diagnostics로 적용 상태를 보존해야 합니다.')
     config = load_config(args.config)
     case = case_named(config, args.case)
     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
+    if lidar_profile and (launch['lidar_rate_hz'] != 10 or launch['lidar_acquisition'] != 'sequential'):
+        raise ValueError('registered G1 lidar stress requires sequential 10 Hz')
     output = args.output.resolve()
     if not output.is_relative_to(REPO/'artifacts'):
         raise ValueError('output must be under artifacts')
@@ -316,11 +339,17 @@ def main():
     output.mkdir(parents=True, exist_ok=False)
     actor_path = output/'evaluation_actor.sdf'
     actor_path.write_text(actor_sdf(config, actor_pose_at(centerline, s0, case['schedule'], 0., lateral)), encoding='utf-8')
-    sources = {rel: sha256(REPO/rel) for rel in source_paths(args.config)}
+    sources = {rel: sha256(REPO/rel) for rel in source_paths(args.config, lidar_profile)}
+    runtime_lidar_profile = None
+    if lidar_profile:
+        runtime_lidar_profile = output/'lidar_test_profile.json'
+        runtime_lidar_profile.write_text(json.dumps(lidar_requested, indent=2), encoding='utf-8')
     with zipfile.ZipFile(output/'source_snapshot.zip', 'w', zipfile.ZIP_DEFLATED) as bundle:
         for rel in sources:
             bundle.write(REPO/rel, rel)
         bundle.write(actor_path, 'evaluation_actor.sdf')
+        if runtime_lidar_profile:
+            bundle.write(runtime_lidar_profile, 'evaluation_lidar_test_profile.json')
     os.environ.update(ROS_DOMAIN_ID=str(150+os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                       ROS_STATIC_PEERS='', GZ_PARTITION=f'arena_autonomy_test_{os.getpid()}')
     # 위 파티션 이름은 lidar_shutdown.stop_gazebo_service의 시험 소유 확인 규칙과 같아야 한다.
@@ -339,10 +368,16 @@ def main():
 
     report = {'started_at_utc': datetime.now(timezone.utc).isoformat(), 'passed': False,
               'case': case['name'], 'seed': args.seed, 'mode': args.mode,
+              'boundary_evidence_mode': args.boundary_evidence,
+              'occupancy_timing_mode': args.occupancy_timing,
               'scope': config['scope'], 'config_sha256': sha256(args.config), 'source_sha256': sources,
               'actor_sdf_sha256': sha256(actor_path), 'route_check': route,
               'straight_section': route if route['kind'] == 'straight' else None,
               'actor_visible_section': actor_cfg['visible_section'], 'started_wall_monotonic': time.monotonic()}
+    if runtime_lidar_profile:
+        report['lidar_test_profile'] = {'path': str(lidar_profile.relative_to(REPO)),
+            'requested': lidar_requested, 'runtime_sha256': sha256(runtime_lidar_profile),
+            'scope': 'synthetic bounded radial error and publish delay, acquisition timestamps preserved'}
     if args.zero_speed_mode != 'legacy' or args.physics_step:
         # 평가 전용 구동 대조일 때만 기록한다. 기본 보고서 형식은 유지한다.
         report['drivetrain_evaluation'] = {'zero_speed_mode': args.zero_speed_mode,
@@ -497,6 +532,12 @@ def main():
 
     try:
         extra = [f'evaluation_actor_sdf:={actor_path}']
+        if args.boundary_evidence != 'connected':
+            extra.append(f'g1_boundary_evidence_mode:={args.boundary_evidence}')
+        if args.record_follow_decisions:
+            extra.append(f'g1_trace_path:={output / "follow_decisions.jsonl"}')
+        if args.occupancy_timing != 'oldest':
+            extra.append(f'g1_occupancy_timing_mode:={args.occupancy_timing}')
         if args.record_wheel_contacts:
             extra.append('evaluation_wheel_contacts:=true')
         extra += drivetrain_evaluation_arguments(args.zero_speed_mode, args.physics_step)
@@ -504,7 +545,8 @@ def main():
             log, launch['speed_profile'], launch['lidar_rate_hz'], True, launch['red_duration_s'],
             launch['autonomy_mode'], False, launch['lidar_acquisition'], launch['lidar_compensation'],
             launch['control_rate_hz'], launch['render_backend'], launch['sensor_wall_timeout_s'],
-            launch['speed_bump'], launch['collision_detector'], str(output), launch['grid_slot'], '', '',
+            launch['speed_bump'], launch['collision_detector'], str(output), launch['grid_slot'],
+            str(runtime_lidar_profile) if runtime_lidar_profile else '', '',
             launch['actuation_mode'], False, args.mode == 'g1', extra))
         from ament_index_python.packages import get_package_prefix
         bridge_executable = Path(get_package_prefix('ros_gz_bridge'))/'lib/ros_gz_bridge/parameter_bridge'
@@ -694,21 +736,32 @@ def main():
                 hit = any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))
                 stop_trace.append({'time': now, 'x': p['x'], 'y': p['y'], 'yaw': yaw, 'collision': hit,
                                    'ground_speed_mps': math.hypot(state['dynamics']['truth_longitudinal_mps'],
-                                                                  state['dynamics']['truth_lateral_mps'])})
+                                                                  state['dynamics']['truth_lateral_mps']),
+                                   'dynamics_source_s': state['dynamics'].get('sim_time_s'),
+                                   'odom_source_s': stamp(state['odom'].header.stamp),
+                                   'safe_command_source_s': stamp(state['safe_drive'].header.stamp),
+                                   'mcu_source_us': state.get('actuation', {}).get('now_us')})
                 last_stop = now
             if (abs(state['odom'].twist.twist.linear.x) < .01 and abs(state['dynamics']['truth_longitudinal_mps']) < .01
                     and abs(state['dynamics']['truth_lateral_mps']) < .01):
                 stable_since = now if stable_since is None else stable_since
                 if now-stable_since >= acceptance['stop']['stable_hold_sim_s'] and future.done() and future.result().success:
-                    break
+                    # 비동기 진단의 저속 두 표본만으로 실제 정지 완료를 선언하지 않는다.
+                    # 평가용 밀집 자세 전 구간도 기존 속도/시간 한도를 만족해야 한다.
+                    evidence = ev.stop_pose_evidence(tuple(ego), now, acceptance['stop']['stable_hold_sim_s'])
+                    if evidence['passed']:
+                        break
             else:
                 stable_since = None
+        stop_end = stop_trace[-1]['time'] if stop_trace else stop_start
+        evidence = ev.stop_pose_evidence(tuple(ego), stop_end, acceptance['stop']['stable_hold_sim_s'])
         report['stop'] = {
-            'stable': (stable_since is not None and state['pose']['time']-stable_since >= acceptance['stop']['stable_hold_sim_s']
-                       and future.done() and future.result().success),
-            'wait_sim_s': state['pose']['time']-stop_start,
+            'stable': (stable_since is not None and stop_end-stable_since >= acceptance['stop']['stable_hold_sim_s']
+                       and future.done() and future.result().success and evidence['passed']),
+            'pose_evidence': evidence,
+            'wait_sim_s': stop_end-stop_start,
             'displacement_m': math.dist([stop_origin['x'], stop_origin['y']],
-                                        [float(state['pose']['position'].get(a, 0.)) for a in ('x', 'y')]),
+                                        [stop_trace[-1][a] for a in ('x', 'y')]) if stop_trace else 0.,
             'wall_collision_samples': sum(r['collision'] for r in stop_trace),
         }
         (output/'stop_trace.json').write_text(json.dumps(stop_trace, indent=2), encoding='utf-8')
@@ -811,6 +864,12 @@ def main():
                                     and all(p.poll() in (0, -signal.SIGINT, 130) for p in processes[1:]+readers)
                                     and report['gazebo_stop_service']['verified'])
         report['source_unchanged'] = all(sha256(REPO/rel) == digest for rel, digest in sources.items())
+        if args.record_follow_decisions:
+            path = output/'follow_decisions.jsonl'
+            report['follow_decisions'] = {
+                'exists': path.is_file(), 'sha256': sha256(path) if path.is_file() else None,
+                'scope': 'decision-stage snapshots only; completeness and replay are separate checks',
+            }
         report['wall_elapsed_s'] = time.monotonic()-began
         for name, rows in (('ego_poses', ego), ('actor_poses', actor)):
             path = output/f'{name}.jsonl'
@@ -833,6 +892,19 @@ def main():
         except Exception as error:
             report['evaluation'] = {'error': f'{type(error).__name__}: {error}'}
         ev.finalize_verdict(report, args.mode)
+        if runtime_lidar_profile:
+            try:
+                with (output/'scans_received.jsonl').open(encoding='utf-8') as stream:
+                    received_scans = [json.loads(line) for line in stream if line.strip()]
+                stress = audit_injection(acquisition_records, received_scans, lidar_requested)
+                stress['runtime_profile_unchanged'] = (
+                    sha256(runtime_lidar_profile) == report['lidar_test_profile']['runtime_sha256'])
+                stress['verified'] = stress['verified'] and stress['runtime_profile_unchanged']
+                stress['input_sha256'] = {name: sha256(output/name) for name in
+                    ('acquisition.json', 'scans_received.jsonl', 'lidar_test_profile.json')}
+            except Exception as error:
+                stress = {'verified': False, 'error': f'{type(error).__name__}: {error}'}
+            require_injection_evidence(report, stress)
         (output/'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
         print(json.dumps({k: report.get(k) for k in ('case', 'seed', 'mode', 'passed', 'harness_valid', 'error', 'abort')}
                          | {'gates': report.get('gates')}, ensure_ascii=False, indent=1), flush=True)
