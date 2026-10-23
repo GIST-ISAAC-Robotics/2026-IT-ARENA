@@ -1,0 +1,409 @@
+FFFFFFFFFFFFF........................................................... [ 54%]
+...........................................................              [100%]
+=================================== FAILURES ===================================
+_____________ test_pixels_and_separate_arm_are_both_required[True] _____________
+
+arm_first = True
+
+    @pytest.mark.parametrize('arm_first',[True,False])
+    def test_pixels_and_separate_arm_are_both_required(arm_first):
+        b=CoupledBench()
+        if arm_first:
+            assert b.control('ARM')[0]
+            b.advance()
+            assert b.receiver.target_speed==0. and not b.race.started
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:136: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30bcd910>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+____________ test_pixels_and_separate_arm_are_both_required[False] _____________
+
+arm_first = False
+
+    @pytest.mark.parametrize('arm_first',[True,False])
+    def test_pixels_and_separate_arm_are_both_required(arm_first):
+        b=CoupledBench()
+        if arm_first:
+            assert b.control('ARM')[0]
+            b.advance()
+            assert b.receiver.target_speed==0. and not b.race.started
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:136: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30bceb10>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+____ test_temporary_hold_keeps_start_fact_and_recovers_without_arm[sensor] _____
+
+hold_kind = 'sensor'
+
+    @pytest.mark.parametrize('hold_kind',['sensor','traffic'])
+    def test_temporary_hold_keeps_start_fact_and_recovers_without_arm(hold_kind):
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30bcf410>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+____ test_temporary_hold_keeps_start_fact_and_recovers_without_arm[traffic] ____
+
+hold_kind = 'traffic'
+
+    @pytest.mark.parametrize('hold_kind',['sensor','traffic'])
+    def test_temporary_hold_keeps_start_fact_and_recovers_without_arm(hold_kind):
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30bcfef0>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+________ test_stop_needs_race_ack_and_separate_mcu_clear_arm[race_ack] _________
+
+first = 'race_ack'
+
+    @pytest.mark.parametrize('first',['race_ack','mcu_clear_arm'])
+    def test_stop_needs_race_ack_and_separate_mcu_clear_arm(first):
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:166: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30c2caa0>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+______ test_stop_needs_race_ack_and_separate_mcu_clear_arm[mcu_clear_arm] ______
+
+first = 'mcu_clear_arm'
+
+    @pytest.mark.parametrize('first',['race_ack','mcu_clear_arm'])
+    def test_stop_needs_race_ack_and_separate_mcu_clear_arm(first):
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:166: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30bcef30>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+____________ test_delayed_positive_and_old_ack_cannot_undo_new_stop ____________
+
+    def test_delayed_positive_and_old_ack_cannot_undo_new_stop():
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:189: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30bceed0>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+____________ test_policy_stop_alone_is_not_mcu_stop_acknowledgement ____________
+
+    def test_policy_stop_alone_is_not_mcu_stop_acknowledgement():
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:203: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30c2c200>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+________________ test_encoder_recovery_does_not_clear_a1_fault _________________
+
+    def test_encoder_recovery_does_not_clear_a1_fault():
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30c2d730>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+________________ test_physical_stop_release_is_not_clear_or_arm ________________
+
+    def test_physical_stop_release_is_not_clear_or_arm():
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:229: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30c2e330>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+_ test_naive_policy_only_new_race_can_reuse_latched_visual_start_counterexample _
+
+    def test_naive_policy_only_new_race_can_reuse_latched_visual_start_counterexample():
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:244: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30c2ee40>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+______ test_paired_new_race_reset_rejects_old_visual_work_and_green_only _______
+
+    def test_paired_new_race_reset_rejects_old_visual_work_and_green_only():
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:254: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30c2f950>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+__________ test_vision_fault_blocks_even_after_policy_ack_and_mcu_arm __________
+
+    def test_vision_fault_blocks_even_after_policy_ack_and_mcu_arm():
+        b=CoupledBench()
+>       b.start_pixels()
+
+tests/test_race_actuation_contract.py:273: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_actuation_contract.py:104: in start_pixels
+    self.frame(n)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <test_race_actuation_contract.CoupledBench object at 0x76ff30c78200>
+reds = 1, green = False
+
+    def frame(self, reds=0, green=False, *, submit_only=False):
+        self.advance(100_000)
+        now=self.now_us/1e6
+        epoch=self.race.race_epoch  # Bind at submission, not when the result comes back.
+        self.vision.offer(self.image(reds,green),wall_now=now+1000.)
+        self.vision.pump(now,wall_now=now+1000.)
+        if submit_only:
+            return epoch
+        accepted=self.vision.pump(now,wall_now=now+1000.)
+>       assert accepted is not None and self.vision.fault is None
+E       assert (None is not None)
+
+tests/test_race_actuation_contract.py:98: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-23/race_actuation_v1/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_race_actuation_contract.py::test_pixels_and_separate_arm_are_both_required[True]
+FAILED tests/test_race_actuation_contract.py::test_pixels_and_separate_arm_are_both_required[False]
+FAILED tests/test_race_actuation_contract.py::test_temporary_hold_keeps_start_fact_and_recovers_without_arm[sensor]
+FAILED tests/test_race_actuation_contract.py::test_temporary_hold_keeps_start_fact_and_recovers_without_arm[traffic]
+FAILED tests/test_race_actuation_contract.py::test_stop_needs_race_ack_and_separate_mcu_clear_arm[race_ack]
+FAILED tests/test_race_actuation_contract.py::test_stop_needs_race_ack_and_separate_mcu_clear_arm[mcu_clear_arm]
+FAILED tests/test_race_actuation_contract.py::test_delayed_positive_and_old_ack_cannot_undo_new_stop
+FAILED tests/test_race_actuation_contract.py::test_policy_stop_alone_is_not_mcu_stop_acknowledgement
+FAILED tests/test_race_actuation_contract.py::test_encoder_recovery_does_not_clear_a1_fault
+FAILED tests/test_race_actuation_contract.py::test_physical_stop_release_is_not_clear_or_arm
+FAILED tests/test_race_actuation_contract.py::test_naive_policy_only_new_race_can_reuse_latched_visual_start_counterexample
+FAILED tests/test_race_actuation_contract.py::test_paired_new_race_reset_rejects_old_visual_work_and_green_only
+FAILED tests/test_race_actuation_contract.py::test_vision_fault_blocks_even_after_policy_ack_and_mcu_arm
+13 failed, 118 passed in 3.56s

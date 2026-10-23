@@ -243,7 +243,9 @@ def test_scheduled_contract_chains_without_runtime_change():
     r7 = json.loads((ROOT/'config/tests/scheduled_command_r7_sha256.json').read_text())
     r7_changes = {**r7['approved_changes'], **r7['approved_evaluation_scripts'], **r7['approved_implementation_changes']}
     # 아래는 r6까지의 이력 검사. 현재 소스에 이르는 r7 연결은 별도 계약 검사에서 확인한다.
-    r6_sha = lambda path: r7_changes[path]['before'] if path in r7_changes else sha(path)
+    from source_contract_helpers import hash_before_observation_extension
+    r6_sha = lambda path: (r7_changes[path]['before'] if path in r7_changes else
+                          hash_before_observation_extension(ROOT,path))
     contract = json.loads((ROOT/'config/tests/scheduled_command_r0_sha256.json').read_text())
     parent = json.loads((ROOT/contract['parent_contract']).read_text())
     assert contract['parent_contract'] == 'config/tests/physics_step_r0_sha256.json'

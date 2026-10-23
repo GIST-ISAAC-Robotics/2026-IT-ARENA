@@ -1,0 +1,25 @@
+..................F
+=================================== FAILURES ===================================
+_ test_ack_queue_is_bounded_with_stop_priority_and_explicit_drops[sanitizers] __
+
+binary = PosixPath('/tmp/pytest-of-jinhyeong/pytest-3/tx0/driver')
+
+    def test_ack_queue_is_bounded_with_stop_priority_and_explicit_drops(binary):
+        mcu = Mcu(binary, diag_period_us=0)
+        now = mcu.setup()
+        mcu.pump(now, 0)  # sink 정지: 큐만 쌓인다
+        for i in range(10):
+            mcu.control(now, 'DISARM', request=f'd{i}', seq=i + 1)
+        stats = mcu.row['stats']
+        assert mcu.row['ack_count'] == 8 and stats['ack_dropped_overflow'] == 2
+        for i in range(3):
+            mcu.send(now, dict(v=1, kind='STOP'), request=f's{i}')
+        stats = mcu.row['stats']
+>       assert mcu.row['ack_count'] == 8 and stats['ack_evicted_for_stop'] == 3
+E       assert (8 == 8 and 0 == 3)
+
+tests/test_actuation_tx_policy.py:199: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_tx_policy.py::test_ack_queue_is_bounded_with_stop_priority_and_explicit_drops[sanitizers]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 18 passed in 4.14s

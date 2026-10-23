@@ -20,6 +20,12 @@ from arena_autonomy.scene_motion import motion_scene
 
 ROOT = Path(__file__).resolve().parents[1]
 STAGES = ('restore_ms', 'projection_ms', 'decision_ms', 'total_ms', 'thread_cpu_ms', 'gc_elapsed_ms')
+SNAPSHOT_MODULES = {
+    'arena_autonomy': ('follow_trace', 'local_follow', 'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'occupancy_timing',
+                      'observation_support', 'observation_lateral', 'linear_observation',
+                      'local_scene', 'scene_motion', 'lidar_motion', 'lidar_observation', 'local_path'),
+    'arena_vehicle_interface': ('queued_log',),
+}
 
 
 class GCObservation:
@@ -137,6 +143,10 @@ def _profile(event_source, repeats, warmups, clock, observation):
         groups['gc_observed' if row['gc_collections'] else 'no_gc_observed'].append(row)
         if row['selection'] == 'bilateral_observed_fragments':
             groups['fragment_candidate_selected'].append(row)
+        if row['selection'] == 'bilateral_observed_corner_anchor':
+            groups['corner_anchor_selected'].append(row)
+        if row['selection'] == 'bilateral_observed_corner_distance':
+            groups['corner_distance_selected'].append(row)
     stats = {name: {stage: distribution([r[stage] for r in rows]) for stage in STAGES}
              for name, rows in groups.items()}
     return dict(passed=not mismatches, baseline_matched=matched, repeats=repeats, warmups=warmups,
@@ -178,10 +188,8 @@ def main():
         parser.error('fresh artifact subdirectory required')
     output.mkdir(parents=True, exist_ok=False)
     paths = [Path(__file__).resolve(), ROOT/'tests/test_follow_profile.py']
-    paths += [ROOT/'src/arena_autonomy/arena_autonomy'/f'{name}.py' for name in
-              ('follow_trace', 'local_follow', 'boundary_evidence', 'local_scene', 'scene_motion',
-               'lidar_motion', 'lidar_observation', 'local_path')]
-    paths += [ROOT/'src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py']
+    paths += [ROOT/'src'/package/package/f'{name}.py'
+              for package, names in SNAPSHOT_MODULES.items() for name in names]
     hashes = {str(p.relative_to(ROOT)): digest(p) for p in paths}
     with zipfile.ZipFile(output/'source_snapshot.zip', 'x', zipfile.ZIP_DEFLATED) as bundle:
         for path in paths:

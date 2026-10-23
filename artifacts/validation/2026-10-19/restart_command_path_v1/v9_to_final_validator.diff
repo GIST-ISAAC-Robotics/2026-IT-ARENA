@@ -1,0 +1,81 @@
+--- /tmp/v9_validator.py	2026-10-19 13:27:58.304570500 +0900
++++ scripts/validate_pipeline_faults_ros.py	2026-10-19 13:26:21.747715600 +0900
+@@ -40,6 +40,8 @@
+ ZERO_TOPICS = ('applied', 'sink', 'mcu')
+ ZERO_GAP_SIM_S, ZERO_GAP_WALL_S = .25, 3.
+ STARTUP_GRAPH_WALL_S = 5.
++# rmw graph cache가 endpoint를 먼저 알고 노드 이름을 아직 모를 때 쓰는 값.
++UNKNOWN_NODE_NAME, UNKNOWN_NODE_NAMESPACE = '_NODE_NAME_UNKNOWN_', '_NODE_NAMESPACE_UNKNOWN_'
+ # 제어기 재시작 구간 진단 전용. 판정에 쓰지 않으며 tick 4회마다 /proc 표본 한 번.
+ TRACE_SAMPLE_TICKS = 4
+ TRACE_FIELDS = dict(
+@@ -951,6 +953,8 @@
+         expected_publishers = {'/drive': 'local_pursuit', '/drive/safe': 'lidar_safety',
+                                '/sim/cmd_vel': 'guarded_sim_actuator'}
+         audit = dict(publishers={}, subscriptions={})
++        # 시작 감사 전용 분류. discovery는 아직 발견되지 않은 것, definite는 이미 관측된 잘못된 그래프다.
++        discovery, definite = [], []
+         for topic, owner in expected_publishers.items():
+             audit['publishers'][topic] = [dict(node=info.node_name, namespace=info.node_namespace,
+                 gid=list(info.endpoint_gid)) for info in self.node.get_publishers_info_by_topic(topic)]
+@@ -970,20 +974,37 @@
+                 audit.setdefault('missing_nodes', []).append(name)
+                 audit['subscriptions'][name] = None
+                 audit.setdefault('input_checks', {})[name] = False
++                discovery.append('node_name_missing:' + name)
+                 continue
+             audit['subscriptions'][name] = sorted(topics)
+             required = {'/scan', '/clock', '/drive_motor/encoder', '/imu/data'} | (
+                 {'/camera/color/image_raw'} if name == 'local_pursuit' else {'/drive'})
+             audit.setdefault('input_checks', {})[name] = not topics - allowed and required <= topics
++            definite.extend(f'unexpected_subscription:{name}:{topic}' for topic in sorted(topics - allowed))
++            discovery.extend(f'subscription_missing:{name}:{topic}' for topic in sorted(required - topics))
+         expected_publishers.update({topic: 'pipeline_fault_validator' for topic in
+             ('/clock', '/scan', '/camera/color/image_raw', '/drive_motor/encoder', '/imu/data')})
+         audit['valid'] = all([entry['node'] for entry in audit['publishers'][topic]] == [owner]
+             and all(entry['namespace'] == '/' for entry in audit['publishers'][topic])
+             for topic, owner in expected_publishers.items()) and all(audit['input_checks'].values())
++        for topic, owner in expected_publishers.items():
++            entries = audit['publishers'][topic]
++            if len(entries) > 1:
++                definite.append('duplicate_publisher:' + topic)
++            elif not entries:
++                discovery.append('publisher_missing:' + topic)
++            elif UNKNOWN_NODE_NAME in (entries[0]['node'], entries[0]['namespace']) or \
++                    UNKNOWN_NODE_NAMESPACE in (entries[0]['node'], entries[0]['namespace']):
++                discovery.append('publisher_name_unresolved:' + topic)
++            elif entries[0]['node'] != owner or entries[0]['namespace'] != '/':
++                definite.append('wrong_publisher_owner:' + topic)
++        audit['startup_problems'] = dict(discovery=discovery, definite=definite)
+         return audit
+ 
+-    def graph_audit(self, convergence_wall_s=0.):
++    def graph_audit(self, convergence_wall_s=0., startup=False):
++        """startup=True는 발견 준비 부족만 제한 대기한다. 기본(최종 감사) 수렴 동작은 그대로다."""
+         observation = dict(started_wall_s=time.monotonic(), convergence_wall_cap_s=convergence_wall_s,
++                           policy='startup_discovery_only' if startup else 'converge_any_invalid',
+                            changes=[], passed=False)
+         self.report.setdefault('graph_audits', []).append(observation)
+         previous = None
+@@ -1001,6 +1022,10 @@
+                 observation.update(passed=True, final_wall_s=time.monotonic(), final_sim_s=self.t)
+                 self.report['graph_audit'] = audit
+                 return
++            if startup and audit['startup_problems']['definite']:
++                # 이미 관측된 중복·잘못된 소유자·예상외 구독은 잠시 뒤 사라져도 통과시키지 않는다.
++                observation['startup_definite_failure'] = audit['startup_problems']['definite']
++                raise AssertionError('startup graph has invalid observed endpoints: ' + signature)
+             if time.monotonic() >= until:
+                 raise AssertionError('graph did not converge to exact single expected publishers: ' + signature)
+             self.pump(.1)
+@@ -1013,8 +1038,8 @@
+                   self.fresh('autonomy', baseline, lambda v: not v['started'] and
+                              v['vision']['stats']['accepted'] >= 3), 'pipeline startup')
+         self.children.register_vision(self.data('autonomy')['vision']['worker_pid'])
+-        # 시작 그래프도 정확한 단일 발행자·입력이어야 한다. 이름 조회 갱신 대기만 제한적으로 허용한다.
+-        self.graph_audit(convergence_wall_s=STARTUP_GRAPH_WALL_S)
++        # 시작 그래프도 정확한 단일 발행자·입력이어야 한다. 이름 미갱신·필요 endpoint 부족만 제한 대기한다.
++        self.graph_audit(convergence_wall_s=STARTUP_GRAPH_WALL_S, startup=True)
+         self.wait(lambda: self.stopped(0), 'fresh startup zero outputs')
+         self.stop_case('boot_disarmed', lambda: None, {'mcu': lambda v: v['state'] == 'DISARMED'}, no_resume=True)
+         self.stop_case('armed_green_only_cannot_start', lambda: self.call('arm'),

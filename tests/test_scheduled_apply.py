@@ -181,7 +181,9 @@ def test_registered_r7_chain_and_current_source():
             assert change['after']==sha(p)
             dest[p]=change['after']
     assert c['sha256']==expected and c['implementation_sha256']==impl
-    for p,value in {**expected,**impl,**c['evaluation_tools_sha256']}.items():assert sha(p)==value,p
+    from source_contract_helpers import hash_before_observation_extension
+    for p,value in {**expected,**impl,**c['evaluation_tools_sha256']}.items():
+        assert hash_before_observation_extension(ROOT,p)==value,p
     for p in ('src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py',
               'src/arena_gazebo/include/arena_gazebo/drivetrain.hpp'):
         assert sha(p)==before[p]

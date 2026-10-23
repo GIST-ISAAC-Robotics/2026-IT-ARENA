@@ -1,0 +1,613 @@
+{
+  "scope": "offline_synthetic_offer_time_bounds_not_permission",
+  "cases": [
+    {
+      "name": "fresh_asymmetric",
+      "passed": true,
+      "expected": true,
+      "report": {
+        "schema": "arena_actuation_offer_clock_review_v1",
+        "status": "within_declared_time_bounds",
+        "timestamp_policy_satisfied": true,
+        "conditions": {
+          "receive_order_certain": true,
+          "issue_age_certain": true,
+          "arrival_before_earliest_expiry": true
+        },
+        "offer": {
+          "type": "offer",
+          "v": 1,
+          "boot": "boot-A",
+          "generation": 3,
+          "state": "ACTIVE",
+          "owner": "host-A",
+          "lease": 8,
+          "lease_issued_us": 1000100,
+          "lease_expires_us": 1100100,
+          "output_ready": true
+        },
+        "received": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9010000000,
+          "upper_ns": 9010000000
+        },
+        "now": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9020000000,
+          "upper_ns": 9020000000
+        },
+        "mapped_issue": {
+          "boot": "boot-A",
+          "capture_us": 1000100,
+          "host_lower_ns": 8999100000,
+          "host_upper_ns": 9009100000,
+          "width_ns": 10000000,
+          "extrapolation_us": 0,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "mapped_expiry": {
+          "boot": "boot-A",
+          "capture_us": 1100100,
+          "host_lower_ns": 9099100000,
+          "host_upper_ns": 9109100000,
+          "width_ns": 10000000,
+          "extrapolation_us": 100000,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "age": {
+          "status": "fresh_under_assumptions",
+          "age_lower_ns": 10900000,
+          "age_upper_ns": 20900000,
+          "max_age_ns": 100000000,
+          "limit_inclusive": false,
+          "mapping_width_ns": 10000000,
+          "now_width_ns": 0,
+          "boot": "boot-A",
+          "host_epoch": "host-epoch-A",
+          "timestamp_policy_satisfied": true,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false,
+          "sensor_value_validated": false,
+          "hardware_assumptions_verified": false
+        },
+        "forward_delay_upper_ns": 5000000,
+        "arrival_upper_ns": 9025000000,
+        "expiry_margin_lower_ns": 74100000,
+        "policy_note": "합성 100 ms 임대·명시 지연 가정. 운영값/실측값 아님",
+        "declared_clock_assumptions": {
+          "max_rate_error_ppm": 0,
+          "host_timestamp_error_ns": 0,
+          "mcu_timestamp_error_us": 0,
+          "max_window_us": 5000000,
+          "max_extrapolation_us": 200000
+        },
+        "hardware_assumptions_verified": false,
+        "session_evidence_verified": false,
+        "source_timestamp_checked": false,
+        "ready_to_drive": false,
+        "firmware_verified": false,
+        "runtime_connected": false
+      }
+    },
+    {
+      "name": "delayed_offer_not_reaged",
+      "passed": true,
+      "expected": false,
+      "report": {
+        "schema": "arena_actuation_offer_clock_review_v1",
+        "status": "time_conditions_not_proven",
+        "timestamp_policy_satisfied": false,
+        "conditions": {
+          "receive_order_certain": true,
+          "issue_age_certain": false,
+          "arrival_before_earliest_expiry": false
+        },
+        "offer": {
+          "type": "offer",
+          "v": 1,
+          "boot": "boot-A",
+          "generation": 3,
+          "state": "ACTIVE",
+          "owner": "host-A",
+          "lease": 8,
+          "lease_issued_us": 1000100,
+          "lease_expires_us": 1100100,
+          "output_ready": true
+        },
+        "received": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9119000000,
+          "upper_ns": 9119000000
+        },
+        "now": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9120000000,
+          "upper_ns": 9120000000
+        },
+        "mapped_issue": {
+          "boot": "boot-A",
+          "capture_us": 1000100,
+          "host_lower_ns": 8999100000,
+          "host_upper_ns": 9009100000,
+          "width_ns": 10000000,
+          "extrapolation_us": 0,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "mapped_expiry": {
+          "boot": "boot-A",
+          "capture_us": 1100100,
+          "host_lower_ns": 9099100000,
+          "host_upper_ns": 9109100000,
+          "width_ns": 10000000,
+          "extrapolation_us": 100000,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "age": {
+          "status": "stale_under_assumptions",
+          "age_lower_ns": 110900000,
+          "age_upper_ns": 120900000,
+          "max_age_ns": 100000000,
+          "limit_inclusive": false,
+          "mapping_width_ns": 10000000,
+          "now_width_ns": 0,
+          "boot": "boot-A",
+          "host_epoch": "host-epoch-A",
+          "timestamp_policy_satisfied": false,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false,
+          "sensor_value_validated": false,
+          "hardware_assumptions_verified": false
+        },
+        "forward_delay_upper_ns": 5000000,
+        "arrival_upper_ns": 9125000000,
+        "expiry_margin_lower_ns": -25900000,
+        "policy_note": "합성 100 ms 임대·명시 지연 가정. 운영값/실측값 아님",
+        "declared_clock_assumptions": {
+          "max_rate_error_ppm": 0,
+          "host_timestamp_error_ns": 0,
+          "mcu_timestamp_error_us": 0,
+          "max_window_us": 5000000,
+          "max_extrapolation_us": 200000
+        },
+        "hardware_assumptions_verified": false,
+        "session_evidence_verified": false,
+        "source_timestamp_checked": false,
+        "ready_to_drive": false,
+        "firmware_verified": false,
+        "runtime_connected": false
+      }
+    },
+    {
+      "name": "transmit_queue_80ms",
+      "passed": true,
+      "expected": false,
+      "report": {
+        "schema": "arena_actuation_offer_clock_review_v1",
+        "status": "time_conditions_not_proven",
+        "timestamp_policy_satisfied": false,
+        "conditions": {
+          "receive_order_certain": true,
+          "issue_age_certain": true,
+          "arrival_before_earliest_expiry": false
+        },
+        "offer": {
+          "type": "offer",
+          "v": 1,
+          "boot": "boot-A",
+          "generation": 3,
+          "state": "ACTIVE",
+          "owner": "host-A",
+          "lease": 8,
+          "lease_issued_us": 1000100,
+          "lease_expires_us": 1100100,
+          "output_ready": true
+        },
+        "received": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9010000000,
+          "upper_ns": 9010000000
+        },
+        "now": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9020000000,
+          "upper_ns": 9020000000
+        },
+        "mapped_issue": {
+          "boot": "boot-A",
+          "capture_us": 1000100,
+          "host_lower_ns": 8999100000,
+          "host_upper_ns": 9009100000,
+          "width_ns": 10000000,
+          "extrapolation_us": 0,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "mapped_expiry": {
+          "boot": "boot-A",
+          "capture_us": 1100100,
+          "host_lower_ns": 9099100000,
+          "host_upper_ns": 9109100000,
+          "width_ns": 10000000,
+          "extrapolation_us": 100000,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "age": {
+          "status": "fresh_under_assumptions",
+          "age_lower_ns": 10900000,
+          "age_upper_ns": 20900000,
+          "max_age_ns": 100000000,
+          "limit_inclusive": false,
+          "mapping_width_ns": 10000000,
+          "now_width_ns": 0,
+          "boot": "boot-A",
+          "host_epoch": "host-epoch-A",
+          "timestamp_policy_satisfied": true,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false,
+          "sensor_value_validated": false,
+          "hardware_assumptions_verified": false
+        },
+        "forward_delay_upper_ns": 80000000,
+        "arrival_upper_ns": 9100000000,
+        "expiry_margin_lower_ns": -900000,
+        "policy_note": "합성 100 ms 임대·명시 지연 가정. 운영값/실측값 아님",
+        "declared_clock_assumptions": {
+          "max_rate_error_ppm": 0,
+          "host_timestamp_error_ns": 0,
+          "mcu_timestamp_error_us": 0,
+          "max_window_us": 5000000,
+          "max_extrapolation_us": 200000
+        },
+        "hardware_assumptions_verified": false,
+        "session_evidence_verified": false,
+        "source_timestamp_checked": false,
+        "ready_to_drive": false,
+        "firmware_verified": false,
+        "runtime_connected": false
+      }
+    },
+    {
+      "name": "wide_asymmetry",
+      "passed": true,
+      "expected": false,
+      "report": {
+        "schema": "arena_actuation_offer_clock_review_v1",
+        "status": "time_conditions_not_proven",
+        "timestamp_policy_satisfied": false,
+        "conditions": {
+          "receive_order_certain": true,
+          "issue_age_certain": true,
+          "arrival_before_earliest_expiry": false
+        },
+        "offer": {
+          "type": "offer",
+          "v": 1,
+          "boot": "boot-A",
+          "generation": 3,
+          "state": "ACTIVE",
+          "owner": "host-A",
+          "lease": 8,
+          "lease_issued_us": 1000100,
+          "lease_expires_us": 1100100,
+          "output_ready": true
+        },
+        "received": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9095000000,
+          "upper_ns": 9095000000
+        },
+        "now": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9096000000,
+          "upper_ns": 9096000000
+        },
+        "mapped_issue": {
+          "boot": "boot-A",
+          "capture_us": 1000100,
+          "host_lower_ns": 8999100000,
+          "host_upper_ns": 9090100000,
+          "width_ns": 91000000,
+          "extrapolation_us": 0,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "mapped_expiry": {
+          "boot": "boot-A",
+          "capture_us": 1100100,
+          "host_lower_ns": 9099100000,
+          "host_upper_ns": 9190100000,
+          "width_ns": 91000000,
+          "extrapolation_us": 100000,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "age": {
+          "status": "fresh_under_assumptions",
+          "age_lower_ns": 5900000,
+          "age_upper_ns": 96900000,
+          "max_age_ns": 100000000,
+          "limit_inclusive": false,
+          "mapping_width_ns": 91000000,
+          "now_width_ns": 0,
+          "boot": "boot-A",
+          "host_epoch": "host-epoch-A",
+          "timestamp_policy_satisfied": true,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false,
+          "sensor_value_validated": false,
+          "hardware_assumptions_verified": false
+        },
+        "forward_delay_upper_ns": 5000000,
+        "arrival_upper_ns": 9101000000,
+        "expiry_margin_lower_ns": -1900000,
+        "policy_note": "합성 100 ms 임대·명시 지연 가정. 운영값/실측값 아님",
+        "declared_clock_assumptions": {
+          "max_rate_error_ppm": 0,
+          "host_timestamp_error_ns": 0,
+          "mcu_timestamp_error_us": 0,
+          "max_window_us": 5000000,
+          "max_extrapolation_us": 200000
+        },
+        "hardware_assumptions_verified": false,
+        "session_evidence_verified": false,
+        "source_timestamp_checked": false,
+        "ready_to_drive": false,
+        "firmware_verified": false,
+        "runtime_connected": false
+      }
+    },
+    {
+      "name": "drift_bounds",
+      "passed": true,
+      "expected": true,
+      "report": {
+        "schema": "arena_actuation_offer_clock_review_v1",
+        "status": "within_declared_time_bounds",
+        "timestamp_policy_satisfied": true,
+        "conditions": {
+          "receive_order_certain": true,
+          "issue_age_certain": true,
+          "arrival_before_earliest_expiry": true
+        },
+        "offer": {
+          "type": "offer",
+          "v": 1,
+          "boot": "boot-A",
+          "generation": 3,
+          "state": "ACTIVE",
+          "owner": "host-A",
+          "lease": 8,
+          "lease_issued_us": 1000100,
+          "lease_expires_us": 1100100,
+          "output_ready": true
+        },
+        "received": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9010000000,
+          "upper_ns": 9010000000
+        },
+        "now": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9020000000,
+          "upper_ns": 9020000000
+        },
+        "mapped_issue": {
+          "boot": "boot-A",
+          "capture_us": 1000100,
+          "host_lower_ns": 8999099980,
+          "host_upper_ns": 9009100000,
+          "width_ns": 10000020,
+          "extrapolation_us": 0,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "mapped_expiry": {
+          "boot": "boot-A",
+          "capture_us": 1100100,
+          "host_lower_ns": 9099079980,
+          "host_upper_ns": 9109120000,
+          "width_ns": 10040020,
+          "extrapolation_us": 100000,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "age": {
+          "status": "fresh_under_assumptions",
+          "age_lower_ns": 10900000,
+          "age_upper_ns": 20900020,
+          "max_age_ns": 100000000,
+          "limit_inclusive": false,
+          "mapping_width_ns": 10000020,
+          "now_width_ns": 0,
+          "boot": "boot-A",
+          "host_epoch": "host-epoch-A",
+          "timestamp_policy_satisfied": true,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false,
+          "sensor_value_validated": false,
+          "hardware_assumptions_verified": false
+        },
+        "forward_delay_upper_ns": 5000000,
+        "arrival_upper_ns": 9025000000,
+        "expiry_margin_lower_ns": 74079980,
+        "policy_note": "합성 100 ms 임대·명시 지연 가정. 운영값/실측값 아님",
+        "declared_clock_assumptions": {
+          "max_rate_error_ppm": 200,
+          "host_timestamp_error_ns": 0,
+          "mcu_timestamp_error_us": 0,
+          "max_window_us": 5000000,
+          "max_extrapolation_us": 200000
+        },
+        "hardware_assumptions_verified": false,
+        "session_evidence_verified": false,
+        "source_timestamp_checked": false,
+        "ready_to_drive": false,
+        "firmware_verified": false,
+        "runtime_connected": false
+      }
+    },
+    {
+      "name": "exact_expiry_rejected",
+      "passed": true,
+      "expected": false,
+      "report": {
+        "schema": "arena_actuation_offer_clock_review_v1",
+        "status": "time_conditions_not_proven",
+        "timestamp_policy_satisfied": false,
+        "conditions": {
+          "receive_order_certain": true,
+          "issue_age_certain": true,
+          "arrival_before_earliest_expiry": false
+        },
+        "offer": {
+          "type": "offer",
+          "v": 1,
+          "boot": "boot-A",
+          "generation": 3,
+          "state": "ACTIVE",
+          "owner": "host-A",
+          "lease": 8,
+          "lease_issued_us": 1000100,
+          "lease_expires_us": 1100100,
+          "output_ready": true
+        },
+        "received": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9010000000,
+          "upper_ns": 9010000000
+        },
+        "now": {
+          "host_epoch": "host-epoch-A",
+          "lower_ns": 9094100000,
+          "upper_ns": 9094100000
+        },
+        "mapped_issue": {
+          "boot": "boot-A",
+          "capture_us": 1000100,
+          "host_lower_ns": 8999100000,
+          "host_upper_ns": 9009100000,
+          "width_ns": 10000000,
+          "extrapolation_us": 0,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "mapped_expiry": {
+          "boot": "boot-A",
+          "capture_us": 1100100,
+          "host_lower_ns": 9099100000,
+          "host_upper_ns": 9109100000,
+          "width_ns": 10000000,
+          "extrapolation_us": 100000,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false
+        },
+        "age": {
+          "status": "fresh_under_assumptions",
+          "age_lower_ns": 85000000,
+          "age_upper_ns": 95000000,
+          "max_age_ns": 100000000,
+          "limit_inclusive": false,
+          "mapping_width_ns": 10000000,
+          "now_width_ns": 0,
+          "boot": "boot-A",
+          "host_epoch": "host-epoch-A",
+          "timestamp_policy_satisfied": true,
+          "ready_to_drive": false,
+          "ros_stamp_verified": false,
+          "clock_mapping_applied": false,
+          "sensor_value_validated": false,
+          "hardware_assumptions_verified": false
+        },
+        "forward_delay_upper_ns": 5000000,
+        "arrival_upper_ns": 9099100000,
+        "expiry_margin_lower_ns": 0,
+        "policy_note": "합성 100 ms 임대·명시 지연 가정. 운영값/실측값 아님",
+        "declared_clock_assumptions": {
+          "max_rate_error_ppm": 0,
+          "host_timestamp_error_ns": 0,
+          "mcu_timestamp_error_us": 0,
+          "max_window_us": 5000000,
+          "max_extrapolation_us": 200000
+        },
+        "hardware_assumptions_verified": false,
+        "session_evidence_verified": false,
+        "source_timestamp_checked": false,
+        "ready_to_drive": false,
+        "firmware_verified": false,
+        "runtime_connected": false
+      }
+    },
+    {
+      "name": "reboot_rejected",
+      "passed": true,
+      "expected": null,
+      "report": {
+        "error": "MCU boot or state generation mismatch",
+        "ready_to_drive": false,
+        "runtime_connected": false
+      }
+    },
+    {
+      "name": "generation_change_rejected",
+      "passed": true,
+      "expected": null,
+      "report": {
+        "error": "MCU boot or state generation mismatch",
+        "ready_to_drive": false,
+        "runtime_connected": false
+      }
+    },
+    {
+      "name": "host_restart_rejected",
+      "passed": true,
+      "expected": null,
+      "report": {
+        "error": "host epoch mismatch",
+        "ready_to_drive": false,
+        "runtime_connected": false
+      }
+    },
+    {
+      "name": "mapping_extrapolation_rejected",
+      "passed": true,
+      "expected": null,
+      "report": {
+        "error": "mapping extrapolation exceeded",
+        "ready_to_drive": false,
+        "runtime_connected": false
+      }
+    }
+  ],
+  "passed": true,
+  "source_sha256": {
+    "scripts/audit_actuation_offer_clock.py": "2b0c992be731ef3fb2296662450fe99b780d621cea171aa2cd2767b01f0ae547",
+    "tests/test_actuation_offer_clock.py": "625fea70eb4ea5a5ada23bc78480871a2ac814aef607d6c81ffb2e3890c3ea95",
+    "src/arena_vehicle_interface/arena_vehicle_interface/clock_bounds.py": "eb15af99d9ea1e4d6844eb6e74d677d5d63aa927a39084056ee9d4bd5b45002c",
+    "src/arena_vehicle_interface/arena_vehicle_interface/clock_freshness.py": "b52b8f9407bba31fe25eff656b8b7797beb38e98a07951eb2244c53c6c96a872"
+  },
+  "source_unchanged": true,
+  "runtime_connected": false,
+  "ready_to_drive": false
+}

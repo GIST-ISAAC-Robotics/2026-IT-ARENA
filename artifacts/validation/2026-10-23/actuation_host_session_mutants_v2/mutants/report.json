@@ -1,0 +1,177 @@
+{
+  "control_passed": true,
+  "detected": 13,
+  "mutants": 13,
+  "source_sha256": {
+    "scripts/actuation_host_session.py": "57d3baee5fe65e7db4825ccf2a5980c9b3d706bfbba044b9e0415d865952f119",
+    "tests/test_actuation_host_session.py": "e3141522cb06729c62e5fa38e8de67314dafde20dfd99fabe5ec707eeb83827d",
+    "scripts/check_actuation_host_session_mutants.py": "a1d4cff0f61ea19e44676167026338d8713a9874f250eb27adb511554d5e9bd9"
+  },
+  "source_unchanged": true,
+  "results": [
+    {
+      "name": "unmutated_copy",
+      "pytest_exit": 0,
+      "failures": [],
+      "detected": null
+    },
+    {
+      "name": "arm_revocation_removed",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_stop_revokes_completed_arm_even_if_stop_ack_is_lost",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "stop_does_not_preempt",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_stop_preempts_pending_arm_before_any_reply",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "stop_intent_not_latched",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_local_stop_latch_survives_missing_stop_ack_and_requires_clear_evidence",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "ack_request_id_ignored",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_stop_preempts_pending_arm_before_any_reply",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "ack_timeout_ignored",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_stop_revokes_completed_arm_even_if_stop_ack_is_lost",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "negative_ack_accepted",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_bad_ack_never_establishes_permission[bad_ack0]",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "ack_reason_ignored",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_bad_ack_never_establishes_permission[bad_ack1]",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "ack_order_ignored",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_request_overlapping_ack_window_never_confirms",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "foreign_connection_accepted",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_foreign_connection_callback_does_not_poison_current_clock_or_pending",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "arm_before_both_receipts",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_arm_barrier_uses_latest_possible_receipt_not_midpoint",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "arm_barrier_ignores_processing_delay",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_both_evidence_orders_require_new_source_and_never_drive[offer_first]",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "source_watermark_removed",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_source_watermark_does_not_repeat_or_accept_overlapping_intervals",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    },
+    {
+      "name": "clear_does_not_release_local_stop",
+      "pytest_exit": 1,
+      "failures": [
+        {
+          "test": "tests/test_actuation_host_session.py::test_local_stop_latch_survives_missing_stop_ack_and_requires_clear_evidence",
+          "stage": "call",
+          "error_type": "AssertionError"
+        }
+      ],
+      "detected": true
+    }
+  ],
+  "passed": true,
+  "ready_to_drive": false
+}

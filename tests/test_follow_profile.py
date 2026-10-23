@@ -69,3 +69,17 @@ def test_portable_hash_does_not_require_python_311(tmp_path, monkeypatch):
     path = tmp_path/'testdata'
     path.write_bytes(b'g1')
     assert digest(path) == hashlib.sha256(b'g1').hexdigest()
+
+
+def test_snapshot_covers_transitive_internal_imports_including_per_ray_timing():
+    import ast
+    from profile_follow_trace import ROOT, SNAPSHOT_MODULES
+    manifest = {f'{package}.{name}' for package, names in SNAPSHOT_MODULES.items() for name in names}
+    assert 'arena_autonomy.occupancy_timing' in manifest
+    for module in manifest:
+        package, name = module.split('.')
+        tree = ast.parse((ROOT/'src'/package/package/f'{name}.py').read_text(encoding='utf-8'))
+        imports = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module]
+        imports += [alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names]
+        required = {name for name in imports if name.startswith(('arena_autonomy.', 'arena_vehicle_interface.'))}
+        assert required <= manifest, (module, sorted(required-manifest))

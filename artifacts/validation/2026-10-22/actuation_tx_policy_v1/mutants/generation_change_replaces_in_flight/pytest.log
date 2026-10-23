@@ -1,0 +1,39 @@
+.................F
+=================================== FAILURES ===================================
+_____ test_zero_and_short_writes_never_replace_a_started_frame[sanitizers] _____
+
+binary = PosixPath('/tmp/pytest-of-jinhyeong/pytest-8/tx0/driver')
+
+    def test_zero_and_short_writes_never_replace_a_started_frame(binary):
+        mcu = Mcu(binary, diag_period_us=0)
+        now = mcu.setup()
+        mcu.control(now, 'ARM')
+        mcu.pump(now)                       # ARM 결과/상태/urgent offer를 모두 비운다
+        now += 20_000
+        mcu.cmd(f'T {now}')
+        row = mcu.pump(now, 0)              # 주기 offer를 고정했지만 sink가 0 B만 받는다
+        started = row['frames'][0]
+        assert started['kind'] == 'offer' and row['written'] == '' and row['backpressure']
+        assert mcu.pump(now, 7)['written'] != ''
+        # 전송 중에 STOP이 와도 이미 고정한 offer 바이트는 바뀌지 않는다.
+        assert [d['result'] for d in mcu.send(now, dict(v=1, kind='STOP'))] == [[True, 'software_stop']]
+        assert mcu.row['generation'] == 2 and mcu.row['leases'] == []
+        before = len(mcu.payloads)
+        steps = 0
+        while len(mcu.payloads) == before:     # 1 B씩만 받는 sink로 나머지 바이트를 보낸다
+            mcu.pump(now, 1)
+            steps += 1
+        assert steps == started['size'] - 7
+        mcu.pump(now + 250)
+        mcu.pump(now + 500)
+        old = mcu.payloads[before]
+>       assert old.get('lease') == started['lease']
+E       AssertionError: assert 15 == 14
+E        +  where 15 = <built-in method get of dict object at 0x7ba7457fae80>('lease')
+E        +    where <built-in method get of dict object at 0x7ba7457fae80> = {'boot': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'generation': 2, 'lease': 15, 'lease_expires_us': 340000, ...}.get
+
+tests/test_actuation_tx_policy.py:173: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_tx_policy.py::test_zero_and_short_writes_never_replace_a_started_frame[sanitizers]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 17 passed in 4.04s

@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-17 깊이 질의 행을 128개씩 나누어 같은 전체광선 각도/argmin/깊이를 계산. 운영 의미와 관측 범위를 유지하는 메모리 비용 최적화",
+  "parent_contract": "config/tests/recent_observation_wedge_r0_sha256.json",
+  "parent_contract_sha256": "84e04bded21f00c159d61f38a373a3974f04c3d4cf2b893d24e529234ca67d22",
+  "modified_dependencies": {
+    "src/arena_autonomy/arena_autonomy/observation_support.py": {
+      "before": "b25c596790d16759f5f57bb17cc8dd7ea13dd6fadfa0153af0523529864f4361",
+      "after": "209ecff7e64e89ab2941fb521513bc98481fcb88c42407340798727f54b87084",
+      "reason": "질의 행 사이 의존성 없이 모든 광선과 기존 판단식을 동일하게 계산하며 임시 배열을 최대 128행으로 제한"
+    }
+  },
+  "evidence": [
+    "tests/test_observation_depth_equivalence.py",
+    "tests/test_observation_depth_cone.py",
+    "tests/test_observation_depth_chunk.py",
+    "artifacts/validation/2026-10-17/g1_recent_depth_chunk_v1/report.json"
+  ]
+}

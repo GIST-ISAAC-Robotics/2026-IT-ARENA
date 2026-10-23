@@ -20,13 +20,21 @@ class LocalPursuit(WallFollow):
         self.g1_enabled = bool(self.declare_parameter('g1_follow_enabled', False).value)
         boundary_mode = str(self.declare_parameter('g1_boundary_evidence_mode', 'connected').value)
         occupancy_mode = str(self.declare_parameter('g1_occupancy_timing_mode', 'oldest').value)
+        corridor_fallback = bool(self.declare_parameter('g1_corridor_fallback_enabled', False).value)
+        recent_observation = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
+        if recent_observation and not self.g1_enabled:
+            raise ValueError('recent observation requires explicit G1 activation')
+        if corridor_fallback and not self.g1_enabled:
+            raise ValueError('corridor fallback requires explicit G1 activation')
         if occupancy_mode not in ('oldest', 'per_ray_candidate') or (not self.g1_enabled and occupancy_mode != 'oldest'):
             raise ValueError('per-ray occupancy candidate requires G1')
-        if boundary_mode not in ('connected', 'fragmented_candidate') or (not self.g1_enabled and boundary_mode != 'connected'):
-            raise ValueError('fragmented boundary candidate requires G1')
+        if boundary_mode not in ('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate') or (not self.g1_enabled and boundary_mode != 'connected'):
+            raise ValueError('boundary candidate requires G1')
         if self.g1_enabled and (self.motion.mode != 'both' or not self.motion.verified):
             raise ValueError('G1은 검증된 순차 취득과 both 운동 보정이 필요합니다.')
         self.follow = LocalFollow(FollowConfig(
+            corridor_fallback_enabled=corridor_fallback,
+            recent_observation_enabled=recent_observation,
             boundary_evidence_mode=boundary_mode,
             occupancy_timing_mode=occupancy_mode,
             wheelbase_m=float(self.settings['wheelbase_m']),

@@ -1,0 +1,23 @@
+.....................................F
+=================================== FAILURES ===================================
+__________ test_arm_barrier_uses_latest_possible_receipt_not_midpoint __________
+
+    def test_arm_barrier_uses_latest_possible_receipt_not_midpoint():
+        item, req = start()
+        item.observe(ack(req), received=window(9_030_000_000, 9_032_000_000), connection_id=LINK)
+        item.observe(fresh_offer(), received=window(9_031_000_000, 9_034_000_000), connection_id=LINK)
+>       assert item.arm_barrier == window(9_031_000_000, 9_034_000_000)
+E       AssertionError: assert HostTimeWindo...ns=9031000000) == HostTimeWindo...ns=9034000000)
+E         
+E         Omitting 2 identical items, use -vv to show
+E         Differing attributes:
+E         ['upper_ns']
+E         
+E         Drill down into differing attribute upper_ns:
+E           upper_ns: 9031000000 != 9034000000
+
+tests/test_actuation_host_session.py:286: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_host_session.py::test_arm_barrier_uses_latest_possible_receipt_not_midpoint
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 37 passed, 2 deselected in 0.36s

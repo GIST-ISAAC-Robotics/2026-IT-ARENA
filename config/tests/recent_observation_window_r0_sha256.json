@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-21 깊이 질의의 각도 상계 창. 선택 광선의 인접성·결측·동률·깊이 조건과 원점 전체 계산 유지",
+  "parent_contract": "config/tests/recent_observation_transport_r0_sha256.json",
+  "parent_contract_sha256": "e90f9dff936862197eac83a463e08dddc319457dfb973b309cf81a7addc8a776",
+  "modified_dependencies": {
+    "src/arena_autonomy/arena_autonomy/observation_support.py": {
+      "before": "48eff232fc413febd386d12b2c7b0caf23011b08cc03e2d8159c6a30c23aa8bf",
+      "after": "e22e41adf52ae577f51e8a0687e7bfa8e747046a6b1f7d11f7ddaeeb4a027df8",
+      "reason": "원점 원의 asin(R/d) 상계로 통과 가능한 광선을 모두 포함한 창 계산. 범위 안/큰 창은 전체 계산. 관측/보호 임계값 불변"
+    }
+  },
+  "evidence": [
+    "tests/test_observation_depth_window.py",
+    "artifacts/validation/2026-10-21/g1_depth_window_v2/run/report.json"
+  ]
+}

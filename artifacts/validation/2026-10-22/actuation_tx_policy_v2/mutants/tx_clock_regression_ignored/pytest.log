@@ -1,0 +1,18 @@
+......................F
+=================================== FAILURES ===================================
+_ test_clock_regression_and_sink_contract_violation_latch_silence[sanitizers] __
+
+binary = PosixPath('/tmp/pytest-of-jinhyeong/pytest-13/tx0/driver')
+
+    def test_clock_regression_and_sink_contract_violation_latch_silence(binary):
+        mcu = Mcu(binary)
+        mcu.cmd('C 0')
+        mcu.pump(1000)
+>       assert mcu.pump(999)['tx_fault'] == 2
+E       assert 0 == 2
+
+tests/test_actuation_tx_policy.py:317: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_tx_policy.py::test_clock_regression_and_sink_contract_violation_latch_silence[sanitizers]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 22 passed in 4.12s

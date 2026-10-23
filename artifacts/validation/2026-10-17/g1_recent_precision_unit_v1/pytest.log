@@ -1,0 +1,19 @@
+...............................................F........................ [ 90%]
+........                                                                 [100%]
+=================================== FAILURES ===================================
+____ test_straight_limit_does_not_create_false_rear_queries[9.6137665e-09] _____
+
+angle = 9.6137665e-09
+
+    @pytest.mark.parametrize('angle', [0.,-9.6137665e-9,9.6137665e-9])
+    def test_straight_limit_does_not_create_false_rear_queries(angle):
+        scene=straight_missing_scene();cfg=FollowConfig(wheelbase_m=.135)
+        result=sweep_support([scene],0.,.2,angle,angle,cfg,protected_sensor_pose=(.06,0.,0.))
+>       assert result['supported'], result
+E       AssertionError: {'actual_body_stop_verified': False, 'continuous_sweep_verified': False, 'dynamic_cut_in_verified': False, 'earlier_supported_queries': 0, ...}
+E       assert False
+
+tests/test_observation_sweep_precision.py:28: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_observation_sweep_precision.py::test_straight_limit_does_not_create_false_rear_queries[9.6137665e-09]
+1 failed, 79 passed in 3.08s

@@ -12,6 +12,7 @@ from arena_vehicle_interface.drive_feedback import MotorEncoderSpec
 import arena_vehicle_interface.drive_feedback as feedback_module
 
 SCHEMA = 'arena_hardware_capture_v1'
+SCHEMA_V2 = 'arena_hardware_capture_v2'
 MAX_RECORDS = 500_000
 MAX_LINE_BYTES = 16_384
 
@@ -28,11 +29,11 @@ def text(value, label):
     return value
 
 
-def vector(value):
+def vector(value, label='gyro_rad_s'):
     if not isinstance(value, list) or len(value) != 3 or any(
             type(v) not in (float, int) or abs(v) > 1e6 or not math.isfinite(v) for v in value):
         # 수치 처리 파일 범위 제한이지 제어기의 IMU 고장 판정 한도가 아니다.
-        raise ValueError('gyro_rad_s: finite three-axis vector within file numeric range required')
+        raise ValueError(f'{label}: finite three-axis vector within file numeric range required')
     return value
 
 
@@ -45,7 +46,7 @@ def summary(values):
 def validate_header(header):
     if not isinstance(header, dict):
         raise ValueError('capture header must be an object')
-    if header.get('schema') != SCHEMA or header.get('kind') != 'header':
+    if header.get('schema') not in (SCHEMA, SCHEMA_V2) or header.get('kind') != 'header':
         raise ValueError('capture header/schema required')
     if header.get('origin') not in ('synthetic', 'hardware_capture'):
         raise ValueError('origin must distinguish synthetic and hardware_capture')
@@ -56,6 +57,15 @@ def validate_header(header):
     text(header.get('gyro_frame'), 'gyro_frame')
     # 값만 맞는다고 실제 축 방향이 검증되는 것은 아니다. 장착 기준을 기록한다.
     text(header.get('mounting_note'), 'mounting_note')
+    if header['schema'] == SCHEMA_V2:
+        if (header.get('accel_unit') != 'm/s^2'
+                or header.get('accel_frame') != header['gyro_frame']
+                or header.get('accel_semantics') != 'specific_force_including_gravity'
+                or header.get('accel_timing') != 'independent_acquisition_stream'):
+            raise ValueError('v2 explicit acceleration unit/frame/semantics/timing required')
+        full_scale = header.get('accel_full_scale_mps2')
+        if type(full_scale) not in (int, float) or not 0 < full_scale <= 1e6 or not math.isfinite(full_scale):
+            raise ValueError('explicit finite acceleration per-axis full scale required')
     try:
         spec = MotorEncoderSpec(**header['motor_spec'])
         derived = (spec.counts_per_wheel_revolution, spec.mean_wheel_travel_m_per_count)
@@ -136,6 +146,8 @@ def stationary_candidate(window, imu, encoder, issues):
 
 def audit(header, records):
     spec, windows = validate_header(header)
+    has_accel = header['schema'] == SCHEMA_V2
+    required_streams = ('encoder', 'imu', 'accel') if has_accel else ('encoder', 'imu')
     groups, last, issues, counts = defaultdict(list), {}, [], Counter()
     sequence_gaps = Counter()
     seen_boots, closed_boots, current_boot = [], set(), None
@@ -146,7 +158,7 @@ def audit(header, records):
         if not isinstance(row, dict):
             raise ValueError(f'row {index}: capture row must be an object')
         kind = row.get('kind')
-        if kind not in ('encoder', 'imu'):
+        if kind not in required_streams:
             raise ValueError(f'row {index}: unknown kind')
         boot = text(row.get('boot'), 'boot')
         seq = integer(row.get('seq'), 'seq')
@@ -154,8 +166,19 @@ def audit(header, records):
         receive = integer(row.get('receive_ns'), 'receive_ns')
         if kind == 'encoder':
             integer(row.get('motor_counts'), 'motor_counts', -(2**63))
-        else:
+        elif kind == 'imu':
             vector(row.get('gyro_rad_s'))
+        else:
+            status = row.get('status')
+            value = row.get('specific_force_mps2')
+            if status not in ('available', 'unavailable', 'saturated') or 'specific_force_mps2' not in row:
+                raise ValueError('accel explicit status and vector/null required')
+            if status == 'available' or value is not None:
+                vector(value, 'specific_force_mps2')
+            if status == 'unavailable' and value is not None:
+                raise ValueError('unavailable acceleration must be null, never zero-filled')
+            if status == 'available' and any(abs(v) >= header['accel_full_scale_mps2'] for v in value):
+                issues.append(dict(row=index, reason='accel_at_or_beyond_declared_full_scale', boot=boot))
         if receive_previous is not None and receive < receive_previous:
             issues.append(dict(row=index, reason='host_receive_clock_regressed'))
         receive_previous = receive
@@ -181,11 +204,11 @@ def audit(header, records):
         counts[kind] += 1
     if not counts:
         issues.append(dict(reason='empty_capture'))
-    for kind in ('encoder', 'imu'):
+    for kind in required_streams:
         if not counts[kind]:
             issues.append(dict(reason='missing_stream', stream=kind))
     for boot in seen_boots:
-        for kind in ('encoder', 'imu'):
+        for kind in required_streams:
             if not groups.get((boot, kind)):
                 issues.append(dict(reason='missing_stream_in_boot', stream=kind, boot=boot))
     streams = []
@@ -208,6 +231,15 @@ def audit(header, records):
                          positive_count_steps=sum(b['motor_counts'] > a['motor_counts'] for a, b in pairs),
                          negative_count_steps=sum(b['motor_counts'] < a['motor_counts'] for a, b in pairs),
                          unchanged_count_steps=sum(b['motor_counts'] == a['motor_counts'] for a, b in pairs))
+        elif kind == 'accel':
+            available = [r['specific_force_mps2'] for r in rows if r['status'] == 'available'
+                         and all(abs(v) < header['accel_full_scale_mps2'] for v in r['specific_force_mps2'])]
+            entry.update(status_counts=dict(Counter(r['status'] for r in rows)),
+                         numeric_available_samples=len(available),
+                         axis_specific_force_mps2=[summary([v[i] for v in available]) for i in range(3)],
+                         norm_specific_force_mps2=summary([math.hypot(*v) for v in available]),
+                         attitude_estimated=False, gravity_removed=False, calibration_applied=False,
+                         synchronized_with_gyro_verified=False)
         streams.append(entry)
     stationary = []
     for window in windows:
@@ -216,7 +248,7 @@ def audit(header, records):
         encoder = [r for r in groups.get((window['boot'], 'encoder'), [])
                    if window['first_us'] <= r['capture_us'] <= window['last_us']]
         stationary.append(stationary_candidate(window, imu, encoder, issues))
-    return dict(schema=SCHEMA, scope='passive_record_audit_not_driver_calibration_or_safety_authorization',
+    result = dict(schema=header['schema'], scope='passive_record_audit_not_driver_calibration_or_safety_authorization',
                 origin=header['origin'], record_integrity_valid=not issues,
                 recorded_sequence_complete=not issues and not any(sequence_gaps.values()),
                 complete_capture_verified=False,
@@ -233,6 +265,22 @@ def audit(header, records):
                         'Counter wrap must already be extended by the producer; no guessed unwrap is applied.',
                         'Motor mean and unchanged counts do not prove chassis rest or both-wheel rest.',
                         'Gyro candidates need independent immobilization, axis/temperature and hardware verification.'])
+    if has_accel:
+        # 기록의 존재·순서와 측정값 유효성은 별개다. 누락을 0/중력값으로 채우지 않는다.
+        accel_rows = [r for (boot, kind), rows in groups.items() if kind == 'accel' for r in rows]
+        result['acceleration_review'] = dict(
+            all_recorded_samples_available=bool(accel_rows) and all(
+                r['status'] == 'available' and all(abs(v) < header['accel_full_scale_mps2'] for v in r['specific_force_mps2'])
+                for r in accel_rows),
+            attitude_estimated=False, automatic_bias_application=False,
+            gyro_accel_synchronization_verified=False, chassis_stationarity_verified=False,
+            hardware_full_scale_verified=False)
+        result['limits'] += [
+            'Acceleration is sensor-frame specific force including gravity, not gravity-removed chassis acceleration.',
+            'Accel and gyro acquisition streams are independent; equal sequence IDs do not establish synchronization.',
+            'Declared per-axis full scale and statuses are producer claims, not hardware saturation proof.',
+            'A near-gravity magnitude does not prove stationarity or correct attitude during acceleration.']
+    return result
 
 
 def unique_object(pairs):

@@ -1,0 +1,47 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0
+rootdir: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local
+plugins: colcon-core-0.21.0, cov-4.1.0
+collected 9 items
+
+tests/test_observation_witness.py .....FF..                              [100%]
+
+=================================== FAILURES ===================================
+____________ test_left_right_mirror_has_same_causes_and_inner_roles ____________
+
+    def test_left_right_mirror_has_same_causes_and_inner_roles():
+        cfg = FollowConfig()
+        left = failure_witnesses([unknown_at(90)], 0., .2, .06, .06, cfg, POSE)
+        right = failure_witnesses([unknown_at(-90)], 0., .2, -.06, -.06, cfg, POSE)
+        assert left[2] and right[2] and not left[0]['supported'] and not right[0]['supported']
+        count = lambda rows: Counter((r['role'], r['cause'], r['distance_class']) for r in rows)
+>       assert count(left[1]) == count(right[1])
+E       AssertionError: assert Counter({('si..._motion'): 1}) == Counter({('si..._motion'): 1})
+E         Omitting 6 identical items, use -vv to show
+E         Differing items:
+E         {('side_inner', 'lateral_reach', 'standstill_gap'): 2} != {('side_inner', 'lateral_reach', 'standstill_gap'): 11}
+E         {('side_inner', 'lateral_reach', 'braking_margin'): 4} != {('side_inner', 'lateral_reach', 'braking_margin'): 10}
+E         {('side_inner', 'lateral_reach', 'age_term'): 1} != {('side_inner', 'lateral_reach', 'age_term'): 2}
+E         Right contains 1 more item:
+E         {('side_inner', 'lateral_reach', 'future_motion'): 1}
+E         Use -v to get more diff
+
+tests/test_observation_witness.py:30: AssertionError
+___ test_exact_straight_passes_but_tiny_inner_curvature_enters_unknown_wedge ___
+
+    def test_exact_straight_passes_but_tiny_inner_curvature_enters_unknown_wedge():
+        cfg = FollowConfig()
+        straight = failure_witnesses([unknown_at(90)], 0., .2, 0., 0., cfg, POSE)
+        assert straight[0]['supported'] and straight[1] == []
+        result, rows, consistent = failure_witnesses([unknown_at(90)], 0., .2, 1e-4, 1e-4, cfg, POSE)
+        parts = distance_parts(0., .2, .1, cfg)
+        assert consistent and not result['supported'] and rows
+>       assert all(r['role'] == 'side_inner' and r['cause'] == 'unknown_wedge' for r in rows)
+E       assert False
+E        +  where False = all(<generator object test_exact_straight_passes_but_tiny_inner_curvature_enters_unknown_wedge.<locals>.<genexpr> at 0x7660134adff0>)
+
+tests/test_observation_witness.py:43: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_observation_witness.py::test_left_right_mirror_has_same_causes_and_inner_roles
+FAILED tests/test_observation_witness.py::test_exact_straight_passes_but_tiny_inner_curvature_enters_unknown_wedge
+========================= 2 failed, 7 passed in 1.19s ==========================

@@ -53,7 +53,8 @@ SOURCE_FILES = [
     *[f'src/arena_autonomy/arena_autonomy/{name}.py' for name in (
         'core', 'wall_follow', 'local_path', 'local_pursuit', 'local_follow', 'scene_motion', 'local_scene',
         'vision_process', 'lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'follow_trace',
-        'boundary_evidence', 'occupancy_timing', 'race_start')],
+        'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'occupancy_timing', 'race_start',
+        'observation_support', 'observation_lateral', 'linear_observation')],
     *[f'src/arena_vehicle_interface/arena_vehicle_interface/{name}.py' for name in (
         'rotating_lidar', 'lidar_impairment', 'sim_wheel_encoder', 'ackermann_to_twist', 'timing_probe', 'queued_log',
         'actuation_ros', 'applied_guard', 'actuation_contract', 'actuation_wire')],
@@ -303,7 +304,7 @@ def main():
                         help='실행 사본에 평가용 바퀴 접촉 센서를 추가하여 원시 접촉 메시지 보존')
     parser.add_argument('--record-follow-decisions', action='store_true',
                         help='선택형 G1 판단 시점의 스캔/운동 이력/출력을 기록; 제어 변경 없음')
-    parser.add_argument('--boundary-evidence', choices=('connected', 'fragmented_candidate'), default='connected',
+    parser.add_argument('--boundary-evidence', choices=('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'), default='connected',
                         help='G1 경계 증거 후보; 기본 connected 유지, fragmented는 명시 선택형')
     parser.add_argument('--occupancy-timing', choices=('oldest', 'per_ray_candidate'), default='oldest',
                         help='점별 취득 시각 팽창 후보. 기본 oldest 유지, 점/거리 여유/운동 상한 유지')

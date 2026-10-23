@@ -324,3 +324,78 @@ def test_legacy_mode_does_not_read_motor_channel():
 def test_invalid_feedback_mode_or_missing_ratio_rejected(overrides):
     with pytest.raises(ValueError):
         MotionInput(NodeDouble(dict(overrides)))
+
+
+@pytest.mark.parametrize('frame', ['', 'other_imu', 'base_link', '/imu_link', 'IMU_link'])
+def test_explicit_imu_frame_rejects_other_or_empty_names_without_refresh(frame):
+    rows = []
+    node = NodeDouble({'motion_imu_frame_id': 'imu_link'})
+    adapter = MotionInput(node, record=rows.append)
+    msg = imu(0., z=.2)
+    msg.header.frame_id = 'imu_link'
+    adapter.on_imu(msg)
+    node.t = .01
+    wrong = imu(.01, z=.2)
+    wrong.header.frame_id = frame
+    adapter.on_imu(wrong)
+    assert adapter.history.gyro.times == [0.]
+    assert adapter.history.gyro.values == [.2]
+    assert adapter.last_gyro_rejection == 'gyro_frame_mismatch'
+    assert adapter.gyro_rejections == {'gyro_frame_mismatch': 1}
+    assert adapter.counts['gyro'] == 1 and adapter.counts['rejected'] == 1
+    assert rows[-1]['accepted'] is False and rows[-1]['stamp_s'] == .01
+    # 틀린 frame으로 거절한 시각을 소비하거나 직전값으로 채우지 않는다.
+    wrong.header.frame_id = 'imu_link'
+    adapter.on_imu(wrong)
+    assert adapter.history.gyro.times == [0., .01]
+
+
+def test_correct_frame_does_not_replace_mounting_transform_or_old_validity_guards():
+    node = NodeDouble({'motion_imu_frame_id': 'imu_link', 'motion_imu_roll_rad': math.pi/2})
+    adapter = MotionInput(node)
+    msg = imu(z=0.)
+    msg.header.frame_id = 'imu_link'
+    msg.angular_velocity.y = 2.
+    adapter.on_imu(msg)
+    assert adapter.history.gyro.values == [2.]
+    node.t = .01
+    stamp(msg, .01)
+    msg.angular_velocity.x = float('nan')
+    adapter.on_imu(msg)
+    assert adapter.last_gyro_rejection == 'gyro_nonfinite'
+    assert adapter.history.gyro.times == [0.]
+
+
+@pytest.mark.parametrize('configured', [None, False, 123, 1.5, ['imu_link'], ' ', 'imu link', 'imu\tlink', 'imu\x00link', 'x'*257])
+def test_invalid_expected_imu_frame_configuration_is_not_coerced(configured):
+    with pytest.raises(ValueError, match='motion_imu_frame_id'):
+        MotionInput(NodeDouble({'motion_imu_frame_id': configured}))
+
+
+@pytest.mark.parametrize('frame', ['', 'old_camera_frame', 'scoped/model/imu_link'])
+def test_empty_expected_frame_preserves_legacy_input(frame):
+    adapter = MotionInput(NodeDouble())
+    msg = imu(z=.2)
+    msg.header.frame_id = frame
+    adapter.on_imu(msg)
+    assert adapter.expected_imu_frame == ''
+    assert adapter.history.gyro.values == [.2] and adapter.counts['rejected'] == 0
+
+
+def test_repeated_wrong_frame_expires_history_instead_of_generating_zero_gyro():
+    node = NodeDouble({'motion_imu_frame_id': 'imu_link'})
+    adapter = MotionInput(node)
+    msg = imu(z=.2)
+    msg.header.frame_id = 'imu_link'
+    adapter.on_imu(msg)
+    for i in range(61):
+        node.t = i*.01
+        adapter.on_wheels(wheel(node.t))
+        if i:
+            wrong = imu(node.t, z=.2)
+            wrong.header.frame_id = 'wrong'
+            adapter.on_imu(wrong)
+    assert adapter.history.gyro.times == [0.]
+    assert adapter.gyro_rejections == {'gyro_frame_mismatch': 60}
+    with pytest.raises(MotionUnavailable):
+        adapter.history.poses([.5, .6], .6)

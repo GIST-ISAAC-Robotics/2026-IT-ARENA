@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-15 사용자 승인 뒤 명시 선택형 회랑 연결. 기본 비활성, 경계 기억 미갱신, 독립 보호/물성/정지 기준 유지",
+  "parent_contract": "config/tests/corner_distance_r0_sha256.json",
+  "parent_contract_sha256": "18a6ece63cf0c86add3d393e0de6d0961ff6842a4622494711dbd72a12a7c40c",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "9bf3a7e0f56a78ac1ae4ee8490094eb3cd88e8fcb2ee33fb30022ab4b66dc2a5",
+      "after": "e234c3b3bf0743785f4194371c28bb190d362c93cb71a0ebc3e1bf6ec4617306",
+      "reason": "기본 함수 본체 유지, 명시 bool 선택일 때만 관측기와 경계 미확정 HOLD의 대체 연결"
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "b078554412f4b7a12648e6aadb415b41324bc5f4be71695e9e2d0054af943519",
+      "after": "c11e625b1a0786ed4f78ab6c026e7b5c0b85911caed2762825b6282d33728fa2",
+      "reason": "기본 false 파라미터 전달, G1 미선택 상태에서 거절"
+    },
+    "src/arena_bringup/launch/g1_follow.launch.py": {
+      "before": "ecf323c69f5272d09c1ae3cb1c29a8207531022fac67c482c3432f33664e4506",
+      "after": "f3f8cc9d70a44875745a67155688d1d720406f530eda44af79c192e62b3b7c31",
+      "reason": "회랑 bool 선택만 추가, 기본 false"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/corner_corridor.py": "c692f8fa86c5a0459d7c58b3dc038ad570d982abe25b01e0c673c94bd7d13dd9",
+    "src/arena_autonomy/arena_autonomy/corridor_observer.py": "0f12fbea6ce66dc43ee9dc2f0d898e240612976a615e101a568ff2251cb1d976"
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "c13aa4ce88b0381d7c5cf1549bcf319e2c41b05d5d1be7ef5c29c44ec73f6ef2",
+      "after": "e88412cc5e0259804f8fa05603d1ff29adecabbdcce97027e3817f667a888bab",
+      "reason": "새 의존 소스 snapshot 목록만 추가, 교통 시험의 후보 선택/판정은 변경하지 않음"
+    },
+    "scripts/validate_basic_autonomy.py": {
+      "before": "bc9cca0b1d169c38646d538b5e592c4e4efcc173d59cc29a629a354b1fbc49b4",
+      "after": "ec76dd2e079f4f7ebfe14476fa2cc9bf4da7828f256353be8f6cef7ff923d909",
+      "reason": "명시 선택+필수 기록 조건·보고 및 소스 보존 추가, gate/밀집STOP/종료 기준 유지"
+    }
+  },
+  "evidence": ["docs/autonomy/G1_CORNER_BOUNDARY_2026_10_15.md"]
+}

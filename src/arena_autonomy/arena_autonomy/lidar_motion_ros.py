@@ -35,6 +35,13 @@ class MotionInput:
         config = {name: float(node.declare_parameter("motion_" + name, value).value)
                   for name, value in defaults.items()}
         self.history = MotionHistory(MotionConfig(**config))
+        # 실물 연결 시 장착 축과 함께 명시할 입력 frame 계약. 빈 문자열은 기존
+        # bag/시뮬레이션 호환 경로이며 실제 frame 검증 완료라는 뜻이 아니다.
+        self.expected_imu_frame = node.declare_parameter("motion_imu_frame_id", "").value
+        if (not isinstance(self.expected_imu_frame, str)
+                or len(self.expected_imu_frame) > 256
+                or any(c.isspace() or not c.isprintable() for c in self.expected_imu_frame)):
+            raise ValueError("motion_imu_frame_id must be an explicit frame name or empty legacy setting")
         # 차체 z축에 투영할 IMU 각속도. R_BI = Rz(yaw) Ry(pitch) Rx(roll).
         roll = float(node.declare_parameter("motion_imu_roll_rad", 0.).value)
         pitch = float(node.declare_parameter("motion_imu_pitch_rad", 0.).value)
@@ -131,7 +138,9 @@ class MotionInput:
         values = [msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]
         yaw = sum(a * v for a, v in zip(self.axis, values))
         reason = None
-        if msg.angular_velocity_covariance[0] == -1:
+        if self.expected_imu_frame and msg.header.frame_id != self.expected_imu_frame:
+            reason = "gyro_frame_mismatch"
+        elif msg.angular_velocity_covariance[0] == -1:
             reason = "gyro_unavailable"
         elif not all(math.isfinite(v) for v in values):
             reason = "gyro_nonfinite"

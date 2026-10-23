@@ -1,0 +1,453 @@
+import math
+from pathlib import Path
+import sys
+import time
+from types import SimpleNamespace
+import xml.etree.ElementTree as ET
+
+import cv2
+import numpy as np
+import pytest
+import xacro
+import yaml
+
+REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "src/arena_autonomy"))
+from arena_autonomy.core import (StartSignal, depth_gap_command, depth_lateral_clearance,
+                                 depth_wall_points, estimate_wall, follow_command, image_depth_m,
+                                 marker_ids, road_center_angle, scan_points)
+from arena_autonomy import wall_follow
+
+
+def model(**mappings):
+    return ET.fromstring(xacro.process_file(str(REPO / "src/arena_description/models/arena_car/model.sdf.xacro"),
+                                           mappings=mappings).toxml())
+
+
+def test_depth_can_be_disabled_without_removing_rgb_lidar_or_imu():
+    assert model().find(".//sensor[@name='d435i_depth']") is not None
+    rgb_only = model(d435i_depth_enabled="false")
+    assert rgb_only.find(".//sensor[@name='d435i_depth']") is None
+    for name in ("d435i_color", "d435i_imu", "rplidar_c1"):
+        assert rgb_only.find(f".//sensor[@name='{name}']") is not None
+    bridge = yaml.safe_load((REPO / "src/arena_bringup/config/d435i_rgb_imu_bridge.yaml").read_text())
+    assert {entry['topic_name'] for entry in bridge} == {
+        "/camera/color/image_raw", "/camera/color/camera_info", "/camera/imu"}
+
+
+def test_c1_nominal_scan_and_provisional_mount():
+    config = yaml.safe_load((REPO / "src/arena_description/config/vehicle.yaml").read_text())["vehicle"]
+    lidar = config["sensors"]["lidar_2d"]
+    assert lidar["enabled"] and "provisional" in lidar["status"]
+    root = model()
+    link = root.find(".//link[@name='lidar_link']")
+    sensor = link.find("sensor")
+    horizontal = sensor.find("lidar/scan/horizontal")
+    samples = int(horizontal.findtext("samples"))
+    assert samples == lidar["samples_per_scan"] == 500
+    assert float(sensor.findtext("update_rate")) == lidar["scan_rate_hz"] == 10
+    step = (float(horizontal.findtext("max_angle")) - float(horizontal.findtext("min_angle"))) / (samples - 1)
+    assert math.degrees(step) == pytest.approx(.72)
+    assert step * samples == pytest.approx(2 * math.pi)
+    assert float(sensor.findtext("lidar/range/min")) == .05
+    assert float(sensor.findtext("lidar/range/max")) == 12
+    assert float(sensor.findtext("lidar/range/resolution")) == .015
+    z = float(link.findtext("pose").split()[2])
+    assert z > config["drivetrain"]["wheel_radius_m"] + config["body"]["height_m"]
+    for visual in link.findall("visual"):
+        offset = float(visual.findtext("pose").split()[2])
+        height = float(visual.findtext("geometry/cylinder/length"))
+        assert offset + height / 2 < 0  # 자기 몸체가 스캔 평면을 막지 않음
+
+
+def test_sensor_mode_comparison_keeps_two_kilogram_dynamics():
+    config = yaml.safe_load((REPO / "src/arena_description/config/vehicle.yaml").read_text())["vehicle"]
+    fixed_mass = 4 * .04 + 2 * .01 + .072
+    tof_mass = float(config["sensors"]["tof_ring"]["carrier_mass_kg"])
+    lidar_mass = float(config["sensors"]["lidar_2d"]["mass_kg"])
+    body_mass = float(config["body"]["mass_kg"])
+    lidar_total = body_mass + fixed_mass + lidar_mass + 6 * tof_mass
+    stereo_ballast = lidar_mass + 2 * tof_mass
+    stereo_total = body_mass + stereo_ballast + fixed_mass + 4 * tof_mass
+    assert lidar_total == pytest.approx(2.0)
+    assert stereo_ballast == pytest.approx(.111)
+    assert stereo_total == pytest.approx(lidar_total)
+
+
+def test_speed_limits_remain_without_oscillating_jerk_clamp():
+    plugin = model(drive_mode="legacy_velocity", max_speed="2").find(".//plugin[@name='gz::sim::systems::AckermannSteering']")
+    assert plugin.find("max_jerk") is None and plugin.find("min_jerk") is None
+    assert float(plugin.findtext("max_velocity")) == 2
+    assert float(plugin.findtext("max_acceleration")) == 4
+    assert float(plugin.findtext("min_acceleration")) == -4
+
+
+def signal_image(state):
+    rgb = np.full((480, 848, 3), 100, np.uint8)
+    cv2.rectangle(rgb, (250, 130), (390, 180), (3, 3, 3), -1)
+    for name, x, color in [("red", 280, (255, 4, 1)), ("yellow", 320, (255, 180, 1)),
+                           ("green", 360, (1, 255, 10))]:
+        cv2.circle(rgb, (x, 155), 10, color if name == state else tuple(int(v * .08) for v in color), -1)
+    return rgb
+
+
+def test_green_without_observed_red_or_green_grass_does_not_start():
+    signal = StartSignal()
+    for _ in range(8):
+        assert not signal.update(signal_image("green"))
+    for _ in range(2):
+        signal.update(signal_image("red"))
+    grass = signal_image("yellow")
+    grass[280:] = (0, 255, 0)
+    for _ in range(8):
+        assert not signal.update(grass)
+
+
+def test_red_then_consecutive_green_latches_continuous_running():
+    signal = StartSignal()
+    for _ in range(2):
+        assert not signal.update(signal_image("red"))
+    assert not signal.update(signal_image("yellow"))
+    assert not signal.update(signal_image("green"))
+    assert not signal.update(signal_image("green"))
+    assert signal.update(signal_image("green"))
+    assert signal.update(np.zeros((480, 848, 3), np.uint8))  # 신호등을 지난 뒤에도 유지
+
+
+def test_started_signal_skips_redundant_pixels_and_new_instance_rechecks(monkeypatch):
+    signal = StartSignal()
+    signal.started, signal.observed = True, 'green'
+    before = vars(signal).copy()
+    def must_not_run(*args):
+        raise AssertionError('pixel processing after latched start')
+    monkeypatch.setattr(cv2, 'cvtColor', must_not_run)
+    assert signal.update(None)
+    assert vars(signal) == before
+    with pytest.raises(AssertionError, match='pixel processing'):
+        StartSignal().update(None)
+
+
+def test_wall_fit_mirrors_and_recovers_from_small_pole_outlier():
+    x = np.linspace(-.2, .65, 80)
+    for side, sign in [("left", 1), ("right", -1)]:
+        points = np.column_stack((x, sign * np.full(len(x), .425)))
+        points = np.vstack((points, [[.1, sign * .25], [.11, sign * .25]]))
+        estimate = estimate_wall(points, side)
+        assert estimate.distance == pytest.approx(.425, abs=.01)
+        speed, steering, _ = follow_command(points, side)
+        assert speed > 0 and abs(steering) < .02
+        points[:, 1] *= .7
+        _, steering, _ = follow_command(points, side)
+        assert steering * sign < 0  # 가까운 벽에서 떨어짐
+
+
+def test_missing_wall_and_close_obstacle_stop():
+    assert follow_command(np.empty((0, 2)), "left")[0] == 0
+    x = np.linspace(-.2, .65, 80)
+    points = np.vstack((np.column_stack((x, np.full(len(x), .425))), [[.12, 0]]))
+    speed, _, detail = follow_command(points, "left")
+    assert speed == 0 and detail["reason"] == "obstacle_stop"
+
+
+def test_depth_gap_steers_to_open_side_and_centers_symmetric_opening():
+    depth = np.ones((80, 120), np.float32)
+    depth[28:53, 44:76] = np.inf
+    speed, steering, detail = depth_gap_command(
+        depth, fx=70., cx=60., cy=40., row_half_height=10, column_stride=2,
+    )
+    assert speed > 0 and abs(steering) < .04
+    assert detail["reason"] == "depth_gap_following"
+
+    depth[28:53, 44:76] = 1.0
+    depth[28:53, 10:40] = np.inf  # 영상 왼쪽은 차량 기준 왼쪽입니다.
+    speed, steering, detail = depth_gap_command(
+        depth, fx=70., cx=60., cy=40., row_half_height=10, column_stride=2,
+    )
+    assert speed > 0 and steering > .1
+    assert detail["target_angle_rad"] > 0
+
+
+def test_depth_gap_stops_when_no_clear_corridor_exists():
+    depth = np.full((40, 60), .3, np.float32)
+    speed, steering, detail = depth_gap_command(
+        depth, fx=50., cx=30., cy=20., row_half_height=6, column_stride=2,
+    )
+    assert speed == 0 and steering == 0
+    assert detail["reason"] == "no_free_gap"
+
+
+def test_depth_gap_does_not_treat_too_close_negative_infinity_as_open():
+    depth = np.full((60, 100), np.inf, np.float32)
+    depth[20:41, :45] = -np.inf
+    speed, steering, detail = depth_gap_command(
+        depth, fx=70., cx=50., cy=30., row_half_height=8, column_stride=2,
+    )
+    assert speed > 0 and steering < -.1
+    assert detail["too_close_depth_samples"] > 0
+    assert detail["near_obstacle_angle_rad"] > 0
+    assert detail["near_avoidance_rad"] < 0
+
+
+def test_depth_lateral_clearance_is_mirrored_and_rejects_small_outlier_set():
+    x = np.linspace(.2, .65, 80)
+    for side, sign in (("left", 1), ("right", -1)):
+        wall = np.column_stack((x, np.full(len(x), sign * .31)))
+        poles = np.asarray([[.3, sign * .08], [.4, sign * .09]])
+        assert depth_lateral_clearance(np.vstack((wall, poles)), side) == pytest.approx(.31)
+    assert depth_lateral_clearance(np.asarray([[.3, .2]]), "left") is None
+
+
+def test_rgb_road_center_cue_steers_toward_shifted_gray_strip():
+    rgb = np.full((100, 160, 3), (170, 170, 170), np.uint8)
+    rgb[55:, 15:95] = (88, 88, 91)
+    rgb[55:, :15] = (65, 140, 65)
+    rgb[55:, 95:] = (65, 140, 65)
+    angle, detail = road_center_angle(rgb, fx=120., cx=80.)
+    assert angle > .15  # 도로 중심이 영상 왼쪽이므로 차량 기준 좌회전
+    assert detail["road_center_rows"] == 3
+
+
+def test_rgb_road_center_cue_rejects_grass_and_missing_rows():
+    grass = np.full((100, 160, 3), (50, 150, 50), np.uint8)
+    angle, detail = road_center_angle(grass, fx=120., cx=80.)
+    assert angle is None
+    assert detail["road_center_reason"] == "insufficient_gray_road_rows"
+
+
+def test_scan_invalid_values_are_not_obstacles_or_free_space_samples():
+    points, count = scan_points([math.nan, math.inf, 0, .01, .5, 20], -1, .2, .05, 12)
+    assert count == 1 and np.all(np.isfinite(points))
+
+
+def test_depth_image_padding_endianness_and_vehicle_projection():
+    # 두 행 사이 4바이트 패딩을 깊이 표본으로 잘못 읽지 않습니다.
+    raw = (np.asarray([1.0, 2.0], dtype="<f4").tobytes() + b"pad!" +
+           np.asarray([.5, math.inf], dtype="<f4").tobytes() + b"pad!")
+    message = SimpleNamespace(encoding="32FC1", width=2, height=2, step=12,
+                              is_bigendian=False, data=raw)
+    depth = image_depth_m(message)
+    assert depth.shape == (2, 2) and depth[0].tolist() == pytest.approx([1., 2.])
+    points, count = depth_wall_points(
+        np.asarray([[1.0]], np.float32), fx=2., fy=2., cx=1., cy=1.,
+        camera_xyz=(.055, 0., .075), stride=1, minimum_height=.5,
+        maximum_height=.7, minimum_forward=.5, maximum_forward=1.2,
+    )
+    assert count == 1
+    assert points[0] == pytest.approx([1.055, .5])
+
+
+def test_runtime_autonomy_has_no_ground_truth_or_map_input():
+    for filename in ("wall_follow.py", "stereo_wall_follow.py"):
+        source = (REPO / "src/arena_autonomy/arena_autonomy" / filename).read_text()
+        for forbidden in ("Odometry", '"/odom"', '"/tf"', "centerline.csv", "scene.json", "dynamic_pose", "traffic_light/state"):
+            assert forbidden not in source
+    stereo = (REPO / "src/arena_autonomy/arena_autonomy/stereo_wall_follow.py").read_text()
+    assert '"/scan"' not in stereo
+    assert '"/camera/depth/image_rect_raw"' in stereo
+
+
+def test_aruco_gate_id_is_read_from_pixels():
+    dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    make = getattr(cv2.aruco, "generateImageMarker", None) or cv2.aruco.drawMarker
+    gray = np.full((200, 200), 255, np.uint8)
+    gray[40:160, 40:160] = make(dictionary, 20, 120)
+    assert marker_ids(cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)) == [20]
+    assert set(marker_ids(cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB), .02)) == {20}
+
+
+def controller_double(monkeypatch):
+    """ROS 네트워크에 명령을 보내지 않고 타이머의 정지 판단만 검사합니다."""
+    from builtin_interfaces.msg import Time
+    from sensor_msgs.msg import LaserScan
+    commands, statuses = [], []
+    stamp = Time(sec=10)
+    scan = LaserScan(angle_min=-math.pi, angle_increment=2 * math.pi / 500,
+                     range_min=.05, range_max=12., ranges=[.5] * 500)
+    scan.header.stamp = stamp
+    signal = StartSignal()
+    signal.started = True
+    signal.observed = "green"
+    controller = SimpleNamespace(
+        timing=SimpleNamespace(call=lambda name, callback, *args, **kwargs: callback(*args, **kwargs)),
+        state_log=SimpleNamespace(snapshot=lambda: {}, submit=lambda text: True),
+        settings={"control_rate_hz": 20., "scan_timeout_s": .45, "image_timeout_s": 1.,
+                  "lidar_x_m": -.03, "target_wall_distance_m": .425, "wheelbase_m": .145,
+                  "max_steering_angle_rad": .45, "max_speed_mps": .35, "min_speed_mps": .14,
+                  "lateral_acceleration_limit_mps2": 3.0, "acceleration_mps2": .5},
+        signal=signal, scan=scan, motion=None, rgb_stamp=10., scan_wall_time=time.monotonic(),
+        image_wall_time=time.monotonic(), enabled=True, side="left", ids=[],
+        last_steering=0., last_speed=.2, last_status="", last_status_time=-math.inf,
+        last_control_time=-math.inf, now_s=lambda: 10.,
+        publisher=SimpleNamespace(publish=commands.append),
+        status_publisher=SimpleNamespace(publish=statuses.append),
+        get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(to_msg=lambda: stamp)),
+        get_logger=lambda: SimpleNamespace(info=lambda *_: None))
+    monkeypatch.setattr(wall_follow, "follow_command", lambda *_: (.3, .1, {"reason": "following"}))
+    controller.command = lambda points: wall_follow.WallFollow.command(controller, points)
+    return controller, commands, statuses
+
+
+@pytest.mark.parametrize("failure", ["stale_scan", "stale_image", "stalled_transport", "disabled", "no_green"])
+def test_controller_stops_without_fresh_inputs_and_permission(monkeypatch, failure):
+    import json
+    controller, commands, statuses = controller_double(monkeypatch)
+    wall_follow.WallFollow.control(controller)
+    assert commands[-1].drive.speed > 0
+    if failure == "stale_scan":
+        controller.scan.header.stamp.sec = 8
+    elif failure == "stale_image":
+        controller.rgb_stamp = 8.
+    elif failure == "stalled_transport":
+        controller.scan_wall_time = time.monotonic() - 4
+    elif failure == "disabled":
+        controller.enabled = False
+    else:
+        controller.signal.started = False
+    wall_follow.WallFollow.control(controller)
+    assert commands[-1].drive.speed == 0
+    expected = "DISABLED" if failure == "disabled" else "WAIT_GREEN" if failure == "no_green" else "SENSOR_STOP"
+    assert json.loads(statuses[-1].data)["state"] == expected
+
+
+def test_offline_wall_timeout_does_not_relax_observation_age(monkeypatch):
+    controller, commands, _ = controller_double(monkeypatch)
+    controller.settings['sensor_wall_timeout_s'] = 30.
+    controller.scan_wall_time = time.monotonic() - 4.
+    controller.image_wall_time = time.monotonic() - 4.
+    wall_follow.WallFollow.control(controller)
+    assert commands[-1].drive.speed > 0
+    controller.scan.header.stamp.sec = 8
+    wall_follow.WallFollow.control(controller)
+    assert commands[-1].drive.speed == 0
+
+
+def test_motion_failure_stops_without_uncompensated_fallback(monkeypatch):
+    import json
+    from arena_autonomy.lidar_motion import MotionUnavailable
+    controller, commands, statuses = controller_double(monkeypatch)
+    def reject(_):
+        raise MotionUnavailable('motion_stale')
+    controller.motion = SimpleNamespace(project=reject, last_meta={'reason': 'motion_stale'})
+    wall_follow.WallFollow.control(controller)
+    assert commands[-1].drive.speed == 0.
+    assert json.loads(statuses[-1].data)['state'] == 'MOTION_STOP'
+
+
+def test_motion_success_feeds_corrected_points_to_same_controller(monkeypatch):
+    controller, commands, statuses = controller_double(monkeypatch)
+    points = np.column_stack((np.linspace(-.2, .6, 40), np.full(40, .425)))
+    seen = []
+    def follow(received, *_):
+        seen.append(received)
+        return .3, .1, {'reason':'following'}
+    monkeypatch.setattr(wall_follow, 'follow_command', follow)
+    controller.motion = SimpleNamespace(project=lambda _: (points, 40), last_meta={'reason':'ok'})
+    wall_follow.WallFollow.control(controller)
+    assert seen[0] is points
+    assert commands[-1].drive.speed > 0
+
+
+def test_late_image_is_ignored_without_clearing_start_permission():
+    from sensor_msgs.msg import Image
+    from builtin_interfaces.msg import Time
+    signal = StartSignal()
+    signal.started = True
+    controller = SimpleNamespace(last_image_processed=10., signal=signal, side="right")
+    late = Image()
+    late.header.stamp = Time(sec=9)
+    wall_follow.WallFollow.on_image(controller, late)
+    assert signal.started and controller.side == "right" and controller.last_image_processed == 10.
+
+
+@pytest.mark.parametrize('condition', ['fault', 'stale', 'fresh'])
+def test_process_vision_result_reaches_existing_controller_stop_boundary(monkeypatch, condition):
+    """작업 프로세스 결과도 실제 제어 함수의 관측 나이/정지 경계를 통과한다."""
+    import json
+    from arena_autonomy.local_pursuit import LocalPursuit
+    controller, commands, statuses = controller_double(monkeypatch)
+    node = LocalPursuit.__new__(LocalPursuit)
+    node.__dict__.update(vars(controller))
+    result = dict(stamp=8. if condition == 'stale' else 9.9,
+                  received=time.monotonic())
+    pipeline = SimpleNamespace(fault='worker exited' if condition == 'fault' else None,
+        signal=controller.signal, ids=[30], pump=lambda now: result,
+        snapshot=lambda: {'mode': 'process'})
+    node.vision_pipeline = pipeline
+    LocalPursuit.control(node)
+    if condition == 'fresh':
+        assert commands[-1].drive.speed > 0 and node.side == 'right'
+        assert node.rgb_stamp == 9.9  # 결과 수신 시각 10초로 바꿔 쓰지 않는다.
+    else:
+        assert commands[-1].drive.speed == 0
+        assert json.loads(statuses[-1].data)['state'] == 'SENSOR_STOP'
+
+
+def test_validator_forwards_shutdown_without_inherited_terminal(monkeypatch):
+    monkeypatch.syspath_prepend(str(REPO / "scripts"))
+    import validate_basic_autonomy as validator
+    calls = []
+    monkeypatch.setattr(validator.subprocess, "Popen", lambda *args, **kwargs: calls.append((args, kwargs)))
+    log = object()
+    validator.start_demo_process(log)
+    args, kwargs = calls[0]
+    assert args[0][:3] == ["ros2", "launch", "--noninteractive"]
+    assert "lidar_rate_hz:=10" in args[0]
+    assert "tof_safety:=true" in args[0]
+    assert "red_duration_s:=8" in args[0]
+    assert "grid_slot:=0" in args[0]
+    assert not any(argument.endswith(':=') for argument in args[0])
+    assert not any(argument.startswith('lidar_test_profile:=') for argument in args[0])
+    assert kwargs["stdin"] == validator.subprocess.DEVNULL
+    assert kwargs["start_new_session"] is True
+    assert kwargs["stdout"] is log and kwargs["stderr"] is log
+
+
+def test_validator_passes_requested_grid_slot(monkeypatch):
+    monkeypatch.syspath_prepend(str(REPO / "scripts"))
+    import validate_basic_autonomy as validator
+    calls = []
+    monkeypatch.setattr(validator.subprocess, 'Popen', lambda command, **kw: calls.append(command))
+    validator.start_demo_process(object(), grid_slot=3)
+    assert 'grid_slot:=3' in calls[0]
+
+
+def test_validator_passes_nonempty_impairment_and_artifact_paths_as_single_arguments(monkeypatch):
+    monkeypatch.syspath_prepend(str(REPO / 'scripts'))
+    import validate_basic_autonomy as validator
+    calls = []
+    monkeypatch.setattr(validator.subprocess, 'Popen', lambda command, **kw: calls.append(command))
+    validator.start_demo_process(None, lidar_test_profile='/tmp/profile with spaces.json',
+                                 runtime_artifacts='/tmp/run with spaces')
+    assert 'lidar_test_profile:=/tmp/profile with spaces.json' in calls[0]
+    assert 'runtime_artifacts:=/tmp/run with spaces' in calls[0]
+    assert not any(argument.endswith(':=') for argument in calls[0])
+
+
+def test_high_speed_recording_options_are_explicit_and_default_stays_protected(monkeypatch):
+    monkeypatch.syspath_prepend(str(REPO / "scripts"))
+    import validate_basic_autonomy as validator
+    calls = []
+    monkeypatch.setattr(validator.subprocess, "Popen", lambda *a, **kw: calls.append(a[0]))
+    validator.start_demo_process(None, speed_profile="hardware_target", tof_safety=False,
+        chase_camera=True, lidar_acquisition="sequential", lidar_compensation="both",
+        control_rate_hz=100., render_backend="wsl_nvidia")
+    assert {"tof_safety:=false", "chase_camera:=true", "lidar_acquisition:=sequential",
+            "lidar_compensation:=both", "autonomy_control_rate_hz:=100.0",
+            "render_backend:=wsl_nvidia", "speed_profile:=hardware_target"} <= set(calls[0])
+
+
+@pytest.mark.parametrize(
+    ("light", "drive_speed", "autonomy", "expected"),
+    [
+        ("red", 0.0, {"started": True, "speed_command_mps": 0.0}, True),
+        ("yellow", 0.02, {"started": False, "speed_command_mps": 0.0}, True),
+        ("unknown", 0.0, {"started": False, "speed_command_mps": 0.03}, True),
+        ("red", 0.0, {"started": False, "speed_command_mps": 0.0}, False),
+        ("green", 0.20, {"started": True, "speed_command_mps": 0.20}, False),
+    ],
+)
+def test_validator_detects_early_permission_and_speed_independent_of_run_state(
+        monkeypatch, light, drive_speed, autonomy, expected):
+    monkeypatch.syspath_prepend(str(REPO / "scripts"))
+    import validate_basic_autonomy as validator
+    assert validator.early_start_detected(light, drive_speed, autonomy) is expected

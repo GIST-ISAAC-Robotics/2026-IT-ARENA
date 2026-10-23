@@ -20,7 +20,8 @@ def test_minimal_bundle_has_all_static_internal_dependencies_and_no_ros_node():
 
 
 def test_minimal_scripts_parse_as_python310():
-    for name in ('scripts/profile_follow_trace.py', 'scripts/audit_hardware_capture.py'):
+    for name in ('scripts/profile_follow_trace.py', 'scripts/audit_hardware_capture.py',
+                 'scripts/audit_follow_occupancy.py'):
         ast.parse((bundle.ROOT/name).read_text(encoding='utf-8'), feature_version=(3, 10))
     # 문법 검사일 뿐 ARM/Jetson 실제 의존성 검증은 아니다.
 

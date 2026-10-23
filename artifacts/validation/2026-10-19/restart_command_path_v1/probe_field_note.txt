@@ -1,0 +1,15 @@
+호스트 진단 필드 정정 메모 (원시 로그는 수정하지 않음)
+
+ros_v7·ros_v8·ros_v9의 host_0.log `HOST_DRIVE_DECISION=` 줄에 있는 `last_source_us_before`는
+이름과 달리 원래 `ActuationHost.on_drive` 호출 뒤 같은 producer 객체에서 읽은 값이다.
+즉 실제로는 호출 후 원천 watermark다. 전달된 호출에서는 그 호출의 source_us와 같고,
+거절된 호출에서는 호출 전 값과 같다.
+
+정정본 scripts/pipeline_restart_probe.py는 호출 전 값을 context 생성 때 스칼라로 복사해
+`last_source_us_before`에 쓰고, 호출 후 값을 `last_source_us_after`로 따로 남긴다.
+회귀: tests/test_pipeline_restart_probe.py::test_host_before_value_is_copied_before_forwarding_changes_producer
+및 test_host_repeated_source_is_named_and_only_transitions_are_logged.
+
+v8/v9 해석에는 이 필드를 쓰지 않았다. label·forwarded·previous_run·offer·arm_barrier는
+on_drive가 바꾸지 않거나 호출 전 값으로 계산돼 영향이 없다.
+정정본은 v9 실행 소스와 이 부분만 다르며, v9 결과를 정정본의 ROS 실행 성공으로 소급하지 않는다.

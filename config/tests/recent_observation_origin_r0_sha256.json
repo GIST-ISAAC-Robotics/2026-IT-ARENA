@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-21 광선 원점의 정의되지 않은 방위에 의한 signed-zero 의존 선택을 별도 fail-closed 처리",
+  "parent_contract": "config/tests/recent_observation_window_r0_sha256.json",
+  "parent_contract_sha256": "cf3b476beeea6213faa4e133a70812429d7122aef4da0ff2374b5a7d4176725a",
+  "modified_dependencies": {
+    "src/arena_autonomy/arena_autonomy/observation_support.py": {
+      "before": "e22e41adf52ae577f51e8a0687e7bfa8e747046a6b1f7d11f7ddaeeb4a027df8",
+      "after": "e6f31313de67a379a4c813e5b8730ea2cb16f9d6f67a9c7fc715aea44ee9d1b5",
+      "reason": "어느 광선 원점과든 1e-9 m 이내인 질의는 불명확한 지지 거절. 기존 거리/관측/STOP 한도 완화 없음"
+    }
+  },
+  "evidence": ["tests/test_observation_depth_window.py"]
+}

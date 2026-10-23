@@ -1,0 +1,62 @@
+..............................F......................................... [ 36%]
+........................................................................ [ 73%]
+....................................................                     [100%]
+=================================== FAILURES ===================================
+_________ test_same_scan_reverse_and_epoch_do_not_bypass_confirmation __________
+
+isolated_path = None
+
+    def test_same_scan_reverse_and_epoch_do_not_bypass_confirmation(isolated_path):
+        ctl=LocalFollow(FollowConfig(boundary_evidence_mode='corner_anchor_candidate'))
+        h=history()
+        for t in (.4,.42,.44):
+            assert ctl.command(contract_scene(t,source=.3),h,0.,'left')[0]==0
+        assert ctl.pending_count==1
+        for t in (.5,.6,.7):
+            out=ctl.command(contract_scene(t),h,0.,'left')
+        assert out[0]>0
+        assert ctl.command(contract_scene(.8),h,-.01,'left')[0]==0
+        assert ctl.command(contract_scene(.9),h,0.,'left')[0]==0
+        assert ctl.command(contract_scene(1.),h,0.,'left')[0]>0
+>       assert ctl.command(replace(contract_scene(1.1),source_epoch=1),h,0.,'left')[0]==0
+
+tests/test_corner_follow.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/dataclasses.py:1581: in replace
+    return obj.__class__(**changes)
+<string>:10: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = LocalScene(t_ref_s=1.1, source_first_s=1.0, source_last_s=1.0, source_frame_id='laser_frame', source_epoch=1, rays=(Se...frame', source_epoch=0, source_index=135, direction_xy=(0.96360855352321, 0.26731733123182827))), frame_id='base_link')
+
+    def __post_init__(self):
+        t_ref = _finite(self.t_ref_s, 't_ref_s')
+        if t_ref < 0 or self.frame_id != 'base_link':
+            raise ValueError('invalid reference time/frame')
+        _source(self.source_frame_id, self.source_epoch)
+        if len(self.rays) > MAX_RAYS:
+            raise ValueError('too many rays')
+        rays = tuple(self.rays)
+        object.__setattr__(self, 'rays', rays)
+        if not rays:
+            if self.source_first_s is not None or self.source_last_s is not None:
+                raise ValueError('empty input has no source observation times')
+            return
+        if any(not isinstance(ray, SensorRay) for ray in rays):
+            raise ValueError('rays must be SensorRay')
+        first = _finite(self.source_first_s, 'source_first_s')
+        last = _finite(self.source_last_s, 'source_last_s')
+        if first != rays[0].acquired_at_s or last != rays[-1].acquired_at_s or last > t_ref or first < 0:
+            raise ValueError('source interval/reference time mismatch')
+        previous = -1.
+        indices = set()
+        for ray in rays:
+            if ray.source_frame_id != self.source_frame_id or ray.source_epoch != self.source_epoch:
+>               raise ValueError('mixed source frame/epoch')
+E               ValueError: mixed source frame/epoch
+
+src/arena_autonomy/arena_autonomy/local_scene.py:99: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_corner_follow.py::test_same_scan_reverse_and_epoch_do_not_bypass_confirmation
+1 failed, 195 passed in 7.64s

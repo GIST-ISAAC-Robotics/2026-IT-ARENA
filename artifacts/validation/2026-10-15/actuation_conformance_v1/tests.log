@@ -1,0 +1,19 @@
+..F..................................................................... [ 78%]
+....................                                                     [100%]
+=================================== FAILURES ===================================
+___________________ test_motor_baseline_matches_vehicle_yaml ___________________
+
+    def test_motor_baseline_matches_vehicle_yaml():
+        vehicle = yaml.safe_load((ROOT/'src/arena_description/config/vehicle.yaml').read_text(encoding='utf-8'))['vehicle']
+        drive = vehicle['drivetrain']
+        cfg = bench.motor_config()
+        assert cfg.feedback_mode == 'drive_motor_shaft'
+        assert cfg.wheel_radius_m == drive['wheel_radius_m'] == .0325
+        assert cfg.gear_ratio == drive['motor']['gear_ratio'] == 15
+>       assert cfg.ticks_per_rev == drive['drive_feedback']['drive_motor_encoder']['counts_per_motor_revolution'] == 28
+E       KeyError: 'drive_feedback'
+
+tests/test_actuation_conformance.py:52: KeyError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_conformance.py::test_motor_baseline_matches_vehicle_yaml
+1 failed, 91 passed in 0.64s

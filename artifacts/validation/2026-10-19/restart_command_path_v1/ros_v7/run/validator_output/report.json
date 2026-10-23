@@ -1,0 +1,1756 @@
+{
+  "passed": false,
+  "cases": [],
+  "scope": "synthetic straight RGB/LiDAR/IMU/motor sensors, real ROS child processes and toy longitudinal plant; not Gazebo or hardware",
+  "measurement_quality": "monitor receipt times include DDS/scheduling; no latency bound or real braking guarantee; unavailable killed-source zeros remain null",
+  "fixture": "each scan has ego-local rectangular walls x +/-6m, y +/-0.425m; sequential rays use toy motion history; steering is not integrated; no fixed world course",
+  "timing": {
+    "dt_sim_s": 0.005,
+    "sleep_wall_s": 0.005,
+    "scan_hz": 10,
+    "imu_hz": 200,
+    "encoder_hz": 100,
+    "rgb_hz": 10
+  },
+  "ros_domain_id": "154",
+  "scenario": "full",
+  "cycles": 1,
+  "signal_mode": "temporary_3light",
+  "controller_profile": "g1_recent_observation_candidate",
+  "mcu_deadline_diagnostics": [],
+  "processes": [
+    {
+      "role": "host",
+      "pid": 769,
+      "identity": {
+        "pid": 769,
+        "state": "R",
+        "parent": 754,
+        "group": 769,
+        "session": 769,
+        "start_ticks": 7477
+      },
+      "log": "host_0.log",
+      "command": [
+        "/usr/bin/python3",
+        "-c",
+        "import hashlib,importlib,json; names=['arena_autonomy.local_pursuit', 'arena_autonomy.wall_follow', 'arena_autonomy.vision_process', 'arena_autonomy.race_start', 'arena_autonomy.core', 'arena_autonomy.local_path', 'arena_autonomy.local_follow', 'arena_autonomy.boundary_evidence', 'arena_autonomy.corner_evidence', 'arena_autonomy.corner_distance', 'arena_autonomy.corner_corridor', 'arena_autonomy.corridor_observer', 'arena_autonomy.occupancy_timing', 'arena_autonomy.scene_motion', 'arena_autonomy.local_scene', 'arena_autonomy.follow_trace', 'arena_autonomy.lidar_safety', 'arena_autonomy.lidar_motion', 'arena_autonomy.lidar_motion_ros', 'arena_autonomy.lidar_observation', 'arena_autonomy.observation_support', 'arena_autonomy.observation_lateral', 'arena_autonomy.linear_observation', 'arena_vehicle_interface.actuation_ros', 'arena_vehicle_interface.actuation_contract', 'arena_vehicle_interface.actuation_wire', 'arena_vehicle_interface.applied_guard', 'arena_vehicle_interface.drive_feedback', 'arena_vehicle_interface.node_lifecycle', 'arena_vehicle_interface.queued_log', 'arena_vehicle_interface.timing_probe']; mods=[importlib.import_module(n) for n in names]; print(\"RUNTIME_SOURCE_MANIFEST=\"+json.dumps({m.__name__:{\"path\":m.__file__, \"sha256\":hashlib.sha256(open(m.__file__,\"rb\").read()).hexdigest()} for m in mods}),flush=True); import sys; sys.path.insert(0,'/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/scripts'); from pipeline_restart_probe import install_test_host_drive_probe; from arena_vehicle_interface.actuation_ros import ActuationHost; install_test_host_drive_probe(ActuationHost); print(\"HOST_DRIVE_DECISION_PROBE=validator_child_only\",flush=True); from arena_vehicle_interface.actuation_ros import host_main; host_main()",
+        "--ros-args",
+        "-p",
+        "use_sim_time:=true"
+      ],
+      "parameters": {
+        "use_sim_time": true
+      },
+      "expected_exit": 0,
+      "exit_code": 0,
+      "vision_cleanup_results": [],
+      "runtime_sources": {
+        "arena_autonomy.local_pursuit": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_pursuit.py",
+          "sha256": "3a7f98441966047431ea07fe2bc3ba0a9f5af13af88fd2009e738ad0f7d5c014"
+        },
+        "arena_autonomy.wall_follow": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/wall_follow.py",
+          "sha256": "aace3676ee9aaebbe7c56fd461352ef323974d7aadc3696632a1abbd5d8008a0"
+        },
+        "arena_autonomy.vision_process": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/vision_process.py",
+          "sha256": "9fb49a496536884be3bedd13bc0d35deabfb13fbcea51f6d2d75e61e12d4baf9"
+        },
+        "arena_autonomy.race_start": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/race_start.py",
+          "sha256": "6db739457378a216e791f5c61c71447116b3b058f903c57edb4dfefd5d45491f"
+        },
+        "arena_autonomy.core": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/core.py",
+          "sha256": "37fdb7f707211f5378c17cdfe5176a572bad0bfc0c7523ac8bd645dfa299adfb"
+        },
+        "arena_autonomy.local_path": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_path.py",
+          "sha256": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e"
+        },
+        "arena_autonomy.local_follow": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_follow.py",
+          "sha256": "2efaafe7a29d17b07b1561045e5a70caeccc423d69917ebdd0cf783f4ac9e86a"
+        },
+        "arena_autonomy.boundary_evidence": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/boundary_evidence.py",
+          "sha256": "1432454c4c8bb4b81edc96d03a08a4c5d842f21d97843ae1190a5ec570df868c"
+        },
+        "arena_autonomy.corner_evidence": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_evidence.py",
+          "sha256": "131b5b7479eed6a6b012914ae2a21efa80c9e39ed57d87bf249b4579e4ace652"
+        },
+        "arena_autonomy.corner_distance": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_distance.py",
+          "sha256": "2ee17d397ba876b32f14a84bc9d1cb9674139617dee509d04cc5e2260ab81ba7"
+        },
+        "arena_autonomy.corner_corridor": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_corridor.py",
+          "sha256": "c692f8fa86c5a0459d7c58b3dc038ad570d982abe25b01e0c673c94bd7d13dd9"
+        },
+        "arena_autonomy.corridor_observer": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corridor_observer.py",
+          "sha256": "643a49252c4729f89a52f5ecb27a95ec6ff4a8e7328b9292be1ee7eed55f8f34"
+        },
+        "arena_autonomy.occupancy_timing": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/occupancy_timing.py",
+          "sha256": "4d75e1172d16a50c273fb8f8cffc407bbbec838556b8a3dec9bc87d9a783970f"
+        },
+        "arena_autonomy.scene_motion": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/scene_motion.py",
+          "sha256": "41dd3567500b21d487aa292874f1e24f79301811616fa1d62b846d1d2bc4dddb"
+        },
+        "arena_autonomy.local_scene": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_scene.py",
+          "sha256": "4720821f897806a962091fcbb98e17bc4d66581ea3f66555251935886a633a15"
+        },
+        "arena_autonomy.follow_trace": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/follow_trace.py",
+          "sha256": "5562688611925b5851dcba136ef0f88de6debe76f6349769b68f45b085c26a90"
+        },
+        "arena_autonomy.lidar_safety": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_safety.py",
+          "sha256": "03040a82b5d97423cb49e7e57708fafbf85875d9180f50ff62d2d1cf745b296d"
+        },
+        "arena_autonomy.lidar_motion": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion.py",
+          "sha256": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5"
+        },
+        "arena_autonomy.lidar_motion_ros": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion_ros.py",
+          "sha256": "6430166162696b8beb7103f36e69dc4324063d884748e673e46049ff08a71a7e"
+        },
+        "arena_autonomy.lidar_observation": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_observation.py",
+          "sha256": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6"
+        },
+        "arena_autonomy.observation_support": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/observation_support.py",
+          "sha256": "209ecff7e64e89ab2941fb521513bc98481fcb88c42407340798727f54b87084"
+        },
+        "arena_autonomy.observation_lateral": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/observation_lateral.py",
+          "sha256": "f50fda3243d0243434834d22a45b5c72f2a80db6244d44e1ae4c1320ac9737ba"
+        },
+        "arena_autonomy.linear_observation": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/linear_observation.py",
+          "sha256": "cc99b67adba20493b499592ba973cfa50926ecf382f2cee1e30535778708b905"
+        },
+        "arena_vehicle_interface.actuation_ros": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py",
+          "sha256": "ae01245f18b2abeff2b1120d0ae11c64d04f707085e813949d90b58e884025b9"
+        },
+        "arena_vehicle_interface.actuation_contract": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_contract.py",
+          "sha256": "ed3d12d16a8c156b02767a4351749fdf6bb3cbe0aa998e1385f7eb85e3b235d6"
+        },
+        "arena_vehicle_interface.actuation_wire": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_wire.py",
+          "sha256": "1410828c83ded442749ff05314b056d586d6d322a9bc0de75bcd9bcc7bf02f25"
+        },
+        "arena_vehicle_interface.applied_guard": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/applied_guard.py",
+          "sha256": "121f8eefa1954b64d682f940f275d8ba102b3bd4168dbfabd4c7aefe467ebf6a"
+        },
+        "arena_vehicle_interface.drive_feedback": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py",
+          "sha256": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504"
+        },
+        "arena_vehicle_interface.node_lifecycle": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/node_lifecycle.py",
+          "sha256": "ed925079b19548aa651e608894b990b00c28e02795e98a893372446ac9932270"
+        },
+        "arena_vehicle_interface.queued_log": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py",
+          "sha256": "03c96124f5f5e2f4bbee7210e9ff1b16458c62537ef4ac15d00944d6a9b11300"
+        },
+        "arena_vehicle_interface.timing_probe": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py",
+          "sha256": "44e8e4adeed24e9bfff71974d900236ccdad1230a5a15006703b727d45cff98e"
+        }
+      }
+    },
+    {
+      "role": "mcu",
+      "pid": 770,
+      "identity": {
+        "pid": 770,
+        "state": "R",
+        "parent": 754,
+        "group": 770,
+        "session": 770,
+        "start_ticks": 7477
+      },
+      "log": "mcu_1.log",
+      "command": [
+        "/usr/bin/python3",
+        "-c",
+        "import hashlib,importlib,json; names=['arena_autonomy.local_pursuit', 'arena_autonomy.wall_follow', 'arena_autonomy.vision_process', 'arena_autonomy.race_start', 'arena_autonomy.core', 'arena_autonomy.local_path', 'arena_autonomy.local_follow', 'arena_autonomy.boundary_evidence', 'arena_autonomy.corner_evidence', 'arena_autonomy.corner_distance', 'arena_autonomy.corner_corridor', 'arena_autonomy.corridor_observer', 'arena_autonomy.occupancy_timing', 'arena_autonomy.scene_motion', 'arena_autonomy.local_scene', 'arena_autonomy.follow_trace', 'arena_autonomy.lidar_safety', 'arena_autonomy.lidar_motion', 'arena_autonomy.lidar_motion_ros', 'arena_autonomy.lidar_observation', 'arena_autonomy.observation_support', 'arena_autonomy.observation_lateral', 'arena_autonomy.linear_observation', 'arena_vehicle_interface.actuation_ros', 'arena_vehicle_interface.actuation_contract', 'arena_vehicle_interface.actuation_wire', 'arena_vehicle_interface.applied_guard', 'arena_vehicle_interface.drive_feedback', 'arena_vehicle_interface.node_lifecycle', 'arena_vehicle_interface.queued_log', 'arena_vehicle_interface.timing_probe']; mods=[importlib.import_module(n) for n in names]; print(\"RUNTIME_SOURCE_MANIFEST=\"+json.dumps({m.__name__:{\"path\":m.__file__, \"sha256\":hashlib.sha256(open(m.__file__,\"rb\").read()).hexdigest()} for m in mods}),flush=True); import sys; sys.path.insert(0,'/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/scripts'); from pipeline_mcu_rejection_probe import install_test_encoder_probe; from pipeline_restart_probe import install_test_mcu_command_probe; from arena_vehicle_interface.actuation_contract import ActuationReceiver; install_test_encoder_probe(ActuationReceiver); install_test_mcu_command_probe(ActuationReceiver); print(\"MCU_ENCODER_REJECTION_PROBE=validator_child_only\",flush=True); print(\"MCU_FAULT_CONTEXT_PROBE=validator_child_only\",flush=True); from arena_vehicle_interface.actuation_ros import mcu_main; mcu_main()",
+        "--ros-args",
+        "-p",
+        "use_sim_time:=true",
+        "-p",
+        "feedback_mode:=drive_motor_shaft",
+        "-p",
+        "wheel_radius_m:=0.0325",
+        "-p",
+        "ticks_per_revolution:=28",
+        "-p",
+        "gear_ratio:=15.0"
+      ],
+      "parameters": {
+        "use_sim_time": true,
+        "feedback_mode": "drive_motor_shaft",
+        "wheel_radius_m": 0.0325,
+        "ticks_per_revolution": 28,
+        "gear_ratio": 15.0
+      },
+      "expected_exit": 0,
+      "exit_code": 0,
+      "vision_cleanup_results": [],
+      "runtime_sources": {
+        "arena_autonomy.local_pursuit": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_pursuit.py",
+          "sha256": "3a7f98441966047431ea07fe2bc3ba0a9f5af13af88fd2009e738ad0f7d5c014"
+        },
+        "arena_autonomy.wall_follow": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/wall_follow.py",
+          "sha256": "aace3676ee9aaebbe7c56fd461352ef323974d7aadc3696632a1abbd5d8008a0"
+        },
+        "arena_autonomy.vision_process": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/vision_process.py",
+          "sha256": "9fb49a496536884be3bedd13bc0d35deabfb13fbcea51f6d2d75e61e12d4baf9"
+        },
+        "arena_autonomy.race_start": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/race_start.py",
+          "sha256": "6db739457378a216e791f5c61c71447116b3b058f903c57edb4dfefd5d45491f"
+        },
+        "arena_autonomy.core": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/core.py",
+          "sha256": "37fdb7f707211f5378c17cdfe5176a572bad0bfc0c7523ac8bd645dfa299adfb"
+        },
+        "arena_autonomy.local_path": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_path.py",
+          "sha256": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e"
+        },
+        "arena_autonomy.local_follow": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_follow.py",
+          "sha256": "2efaafe7a29d17b07b1561045e5a70caeccc423d69917ebdd0cf783f4ac9e86a"
+        },
+        "arena_autonomy.boundary_evidence": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/boundary_evidence.py",
+          "sha256": "1432454c4c8bb4b81edc96d03a08a4c5d842f21d97843ae1190a5ec570df868c"
+        },
+        "arena_autonomy.corner_evidence": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_evidence.py",
+          "sha256": "131b5b7479eed6a6b012914ae2a21efa80c9e39ed57d87bf249b4579e4ace652"
+        },
+        "arena_autonomy.corner_distance": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_distance.py",
+          "sha256": "2ee17d397ba876b32f14a84bc9d1cb9674139617dee509d04cc5e2260ab81ba7"
+        },
+        "arena_autonomy.corner_corridor": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_corridor.py",
+          "sha256": "c692f8fa86c5a0459d7c58b3dc038ad570d982abe25b01e0c673c94bd7d13dd9"
+        },
+        "arena_autonomy.corridor_observer": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corridor_observer.py",
+          "sha256": "643a49252c4729f89a52f5ecb27a95ec6ff4a8e7328b9292be1ee7eed55f8f34"
+        },
+        "arena_autonomy.occupancy_timing": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/occupancy_timing.py",
+          "sha256": "4d75e1172d16a50c273fb8f8cffc407bbbec838556b8a3dec9bc87d9a783970f"
+        },
+        "arena_autonomy.scene_motion": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/scene_motion.py",
+          "sha256": "41dd3567500b21d487aa292874f1e24f79301811616fa1d62b846d1d2bc4dddb"
+        },
+        "arena_autonomy.local_scene": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_scene.py",
+          "sha256": "4720821f897806a962091fcbb98e17bc4d66581ea3f66555251935886a633a15"
+        },
+        "arena_autonomy.follow_trace": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/follow_trace.py",
+          "sha256": "5562688611925b5851dcba136ef0f88de6debe76f6349769b68f45b085c26a90"
+        },
+        "arena_autonomy.lidar_safety": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_safety.py",
+          "sha256": "03040a82b5d97423cb49e7e57708fafbf85875d9180f50ff62d2d1cf745b296d"
+        },
+        "arena_autonomy.lidar_motion": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion.py",
+          "sha256": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5"
+        },
+        "arena_autonomy.lidar_motion_ros": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion_ros.py",
+          "sha256": "6430166162696b8beb7103f36e69dc4324063d884748e673e46049ff08a71a7e"
+        },
+        "arena_autonomy.lidar_observation": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_observation.py",
+          "sha256": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6"
+        },
+        "arena_autonomy.observation_support": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/observation_support.py",
+          "sha256": "209ecff7e64e89ab2941fb521513bc98481fcb88c42407340798727f54b87084"
+        },
+        "arena_autonomy.observation_lateral": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/observation_lateral.py",
+          "sha256": "f50fda3243d0243434834d22a45b5c72f2a80db6244d44e1ae4c1320ac9737ba"
+        },
+        "arena_autonomy.linear_observation": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/linear_observation.py",
+          "sha256": "cc99b67adba20493b499592ba973cfa50926ecf382f2cee1e30535778708b905"
+        },
+        "arena_vehicle_interface.actuation_ros": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py",
+          "sha256": "ae01245f18b2abeff2b1120d0ae11c64d04f707085e813949d90b58e884025b9"
+        },
+        "arena_vehicle_interface.actuation_contract": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_contract.py",
+          "sha256": "ed3d12d16a8c156b02767a4351749fdf6bb3cbe0aa998e1385f7eb85e3b235d6"
+        },
+        "arena_vehicle_interface.actuation_wire": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_wire.py",
+          "sha256": "1410828c83ded442749ff05314b056d586d6d322a9bc0de75bcd9bcc7bf02f25"
+        },
+        "arena_vehicle_interface.applied_guard": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/applied_guard.py",
+          "sha256": "121f8eefa1954b64d682f940f275d8ba102b3bd4168dbfabd4c7aefe467ebf6a"
+        },
+        "arena_vehicle_interface.drive_feedback": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py",
+          "sha256": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504"
+        },
+        "arena_vehicle_interface.node_lifecycle": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/node_lifecycle.py",
+          "sha256": "ed925079b19548aa651e608894b990b00c28e02795e98a893372446ac9932270"
+        },
+        "arena_vehicle_interface.queued_log": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py",
+          "sha256": "03c96124f5f5e2f4bbee7210e9ff1b16458c62537ef4ac15d00944d6a9b11300"
+        },
+        "arena_vehicle_interface.timing_probe": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py",
+          "sha256": "44e8e4adeed24e9bfff71974d900236ccdad1230a5a15006703b727d45cff98e"
+        }
+      }
+    },
+    {
+      "role": "sink",
+      "pid": 771,
+      "identity": {
+        "pid": 771,
+        "state": "R",
+        "parent": 754,
+        "group": 771,
+        "session": 771,
+        "start_ticks": 7477
+      },
+      "log": "sink_2.log",
+      "command": [
+        "/usr/bin/python3",
+        "-c",
+        "import hashlib,importlib,json; names=['arena_autonomy.local_pursuit', 'arena_autonomy.wall_follow', 'arena_autonomy.vision_process', 'arena_autonomy.race_start', 'arena_autonomy.core', 'arena_autonomy.local_path', 'arena_autonomy.local_follow', 'arena_autonomy.boundary_evidence', 'arena_autonomy.corner_evidence', 'arena_autonomy.corner_distance', 'arena_autonomy.corner_corridor', 'arena_autonomy.corridor_observer', 'arena_autonomy.occupancy_timing', 'arena_autonomy.scene_motion', 'arena_autonomy.local_scene', 'arena_autonomy.follow_trace', 'arena_autonomy.lidar_safety', 'arena_autonomy.lidar_motion', 'arena_autonomy.lidar_motion_ros', 'arena_autonomy.lidar_observation', 'arena_autonomy.observation_support', 'arena_autonomy.observation_lateral', 'arena_autonomy.linear_observation', 'arena_vehicle_interface.actuation_ros', 'arena_vehicle_interface.actuation_contract', 'arena_vehicle_interface.actuation_wire', 'arena_vehicle_interface.applied_guard', 'arena_vehicle_interface.drive_feedback', 'arena_vehicle_interface.node_lifecycle', 'arena_vehicle_interface.queued_log', 'arena_vehicle_interface.timing_probe']; mods=[importlib.import_module(n) for n in names]; print(\"RUNTIME_SOURCE_MANIFEST=\"+json.dumps({m.__name__:{\"path\":m.__file__, \"sha256\":hashlib.sha256(open(m.__file__,\"rb\").read()).hexdigest()} for m in mods}),flush=True); from arena_vehicle_interface.actuation_ros import actuator_main; actuator_main()",
+        "--ros-args",
+        "-p",
+        "use_sim_time:=true",
+        "-p",
+        "wheelbase_m:=0.135"
+      ],
+      "parameters": {
+        "use_sim_time": true,
+        "wheelbase_m": 0.135
+      },
+      "expected_exit": 0,
+      "exit_code": 0,
+      "vision_cleanup_results": [],
+      "runtime_sources": {
+        "arena_autonomy.local_pursuit": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_pursuit.py",
+          "sha256": "3a7f98441966047431ea07fe2bc3ba0a9f5af13af88fd2009e738ad0f7d5c014"
+        },
+        "arena_autonomy.wall_follow": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/wall_follow.py",
+          "sha256": "aace3676ee9aaebbe7c56fd461352ef323974d7aadc3696632a1abbd5d8008a0"
+        },
+        "arena_autonomy.vision_process": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/vision_process.py",
+          "sha256": "9fb49a496536884be3bedd13bc0d35deabfb13fbcea51f6d2d75e61e12d4baf9"
+        },
+        "arena_autonomy.race_start": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/race_start.py",
+          "sha256": "6db739457378a216e791f5c61c71447116b3b058f903c57edb4dfefd5d45491f"
+        },
+        "arena_autonomy.core": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/core.py",
+          "sha256": "37fdb7f707211f5378c17cdfe5176a572bad0bfc0c7523ac8bd645dfa299adfb"
+        },
+        "arena_autonomy.local_path": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_path.py",
+          "sha256": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e"
+        },
+        "arena_autonomy.local_follow": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_follow.py",
+          "sha256": "2efaafe7a29d17b07b1561045e5a70caeccc423d69917ebdd0cf783f4ac9e86a"
+        },
+        "arena_autonomy.boundary_evidence": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/boundary_evidence.py",
+          "sha256": "1432454c4c8bb4b81edc96d03a08a4c5d842f21d97843ae1190a5ec570df868c"
+        },
+        "arena_autonomy.corner_evidence": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_evidence.py",
+          "sha256": "131b5b7479eed6a6b012914ae2a21efa80c9e39ed57d87bf249b4579e4ace652"
+        },
+        "arena_autonomy.corner_distance": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_distance.py",
+          "sha256": "2ee17d397ba876b32f14a84bc9d1cb9674139617dee509d04cc5e2260ab81ba7"
+        },
+        "arena_autonomy.corner_corridor": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_corridor.py",
+          "sha256": "c692f8fa86c5a0459d7c58b3dc038ad570d982abe25b01e0c673c94bd7d13dd9"
+        },
+        "arena_autonomy.corridor_observer": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corridor_observer.py",
+          "sha256": "643a49252c4729f89a52f5ecb27a95ec6ff4a8e7328b9292be1ee7eed55f8f34"
+        },
+        "arena_autonomy.occupancy_timing": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/occupancy_timing.py",
+          "sha256": "4d75e1172d16a50c273fb8f8cffc407bbbec838556b8a3dec9bc87d9a783970f"
+        },
+        "arena_autonomy.scene_motion": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/scene_motion.py",
+          "sha256": "41dd3567500b21d487aa292874f1e24f79301811616fa1d62b846d1d2bc4dddb"
+        },
+        "arena_autonomy.local_scene": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_scene.py",
+          "sha256": "4720821f897806a962091fcbb98e17bc4d66581ea3f66555251935886a633a15"
+        },
+        "arena_autonomy.follow_trace": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/follow_trace.py",
+          "sha256": "5562688611925b5851dcba136ef0f88de6debe76f6349769b68f45b085c26a90"
+        },
+        "arena_autonomy.lidar_safety": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_safety.py",
+          "sha256": "03040a82b5d97423cb49e7e57708fafbf85875d9180f50ff62d2d1cf745b296d"
+        },
+        "arena_autonomy.lidar_motion": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion.py",
+          "sha256": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5"
+        },
+        "arena_autonomy.lidar_motion_ros": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion_ros.py",
+          "sha256": "6430166162696b8beb7103f36e69dc4324063d884748e673e46049ff08a71a7e"
+        },
+        "arena_autonomy.lidar_observation": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_observation.py",
+          "sha256": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6"
+        },
+        "arena_autonomy.observation_support": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/observation_support.py",
+          "sha256": "209ecff7e64e89ab2941fb521513bc98481fcb88c42407340798727f54b87084"
+        },
+        "arena_autonomy.observation_lateral": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/observation_lateral.py",
+          "sha256": "f50fda3243d0243434834d22a45b5c72f2a80db6244d44e1ae4c1320ac9737ba"
+        },
+        "arena_autonomy.linear_observation": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/linear_observation.py",
+          "sha256": "cc99b67adba20493b499592ba973cfa50926ecf382f2cee1e30535778708b905"
+        },
+        "arena_vehicle_interface.actuation_ros": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py",
+          "sha256": "ae01245f18b2abeff2b1120d0ae11c64d04f707085e813949d90b58e884025b9"
+        },
+        "arena_vehicle_interface.actuation_contract": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_contract.py",
+          "sha256": "ed3d12d16a8c156b02767a4351749fdf6bb3cbe0aa998e1385f7eb85e3b235d6"
+        },
+        "arena_vehicle_interface.actuation_wire": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_wire.py",
+          "sha256": "1410828c83ded442749ff05314b056d586d6d322a9bc0de75bcd9bcc7bf02f25"
+        },
+        "arena_vehicle_interface.applied_guard": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/applied_guard.py",
+          "sha256": "121f8eefa1954b64d682f940f275d8ba102b3bd4168dbfabd4c7aefe467ebf6a"
+        },
+        "arena_vehicle_interface.drive_feedback": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py",
+          "sha256": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504"
+        },
+        "arena_vehicle_interface.node_lifecycle": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/node_lifecycle.py",
+          "sha256": "ed925079b19548aa651e608894b990b00c28e02795e98a893372446ac9932270"
+        },
+        "arena_vehicle_interface.queued_log": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py",
+          "sha256": "03c96124f5f5e2f4bbee7210e9ff1b16458c62537ef4ac15d00944d6a9b11300"
+        },
+        "arena_vehicle_interface.timing_probe": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py",
+          "sha256": "44e8e4adeed24e9bfff71974d900236ccdad1230a5a15006703b727d45cff98e"
+        }
+      }
+    },
+    {
+      "role": "safety",
+      "pid": 772,
+      "identity": {
+        "pid": 772,
+        "state": "R",
+        "parent": 754,
+        "group": 772,
+        "session": 772,
+        "start_ticks": 7477
+      },
+      "log": "safety_3.log",
+      "command": [
+        "/usr/bin/python3",
+        "-c",
+        "import hashlib,importlib,json; names=['arena_autonomy.local_pursuit', 'arena_autonomy.wall_follow', 'arena_autonomy.vision_process', 'arena_autonomy.race_start', 'arena_autonomy.core', 'arena_autonomy.local_path', 'arena_autonomy.local_follow', 'arena_autonomy.boundary_evidence', 'arena_autonomy.corner_evidence', 'arena_autonomy.corner_distance', 'arena_autonomy.corner_corridor', 'arena_autonomy.corridor_observer', 'arena_autonomy.occupancy_timing', 'arena_autonomy.scene_motion', 'arena_autonomy.local_scene', 'arena_autonomy.follow_trace', 'arena_autonomy.lidar_safety', 'arena_autonomy.lidar_motion', 'arena_autonomy.lidar_motion_ros', 'arena_autonomy.lidar_observation', 'arena_autonomy.observation_support', 'arena_autonomy.observation_lateral', 'arena_autonomy.linear_observation', 'arena_vehicle_interface.actuation_ros', 'arena_vehicle_interface.actuation_contract', 'arena_vehicle_interface.actuation_wire', 'arena_vehicle_interface.applied_guard', 'arena_vehicle_interface.drive_feedback', 'arena_vehicle_interface.node_lifecycle', 'arena_vehicle_interface.queued_log', 'arena_vehicle_interface.timing_probe']; mods=[importlib.import_module(n) for n in names]; print(\"RUNTIME_SOURCE_MANIFEST=\"+json.dumps({m.__name__:{\"path\":m.__file__, \"sha256\":hashlib.sha256(open(m.__file__,\"rb\").read()).hexdigest()} for m in mods}),flush=True); from arena_autonomy.lidar_safety import main; main()",
+        "--ros-args",
+        "-p",
+        "use_sim_time:=true",
+        "-p",
+        "lidar_compensation:=both",
+        "-p",
+        "motion_scan_timing_verified:=true",
+        "-p",
+        "motion_imu_topic:=/imu/data",
+        "-p",
+        "motion_feedback_mode:=drive_motor_shaft",
+        "-p",
+        "motion_gear_ratio:=15.0",
+        "-p",
+        "motion_wheel_radius_m:=0.0325",
+        "-p",
+        "motion_lidar_x_m:=0.06",
+        "-p",
+        "motion_rear_axle_x_m:=-0.0675",
+        "-p",
+        "wheelbase_m:=0.135",
+        "-p",
+        "max_steering_angle_rad:=0.37",
+        "-p",
+        "g1_follow_enabled:=true",
+        "-p",
+        "g1_boundary_evidence_mode:=corner_distance_candidate",
+        "-p",
+        "g1_occupancy_timing_mode:=per_ray_candidate",
+        "-p",
+        "g1_corridor_fallback_enabled:=true",
+        "-p",
+        "g1_recent_observation_enabled:=true"
+      ],
+      "parameters": {
+        "use_sim_time": true,
+        "lidar_compensation": "both",
+        "motion_scan_timing_verified": true,
+        "motion_imu_topic": "/imu/data",
+        "motion_feedback_mode": "drive_motor_shaft",
+        "motion_gear_ratio": 15.0,
+        "motion_wheel_radius_m": 0.0325,
+        "motion_lidar_x_m": 0.06,
+        "motion_rear_axle_x_m": -0.0675,
+        "wheelbase_m": 0.135,
+        "max_steering_angle_rad": 0.37,
+        "g1_follow_enabled": true,
+        "g1_boundary_evidence_mode": "corner_distance_candidate",
+        "g1_occupancy_timing_mode": "per_ray_candidate",
+        "g1_corridor_fallback_enabled": true,
+        "g1_recent_observation_enabled": true
+      },
+      "expected_exit": 0,
+      "exit_code": 0,
+      "vision_cleanup_results": [],
+      "runtime_sources": {
+        "arena_autonomy.local_pursuit": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_pursuit.py",
+          "sha256": "3a7f98441966047431ea07fe2bc3ba0a9f5af13af88fd2009e738ad0f7d5c014"
+        },
+        "arena_autonomy.wall_follow": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/wall_follow.py",
+          "sha256": "aace3676ee9aaebbe7c56fd461352ef323974d7aadc3696632a1abbd5d8008a0"
+        },
+        "arena_autonomy.vision_process": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/vision_process.py",
+          "sha256": "9fb49a496536884be3bedd13bc0d35deabfb13fbcea51f6d2d75e61e12d4baf9"
+        },
+        "arena_autonomy.race_start": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/race_start.py",
+          "sha256": "6db739457378a216e791f5c61c71447116b3b058f903c57edb4dfefd5d45491f"
+        },
+        "arena_autonomy.core": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/core.py",
+          "sha256": "37fdb7f707211f5378c17cdfe5176a572bad0bfc0c7523ac8bd645dfa299adfb"
+        },
+        "arena_autonomy.local_path": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_path.py",
+          "sha256": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e"
+        },
+        "arena_autonomy.local_follow": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_follow.py",
+          "sha256": "2efaafe7a29d17b07b1561045e5a70caeccc423d69917ebdd0cf783f4ac9e86a"
+        },
+        "arena_autonomy.boundary_evidence": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/boundary_evidence.py",
+          "sha256": "1432454c4c8bb4b81edc96d03a08a4c5d842f21d97843ae1190a5ec570df868c"
+        },
+        "arena_autonomy.corner_evidence": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_evidence.py",
+          "sha256": "131b5b7479eed6a6b012914ae2a21efa80c9e39ed57d87bf249b4579e4ace652"
+        },
+        "arena_autonomy.corner_distance": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_distance.py",
+          "sha256": "2ee17d397ba876b32f14a84bc9d1cb9674139617dee509d04cc5e2260ab81ba7"
+        },
+        "arena_autonomy.corner_corridor": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_corridor.py",
+          "sha256": "c692f8fa86c5a0459d7c58b3dc038ad570d982abe25b01e0c673c94bd7d13dd9"
+        },
+        "arena_autonomy.corridor_observer": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corridor_observer.py",
+          "sha256": "643a49252c4729f89a52f5ecb27a95ec6ff4a8e7328b9292be1ee7eed55f8f34"
+        },
+        "arena_autonomy.occupancy_timing": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/occupancy_timing.py",
+          "sha256": "4d75e1172d16a50c273fb8f8cffc407bbbec838556b8a3dec9bc87d9a783970f"
+        },
+        "arena_autonomy.scene_motion": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/scene_motion.py",
+          "sha256": "41dd3567500b21d487aa292874f1e24f79301811616fa1d62b846d1d2bc4dddb"
+        },
+        "arena_autonomy.local_scene": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_scene.py",
+          "sha256": "4720821f897806a962091fcbb98e17bc4d66581ea3f66555251935886a633a15"
+        },
+        "arena_autonomy.follow_trace": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/follow_trace.py",
+          "sha256": "5562688611925b5851dcba136ef0f88de6debe76f6349769b68f45b085c26a90"
+        },
+        "arena_autonomy.lidar_safety": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_safety.py",
+          "sha256": "03040a82b5d97423cb49e7e57708fafbf85875d9180f50ff62d2d1cf745b296d"
+        },
+        "arena_autonomy.lidar_motion": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion.py",
+          "sha256": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5"
+        },
+        "arena_autonomy.lidar_motion_ros": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion_ros.py",
+          "sha256": "6430166162696b8beb7103f36e69dc4324063d884748e673e46049ff08a71a7e"
+        },
+        "arena_autonomy.lidar_observation": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_observation.py",
+          "sha256": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6"
+        },
+        "arena_autonomy.observation_support": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/observation_support.py",
+          "sha256": "209ecff7e64e89ab2941fb521513bc98481fcb88c42407340798727f54b87084"
+        },
+        "arena_autonomy.observation_lateral": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/observation_lateral.py",
+          "sha256": "f50fda3243d0243434834d22a45b5c72f2a80db6244d44e1ae4c1320ac9737ba"
+        },
+        "arena_autonomy.linear_observation": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/linear_observation.py",
+          "sha256": "cc99b67adba20493b499592ba973cfa50926ecf382f2cee1e30535778708b905"
+        },
+        "arena_vehicle_interface.actuation_ros": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py",
+          "sha256": "ae01245f18b2abeff2b1120d0ae11c64d04f707085e813949d90b58e884025b9"
+        },
+        "arena_vehicle_interface.actuation_contract": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_contract.py",
+          "sha256": "ed3d12d16a8c156b02767a4351749fdf6bb3cbe0aa998e1385f7eb85e3b235d6"
+        },
+        "arena_vehicle_interface.actuation_wire": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_wire.py",
+          "sha256": "1410828c83ded442749ff05314b056d586d6d322a9bc0de75bcd9bcc7bf02f25"
+        },
+        "arena_vehicle_interface.applied_guard": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/applied_guard.py",
+          "sha256": "121f8eefa1954b64d682f940f275d8ba102b3bd4168dbfabd4c7aefe467ebf6a"
+        },
+        "arena_vehicle_interface.drive_feedback": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py",
+          "sha256": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504"
+        },
+        "arena_vehicle_interface.node_lifecycle": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/node_lifecycle.py",
+          "sha256": "ed925079b19548aa651e608894b990b00c28e02795e98a893372446ac9932270"
+        },
+        "arena_vehicle_interface.queued_log": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py",
+          "sha256": "03c96124f5f5e2f4bbee7210e9ff1b16458c62537ef4ac15d00944d6a9b11300"
+        },
+        "arena_vehicle_interface.timing_probe": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py",
+          "sha256": "44e8e4adeed24e9bfff71974d900236ccdad1230a5a15006703b727d45cff98e"
+        }
+      }
+    },
+    {
+      "role": "controller",
+      "pid": 773,
+      "identity": {
+        "pid": 773,
+        "state": "R",
+        "parent": 754,
+        "group": 773,
+        "session": 773,
+        "start_ticks": 7478
+      },
+      "log": "controller_4.log",
+      "command": [
+        "/usr/bin/python3",
+        "-c",
+        "import hashlib,importlib,json; names=['arena_autonomy.local_pursuit', 'arena_autonomy.wall_follow', 'arena_autonomy.vision_process', 'arena_autonomy.race_start', 'arena_autonomy.core', 'arena_autonomy.local_path', 'arena_autonomy.local_follow', 'arena_autonomy.boundary_evidence', 'arena_autonomy.corner_evidence', 'arena_autonomy.corner_distance', 'arena_autonomy.corner_corridor', 'arena_autonomy.corridor_observer', 'arena_autonomy.occupancy_timing', 'arena_autonomy.scene_motion', 'arena_autonomy.local_scene', 'arena_autonomy.follow_trace', 'arena_autonomy.lidar_safety', 'arena_autonomy.lidar_motion', 'arena_autonomy.lidar_motion_ros', 'arena_autonomy.lidar_observation', 'arena_autonomy.observation_support', 'arena_autonomy.observation_lateral', 'arena_autonomy.linear_observation', 'arena_vehicle_interface.actuation_ros', 'arena_vehicle_interface.actuation_contract', 'arena_vehicle_interface.actuation_wire', 'arena_vehicle_interface.applied_guard', 'arena_vehicle_interface.drive_feedback', 'arena_vehicle_interface.node_lifecycle', 'arena_vehicle_interface.queued_log', 'arena_vehicle_interface.timing_probe']; mods=[importlib.import_module(n) for n in names]; print(\"RUNTIME_SOURCE_MANIFEST=\"+json.dumps({m.__name__:{\"path\":m.__file__, \"sha256\":hashlib.sha256(open(m.__file__,\"rb\").read()).hexdigest()} for m in mods}),flush=True); from arena_autonomy.local_pursuit import main; main()",
+        "--ros-args",
+        "-p",
+        "use_sim_time:=true",
+        "-p",
+        "lidar_compensation:=both",
+        "-p",
+        "motion_scan_timing_verified:=true",
+        "-p",
+        "motion_imu_topic:=/imu/data",
+        "-p",
+        "motion_feedback_mode:=drive_motor_shaft",
+        "-p",
+        "motion_gear_ratio:=15.0",
+        "-p",
+        "motion_wheel_radius_m:=0.0325",
+        "-p",
+        "motion_lidar_x_m:=0.06",
+        "-p",
+        "motion_rear_axle_x_m:=-0.0675",
+        "-p",
+        "wheelbase_m:=0.135",
+        "-p",
+        "max_steering_angle_rad:=0.37",
+        "-p",
+        "g1_follow_enabled:=true",
+        "-p",
+        "g1_boundary_evidence_mode:=corner_distance_candidate",
+        "-p",
+        "g1_occupancy_timing_mode:=per_ray_candidate",
+        "-p",
+        "g1_corridor_fallback_enabled:=true",
+        "-p",
+        "g1_recent_observation_enabled:=true",
+        "-p",
+        "vision_execution:=process",
+        "-p",
+        "max_speed_mps:=0.6",
+        "-p",
+        "target_wall_distance_m:=0.425",
+        "-p",
+        "lidar_x_m:=0.06",
+        "-p",
+        "image_timeout_s:=1.0",
+        "-p",
+        "control_rate_hz:=50.0"
+      ],
+      "parameters": {
+        "use_sim_time": true,
+        "lidar_compensation": "both",
+        "motion_scan_timing_verified": true,
+        "motion_imu_topic": "/imu/data",
+        "motion_feedback_mode": "drive_motor_shaft",
+        "motion_gear_ratio": 15.0,
+        "motion_wheel_radius_m": 0.0325,
+        "motion_lidar_x_m": 0.06,
+        "motion_rear_axle_x_m": -0.0675,
+        "wheelbase_m": 0.135,
+        "max_steering_angle_rad": 0.37,
+        "g1_follow_enabled": true,
+        "g1_boundary_evidence_mode": "corner_distance_candidate",
+        "g1_occupancy_timing_mode": "per_ray_candidate",
+        "g1_corridor_fallback_enabled": true,
+        "g1_recent_observation_enabled": true,
+        "vision_execution": "process",
+        "max_speed_mps": 0.6,
+        "target_wall_distance_m": 0.425,
+        "lidar_x_m": 0.06,
+        "image_timeout_s": 1.0,
+        "control_rate_hz": 50.0
+      },
+      "expected_exit": 0,
+      "exit_code": 0,
+      "vision_cleanup_results": [],
+      "runtime_sources": {
+        "arena_autonomy.local_pursuit": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_pursuit.py",
+          "sha256": "3a7f98441966047431ea07fe2bc3ba0a9f5af13af88fd2009e738ad0f7d5c014"
+        },
+        "arena_autonomy.wall_follow": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/wall_follow.py",
+          "sha256": "aace3676ee9aaebbe7c56fd461352ef323974d7aadc3696632a1abbd5d8008a0"
+        },
+        "arena_autonomy.vision_process": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/vision_process.py",
+          "sha256": "9fb49a496536884be3bedd13bc0d35deabfb13fbcea51f6d2d75e61e12d4baf9"
+        },
+        "arena_autonomy.race_start": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/race_start.py",
+          "sha256": "6db739457378a216e791f5c61c71447116b3b058f903c57edb4dfefd5d45491f"
+        },
+        "arena_autonomy.core": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/core.py",
+          "sha256": "37fdb7f707211f5378c17cdfe5176a572bad0bfc0c7523ac8bd645dfa299adfb"
+        },
+        "arena_autonomy.local_path": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_path.py",
+          "sha256": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e"
+        },
+        "arena_autonomy.local_follow": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_follow.py",
+          "sha256": "2efaafe7a29d17b07b1561045e5a70caeccc423d69917ebdd0cf783f4ac9e86a"
+        },
+        "arena_autonomy.boundary_evidence": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/boundary_evidence.py",
+          "sha256": "1432454c4c8bb4b81edc96d03a08a4c5d842f21d97843ae1190a5ec570df868c"
+        },
+        "arena_autonomy.corner_evidence": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_evidence.py",
+          "sha256": "131b5b7479eed6a6b012914ae2a21efa80c9e39ed57d87bf249b4579e4ace652"
+        },
+        "arena_autonomy.corner_distance": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_distance.py",
+          "sha256": "2ee17d397ba876b32f14a84bc9d1cb9674139617dee509d04cc5e2260ab81ba7"
+        },
+        "arena_autonomy.corner_corridor": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corner_corridor.py",
+          "sha256": "c692f8fa86c5a0459d7c58b3dc038ad570d982abe25b01e0c673c94bd7d13dd9"
+        },
+        "arena_autonomy.corridor_observer": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/corridor_observer.py",
+          "sha256": "643a49252c4729f89a52f5ecb27a95ec6ff4a8e7328b9292be1ee7eed55f8f34"
+        },
+        "arena_autonomy.occupancy_timing": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/occupancy_timing.py",
+          "sha256": "4d75e1172d16a50c273fb8f8cffc407bbbec838556b8a3dec9bc87d9a783970f"
+        },
+        "arena_autonomy.scene_motion": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/scene_motion.py",
+          "sha256": "41dd3567500b21d487aa292874f1e24f79301811616fa1d62b846d1d2bc4dddb"
+        },
+        "arena_autonomy.local_scene": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_scene.py",
+          "sha256": "4720821f897806a962091fcbb98e17bc4d66581ea3f66555251935886a633a15"
+        },
+        "arena_autonomy.follow_trace": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/follow_trace.py",
+          "sha256": "5562688611925b5851dcba136ef0f88de6debe76f6349769b68f45b085c26a90"
+        },
+        "arena_autonomy.lidar_safety": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_safety.py",
+          "sha256": "03040a82b5d97423cb49e7e57708fafbf85875d9180f50ff62d2d1cf745b296d"
+        },
+        "arena_autonomy.lidar_motion": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion.py",
+          "sha256": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5"
+        },
+        "arena_autonomy.lidar_motion_ros": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion_ros.py",
+          "sha256": "6430166162696b8beb7103f36e69dc4324063d884748e673e46049ff08a71a7e"
+        },
+        "arena_autonomy.lidar_observation": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_observation.py",
+          "sha256": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6"
+        },
+        "arena_autonomy.observation_support": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/observation_support.py",
+          "sha256": "209ecff7e64e89ab2941fb521513bc98481fcb88c42407340798727f54b87084"
+        },
+        "arena_autonomy.observation_lateral": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/observation_lateral.py",
+          "sha256": "f50fda3243d0243434834d22a45b5c72f2a80db6244d44e1ae4c1320ac9737ba"
+        },
+        "arena_autonomy.linear_observation": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/linear_observation.py",
+          "sha256": "cc99b67adba20493b499592ba973cfa50926ecf382f2cee1e30535778708b905"
+        },
+        "arena_vehicle_interface.actuation_ros": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py",
+          "sha256": "ae01245f18b2abeff2b1120d0ae11c64d04f707085e813949d90b58e884025b9"
+        },
+        "arena_vehicle_interface.actuation_contract": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_contract.py",
+          "sha256": "ed3d12d16a8c156b02767a4351749fdf6bb3cbe0aa998e1385f7eb85e3b235d6"
+        },
+        "arena_vehicle_interface.actuation_wire": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/actuation_wire.py",
+          "sha256": "1410828c83ded442749ff05314b056d586d6d322a9bc0de75bcd9bcc7bf02f25"
+        },
+        "arena_vehicle_interface.applied_guard": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/applied_guard.py",
+          "sha256": "121f8eefa1954b64d682f940f275d8ba102b3bd4168dbfabd4c7aefe467ebf6a"
+        },
+        "arena_vehicle_interface.drive_feedback": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py",
+          "sha256": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504"
+        },
+        "arena_vehicle_interface.node_lifecycle": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/node_lifecycle.py",
+          "sha256": "ed925079b19548aa651e608894b990b00c28e02795e98a893372446ac9932270"
+        },
+        "arena_vehicle_interface.queued_log": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py",
+          "sha256": "03c96124f5f5e2f4bbee7210e9ff1b16458c62537ef4ac15d00944d6a9b11300"
+        },
+        "arena_vehicle_interface.timing_probe": {
+          "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py",
+          "sha256": "44e8e4adeed24e9bfff71974d900236ccdad1230a5a15006703b727d45cff98e"
+        }
+      }
+    }
+  ],
+  "signals": [
+    {
+      "role": "controller",
+      "pid": 773,
+      "signal": "SIGCONT",
+      "wall_s": 79.246217744,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    },
+    {
+      "role": "vision",
+      "pid": 841,
+      "signal": "SIGCONT",
+      "wall_s": 79.247332858,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    },
+    {
+      "role": "controller",
+      "pid": 773,
+      "signal": "SIGINT",
+      "wall_s": 79.248543729,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    },
+    {
+      "role": "safety",
+      "pid": 772,
+      "signal": "SIGCONT",
+      "wall_s": 79.618064973,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    },
+    {
+      "role": "safety",
+      "pid": 772,
+      "signal": "SIGINT",
+      "wall_s": 79.619293708,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    },
+    {
+      "role": "sink",
+      "pid": 771,
+      "signal": "SIGCONT",
+      "wall_s": 79.838309245,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    },
+    {
+      "role": "sink",
+      "pid": 771,
+      "signal": "SIGINT",
+      "wall_s": 79.839271244,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    },
+    {
+      "role": "mcu",
+      "pid": 770,
+      "signal": "SIGCONT",
+      "wall_s": 80.008669562,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    },
+    {
+      "role": "mcu",
+      "pid": 770,
+      "signal": "SIGINT",
+      "wall_s": 80.009540331,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    },
+    {
+      "role": "host",
+      "pid": 769,
+      "signal": "SIGCONT",
+      "wall_s": 80.177879007,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    },
+    {
+      "role": "host",
+      "pid": 769,
+      "signal": "SIGINT",
+      "wall_s": 80.178695224,
+      "phase": "cleanup",
+      "scope": "single_owned_pid",
+      "group_members": []
+    }
+  ],
+  "session_observations": [
+    {
+      "role": "controller",
+      "leader": {
+        "pid": 773,
+        "state": "R",
+        "parent": 754,
+        "group": 773,
+        "session": 773,
+        "start_ticks": 7478
+      },
+      "phase": "before_cleanup_SIGCONT",
+      "wall_s": 79.246213396,
+      "members": [
+        {
+          "pid": 773,
+          "state": "S",
+          "parent": 754,
+          "group": 773,
+          "session": 773,
+          "start_ticks": 7478
+        },
+        {
+          "pid": 840,
+          "state": "S",
+          "parent": 773,
+          "group": 773,
+          "session": 773,
+          "start_ticks": 7725
+        },
+        {
+          "pid": 841,
+          "state": "S",
+          "parent": 773,
+          "group": 773,
+          "session": 773,
+          "start_ticks": 7728
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "controller",
+      "leader": {
+        "pid": 773,
+        "state": "R",
+        "parent": 754,
+        "group": 773,
+        "session": 773,
+        "start_ticks": 7478
+      },
+      "phase": "before_cleanup_SIGCONT",
+      "wall_s": 79.247329441,
+      "members": [
+        {
+          "pid": 773,
+          "state": "S",
+          "parent": 754,
+          "group": 773,
+          "session": 773,
+          "start_ticks": 7478
+        },
+        {
+          "pid": 840,
+          "state": "S",
+          "parent": 773,
+          "group": 773,
+          "session": 773,
+          "start_ticks": 7725
+        },
+        {
+          "pid": 841,
+          "state": "S",
+          "parent": 773,
+          "group": 773,
+          "session": 773,
+          "start_ticks": 7728
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "controller",
+      "leader": {
+        "pid": 773,
+        "state": "R",
+        "parent": 754,
+        "group": 773,
+        "session": 773,
+        "start_ticks": 7478
+      },
+      "phase": "before_cleanup_SIGINT",
+      "wall_s": 79.248540664,
+      "members": [
+        {
+          "pid": 773,
+          "state": "S",
+          "parent": 754,
+          "group": 773,
+          "session": 773,
+          "start_ticks": 7478
+        },
+        {
+          "pid": 840,
+          "state": "S",
+          "parent": 773,
+          "group": 773,
+          "session": 773,
+          "start_ticks": 7725
+        },
+        {
+          "pid": 841,
+          "state": "S",
+          "parent": 773,
+          "group": 773,
+          "session": 773,
+          "start_ticks": 7728
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "controller",
+      "leader": {
+        "pid": 773,
+        "state": "R",
+        "parent": 754,
+        "group": 773,
+        "session": 773,
+        "start_ticks": 7478
+      },
+      "phase": "after_cleanup",
+      "wall_s": 79.614098102,
+      "members": [],
+      "leader_reused": false
+    },
+    {
+      "role": "safety",
+      "leader": {
+        "pid": 772,
+        "state": "R",
+        "parent": 754,
+        "group": 772,
+        "session": 772,
+        "start_ticks": 7477
+      },
+      "phase": "before_cleanup_SIGCONT",
+      "wall_s": 79.618057359,
+      "members": [
+        {
+          "pid": 772,
+          "state": "S",
+          "parent": 754,
+          "group": 772,
+          "session": 772,
+          "start_ticks": 7477
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "safety",
+      "leader": {
+        "pid": 772,
+        "state": "R",
+        "parent": 754,
+        "group": 772,
+        "session": 772,
+        "start_ticks": 7477
+      },
+      "phase": "before_cleanup_SIGINT",
+      "wall_s": 79.619289951,
+      "members": [
+        {
+          "pid": 772,
+          "state": "S",
+          "parent": 754,
+          "group": 772,
+          "session": 772,
+          "start_ticks": 7477
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "safety",
+      "leader": {
+        "pid": 772,
+        "state": "R",
+        "parent": 754,
+        "group": 772,
+        "session": 772,
+        "start_ticks": 7477
+      },
+      "phase": "after_cleanup",
+      "wall_s": 79.834603624,
+      "members": [],
+      "leader_reused": false
+    },
+    {
+      "role": "sink",
+      "leader": {
+        "pid": 771,
+        "state": "R",
+        "parent": 754,
+        "group": 771,
+        "session": 771,
+        "start_ticks": 7477
+      },
+      "phase": "before_cleanup_SIGCONT",
+      "wall_s": 79.838303204,
+      "members": [
+        {
+          "pid": 771,
+          "state": "S",
+          "parent": 754,
+          "group": 771,
+          "session": 771,
+          "start_ticks": 7477
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "sink",
+      "leader": {
+        "pid": 771,
+        "state": "R",
+        "parent": 754,
+        "group": 771,
+        "session": 771,
+        "start_ticks": 7477
+      },
+      "phase": "before_cleanup_SIGINT",
+      "wall_s": 79.839268829,
+      "members": [
+        {
+          "pid": 771,
+          "state": "S",
+          "parent": 754,
+          "group": 771,
+          "session": 771,
+          "start_ticks": 7477
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "sink",
+      "leader": {
+        "pid": 771,
+        "state": "R",
+        "parent": 754,
+        "group": 771,
+        "session": 771,
+        "start_ticks": 7477
+      },
+      "phase": "after_cleanup",
+      "wall_s": 80.004439606,
+      "members": [],
+      "leader_reused": false
+    },
+    {
+      "role": "mcu",
+      "leader": {
+        "pid": 770,
+        "state": "R",
+        "parent": 754,
+        "group": 770,
+        "session": 770,
+        "start_ticks": 7477
+      },
+      "phase": "before_cleanup_SIGCONT",
+      "wall_s": 80.008663831,
+      "members": [
+        {
+          "pid": 770,
+          "state": "R",
+          "parent": 754,
+          "group": 770,
+          "session": 770,
+          "start_ticks": 7477
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "mcu",
+      "leader": {
+        "pid": 770,
+        "state": "R",
+        "parent": 754,
+        "group": 770,
+        "session": 770,
+        "start_ticks": 7477
+      },
+      "phase": "before_cleanup_SIGINT",
+      "wall_s": 80.009537816,
+      "members": [
+        {
+          "pid": 770,
+          "state": "R",
+          "parent": 754,
+          "group": 770,
+          "session": 770,
+          "start_ticks": 7477
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "mcu",
+      "leader": {
+        "pid": 770,
+        "state": "R",
+        "parent": 754,
+        "group": 770,
+        "session": 770,
+        "start_ticks": 7477
+      },
+      "phase": "after_cleanup",
+      "wall_s": 80.174610296,
+      "members": [],
+      "leader_reused": false
+    },
+    {
+      "role": "host",
+      "leader": {
+        "pid": 769,
+        "state": "R",
+        "parent": 754,
+        "group": 769,
+        "session": 769,
+        "start_ticks": 7477
+      },
+      "phase": "before_cleanup_SIGCONT",
+      "wall_s": 80.17787522,
+      "members": [
+        {
+          "pid": 769,
+          "state": "S",
+          "parent": 754,
+          "group": 769,
+          "session": 769,
+          "start_ticks": 7477
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "host",
+      "leader": {
+        "pid": 769,
+        "state": "R",
+        "parent": 754,
+        "group": 769,
+        "session": 769,
+        "start_ticks": 7477
+      },
+      "phase": "before_cleanup_SIGINT",
+      "wall_s": 80.178693,
+      "members": [
+        {
+          "pid": 769,
+          "state": "S",
+          "parent": 754,
+          "group": 769,
+          "session": 769,
+          "start_ticks": 7477
+        }
+      ],
+      "leader_reused": false
+    },
+    {
+      "role": "host",
+      "leader": {
+        "pid": 769,
+        "state": "R",
+        "parent": 754,
+        "group": 769,
+        "session": 769,
+        "start_ticks": 7477
+      },
+      "phase": "after_cleanup",
+      "wall_s": 80.344217847,
+      "members": [],
+      "leader_reused": false
+    },
+    {
+      "role": "host",
+      "leader": {
+        "pid": 769,
+        "state": "R",
+        "parent": 754,
+        "group": 769,
+        "session": 769,
+        "start_ticks": 7477
+      },
+      "phase": "final",
+      "wall_s": 80.347969506,
+      "members": [],
+      "leader_reused": false
+    },
+    {
+      "role": "mcu",
+      "leader": {
+        "pid": 770,
+        "state": "R",
+        "parent": 754,
+        "group": 770,
+        "session": 770,
+        "start_ticks": 7477
+      },
+      "phase": "final",
+      "wall_s": 80.348820283,
+      "members": [],
+      "leader_reused": false
+    },
+    {
+      "role": "sink",
+      "leader": {
+        "pid": 771,
+        "state": "R",
+        "parent": 754,
+        "group": 771,
+        "session": 771,
+        "start_ticks": 7477
+      },
+      "phase": "final",
+      "wall_s": 80.34963904,
+      "members": [],
+      "leader_reused": false
+    },
+    {
+      "role": "safety",
+      "leader": {
+        "pid": 772,
+        "state": "R",
+        "parent": 754,
+        "group": 772,
+        "session": 772,
+        "start_ticks": 7477
+      },
+      "phase": "final",
+      "wall_s": 80.350386615,
+      "members": [],
+      "leader_reused": false
+    },
+    {
+      "role": "controller",
+      "leader": {
+        "pid": 773,
+        "state": "R",
+        "parent": 754,
+        "group": 773,
+        "session": 773,
+        "start_ticks": 7478
+      },
+      "phase": "final",
+      "wall_s": 80.351112308,
+      "members": [],
+      "leader_reused": false
+    }
+  ],
+  "recent_check_mode": "evidence_expiry",
+  "recent_continuous_progress_verified": false,
+  "source_snapshot_scope": {
+    "runtime_modules": [
+      "src/arena_autonomy/arena_autonomy/local_pursuit.py",
+      "src/arena_autonomy/arena_autonomy/wall_follow.py",
+      "src/arena_autonomy/arena_autonomy/vision_process.py",
+      "src/arena_autonomy/arena_autonomy/race_start.py",
+      "src/arena_autonomy/arena_autonomy/core.py",
+      "src/arena_autonomy/arena_autonomy/local_path.py",
+      "src/arena_autonomy/arena_autonomy/local_follow.py",
+      "src/arena_autonomy/arena_autonomy/boundary_evidence.py",
+      "src/arena_autonomy/arena_autonomy/corner_evidence.py",
+      "src/arena_autonomy/arena_autonomy/corner_distance.py",
+      "src/arena_autonomy/arena_autonomy/corner_corridor.py",
+      "src/arena_autonomy/arena_autonomy/corridor_observer.py",
+      "src/arena_autonomy/arena_autonomy/occupancy_timing.py",
+      "src/arena_autonomy/arena_autonomy/scene_motion.py",
+      "src/arena_autonomy/arena_autonomy/local_scene.py",
+      "src/arena_autonomy/arena_autonomy/follow_trace.py",
+      "src/arena_autonomy/arena_autonomy/lidar_safety.py",
+      "src/arena_autonomy/arena_autonomy/lidar_motion.py",
+      "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py",
+      "src/arena_autonomy/arena_autonomy/lidar_observation.py",
+      "src/arena_autonomy/arena_autonomy/observation_support.py",
+      "src/arena_autonomy/arena_autonomy/observation_lateral.py",
+      "src/arena_autonomy/arena_autonomy/linear_observation.py",
+      "src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py",
+      "src/arena_vehicle_interface/arena_vehicle_interface/actuation_contract.py",
+      "src/arena_vehicle_interface/arena_vehicle_interface/actuation_wire.py",
+      "src/arena_vehicle_interface/arena_vehicle_interface/applied_guard.py",
+      "src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py",
+      "src/arena_vehicle_interface/arena_vehicle_interface/node_lifecycle.py",
+      "src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py",
+      "src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py"
+    ],
+    "validator": "scripts/validate_pipeline_faults_ros.py",
+    "fixture_helpers": [
+      "scripts/audit_start_signal_layout.py",
+      "scripts/pipeline_mcu_rejection_probe.py",
+      "scripts/pipeline_restart_probe.py"
+    ],
+    "provenance_only": [
+      "tests/test_pipeline_fault_validation.py",
+      "src/arena_description/config/vehicle.yaml",
+      "config/tracks/official_v2026.09.14.yaml"
+    ],
+    "provenance_interpretation": "test and configuration metadata; vehicle/track files are not loaded by this fixture"
+  },
+  "source_sha256": {
+    "scripts/validate_pipeline_faults_ros.py": "4b9ce4c2b31dd42779f1cc07cfed4e554761dff49f48a7e4e386c23dd5ba4a4e",
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": "3a7f98441966047431ea07fe2bc3ba0a9f5af13af88fd2009e738ad0f7d5c014",
+    "src/arena_autonomy/arena_autonomy/wall_follow.py": "aace3676ee9aaebbe7c56fd461352ef323974d7aadc3696632a1abbd5d8008a0",
+    "src/arena_autonomy/arena_autonomy/vision_process.py": "9fb49a496536884be3bedd13bc0d35deabfb13fbcea51f6d2d75e61e12d4baf9",
+    "src/arena_autonomy/arena_autonomy/race_start.py": "6db739457378a216e791f5c61c71447116b3b058f903c57edb4dfefd5d45491f",
+    "src/arena_autonomy/arena_autonomy/core.py": "37fdb7f707211f5378c17cdfe5176a572bad0bfc0c7523ac8bd645dfa299adfb",
+    "src/arena_autonomy/arena_autonomy/local_path.py": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e",
+    "src/arena_autonomy/arena_autonomy/local_follow.py": "2efaafe7a29d17b07b1561045e5a70caeccc423d69917ebdd0cf783f4ac9e86a",
+    "src/arena_autonomy/arena_autonomy/boundary_evidence.py": "1432454c4c8bb4b81edc96d03a08a4c5d842f21d97843ae1190a5ec570df868c",
+    "src/arena_autonomy/arena_autonomy/corner_evidence.py": "131b5b7479eed6a6b012914ae2a21efa80c9e39ed57d87bf249b4579e4ace652",
+    "src/arena_autonomy/arena_autonomy/corner_distance.py": "2ee17d397ba876b32f14a84bc9d1cb9674139617dee509d04cc5e2260ab81ba7",
+    "src/arena_autonomy/arena_autonomy/corner_corridor.py": "c692f8fa86c5a0459d7c58b3dc038ad570d982abe25b01e0c673c94bd7d13dd9",
+    "src/arena_autonomy/arena_autonomy/corridor_observer.py": "643a49252c4729f89a52f5ecb27a95ec6ff4a8e7328b9292be1ee7eed55f8f34",
+    "src/arena_autonomy/arena_autonomy/occupancy_timing.py": "4d75e1172d16a50c273fb8f8cffc407bbbec838556b8a3dec9bc87d9a783970f",
+    "src/arena_autonomy/arena_autonomy/scene_motion.py": "41dd3567500b21d487aa292874f1e24f79301811616fa1d62b846d1d2bc4dddb",
+    "src/arena_autonomy/arena_autonomy/local_scene.py": "4720821f897806a962091fcbb98e17bc4d66581ea3f66555251935886a633a15",
+    "src/arena_autonomy/arena_autonomy/follow_trace.py": "5562688611925b5851dcba136ef0f88de6debe76f6349769b68f45b085c26a90",
+    "src/arena_autonomy/arena_autonomy/lidar_safety.py": "03040a82b5d97423cb49e7e57708fafbf85875d9180f50ff62d2d1cf745b296d",
+    "src/arena_autonomy/arena_autonomy/lidar_motion.py": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5",
+    "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py": "6430166162696b8beb7103f36e69dc4324063d884748e673e46049ff08a71a7e",
+    "src/arena_autonomy/arena_autonomy/lidar_observation.py": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6",
+    "src/arena_autonomy/arena_autonomy/observation_support.py": "209ecff7e64e89ab2941fb521513bc98481fcb88c42407340798727f54b87084",
+    "src/arena_autonomy/arena_autonomy/observation_lateral.py": "f50fda3243d0243434834d22a45b5c72f2a80db6244d44e1ae4c1320ac9737ba",
+    "src/arena_autonomy/arena_autonomy/linear_observation.py": "cc99b67adba20493b499592ba973cfa50926ecf382f2cee1e30535778708b905",
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py": "ae01245f18b2abeff2b1120d0ae11c64d04f707085e813949d90b58e884025b9",
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_contract.py": "ed3d12d16a8c156b02767a4351749fdf6bb3cbe0aa998e1385f7eb85e3b235d6",
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_wire.py": "1410828c83ded442749ff05314b056d586d6d322a9bc0de75bcd9bcc7bf02f25",
+    "src/arena_vehicle_interface/arena_vehicle_interface/applied_guard.py": "121f8eefa1954b64d682f940f275d8ba102b3bd4168dbfabd4c7aefe467ebf6a",
+    "src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504",
+    "src/arena_vehicle_interface/arena_vehicle_interface/node_lifecycle.py": "ed925079b19548aa651e608894b990b00c28e02795e98a893372446ac9932270",
+    "src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py": "03c96124f5f5e2f4bbee7210e9ff1b16458c62537ef4ac15d00944d6a9b11300",
+    "src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py": "44e8e4adeed24e9bfff71974d900236ccdad1230a5a15006703b727d45cff98e",
+    "scripts/audit_start_signal_layout.py": "0cd6d9543abe94db6aca9c308857be8a96f0846c5506bf6d02f46af234454528",
+    "scripts/pipeline_mcu_rejection_probe.py": "d82622ccb757635e7984206685f0b1680dc23604e221819c687d9f5765368a5f",
+    "scripts/pipeline_restart_probe.py": "754f4b695b4014decb98f9ff9e7f266f6eaa0113554e15bf947e7eb7b9b60170",
+    "tests/test_pipeline_fault_validation.py": "fbcc775b1f1a0b714acac6f4fc3a379f5fb2002352f15c10ea378279b54635f4",
+    "src/arena_description/config/vehicle.yaml": "a9b6530c6eea883ce8e73f5e50b32161d47459699cb52c1d8c15a14aca458b24",
+    "config/tracks/official_v2026.09.14.yaml": "bc484290470b5025c51f2d623270d7c897311e4d9135d907b3b7720486a42393"
+  },
+  "vision_processes": [
+    {
+      "identity": {
+        "pid": 841,
+        "state": "S",
+        "parent": 773,
+        "group": 773,
+        "session": 773,
+        "start_ticks": 7728
+      },
+      "expected_signal": null,
+      "exit_measurement": "not validator child; parent result/log and verified /proc disappearance only",
+      "final_observation": "absent from /proc"
+    }
+  ],
+  "graph_audits": [
+    {
+      "started_wall_s": 79.220427827,
+      "convergence_wall_cap_s": 0.0,
+      "changes": [],
+      "passed": false
+    }
+  ],
+  "error": "NodeNameNonExistentError('cannot get subscriber names and types for nonexistent node: error not set')",
+  "failure_state": {
+    "wall_s": 79.220820898,
+    "sim_s": 3.62,
+    "latest": {
+      "mcu": {
+        "v": 1,
+        "boot": "613727e3b80b4d30b8d20a782fca14d1",
+        "generation": 0,
+        "state": "DISARMED",
+        "reason": "boot",
+        "owner": null,
+        "accepted_seq": -1,
+        "target_speed_mps": 0.0,
+        "steering_rad": 0.0,
+        "left_wheel_mps": null,
+        "right_wheel_mps": null,
+        "mean_wheel_mps": 0.0,
+        "feedback_mode": "drive_motor_shaft",
+        "stationary_scope": "mean_wheel_only_opposite_rotation_unobservable",
+        "feedback_valid": true,
+        "feedback_seq": 145,
+        "left_ticks": null,
+        "right_ticks": null,
+        "motor_counts": 0,
+        "feedback_capture_us": 3615000,
+        "deadline_us": null,
+        "estop_held": false,
+        "now_us": 3620000,
+        "output_ready": true,
+        "stationary_ready": true
+      },
+      "sink": {
+        "now_us": 3615000,
+        "speed_mps": 0.0,
+        "blocked": true,
+        "reason": "boot",
+        "epoch": [
+          "613727e3b80b4d30b8d20a782fca14d1",
+          0
+        ],
+        "last_status_us": 3615000
+      },
+      "applied": 0.0,
+      "autonomy": {
+        "state": "WAIT_GREEN",
+        "side": "left",
+        "signal": "unknown",
+        "marker_ids": [],
+        "started": false,
+        "enabled": true,
+        "sim_time_s": 3.62,
+        "speed_command_mps": 0.0,
+        "steering_command_rad": 0.0,
+        "text_log": {
+          "accepted": 2,
+          "written": 2,
+          "dropped": 0,
+          "failed": 0,
+          "pending": 0,
+          "worker_alive": true
+        },
+        "vision": {
+          "mode": "process",
+          "signal_mode": "temporary_3light",
+          "epoch": 0,
+          "fault": null,
+          "stats": {
+            "received": 5,
+            "throttled": 0,
+            "out_of_order": 0,
+            "replaced": 0,
+            "submitted": 5,
+            "completed": 4,
+            "accepted": 4,
+            "rejected_epoch": 0,
+            "rejected_stale": 0,
+            "resets": 0
+          },
+          "inflight": true,
+          "pending": false,
+          "last_result": {
+            "stamp": 3.505,
+            "received": 79.032431697,
+            "processing_ms": 5.466785,
+            "stages_ms": {
+              "decode": 0.554511,
+              "signal": 2.431441,
+              "markers": 2.480833
+            }
+          },
+          "processing": {
+            "count": 4,
+            "total_ms": 35.051623,
+            "maximum_ms": 20.221918,
+            "over_20ms": 1
+          },
+          "worker_pid": 841
+        }
+      },
+      "drive": 0.0
+    },
+    "graph_error": "NodeNameNonExistentError('cannot get subscriber names and types for nonexistent node: error not set')",
+    "owned_processes": [
+      {
+        "role": "host",
+        "pid": 769,
+        "exit_code": null
+      },
+      {
+        "role": "mcu",
+        "pid": 770,
+        "exit_code": null
+      },
+      {
+        "role": "sink",
+        "pid": 771,
+        "exit_code": null
+      },
+      {
+        "role": "safety",
+        "pid": 772,
+        "exit_code": null
+      },
+      {
+        "role": "controller",
+        "pid": 773,
+        "exit_code": null
+      }
+    ]
+  },
+  "failure_stop": {
+    "attempted": true,
+    "acknowledged": true,
+    "fresh_zero_and_model_stopped": true
+  },
+  "remaining_vision_pids": [],
+  "remaining_session_members": [],
+  "cleanup_errors": [],
+  "runtime_source_hashes_match": true,
+  "probe_log_summary": {
+    "host_0.log": {
+      "HOST_DRIVE_DECISION=": 0,
+      "MCU_FAULT_CONTEXT=": 0,
+      "MCU_ENCODER_REJECTION=": 0
+    },
+    "mcu_1.log": {
+      "HOST_DRIVE_DECISION=": 0,
+      "MCU_FAULT_CONTEXT=": 0,
+      "MCU_ENCODER_REJECTION=": 0
+    },
+    "sink_2.log": {
+      "HOST_DRIVE_DECISION=": 0,
+      "MCU_FAULT_CONTEXT=": 0,
+      "MCU_ENCODER_REJECTION=": 0
+    },
+    "safety_3.log": {
+      "HOST_DRIVE_DECISION=": 0,
+      "MCU_FAULT_CONTEXT=": 0,
+      "MCU_ENCODER_REJECTION=": 0
+    },
+    "controller_4.log": {
+      "HOST_DRIVE_DECISION=": 0,
+      "MCU_FAULT_CONTEXT=": 0,
+      "MCU_ENCODER_REJECTION=": 0
+    }
+  },
+  "mcu_fault_contexts": []
+}

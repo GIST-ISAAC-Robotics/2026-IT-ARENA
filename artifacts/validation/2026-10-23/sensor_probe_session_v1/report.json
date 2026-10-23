@@ -1,0 +1,169 @@
+{
+  "passed": true,
+  "checks": {
+    "normal_exit": true,
+    "normal_not_forced": true,
+    "normal_integrity": true,
+    "actual_close_stall_entered": true,
+    "stalled_process_exited": true,
+    "stalled_failed": true,
+    "stalled_killed": true,
+    "stalled_no_complete_manifest": true,
+    "source_unchanged": true,
+    "fixture_thread_closed": true,
+    "fixture_no_errors": true
+  },
+  "source_sha256": {
+    "scripts/sensor_probe_session.py": "1b1a24e07a378e886b85ef8c23e7071def5a7a25f60c270c3e661c42d7ba6ac1",
+    "scripts/record_sensor_bag.py": "ec9c080e2262b6f4f4272e2a0ef265065f4332f20fe979e851c80056fc2a737e",
+    "scripts/recording_guard.py": "675f65064444b3babd10371c97779d7bc8d8b98132dcef3d7cb9ee0405d0a25d",
+    "scripts/rosbag_writer_compat.py": "3f9fa89da679a2760c803a1676da2dcf8625bb230a9c914de45ad4b03a9cc13a",
+    "scripts/audit_sensor_probe.py": "bc7cc5d5c96fcb9c1238b203d49bcf931c60c5fefe5b1051625279a18d2fcd91",
+    "scripts/audit_sensor_bag.py": "91c5f0a606b05751310851a7a9b6d6174138ea873d6d00c33cd7d75f96118ba1",
+    "scripts/sensor_recording_profile.py": "a2127cd559a62948e381026324d1226f9154fca36d2cda976fff80d11b19bc6b",
+    "scripts/validate_sensor_probe.py": "cd3ce268c45d05daf7c242613ed76036c8bd420f486a946ee0444b8229375356",
+    "scripts/sensor_probe_delivery.py": "7bdddba7b25a7b1188deb027277545cd25a6afba33413a243cfb3b7fe8c440cb",
+    "tests/test_sensor_probe_session.py": "8a1cf01e5ff72dd05e20ccfd0875bd423c2305f7d21e9e12886b6c29b1dde0b1",
+    "tests/fixtures/sensor_probe_stalled_recorder.py": "af9450dfc2d9902a049789575a4f283890456a71245cc096d20d66dceaf2e29d",
+    "src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py": "d667b3c77c5392547e56757b6084a8ed53eda794db3fd145d185f8cae66a4de1",
+    "src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504"
+  },
+  "normal": {
+    "lifecycle_complete": true,
+    "stop_reason": "planned_stop",
+    "exit_code": 0,
+    "process_exited": true,
+    "forced_termination": false,
+    "ready_observed": true,
+    "pid": 761,
+    "elapsed_s": 4.098972122999996,
+    "limits": {
+      "duration": 2.0,
+      "startup_timeout": 30.0,
+      "stop_timeout": 75.0,
+      "term_timeout": 5.0,
+      "kill_timeout": 5.0
+    },
+    "events": [
+      {
+        "event": "ready",
+        "elapsed_s": 1.7845296699999977
+      },
+      {
+        "event": "signal",
+        "signal": "SIGINT",
+        "delivered": true,
+        "elapsed_s": 3.7846865960000002
+      }
+    ],
+    "errors": [],
+    "record_integrity": {
+      "record_integrity_verified": true,
+      "profile": "sensor_probe",
+      "counts": {
+        "/imu/data": 48,
+        "/scan": 48
+      },
+      "raw_bytes": 19392,
+      "storage_reader": {
+        "mode": "directory_metadata"
+      },
+      "recorder_clock_mode": "system",
+      "source_stamp_zero": {
+        "/imu/data": 12,
+        "/scan": 12
+      },
+      "source_stamp_regressions": {
+        "/imu/data": 23,
+        "/scan": 23
+      },
+      "sensor_acquisition_time_verified": false,
+      "hardware_verified": false,
+      "upstream_loss_verified": false,
+      "controller_replay_eligible": false,
+      "ready_to_drive": false
+    },
+    "schema": "arena_sensor_probe_session_v1",
+    "command": [
+      "/usr/bin/python3",
+      "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/scripts/record_sensor_bag.py",
+      "--output",
+      "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-23/sensor_probe_session_v1/normal/sensor_recording",
+      "--profile",
+      "sensor_probe",
+      "--clock-mode",
+      "system",
+      "--drive-feedback-mode",
+      "drive_motor_shaft",
+      "--max-wall-seconds",
+      "37.0",
+      "--max-raw-gib",
+      "0.01",
+      "--sensor-topic",
+      "/imu/data",
+      "--sensor-topic",
+      "/scan"
+    ],
+    "complete": true,
+    "cancellation_requested": false,
+    "controller_replay_eligible": false,
+    "hardware_verified": false,
+    "ready_to_drive": false
+  },
+  "stalled": {
+    "lifecycle_complete": false,
+    "stop_reason": "planned_stop",
+    "exit_code": -9,
+    "process_exited": true,
+    "forced_termination": true,
+    "ready_observed": true,
+    "pid": 778,
+    "elapsed_s": 3.5689526970000003,
+    "limits": {
+      "duration": 1.0,
+      "startup_timeout": 30.0,
+      "stop_timeout": 0.5,
+      "term_timeout": 0.3,
+      "kill_timeout": 3.0
+    },
+    "events": [
+      {
+        "event": "ready",
+        "elapsed_s": 1.760944796000004
+      },
+      {
+        "event": "signal",
+        "signal": "SIGINT",
+        "delivered": true,
+        "elapsed_s": 2.761190722000009
+      },
+      {
+        "event": "wait_timeout",
+        "signal": "SIGINT",
+        "elapsed_s": 3.2613411370000023
+      },
+      {
+        "event": "signal",
+        "signal": "SIGTERM",
+        "delivered": true,
+        "elapsed_s": 3.261378527000005
+      },
+      {
+        "event": "wait_timeout",
+        "signal": "SIGTERM",
+        "elapsed_s": 3.5615048380000047
+      },
+      {
+        "event": "signal",
+        "signal": "SIGKILL",
+        "delivered": true,
+        "elapsed_s": 3.5616152650000004
+      }
+    ],
+    "errors": []
+  },
+  "physical_disk_failure_reproduced": false,
+  "real_75_second_grace_tested": false,
+  "hardware_verified": false,
+  "ready_to_drive": false
+}

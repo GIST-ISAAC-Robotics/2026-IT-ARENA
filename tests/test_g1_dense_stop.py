@@ -70,7 +70,7 @@ def test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract()
     contract = json.loads((root/'config/tests/dense_stop_evidence_r0_sha256.json').read_text())
     assert hashlib.sha256((root/contract['parent_contract']).read_bytes()).hexdigest() == contract['parent_contract_sha256']
     successors, parent = [], 'config/tests/dense_stop_evidence_r0_sha256.json'
-    for next_name in ('lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json'):
+    for next_name in ('lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json'):
         successor = json.loads((root/'config/tests'/next_name).read_text())
         assert successor['parent_contract'] == parent
         assert hashlib.sha256((root/parent).read_bytes()).hexdigest() == successor['parent_contract_sha256']

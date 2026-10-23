@@ -154,3 +154,86 @@ WSL Ubuntu-24.04에서 ROS Jazzy와 `install/local_setup.bash`를 불러오고, 
 이번 결과를 기준으로 다음 기능 개발은 **B1의 정지 표적/벽 가림과 앞차 추종·정지**를 권고한다. B1은 아직 구현하지 않았다. 이동 차량 추월과 고속화는 이후다. `ros_v2`의 갱신 공백은 미해결로 유지한다. 표적 재현 3회에서는 재발하지 않았고 첫 공백 진단이 준비됐으므로, B1 작업 중 재발하면 진단 기록으로 원인을 구분한다. 반복 보호 정지·누적 적체·정지 실패가 나오면 우선 조사한다. 동일 소스의 한 번 성공으로 정상 연속 가용성을 보증하지 않지만, PC/DDS의 모든 내부 원인 규명이 끝날 때까지 B1의 오프라인 기능 개발을 막지는 않는다.
 
 중도 복구 절차는 B3에서 설계하되, 이번에는 운영 정책을 임의로 통일하거나 전체 재허가 구조를 새로 만들지 않았다. 실제 하드웨어·센서 로그가 생기면 C2에서 관측 한계와 제동/시간 경계를 확인한다.
+
+## 6. 10/15 G1 분리 경계·점별 시각 후보의 고장 경계 회귀
+
+위 절들의 B1 미구현 설명은 10/4 당시 상태다. 10/15에는 새 G1 후보의 입력/프로세스 고장 경계가 기존 정책과 결합되는지 별도 확인했다. `--controller-profile g1_per_ray_candidate --scenario full`로만 적용하며 기본 R0·운영 launch·센서/보호/MCU 한도는 그대로다.
+
+기존 전체 34조건에 C1 발행 중단, 전방 단일 `+Inf`, IMU 발행 중단과 각각 정상 입력 복구 6조건을 추가했다. 실제 `/autonomy/status`의 G1 모드·점별 시각·반환 보존을 모든 주행 재개 시점에서 확인한다. 단순히 명령행에 후보 옵션을 줬다는 사실만으로 후보 실행을 통과시키지 않는다.
+
+[사전 74회귀·40/40 ROS 조건](../../artifacts/validation/2026-10-15/g1_pipeline_faults_v1/README.md)이 통과했다. 독립 출력 경계·명시 STOP/CLEAR/ARM·고정 영상 고장·제어기 재시작 후 새 신호 요구·일시 입력 복구 동작이 유지됐다. MCU 갱신 지연 진단은 0건이지만 과거 간헐 원인을 해결한 결과는 아니다. 의도적 fault SIGKILL과 비의도 강제 정리를 구분했고 실행 소스·최종 그래프·잔존 0을 확인했다.
+
+합성 직선 입력과 ±2 m/s² 임시 종방향 모형이며, 실제 트랙·다차량·조향 동역학·Gazebo/실물 제동·Jetson 지연 시험이 아니다. 기존 실패와 스냅샷은 보존했다. 이 고장 회귀 묶음은 마감하고 새로운 입력/통합 변경이나 구체적 재발이 있을 때 다시 연다.
+
+## 7. 10/19 제어기 재시작 중 MCU 고정 — v5/v6 원인 분리와 시험기 수정
+
+10/17 G1 최근 관측 후보의 [ROS v5](../../artifacts/validation/2026-10-17/g1_recent_observation_ros_v5/run/validator_output/report.json)는 `invalid_encoder`, [v6](../../artifacts/validation/2026-10-17/g1_recent_observation_ros_v6/run/validator_output/report.json)는 `command_expired`로 MCU가 고정돼 각각 27통과/1실패·15미실행이었다([당시 기록](G1_OBSERVATION_ENVELOPE_2026_10_16.md#1013-진단을-포함한-동일-ros-조건-1회--명령-만료로-실패)). 두 실패 모두 영상 SIGKILL 뒤 **두 번째 제어기 재시작**에서 생겼다. 수신 계약·TTL 100 ms·고장 고정·판정 한도는 바꾸지 않았다. 구현·분석은 Claude Opus 5.5, ROS 실행·대기·회수는 Claude Haiku 5.5 서브에이전트가 맡았다. 원시 산출물은 [10/19 묶음](../../artifacts/validation/2026-10-19/restart_command_path_v1/README.md)에 있다.
+
+### 7.1 기존 원시 기록으로 확인한 것과 추정
+
+- **v6 순서(확인):** 재시작 시작 33.06 s → 보호층 `stale_input`(신선한 0 `/drive/safe`) 33.26 s → MCU `FAULT_LATCHED/command_expired` **35.360 s**(event seq 24712, 세대 1→2) → 출력 감시 35.47 s → 새 제어기 첫 상태 35.525 s → 보호층 `motion_stale` 35.54 s → 재시작 사례 판정 36.165 s → 빨강→초록 시작 36.83 s → 실패 45.165 s. 그 고장 상태 표본에서 MCU 시각은 검사기 시각과 같았고 피드백 취득은 5 ms 전(35.355 s, 모터 9,204, `feedback_valid=true`)이었다. 확인되는 범위는 **그 표본의 시계·피드백이 신선한 상태에서 유효 DRIVE가 갱신되지 않아, 수락 때 보수적으로 산정된 만료 시각을 넘긴 것**까지다. 만료 시각은 `min(임대 만료, 임대 발행 + ttl − 원천 나이)`라 수락 뒤 남은 수명이 100 ms보다 짧을 수 있다(아래 의도적 정지 문맥은 85 ms). v6에는 마지막 수락 인수·임대·원천 나이가 없으므로 **정확한 수락 공백 길이와 끊긴 단계(보호층 발행·DDS 전달·호스트 판단·MCU 수신)는 미확정**이다. 이 표본만으로 MCU 노드 전체가 정상이었다고 일반화하지 않는다.
+- **v5(확인/미확정):** 새 제어기 첫 상태 36.34 s 뒤 36.700 s에 `invalid_encoder`, 36.74 s에 보호층 `motion_gap`이 기록됐다. `_ingest`의 유효 조건은 정수 순번·정수 취득 시각·취득 시각≤현재·나이 50 ms 미만·정수 카운트를 함께 본다. 실제 거절값이 없으므로 어느 조건인지 확정하지 않는다. [10/17 분류 회귀](G1_OBSERVATION_ENVELOPE_2026_10_16.md#1011-최신-ros-전체-실패--엔코더-입력-거절과-진단-공백)대로 정상 정수 카운트의 신선도 실패도 같은 라벨을 만들므로 **신선도 실패는 유력한 가설**일 뿐이다.
+- **시험 판정 결함(확인):** v6의 `controller_restart_green_only_no_start`는 MCU가 이미 고정된 상태에서 **통과**로 기록됐다. 이 사례는 0 출력·자율 미출발만 보고, 다음 단계의 전제인 MCU 허가 유지를 검사하지 않았다. 그래서 실패가 약 9 s 뒤 빨강→초록 사례로 넘어갔다. 계약상 제어기 재시작은 출발 상태만 초기화하고(§2), MCU 고정은 보호층 정지에만 기대되는 동작이다.
+- **과거 공통 정황(추정):** 모든 기존 보고서의 재시작 사례 0 출력 수신 공백을 대조했다.
+
+| 실행 | 재시작 사례 sim 공백 최대 | 재시작 직후 MCU·보호층 기록 |
+|---|---:|---|
+| 10/4 `ros_v2` | 0.100 s | 출력 감시 `applied_command_expired` → MCU `control_deadline_missed` |
+| 10/17 v5 | 0.185 s | MCU `invalid_encoder`, 보호층 `motion_gap` |
+| 10/17 v6 | 0.185 s | MCU `command_expired`, 보호층 `motion_stale` |
+| 통과한 재시작 18회(10/4 r1~r3·`ros_v3`, 10/13, 10/15, 10/17 v3/v4, v5/v6 첫 재시작) | 0.005~0.010 s | MCU `zero_target` 유지. 보호층 사유를 대조한 14회는 `stale_input`/`clear`만 |
+
+세 실패는 MCU 라벨이 다르지만, 검사기가 `/clock`을 진행하는 동안 자식 쪽 출력·입력이 0.1 s 이상 끊긴 정황을 공유한다. 이는 기록 대조에 따른 추정이며, 세 번이 같은 인과라는 증거는 아니다.
+
+### 7.2 수정 — 시험기 결함만
+
+1. **재시작 사례의 MCU 허가 유지 명시:** `restart_controller()`의 기대에 `mcu.state == 'ARMED'`를 추가했다. 고정이 생기면 그 사례에서 실패하며 CLEAR/ARM으로 덮지 않는다. 판정 완화가 아니라 기존 전제의 귀속을 바로잡은 것이다.
+2. **시작 그래프 이름 조회 경쟁:** 첫 진단 실행 [v7](../../artifacts/validation/2026-10-19/restart_command_path_v1/ros_v7/run/validator_output/report.json)은 사례 시작 전 `get_subscriber_names_and_types_by_node('local_pursuit')`의 `NodeNameNonExistentError`로 실패했다(실패 회수 STOP·정지·자식 5개 종료코드 0·잔존 0·소스 일치, 보존). endpoint 발견과 노드 이름 갱신이 동시에 끝나지 않는 기존 경쟁이며 [재생 도구](../../scripts/replay_sensor_bag.py)는 이미 재시도한다. 이 예외만 미수렴으로 기록한다. 시작 감사는 별도 정책(`startup=True`)으로 **발견 준비 부족만** 최대 5 s 벽시계 동안 기다린다. 대상은 노드 이름 미발견, rmw의 이름 미해결 endpoint(`_NODE_NAME_UNKNOWN_`), 필요한 발행자·구독 부족이다. 이미 관측된 중복 발행자·잘못된 소유자/namespace·예상외 구독은 다음 스냅샷에서 사라지더라도 **즉시 실패**한다. 이는 이전 시작 감사(0 s)의 엄격함을 보존한 것이다. 준비 부족이 5 s 안에 해소되지 않으면 실패하고, 이름 조회 외의 예외는 기다리지 않고 바로 실패한다. 최종 감사(`final_graph_convergence_stays_stopped`, 40 s)는 기존대로 모든 무효 상태에 수렴 대기를 적용하며 바꾸지 않았다. 각 스냅샷에는 `startup_problems`(discovery/definite) 분류가 남는다.
+
+운영 노드(`lidar_safety`, `actuation_ros`, `actuation_contract`, `local_pursuit`)·launch·TTL·고장 고정은 바꾸지 않았다.
+
+### 7.3 시험 전용 계측
+
+[새 진단 모듈](../../scripts/pipeline_restart_probe.py)은 검사기 자식에만 연결한다. 원래 메서드를 정확히 한 번 호출하고 반환/예외를 유지한다.
+
+- 호스트: `/drive/safe` 전달 판단을 실제 거절 조건 순서대로 이름 붙이고(제안 없음·미래/오래된 임대·출력 미준비·ARM 장벽·TTL·원천 순번 등), 실제 전달은 producer 순번 증가로 따로 기록한다. 판단이 바뀔 때만 한 줄을 남기고 같은 판단 구간의 최대 호출 간격을 함께 쓴다. v7~v9 로그의 `last_source_us_before`는 원래 호출 **뒤** 같은 producer에서 읽은 값이었다. 정정본은 호출 전 값을 복사하고 호출 후 값을 `last_source_us_after`로 따로 남긴다([정정 메모](../../artifacts/validation/2026-10-19/restart_command_path_v1/probe_field_note.txt)). 원시 로그는 고치지 않았고 v8/v9 해석에도 이 필드를 쓰지 않았다.
+- MCU: 새 `FAULT_LATCHED` 전환마다 직전 수락 DRIVE(임대 창·원천 나이·ttl·만료 시각), 최근 수신 결과·제어 tick 24개를 한 번 남긴다. 기존 엔코더 거절 진단은 그대로다.
+- 모든 자식과 검사기: 15 ms 이상 걸린 `publish()`만 기록한다.
+- 검사기: 재시작 구간마다 수신 행(발행 노드 시계 포함)·tick 시각·15 ms 이상 spin, tick 4회마다 자식 주 스레드 실행/run-queue 대기·wchan·페이지 폴트, 8회마다 스레드별 상태, PSI·`/dev/shm` 목록. 0 출력 공백은 토픽별 최대값과 위치도 남긴다.
+
+시각 의미를 구분한다. 수신 행의 `wall_s`/`sim_s`는 **검사기가 spin에서 읽은 시각**이며 발생 시각이 아니다. 발생 쪽은 발행 노드의 `source_sim_s`·`now_us`, 자식 안에서 잰 느린 발행·MCU 전환 문맥이다. `/proc` 값은 누적 계수라 두 표본 사이 증가량만 쓴다. 계측 비용으로 전체 sim/wall 비율이 v6 0.550 → v8 0.534 → v9 0.523으로 낮아졌고 재시작 구간 tick p99는 26~34 ms였다. 관찰 효과를 배제할 수 없다.
+
+진단의 반환/예외 보존·기록 실패 격리·중복 설치 거절·자식 연결 범위·호출 전/후 값, 토픽별 공백, 재시작 MCU 기대, 시작 감사의 준비 부족 대기·지속 미발견 실패·일시/지속 중복과 잘못된 소유자·예상외 구독 즉시 실패·최종 감사 수렴 유지, 추적 창을 [새 회귀](../../tests/test_pipeline_restart_probe.py)와 [추적 회귀](../../tests/test_pipeline_restart_trace.py)로 고정했다.
+
+### 7.4 제한 ROS 확인
+
+| 실행 | 결과 | 재시작 구간 관측 |
+|---|---|---|
+| [v8](../../artifacts/validation/2026-10-19/restart_command_path_v1/ros_v8/run/validator_output/report.json) | **43/43 통과**(후반 15조건 포함), 자식 9개 기대 종료코드(의도 SIGKILL 2개 −9)·강제 정리 0·잔존 0·실행 소스 일치·최종 명시 STOP | 2번째 재시작에서 **임계 미만 동시 정지** |
+| [v9](../../artifacts/validation/2026-10-19/restart_command_path_v1/ros_v9/run/validator_output/report.json) | **43/43 통과**, 같은 종료·잔존·소스 확인 | 정지 재발 없음: tick 최대 31~51 ms, 15 ms 이상 발행 0건, MCU 수락 공백 ≤30 ms |
+
+v8 2번째 재시작(새 영상 작업자 시작 약 1.4 s 뒤, 새 제어기 주 스레드가 작업자 준비 대기 `poll`에서 벗어난 표본 구간과 겹침)의 [기록](../../artifacts/validation/2026-10-19/restart_command_path_v1/ros_v8/restart_trace_summary.json)은 다음과 같다.
+
+- 출력 감시는 자기 시계 35.165 s 상태를 마지막으로 35.205 s까지 새 상태를 내지 않았고, 보호층 `/drive/safe`도 35.16 s 뒤 35.205 s에 나왔다(각 sim 45/65 ms, wall 0.34/0.37 s). 35.165 s 상태는 검사기 tick 8회 이상(각 spin 24회)이 지난 뒤에야 도착했다.
+- 관측한 한 표본 구간(37 ms)에서 두 노드 **주 스레드**는 futex 대기였고 실행·run-queue 대기 증가가 모두 0이었다. 이는 그 표본·주 스레드에 한정된 관측이다. 다른 스레드나 Windows/WSL 호스트 수준의 CPU 관련성은 배제하지 않는다.
+- 검사기 자신도 sim 35.205 s tick에서 0.265 s 멈췄다. 검사기·출력 감시·보호층이 wall 약 118.62 s에 함께 재개했다. 공통 자원에서의 차단과 맞는 정황이며 DDS/rmw 층을 의심하지만 확정하지 않았다.
+- 검사기도 멈춰 sim은 45 ms만 진행했다. MCU가 같은 수락 순번을 유지한 최대 구간은 45 ms였고, 그 구간 시작 표본의 산정 만료(35.245 s) 전에 다음 명령이 수락돼 고정되지 않았다. 호스트는 전 실행 동안 계속 전달했다(최대 `/drive/safe` 처리 간격 sim 45 ms·wall 0.378 s).
+
+v9에서는 같은 정지가 나타나지 않아 차단 지점(발행 내부인지 수신 경로인지)을 판별하지 못했다. 주 에이전트 지시에 따라 계측 확장과 반복은 여기서 멈췄다. 의도적 보호층 정지에서 나온 MCU 고장 문맥 2건은 마지막 수락 DRIVE 85 ms 뒤 기존 수명식대로 만료돼 계측 경로가 동작함을 보였다.
+
+### 7.5 판정과 남는 문제
+
+| 항목 | 상태 |
+|---|---|
+| v6 `command_expired` | 고장 표본의 시계·피드백은 신선하고, 유효 DRIVE가 갱신되지 않아 산정 만료를 넘긴 것까지 **확인**. 정확한 수락 공백·끊긴 단계는 미확정 |
+| v5 `invalid_encoder` | 실제 거절값 없음. 신선도 실패는 유력 가설일 뿐 조건·단계 **미확정** |
+| 재시작 사례 귀속 결함·시작 그래프 경쟁 | **확인·수정·회귀** |
+| v8 임계 미만 동시 정지 | **실측**. 기전 미확정. v5/v6와 같은 인과라고 확정하지 않음 |
+| 안전 동작 | 공백이 TTL을 넘으면 MCU 고정이 설계된 안전 반응이다. TTL/한도/고정은 유지 |
+| 운영 구조 변경 | 근거 부족으로 **보류**(영상 작업자 시작 순서, DDS 전송 설정 등) |
+
+v9 실행 소스로 [전체 3,041회귀](../../artifacts/validation/2026-10-19/restart_command_path_v1/regression_full/pytest.log)가 통과했다. 현재 소스와 v9 실행 소스의 차이는 두 가지다. (1) `pipeline_restart_probe.py` 호스트 진단의 호출 전 값 복사·`last_source_us_after` 추가, (2) `validate_pipeline_faults_ros.py` 시작 감사를 발견 준비 부족만 기다리는 `startup=True` 정책으로 좁히고 스냅샷에 `startup_problems`·감사 `policy`를 기록한 것이다. 나머지는 시험 파일이다. v8/v9 시작 감사는 모두 첫 스냅샷이 정상(변화 1건)이어서 대기·분류 분기를 지나지 않았지만, 정정본으로 ROS를 다시 실행하지는 않았다. 중간 정정 뒤 [관련 158회귀](../../artifacts/validation/2026-10-19/restart_command_path_v1/regression_related_after_review/pytest.log), 최종본 [관련 회귀](../../artifacts/validation/2026-10-19/restart_command_path_v1/regression_related_final/pytest.log)를 따로 기록했다. v9 결과를 정정본의 ROS 성공으로 소급하지 않는다. v8/v9 두 번의 통과는 간헐 정지가 해결됐다는 근거가 아니다. 재발하면 이번 계측이 호스트 판단·MCU 전환 문맥·느린 발행·스레드 상태를 남기므로, 원인 확인 목적의 반복 없이 그 기록부터 판별한다. Jetson에서 제어기 재시작 중 같은 정지가 생기는지는 별도 C2/B3 확인 대상이다. 공식 단독 43.093540 m 실패·Gazebo 종료 SIGSEGV·최근 관측 보완 26.88~30.69 ms 초과는 이번 수정과 무관하게 남는다.
+
+### 7.6 10/21 후속 연결 회귀
+
+10/21 깊이/외곽 계산 최적화 후 [별도 ROS 1회](../../artifacts/validation/2026-10-21/g1_observation_ros_v1/README.md)에서 43/43·실제 종료 0·소스 불변·자식 잔존 0을 확인했다. 위 진단 필드/감사 정정본도 함께 실행했으며, 세 제어기 재시작 추적은 모두 완전했다. 과거 v9 결과에 소급하지 않는다. 관측 계산과 비용은 [10/21 보고서](G1_OBSERVATION_CONTRACT_2026_10_21.md)를 기준으로 하고, v5/v6의 최초 거절 단계와 v8의 간헐 차단 기전은 여전히 미확정으로 남긴다.

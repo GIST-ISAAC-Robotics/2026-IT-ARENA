@@ -1,0 +1,31 @@
+........................................F............................... [ 93%]
+.....                                                                    [100%]
+=================================== FAILURES ===================================
+__ test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract __
+
+    def test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract():
+        root = Path(__file__).resolve().parents[1]
+        contract = json.loads((root/'config/tests/dense_stop_evidence_r0_sha256.json').read_text())
+        assert hashlib.sha256((root/contract['parent_contract']).read_bytes()).hexdigest() == contract['parent_contract_sha256']
+        successors, parent = [], 'config/tests/dense_stop_evidence_r0_sha256.json'
+        for next_name in ('lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json'):
+            successor = json.loads((root/'config/tests'/next_name).read_text())
+            assert successor['parent_contract'] == parent
+            assert hashlib.sha256((root/parent).read_bytes()).hexdigest() == successor['parent_contract_sha256']
+            successors.append(successor)
+            parent = 'config/tests/'+next_name
+        for name, entry in contract['approved_evaluation_scripts'].items():
+            for successor in successors:
+                later = successor['approved_evaluation_scripts'].get(name)
+                if later:
+                    assert later['before'] == entry['after']
+                    entry = later
+>           assert hashlib.sha256((root/name).read_bytes()).hexdigest() == entry['after']
+E           AssertionError: assert 'e8c0e1be226e...0605698cc8dd4' == '79f8bf1fab40...d24f571a25363'
+E             - 79f8bf1fab40d1d47e16db293b81561342422551e88c1ee0500d24f571a25363
+E             + e8c0e1be226e2a228aecf8086b5f63e550453434ae3689dca910605698cc8dd4
+
+tests/test_g1_dense_stop.py:85: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_g1_dense_stop.py::test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract
+1 failed, 76 passed in 3.28s

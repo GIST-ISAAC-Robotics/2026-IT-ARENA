@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-15 선택형 급커브 안쪽 실제 앵커와 바깥 경로 대조. 기본 모드·기억 TTL·정지·점유 기준 보존",
+  "parent_contract": "config/tests/per_ray_occupancy_r0_sha256.json",
+  "parent_contract_sha256": "674bda23e31bd9b28e56fde19883f57c9dfdac671b4d0807d768884125060f88",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "760b8e232fd7ba372d689b06b6ba2797f103cc0aed378c56e7229c584d625082",
+      "after": "4eb8971de5191d1a3b0e8aa0e53e8c89fb1365b42435f6aabbcdd2c752c8ed0b",
+      "reason": "corner_anchor_candidate 명시 선택 후에만 직접 양측 관측 대조. 기존 1441판단 동일 재생"
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "51128c2dc34a9842bea35441a021bb0856cc1ab3bd8a5db829e84a8242296776",
+      "after": "43b4bde3d869d2463831a288fc6865d85dabfccb575b2c19a8de73b904975bbb",
+      "reason": "새 선택값 전달, G1 꺼짐에서 비기본 선택 거절 유지"
+    },
+    "src/arena_bringup/launch/g1_follow.launch.py": {
+      "before": "e9776085342b9f387ad7ff8b209a75b5f1feca2361fd254c2d21f8010e64189f",
+      "after": "a62ed0069db581bf1694d9bfdbe47b423a1e102bd3cd8279e71200cce7ae4ffe",
+      "reason": "새 경계 후보 선택값만 추가, connected 기본 유지"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/corner_evidence.py": "131b5b7479eed6a6b012914ae2a21efa80c9e39ed57d87bf249b4579e4ace652"
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "79f8bf1fab40d1d47e16db293b81561342422551e88c1ee0500d24f571a25363",
+      "after": "e8c0e1be226e2a228aecf8086b5f63e550453434ae3689dca910605698cc8dd4",
+      "reason": "새 선택 인자와 전이 의존 소스 보존만 추가, 기존 gate·STOP·판정 그대로"
+    }
+  },
+  "evidence": ["docs/autonomy/G1_CORNER_BOUNDARY_2026_10_15.md"]
+}

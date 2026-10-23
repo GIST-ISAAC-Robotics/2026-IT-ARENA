@@ -1,0 +1,26 @@
+.........................F
+=================================== FAILURES ===================================
+____________ test_diag_waits_for_room_before_next_offer[sanitizers] ____________
+
+binary = PosixPath('/tmp/pytest-of-jinhyeong/pytest-10/tx0/driver')
+
+    def test_diag_waits_for_room_before_next_offer(binary):
+        baud = 230400
+        mcu = Mcu(binary, diag_period_us=100_000, line_ns_per_byte=ns_per_byte(baud))
+        now = mcu.setup(0)
+        per_250us = baud // 10 // 4000
+        for t in range(250, 500_000, 250):
+            if t % 5000 == 0:
+                mcu.cmd(f'E {t} {t // 5000 + 1} {t} 0')
+                mcu.cmd(f'T {t}')
+            mcu.pump(t, per_250us)
+        offers = [r['materialize_us'] for r in mcu.records if r['kind'] == 'offer']
+>       assert max(b - a for a, b in zip(offers, offers[1:])) <= 20_000 + 250
+E       assert 40250 <= (20000 + 250)
+E        +  where 40250 = max(<generator object test_diag_waits_for_room_before_next_offer.<locals>.<genexpr> at 0x76f25773c5f0>)
+
+tests/test_actuation_tx_policy.py:392: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_tx_policy.py::test_diag_waits_for_room_before_next_offer[sanitizers]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 25 passed in 4.48s

@@ -1,0 +1,257 @@
+{
+  "schema": "arena_sensor_probe_inputs_v1",
+  "record_integrity": {
+    "record_integrity_verified": true,
+    "profile": "sensor_probe",
+    "counts": {
+      "/imu/data": 20,
+      "/scan": 20,
+      "/camera/color/image_raw": 20,
+      "/camera/color/camera_info": 20,
+      "/drive_motor/encoder": 20
+    },
+    "raw_bytes": 55429440,
+    "storage_reader": {
+      "mode": "directory_metadata"
+    },
+    "recorder_clock_mode": "system",
+    "source_stamp_zero": {
+      "/imu/data": 5,
+      "/scan": 5,
+      "/camera/color/image_raw": 5,
+      "/camera/color/camera_info": 5,
+      "/drive_motor/encoder": 5
+    },
+    "source_stamp_regressions": {
+      "/imu/data": 9,
+      "/scan": 9,
+      "/camera/color/image_raw": 9,
+      "/camera/color/camera_info": 9,
+      "/drive_motor/encoder": 9
+    },
+    "sensor_acquisition_time_verified": false,
+    "hardware_verified": false,
+    "upstream_loss_verified": false,
+    "controller_replay_eligible": false,
+    "ready_to_drive": false
+  },
+  "per_topic": {
+    "/imu/data": {
+      "count": 20,
+      "findings": {
+        "nonpositive_header_time": 5,
+        "gyro_covariance_unknown": 20,
+        "accel_covariance_unknown": 20
+      },
+      "examples": {
+        "nonpositive_header_time": [
+          1,
+          5,
+          9
+        ],
+        "gyro_covariance_unknown": [
+          1,
+          2,
+          3
+        ],
+        "accel_covariance_unknown": [
+          1,
+          2,
+          3
+        ]
+      },
+      "frames": {
+        "imu_fixture": 20
+      },
+      "frame_overflow_samples": 0,
+      "layouts": {},
+      "layout_overflow_samples": 0,
+      "values": {
+        "gyro_x": {
+          "minimum": 0.0,
+          "maximum": 0.0
+        },
+        "gyro_y": {
+          "minimum": 0.0,
+          "maximum": 0.0
+        },
+        "gyro_z": {
+          "minimum": 0.0,
+          "maximum": 0.019
+        },
+        "accel_x": {
+          "minimum": 0.0,
+          "maximum": 0.0
+        },
+        "accel_y": {
+          "minimum": 0.0,
+          "maximum": 0.0
+        },
+        "accel_z": {
+          "minimum": 0.0,
+          "maximum": 0.0
+        }
+      },
+      "scan_returns": {}
+    },
+    "/scan": {
+      "count": 20,
+      "findings": {
+        "declared_frame_mismatch": 20,
+        "nonpositive_header_time": 5
+      },
+      "examples": {
+        "declared_frame_mismatch": [
+          1,
+          2,
+          3
+        ],
+        "nonpositive_header_time": [
+          1,
+          5,
+          9
+        ]
+      },
+      "frames": {
+        "laser_fixture": 20
+      },
+      "frame_overflow_samples": 0,
+      "layouts": {},
+      "layout_overflow_samples": 0,
+      "values": {
+        "ranges_per_message": {
+          "minimum": 3,
+          "maximum": 3
+        },
+        "time_increment_s": {
+          "minimum": 0.009999999776482582,
+          "maximum": 0.009999999776482582
+        },
+        "scan_time_s": {
+          "minimum": 0.10000000149011612,
+          "maximum": 0.10000000149011612
+        }
+      },
+      "scan_returns": {
+        "finite_in_range": 40,
+        "positive_inf": 20
+      }
+    },
+    "/camera/color/image_raw": {
+      "count": 20,
+      "findings": {
+        "nonpositive_header_time": 5
+      },
+      "examples": {
+        "nonpositive_header_time": [
+          1,
+          5,
+          9
+        ]
+      },
+      "frames": {
+        "camera_fixture_uncalibrated": 20
+      },
+      "frame_overflow_samples": 0,
+      "layouts": {
+        "1280x720:rgb8:step=3840": 10,
+        "1280x720:bgr8:step=3856": 10
+      },
+      "layout_overflow_samples": 0,
+      "values": {
+        "row_padding_bytes": {
+          "minimum": 0,
+          "maximum": 16
+        }
+      },
+      "scan_returns": {}
+    },
+    "/camera/color/camera_info": {
+      "count": 20,
+      "findings": {
+        "nonpositive_header_time": 5,
+        "camera_info_uncalibrated": 20
+      },
+      "examples": {
+        "nonpositive_header_time": [
+          1,
+          5,
+          9
+        ],
+        "camera_info_uncalibrated": [
+          1,
+          2,
+          3
+        ]
+      },
+      "frames": {
+        "camera_fixture_uncalibrated": 20
+      },
+      "frame_overflow_samples": 0,
+      "layouts": {
+        "1280x720:": 20
+      },
+      "layout_overflow_samples": 0,
+      "values": {},
+      "scan_returns": {}
+    },
+    "/drive_motor/encoder": {
+      "count": 20,
+      "findings": {
+        "nonpositive_header_time": 5
+      },
+      "examples": {
+        "nonpositive_header_time": [
+          1,
+          5,
+          9
+        ]
+      },
+      "frames": {
+        "drive_motor_encoder": 20
+      },
+      "frame_overflow_samples": 0,
+      "layouts": {},
+      "layout_overflow_samples": 0,
+      "values": {
+        "motor_position_rad": {
+          "minimum": -2.243994752564138,
+          "maximum": 2.019595277307724
+        },
+        "motor_velocity_rad_s": {
+          "minimum": -22.43994752564138,
+          "maximum": 22.43994752564138
+        }
+      },
+      "scan_returns": {}
+    }
+  },
+  "declared_expected_frames": {
+    "/scan": "laser_frame"
+  },
+  "missing_declared_topics": [],
+  "unchecked_frame_topics": [
+    "/camera/color/camera_info",
+    "/camera/color/image_raw",
+    "/drive_motor/encoder",
+    "/imu/data"
+  ],
+  "interpretation": {
+    "input_values_modified": false,
+    "controller_replayed": false,
+    "controller_compatibility_verified": false,
+    "sensor_acquisition_time_verified": false,
+    "sensor_units_or_axes_verified": false,
+    "calibration_applied": false,
+    "hardware_verified": false,
+    "ready_to_drive": false,
+    "notes": [
+      "Findings are observations, not a new controller acceptance threshold.",
+      "Frame string equality does not prove mounting or axes. Empty declaration skips comparison.",
+      "Unknown covariance, uncalibrated CameraInfo, no-return and zero timing may be valid producer states; do not fill or correct them.",
+      "LiDAR no-return is not free space. This summary does not certify front/side coverage.",
+      "Positive timestamps and nominal values do not prove actual acquisition timing, units, motor counts or slip.",
+      "Image metadata cannot detect mislabeled BGR/RGB pixels; no image/CameraInfo pairing or optical calibration is certified."
+    ]
+  }
+}

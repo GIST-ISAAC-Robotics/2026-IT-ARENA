@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-16 사용자 위임 후 선택형 측방 관측 보완. 기본 false, 현재/최근 실제 반환과 별도 보호 재검사, 정면 결측/TTL/STOP/물성 유지",
+  "parent_contract": "config/tests/corridor_fallback_r0_sha256.json",
+  "parent_contract_sha256": "94a4254826bbcb44084775ae0914a6201403a2267e6d04885090762c272bbcfd",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "e234c3b3bf0743785f4194371c28bb190d362c93cb71a0ebc3e1bf6ec4617306",
+      "after": "2efaafe7a29d17b07b1561045e5a70caeccc423d69917ebdd0cf783f4ac9e86a",
+      "reason": "선택형 최근 광선 지지 확인과 0.2 m/s 목표 상한. 현재 운동 속도와 기존 정지 경계 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "c11e625b1a0786ed4f78ab6c026e7b5c0b85911caed2762825b6282d33728fa2",
+      "after": "3a7f98441966047431ea07fe2bc3ba0a9f5af13af88fd2009e738ad0f7d5c014",
+      "reason": "기본 false 옵션 전달과 G1 필수 조건"
+    },
+    "src/arena_bringup/launch/g1_follow.launch.py": {
+      "before": "f3f8cc9d70a44875745a67155688d1d720406f530eda44af79c192e62b3b7c31",
+      "after": "096c9c4e29e75a0892e70f0ebf91e98b2e957917531e49087bec7c40a7f16fac",
+      "reason": "계획기와 독립 보호층에 같은 선택 옵션 전달. 기본 false"
+    }
+  },
+  "modified_dependencies": {
+    "src/arena_autonomy/arena_autonomy/corridor_observer.py": {
+      "before": "0f12fbea6ce66dc43ee9dc2f0d898e240612976a615e101a568ff2251cb1d976",
+      "after": "643a49252c4729f89a52f5ecb27a95ec6ff4a8e7328b9292be1ee7eed55f8f34",
+      "reason": "측방 결측에서 경로 계산만 허용. 제안은 최종 관측 검사 전까지 구동 허가가 아님"
+    }
+  },
+  "newly_tracked_changes": {
+    "src/arena_autonomy/arena_autonomy/lidar_safety.py": {
+      "before": "446324511ce3d305b162ea14951f4baa8a8670581bc95590bfaa82b5507aa5b9",
+      "after": "03040a82b5d97423cb49e7e57708fafbf85875d9180f50ff62d2d1cf745b296d",
+      "reason": "계획기 결과를 받지 않는 별도 이력/센서 관측 검사. 현재 반환 우선, 정면 결측/만료/음수/STOP 유지"
+    }
+  },
+  "newly_tracked_before_source": "artifacts/validation/2026-10-16/g1_corridor_solo_v1/pre_run_manifest.json",
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/observation_support.py": "8908c2fb1acfafbf60fd170b3d9be668fc07a0ede087f340058072af9e6ddb0f",
+    "src/arena_autonomy/arena_autonomy/observation_lateral.py": "f50fda3243d0243434834d22a45b5c72f2a80db6244d44e1ae4c1320ac9737ba",
+    "src/arena_autonomy/arena_autonomy/linear_observation.py": "cc99b67adba20493b499592ba973cfa50926ecf382f2cee1e30535778708b905"
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "e88412cc5e0259804f8fa05603d1ff29adecabbdcce97027e3817f667a888bab",
+      "after": "72e9c45c98741f7e9257915b89bfa60155cd7aebabebc42341ed27ed59bf9f10",
+      "reason": "새 의존 모듈 snapshot 목록만 추가. 교통 시험 판정/옵션 미변경"
+    },
+    "scripts/validate_basic_autonomy.py": {
+      "before": "ec76dd2e079f4f7ebfe14476fa2cc9bf4da7828f256353be8f6cef7ff923d909",
+      "after": "c974a90df418c6d7c9cd76ef0f7a9a97c64725eb56a9c0fe6f654241e849933e",
+      "reason": "명시 선택/필수 의존/기록 검증과 snapshot. 기존 진행/노면/정지/정상 종료 판정 유지"
+    }
+  },
+  "evidence": ["docs/autonomy/G1_OBSERVATION_ENVELOPE_2026_10_16.md"]
+}

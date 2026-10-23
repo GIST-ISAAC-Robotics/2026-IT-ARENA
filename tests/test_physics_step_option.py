@@ -146,11 +146,11 @@ def test_contract_records_evaluation_script_changes():
                  'scheduled_command_r3_sha256.json', 'scheduled_command_r4_sha256.json', 'scheduled_command_r5_sha256.json',
                  'scheduled_command_r6_sha256.json', 'scheduled_command_r7_sha256.json',
                  'follow_trace_r0_sha256.json', 'fragmented_boundary_r0_sha256.json', 'dense_stop_evidence_r0_sha256.json',
-                 'lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json'):
+                 'lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json'):
         successor = json.loads((ROOT/'config/tests'/name).read_text())
         assert successor['parent_contract'] == parent
         if name in ('follow_trace_r0_sha256.json', 'fragmented_boundary_r0_sha256.json', 'dense_stop_evidence_r0_sha256.json',
-                    'lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json'):
+                    'lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json'):
             assert hashlib.sha256((ROOT/parent).read_bytes()).hexdigest() == successor['parent_contract_sha256']
         chain.append(successor)
         parent = 'config/tests/'+name

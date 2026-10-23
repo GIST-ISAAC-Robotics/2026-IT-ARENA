@@ -24,19 +24,37 @@ ROOT = Path(__file__).resolve().parents[1]
 DT = .005
 MODULES = {
     'arena_autonomy': ('local_pursuit', 'wall_follow', 'vision_process', 'race_start', 'core', 'local_path',
-                       'local_follow', 'boundary_evidence', 'occupancy_timing', 'scene_motion', 'local_scene', 'follow_trace',
-                       'lidar_safety', 'lidar_motion', 'lidar_motion_ros', 'lidar_observation'),
+                       'local_follow', 'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'occupancy_timing', 'scene_motion', 'local_scene', 'follow_trace',
+                       'lidar_safety', 'lidar_motion', 'lidar_motion_ros', 'lidar_observation',
+                       'observation_support', 'observation_lateral', 'linear_observation'),
     'arena_vehicle_interface': ('actuation_ros', 'actuation_contract', 'actuation_wire',
                                 'applied_guard', 'drive_feedback', 'node_lifecycle',
                                 'queued_log', 'timing_probe'),
 }
 SOURCES = [f'src/{package}/{package}/{name}.py'
            for package, names in MODULES.items() for name in names]
-FIXTURE_SOURCES = ['scripts/audit_start_signal_layout.py']
+FIXTURE_SOURCES = ['scripts/audit_start_signal_layout.py', 'scripts/pipeline_mcu_rejection_probe.py',
+                   'scripts/pipeline_restart_probe.py']
 PROVENANCE = ['tests/test_pipeline_fault_validation.py', 'src/arena_description/config/vehicle.yaml',
               'config/tracks/official_v2026.09.14.yaml']
 ZERO_TOPICS = ('applied', 'sink', 'mcu')
 ZERO_GAP_SIM_S, ZERO_GAP_WALL_S = .25, 3.
+STARTUP_GRAPH_WALL_S = 5.
+# rmw graph cache가 endpoint를 먼저 알고 노드 이름을 아직 모를 때 쓰는 값.
+UNKNOWN_NODE_NAME, UNKNOWN_NODE_NAMESPACE = '_NODE_NAME_UNKNOWN_', '_NODE_NAMESPACE_UNKNOWN_'
+# 제어기 재시작 구간 진단 전용. 판정에 쓰지 않으며 tick 4회마다 /proc 표본 한 번.
+TRACE_SAMPLE_TICKS = 4
+TRACE_FIELDS = dict(
+    mcu=('state', 'reason', 'generation', 'accepted_seq', 'target_speed_mps', 'deadline_us', 'now_us',
+         'feedback_seq', 'feedback_capture_us', 'feedback_valid', 'output_ready', 'stationary_ready'),
+    sink=('now_us', 'speed_mps', 'blocked', 'reason', 'epoch', 'last_status_us'),
+    safety=('reason', 'safe_speed_mps'),
+    autonomy=('state', 'reason', 'started', 'signal', 'sim_time_s', 'speed_command_mps'))
+PROBE_PREFIXES = ('HOST_DRIVE_DECISION=', 'MCU_FAULT_CONTEXT=', 'MCU_ENCODER_REJECTION=', 'SLOW_PUBLISH=')
+PARSED_PREFIXES = ('MCU_FAULT_CONTEXT=', 'SLOW_PUBLISH=')
+# 스레드별 표본은 비용 때문에 tick 8회마다. 느린 발행/spin 기록 한도는 진단 전용이다.
+TRACE_THREAD_TICKS = 8
+SLOW_SPIN_S = .015
 ROLES = {
     'controller': ('arena_autonomy.local_pursuit', 'main', 'local_pursuit'),
     'safety': ('arena_autonomy.lidar_safety', 'main', 'lidar_safety'),
@@ -44,6 +62,81 @@ ROLES = {
     'mcu': ('arena_vehicle_interface.actuation_ros', 'mcu_main', 'virtual_mcu'),
     'sink': ('arena_vehicle_interface.actuation_ros', 'actuator_main', 'guarded_sim_actuator'),
 }
+
+
+def child_bootstrap(role):
+    """실제 import 해시를 기록하고 시험 자식에만 진단을 연결한다.
+
+    모든 자식: 느린 발행 기록. MCU/호스트: 명령 경로 진단. 운영 launch에는 연결하지 않는다.
+    """
+    module, entry, _ = ROLES[role]
+    rejection_probe = (
+        f'import sys; sys.path.insert(0,{str(ROOT / "scripts")!r}); '
+        'from pipeline_restart_probe import install_test_publish_timing_probe; '
+        'from rclpy.publisher import Publisher; '
+        'install_test_publish_timing_probe(Publisher); '
+        'print("SLOW_PUBLISH_PROBE=validator_child_only",flush=True); '
+    )
+    if role == 'mcu':
+        rejection_probe += (
+            'from pipeline_mcu_rejection_probe import install_test_encoder_probe; '
+            'from pipeline_restart_probe import install_test_mcu_command_probe; '
+            'from arena_vehicle_interface.actuation_contract import ActuationReceiver; '
+            'install_test_encoder_probe(ActuationReceiver); '
+            'install_test_mcu_command_probe(ActuationReceiver); '
+            'print("MCU_ENCODER_REJECTION_PROBE=validator_child_only",flush=True); '
+            'print("MCU_FAULT_CONTEXT_PROBE=validator_child_only",flush=True); '
+        )
+    elif role == 'host':
+        rejection_probe += (
+            'from pipeline_restart_probe import install_test_host_drive_probe; '
+            'from arena_vehicle_interface.actuation_ros import ActuationHost; '
+            'install_test_host_drive_probe(ActuationHost); '
+            'print("HOST_DRIVE_DECISION_PROBE=validator_child_only",flush=True); '
+        )
+    return (
+        'import hashlib,importlib,json; '
+        f'names={repr([f"{p}.{n}" for p, ns in MODULES.items() for n in ns])}; '
+        'mods=[importlib.import_module(n) for n in names]; '
+        'print("RUNTIME_SOURCE_MANIFEST="+json.dumps({m.__name__:{"path":m.__file__, '
+        '"sha256":hashlib.sha256(open(m.__file__,"rb").read()).hexdigest()} for m in mods}),flush=True); '
+        + rejection_probe + f'from {module} import {entry}; {entry}()'
+    )
+
+
+def controller_profile_parameters(profile):
+    """시험에만 명시 적용한다. 기본 단독 주행/운영 launch는 바꾸지 않는다."""
+    if profile == 'r0':
+        return {}
+    if profile == 'g1_per_ray_candidate':
+        return dict(g1_follow_enabled=True, g1_boundary_evidence_mode='fragmented_candidate',
+                    g1_occupancy_timing_mode='per_ray_candidate')
+    if profile == 'g1_recent_observation_candidate':
+        return dict(g1_follow_enabled=True, g1_boundary_evidence_mode='corner_distance_candidate',
+                    g1_occupancy_timing_mode='per_ray_candidate', g1_corridor_fallback_enabled=True,
+                    g1_recent_observation_enabled=True)
+    raise ValueError('unknown controller test profile')
+
+
+def g1_candidate_observed(status):
+    """명령행 지정만으로 시험 모드가 실제 실행됐다고 간주하지 않는다."""
+    return (status.get('mode') == 'g1_follow'
+            and status.get('occupancy_timing_mode') == 'per_ray_candidate'
+            and status.get('unfiltered_occupancy') is True
+            and type(status.get('occupied_points')) is int and status['occupied_points'] > 0
+            and status.get('occupancy_padding_points') == status['occupied_points'])
+
+
+def apply_scan_fault(ranges, fault):
+    """500점 fixture의 전방 0도 반환 하나만 무응답으로 만든다. 빈 공간 아님."""
+    if fault not in ('none', 'scan_drop', 'imu_drop', 'front_missing', 'side_missing'):
+        raise ValueError('unsupported sensor fixture fault')
+    result = list(ranges)
+    if fault in ('front_missing', 'side_missing'):
+        if len(result) != 500:
+            raise ValueError('front fault requires 500-ray fixture')
+        result[250 if fault=='front_missing' else 375] = math.inf
+    return result
 
 
 def stamp_parts(seconds):
@@ -108,6 +201,86 @@ def same_process(saved, current):
     return all(saved[key] == current[key] for key in ('pid', 'start_ticks', 'group', 'session'))
 
 
+def proc_sample(pid):
+    """주 스레드 실행/대기 누적·커널 대기 위치·페이지 폴트. 진단 전용이며 판정 입력이 아니다."""
+    base = Path('/proc') / str(pid)
+    raw = (base / 'stat').read_text()
+    fields = raw[raw.rfind(')') + 2:].split()
+    sample = dict(pid=pid, state=fields[0], minflt=int(fields[7]), majflt=int(fields[9]),
+                  utime_ticks=int(fields[11]), stime_ticks=int(fields[12]), threads=int(fields[17]),
+                  start_ticks=int(fields[19]))
+    try:
+        run_ns, wait_ns, slices = (int(value) for value in (base / 'schedstat').read_text().split())
+        sample.update(main_run_ns=run_ns, main_runqueue_wait_ns=wait_ns, main_slices=slices)
+    except (OSError, ValueError):
+        pass
+    try:
+        sample['wchan'] = (base / 'wchan').read_text().strip() or None
+    except OSError:
+        pass
+    return sample
+
+
+def pressure_sample():
+    """시스템 PSI 누적(µs). 커널이 제공하지 않으면 빈 값이며 원인 판정이 아니다."""
+    result = {}
+    for kind in ('cpu', 'io', 'memory'):
+        try:
+            for line in (Path('/proc/pressure') / kind).read_text().splitlines():
+                scope, *items = line.split()
+                result[kind + '_' + scope + '_total_us'] = int(dict(item.split('=') for item in items)['total'])
+        except (OSError, KeyError, ValueError):
+            pass
+    return result
+
+
+def compact_row(row):
+    value = row['value']
+    if isinstance(value, dict):
+        value = {key: value[key] for key in TRACE_FIELDS.get(row['topic'], ()) if key in value}
+    return dict(seq=row['sequence'], topic=row['topic'], wall_s=row['received_wall_s'],
+                sim_s=row['received_sim_s'], source_sim_s=row['source_sim_s'], value=value)
+
+
+def shm_listing():
+    """DDS 공유 메모리 파일 이름·크기. 이전 실행 잔여물 대조용이며 삭제하지 않는다."""
+    try:
+        return sorted([path.name, path.stat().st_size] for path in Path('/dev/shm').iterdir())
+    except OSError as error:
+        return [['error', repr(error)]]
+
+
+def probe_log_rows(lines, limit=32):
+    """시험 전용 진단 줄 수와 MCU 고장 문맥·느린 발행 일부. 다른 줄은 해석하지 않는다."""
+    counts = {prefix: 0 for prefix in PROBE_PREFIXES}
+    parsed = {prefix: [] for prefix in PARSED_PREFIXES}
+    for line in lines:
+        for prefix in PROBE_PREFIXES:
+            if line.startswith(prefix):
+                counts[prefix] += 1
+                if prefix in parsed and len(parsed[prefix]) < limit:
+                    parsed[prefix].append(json.loads(line[len(prefix):]))
+    return counts, parsed
+
+
+def proc_threads(pid, names):
+    """스레드별 상태·주 실행/대기 누적. 이름은 tid별로 한 번만 읽는다. 진단 전용."""
+    rows = []
+    for path in (Path('/proc') / str(pid) / 'task').iterdir():
+        try:
+            tid = int(path.name)
+            key = (pid, tid)
+            if key not in names:
+                names[key] = (path / 'comm').read_text().strip()
+            raw = (path / 'stat').read_text()
+            run_ns, wait_ns, _ = (int(value) for value in (path / 'schedstat').read_text().split())
+            rows.append(dict(tid=tid, comm=names[key], state=raw[raw.rfind(')') + 2], run_ns=run_ns,
+                             runqueue_wait_ns=wait_ns))
+        except (OSError, ValueError):
+            continue
+    return rows
+
+
 def zero_output(key, value):
     return (value if key == 'applied' else
             value['speed_mps' if key == 'sink' else 'target_speed_mps']) == 0.
@@ -142,7 +315,10 @@ class Monitor:
     def begin_zero_watch(self, case):
         self.zero_watch = dict(case=case, processed=case['sequence'],
                                latest={key: self.latest[key] for key in ZERO_TOPICS}, counts={key: 0 for key in ZERO_TOPICS},
-                               maximum_sim_gap_s=0., maximum_wall_gap_s=0.)
+                               maximum_sim_gap_s=0., maximum_wall_gap_s=0.,
+                               per_topic={key: dict(maximum_sim_gap_s=0., maximum_wall_gap_s=0.,
+                                                    sim_gap_end_sequence=None, sim_gap_end_received_sim_s=None)
+                                          for key in ZERO_TOPICS})
         case['zero_receipt_bounds'] = dict(sim_gap_s=ZERO_GAP_SIM_S, wall_gap_s=ZERO_GAP_WALL_S,
             interpretation='provisional sampled-monitor bounds, not delivery or physical safety guarantee')
 
@@ -168,6 +344,11 @@ class Monitor:
                 wall_gap = row['received_wall_s'] - before['received_wall_s']
                 watch['maximum_sim_gap_s'] = max(watch['maximum_sim_gap_s'], sim_gap)
                 watch['maximum_wall_gap_s'] = max(watch['maximum_wall_gap_s'], wall_gap)
+                topic = watch['per_topic'][key]
+                if sim_gap > topic['maximum_sim_gap_s']:
+                    topic.update(maximum_sim_gap_s=sim_gap, sim_gap_end_sequence=row['sequence'],
+                                 sim_gap_end_received_sim_s=row['received_sim_s'])
+                topic['maximum_wall_gap_s'] = max(topic['maximum_wall_gap_s'], wall_gap)
                 if sim_gap > ZERO_GAP_SIM_S or wall_gap > ZERO_GAP_WALL_S:
                     raise AssertionError('zero receipt gap: ' + key)
                 watch['latest'][key] = row
@@ -178,7 +359,8 @@ class Monitor:
                     or now_sim - row['received_sim_s'] > ZERO_GAP_SIM_S):
                 raise AssertionError('zero receipt missing: ' + key)
         watch['case']['zero_observation'] = dict(counts=dict(watch['counts']),
-            maximum_sim_gap_s=watch['maximum_sim_gap_s'], maximum_wall_gap_s=watch['maximum_wall_gap_s'])
+            maximum_sim_gap_s=watch['maximum_sim_gap_s'], maximum_wall_gap_s=watch['maximum_wall_gap_s'],
+            per_topic={key: dict(value) for key, value in watch['per_topic'].items()})
 
     def end_zero_watch(self):
         if any(count == 0 for count in self.zero_watch['counts'].values()):
@@ -245,18 +427,10 @@ class OwnedProcesses:
         return members
 
     def start(self, role):
-        module, entry, _ = ROLES[role]
         log_path = self.output / f'{role}_{len(self.children)}.log'
         log = log_path.open('w', encoding='utf-8')
         # 각 자식의 실제 import 위치·해시도 수집한다.
-        bootstrap = (
-            'import hashlib,importlib,json; '
-            f'names={repr([f"{p}.{n}" for p, ns in MODULES.items() for n in ns])}; '
-            'mods=[importlib.import_module(n) for n in names]; '
-            'print("RUNTIME_SOURCE_MANIFEST="+json.dumps({m.__name__:{"path":m.__file__, '
-            '"sha256":hashlib.sha256(open(m.__file__,"rb").read()).hexdigest()} for m in mods}),flush=True); '
-            f'from {module} import {entry}; {entry}()'
-        )
+        bootstrap = child_bootstrap(role)
         parameters = dict(use_sim_time=True)
         if role in ('controller', 'safety'):
             parameters.update(lidar_compensation='both', motion_scan_timing_verified=True,
@@ -264,10 +438,13 @@ class OwnedProcesses:
                               motion_gear_ratio=15., motion_wheel_radius_m=.0325,
                               motion_lidar_x_m=.06, motion_rear_axle_x_m=-.0675,
                               wheelbase_m=.135, max_steering_angle_rad=.37)
+            if self.report.get('controller_profile') == 'g1_recent_observation_candidate':
+                parameters.update(controller_profile_parameters(self.report['controller_profile']))
         if role == 'controller':
             parameters.update(vision_execution='process', max_speed_mps=.6,
                               target_wall_distance_m=.425, lidar_x_m=.06,
                               image_timeout_s=1., control_rate_hz=50.)
+            parameters.update(controller_profile_parameters(self.report.get('controller_profile', 'r0')))
             if self.report.get('signal_mode', 'temporary_3light') != 'temporary_3light':
                 parameters['start_signal_mode'] = self.report['signal_mode']
         if role == 'mcu':
@@ -412,7 +589,7 @@ class OwnedProcesses:
 
 class PipelineValidator:
     def __init__(self, output, wall_cap=480., sleep_s=.005, scenario='full', cycles=1,
-                 signal_mode='temporary_3light'):
+                 signal_mode='temporary_3light', controller_profile='r0'):
         import rclpy
         from ackermann_msgs.msg import AckermannDriveStamped
         from geometry_msgs.msg import Twist
@@ -428,6 +605,8 @@ class PipelineValidator:
         self.Trigger = Trigger
         self.output, self.sleep_s = output, sleep_s
         self.scenario, self.cycles, self.signal_mode = scenario, cycles, signal_mode
+        controller_profile_parameters(controller_profile)
+        self.controller_profile, self.sensor_fault = controller_profile, 'none'
         self.deadline = time.monotonic() + wall_cap
         self.t, self.plant, self.monitor = 1., ToyPlant(), Monitor()
         self.history = deque([(self.t, 0.)], maxlen=2000)
@@ -440,7 +619,14 @@ class PipelineValidator:
                            'sequential rays use toy motion history; steering is not integrated; no fixed world course',
                            timing=dict(dt_sim_s=DT, sleep_wall_s=sleep_s, scan_hz=10, imu_hz=200,
                                        encoder_hz=100, rgb_hz=10), ros_domain_id=os.environ['ROS_DOMAIN_ID'],
-                           scenario=scenario, cycles=cycles, signal_mode=signal_mode, mcu_deadline_diagnostics=[])
+                           scenario=scenario, cycles=cycles, signal_mode=signal_mode,
+                           controller_profile=controller_profile, mcu_deadline_diagnostics=[])
+        # 검사기 자신의 발행 지연도 같은 한도로 기록한다. 판정 입력이 아니다.
+        from pipeline_restart_probe import install_test_publish_timing_probe
+        from rclpy.publisher import Publisher
+        slow = self.report['validator_slow_publishes'] = []
+        self.restore_publish_probe = install_test_publish_timing_probe(
+            Publisher, lambda row: slow.append(dict(row, scope='validator_process', sim_s=self.t)))
         self.children = OwnedProcesses(output, self.report)
         self.node = rclpy.create_node('pipeline_fault_validator',
                                      parameter_overrides=[Parameter('use_sim_time', value=True)])
@@ -473,6 +659,7 @@ class PipelineValidator:
         self.last = {key: -math.inf for key in ('scan', 'image', 'motor')}
         self.last_counts = None
         self.last_motor_t = None
+        self.trace, self.traces = None, []
 
     def on_status(self, key, message):
         value = json.loads(message.data)
@@ -506,13 +693,15 @@ class PipelineValidator:
             raise TimeoutError('total wall execution cap exceeded')
         self.children.check()
         self.t = round(self.t + DT, 9)
+        self.trace_tick()
         self.plant.step(float(self.data('applied') or 0.))
         self.history.append((self.t, self.plant.distance))
         clock = self.types['clock']()
         clock.clock.sec, clock.clock.nanosec = stamp_parts(self.t)
         self.publishers['clock'].publish(clock)
         imu = self.stamp(self.types['imu'](), self.t)
-        self.publishers['imu'].publish(imu)
+        if self.sensor_fault != 'imu_drop':
+            self.publishers['imu'].publish(imu)
         if self.t - self.last['motor'] >= .01 - 1e-8:
             counts = round(self.plant.distance / self.spec.mean_wheel_travel_m_per_count)
             motor = self.stamp(self.types['motor'](), self.t)
@@ -523,16 +712,16 @@ class PipelineValidator:
                                                                self.t - self.last_motor_t)]
             self.publishers['motor'].publish(motor)
             self.last_counts, self.last_motor_t, self.last['motor'] = counts, self.t, self.t
-        if self.t - self.last['scan'] >= .1 - 1e-8:
+        if self.sensor_fault != 'scan_drop' and self.t - self.last['scan'] >= .1 - 1e-8:
             scan = self.stamp(self.types['scan'](), self.t - .1)
             scan.header.frame_id = 'laser_frame'
             scan.angle_min, scan.angle_increment = -math.pi, math.tau / 500
             scan.angle_max = scan.angle_min + 499 * scan.angle_increment
             scan.range_min, scan.range_max = .05, 12.
             scan.time_increment, scan.scan_time = .1 / 500, .1
-            scan.ranges = [corridor_range(scan.angle_min + i * scan.angle_increment,
+            scan.ranges = apply_scan_fault([corridor_range(scan.angle_min + i * scan.angle_increment,
                 .06 + self.position_at(self.t - .1 + i * .1 / 500) - self.plant.distance)
-                           for i in range(500)]
+                           for i in range(500)], self.sensor_fault)
             self.publishers['scan'].publish(scan)
             self.last['scan'] = self.t
         if self.images and self.t - self.last['image'] >= .1 - 1e-8:
@@ -542,8 +731,13 @@ class PipelineValidator:
             image.data = self.rgb[self.color]
             self.publishers['image'].publish(image)
             self.last['image'] = self.t
+        spin_began = time.monotonic()
         for _ in range(24):
             self.rclpy.spin_once(self.node, timeout_sec=0)
+        trace = getattr(self, 'trace', None)
+        if trace is not None and time.monotonic() - spin_began >= SLOW_SPIN_S:
+            trace.setdefault('slow_spins', []).append(dict(start_wall_s=spin_began, sim_s=self.t,
+                                                          duration_s=time.monotonic() - spin_began))
         self.monitor.check_zero_watch(time.monotonic(), self.t)
         time.sleep(self.sleep_s)
 
@@ -667,9 +861,12 @@ class PipelineValidator:
 
     def moving(self, name):
         case = self.mark(name)
+        expected = {key: lambda v: v > .4 for key in ('drive', 'safe', 'applied')}
+        if self.controller_profile in ('g1_per_ray_candidate', 'g1_recent_observation_candidate'):
+            expected['autonomy'] = g1_candidate_observed
         self.wait(lambda: self.plant.speed > .4 and all(self.fresh(key, case['sequence'],
-                  lambda v: v > .4) for key in ('drive', 'safe', 'applied')), name)
-        self.finish(case, expected={key: lambda v: v > .4 for key in ('drive', 'safe', 'applied')}, duration=.1)
+                  predicate) for key, predicate in expected.items()), name)
+        self.finish(case, expected=expected, duration=.1)
         return case
 
     def red_green(self):
@@ -682,6 +879,11 @@ class PipelineValidator:
         self.moving('fresh_red_to_green_recovery')
 
     def restart_controller(self):
+        """지역 제어기만 교체한다. 보호층의 신선한 0 명령으로 MCU 허가는 유지돼야 한다.
+
+        MCU ARMED 유지 확인은 기존 다음 단계(재허가 없는 빨강→초록 출발)의 전제를
+        이 사례에서 명시한 것이다. 고장 고정이 생기면 CLEAR/ARM으로 덮지 않고 실패로 남긴다.
+        """
         def restart():
             self.children.stop('controller')
             self.color, self.images, self.held_stamp = 'green', True, None
@@ -691,14 +893,68 @@ class PipelineValidator:
                 lambda v: not v['started'] and v['vision']['stats']['accepted'] >= 3),
                 'restart accepts green pixels without start permission')
             self.children.register_vision(self.data('autonomy')['vision']['worker_pid'])
+        self.begin_trace('controller_restart_%d' % (len(getattr(self, 'traces', [])) + 1))
         self.stop_case('controller_restart_green_only_no_start', restart,
-                       {'autonomy': lambda v: not v['started'] and v['speed_command_mps'] == 0.}, no_resume=True)
+                       {'autonomy': lambda v: not v['started'] and v['speed_command_mps'] == 0.,
+                        'mcu': lambda v: v['state'] == 'ARMED'}, no_resume=True)
         self.red_green()
+        self.end_trace('passed')
+
+    def begin_trace(self, name):
+        if getattr(self, 'trace', None) is not None:
+            raise RuntimeError('restart trace already active')
+        self.trace = dict(name=name, start_sequence=self.monitor.sequence, start_wall_s=time.monotonic(),
+                          start_sim_s=self.t, ticks=[], process_samples=[],
+                          interpretation='diagnostic receipts/ticks/proc samples only; not a pass criterion')
+
+    def trace_tick(self):
+        trace = getattr(self, 'trace', None)
+        if trace is None:
+            return
+        trace['ticks'].append((time.monotonic(), self.t))
+        if len(trace['ticks']) % TRACE_SAMPLE_TICKS == 1:
+            trace['process_samples'].append(self.sample_processes(
+                threads=len(trace['ticks']) % TRACE_THREAD_TICKS == 1))
+
+    def sample_processes(self, threads=False):
+        sample = dict(wall_s=time.monotonic(), sim_s=self.t, pressure=pressure_sample(), processes=[])
+        names = self.__dict__.setdefault('thread_names', {})
+        targets = [('validator', os.getpid(), None)]
+        targets += [(o['record']['role'], o['record']['pid'], o['record']['identity'])
+                    for o in self.children.children if o['child'].poll() is None]
+        targets += [('vision', v['pid'], v) for v in self.children.vision]
+        for role, pid, identity in targets:
+            try:
+                row = proc_sample(pid)
+                if identity is not None and row['start_ticks'] != identity['start_ticks']:
+                    continue
+                if threads:
+                    row['thread_rows'] = proc_threads(pid, names)
+                sample['processes'].append(dict(role=role, **row))
+            except (OSError, ValueError, IndexError):
+                continue
+        return sample
+
+    def end_trace(self, outcome):
+        trace, self.trace = getattr(self, 'trace', None), None
+        if trace is None:
+            return None
+        rows = [row for row in self.monitor.rows if row['sequence'] > trace['start_sequence']]
+        trace.update(outcome=outcome, end_wall_s=time.monotonic(), end_sim_s=self.t,
+                     end_sequence=self.monitor.sequence,
+                     rows_complete=not rows or rows[0]['sequence'] == trace['start_sequence'] + 1,
+                     rows=[compact_row(row) for row in rows])
+        if not hasattr(self, 'traces'):
+            self.traces = []
+        self.traces.append(trace)
+        return trace
 
     def graph_snapshot(self):
         expected_publishers = {'/drive': 'local_pursuit', '/drive/safe': 'lidar_safety',
                                '/sim/cmd_vel': 'guarded_sim_actuator'}
         audit = dict(publishers={}, subscriptions={})
+        # 시작 감사 전용 분류. discovery는 아직 발견되지 않은 것, definite는 이미 관측된 잘못된 그래프다.
+        discovery, definite = [], []
         for topic, owner in expected_publishers.items():
             audit['publishers'][topic] = [dict(node=info.node_name, namespace=info.node_namespace,
                 gid=list(info.endpoint_gid)) for info in self.node.get_publishers_info_by_topic(topic)]
@@ -709,20 +965,46 @@ class PipelineValidator:
                          '/clock', '/parameter_events'}
         for name, allowed in [('local_pursuit', sensor_topics),
                               ('lidar_safety', sensor_topics - {'/camera/color/image_raw'} | {'/drive'})]:
-            topics = {t for t, _ in self.node.get_subscriber_names_and_types_by_node(name, '/')}
+            try:
+                topics = {t for t, _ in self.node.get_subscriber_names_and_types_by_node(name, '/')}
+            except Exception as error:
+                # endpoint 발견과 노드 이름 조회 갱신은 동시에 끝나지 않을 수 있다. 미수렴으로만 기록한다.
+                if type(error).__name__ != 'NodeNameNonExistentError':
+                    raise
+                audit.setdefault('missing_nodes', []).append(name)
+                audit['subscriptions'][name] = None
+                audit.setdefault('input_checks', {})[name] = False
+                discovery.append('node_name_missing:' + name)
+                continue
             audit['subscriptions'][name] = sorted(topics)
             required = {'/scan', '/clock', '/drive_motor/encoder', '/imu/data'} | (
                 {'/camera/color/image_raw'} if name == 'local_pursuit' else {'/drive'})
             audit.setdefault('input_checks', {})[name] = not topics - allowed and required <= topics
+            definite.extend(f'unexpected_subscription:{name}:{topic}' for topic in sorted(topics - allowed))
+            discovery.extend(f'subscription_missing:{name}:{topic}' for topic in sorted(required - topics))
         expected_publishers.update({topic: 'pipeline_fault_validator' for topic in
             ('/clock', '/scan', '/camera/color/image_raw', '/drive_motor/encoder', '/imu/data')})
         audit['valid'] = all([entry['node'] for entry in audit['publishers'][topic]] == [owner]
             and all(entry['namespace'] == '/' for entry in audit['publishers'][topic])
             for topic, owner in expected_publishers.items()) and all(audit['input_checks'].values())
+        for topic, owner in expected_publishers.items():
+            entries = audit['publishers'][topic]
+            if len(entries) > 1:
+                definite.append('duplicate_publisher:' + topic)
+            elif not entries:
+                discovery.append('publisher_missing:' + topic)
+            elif UNKNOWN_NODE_NAME in (entries[0]['node'], entries[0]['namespace']) or \
+                    UNKNOWN_NODE_NAMESPACE in (entries[0]['node'], entries[0]['namespace']):
+                discovery.append('publisher_name_unresolved:' + topic)
+            elif entries[0]['node'] != owner or entries[0]['namespace'] != '/':
+                definite.append('wrong_publisher_owner:' + topic)
+        audit['startup_problems'] = dict(discovery=discovery, definite=definite)
         return audit
 
-    def graph_audit(self, convergence_wall_s=0.):
+    def graph_audit(self, convergence_wall_s=0., startup=False):
+        """startup=True는 발견 준비 부족만 제한 대기한다. 기본(최종 감사) 수렴 동작은 그대로다."""
         observation = dict(started_wall_s=time.monotonic(), convergence_wall_cap_s=convergence_wall_s,
+                           policy='startup_discovery_only' if startup else 'converge_any_invalid',
                            changes=[], passed=False)
         self.report.setdefault('graph_audits', []).append(observation)
         previous = None
@@ -740,6 +1022,10 @@ class PipelineValidator:
                 observation.update(passed=True, final_wall_s=time.monotonic(), final_sim_s=self.t)
                 self.report['graph_audit'] = audit
                 return
+            if startup and audit['startup_problems']['definite']:
+                # 이미 관측된 중복·잘못된 소유자·예상외 구독은 잠시 뒤 사라져도 통과시키지 않는다.
+                observation['startup_definite_failure'] = audit['startup_problems']['definite']
+                raise AssertionError('startup graph has invalid observed endpoints: ' + signature)
             if time.monotonic() >= until:
                 raise AssertionError('graph did not converge to exact single expected publishers: ' + signature)
             self.pump(.1)
@@ -752,7 +1038,8 @@ class PipelineValidator:
                   self.fresh('autonomy', baseline, lambda v: not v['started'] and
                              v['vision']['stats']['accepted'] >= 3), 'pipeline startup')
         self.children.register_vision(self.data('autonomy')['vision']['worker_pid'])
-        self.graph_audit()
+        # 시작 그래프도 정확한 단일 발행자·입력이어야 한다. 이름 미갱신·필요 endpoint 부족만 제한 대기한다.
+        self.graph_audit(convergence_wall_s=STARTUP_GRAPH_WALL_S, startup=True)
         self.wait(lambda: self.stopped(0), 'fresh startup zero outputs')
         self.stop_case('boot_disarmed', lambda: None, {'mcu': lambda v: v['state'] == 'DISARMED'}, no_resume=True)
         self.stop_case('armed_green_only_cannot_start', lambda: self.call('arm'),
@@ -761,6 +1048,10 @@ class PipelineValidator:
             self.run_start_contract()
             return
         self.red_green()
+        if self.controller_profile == 'g1_recent_observation_candidate' and self.scenario == 'full':
+            self.run_recent_observation()
+        if self.controller_profile in ('g1_per_ray_candidate', 'g1_recent_observation_candidate') and self.scenario == 'full':
+            self.run_g1_sensor_faults()
         self.stop_case('rgb_drop_sensor_stop', lambda: setattr(self, 'images', False),
                        {'autonomy': lambda v: v['state'] == 'SENSOR_STOP',
                         'drive': lambda v: v == 0., 'safe': lambda v: v == 0.})
@@ -803,6 +1094,62 @@ class PipelineValidator:
             self.call('arm')
             self.moving('safety_' + sig.name + '_explicit_rearm_recovers')
         self.final_stop()
+
+    def run_recent_observation(self):
+        """별도 센서/운동 입력을 쓰는 두 노드가 실제 측방 보완을 실행하는지 확인한다."""
+        if self.report.get('recent_check_mode') == 'evidence_expiry':
+            return self.run_recent_observation_evidence_expiry()
+        case = self.mark('recent_side_observation_independent_cap')
+        self.sensor_fault = 'side_missing'
+        def limited(v): return 0.05 < v <= .200001
+        expected = {key: limited for key in ('drive','safe','applied')}
+        expected['autonomy'] = lambda v: (g1_candidate_observed(v) and
+                                         v.get('recent_observation_selected') is True)
+        expected['safety'] = lambda v: (v.get('recent_observation') or {}).get('supported') is True
+        self.wait(lambda: all(self.fresh(key,case['sequence'],predicate) for key,predicate in expected.items()),
+                  'independent recent observation nodes')
+        self.finish(case, expected=expected, duration=.3)
+        self.sensor_fault = 'none'
+        self.moving('recent_side_observation_fresh_full_recovery')
+
+    def run_recent_observation_evidence_expiry(self):
+        """일시 지지/원시 관측 만료를 분리한다. 결측 중 연속 진행 합격은 아니다.
+
+        기존 continuity 시나리오의 >.05 m/s 지속 기준과 실패는 유지한다.
+        이 대조는 독립 두 노드가 같은 결측을 실제 검사했는지, 이후 새로운
+        광선이 끊겼을 때 과거 지지만으로 계속 구동하지 않는지를 검사한다.
+        """
+        case=self.mark('recent_evidence_independent_positive_cap')
+        self.sensor_fault='side_missing'
+        def capped(value): return 0. < value <= .200001
+        expected={key:capped for key in ('drive','safe','applied')}
+        expected['autonomy']=lambda v: g1_candidate_observed(v) and v.get('recent_observation_selected') is True
+        expected['safety']=lambda v: ((v.get('recent_observation') or {}).get('supported') is True and
+            (v.get('front_observation') or {}).get('reason')=='front_unobserved')
+        self.wait(lambda: all(self.fresh(k,case['sequence'],p) for k,p in expected.items()),
+                  'independent positive recent evidence')
+        case.update(passed=True,final_sim_s=self.t,final_wall_s=time.monotonic(),
+                    evidence={k:self.monitor.latest[k] for k in expected},
+                    continuous_progress_verified=False,minimum_progress_required=False)
+        self.capture_zeros(case)
+        print(case['name']+': passed (point evidence only)',flush=True)
+        self.stop_case('recent_evidence_expiry_stops',lambda:setattr(self,'sensor_fault','scan_drop'),
+            {'drive':lambda v:v==0.,'safe':lambda v:v==0.,
+             'safety':lambda v:v.get('reason')=='stale_input'})
+        self.sensor_fault='none'
+        self.moving('recent_evidence_fresh_full_recovery')
+
+    def run_g1_sensor_faults(self):
+        """G1 후보에 기존 보호를 적용한다. 실차 제동이 아닌 출력·임시 모형 회귀."""
+        reasons = {'scan_drop': ('stale_input',), 'front_missing': ('front_unobserved',),
+                   'imu_drop': ('motion_stale', 'motion_gap')}
+        for fault, accepted_reasons in reasons.items():
+            stopped = self.stop_case('g1_'+fault+'_stop', lambda fault=fault: setattr(self, 'sensor_fault', fault),
+                {'drive': lambda v: v == 0., 'safe': lambda v: v == 0.,
+                 'safety': lambda v, rs=accepted_reasons: v['reason'] in rs})
+            stopped['fixture_fault'] = fault
+            self.sensor_fault = 'none'
+            self.moving('g1_'+fault+'_fresh_recovery')
 
     def vision_stop_restart_cycle(self, sig):
         pid = self.data('autonomy')['vision']['worker_pid']
@@ -930,6 +1277,31 @@ class PipelineValidator:
                     record.setdefault('runtime_hash_mismatch', []).append(module)
         return valid
 
+    def write_diagnostics(self):
+        """재시작 구간 기록과 자식 진단 줄 요약. 저장 실패는 보고서에 남기고 판정은 바꾸지 않는다."""
+        try:
+            self.end_trace('interrupted_before_trace_end')
+            summary = self.report['probe_log_summary'] = {}
+            contexts = self.report['mcu_fault_contexts'] = []
+            slow = self.report['child_slow_publishes'] = []
+            for owned in self.children.children:
+                record = owned['record']
+                counts, rows = probe_log_rows((self.output / record['log']).read_text(
+                    errors='replace').splitlines())
+                summary[record['log']] = counts
+                contexts.extend(dict(log=record['log'], **row) for row in rows['MCU_FAULT_CONTEXT='])
+                slow.extend(dict(log=record['log'], role=record['role'], **row) for row in rows['SLOW_PUBLISH='])
+            if self.traces:
+                (self.output / 'restart_traces.json').write_text(json.dumps(self.traces, ensure_ascii=False,
+                    allow_nan=False), encoding='utf-8')
+                self.report['restart_trace_file'] = 'restart_traces.json'
+                self.report['restart_trace_summary'] = [dict(name=t['name'], outcome=t['outcome'],
+                    start_sim_s=t['start_sim_s'], end_sim_s=t['end_sim_s'], rows=len(t['rows']),
+                    rows_complete=t['rows_complete'], ticks=len(t['ticks']),
+                    process_samples=len(t['process_samples'])) for t in self.traces]
+        except Exception as error:
+            self.report['diagnostic_write_error'] = repr(error)
+
     def audit_runtime_sources_safely(self):
         try:
             return self.check_runtime_sources()
@@ -947,9 +1319,16 @@ def main():
                         help='restart_repro: ros_v2 failure segment only; not the 34-condition validation')
     parser.add_argument('--cycles', type=int, default=1, choices=(1, 2, 3))
     parser.add_argument('--signal-mode', choices=('temporary_3light', 'official_4red_candidate'), default='temporary_3light')
+    parser.add_argument('--controller-profile', choices=('r0', 'g1_per_ray_candidate', 'g1_recent_observation_candidate'), default='r0')
+    parser.add_argument('--recent-check-mode',choices=('continuity','evidence_expiry'),default='continuity',
+                        help='evidence_expiry checks point support and later expiry, not sustained missing-ray progress')
     args = parser.parse_args()
     if (args.scenario == 'start_contract') != (args.signal_mode == 'official_4red_candidate'):
         parser.error('official candidate is limited to start_contract scenario')
+    if args.controller_profile != 'r0' and args.scenario != 'full':
+        parser.error('G1 candidate fault regression uses the full scenario only')
+    if args.recent_check_mode!='continuity' and args.controller_profile!='g1_recent_observation_candidate':
+        parser.error('recent evidence check requires recent observation profile')
     if os.name != 'posix' or not Path('/proc').is_dir():
         parser.error('Linux ROS environment with /proc is required')
     if not 300 <= args.wall_cap <= 600 or not .005 <= args.sleep_wall <= .01:
@@ -960,11 +1339,16 @@ def main():
     output.mkdir(parents=True, exist_ok=False)
     os.environ.update(ROS_DOMAIN_ID=str(100 + os.getpid() % 70),
                       ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST', ROS_STATIC_PEERS='')
+    shm_before = shm_listing()
     import rclpy
     rclpy.init()
     validator = None
     try:
-        validator = PipelineValidator(output, args.wall_cap, args.sleep_wall, args.scenario, args.cycles, args.signal_mode)
+        validator = PipelineValidator(output, args.wall_cap, args.sleep_wall, args.scenario, args.cycles,
+                                      args.signal_mode, args.controller_profile)
+        validator.report['recent_check_mode']=args.recent_check_mode
+        validator.report['dev_shm_before'] = shm_before
+        validator.report['recent_continuous_progress_verified']=False
         validator.snapshot_sources()
         validator.run()
         validator.report['passed'] = True
@@ -979,6 +1363,8 @@ def main():
                                 model_speed_mps=validator.plant.speed,
                                 model_displacement_m=validator.plant.distance - case['position_at_injection_m'])
             validator.stop_after_failure()
+            # 실패 회수 STOP 수신까지 같은 진단 창에 남긴다. 판정은 바꾸지 않는다.
+            validator.end_trace('failed: ' + repr(error))
         else:
             (output / 'report.json').write_text(json.dumps(dict(passed=False, error=repr(error))), encoding='utf-8')
     finally:
@@ -991,6 +1377,8 @@ def main():
             hashes = validator.audit_runtime_sources_safely()
             validator.report['passed'] = validator.report['passed'] and clean and hashes
             validator.report['runtime_source_hashes_match'] = hashes
+            validator.report['dev_shm_after_cleanup'] = shm_listing()
+            validator.write_diagnostics()
             (output / 'events.json').write_text(json.dumps(validator.monitor.events, ensure_ascii=False,
                 indent=2, allow_nan=False), encoding='utf-8')
             (output / 'report.json').write_text(json.dumps(validator.report, ensure_ascii=False,

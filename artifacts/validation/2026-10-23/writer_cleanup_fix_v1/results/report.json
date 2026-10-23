@@ -1,0 +1,120 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "case": "normal",
+      "passed": true,
+      "checks": {
+        "no_command_subscriptions": true,
+        "no_controller_parameters": true,
+        "controller_replay_rejected": true,
+        "explicit_clock_mode": true,
+        "sensor_clock_not_approved": true,
+        "process_closed": true,
+        "complete_with_selected_clock": true,
+        "all_received_payloads_match": true,
+        "minimum_samples_received": true,
+        "original_zero_stamps_retained": true,
+        "original_regression_retained": true,
+        "record_integrity_verified": true,
+        "close_called_once": true,
+        "no_uncaught_thread_error": true
+      },
+      "error": [],
+      "events": {
+        "close_calls": [
+          {
+            "close_call": 1,
+            "writes": 160
+          }
+        ],
+        "uncaught_thread_errors": []
+      },
+      "exit_code": 0
+    },
+    {
+      "case": "close",
+      "passed": true,
+      "checks": {
+        "no_command_subscriptions": true,
+        "no_controller_parameters": true,
+        "controller_replay_rejected": true,
+        "explicit_clock_mode": true,
+        "sensor_clock_not_approved": true,
+        "process_closed": true,
+        "incomplete_on_writer_error": true,
+        "writer_error_retained": true,
+        "partial_samples_preserved": true,
+        "incomplete_audit_rejected": true,
+        "close_called_once": true,
+        "no_uncaught_thread_error": true,
+        "close_error_preserved": true
+      },
+      "error": [
+        "writer close failed: OSError('injected_close_failure')"
+      ],
+      "events": {
+        "close_calls": [
+          {
+            "close_call": 1,
+            "writes": 160
+          }
+        ],
+        "uncaught_thread_errors": []
+      },
+      "exit_code": 1
+    },
+    {
+      "case": "write_and_close",
+      "passed": true,
+      "checks": {
+        "no_command_subscriptions": true,
+        "no_controller_parameters": true,
+        "controller_replay_rejected": true,
+        "explicit_clock_mode": true,
+        "sensor_clock_not_approved": true,
+        "process_closed": true,
+        "incomplete_on_writer_error": true,
+        "writer_error_retained": true,
+        "partial_samples_preserved": true,
+        "incomplete_audit_rejected": true,
+        "close_called_once": true,
+        "no_uncaught_thread_error": true,
+        "close_error_preserved": true
+      },
+      "error": [
+        "OSError('injected_write_failure')",
+        "writer close failed: OSError('injected_close_failure')"
+      ],
+      "events": {
+        "close_calls": [
+          {
+            "close_call": 1,
+            "writes": 3
+          }
+        ],
+        "uncaught_thread_errors": []
+      },
+      "exit_code": 1
+    }
+  ],
+  "source_unchanged": true,
+  "source_sha256": {
+    "scripts/record_sensor_bag.py": "ec9c080e2262b6f4f4272e2a0ef265065f4332f20fe979e851c80056fc2a737e",
+    "scripts/recording_guard.py": "675f65064444b3babd10371c97779d7bc8d8b98132dcef3d7cb9ee0405d0a25d",
+    "scripts/validate_sensor_probe.py": "cd3ce268c45d05daf7c242613ed76036c8bd420f486a946ee0444b8229375356",
+    "scripts/validate_sensor_probe_writer.py": "8b7905d2658eb6b440a27986f01e7fb2e6175798875b6a2a9cfe0f8a81912625",
+    "scripts/audit_sensor_probe.py": "db1b2546a4bacf06b040468ea76423897f25e0166a42eaa5e4f2f815d1bfaa2e",
+    "scripts/audit_sensor_bag.py": "91c5f0a606b05751310851a7a9b6d6174138ea873d6d00c33cd7d75f96118ba1",
+    "scripts/sensor_recording_profile.py": "a2127cd559a62948e381026324d1226f9154fca36d2cda976fff80d11b19bc6b",
+    "scripts/sensor_probe_delivery.py": "7bdddba7b25a7b1188deb027277545cd25a6afba33413a243cfb3b7fe8c440cb",
+    "scripts/rosbag_writer_compat.py": "3f9fa89da679a2760c803a1676da2dcf8625bb230a9c914de45ad4b03a9cc13a",
+    "tests/fixtures/sensor_probe_fault_recorder.py": "228b6c5f8098332bb6a6f604f84ad764776672ca2ef126b3208d5eed4203b269",
+    "src/arena_vehicle_interface/arena_vehicle_interface/bag_contract.py": "d667b3c77c5392547e56757b6084a8ed53eda794db3fd145d185f8cae66a4de1",
+    "src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504"
+  },
+  "injection": "actual MCAP writer wrapped with exceptions after successful physical close",
+  "physical_disk_failure_reproduced": false,
+  "hardware_verified": false,
+  "ready_to_drive": false
+}

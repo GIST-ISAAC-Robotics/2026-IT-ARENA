@@ -1,0 +1,15 @@
+......F
+=================================== FAILURES ===================================
+_______________ test_stop_preempts_pending_arm_before_any_reply ________________
+
+    def test_stop_preempts_pending_arm_before_any_reply():
+        item, old = start()
+        stop = begin(item, 'STOP', 9_025_000_000)['envelope']
+>       assert stop['command'] == dict(v=1, kind='STOP')
+E       TypeError: 'NoneType' object is not subscriptable
+
+tests/test_actuation_host_session.py:102: TypeError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_host_session.py::test_stop_preempts_pending_arm_before_any_reply
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 6 passed, 2 deselected in 0.23s

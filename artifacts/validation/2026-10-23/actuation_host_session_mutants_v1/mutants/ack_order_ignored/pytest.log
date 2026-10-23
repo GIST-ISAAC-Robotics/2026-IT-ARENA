@@ -1,0 +1,21 @@
+....................................F
+=================================== FAILURES ===================================
+______________ test_request_overlapping_ack_window_never_confirms ______________
+
+    def test_request_overlapping_ack_window_never_confirms():
+        item = session()
+        record(item, offer(), 9_010_000_000)
+        request = item.begin_control('ARM', window(9_020_000_000, 9_025_000_000), fit=fixture()[1],
+            max_issue_age_ns=100_000_000, forward_delay_upper_ns=5_000_000, policy_note='합성 시험')['envelope']
+        assert request
+        result = item.observe(ack(request), received=window(9_023_000_000, 9_026_000_000), connection_id=LINK)
+>       assert result['reason'] == 'ack_order_uncertain' and item.pending is None
+E       AssertionError: assert ('ack_recorded' == 'ack_order_uncertain'
+E         - ack_order_uncertain
+E         + ack_recorded)
+
+tests/test_actuation_host_session.py:278: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_host_session.py::test_request_overlapping_ack_window_never_confirms
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 36 passed, 2 deselected in 0.31s

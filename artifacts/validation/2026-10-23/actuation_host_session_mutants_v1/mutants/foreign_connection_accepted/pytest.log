@@ -1,0 +1,16 @@
+.........................F
+=================================== FAILURES ===================================
+__ test_foreign_connection_callback_does_not_poison_current_clock_or_pending ___
+
+    def test_foreign_connection_callback_does_not_poison_current_clock_or_pending():
+        item, req = start()
+>       assert record(item, ack(req), 1, connection_id='old')['reason'] == 'connection_mismatch'
+E       AssertionError: assert 'closed' == 'connection_mismatch'
+E         - connection_mismatch
+E         + closed
+
+tests/test_actuation_host_session.py:181: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_host_session.py::test_foreign_connection_callback_does_not_poison_current_clock_or_pending
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 25 passed, 2 deselected in 0.26s

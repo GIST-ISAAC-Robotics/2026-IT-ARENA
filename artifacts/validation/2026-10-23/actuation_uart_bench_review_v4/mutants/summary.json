@@ -1,0 +1,442 @@
+{
+  "control_passed": true,
+  "detected": 23,
+  "total": 23,
+  "passed": true,
+  "hardware_executed": false,
+  "results": [
+    {
+      "name": "control",
+      "compile_exit": 0,
+      "detected": false,
+      "run_exit": 0,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 0,
+        "uart_failure_mask": "0000000000000000",
+        "failed": [],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": true
+    },
+    {
+      "name": "tick_every_cycle",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 3,
+        "uart_failure_mask": "0000000000000034",
+        "failed": [
+          "disabled_io_untouched",
+          "tick_independent_of_rx",
+          "late_tick_no_catch_up"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "catch_up_ticks",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000000000020",
+        "failed": [
+          "late_tick_no_catch_up"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "io_when_disabled",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000000000004",
+        "failed": [
+          "disabled_io_untouched"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "rx_byte_budget_x4",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000000000100",
+        "failed": [
+          "rx_byte_budget"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "no_rx_time_budget",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000000000200",
+        "failed": [
+          "rx_time_budget"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "no_first_read_guarantee",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000000000200",
+        "failed": [
+          "rx_time_budget"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "per_call_event_budget",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000002000000",
+        "failed": [
+          "event_budget_per_cycle"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "event_budget_x4",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 5,
+        "uart_failure_mask": "00000000ce000000",
+        "failed": [
+          "event_budget_per_cycle",
+          "error_tail_after_budget",
+          "unconfirmed_after_read_discarded",
+          "refill_during_drain_detected",
+          "transient_saturation_not_seen"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "no_entry_saturation_check",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000000800000",
+        "failed": [
+          "static_full_data_queue"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "no_exit_saturation_check",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000040000000",
+        "failed": [
+          "refill_during_drain_detected"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "error_events_ignored",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 7,
+        "uart_failure_mask": "0000000015141800",
+        "failed": [
+          "overflow_discards_partial",
+          "frame_error_after_read",
+          "session_break_aborts_tail",
+          "discard_failure_latches",
+          "late_error_after_partial",
+          "error_tail_after_budget",
+          "cycle_end_after_last_action"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "feed_before_event_check",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 3,
+        "uart_failure_mask": "0000000108001000",
+        "failed": [
+          "frame_error_after_read",
+          "unconfirmed_after_read_discarded",
+          "pending_after_empty_post_read"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "unconfirmed_fed",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 2,
+        "uart_failure_mask": "0000000108000000",
+        "failed": [
+          "unconfirmed_after_read_discarded",
+          "pending_after_empty_post_read"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "read_when_unconfirmed",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 3,
+        "uart_failure_mask": "0000000086000000",
+        "failed": [
+          "event_budget_per_cycle",
+          "error_tail_after_budget",
+          "transient_saturation_not_seen"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "no_post_read_reserve",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000002000000",
+        "failed": [
+          "event_budget_per_cycle"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "deferred_break_dropped",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000000000400",
+        "failed": [
+          "event_flood_bounded"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "clean_after_empty_drain",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000100000000",
+        "failed": [
+          "pending_after_empty_post_read"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "end_clock_not_read",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 2,
+        "uart_failure_mask": "0000000030000000",
+        "failed": [
+          "cycle_end_after_last_action",
+          "cycle_end_clock_regress"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "stamp_cycle_start",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 1,
+        "uart_failure_mask": "0000000000400000",
+        "failed": [
+          "rx_stamp_after_buffer"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "partial_write_as_complete",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 2,
+        "uart_failure_mask": "0000000000042000",
+        "failed": [
+          "tx_zero_then_partial",
+          "session_break_aborts_tail"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "write_error_ignored",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 2,
+        "uart_failure_mask": "000000000000c000",
+        "failed": [
+          "tx_error_latches",
+          "tx_overreport_latches"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "no_clock_regress_check",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 2,
+        "uart_failure_mask": "0000000020020000",
+        "failed": [
+          "clock_regress_silent",
+          "cycle_end_clock_regress"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    },
+    {
+      "name": "no_input_discard",
+      "compile_exit": 0,
+      "detected": true,
+      "run_exit": 1,
+      "report": {
+        "uart_checks": 33,
+        "uart_failures": 7,
+        "uart_failure_mask": "0000000054101c00",
+        "failed": [
+          "event_flood_bounded",
+          "overflow_discards_partial",
+          "frame_error_after_read",
+          "discard_failure_latches",
+          "error_tail_after_budget",
+          "cycle_end_after_last_action",
+          "refill_during_drain_detected"
+        ],
+        "hardware_executed": false,
+        "output_ready": false
+      },
+      "control_ok": false
+    }
+  ]
+}

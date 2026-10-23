@@ -13,11 +13,15 @@ from arena_autonomy.lidar_motion import MotionUnavailable
 from arena_autonomy.local_path import local_path, braking_speed, swept_limit
 from arena_autonomy.scene_motion import transport_points
 from arena_autonomy.boundary_evidence import fragment_evidence
+from arena_autonomy.corner_evidence import corner_anchor_evidence
+from arena_autonomy.corner_distance import corner_distance_evidence
 from arena_autonomy.occupancy_timing import per_ray_padding
 
 
 @dataclass(frozen=True)
 class FollowConfig:
+    corridor_fallback_enabled: bool = False
+    recent_observation_enabled: bool = False
     boundary_evidence_mode: str = 'connected'
     occupancy_timing_mode: str = 'oldest'
     wheelbase_m: float = .135
@@ -42,13 +46,20 @@ class FollowConfig:
     confirmations: int = 2
 
     def __post_init__(self):
-        if self.boundary_evidence_mode not in ('connected', 'fragmented_candidate'):
+        if self.boundary_evidence_mode not in ('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'):
             raise ValueError('invalid boundary evidence mode')
         if self.occupancy_timing_mode not in ('oldest', 'per_ray_candidate'):
             raise ValueError('invalid occupancy timing mode')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode')):
+               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'recent_observation_enabled')):
             raise ValueError('follow configuration must be finite and positive')
+        if (type(self.corridor_fallback_enabled) is not bool or
+                (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
+                                                     self.occupancy_timing_mode != 'per_ray_candidate'))):
+            raise ValueError('corridor fallback requires explicit corner-distance and per-ray candidates')
+        if (type(self.recent_observation_enabled) is not bool or
+                (self.recent_observation_enabled and (not self.corridor_fallback_enabled or self.max_speed_mps > 1.))):
+            raise ValueError('recent observation requires corridor fallback and <=1 m/s configuration')
         if (self.memory_ttl_s > .3 or self.max_speed_mps > 2.5 or self.confirmations < 2
                 or not isinstance(self.confirmations, int)
                 or not self.standstill_gap_m < self.hold_clearance_m < self.resume_clearance_m):
@@ -158,9 +169,22 @@ def pursue_path(path, speed, config, age):
 class LocalFollow:
     def __init__(self, config=None):
         self.config = config or FollowConfig()
+        self.observation_cache = None
+        if self.config.recent_observation_enabled:
+            from arena_autonomy.observation_support import RecentScenes
+            self.observation_cache = RecentScenes()
+        self.corridor_observer = None
+        if self.config.corridor_fallback_enabled:
+            # 관측기는 이 모듈의 순수 추종 함수를 사용한다. 생성 시 import하여 순환 초기화를 피한다.
+            from arena_autonomy.corridor_observer import CorridorObserver
+            self.corridor_observer = CorridorObserver(self.config)
         self.reset()
 
     def reset(self):
+        if self.observation_cache is not None:
+            self.observation_cache.reset()
+        if self.corridor_observer is not None:
+            self.corridor_observer.reset()
         self.path = self.pending = None
         self.path_ref = self.path_source = self.pending_ref = None
         self.pending_count = self.release_count = 0
@@ -175,6 +199,57 @@ class LocalFollow:
         return 0., 0., {**detail, 'reason': reason, 'behavior': 'HOLD'}
 
     def command(self, scene, history, speed, side, previous_steering=0., control_dt=.02):
+        output = self._path_command(scene, history, speed, side, previous_steering, control_dt)
+        if self.observation_cache is None:
+            return output
+        from arena_autonomy.observation_support import needs_recent_support, sweep_support
+        required = needs_recent_support(scene)
+        sources, reason = self.observation_cache.observe(scene, history, transport=required and output[0]>0)
+        detail = {**output[2], 'recent_observation_selected':False,
+                  'recent_observation':{'required':required, 'cache_reason':reason,
+                                        'rear_dynamic_risk_unresolved':True}}
+        if not required or output[0]<=0:
+            return output[0], output[1], detail
+        # 원래 속도를 올리지 않는다. 낮춘 목표를 현재 운동 속도 대신 쓰지도 않는다.
+        target = min(.2, output[0])
+        motion = history.config
+        support = sweep_support(sources, speed, target, output[1], previous_steering, self.config,
+            protected_sensor_pose=(motion.lidar_x_m,motion.lidar_y_m,motion.lidar_yaw_rad))
+        detail['recent_observation'] = {**support, 'required':True, 'cache_reason':reason}
+        if not support['supported']:
+            if self.corridor_observer is not None:
+                self.corridor_observer.clear_evidence()
+            return self._hold('follow_observation_unconfirmed', detail)
+        detail.update(recent_observation_selected=True, observation_speed_cap_mps=.2)
+        return target, output[1], detail
+
+    def _path_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02):
+        baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt)
+        if self.corridor_observer is None:
+            return baseline
+        proposal = self.corridor_observer.evaluate(scene, history, speed, side, previous_steering, control_dt)
+        metadata = {k: proposal.get(k) for k in ('positive', 'reason', 'fresh', 'confirmations', 'release_count',
+                                                'source_first_s', 'reference_s', 'swept_clearance_m')}
+        detail = {**baseline[2], 'corridor_candidate': metadata,
+                  'corridor_selected': False, 'boundary_memory_from_corridor': False}
+        if not (baseline[0] == 0 and baseline[2]['reason'] == 'follow_boundary_unconfirmed' and proposal['positive']):
+            return baseline[0], baseline[1], detail
+        # 기본 경계 기억에는 쓰지 않는다. 신호/고장 허가와 /drive 독립 보호는 상위에서 그대로 적용한다.
+        points = scene.occupied_endpoints_xy_m
+        padding = per_ray_padding(scene, .025+self.config.measurement_padding_m, self.config.object_motion_bound_mps)
+        detail.update(reason='local_follow_corridor_candidate', behavior='FOLLOW', corridor_selected=True,
+                      underlying_reason=baseline[2]['reason'], wall_identity_certified=False,
+                      path_points=proposal['path'], path_source_s=scene.source_first_s,
+                      boundary_age_s=scene.t_ref_s-scene.source_first_s, boundary_from_memory=False,
+                      boundary_selection='current_paired_corridor_candidate', path_wall=None,
+                      swept_clearance_m=proposal['swept_clearance_m'], unfiltered_occupancy=True,
+                      occupied_points=len(points), occupancy_timing_mode=self.config.occupancy_timing_mode,
+                      occupancy_padding_points=len(padding), occupancy_padding_m=float(np.max(padding)),
+                      occupancy_padding_min_m=float(np.min(padding)), occupancy_padding_max_m=float(np.max(padding)),
+                      target_speed_before_hold_mps=proposal['proposed_speed_mps'])
+        return proposal['proposed_speed_mps'], proposal['steering_rad'], detail
+
+    def _baseline_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02):
         cfg, now = self.config, scene.t_ref_s
         detail = {'mode': 'g1_follow', 'source_first_s': scene.source_first_s,
                   'source_last_s': scene.source_last_s, 'source_epoch': scene.source_epoch,
@@ -197,8 +272,11 @@ class LocalFollow:
         # 후방 사각은 직진 전체를 금지하지 않지만 전방 미관측은 현 보호와 같이 정지.
         front = [ray for ray in scene.rays if abs(math.atan2(ray.direction_xy[1], ray.direction_xy[0])) <= math.radians(100)]
         if not front or any(ray.status != 'return' for ray in front):
-            self.reset()
-            return self._hold('follow_front_unobserved', detail)
+            from arena_autonomy.observation_support import side_missing_candidate
+            if not (cfg.recent_observation_enabled and side_missing_candidate(scene)):
+                self.reset()
+                return self._hold('follow_front_unobserved', detail)
+            # 경로 계산만 허용한다. command()의 실제 관측 지지 없이는 양수 출력을 반환하지 않는다.
         points = np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1, 2)
         if len(points) < 30:
             self.reset()
@@ -288,7 +366,7 @@ class LocalFollow:
                             detail.update(bilateral_reference='opposite_support',
                                           opposite_support_points=support['boundary_support_points'],
                                           opposite_protrusions_removed=support['boundary_protrusions_removed'])
-                if not eligible and cfg.boundary_evidence_mode == 'fragmented_candidate':
+                if not eligible and cfg.boundary_evidence_mode in ('fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'):
                     # 긴 반대 벽은 그대로 관측되어야 한다. 선호 벽의 각 실제 조각이
                     # 그 형상을 지지해야 하며 가림 간격은 길이/자유 공간 증거가 아니다.
                     opposite, other = opposite_wall()
@@ -305,6 +383,39 @@ class LocalFollow:
                             detail['boundary_selection'] = 'bilateral_observed_fragments'
                             detail['boundary_candidate_reason'] = info['reason']
                             detail['boundary_candidate_ahead_m'] = info.get('boundary_observed_ahead_m')
+                if not eligible and cfg.boundary_evidence_mode == 'corner_anchor_candidate':
+                    # 직선/분리 경계 계약은 유지한다. 급커브에서만 현재 차체를
+                    # 가로지르는 실제 안쪽 벽과 긴 바깥 경로를 직접 대조한다.
+                    opposite, other = opposite_wall()
+                    if sufficient(opposite, other):
+                        evidence = corner_anchor_evidence(points, opposite, side, cfg)
+                        agrees_memory = carried is None or path_agrees(opposite, carried, cfg.boundary_agreement_m)
+                        detail['corner_boundary_evidence'] = {k: v for k, v in evidence.items()
+                                                              if k != 'source_indices'}
+                        detail['corner_agrees_memory'] = bool(agrees_memory)
+                        if evidence['supported'] and agrees_memory:
+                            candidate, info, candidate_wall = opposite, other, other_side
+                            eligible, bilateral = True, True
+                            detail.update(boundary_selection='bilateral_observed_corner_anchor',
+                                          boundary_candidate_reason=info['reason'],
+                                          boundary_candidate_ahead_m=info.get('boundary_observed_ahead_m'))
+                if not eligible and cfg.boundary_evidence_mode == 'corner_distance_candidate':
+                    opposite, other = opposite_wall()
+                    if sufficient(opposite, other):
+                        evidence = corner_distance_evidence(points, opposite, side, cfg)
+                        detail['corner_distance_evidence'] = {k: v for k, v in evidence.items()
+                                                              if k != 'source_indices'}
+                        retained = (opposite[:evidence['path_end_exclusive']]
+                                    if evidence['supported'] else None)
+                        agrees_memory = (retained is not None and (carried is None or
+                            path_agrees(retained, carried, cfg.boundary_agreement_m)))
+                        detail['corner_distance_agrees_memory'] = bool(agrees_memory)
+                        if evidence['supported'] and agrees_memory:
+                            candidate, info, candidate_wall = retained, other, other_side
+                            eligible, bilateral = True, True
+                            detail.update(boundary_selection='bilateral_observed_corner_distance',
+                                          boundary_candidate_reason=info['reason'],
+                                          boundary_candidate_ahead_m=info.get('boundary_observed_ahead_m'))
                 if eligible:
                     confirmed = carried is not None
                     if not confirmed:

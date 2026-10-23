@@ -1,0 +1,32 @@
+--- /tmp/v9_probe.py	2026-10-19 13:27:58.378039100 +0900
++++ scripts/pipeline_restart_probe.py	2026-10-19 13:20:01.731379300 +0900
+@@ -96,8 +96,10 @@
+             wall = time.monotonic()
+             now, source = host.now_us(), _stamp_us(message.header.stamp)
+             producer = host.producer
++            # producer는 원래 호출에서 바뀌므로 호출 전 값은 스칼라로 복사한다.
+             context = dict(now_us=now, wall_s=wall, source_us=source, producer=producer,
+-                           sequence=producer.sequence, label=classify_host_drive(host, now, source, wall))
++                           sequence=producer.sequence, last_source_us_before=producer.last_source_us,
++                           label=classify_host_drive(host, now, source, wall))
+         except Exception:
+             context = None
+         result = original_drive(host, message)
+@@ -114,6 +116,7 @@
+                 run['max_call_gap_wall_s'] = max(run['max_call_gap_wall_s'], context['wall_s'] - run['last_wall_s'])
+                 run['last_now_us'], run['last_wall_s'] = context['now_us'], context['wall_s']
+                 return result
++            # offer·arm_barrier는 on_drive가 바꾸지 않으므로 호출 뒤 읽어도 호출 전 값과 같다.
+             offer = host.offer or {}
+             write(dict(type='test_host_drive_decision', scope='validator_child_only',
+                 label=context['label'], forwarded=forwarded, now_us=context['now_us'], wall_s=context['wall_s'],
+@@ -122,7 +125,8 @@
+                            generation=offer.get('generation'), state=offer.get('state'),
+                            output_ready=offer.get('output_ready')),
+                 offer_receipt=probe['offer_receipt'], offers_received=probe['offers'],
+-                arm_barrier_us=host.arm_barrier, last_source_us_before=getattr(context['producer'], 'last_source_us', None),
++                arm_barrier_us=host.arm_barrier, last_source_us_before=context['last_source_us_before'],
++                last_source_us_after=getattr(context['producer'], 'last_source_us', None),
+                 previous_run=None if run is None else {k: v for k, v in run.items() if k != 'key'},
+                 interpretation='label is pre-call explanation; forwarded is producer sequence change'))
+             probe['run'] = dict(key=key, label=context['label'], forwarded=forwarded, count=1,

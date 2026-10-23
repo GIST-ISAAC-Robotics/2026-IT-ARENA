@@ -1,0 +1,34 @@
+..........................................F............................. [ 50%]
+.......................................................................  [100%]
+=================================== FAILURES ===================================
+_______ test_replay_and_record_scripts_do_not_read_current_vehicle_yaml ________
+
+    def test_replay_and_record_scripts_do_not_read_current_vehicle_yaml():
+        scripts = Path(__file__).resolve().parents[1] / 'scripts'
+        for name in ('replay_sensor_bag.py', 'audit_sensor_bag.py'):
+>           source = (scripts / name).read_text(encoding='utf-8')
+
+tests/test_bag_contract.py:220: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/sensor_probe_isolated_vo5pifkx/scripts/replay_sensor_bag.py')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+E       FileNotFoundError: [Errno 2] No such file or directory: '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/sensor_probe_isolated_vo5pifkx/scripts/replay_sensor_bag.py'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+=========================== short test summary info ============================
+FAILED tests/test_bag_contract.py::test_replay_and_record_scripts_do_not_read_current_vehicle_yaml
+1 failed, 142 passed in 0.78s

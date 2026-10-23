@@ -1,0 +1,27 @@
+.....................F.................................................. [ 32%]
+........................................................................ [ 64%]
+........................................................................ [ 96%]
+........                                                                 [100%]
+=================================== FAILURES ===================================
+_______________ test_clock_reversal_invalidates_cached_evidence ________________
+
+    def test_clock_reversal_invalidates_cached_evidence():
+        node,commands,statuses = candidate_node()
+        LidarSafety.control(node)
+        assert node.observation_cache.scenes
+        node.last_clock=1.
+>       LidarSafety.control(node)
+
+tests/test_recent_observation_safety.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/lidar_safety.py:79: in control
+    output.header.stamp = self.get_clock().now().to_msg()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+>   to_msg=lambda:node.command.header.stamp))
+E   AttributeError: 'NoneType' object has no attribute 'header'
+
+tests/test_recent_observation_safety.py:24: AttributeError
+=========================== short test summary info ============================
+FAILED tests/test_recent_observation_safety.py::test_clock_reversal_invalidates_cached_evidence
+1 failed, 223 passed in 5.99s

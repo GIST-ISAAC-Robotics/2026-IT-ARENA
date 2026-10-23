@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-15 선택형 모서리 거리 지지 경로. 기본 모드 및 기존 코너 앵커·TTL·점유·정지 기준 보존",
+  "parent_contract": "config/tests/corner_anchor_r0_sha256.json",
+  "parent_contract_sha256": "afdf657f48f33e2db56ff4babd1bdf7be39a3e7edf455fa44f32526f739b9349",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "4eb8971de5191d1a3b0e8aa0e53e8c89fb1365b42435f6aabbcdd2c752c8ed0b",
+      "after": "9bf3a7e0f56a78ac1ae4ee8490094eb3cd88e8fcb2ee33fb30022ab4b66dc2a5",
+      "reason": "거리 기반 코너 후보 명시 선택과 지지되는 0.65 m 이상 경로만 사용"
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "43b4bde3d869d2463831a288fc6865d85dabfccb575b2c19a8de73b904975bbb",
+      "after": "b078554412f4b7a12648e6aadb415b41324bc5f4be71695e9e2d0054af943519",
+      "reason": "선택값 전달, G1 꺼짐에서 비기본 선택 거절 유지"
+    },
+    "src/arena_bringup/launch/g1_follow.launch.py": {
+      "before": "a62ed0069db581bf1694d9bfdbe47b423a1e102bd3cd8279e71200cce7ae4ffe",
+      "after": "ecf323c69f5272d09c1ae3cb1c29a8207531022fac67c482c3432f33664e4506",
+      "reason": "새 선택값만 추가, connected 기본 유지"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/corner_distance.py": "2ee17d397ba876b32f14a84bc9d1cb9674139617dee509d04cc5e2260ab81ba7"
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "e8c0e1be226e2a228aecf8086b5f63e550453434ae3689dca910605698cc8dd4",
+      "after": "c13aa4ce88b0381d7c5cf1549bcf319e2c41b05d5d1be7ef5c29c44ec73f6ef2",
+      "reason": "새 선택 인자와 소스 의존 보존만 추가, 기존 주행/STOP/종료 판정 그대로"
+    }
+  },
+  "evidence": ["docs/autonomy/G1_CORNER_BOUNDARY_2026_10_15.md"]
+}

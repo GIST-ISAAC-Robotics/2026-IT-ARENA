@@ -1,0 +1,161 @@
+....FFFFF............................................................... [ 60%]
+................................................                         [100%]
+=================================== FAILURES ===================================
+_______________ test_full_input_shapes_bytes_and_single_motor[0] _______________
+
+index = 0
+
+    @pytest.mark.parametrize('index', [0, 1, 2, 3, 19])
+    def test_full_input_shapes_bytes_and_single_motor(index):
+        messages = fixture_messages(index, True)
+        assert len(messages) == 5 and '/wheel_states' not in messages
+        image = messages['/camera/color/image_raw']
+        info = messages['/camera/color/camera_info']
+        assert (image.width, image.height) == (1280, 720)
+        assert image.encoding == ('rgb8' if index % 2 == 0 else 'bgr8')
+        assert len(image.data) == image.step*image.height
+        assert bytes(image.data[:3]) == bytes((index, 37, 191))
+        if index % 2:
+            assert bytes(image.data[3840:3856]) == b'\xee'*16
+        assert info.k[0] == 0 and info.header == image.header
+        motor = messages[MOTOR_TOPIC]
+        assert motor.name == [MOTOR_JOINT] and motor.header.frame_id == MOTOR_FRAME
+        spec = MotorEncoderSpec(28, 15., .0325)
+        assert spec.counts_from_position(motor.position[0]) == index-10
+        assert motor.velocity[0] == spec.motor_rad_s_from_counts((0, 1, -1)[index % 3], .01)
+        for message in messages.values():
+            payload = serialize_message(message)
+            restored = deserialize_message(payload, type(message))
+            # CDR alignment padding is not a message field and can change on reserialize.
+>           assert restored == message
+E           AssertionError: assert sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=0, nanosec=0), frame_id='la..., scan_time=0.10000000149011612, range_min=0.05000000074505806, range_max=12.0, ranges=[1.0, inf, 2.0], intensities=[]) == sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=0, nanosec=0), frame_id='la...rement=0.5, time_increment=0.01, scan_time=0.1, range_min=0.05, range_max=12.0, ranges=[1.0, inf, 2.0], intensities=[])
+
+tests/test_sensor_probe_formats.py:41: AssertionError
+_______________ test_full_input_shapes_bytes_and_single_motor[1] _______________
+
+index = 1
+
+    @pytest.mark.parametrize('index', [0, 1, 2, 3, 19])
+    def test_full_input_shapes_bytes_and_single_motor(index):
+        messages = fixture_messages(index, True)
+        assert len(messages) == 5 and '/wheel_states' not in messages
+        image = messages['/camera/color/image_raw']
+        info = messages['/camera/color/camera_info']
+        assert (image.width, image.height) == (1280, 720)
+        assert image.encoding == ('rgb8' if index % 2 == 0 else 'bgr8')
+        assert len(image.data) == image.step*image.height
+        assert bytes(image.data[:3]) == bytes((index, 37, 191))
+        if index % 2:
+            assert bytes(image.data[3840:3856]) == b'\xee'*16
+        assert info.k[0] == 0 and info.header == image.header
+        motor = messages[MOTOR_TOPIC]
+        assert motor.name == [MOTOR_JOINT] and motor.header.frame_id == MOTOR_FRAME
+        spec = MotorEncoderSpec(28, 15., .0325)
+        assert spec.counts_from_position(motor.position[0]) == index-10
+        assert motor.velocity[0] == spec.motor_rad_s_from_counts((0, 1, -1)[index % 3], .01)
+        for message in messages.values():
+            payload = serialize_message(message)
+            restored = deserialize_message(payload, type(message))
+            # CDR alignment padding is not a message field and can change on reserialize.
+>           assert restored == message
+E           AssertionError: assert sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=1, nanosec=0), frame_id='la...0000000149011612, range_min=0.05000000074505806, range_max=12.0, ranges=[1.0010000467300415, inf, 2.0], intensities=[]) == sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=1, nanosec=0), frame_id='la...e_increment=0.01, scan_time=0.1, range_min=0.05, range_max=12.0, ranges=[1.0010000467300415, inf, 2.0], intensities=[])
+
+tests/test_sensor_probe_formats.py:41: AssertionError
+_______________ test_full_input_shapes_bytes_and_single_motor[2] _______________
+
+index = 2
+
+    @pytest.mark.parametrize('index', [0, 1, 2, 3, 19])
+    def test_full_input_shapes_bytes_and_single_motor(index):
+        messages = fixture_messages(index, True)
+        assert len(messages) == 5 and '/wheel_states' not in messages
+        image = messages['/camera/color/image_raw']
+        info = messages['/camera/color/camera_info']
+        assert (image.width, image.height) == (1280, 720)
+        assert image.encoding == ('rgb8' if index % 2 == 0 else 'bgr8')
+        assert len(image.data) == image.step*image.height
+        assert bytes(image.data[:3]) == bytes((index, 37, 191))
+        if index % 2:
+            assert bytes(image.data[3840:3856]) == b'\xee'*16
+        assert info.k[0] == 0 and info.header == image.header
+        motor = messages[MOTOR_TOPIC]
+        assert motor.name == [MOTOR_JOINT] and motor.header.frame_id == MOTOR_FRAME
+        spec = MotorEncoderSpec(28, 15., .0325)
+        assert spec.counts_from_position(motor.position[0]) == index-10
+        assert motor.velocity[0] == spec.motor_rad_s_from_counts((0, 1, -1)[index % 3], .01)
+        for message in messages.values():
+            payload = serialize_message(message)
+            restored = deserialize_message(payload, type(message))
+            # CDR alignment padding is not a message field and can change on reserialize.
+>           assert restored == message
+E           AssertionError: assert sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=2, nanosec=0), frame_id='la...0000000149011612, range_min=0.05000000074505806, range_max=12.0, ranges=[1.0019999742507935, inf, 2.0], intensities=[]) == sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=2, nanosec=0), frame_id='la...e_increment=0.01, scan_time=0.1, range_min=0.05, range_max=12.0, ranges=[1.0019999742507935, inf, 2.0], intensities=[])
+
+tests/test_sensor_probe_formats.py:41: AssertionError
+_______________ test_full_input_shapes_bytes_and_single_motor[3] _______________
+
+index = 3
+
+    @pytest.mark.parametrize('index', [0, 1, 2, 3, 19])
+    def test_full_input_shapes_bytes_and_single_motor(index):
+        messages = fixture_messages(index, True)
+        assert len(messages) == 5 and '/wheel_states' not in messages
+        image = messages['/camera/color/image_raw']
+        info = messages['/camera/color/camera_info']
+        assert (image.width, image.height) == (1280, 720)
+        assert image.encoding == ('rgb8' if index % 2 == 0 else 'bgr8')
+        assert len(image.data) == image.step*image.height
+        assert bytes(image.data[:3]) == bytes((index, 37, 191))
+        if index % 2:
+            assert bytes(image.data[3840:3856]) == b'\xee'*16
+        assert info.k[0] == 0 and info.header == image.header
+        motor = messages[MOTOR_TOPIC]
+        assert motor.name == [MOTOR_JOINT] and motor.header.frame_id == MOTOR_FRAME
+        spec = MotorEncoderSpec(28, 15., .0325)
+        assert spec.counts_from_position(motor.position[0]) == index-10
+        assert motor.velocity[0] == spec.motor_rad_s_from_counts((0, 1, -1)[index % 3], .01)
+        for message in messages.values():
+            payload = serialize_message(message)
+            restored = deserialize_message(payload, type(message))
+            # CDR alignment padding is not a message field and can change on reserialize.
+>           assert restored == message
+E           AssertionError: assert sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=1, nanosec=0), frame_id='la...10000000149011612, range_min=0.05000000074505806, range_max=12.0, ranges=[1.003000020980835, inf, 2.0], intensities=[]) == sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=1, nanosec=0), frame_id='la...me_increment=0.01, scan_time=0.1, range_min=0.05, range_max=12.0, ranges=[1.003000020980835, inf, 2.0], intensities=[])
+
+tests/test_sensor_probe_formats.py:41: AssertionError
+______________ test_full_input_shapes_bytes_and_single_motor[19] _______________
+
+index = 19
+
+    @pytest.mark.parametrize('index', [0, 1, 2, 3, 19])
+    def test_full_input_shapes_bytes_and_single_motor(index):
+        messages = fixture_messages(index, True)
+        assert len(messages) == 5 and '/wheel_states' not in messages
+        image = messages['/camera/color/image_raw']
+        info = messages['/camera/color/camera_info']
+        assert (image.width, image.height) == (1280, 720)
+        assert image.encoding == ('rgb8' if index % 2 == 0 else 'bgr8')
+        assert len(image.data) == image.step*image.height
+        assert bytes(image.data[:3]) == bytes((index, 37, 191))
+        if index % 2:
+            assert bytes(image.data[3840:3856]) == b'\xee'*16
+        assert info.k[0] == 0 and info.header == image.header
+        motor = messages[MOTOR_TOPIC]
+        assert motor.name == [MOTOR_JOINT] and motor.header.frame_id == MOTOR_FRAME
+        spec = MotorEncoderSpec(28, 15., .0325)
+        assert spec.counts_from_position(motor.position[0]) == index-10
+        assert motor.velocity[0] == spec.motor_rad_s_from_counts((0, 1, -1)[index % 3], .01)
+        for message in messages.values():
+            payload = serialize_message(message)
+            restored = deserialize_message(payload, type(message))
+            # CDR alignment padding is not a message field and can change on reserialize.
+>           assert restored == message
+E           AssertionError: assert sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=1, nanosec=0), frame_id='la...0000000149011612, range_min=0.05000000074505806, range_max=12.0, ranges=[1.0190000534057617, inf, 2.0], intensities=[]) == sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=1, nanosec=0), frame_id='la...e_increment=0.01, scan_time=0.1, range_min=0.05, range_max=12.0, ranges=[1.0190000534057617, inf, 2.0], intensities=[])
+
+tests/test_sensor_probe_formats.py:41: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-23/sensor_probe_formats_checks_v2/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_sensor_probe_formats.py::test_full_input_shapes_bytes_and_single_motor[0]
+FAILED tests/test_sensor_probe_formats.py::test_full_input_shapes_bytes_and_single_motor[1]
+FAILED tests/test_sensor_probe_formats.py::test_full_input_shapes_bytes_and_single_motor[2]
+FAILED tests/test_sensor_probe_formats.py::test_full_input_shapes_bytes_and_single_motor[3]
+FAILED tests/test_sensor_probe_formats.py::test_full_input_shapes_bytes_and_single_motor[19]
+5 failed, 115 passed in 1.84s

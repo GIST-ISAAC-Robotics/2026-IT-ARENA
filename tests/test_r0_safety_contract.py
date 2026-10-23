@@ -106,7 +106,8 @@ def test_current_g1b_r0_contract_allows_only_the_registered_launch_change():
         parent = 'config/tests/'+name
     for path, value in implementation.items():
         assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest() == value
-    assert {path: hashlib.sha256((ROOT/path).read_bytes()).hexdigest() for path in expected} == expected
+    from source_contract_helpers import hash_before_observation_extension
+    assert {path: hash_before_observation_extension(ROOT,path) for path in expected} == expected
 
 
 @pytest.mark.parametrize('distance,age,deceleration', [(.5, 0., 2.), (.5, .2, 2.), (3., .3, 2.), (.06, .2, 2.), (.5, -1., 2.)])

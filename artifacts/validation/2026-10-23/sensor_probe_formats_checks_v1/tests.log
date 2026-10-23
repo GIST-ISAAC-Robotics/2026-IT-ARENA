@@ -1,0 +1,166 @@
+....FFFFF............................................................... [ 60%]
+................................................                         [100%]
+=================================== FAILURES ===================================
+_______________ test_full_input_shapes_bytes_and_single_motor[0] _______________
+
+index = 0
+
+    @pytest.mark.parametrize('index', [0, 1, 2, 3, 19])
+    def test_full_input_shapes_bytes_and_single_motor(index):
+        messages = fixture_messages(index, True)
+        assert len(messages) == 5 and '/wheel_states' not in messages
+        image = messages['/camera/color/image_raw']
+        info = messages['/camera/color/camera_info']
+        assert (image.width, image.height) == (1280, 720)
+        assert image.encoding == ('rgb8' if index % 2 == 0 else 'bgr8')
+        assert len(image.data) == image.step*image.height
+        assert bytes(image.data[:3]) == bytes((index, 37, 191))
+        if index % 2:
+            assert bytes(image.data[3840:3856]) == b'\xee'*16
+        assert info.k[0] == 0 and info.header == image.header
+        motor = messages[MOTOR_TOPIC]
+        assert motor.name == [MOTOR_JOINT] and motor.header.frame_id == MOTOR_FRAME
+        spec = MotorEncoderSpec(28, 15., .0325)
+        assert spec.counts_from_position(motor.position[0]) == index-10
+        assert motor.velocity[0] == spec.motor_rad_s_from_counts((0, 1, -1)[index % 3], .01)
+        for message in messages.values():
+            payload = serialize_message(message)
+            restored = deserialize_message(payload, type(message))
+>           assert serialize_message(restored) == payload
+E           AssertionError: assert b'\x00\x01\x0...\xbf\x00%\xbf' == b'\x00\x01\x0...\xbf\x00%\xbf'
+E             At index 63 diff: b'%' != b'\x00'
+E             Use -v to get more diff
+
+tests/test_sensor_probe_formats.py:40: AssertionError
+_______________ test_full_input_shapes_bytes_and_single_motor[1] _______________
+
+index = 1
+
+    @pytest.mark.parametrize('index', [0, 1, 2, 3, 19])
+    def test_full_input_shapes_bytes_and_single_motor(index):
+        messages = fixture_messages(index, True)
+        assert len(messages) == 5 and '/wheel_states' not in messages
+        image = messages['/camera/color/image_raw']
+        info = messages['/camera/color/camera_info']
+        assert (image.width, image.height) == (1280, 720)
+        assert image.encoding == ('rgb8' if index % 2 == 0 else 'bgr8')
+        assert len(image.data) == image.step*image.height
+        assert bytes(image.data[:3]) == bytes((index, 37, 191))
+        if index % 2:
+            assert bytes(image.data[3840:3856]) == b'\xee'*16
+        assert info.k[0] == 0 and info.header == image.header
+        motor = messages[MOTOR_TOPIC]
+        assert motor.name == [MOTOR_JOINT] and motor.header.frame_id == MOTOR_FRAME
+        spec = MotorEncoderSpec(28, 15., .0325)
+        assert spec.counts_from_position(motor.position[0]) == index-10
+        assert motor.velocity[0] == spec.motor_rad_s_from_counts((0, 1, -1)[index % 3], .01)
+        for message in messages.values():
+            payload = serialize_message(message)
+            restored = deserialize_message(payload, type(message))
+>           assert serialize_message(restored) == payload
+E           AssertionError: assert b'\x00\x01\x0...e\xee\xee\xee' == b'\x00\x01\x0...e\xee\xee\xee'
+E             At index 62 diff: b'\x01' != b'\\'
+E             Use -v to get more diff
+
+tests/test_sensor_probe_formats.py:40: AssertionError
+_______________ test_full_input_shapes_bytes_and_single_motor[2] _______________
+
+index = 2
+
+    @pytest.mark.parametrize('index', [0, 1, 2, 3, 19])
+    def test_full_input_shapes_bytes_and_single_motor(index):
+        messages = fixture_messages(index, True)
+        assert len(messages) == 5 and '/wheel_states' not in messages
+        image = messages['/camera/color/image_raw']
+        info = messages['/camera/color/camera_info']
+        assert (image.width, image.height) == (1280, 720)
+        assert image.encoding == ('rgb8' if index % 2 == 0 else 'bgr8')
+        assert len(image.data) == image.step*image.height
+        assert bytes(image.data[:3]) == bytes((index, 37, 191))
+        if index % 2:
+            assert bytes(image.data[3840:3856]) == b'\xee'*16
+        assert info.k[0] == 0 and info.header == image.header
+        motor = messages[MOTOR_TOPIC]
+        assert motor.name == [MOTOR_JOINT] and motor.header.frame_id == MOTOR_FRAME
+        spec = MotorEncoderSpec(28, 15., .0325)
+        assert spec.counts_from_position(motor.position[0]) == index-10
+        assert motor.velocity[0] == spec.motor_rad_s_from_counts((0, 1, -1)[index % 3], .01)
+        for message in messages.values():
+            payload = serialize_message(message)
+            restored = deserialize_message(payload, type(message))
+>           assert serialize_message(restored) == payload
+E           AssertionError: assert b'\x00\x01\x0...\xbf\x02%\xbf' == b'\x00\x01\x0...\xbf\x02%\xbf'
+E             At index 62 diff: b'\x02' != b'\\'
+E             Use -v to get more diff
+
+tests/test_sensor_probe_formats.py:40: AssertionError
+_______________ test_full_input_shapes_bytes_and_single_motor[3] _______________
+
+index = 3
+
+    @pytest.mark.parametrize('index', [0, 1, 2, 3, 19])
+    def test_full_input_shapes_bytes_and_single_motor(index):
+        messages = fixture_messages(index, True)
+        assert len(messages) == 5 and '/wheel_states' not in messages
+        image = messages['/camera/color/image_raw']
+        info = messages['/camera/color/camera_info']
+        assert (image.width, image.height) == (1280, 720)
+        assert image.encoding == ('rgb8' if index % 2 == 0 else 'bgr8')
+        assert len(image.data) == image.step*image.height
+        assert bytes(image.data[:3]) == bytes((index, 37, 191))
+        if index % 2:
+            assert bytes(image.data[3840:3856]) == b'\xee'*16
+        assert info.k[0] == 0 and info.header == image.header
+        motor = messages[MOTOR_TOPIC]
+        assert motor.name == [MOTOR_JOINT] and motor.header.frame_id == MOTOR_FRAME
+        spec = MotorEncoderSpec(28, 15., .0325)
+        assert spec.counts_from_position(motor.position[0]) == index-10
+        assert motor.velocity[0] == spec.motor_rad_s_from_counts((0, 1, -1)[index % 3], .01)
+        for message in messages.values():
+            payload = serialize_message(message)
+            restored = deserialize_message(payload, type(message))
+>           assert serialize_message(restored) == payload
+E           AssertionError: assert b'\x00\x01\x0...e\xee\xee\xee' == b'\x00\x01\x0...e\xee\xee\xee'
+E             At index 62 diff: b'\x03' != b'\\'
+E             Use -v to get more diff
+
+tests/test_sensor_probe_formats.py:40: AssertionError
+______________ test_full_input_shapes_bytes_and_single_motor[19] _______________
+
+index = 19
+
+    @pytest.mark.parametrize('index', [0, 1, 2, 3, 19])
+    def test_full_input_shapes_bytes_and_single_motor(index):
+        messages = fixture_messages(index, True)
+        assert len(messages) == 5 and '/wheel_states' not in messages
+        image = messages['/camera/color/image_raw']
+        info = messages['/camera/color/camera_info']
+        assert (image.width, image.height) == (1280, 720)
+        assert image.encoding == ('rgb8' if index % 2 == 0 else 'bgr8')
+        assert len(image.data) == image.step*image.height
+        assert bytes(image.data[:3]) == bytes((index, 37, 191))
+        if index % 2:
+            assert bytes(image.data[3840:3856]) == b'\xee'*16
+        assert info.k[0] == 0 and info.header == image.header
+        motor = messages[MOTOR_TOPIC]
+        assert motor.name == [MOTOR_JOINT] and motor.header.frame_id == MOTOR_FRAME
+        spec = MotorEncoderSpec(28, 15., .0325)
+        assert spec.counts_from_position(motor.position[0]) == index-10
+        assert motor.velocity[0] == spec.motor_rad_s_from_counts((0, 1, -1)[index % 3], .01)
+        for message in messages.values():
+            payload = serialize_message(message)
+            restored = deserialize_message(payload, type(message))
+>           assert serialize_message(restored) == payload
+E           AssertionError: assert b'\x00\x01\x0...e\xee\xee\xee' == b'\x00\x01\x0...e\xee\xee\xee'
+E             At index 62 diff: b'\x13' != b'\x03'
+E             Use -v to get more diff
+
+tests/test_sensor_probe_formats.py:40: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-23/sensor_probe_formats_checks_v1/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_sensor_probe_formats.py::test_full_input_shapes_bytes_and_single_motor[0]
+FAILED tests/test_sensor_probe_formats.py::test_full_input_shapes_bytes_and_single_motor[1]
+FAILED tests/test_sensor_probe_formats.py::test_full_input_shapes_bytes_and_single_motor[2]
+FAILED tests/test_sensor_probe_formats.py::test_full_input_shapes_bytes_and_single_motor[3]
+FAILED tests/test_sensor_probe_formats.py::test_full_input_shapes_bytes_and_single_motor[19]
+5 failed, 115 passed in 2.87s

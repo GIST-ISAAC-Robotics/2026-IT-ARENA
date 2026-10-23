@@ -1,0 +1,70 @@
+FF.                                                                      [100%]
+=================================== FAILURES ===================================
+____ test_previous_finite_evidence_is_distinct_from_filling_current_unknown ____
+
+    def test_previous_finite_evidence_is_distinct_from_filling_current_unknown():
+        current=unknown_at(0)
+>       r=temporal_support([current,scene()],[[.4,0.]],FollowConfig())
+
+tests/test_temporal_observation_probe.py:11: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scenes = [LocalScene(t_ref_s=0.4, source_first_s=0.3, source_last_s=0.3998, source_frame_id='laser_frame', source_epoch=0, rays...', source_epoch=0, source_index=499, direction_xy=(-0.9999210442038161, 0.012566039883351948))), frame_id='base_link')]
+queries = [[0.4, 0.0]]
+config = FollowConfig(corridor_fallback_enabled=False, boundary_evidence_mode='connected', occupancy_timing_mode='oldest', whee...on_bound_mps=0.5, standstill_gap_m=0.16, hold_clearance_m=0.2, resume_clearance_m=0.28, headway_s=0.8, confirmations=2)
+
+    def temporal_support(scenes,queries,config):
+        supported=np.zeros(len(queries),dtype=bool)
+        first=np.full(len(queries),-1,dtype=int)
+        coverage=[]
+        for i,scene in enumerate(scenes):
+            padding=np.array([.025+config.measurement_padding_m+config.object_motion_bound_mps*(scene.t_ref_s-r.acquired_at_s)
+                              for r in scene.rays])
+            results=bracket_depth(scene,queries,padding)
+            current=np.array([r['supported'] for r in results])
+            first[current&~supported]=i
+            supported|=current
+            coverage.append(dict(source_first_s=scene.source_first_s,age_s=scene.t_ref_s-scene.source_first_s,
+                supported=int(current.sum()),unsupported_reasons=dict(Counter(r['reason'] for r in results if not r['supported']))))
+        return dict(queries=len(queries),sources=coverage,supported=int(supported.sum()),all_supported=bool(supported.all()),
+>           new_support_from_earlier=int(np.sum(first>0)),unsupported_examples=queries[~supported][:6].tolist(),
+            between_queries_verified=False,dynamic_cut_in_verified=False,free_area_certified=False)
+E       TypeError: only integer scalar arrays can be converted to a scalar index
+
+scripts/probe_temporal_observation.py:56: TypeError
+_________ test_unknown_in_all_sources_and_close_returns_cannot_support _________
+
+    def test_unknown_in_all_sources_and_close_returns_cannot_support():
+        for observations in ([unknown_at(0),unknown_at(0)],[scene(.3),scene(.3)]):
+>           r=temporal_support(observations,[[.4,0.]],FollowConfig())
+
+tests/test_temporal_observation_probe.py:19: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scenes = [LocalScene(t_ref_s=0.4, source_first_s=0.3, source_last_s=0.3998, source_frame_id='laser_frame', source_epoch=0, rays...', source_epoch=0, source_index=499, direction_xy=(-0.9999210442038161, 0.012566039883351948))), frame_id='base_link')]
+queries = [[0.4, 0.0]]
+config = FollowConfig(corridor_fallback_enabled=False, boundary_evidence_mode='connected', occupancy_timing_mode='oldest', whee...on_bound_mps=0.5, standstill_gap_m=0.16, hold_clearance_m=0.2, resume_clearance_m=0.28, headway_s=0.8, confirmations=2)
+
+    def temporal_support(scenes,queries,config):
+        supported=np.zeros(len(queries),dtype=bool)
+        first=np.full(len(queries),-1,dtype=int)
+        coverage=[]
+        for i,scene in enumerate(scenes):
+            padding=np.array([.025+config.measurement_padding_m+config.object_motion_bound_mps*(scene.t_ref_s-r.acquired_at_s)
+                              for r in scene.rays])
+            results=bracket_depth(scene,queries,padding)
+            current=np.array([r['supported'] for r in results])
+            first[current&~supported]=i
+            supported|=current
+            coverage.append(dict(source_first_s=scene.source_first_s,age_s=scene.t_ref_s-scene.source_first_s,
+                supported=int(current.sum()),unsupported_reasons=dict(Counter(r['reason'] for r in results if not r['supported']))))
+        return dict(queries=len(queries),sources=coverage,supported=int(supported.sum()),all_supported=bool(supported.all()),
+>           new_support_from_earlier=int(np.sum(first>0)),unsupported_examples=queries[~supported][:6].tolist(),
+            between_queries_verified=False,dynamic_cut_in_verified=False,free_area_certified=False)
+E       TypeError: only integer scalar arrays can be converted to a scalar index
+
+scripts/probe_temporal_observation.py:56: TypeError
+=========================== short test summary info ============================
+FAILED tests/test_temporal_observation_probe.py::test_previous_finite_evidence_is_distinct_from_filling_current_unknown
+FAILED tests/test_temporal_observation_probe.py::test_unknown_in_all_sources_and_close_returns_cannot_support
+2 failed, 1 passed in 1.11s

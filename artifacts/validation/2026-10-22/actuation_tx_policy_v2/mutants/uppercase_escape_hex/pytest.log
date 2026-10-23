@@ -1,0 +1,31 @@
+.............F
+=================================== FAILURES ===================================
+__ test_ack_and_compact_offer_bytes_equal_python_encoder[sanitizers-mixed64] ___
+
+binary = PosixPath('/tmp/pytest-of-jinhyeong/pytest-11/tx0/driver')
+client = '😀\ud800\udfff"\\\n\x08\x0c\r\t\x00\x1f\x7fé한\U0010ffff/ 😀\ud800\udfff"\\\n\x08\x0c\r\t\x00\x1f\x7fé한\U0010ffff/ 😀\ud800\udfff"\\\n\x08\x0c\r\t\x00\x1f\x7fé한\U0010ffff/ 😀\ud800\udfff"\\\n\x08\x0c\r\t'
+request_id = '😀\ud800\udfff"\\\n\x08\x0c\r\t\x00\x1f\x7fé한\U0010ffff/ 😀\ud800\udfff"\\\n\x08\x0c\r\t\x00\x1f\x7fé한\U0010ffff/ 😀\ud800\udfff"\\\n\x08\x0c\r\t\x00\x1f\x7fé한\U0010ffff/ 😀\ud800\udfff"\\\n\x08\x0c\r\t'
+
+    @pytest.mark.parametrize('client,request_id', [(exotic(), exotic()), (chr(0x1F600) * 64, 'r'),
+                                                   ('c', chr(0x10FFFF) * 64), ('c', 'r')],
+                             ids=['mixed64', 'astral_owner64', 'astral_request64', 'short'])
+    def test_ack_and_compact_offer_bytes_equal_python_encoder(binary, client, request_id):
+        mcu = Mcu(binary)
+        now = mcu.setup()
+        deliveries = mcu.control(now, 'ARM', client=client, request=request_id)
+        assert [d['result'] for d in deliveries] == [[True, 'explicit_arm']]
+        mcu.pump(now + 1000)
+        mcu.pump(now + 20_000)
+        worst = mcu.driver.init['worst_payload']
+        kinds = [p['type'] for p in mcu.payloads]
+        ack_raw = mcu.raw[kinds.index('ack')]
+>       assert ack_raw == dumps(dict(type='ack', request=request_id, accepted=True, reason='explicit_arm'))
+E       assert b'{"type":"ac...xplicit_arm"}' == b'{"type":"ac...xplicit_arm"}'
+E         At index 27 diff: b'D' != b'd'
+E         Use -v to get more diff
+
+tests/test_actuation_tx_policy.py:138: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_tx_policy.py::test_ack_and_compact_offer_bytes_equal_python_encoder[sanitizers-mixed64]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 13 passed in 3.47s

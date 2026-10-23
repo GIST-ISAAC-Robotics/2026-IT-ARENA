@@ -1,0 +1,61 @@
+FFF.                                                                     [100%]
+=================================== FAILURES ===================================
+_ test_finite_inputs_with_nonfinite_intermediate_reset_and_inhibit[gains0-1e+308--1e+308-0.005] _
+
+gains = (0.6, 1.2, 0.05), target = 1e+308, measured = -1e+308, dt = 0.005
+
+    @pytest.mark.parametrize('gains,target,measured,dt', [
+        ((.6, 1.2, .05), 1e308, -1e308, .005),  # 차분 overflow
+        ((1e308, 1.2, .05), 2., 0., .005),      # 비례항 overflow
+        ((.6, 1e308, .05), 2., 0., .005),       # 적분 증가량 overflow
+    ])
+    def test_finite_inputs_with_nonfinite_intermediate_reset_and_inhibit(gains, target, measured, dt):
+        assert all(math.isfinite(x) for x in (*gains, target, measured, dt))
+        pi = SpeedPI(*gains)
+        result = pi.update_mean(target, measured, dt, enabled=True)
+>       assert result.effort == 0. and result.brake_requested is True
+E       assert (1.0 == 0.0)
+E        +  where 1.0 = MotorIntent(effort=1.0, brake_requested=False).effort
+
+tests/test_speed_pi_numeric.py:18: AssertionError
+_ test_finite_inputs_with_nonfinite_intermediate_reset_and_inhibit[gains1-2.0-0.0-0.005] _
+
+gains = (1e+308, 1.2, 0.05), target = 2.0, measured = 0.0, dt = 0.005
+
+    @pytest.mark.parametrize('gains,target,measured,dt', [
+        ((.6, 1.2, .05), 1e308, -1e308, .005),  # 차분 overflow
+        ((1e308, 1.2, .05), 2., 0., .005),      # 비례항 overflow
+        ((.6, 1e308, .05), 2., 0., .005),       # 적분 증가량 overflow
+    ])
+    def test_finite_inputs_with_nonfinite_intermediate_reset_and_inhibit(gains, target, measured, dt):
+        assert all(math.isfinite(x) for x in (*gains, target, measured, dt))
+        pi = SpeedPI(*gains)
+        result = pi.update_mean(target, measured, dt, enabled=True)
+>       assert result.effort == 0. and result.brake_requested is True
+E       assert (1.0 == 0.0)
+E        +  where 1.0 = MotorIntent(effort=1.0, brake_requested=False).effort
+
+tests/test_speed_pi_numeric.py:18: AssertionError
+_ test_finite_inputs_with_nonfinite_intermediate_reset_and_inhibit[gains2-2.0-0.0-0.005] _
+
+gains = (0.6, 1e+308, 0.05), target = 2.0, measured = 0.0, dt = 0.005
+
+    @pytest.mark.parametrize('gains,target,measured,dt', [
+        ((.6, 1.2, .05), 1e308, -1e308, .005),  # 차분 overflow
+        ((1e308, 1.2, .05), 2., 0., .005),      # 비례항 overflow
+        ((.6, 1e308, .05), 2., 0., .005),       # 적분 증가량 overflow
+    ])
+    def test_finite_inputs_with_nonfinite_intermediate_reset_and_inhibit(gains, target, measured, dt):
+        assert all(math.isfinite(x) for x in (*gains, target, measured, dt))
+        pi = SpeedPI(*gains)
+        result = pi.update_mean(target, measured, dt, enabled=True)
+>       assert result.effort == 0. and result.brake_requested is True
+E       assert (1.0 == 0.0)
+E        +  where 1.0 = MotorIntent(effort=1.0, brake_requested=False).effort
+
+tests/test_speed_pi_numeric.py:18: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_speed_pi_numeric.py::test_finite_inputs_with_nonfinite_intermediate_reset_and_inhibit[gains0-1e+308--1e+308-0.005]
+FAILED tests/test_speed_pi_numeric.py::test_finite_inputs_with_nonfinite_intermediate_reset_and_inhibit[gains1-2.0-0.0-0.005]
+FAILED tests/test_speed_pi_numeric.py::test_finite_inputs_with_nonfinite_intermediate_reset_and_inhibit[gains2-2.0-0.0-0.005]
+3 failed, 1 passed in 0.12s

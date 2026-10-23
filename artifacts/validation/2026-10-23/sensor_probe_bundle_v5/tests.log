@@ -1,0 +1,28 @@
+........................................................................ [ 20%]
+........................................................................ [ 41%]
+........................................................................ [ 61%]
+........................................................................ [ 82%]
+.................................................F............           [100%]
+=================================== FAILURES ===================================
+___________ test_uninterruptible_child_is_reported_not_claimed_dead ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77728da706b0>
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_uninterruptible_child_is_0')
+
+    def test_uninterruptible_child_is_reported_not_claimed_dead(monkeypatch,tmp_path):
+        class Stuck:
+            pid=12345
+            def poll(self): return None
+            def wait(self,timeout): raise subprocess.TimeoutExpired('fixture',timeout)
+        monkeypatch.setattr(tool.subprocess,'Popen',lambda *a,**kw:Stuck())
+        monkeypatch.setattr(tool,'signal_owned_group',lambda *a:True)
+        result=tool.supervise([],tmp_path/'ready.json',None,duration=.1,cancelled=lambda:True)
+        assert not result['process_exited'] and result['exit_code'] is None
+>       assert result['forced_termination'] and not result['lifecycle_complete']
+E       assert (False)
+
+tests/test_sensor_probe_session.py:127: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-23/sensor_probe_bundle_v5/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_sensor_probe_session.py::test_uninterruptible_child_is_reported_not_claimed_dead
+1 failed, 349 passed in 3.86s

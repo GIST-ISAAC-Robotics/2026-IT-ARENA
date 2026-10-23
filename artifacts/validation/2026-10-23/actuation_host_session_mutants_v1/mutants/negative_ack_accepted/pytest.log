@@ -1,0 +1,21 @@
+..........F
+=================================== FAILURES ===================================
+_____________ test_bad_ack_never_establishes_permission[bad_ack0] ______________
+
+bad_ack = {'accepted': False}
+
+    @pytest.mark.parametrize('bad_ack', [dict(accepted=False), dict(reason='software_stop'),
+                                       dict(request='different'), dict(accepted=1), dict(extra=1)])
+    def test_bad_ack_never_establishes_permission(bad_ack):
+        item, req = start()
+        record(item, fresh_offer(), 9_030_000_000)
+        record(item, ack(req, **bad_ack), 9_032_000_000)
+>       assert item.arm_barrier is None and not review(item)['session_conditions_satisfied']
+E       AssertionError: assert (HostTimeWindow(host_epoch='host-epoch-A', lower_ns=9032000000, upper_ns=9032000000) is None)
+E        +  where HostTimeWindow(host_epoch='host-epoch-A', lower_ns=9032000000, upper_ns=9032000000) = <actuation_host_session.CompactHostSession object at 0x72a810704ad0>.arm_barrier
+
+tests/test_actuation_host_session.py:139: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_host_session.py::test_bad_ack_never_establishes_permission[bad_ack0]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 10 passed, 2 deselected in 0.24s

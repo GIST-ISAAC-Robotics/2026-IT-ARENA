@@ -33,11 +33,23 @@ class SpeedPI:
         if not enabled or target_mps == 0:
             self.integral = 0.
             return MotorIntent(0., True)
-        error = target_mps - mean_wheel_mps
-        candidate = self.integral + self.ki * error * dt_s
-        raw = self.kp * error + candidate
+        try:
+            error = target_mps - mean_wheel_mps
+            candidate = self.integral + self.ki * error * dt_s
+            raw = self.kp * error + candidate
+        except OverflowError:  # Python int 중간값을 float로 바꿀 때도 넘칠 수 있다.
+            self.integral = 0.
+            return MotorIntent(0., True)
+        # 유한 입력도 차분/곱에서 overflow할 수 있다. inf를 포화 출력으로 바꾸지 않는다.
+        if not all(number(v) for v in (error, candidate, raw)):
+            self.integral = 0.
+            return MotorIntent(0., True)
         # 포화가 더 커지는 방향의 적분만 막는다. 중지/재허가에는 적분을 남기지 않는다.
         if -1 <= raw <= 1 or (raw > 1 and error < 0) or (raw < -1 and error > 0):
             self.integral = max(-1., min(1., candidate))
-        effort = max(-1., min(1., self.kp * error + self.integral))
+        effort_raw = self.kp * error + self.integral
+        if not number(effort_raw):
+            self.integral = 0.
+            return MotorIntent(0., True)
+        effort = max(-1., min(1., effort_raw))
         return MotorIntent(effort, effort < 0)

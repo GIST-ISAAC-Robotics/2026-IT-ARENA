@@ -1,0 +1,26 @@
+.................................F
+=================================== FAILURES ===================================
+_ test_local_stop_latch_survives_missing_stop_ack_and_requires_clear_evidence __
+
+    def test_local_stop_latch_survives_missing_stop_ack_and_requires_clear_evidence():
+        item = session(timeout=10_000_000)
+        record(item, offer(), 9_010_000_000)
+        begin(item, 'STOP', 9_012_000_000)
+        item.poll(window(9_022_000_000))
+        assert item.stop_requested and item.pending is None
+        assert begin(item, 'ARM', 9_023_000_000)['reason'] == 'explicit_clear_required'
+        record(item, fresh_offer(state='ESTOP_LATCHED', owner=None), 9_030_000_000)
+        clear = begin(item, 'CLEAR', 9_031_000_000)['envelope']
+        assert clear
+        record(item, ack(clear, reason='explicit_clear'), 9_032_000_000)
+        assert item.stop_requested
+        record(item, fresh_offer(generation=5, lease=10, state='DISARMED', owner=None), 9_033_000_000)
+>       assert not item.stop_requested and item.arm_barrier is None
+E       assert (not True)
+E        +  where True = <actuation_host_session.CompactHostSession object at 0x7d907f9c5bb0>.stop_requested
+
+tests/test_actuation_host_session.py:251: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_host_session.py::test_local_stop_latch_survives_missing_stop_ack_and_requires_clear_evidence
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 33 passed, 2 deselected in 0.30s

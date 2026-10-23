@@ -83,3 +83,33 @@ def test_candidate_keeps_all_occupied_points_and_reverse_stop():
     assert result[2]['unfiltered_occupancy']
     assert result[2]['occupancy_padding_points'] == result[2]['occupied_points'] == 270
     assert follow.command(observed(.8), history(), -.01, 'left')[0] == 0
+
+
+@pytest.mark.parametrize('yaw_rate', [-1., 0., 1.])
+def test_motion_projection_preserves_padding_order_across_masks_and_no_returns(yaw_rate):
+    import math
+    from arena_autonomy.lidar_motion import MotionConfig, MotionHistory
+    from arena_autonomy.scene_motion import motion_scene
+    count, first, dt = 500, .2, .0002
+    ranges = [1.+i/1000 for i in range(count)]
+    ranges[90], ranges[250] = math.inf, math.nan
+    scan = SimpleNamespace(header=SimpleNamespace(stamp=SimpleNamespace(sec=0, nanosec=200000000),
+                                                  frame_id='laser_frame'),
+                           ranges=ranges, angle_min=-math.pi, angle_increment=math.tau/count,
+                           range_min=.05, range_max=12., time_increment=dt)
+    history = MotionHistory(MotionConfig(wheel_radius_m=.0325, rear_axle_x_m=-.0675, lidar_x_m=.06))
+    for i in range(41):
+        history.add_mean_wheel(i*.01, .8/.0325)
+        history.add_gyro(i*.01, yaw_rate)
+    earlier = motion_scene(scan, history, .32, timing_verified=True)
+    later = motion_scene(scan, history, .38, timing_verified=True)
+    returns = [r for r in earlier.rays if r.status == 'return']
+    assert len(returns) == len(earlier.occupied_endpoints_xy_m) < count-2
+    assert tuple(r.hit_xy_m for r in returns) == earlier.occupied_endpoints_xy_m
+    assert [r.source_index for r in returns] == [r.source_index for r in later.rays if r.status == 'return']
+    assert [r.acquired_at_s for r in returns] == pytest.approx([first+r.source_index*dt for r in returns])
+    expected = [.055+.5*(.32-first-r.source_index*dt) for r in returns]
+    assert per_ray_padding(earlier, .055, .5) == pytest.approx(expected)
+    assert per_ray_padding(later, .055, .5)-per_ray_padding(earlier, .055, .5) == pytest.approx([.03]*len(returns))
+    # 재투영은 좌표만 바꾸며 원래 취득 시각이나 가림/무반사 상태를 갱신하지 않는다.
+    assert not np.allclose(earlier.occupied_endpoints_xy_m, later.occupied_endpoints_xy_m)

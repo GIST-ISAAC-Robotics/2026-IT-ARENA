@@ -1,0 +1,21 @@
+.......F
+=================================== FAILURES ===================================
+___________ test_stop_revokes_completed_arm_even_if_stop_ack_is_lost ___________
+
+    def test_stop_revokes_completed_arm_even_if_stop_ack_is_lost():
+        item, old = armed()
+        assert review(item)['session_conditions_satisfied']
+        begin(item, 'STOP', 9_037_000_000)
+        assert item.arm_barrier is None
+        record(item, ack(old), 9_038_000_000)
+        assert not review(item, ns=9_040_000_000, source=window(9_039_000_000))['session_conditions_satisfied']
+        item.poll(window(9_137_000_000))
+>       assert item.pending is None and item.outcomes[-1]['outcome'] == 'timeout_unconfirmed'
+E       AssertionError: assert (PendingControl(request='e1daff28037e414e9685bc5369b2f180:2', kind='STOP', started=HostTimeWindow(host_epoch='host-epoch-A', lower_ns=9037000000, upper_ns=9037000000), deadline_ns=9137000000, base_generation=4) is None)
+E        +  where PendingControl(request='e1daff28037e414e9685bc5369b2f180:2', kind='STOP', started=HostTimeWindow(host_epoch='host-epoch-A', lower_ns=9037000000, upper_ns=9037000000), deadline_ns=9137000000, base_generation=4) = <actuation_host_session.CompactHostSession object at 0x7c10e7b2a120>.pending
+
+tests/test_actuation_host_session.py:120: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_host_session.py::test_stop_revokes_completed_arm_even_if_stop_ack_is_lost
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 7 passed, 2 deselected in 0.23s

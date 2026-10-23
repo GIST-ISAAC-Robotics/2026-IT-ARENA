@@ -1,0 +1,20 @@
+............F........................................................... [ 40%]
+........................................................................ [ 81%]
+.................................                                        [100%]
+=================================== FAILURES ===================================
+_____________ test_bad_ack_never_establishes_permission[bad_ack2] ______________
+
+bad_ack = {'request': 'different'}
+
+    @pytest.mark.parametrize('bad_ack', [dict(accepted=False), dict(reason='software_stop'),
+                                       dict(request='different'), dict(accepted=1), dict(extra=1)])
+    def test_bad_ack_never_establishes_permission(bad_ack):
+        item, req = start()
+        record(item, fresh_offer(), 9_030_000_000)
+>       record(item, ack(req, **bad_ack), 9_032_000_000)
+E       TypeError: ack() got multiple values for argument 'request'
+
+tests/test_actuation_host_session.py:138: TypeError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_host_session.py::test_bad_ack_never_establishes_permission[bad_ack2]
+1 failed, 176 passed in 12.33s

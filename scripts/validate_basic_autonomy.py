@@ -27,10 +27,36 @@ from lidar_shutdown import (audit_shutdown, group_processes, request_owned_node_
 from validate_facility_visibility import image_array, yaw_of
 from recording_guard import (DEFAULT_MAX_RAW_GIB, DEFAULT_MAX_WALL_SECONDS,
                              recorder_arguments, require_recorder_running, validate_limits)
+from g1_traffic_eval import stop_pose_evidence
 
 REPO = Path(__file__).resolve().parents[1]
 DEMO_TRACK = "official"
 DEMO_WORLD = REPO / "src/arena_gazebo/worlds/it_arena_official"
+
+
+def g1_solo_arguments(enabled, boundary, occupancy, record, output, corridor=False, recent=False):
+    if not enabled:
+        if boundary != 'connected' or occupancy != 'oldest' or record or corridor or recent:
+            raise ValueError('G1-only options require --g1-follow')
+        return []
+    if boundary not in ('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate') or occupancy not in ('oldest', 'per_ray_candidate'):
+        raise ValueError('unknown G1 candidate')
+    if occupancy != 'oldest' and not record:
+        raise ValueError('per-ray candidate requires decision recording')
+    if boundary in ('corner_anchor_candidate', 'corner_distance_candidate') and not record:
+        raise ValueError('corner candidate requires decision recording')
+    if corridor and (boundary != 'corner_distance_candidate' or occupancy != 'per_ray_candidate' or not record):
+        raise ValueError('corridor candidate requires corner-distance, per-ray and recording')
+    if recent and not corridor:
+        raise ValueError('recent observation requires corridor, per-ray and recording')
+    return [f'g1_boundary_evidence_mode:={boundary}', f'g1_occupancy_timing_mode:={occupancy}',
+            *(['g1_corridor_fallback_enabled:=true'] if corridor else []),
+            *(['g1_recent_observation_enabled:=true'] if recent else []),
+            *([f'g1_trace_path:={Path(output)/"follow_decisions.jsonl"}'] if record else [])]
+
+
+def solo_route_complete(progress, target, full_lap, markers):
+    return progress >= target and (not full_lap or {20, 30}.issubset(markers))
 
 
 def configured_feedback_topic(config_path=REPO / "src/arena_description/config/vehicle.yaml"):
@@ -233,6 +259,11 @@ def main():
     parser.add_argument("--autonomy-mode", choices=("lidar", "stereo", "local_pursuit"), default="lidar",
                         help="lidar=C1+ToF6, stereo=전방 D435i 깊이+측면 ToF4")
     parser.add_argument('--g1-follow', action='store_true', help='G1-a 선택형 추종기. 이 검사에서는 단독 회귀만 평가')
+    parser.add_argument('--g1-boundary-evidence', choices=('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'), default='connected')
+    parser.add_argument('--g1-occupancy-timing', choices=('oldest', 'per_ray_candidate'), default='oldest')
+    parser.add_argument('--record-follow-decisions', action='store_true')
+    parser.add_argument('--g1-corridor-fallback', action='store_true', help='별도 승인된 회랑 후보를 단독 시험에서만 명시 선택')
+    parser.add_argument('--g1-recent-observation', action='store_true', help='선택형 측방 관측 보완; 후방 사각/실시간 마감 보증 아님')
     parser.add_argument("--video", action="store_true",
                         help="제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.")
     parser.add_argument("--disable-speed-bump", action="store_true")
@@ -240,6 +271,9 @@ def main():
     parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy_official",
                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
     args = parser.parse_args()
+    extra_arguments = g1_solo_arguments(args.g1_follow, args.g1_boundary_evidence,
+        args.g1_occupancy_timing, args.record_follow_decisions, args.output.resolve(), args.g1_corridor_fallback,
+        args.g1_recent_observation)
     if args.g1_follow and (args.autonomy_mode != 'local_pursuit' or args.lidar_compensation != 'both'
                           or args.lidar_acquisition != 'sequential' or not args.disable_speed_bump):
         raise ValueError('G1-a는 local_pursuit+both+sequential, 방지턱 비활성 시험 전용입니다.')
@@ -443,10 +477,27 @@ def main():
                                             REPO / "src/arena_autonomy/arena_autonomy/tof_safety_core.py",
                                             REPO / "src/arena_bringup/config/wall_follow.yaml"]}}
     processes = []
+    dense_poses, pose_lock = [], threading.Lock()
+    pose_rejected_times = 0
+    pose_thread = None
     if args.g1_follow:
+        report['g1_requested'] = dict(boundary=args.g1_boundary_evidence, occupancy=args.g1_occupancy_timing,
+                                      record_follow_decisions=args.record_follow_decisions,
+                                      corridor_fallback=args.g1_corridor_fallback, recent_observation=args.g1_recent_observation)
         for relative in ('src/arena_autonomy/arena_autonomy/local_follow.py',
                          'src/arena_autonomy/arena_autonomy/scene_motion.py',
                          'src/arena_autonomy/arena_autonomy/local_scene.py',
+                         'src/arena_autonomy/arena_autonomy/boundary_evidence.py',
+                         'src/arena_autonomy/arena_autonomy/corner_evidence.py',
+                         'src/arena_autonomy/arena_autonomy/corner_distance.py',
+                         'src/arena_autonomy/arena_autonomy/corner_corridor.py',
+                         'src/arena_autonomy/arena_autonomy/corridor_observer.py',
+                         'src/arena_autonomy/arena_autonomy/observation_support.py',
+                         'src/arena_autonomy/arena_autonomy/observation_lateral.py',
+                         'src/arena_autonomy/arena_autonomy/linear_observation.py',
+                         'src/arena_autonomy/arena_autonomy/occupancy_timing.py',
+                         'src/arena_autonomy/arena_autonomy/follow_trace.py',
+                         'scripts/g1_traffic_eval.py',
                          'src/arena_bringup/launch/g1_follow.launch.py'):
             report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
     recorder = recorder_log = None
@@ -511,11 +562,12 @@ def main():
                                             args.render_backend, args.sensor_wall_timeout_s,
                                             not args.disable_speed_bump, args.collision_detector, str(output),
                                             args.grid_slot, args.lidar_test_profile, args.motion_test_profile,
-                                            args.actuation_mode, args.record_inputs, args.g1_follow))
+                                            args.actuation_mode, args.record_inputs, args.g1_follow, extra_arguments))
         pose_process = subprocess.Popen(["gz", "topic", "-e", "-t", "/world/it_arena_track/dynamic_pose/info", "--json-output"],
                                         cwd=REPO, stdout=subprocess.PIPE, stderr=log, text=True, start_new_session=True)
         processes.append(pose_process)
         def observe_poses():
+            nonlocal pose_rejected_times
             for line in pose_process.stdout:
                 try:
                     data = json.loads(line)
@@ -523,10 +575,18 @@ def main():
                     for pose in data.get("pose", []):
                         if pose.get("name") == "arena_car":
                             pose["time"] = float(stamp.get("sec", 0)) + float(stamp.get("nsec", 0)) * 1e-9
+                            if args.g1_follow:
+                                with pose_lock:
+                                    if not dense_poses or pose['time'] > dense_poses[-1][0]:
+                                        dense_poses.append((pose['time'], pose['position']['x'], pose['position']['y'],
+                                                            yaw_of(pose['orientation'])))
+                                    else:
+                                        pose_rejected_times += 1
                             state["pose"] = pose
                 except (ValueError, TypeError):
                     continue
-        threading.Thread(target=observe_poses, daemon=True).start()
+        pose_thread = threading.Thread(target=observe_poses, daemon=True)
+        pose_thread.start()
         began = time.monotonic()
         last_record, last_progress_log = -math.inf, 0
         last_s, progress, max_error = None, 0.0, 0.0
@@ -789,12 +849,20 @@ def main():
                     abs(state["dynamics"]["truth_lateral_mps"]) < .01):
                 stable_since = now if stable_since is None else stable_since
                 if now - stable_since >= .5 and future.done() and future.result().success:
+                    if args.g1_follow:
+                        with pose_lock:
+                            if not stop_pose_evidence(tuple(dense_poses), now, .5)['passed']:
+                                continue
                     break
             else:
                 stable_since = None
         report["stop_stable"] = (stable_since is not None and state["pose"]["time"] - stable_since >= .5 and
                                  future.done() and future.result().success)
         report["stop_wait_sim_s"] = state["pose"]["time"] - stop_start
+        if args.g1_follow:
+            with pose_lock:
+                report['dense_pose_stop_evidence'] = stop_pose_evidence(tuple(dense_poses), state['pose']['time'], .5)
+            report['stop_stable'] &= report['dense_pose_stop_evidence']['passed']
         report["stop_displacement_m"] = math.dist(
             [stop_origin.get(axis, 0.) for axis in ("x", "y")],
             [state["pose"]["position"].get(axis, 0.) for axis in ("x", "y")])
@@ -830,7 +898,8 @@ def main():
                     final.get('now_us', 0) * 1e-6 >= stop_start and
                     state.get('actuation_output', {}).get('now_us', 0) * 1e-6 >= stop_start)
         (output/'stop_trace.json').write_text(json.dumps(stop_trace, indent=2), encoding='utf-8')
-        route_evidence = ({20, 30}.issubset(markers_seen) if full_lap_validation else progress >= target_progress)
+        route_evidence = solo_route_complete(progress, target_progress, full_lap_validation, markers_seen)
+        report['route_complete'] = route_evidence
         safety_evidence = (report["safety_sensor_only_inputs"] if safety_active else True)
         report["passed"] = (not false_start and collision_samples == 0 and report['stop_collision_samples'] == 0 and report["stop_stable"] and
                             report["sensor_only_inputs"] and safety_evidence and source_interface_passed and
@@ -849,6 +918,36 @@ def main():
         report["error"] = str(error)
         print(f"검사 실패: {error}", flush=True)
     finally:
+        if args.g1_follow and 'error' in report and args.actuation_mode == 'virtual_mcu':
+            # 주행 실패도 명시 STOP과 실제 자세 확인을 남긴 뒤 종료한다. 실패는 그대로다.
+            cleanup_stop = {'acknowledged': False, 'dense_pose_stop_passed': False}
+            try:
+                if not mcu_stop_service.wait_for_service(timeout_sec=3):
+                    raise TimeoutError('failure cleanup STOP service unavailable')
+                cleanup_future = mcu_stop_service.call_async(Trigger.Request())
+                cleanup_deadline = time.monotonic() + args.stop_wall_timeout_s
+                cleanup_start = state.get('pose', {}).get('time')
+                while time.monotonic() < cleanup_deadline:
+                    rclpy.spin_once(node, timeout_sec=.01)
+                    now = state.get('pose', {}).get('time')
+                    if cleanup_future.done():
+                        cleanup_stop['acknowledged'] = bool(cleanup_future.result().success)
+                    if now is not None and cleanup_start is not None and now >= cleanup_start + .5:
+                        with pose_lock:
+                            evidence = stop_pose_evidence(tuple(dense_poses), now, .5)
+                        cleanup_stop['dense_pose_evidence'] = evidence
+                        final_status = state.get('actuation', {})
+                        cleanup_stop['dense_pose_stop_passed'] = bool(evidence['passed'] and
+                            final_status.get('reason') == 'software_stop' and
+                            state.get('actuation_output', {}).get('speed_mps') == 0.)
+                        if cleanup_stop['acknowledged'] and cleanup_stop['dense_pose_stop_passed']:
+                            break
+                        if now - cleanup_start >= 6.:
+                            break
+                cleanup_stop['final_mcu'] = state.get('actuation')
+            except Exception as cleanup_error:
+                cleanup_stop['error'] = str(cleanup_error)
+            report['failure_cleanup_stop'] = cleanup_stop
         if args.actuation_mode == 'virtual_mcu':
             # status와 별도 토픽이므로 고장 status가 먼저 도착해 루프가 끝날 수 있다.
             # 차는 이미 고정 정지 상태다. 첫 진단만 최대 1초 회수하고 새 ARM은 하지 않는다.
@@ -991,6 +1090,17 @@ def main():
                 except (subprocess.TimeoutExpired, ProcessLookupError):
                     continue
         cleanup = stop_launch(processes[0] if processes else None)
+        if pose_thread is not None:
+            pose_thread.join(timeout=2.)
+        if args.g1_follow:
+            with pose_lock:
+                (output/'ego_poses.jsonl').write_text(''.join(json.dumps(row)+'\n' for row in dense_poses), encoding='utf-8')
+            report['pose_reader_joined'] = pose_thread is None or not pose_thread.is_alive()
+            report['pose_rejected_times'] = pose_rejected_times
+            report['source_unchanged'] = all((REPO/path).is_file() and
+                hashlib.sha256((REPO/path).read_bytes()).hexdigest() == digest
+                for path, digest in report['input_sha256'].items())
+            report['passed'] &= report['pose_reader_joined'] and pose_rejected_times == 0 and report['source_unchanged']
         log.close()
         report["process_exit_codes"] = [process.poll() for process in processes]
         report["process_errors"] = [line for line in log_path.read_text(errors="replace").splitlines()

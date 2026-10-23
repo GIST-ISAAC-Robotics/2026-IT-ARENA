@@ -1,0 +1,2551 @@
+{
+  "scope": "C++ transmit policy candidate under a deterministic 8N1 line model with real ActuationHost callbacks; no ROS nodes, UART, USB, board or motor output",
+  "assumptions": {
+    "shared_synthetic_clock_host_and_mcu": true,
+    "real_clock_mapping_connected": false,
+    "mcu_tx_fifo_bytes": 128,
+    "mcu_tx_fifo_is_assumption": true,
+    "pump_interval_us": 250,
+    "host_tx_buffer_unbounded": true,
+    "uart_8n1_bits_per_byte": 10,
+    "output_ready_stubbed": true,
+    "boot_and_client_32_ascii": true,
+    "duplicate_scenario_replays_old_wire_not_nominal_host": true
+  },
+  "policy": {
+    "offer_period_us": 20000,
+    "diag_period_us": 100000,
+    "max_consecutive_events": 2,
+    "link_timeout_us": 30000
+  },
+  "worst_payload": {
+    "ack": 856,
+    "state": 247,
+    "offer": 1081,
+    "diag": 1062
+  },
+  "arithmetic": [
+    {
+      "baud": 115200,
+      "byte_us": 86.80555555555556,
+      "worst_frame_serialize_us": {
+        "ack": 75000.0,
+        "state": 22135.416666666668,
+        "offer": 94531.25,
+        "diag": 92881.94444444445
+      },
+      "max_legal_frame_serialize_us": 134027.77777777778,
+      "offer_dwell_bound_us": 244531.25,
+      "fifo128_drain_us": 11111.111111111111
+    },
+    {
+      "baud": 230400,
+      "byte_us": 43.40277777777778,
+      "worst_frame_serialize_us": {
+        "ack": 37500.0,
+        "state": 11067.708333333334,
+        "offer": 47265.625,
+        "diag": 46440.972222222226
+      },
+      "max_legal_frame_serialize_us": 67013.88888888889,
+      "offer_dwell_bound_us": 122265.625,
+      "fifo128_drain_us": 5555.555555555556
+    },
+    {
+      "baud": 460800,
+      "byte_us": 21.70138888888889,
+      "worst_frame_serialize_us": {
+        "ack": 18750.0,
+        "state": 5533.854166666667,
+        "offer": 23632.8125,
+        "diag": 23220.486111111113
+      },
+      "max_legal_frame_serialize_us": 33506.944444444445,
+      "offer_dwell_bound_us": 61132.8125,
+      "fifo128_drain_us": 2777.777777777778
+    },
+    {
+      "baud": 921600,
+      "byte_us": 10.850694444444445,
+      "worst_frame_serialize_us": {
+        "ack": 9375.0,
+        "state": 2766.9270833333335,
+        "offer": 11816.40625,
+        "diag": 11610.243055555557
+      },
+      "max_legal_frame_serialize_us": 16753.472222222223,
+      "offer_dwell_bound_us": 30566.40625,
+      "fifo128_drain_us": 1388.888888888889
+    }
+  ],
+  "comparison": [
+    {
+      "scenario": "idle",
+      "baseline": {
+        "offers": 50,
+        "acks": 0,
+        "mcu_to_host_bytes_per_s": 30445,
+        "host_to_mcu_bytes_per_s": 0,
+        "final_state": "DISARMED",
+        "final_reason": "boot",
+        "queue_460800": {
+          "baud": 460800,
+          "max_frame_completion_delay_us": 13281.25,
+          "backlog_after_last_event_us": 13281.25
+        }
+      },
+      "policy": {
+        "frames": {
+          "ack": 0,
+          "state": 0,
+          "offer": 50,
+          "diag": 10
+        },
+        "mcu_to_host_bytes_per_s": 16082.0,
+        "host_to_mcu_bytes_per_s": 0.0,
+        "final_state": "DISARMED",
+        "final_reason": "boot"
+      }
+    },
+    {
+      "scenario": "drive50",
+      "baseline": {
+        "offers": 100,
+        "acks": 0,
+        "mcu_to_host_bytes_per_s": 65818,
+        "host_to_mcu_bytes_per_s": 13089,
+        "final_state": "ACTIVE",
+        "final_reason": "drive",
+        "queue_460800": {
+          "baud": 460800,
+          "max_frame_completion_delay_us": 448342.0138888889,
+          "backlog_after_last_event_us": 448342.0138888889
+        }
+      },
+      "policy": {
+        "frames": {
+          "ack": 0,
+          "state": 0,
+          "offer": 50,
+          "diag": 10
+        },
+        "mcu_to_host_bytes_per_s": 17662.0,
+        "host_to_mcu_bytes_per_s": 13092.0,
+        "final_state": "ACTIVE",
+        "final_reason": "drive"
+      }
+    },
+    {
+      "scenario": "duplicate50",
+      "baseline": {
+        "offers": 100,
+        "acks": 0,
+        "mcu_to_host_bytes_per_s": 64442,
+        "host_to_mcu_bytes_per_s": 13000,
+        "final_state": "FAULT_LATCHED",
+        "final_reason": "command_expired",
+        "queue_460800": {
+          "baud": 460800,
+          "max_frame_completion_delay_us": 418480.90277777775,
+          "backlog_after_last_event_us": 418480.90277777775
+        }
+      },
+      "policy": {
+        "frames": {
+          "ack": 0,
+          "state": 1,
+          "offer": 50,
+          "diag": 10
+        },
+        "mcu_to_host_bytes_per_s": 16842.0,
+        "host_to_mcu_bytes_per_s": 13050.0,
+        "final_state": "FAULT_LATCHED",
+        "final_reason": "command_expired"
+      }
+    },
+    {
+      "scenario": "drive50_ack",
+      "baseline": {
+        "offers": 100,
+        "acks": 50,
+        "mcu_to_host_bytes_per_s": 70818,
+        "host_to_mcu_bytes_per_s": 14689,
+        "final_state": "ACTIVE",
+        "final_reason": "drive",
+        "queue_460800": {
+          "baud": 460800,
+          "max_frame_completion_delay_us": 556848.9583333334,
+          "backlog_after_last_event_us": 556848.9583333334
+        }
+      },
+      "policy": {
+        "frames": {
+          "ack": 50,
+          "state": 0,
+          "offer": 50,
+          "diag": 10
+        },
+        "mcu_to_host_bytes_per_s": 22662.0,
+        "host_to_mcu_bytes_per_s": 14692.0,
+        "final_state": "ACTIVE",
+        "final_reason": "drive"
+      }
+    }
+  ],
+  "policy_runs": [
+    {
+      "scenario": "idle",
+      "baud": 460800,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000
+      },
+      "arm_ok": null,
+      "summary": {
+        "window_us": [
+          280000,
+          1280000
+        ],
+        "frames": {
+          "ack": 0,
+          "state": 0,
+          "offer": 50,
+          "diag": 10
+        },
+        "bytes_by_kind": {
+          "ack": 0,
+          "state": 0,
+          "offer": 10083,
+          "diag": 5999
+        },
+        "mcu_to_host_bytes_per_s": 16082.0,
+        "host_to_mcu_bytes_per_s": 0.0,
+        "host_frames": {},
+        "load": {
+          "115200": {
+            "mcu_to_host": 1.3960069444444445,
+            "host_to_mcu": 0.0
+          },
+          "230400": {
+            "mcu_to_host": 0.6980034722222223,
+            "host_to_mcu": 0.0
+          },
+          "460800": {
+            "mcu_to_host": 0.3490017361111111,
+            "host_to_mcu": 0.0
+          },
+          "921600": {
+            "mcu_to_host": 0.17450086805555556,
+            "host_to_mcu": 0.0
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "state": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "offer": {
+            "dwell_us": 0,
+            "sink_wait_us": 0.0,
+            "serialize_us": 4405.381944444444,
+            "latency_us": 4405.381944444444
+          },
+          "diag": {
+            "dwell_us": 0,
+            "sink_wait_us": 155.38194444444446,
+            "serialize_us": 13064.236111111111,
+            "latency_us": 13219.618055555555
+          }
+        },
+        "max_offer_gap_us": 20000,
+        "rejected_deliveries": 0,
+        "rejected_reasons": {}
+      },
+      "final_state": "DISARMED",
+      "final_reason": "boot",
+      "final_generation": 0,
+      "tx_stats": {
+        "ack_enqueued": 0,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 0,
+        "state_changes": 1,
+        "state_merged": 0,
+        "offers_urgent": 0,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 0,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 0,
+        "sink_partial_writes": 1091,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          0,
+          1,
+          69,
+          14
+        ],
+        "completed": [
+          0,
+          0,
+          1,
+          69,
+          14
+        ],
+        "bytes": [
+          0,
+          0,
+          134,
+          13896,
+          8391
+        ],
+        "max_dwell_us": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "max_inflight_us": [
+          0,
+          0,
+          250,
+          4250,
+          12750
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "DISARMED",
+      "first_drive_results": [],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 0,
+      "acks_expected": 0,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    },
+    {
+      "scenario": "drive50",
+      "baud": 460800,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          280000,
+          1280000
+        ],
+        "frames": {
+          "ack": 0,
+          "state": 0,
+          "offer": 50,
+          "diag": 10
+        },
+        "bytes_by_kind": {
+          "ack": 0,
+          "state": 0,
+          "offer": 11483,
+          "diag": 6179
+        },
+        "mcu_to_host_bytes_per_s": 17662.0,
+        "host_to_mcu_bytes_per_s": 13092.0,
+        "host_frames": {
+          "DRIVE": 50
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 1.5331597222222222,
+            "host_to_mcu": 1.1364583333333333
+          },
+          "230400": {
+            "mcu_to_host": 0.7665798611111111,
+            "host_to_mcu": 0.5682291666666667
+          },
+          "460800": {
+            "mcu_to_host": 0.38328993055555555,
+            "host_to_mcu": 0.28411458333333334
+          },
+          "921600": {
+            "mcu_to_host": 0.19164496527777777,
+            "host_to_mcu": 0.14205729166666667
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "state": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "offer": {
+            "dwell_us": 0,
+            "sink_wait_us": 0.0,
+            "serialize_us": 5013.020833333333,
+            "latency_us": 5013.020833333333
+          },
+          "diag": {
+            "dwell_us": 12750,
+            "sink_wait_us": 2763.0208333333335,
+            "serialize_us": 13476.5625,
+            "latency_us": 28815.972222222223
+          }
+        },
+        "max_offer_gap_us": 20000,
+        "rejected_deliveries": 0,
+        "rejected_reasons": {}
+      },
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_generation": 1,
+      "tx_stats": {
+        "ack_enqueued": 1,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 2,
+        "state_merged": 0,
+        "offers_urgent": 1,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 1,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 0,
+        "sink_partial_writes": 1365,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          1,
+          2,
+          70,
+          14
+        ],
+        "completed": [
+          0,
+          1,
+          2,
+          70,
+          14
+        ],
+        "bytes": [
+          0,
+          107,
+          273,
+          15691,
+          8591
+        ],
+        "max_dwell_us": [
+          0,
+          0,
+          4500,
+          0,
+          12750
+        ],
+        "max_inflight_us": [
+          0,
+          0,
+          3000,
+          4500,
+          13500
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "ACTIVE",
+      "first_drive_results": [
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 1,
+      "acks_expected": 1,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    },
+    {
+      "scenario": "duplicate50",
+      "baud": 460800,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          280000,
+          1280000
+        ],
+        "frames": {
+          "ack": 0,
+          "state": 1,
+          "offer": 50,
+          "diag": 10
+        },
+        "bytes_by_kind": {
+          "ack": 0,
+          "state": 150,
+          "offer": 10425,
+          "diag": 6267
+        },
+        "mcu_to_host_bytes_per_s": 16842.0,
+        "host_to_mcu_bytes_per_s": 13050.0,
+        "host_frames": {
+          "DRIVE": 50
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 1.4619791666666666,
+            "host_to_mcu": 1.1328125
+          },
+          "230400": {
+            "mcu_to_host": 0.7309895833333333,
+            "host_to_mcu": 0.56640625
+          },
+          "460800": {
+            "mcu_to_host": 0.36549479166666665,
+            "host_to_mcu": 0.283203125
+          },
+          "921600": {
+            "mcu_to_host": 0.18274739583333333,
+            "host_to_mcu": 0.1416015625
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "state": {
+            "dwell_us": 1750,
+            "sink_wait_us": 2720.4861111111113,
+            "serialize_us": 3255.2083333333335,
+            "latency_us": 7725.694444444444
+          },
+          "offer": {
+            "dwell_us": 0,
+            "sink_wait_us": 0.0,
+            "serialize_us": 4969.618055555556,
+            "latency_us": 4969.618055555556
+          },
+          "diag": {
+            "dwell_us": 12750,
+            "sink_wait_us": 2719.6180555555557,
+            "serialize_us": 13671.875,
+            "latency_us": 28815.972222222223
+          }
+        },
+        "max_offer_gap_us": 20000,
+        "rejected_deliveries": 49,
+        "rejected_reasons": {
+          "sequence": 4,
+          "session": 45
+        }
+      },
+      "final_state": "FAULT_LATCHED",
+      "final_reason": "command_expired",
+      "final_generation": 2,
+      "tx_stats": {
+        "ack_enqueued": 1,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 3,
+        "state_merged": 0,
+        "offers_urgent": 2,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 1,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 0,
+        "sink_partial_writes": 1266,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          1,
+          3,
+          70,
+          14
+        ],
+        "completed": [
+          0,
+          1,
+          3,
+          70,
+          14
+        ],
+        "bytes": [
+          0,
+          107,
+          423,
+          14518,
+          8688
+        ],
+        "max_dwell_us": [
+          0,
+          0,
+          4500,
+          0,
+          12750
+        ],
+        "max_inflight_us": [
+          0,
+          0,
+          3250,
+          4500,
+          13500
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "FAULT_LATCHED",
+      "first_drive_results": [
+        [
+          true,
+          "drive"
+        ],
+        [
+          false,
+          "sequence"
+        ],
+        [
+          false,
+          "sequence"
+        ],
+        [
+          false,
+          "sequence"
+        ],
+        [
+          false,
+          "sequence"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 1,
+      "acks_expected": 1,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    },
+    {
+      "scenario": "drive50_ack",
+      "baud": 460800,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          280000,
+          1280000
+        ],
+        "frames": {
+          "ack": 50,
+          "state": 0,
+          "offer": 50,
+          "diag": 10
+        },
+        "bytes_by_kind": {
+          "ack": 5000,
+          "state": 0,
+          "offer": 11483,
+          "diag": 6179
+        },
+        "mcu_to_host_bytes_per_s": 22662.0,
+        "host_to_mcu_bytes_per_s": 14692.0,
+        "host_frames": {
+          "DRIVE": 50
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 1.9671875,
+            "host_to_mcu": 1.2753472222222222
+          },
+          "230400": {
+            "mcu_to_host": 0.98359375,
+            "host_to_mcu": 0.6376736111111111
+          },
+          "460800": {
+            "mcu_to_host": 0.491796875,
+            "host_to_mcu": 0.31883680555555555
+          },
+          "921600": {
+            "mcu_to_host": 0.2458984375,
+            "host_to_mcu": 0.15941840277777777
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": 4250,
+            "sink_wait_us": 2739.5833333333335,
+            "serialize_us": 2170.1388888888887,
+            "latency_us": 9159.722222222223
+          },
+          "state": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "offer": {
+            "dwell_us": 0,
+            "sink_wait_us": 659.7222222222222,
+            "serialize_us": 5013.020833333333,
+            "latency_us": 5672.743055555556
+          },
+          "diag": {
+            "dwell_us": 12750,
+            "sink_wait_us": 2763.0208333333335,
+            "serialize_us": 13476.5625,
+            "latency_us": 28815.972222222223
+          }
+        },
+        "max_offer_gap_us": 20000,
+        "rejected_deliveries": 0,
+        "rejected_reasons": {}
+      },
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_generation": 1,
+      "tx_stats": {
+        "ack_enqueued": 56,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 2,
+        "state_merged": 0,
+        "offers_urgent": 1,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 1,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 0,
+        "sink_partial_writes": 1484,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          56,
+          2,
+          70,
+          14
+        ],
+        "completed": [
+          0,
+          56,
+          2,
+          70,
+          14
+        ],
+        "bytes": [
+          0,
+          5607,
+          273,
+          15691,
+          8591
+        ],
+        "max_dwell_us": [
+          0,
+          4250,
+          4500,
+          0,
+          12750
+        ],
+        "max_inflight_us": [
+          0,
+          2250,
+          3000,
+          4500,
+          13500
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "ACTIVE",
+      "first_drive_results": [
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 56,
+      "acks_expected": 56,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    }
+  ],
+  "sensitivity": [
+    {
+      "scenario": "drive50",
+      "baud": 115200,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          320000,
+          1320000
+        ],
+        "frames": {
+          "ack": 0,
+          "state": 1,
+          "offer": 50,
+          "diag": 0
+        },
+        "bytes_by_kind": {
+          "ack": 0,
+          "state": 150,
+          "offer": 10337,
+          "diag": 0
+        },
+        "mcu_to_host_bytes_per_s": 10487.0,
+        "host_to_mcu_bytes_per_s": 522.0,
+        "host_frames": {
+          "DRIVE": 2
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 0.9103298611111111,
+            "host_to_mcu": 0.0453125
+          },
+          "230400": {
+            "mcu_to_host": 0.45516493055555557,
+            "host_to_mcu": 0.02265625
+          },
+          "460800": {
+            "mcu_to_host": 0.22758246527777778,
+            "host_to_mcu": 0.011328125
+          },
+          "921600": {
+            "mcu_to_host": 0.11379123263888889,
+            "host_to_mcu": 0.0056640625
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "state": {
+            "dwell_us": 20750,
+            "sink_wait_us": 11017.361111111111,
+            "serialize_us": 13020.833333333334,
+            "latency_us": 44788.194444444445
+          },
+          "offer": {
+            "dwell_us": 11000,
+            "sink_wait_us": 11135.416666666666,
+            "serialize_us": 18055.555555555555,
+            "latency_us": 39920.13888888889
+          },
+          "diag": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          }
+        },
+        "max_offer_gap_us": 31000,
+        "rejected_deliveries": 2,
+        "rejected_reasons": {
+          "session": 2
+        }
+      },
+      "final_state": "FAULT_LATCHED",
+      "final_reason": "command_expired",
+      "final_generation": 2,
+      "tx_stats": {
+        "ack_enqueued": 1,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 3,
+        "state_merged": 0,
+        "offers_urgent": 2,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 67,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 2,
+        "sink_partial_writes": 2416,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          1,
+          3,
+          71,
+          0
+        ],
+        "completed": [
+          0,
+          1,
+          3,
+          70,
+          0
+        ],
+        "bytes": [
+          0,
+          107,
+          423,
+          14631,
+          0
+        ],
+        "max_dwell_us": [
+          0,
+          0,
+          26500,
+          11750,
+          0
+        ],
+        "max_inflight_us": [
+          0,
+          6750,
+          13000,
+          19750,
+          0
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "FAULT_LATCHED",
+      "first_drive_results": [
+        [
+          false,
+          "session"
+        ],
+        [
+          false,
+          "session"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 1,
+      "acks_expected": 1,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    },
+    {
+      "scenario": "drive50",
+      "baud": 230400,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          300000,
+          1300000
+        ],
+        "frames": {
+          "ack": 0,
+          "state": 0,
+          "offer": 50,
+          "diag": 0
+        },
+        "bytes_by_kind": {
+          "ack": 0,
+          "state": 0,
+          "offer": 11485,
+          "diag": 0
+        },
+        "mcu_to_host_bytes_per_s": 11485.0,
+        "host_to_mcu_bytes_per_s": 13093.0,
+        "host_frames": {
+          "DRIVE": 50
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 0.9969618055555556,
+            "host_to_mcu": 1.136545138888889
+          },
+          "230400": {
+            "mcu_to_host": 0.4984809027777778,
+            "host_to_mcu": 0.5682725694444445
+          },
+          "460800": {
+            "mcu_to_host": 0.2492404513888889,
+            "host_to_mcu": 0.28413628472222224
+          },
+          "921600": {
+            "mcu_to_host": 0.12462022569444445,
+            "host_to_mcu": 0.14206814236111112
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "state": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "offer": {
+            "dwell_us": 0,
+            "sink_wait_us": 0.0,
+            "serialize_us": 10026.041666666666,
+            "latency_us": 10026.041666666666
+          },
+          "diag": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          }
+        },
+        "max_offer_gap_us": 20000,
+        "rejected_deliveries": 0,
+        "rejected_reasons": {}
+      },
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_generation": 1,
+      "tx_stats": {
+        "ack_enqueued": 1,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 2,
+        "state_merged": 0,
+        "offers_urgent": 1,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 70,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 1,
+        "sink_partial_writes": 1262,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          1,
+          2,
+          71,
+          0
+        ],
+        "completed": [
+          0,
+          1,
+          2,
+          70,
+          0
+        ],
+        "bytes": [
+          0,
+          107,
+          273,
+          15922,
+          0
+        ],
+        "max_dwell_us": [
+          0,
+          0,
+          9000,
+          0,
+          0
+        ],
+        "max_inflight_us": [
+          0,
+          0,
+          6000,
+          9000,
+          0
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "ACTIVE",
+      "first_drive_results": [
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 1,
+      "acks_expected": 1,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    },
+    {
+      "scenario": "drive50",
+      "baud": 921600,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          280000,
+          1280000
+        ],
+        "frames": {
+          "ack": 0,
+          "state": 0,
+          "offer": 50,
+          "diag": 10
+        },
+        "bytes_by_kind": {
+          "ack": 0,
+          "state": 0,
+          "offer": 11483,
+          "diag": 6179
+        },
+        "mcu_to_host_bytes_per_s": 17662.0,
+        "host_to_mcu_bytes_per_s": 13093.0,
+        "host_frames": {
+          "DRIVE": 50
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 1.5331597222222222,
+            "host_to_mcu": 1.136545138888889
+          },
+          "230400": {
+            "mcu_to_host": 0.7665798611111111,
+            "host_to_mcu": 0.5682725694444445
+          },
+          "460800": {
+            "mcu_to_host": 0.38328993055555555,
+            "host_to_mcu": 0.28413628472222224
+          },
+          "921600": {
+            "mcu_to_host": 0.19164496527777777,
+            "host_to_mcu": 0.14206814236111112
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "state": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "offer": {
+            "dwell_us": 0,
+            "sink_wait_us": 0.0,
+            "serialize_us": 2506.5104166666665,
+            "latency_us": 2506.5104166666665
+          },
+          "diag": {
+            "dwell_us": 0,
+            "sink_wait_us": 0.0,
+            "serialize_us": 6738.28125,
+            "latency_us": 6738.28125
+          }
+        },
+        "max_offer_gap_us": 20000,
+        "rejected_deliveries": 0,
+        "rejected_reasons": {}
+      },
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_generation": 1,
+      "tx_stats": {
+        "ack_enqueued": 1,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 2,
+        "state_merged": 0,
+        "offers_urgent": 1,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 0,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 0,
+        "sink_partial_writes": 664,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          1,
+          2,
+          70,
+          14
+        ],
+        "completed": [
+          0,
+          1,
+          2,
+          70,
+          14
+        ],
+        "bytes": [
+          0,
+          107,
+          273,
+          15692,
+          8591
+        ],
+        "max_dwell_us": [
+          0,
+          0,
+          2250,
+          0,
+          0
+        ],
+        "max_inflight_us": [
+          0,
+          0,
+          1500,
+          2250,
+          6500
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "ACTIVE",
+      "first_drive_results": [
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 1,
+      "acks_expected": 1,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    },
+    {
+      "scenario": "drive50",
+      "baud": 115200,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000,
+        "gate_diag": false
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          320000,
+          1320000
+        ],
+        "frames": {
+          "ack": 0,
+          "state": 1,
+          "offer": 27,
+          "diag": 9
+        },
+        "bytes_by_kind": {
+          "ack": 0,
+          "state": 150,
+          "offer": 5581,
+          "diag": 5606
+        },
+        "mcu_to_host_bytes_per_s": 11337.0,
+        "host_to_mcu_bytes_per_s": 520.0,
+        "host_frames": {
+          "DRIVE": 2
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 0.9841145833333333,
+            "host_to_mcu": 0.04513888888888889
+          },
+          "230400": {
+            "mcu_to_host": 0.4920572916666667,
+            "host_to_mcu": 0.022569444444444444
+          },
+          "460800": {
+            "mcu_to_host": 0.24602864583333334,
+            "host_to_mcu": 0.011284722222222222
+          },
+          "921600": {
+            "mcu_to_host": 0.12301432291666667,
+            "host_to_mcu": 0.005642361111111111
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "state": {
+            "dwell_us": 21250,
+            "sink_wait_us": 11059.027777777777,
+            "serialize_us": 13020.833333333334,
+            "latency_us": 45329.86111111111
+          },
+          "offer": {
+            "dwell_us": 51750,
+            "sink_wait_us": 11173.611111111111,
+            "serialize_us": 18055.555555555555,
+            "latency_us": 80750.0
+          },
+          "diag": {
+            "dwell_us": 41750,
+            "sink_wait_us": 11180.555555555555,
+            "serialize_us": 54253.47222222222,
+            "latency_us": 106618.05555555556
+          }
+        },
+        "max_offer_gap_us": 71750,
+        "rejected_deliveries": 2,
+        "rejected_reasons": {
+          "session": 2
+        }
+      },
+      "final_state": "FAULT_LATCHED",
+      "final_reason": "command_expired",
+      "final_generation": 2,
+      "tx_stats": {
+        "ack_enqueued": 1,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 3,
+        "state_merged": 0,
+        "offers_urgent": 2,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 0,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 11,
+        "sink_partial_writes": 5375,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          1,
+          3,
+          39,
+          13
+        ],
+        "completed": [
+          0,
+          1,
+          3,
+          38,
+          13
+        ],
+        "bytes": [
+          0,
+          107,
+          423,
+          8032,
+          8026
+        ],
+        "max_dwell_us": [
+          0,
+          8250,
+          37000,
+          53500,
+          41750
+        ],
+        "max_inflight_us": [
+          0,
+          9250,
+          13000,
+          19500,
+          54250
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "FAULT_LATCHED",
+      "first_drive_results": [
+        [
+          false,
+          "session"
+        ],
+        [
+          false,
+          "session"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 1,
+      "acks_expected": 1,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    },
+    {
+      "scenario": "drive50",
+      "baud": 230400,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000,
+        "gate_diag": false
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          300000,
+          1300000
+        ],
+        "frames": {
+          "ack": 0,
+          "state": 0,
+          "offer": 40,
+          "diag": 10
+        },
+        "bytes_by_kind": {
+          "ack": 0,
+          "state": 0,
+          "offer": 9188,
+          "diag": 6179
+        },
+        "mcu_to_host_bytes_per_s": 15367.0,
+        "host_to_mcu_bytes_per_s": 13093.0,
+        "host_frames": {
+          "DRIVE": 50
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 1.3339409722222222,
+            "host_to_mcu": 1.136545138888889
+          },
+          "230400": {
+            "mcu_to_host": 0.6669704861111111,
+            "host_to_mcu": 0.5682725694444445
+          },
+          "460800": {
+            "mcu_to_host": 0.33348524305555555,
+            "host_to_mcu": 0.28413628472222224
+          },
+          "921600": {
+            "mcu_to_host": 0.16674262152777777,
+            "host_to_mcu": 0.14206814236111112
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "state": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "offer": {
+            "dwell_us": 20250,
+            "sink_wait_us": 5529.513888888889,
+            "serialize_us": 10026.041666666666,
+            "latency_us": 35729.166666666664
+          },
+          "diag": {
+            "dwell_us": 0,
+            "sink_wait_us": 689.2361111111111,
+            "serialize_us": 26953.125,
+            "latency_us": 27381.944444444445
+          }
+        },
+        "max_offer_gap_us": 40250,
+        "rejected_deliveries": 0,
+        "rejected_reasons": {}
+      },
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_generation": 1,
+      "tx_stats": {
+        "ack_enqueued": 1,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 2,
+        "state_merged": 0,
+        "offers_urgent": 1,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 0,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 2,
+        "sink_partial_writes": 2569,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          1,
+          2,
+          58,
+          14
+        ],
+        "completed": [
+          0,
+          1,
+          2,
+          58,
+          14
+        ],
+        "bytes": [
+          0,
+          107,
+          273,
+          12992,
+          8591
+        ],
+        "max_dwell_us": [
+          0,
+          0,
+          9000,
+          20250,
+          0
+        ],
+        "max_inflight_us": [
+          0,
+          0,
+          6000,
+          10000,
+          25500
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "ACTIVE",
+      "first_drive_results": [
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 1,
+      "acks_expected": 1,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    },
+    {
+      "scenario": "drive50_ack",
+      "baud": 115200,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          320000,
+          1320000
+        ],
+        "frames": {
+          "ack": 2,
+          "state": 1,
+          "offer": 49,
+          "diag": 0
+        },
+        "bytes_by_kind": {
+          "ack": 206,
+          "state": 150,
+          "offer": 10131,
+          "diag": 0
+        },
+        "mcu_to_host_bytes_per_s": 10487.0,
+        "host_to_mcu_bytes_per_s": 586.0,
+        "host_frames": {
+          "DRIVE": 2
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 0.9103298611111111,
+            "host_to_mcu": 0.050868055555555555
+          },
+          "230400": {
+            "mcu_to_host": 0.45516493055555557,
+            "host_to_mcu": 0.025434027777777778
+          },
+          "460800": {
+            "mcu_to_host": 0.22758246527777778,
+            "host_to_mcu": 0.012717013888888889
+          },
+          "921600": {
+            "mcu_to_host": 0.11379123263888889,
+            "host_to_mcu": 0.006358506944444444
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": 14500,
+            "sink_wait_us": 11111.111111111111,
+            "serialize_us": 8940.972222222223,
+            "latency_us": 34552.083333333336
+          },
+          "state": {
+            "dwell_us": 29750,
+            "sink_wait_us": 10958.333333333334,
+            "serialize_us": 13020.833333333334,
+            "latency_us": 53729.166666666664
+          },
+          "offer": {
+            "dwell_us": 20000,
+            "sink_wait_us": 11135.416666666666,
+            "serialize_us": 18055.555555555555,
+            "latency_us": 48861.11111111111
+          },
+          "diag": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          }
+        },
+        "max_offer_gap_us": 40000,
+        "rejected_deliveries": 2,
+        "rejected_reasons": {
+          "session": 2
+        }
+      },
+      "final_state": "FAULT_LATCHED",
+      "final_reason": "command_expired",
+      "final_generation": 2,
+      "tx_stats": {
+        "ack_enqueued": 3,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 3,
+        "state_merged": 0,
+        "offers_urgent": 2,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 65,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 2,
+        "sink_partial_writes": 2523,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          3,
+          3,
+          70,
+          0
+        ],
+        "completed": [
+          0,
+          3,
+          3,
+          69,
+          0
+        ],
+        "bytes": [
+          0,
+          313,
+          423,
+          14425,
+          0
+        ],
+        "max_dwell_us": [
+          0,
+          14500,
+          29750,
+          20000,
+          0
+        ],
+        "max_inflight_us": [
+          0,
+          9000,
+          13000,
+          19750,
+          0
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "FAULT_LATCHED",
+      "first_drive_results": [
+        [
+          false,
+          "session"
+        ],
+        [
+          false,
+          "session"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 3,
+      "acks_expected": 3,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    },
+    {
+      "scenario": "drive50",
+      "baud": 460800,
+      "fifo_bytes": 128,
+      "pump_interval_us": 1000,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 100000,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          280000,
+          1280000
+        ],
+        "frames": {
+          "ack": 0,
+          "state": 0,
+          "offer": 50,
+          "diag": 10
+        },
+        "bytes_by_kind": {
+          "ack": 0,
+          "state": 0,
+          "offer": 11483,
+          "diag": 6179
+        },
+        "mcu_to_host_bytes_per_s": 17662.0,
+        "host_to_mcu_bytes_per_s": 13092.0,
+        "host_frames": {
+          "DRIVE": 50
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 1.5331597222222222,
+            "host_to_mcu": 1.1364583333333333
+          },
+          "230400": {
+            "mcu_to_host": 0.7665798611111111,
+            "host_to_mcu": 0.5682291666666667
+          },
+          "460800": {
+            "mcu_to_host": 0.38328993055555555,
+            "host_to_mcu": 0.28411458333333334
+          },
+          "921600": {
+            "mcu_to_host": 0.19164496527777777,
+            "host_to_mcu": 0.14205729166666667
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "state": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "offer": {
+            "dwell_us": 0,
+            "sink_wait_us": 0.0,
+            "serialize_us": 5013.020833333333,
+            "latency_us": 5013.020833333333
+          },
+          "diag": {
+            "dwell_us": 13000,
+            "sink_wait_us": 2013.0208333333333,
+            "serialize_us": 13476.5625,
+            "latency_us": 28315.972222222223
+          }
+        },
+        "max_offer_gap_us": 20000,
+        "rejected_deliveries": 0,
+        "rejected_reasons": {}
+      },
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_generation": 1,
+      "tx_stats": {
+        "ack_enqueued": 1,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 2,
+        "state_merged": 0,
+        "offers_urgent": 1,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 1,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 0,
+        "sink_partial_writes": 383,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          1,
+          2,
+          70,
+          14
+        ],
+        "completed": [
+          0,
+          1,
+          2,
+          70,
+          14
+        ],
+        "bytes": [
+          0,
+          107,
+          273,
+          15692,
+          8591
+        ],
+        "max_dwell_us": [
+          0,
+          0,
+          5000,
+          0,
+          13000
+        ],
+        "max_inflight_us": [
+          0,
+          0,
+          3000,
+          5000,
+          13000
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "ACTIVE",
+      "first_drive_results": [
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 1,
+      "acks_expected": 1,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    },
+    {
+      "scenario": "drive50",
+      "baud": 460800,
+      "fifo_bytes": 128,
+      "pump_interval_us": 250,
+      "policy": {
+        "offer_period_us": 20000,
+        "diag_period_us": 0,
+        "max_consecutive_events": 2,
+        "link_timeout_us": 30000
+      },
+      "arm_ok": true,
+      "summary": {
+        "window_us": [
+          280000,
+          1280000
+        ],
+        "frames": {
+          "ack": 0,
+          "state": 0,
+          "offer": 50,
+          "diag": 0
+        },
+        "bytes_by_kind": {
+          "ack": 0,
+          "state": 0,
+          "offer": 11483,
+          "diag": 0
+        },
+        "mcu_to_host_bytes_per_s": 11483.0,
+        "host_to_mcu_bytes_per_s": 13092.0,
+        "host_frames": {
+          "DRIVE": 50
+        },
+        "load": {
+          "115200": {
+            "mcu_to_host": 0.9967881944444444,
+            "host_to_mcu": 1.1364583333333333
+          },
+          "230400": {
+            "mcu_to_host": 0.4983940972222222,
+            "host_to_mcu": 0.5682291666666667
+          },
+          "460800": {
+            "mcu_to_host": 0.2491970486111111,
+            "host_to_mcu": 0.28411458333333334
+          },
+          "921600": {
+            "mcu_to_host": 0.12459852430555556,
+            "host_to_mcu": 0.14205729166666667
+          }
+        },
+        "max_timing_us": {
+          "ack": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "state": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          },
+          "offer": {
+            "dwell_us": 0,
+            "sink_wait_us": 0.0,
+            "serialize_us": 5013.020833333333,
+            "latency_us": 5013.020833333333
+          },
+          "diag": {
+            "dwell_us": null,
+            "sink_wait_us": null,
+            "serialize_us": null,
+            "latency_us": null
+          }
+        },
+        "max_offer_gap_us": 20000,
+        "rejected_deliveries": 0,
+        "rejected_reasons": {}
+      },
+      "final_state": "ACTIVE",
+      "final_reason": "drive",
+      "final_generation": 1,
+      "tx_stats": {
+        "ack_enqueued": 1,
+        "ack_dropped_overflow": 0,
+        "ack_evicted_for_stop": 0,
+        "ack_purged_session": 0,
+        "ack_queue_max": 1,
+        "state_changes": 2,
+        "state_merged": 0,
+        "offers_urgent": 1,
+        "offer_unavailable": 0,
+        "diag_skipped_periods": 0,
+        "diag_deferred_for_offer": 0,
+        "aborted_frames": 0,
+        "aborted_bytes": 0,
+        "encode_failures": 0,
+        "sink_zero_writes": 0,
+        "sink_partial_writes": 636,
+        "starvation_guard_used": 0,
+        "frames": [
+          0,
+          1,
+          2,
+          70,
+          0
+        ],
+        "completed": [
+          0,
+          1,
+          2,
+          70,
+          0
+        ],
+        "bytes": [
+          0,
+          107,
+          273,
+          15691,
+          0
+        ],
+        "max_dwell_us": [
+          0,
+          0,
+          4500,
+          0,
+          0
+        ],
+        "max_inflight_us": [
+          0,
+          0,
+          3000,
+          4500,
+          0
+        ]
+      },
+      "tx_fault": 0,
+      "host_offer_state": "ACTIVE",
+      "first_drive_results": [
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ],
+        [
+          true,
+          "drive"
+        ]
+      ],
+      "host_offer_keys": [
+        "boot",
+        "generation",
+        "lease",
+        "lease_expires_us",
+        "lease_issued_us",
+        "output_ready",
+        "owner",
+        "state",
+        "type",
+        "v"
+      ],
+      "acks_decoded": 1,
+      "acks_expected": 1,
+      "worst_payload": {
+        "ack": 856,
+        "state": 247,
+        "offer": 1081,
+        "diag": 1062
+      },
+      "sizeof_tx": 4312,
+      "violations": [],
+      "driver_exit": 0,
+      "sanitizer_stderr": ""
+    }
+  ],
+  "stop_reconnect": {
+    "phases": {
+      "arm": true,
+      "active_before_break": "ACTIVE",
+      "break": {
+        "time_us": 475250,
+        "state": "ESTOP_LATCHED",
+        "reason": "software_stop",
+        "aborted_frames": 1,
+        "aborted_bytes": 101,
+        "ack_purged": 0
+      },
+      "frames_while_down": 0,
+      "after_reconnect": {
+        "first_types": [
+          "offer",
+          "state",
+          "diag"
+        ],
+        "first_state": {
+          "state": "ESTOP_LATCHED",
+          "reason": "software_stop",
+          "generation": 2
+        },
+        "host_offer_state": "ESTOP_LATCHED",
+        "drives_sent": 0,
+        "receiver": {
+          "state": "ESTOP_LATCHED",
+          "reason": "software_stop"
+        }
+      },
+      "clear": {
+        "success": true,
+        "message": "explicit_clear",
+        "state": "DISARMED"
+      },
+      "after_clear": {
+        "state": "DISARMED",
+        "drives_sent": 0
+      },
+      "rearm": {
+        "success": true,
+        "state": "ARMED"
+      },
+      "after_rearm": {
+        "state": "ACTIVE",
+        "reason": "drive"
+      },
+      "stop": {
+        "success": true,
+        "message": "software_stop",
+        "state": "ESTOP_LATCHED"
+      },
+      "after_stop": {
+        "state": "ESTOP_LATCHED",
+        "reason": "software_stop",
+        "drives_sent": 0,
+        "delivered_results": [],
+        "host_offer_state": "ESTOP_LATCHED"
+      }
+    },
+    "tx_stats": {
+      "ack_enqueued": 4,
+      "ack_dropped_overflow": 0,
+      "ack_evicted_for_stop": 0,
+      "ack_purged_session": 0,
+      "ack_queue_max": 1,
+      "state_changes": 6,
+      "state_merged": 0,
+      "offers_urgent": 5,
+      "offer_unavailable": 0,
+      "diag_skipped_periods": 0,
+      "diag_deferred_for_offer": 4,
+      "aborted_frames": 1,
+      "aborted_bytes": 101,
+      "encode_failures": 0,
+      "sink_zero_writes": 0,
+      "sink_partial_writes": 1439,
+      "starvation_guard_used": 0,
+      "frames": [
+        0,
+        4,
+        6,
+        75,
+        15
+      ],
+      "completed": [
+        0,
+        4,
+        6,
+        74,
+        15
+      ],
+      "bytes": [
+        0,
+        431,
+        852,
+        15886,
+        9225
+      ],
+      "max_dwell_us": [
+        0,
+        0,
+        51750,
+        50000,
+        18250
+      ],
+      "max_inflight_us": [
+        0,
+        0,
+        3250,
+        4750,
+        13500
+      ]
+    },
+    "tx_fault": 0,
+    "acks_decoded": 4,
+    "acks_expected": 4,
+    "violations": [],
+    "driver_exit": 0,
+    "sanitizer_stderr": ""
+  },
+  "runtime_changed": false,
+  "real_transport_measured": false,
+  "deadline_proven": false,
+  "firmware_verified": false,
+  "ready_to_drive": false,
+  "source_sha256": {
+    "scripts/audit_actuation_tx_policy.py": "48d37034a02eb4e158e64f9a7fe0acb431ca96e5dfbb11a7fbfa856cab965c75",
+    "scripts/actuation_tx_driver.cpp": "38d7009bf9d08cd2d812c576e8985bcdda2476ae994db9a46f41da88c0af6dde",
+    "tests/test_actuation_tx_policy.py": "61c5d0aea2ddccbc6870bf68ccf19584d761f1fde2b1fb348d16fcdaf0e81408",
+    "src/arena_vehicle_interface/portable/actuation_tx.hpp": "aff636d614330fc7ab793ca488cb532e258c79f6c835014cec30a395be76eefa",
+    "src/arena_vehicle_interface/portable/actuation_ingress.hpp": "0e42d797342608e6d5a8645e892140ea2a4d423f2dab9c4bdc87e678a0f2534f",
+    "src/arena_vehicle_interface/portable/actuation_receiver.hpp": "69e7c569a1ba6a953c4d76614dbb653cf40f96b3dd705c108d33f9f2c6020b17",
+    "src/arena_vehicle_interface/portable/actuation_command.hpp": "408200e9f3f3a70a29cb2d8087677d0851e450cdbbaaa5cf7b244d8721ec7101",
+    "src/arena_vehicle_interface/portable/actuation_link.hpp": "b7d47ad17e436d6102bbb7177b0279dff1b45ac489f7923f6435e2597214aa2e",
+    "src/arena_vehicle_interface/portable/actuation_wire.hpp": "9fbc50a70b15fd55880a5423882fa18230d0fd6fb4a0aae56bfcee395404e50f",
+    "scripts/audit_actuation_callback_budget.py": "413b63813d3da1f9e102718a9e4c90744259105dff0ae7b0f3fd0a5fa7637d97",
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py": "ae01245f18b2abeff2b1120d0ae11c64d04f707085e813949d90b58e884025b9",
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_contract.py": "ed3d12d16a8c156b02767a4351749fdf6bb3cbe0aa998e1385f7eb85e3b235d6",
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_wire.py": "1410828c83ded442749ff05314b056d586d6d322a9bc0de75bcd9bcc7bf02f25"
+  },
+  "source_unchanged": true,
+  "portable_override": null
+}

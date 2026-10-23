@@ -1,0 +1,24 @@
+..........FF...............                                              [100%]
+=================================== FAILURES ===================================
+____________ test_current_body_samples_are_excluded_not_called_free ____________
+
+    def test_current_body_samples_are_excluded_not_called_free():
+        path = np.column_stack((np.linspace(-.1,.8,40), np.zeros(40)))
+        result = path_visibility(scene(), path, FollowConfig())
+>       assert result['depth_supported_prefix_m'] > .7
+E       assert 0.0 > 0.7
+
+tests/test_corridor_visibility.py:75: AssertionError
+______ test_short_return_limits_supported_prefix_without_erasing_failure _______
+
+    def test_short_return_limits_supported_prefix_without_erasing_failure():
+        path = np.column_stack((np.linspace(-.1,1.,60), np.zeros(60)))
+        result = path_visibility(scene(.55), path, FollowConfig())
+>       assert 0. < result['depth_supported_prefix_m'] < .5
+E       assert 0.0 < 0.0
+
+tests/test_corridor_visibility.py:85: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_corridor_visibility.py::test_current_body_samples_are_excluded_not_called_free
+FAILED tests/test_corridor_visibility.py::test_short_return_limits_supported_prefix_without_erasing_failure
+2 failed, 25 passed in 1.56s

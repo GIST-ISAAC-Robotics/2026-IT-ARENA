@@ -18,15 +18,23 @@ def test_eight_cases_preregistered_and_sensor_configuration_unchanged():
     assert all(g0.verify_sensor_config(suite)['checks'].values())
     # 현재 기능 회귀는 승인된 후속 소스 계약을 명시한다. G0 기본 비교는
     # 여전히 pre-G0 bytes를 뜻하며 기존 기록/manifest를 소급 변경하지 않는다.
-    # 2026-10-11 선택형 초기 배치·준비 검사까지 r6 계약으로 연결한다. G0 원본 의미는 다음 시험에서 유지한다.
-    assert g0.baseline_comparison(ROOT/'config/tests/scheduled_command_r7_sha256.json')['unchanged']
+    # r7 이후에는 새 관측 보호층의 명시 변경만 별도 연결한다. 원래 비교 도구는
+    # 계속 bytes 변경을 보고하며 'unchanged'로 소급 바꾸지 않는다.
+    from source_contract_helpers import hash_before_observation_extension
+    contract=ROOT/'config/tests/scheduled_command_r7_sha256.json'
+    comparison=g0.baseline_comparison(contract)
+    assert {p for p,row in comparison['files'].items() if not row['matches']}=={
+        'src/arena_autonomy/arena_autonomy/lidar_safety.py'}
+    for path,value in json.loads(contract.read_text())['sha256'].items():
+        assert hash_before_observation_extension(ROOT,path)==value
 
 
 def test_g0_default_baseline_retains_original_meaning_after_g1b_launch_change():
     result = g0.baseline_comparison()
     assert not result['unchanged']
     assert {p for p, row in result['files'].items() if not row['matches']} == {
-        'src/arena_bringup/launch/simulation.launch.py'}
+        'src/arena_bringup/launch/simulation.launch.py',
+        'src/arena_autonomy/arena_autonomy/lidar_safety.py'}
 
 
 def test_trajectory_units_and_stop_restart_phases():

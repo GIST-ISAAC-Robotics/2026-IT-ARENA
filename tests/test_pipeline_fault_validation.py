@@ -320,3 +320,103 @@ def test_reused_session_member_does_not_count_as_owned_survivor(monkeypatch, tmp
     owned.session_members[(42, 123)] = saved
     monkeypatch.setattr(validation, 'proc_identity', lambda pid: {**saved, 'start_ticks': 456})
     assert owned.cleanup()
+
+
+def test_optional_g1_profile_does_not_modify_r0_or_safety_parameters():
+    assert validation.controller_profile_parameters('r0') == {}
+    assert validation.controller_profile_parameters('g1_per_ray_candidate') == {
+        'g1_follow_enabled': True, 'g1_boundary_evidence_mode': 'fragmented_candidate',
+        'g1_occupancy_timing_mode': 'per_ray_candidate'}
+    with pytest.raises(ValueError): validation.controller_profile_parameters('g1_maybe')
+
+
+def candidate_status():
+    return dict(mode='g1_follow', occupancy_timing_mode='per_ray_candidate',
+                unfiltered_occupancy=True, occupied_points=417, occupancy_padding_points=417)
+
+
+@pytest.mark.parametrize('field,value', [('mode', 'r0'), ('occupancy_timing_mode', 'oldest'),
+    ('unfiltered_occupancy', False), ('occupied_points', 0), ('occupied_points', True),
+    ('occupancy_padding_points', 416)])
+def test_g1_runtime_evidence_rejects_inactive_candidate_or_missing_points(field, value):
+    row = candidate_status()
+    assert validation.g1_candidate_observed(row)
+    row[field] = value
+    assert not validation.g1_candidate_observed(row)
+    assert not validation.g1_candidate_observed({})
+
+
+def test_front_fault_changes_only_one_actual_forward_return():
+    ranges = [validation.corridor_range(-math.pi+i*math.tau/500) for i in range(500)]
+    copied = ranges.copy()
+    faulty = validation.apply_scan_fault(ranges, 'front_missing')
+    assert ranges == copied
+    assert math.isinf(faulty[250]) and len(faulty) == 500
+    assert faulty[:250] == ranges[:250] and faulty[251:] == ranges[251:]
+    for mode in ('none', 'scan_drop', 'imu_drop'):
+        assert validation.apply_scan_fault(ranges, mode) == ranges
+    with pytest.raises(ValueError): validation.apply_scan_fault(ranges, 'invented')
+    with pytest.raises(ValueError): validation.apply_scan_fault(ranges[:20], 'front_missing')
+
+
+@pytest.mark.parametrize('fault', ['none', 'scan_drop', 'imu_drop', 'front_missing'])
+def test_actual_tick_suppresses_only_requested_stream_and_keeps_acquisition_time(monkeypatch, fault):
+    from collections import deque
+    from arena_vehicle_interface.drive_feedback import MotorEncoderSpec
+    published = {key: [] for key in ('clock', 'imu', 'motor', 'scan', 'image')}
+    def message():
+        return SimpleNamespace(header=SimpleNamespace(stamp=SimpleNamespace()),
+                               clock=SimpleNamespace())
+    v = validation.PipelineValidator.__new__(validation.PipelineValidator)
+    v.t, v.deadline, v.sleep_s = 1., 100., 0.
+    monkeypatch.setattr(validation.time, 'monotonic', lambda: 0.)
+    monkeypatch.setattr(validation.time, 'sleep', lambda _: None)
+    v.sensor_fault, v.plant, v.history = fault, validation.ToyPlant(), deque([(1., 0.)])
+    v.spec = MotorEncoderSpec(28, 15., .0325)
+    v.data = lambda _: 0.
+    v.children = SimpleNamespace(check=lambda: None)
+    v.monitor = SimpleNamespace(check_zero_watch=lambda *_: None)
+    v.types = {key: message for key in published}
+    v.publishers = {key: SimpleNamespace(publish=items.append) for key, items in published.items()}
+    v.last = dict(motor=-math.inf, scan=-math.inf, image=-math.inf)
+    v.images, v.last_counts, v.last_motor_t = False, None, None
+    v.node, v.rclpy = None, SimpleNamespace(spin_once=lambda *_, **kw: None)
+    v.tick()
+    assert len(published['imu']) == (0 if fault == 'imu_drop' else 1)
+    assert len(published['scan']) == (0 if fault == 'scan_drop' else 1)
+    assert len(published['clock']) == len(published['motor']) == 1
+    if fault != 'scan_drop':
+        scan = published['scan'][0]
+        assert scan.header.stamp.sec*1_000_000_000+scan.header.stamp.nanosec == 905_000_000
+        assert scan.time_increment == .0002
+        assert math.isinf(scan.ranges[250]) == (fault == 'front_missing')
+
+
+def test_g1_sensor_fault_sequence_restores_fresh_mode_before_each_recovery():
+    v = validation.PipelineValidator.__new__(validation.PipelineValidator)
+    v.sensor_fault = 'none'
+    seen = []
+    def stopped(name, action, expected):
+        assert v.sensor_fault == 'none'
+        action()
+        seen.append((name, v.sensor_fault, set(expected)))
+        assert expected['drive'](0.) and not expected['drive'](.1)
+        return {}
+    def moving(name):
+        assert v.sensor_fault == 'none'
+        seen.append((name, 'none', set()))
+    v.stop_case, v.moving = stopped, moving
+    v.run_g1_sensor_faults()
+    assert [item[1] for item in seen] == ['scan_drop','none','front_missing','none','imu_drop','none']
+
+
+def test_pipeline_snapshot_includes_all_internal_dependencies():
+    import ast
+    manifest={f'{package}.{name}' for package,names in validation.MODULES.items() for name in names}
+    assert 'arena_autonomy.corner_evidence' in manifest
+    for module in manifest:
+        package,name=module.split('.')
+        tree=ast.parse((validation.ROOT/f'src/{package}/{package}/{name}.py').read_text(encoding='utf-8'))
+        for node in ast.walk(tree):
+            if isinstance(node,ast.ImportFrom) and node.module and node.module.startswith(('arena_autonomy.','arena_vehicle_interface.')):
+                assert node.module in manifest, (module,node.module)

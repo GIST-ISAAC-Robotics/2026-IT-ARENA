@@ -1,0 +1,38 @@
+.F
+=================================== FAILURES ===================================
+__ test_both_evidence_orders_require_new_source_and_never_drive[offer_first] ___
+
+order = 'offer_first'
+
+    @pytest.mark.parametrize('order', ['ack_first', 'offer_first'])
+    def test_both_evidence_orders_require_new_source_and_never_drive(order):
+>       item, _ = armed(order)
+
+tests/test_actuation_host_session.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+order = 'offer_first'
+
+    def armed(order='ack_first'):
+        item, request = start()
+        first, second = (ack(request), fresh_offer()) if order == 'ack_first' else (fresh_offer(), ack(request))
+        record(item, first, 9_030_000_000)
+        assert item.arm_barrier is None
+        record(item, second, 9_032_000_000)
+>       assert item.arm_barrier == window(9_032_000_000)
+E       AssertionError: assert HostTimeWindo...ns=9030000000) == HostTimeWindo...ns=9032000000)
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing attributes:
+E         ['lower_ns', 'upper_ns']
+E         
+E         Drill down into differing attribute lower_ns:
+E           lower_ns: 9030000000 != 9032000000...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_actuation_host_session.py:64: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_host_session.py::test_both_evidence_orders_require_new_source_and_never_drive[offer_first]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 1 passed, 2 deselected in 0.23s

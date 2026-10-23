@@ -1,0 +1,28 @@
+...................F
+=================================== FAILURES ===================================
+___________ test_stop_ack_overtakes_queued_non_stop_acks[sanitizers] ___________
+
+binary = PosixPath('/tmp/pytest-of-jinhyeong/pytest-2/tx0/driver')
+
+    def test_stop_ack_overtakes_queued_non_stop_acks(binary):
+        # v1 변이체 검사에서 큐가 STOP 결과로만 찬 사례만으로는 STOP 우선 순서를 구별하지 못했다(보강).
+        mcu = Mcu(binary, diag_period_us=0)
+        now = mcu.setup()
+        mcu.pump(now, 0)
+        for i in range(3):
+            mcu.control(now, 'DISARM', request=f'd{i}', seq=i + 1)
+        mcu.send(now, dict(v=1, kind='STOP'), request='s0')
+        assert mcu.row['ack_count'] == 4 and mcu.row['stats']['ack_evicted_for_stop'] == 0
+        for t in range(now + 1000, now + 100_000, 1000):
+            mcu.pump(t)
+        acks = [p['request'] for p in mcu.payloads if p['type'] == 'ack']
+>       assert acks == ['s0', 'd0', 'd1', 'd2']
+E       AssertionError: assert ['d0', 'd1', 'd2', 's0'] == ['s0', 'd0', 'd1', 'd2']
+E         At index 0 diff: 'd0' != 's0'
+E         Use -v to get more diff
+
+tests/test_actuation_tx_policy.py:226: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_actuation_tx_policy.py::test_stop_ack_overtakes_queued_non_stop_acks[sanitizers]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 19 passed in 3.85s

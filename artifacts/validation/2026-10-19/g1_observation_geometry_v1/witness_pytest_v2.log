@@ -1,0 +1,44 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0
+rootdir: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local
+plugins: colcon-core-0.21.0, cov-4.1.0
+collected 16 items
+
+tests/test_observation_witness.py .....FF.........                       [100%]
+
+=================================== FAILURES ===================================
+____ test_left_right_wedge_geometry_matches_but_sequential_ray_ages_differ _____
+
+    def test_left_right_wedge_geometry_matches_but_sequential_ray_ages_differ():
+        cfg = FollowConfig()
+        left = failure_witnesses([unknown_at(90)], 0., .2, .06, .06, cfg, POSE)
+        right = failure_witnesses([unknown_at(-90)], 0., .2, -.06, -.06, cfg, POSE)
+        assert left[2] and right[2] and not left[0]['supported'] and not right[0]['supported']
+        # +90도는 index 375, -90도는 125: 같은 회전에서 취득 시각이 50 ms 다르다.
+        # 정적 쐐기 기하는 대칭이지만 이동 가능 거리까지 같은 표본은 아니다.
+>       assert {r['role'] for rows in (left[1], right[1]) for r in rows} == {'side_inner'}
+E       AssertionError: assert {'side_inner'...nd_rear_axle'} == {'side_inner'}
+E         Extra items in the left set:
+E         'side_outer_behind_rear_axle'
+E         Use -v to get more diff
+
+tests/test_observation_witness.py:32: AssertionError
+___ test_exact_straight_passes_but_tiny_inner_curvature_enters_unknown_wedge ___
+
+    def test_exact_straight_passes_but_tiny_inner_curvature_enters_unknown_wedge():
+        cfg = FollowConfig()
+        straight = failure_witnesses([unknown_at(90)], 0., .2, 0., 0., cfg, POSE)
+        assert straight[0]['supported'] and straight[1] == []
+        result, rows, consistent = failure_witnesses([unknown_at(90)], 0., .2, 1e-4, 1e-4, cfg, POSE)
+        parts = distance_parts(0., .2, .1, cfg)
+        assert consistent and not result['supported'] and rows
+>       assert all(r['role'] == 'side_inner' and r['cause'] in ('unknown_wedge', 'lateral_reach')
+                   for r in rows)
+E       assert False
+E        +  where False = all(<generator object test_exact_straight_passes_but_tiny_inner_curvature_enters_unknown_wedge.<locals>.<genexpr> at 0x76212322fac0>)
+
+tests/test_observation_witness.py:51: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_observation_witness.py::test_left_right_wedge_geometry_matches_but_sequential_ray_ages_differ
+FAILED tests/test_observation_witness.py::test_exact_straight_passes_but_tiny_inner_curvature_enters_unknown_wedge
+========================= 2 failed, 14 passed in 1.31s =========================

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-19 과거 장면 이송의 dataclasses.replace 필드 조회만 제거. 동일 좌표 연산·생성자 검증·취득 시각·상태 유지",
+  "parent_contract": "config/tests/recent_observation_depth_r0_sha256.json",
+  "parent_contract_sha256": "dd28903fbc2757a66808286c7c3af832fa43ff9734b74cdea5eff51d0c7c69cc",
+  "modified_dependencies": {
+    "src/arena_autonomy/arena_autonomy/observation_support.py": {
+      "before": "209ecff7e64e89ab2941fb521513bc98481fcb88c42407340798727f54b87084",
+      "after": "48eff232fc413febd386d12b2c7b0caf23011b08cc03e2d8159c6a30c23aa8bf",
+      "reason": "각 광선의 동일 생성자를 직접 호출해 일반 replace 필드 조회 비용만 줄임. 관측/보호 조건 불변"
+    }
+  },
+  "evidence": [
+    "tests/test_scene_transport_candidate.py",
+    "artifacts/validation/2026-10-19/g1_transport_constructor_v1/run/report.json"
+  ]
+}

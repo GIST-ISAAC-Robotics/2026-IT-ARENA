@@ -3,6 +3,55 @@ build/
 install/
 log/
 
+# 10/23 누적 게시 점검: 실험 소스 압축·실행 바이너리·재생성 메시만 로컬 보존.
+# 보고서/실패 로그/해시/시험 소스는 게시하며, 기존 추적 원본은 제거하지 않는다.
+# 제외 파일 목록·SHA-256: artifacts/validation/2026-10-23/planning_publish_v1/local_only_manifest.json
+artifacts/validation/2026-10-*/**/*source*.zip
+artifacts/validation/2026-10-*/**/*source*.tar.gz
+artifacts/validation/2026-10-*/**/*_driver
+artifacts/validation/2026-10-*/**/driver
+artifacts/validation/2026-10-*/**/receiver_ready
+artifacts/validation/2026-10-*/**/receiver_stop
+artifacts/validation/2026-10-*/**/repro_defect
+artifacts/validation/2026-10-*/**/repro_fixed
+artifacts/validation/2026-10-*/**/repro_review_v2
+artifacts/validation/2026-10-*/**/repro_v1
+artifacts/validation/2026-10-*/**/batched_*.obj
+
+# 10/15 G1 후보 스트레스의 원시 센서/구동 기록은 로컬 보존한다.
+artifacts/validation/2026-10-15/g1_stress_*/**/follow_decisions.jsonl
+artifacts/validation/2026-10-15/g1_stress_*/**/ego_poses.jsonl
+artifacts/validation/2026-10-15/g1_stress_*/**/actor_poses.jsonl
+artifacts/validation/2026-10-15/g1_stress_*/**/actor_contacts.jsonl
+artifacts/validation/2026-10-15/g1_stress_*/**/scans_received.jsonl
+artifacts/validation/2026-10-15/g1_stress_*/**/autonomy_status.jsonl
+artifacts/validation/2026-10-15/g1_stress_*/**/trace.json
+artifacts/validation/2026-10-15/g1_stress_*/**/trajectory.jsonl
+artifacts/validation/2026-10-15/g1_stress_*/**/actuation_trace.json
+artifacts/validation/2026-10-15/g1_stress_*/**/acquisition.json
+artifacts/validation/2026-10-15/g1_stress_*/**/braking_diagnostics.jsonl
+
+# G1 전체 코스 단독 회귀도 원시 기록은 로컬 보존한다.
+artifacts/validation/2026-10-15/g1_solo_lap_v*/**/follow_decisions.jsonl
+artifacts/validation/2026-10-15/g1_solo_lap_v*/**/ego_poses.jsonl
+artifacts/validation/2026-10-15/g1_solo_lap_v*/**/trace.json
+artifacts/validation/2026-10-15/g1_solo_lap_v*/**/trajectory.jsonl
+artifacts/validation/2026-10-15/g1_solo_lap_v*/**/actuation_trace.json
+artifacts/validation/2026-10-15/g1_solo_lap_v*/**/acquisition.json
+
+# 새 코너 후보의 앞차 회귀도 원시 입력 제외 정책을 유지한다.
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/follow_decisions.jsonl
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/ego_poses.jsonl
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/actor_poses.jsonl
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/actor_contacts.jsonl
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/scans_received.jsonl
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/autonomy_status.jsonl
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/trace.json
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/trajectory.jsonl
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/actuation_trace.json
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/acquisition.json
+artifacts/validation/2026-10-15/g1_corner_follow_regression_v*/**/braking_diagnostics.jsonl
+
 # Python
 __pycache__/
 *.py[cod]
@@ -312,3 +361,22 @@ artifacts/validation/2026-10-13/g1_lidar_stress_v*/**/trajectory.jsonl
 artifacts/validation/2026-10-13/g1_lidar_stress_v*/**/actuation_trace.json
 artifacts/validation/2026-10-13/g1_lidar_stress_v*/**/acquisition.json
 artifacts/validation/2026-10-13/g1_lidar_stress_v*/**/braking_diagnostics.jsonl
+
+# 상세 PC 호스트/ROS 시각 기록은 로컬에 보존한다. 합성 fixture와 요약은 제외하지 않는다.
+artifacts/validation/2026-10-15/clock_pair_capture_v*/capture.jsonl
+
+# 10/16 회랑 후보 공식 단독 시험: 원시 입력/상세 수신은 로컬 보존.
+artifacts/validation/2026-10-16/g1_corridor_solo_v*/**/follow_decisions.jsonl
+artifacts/validation/2026-10-16/g1_corridor_solo_v*/**/ego_poses.jsonl
+artifacts/validation/2026-10-16/g1_corridor_solo_v*/**/trace.json
+artifacts/validation/2026-10-16/g1_corridor_solo_v*/**/trajectory.jsonl
+artifacts/validation/2026-10-16/g1_corridor_solo_v*/**/actuation_trace.json
+artifacts/validation/2026-10-16/g1_corridor_solo_v*/**/acquisition.json
+
+# 10/17 관측 보완 후보도 같은 원시 입력/상세 수신 로컬 보존 정책을 따른다.
+artifacts/validation/2026-10-17/g1_recent_solo_v*/**/follow_decisions.jsonl
+artifacts/validation/2026-10-17/g1_recent_solo_v*/**/ego_poses.jsonl
+artifacts/validation/2026-10-17/g1_recent_solo_v*/**/trace.json
+artifacts/validation/2026-10-17/g1_recent_solo_v*/**/trajectory.jsonl
+artifacts/validation/2026-10-17/g1_recent_solo_v*/**/actuation_trace.json
+artifacts/validation/2026-10-17/g1_recent_solo_v*/**/acquisition.json
