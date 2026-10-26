@@ -154,3 +154,99 @@
 ### 7.4 다음 작업의 경계
 
 다음 재개에서는 같은 단위 사례를 늘리기보다 **새 경기/명시 해제의 단일 호출 지점, 영상·경기 세대의 함께 갱신, 실제 MCU 상태 확인**을 운영 연결 후보로 설계한다. 신호를 다시 보지 않는 같은 경기의 명시 재개와, 새 시퀀스가 필요한 새 경기를 구별해야 한다. 독립 보호를 유지한 선택형 ROS 연결에서 출처·고정 상태·종료를 확인한 뒤 기본 채택 여부를 판단한다. 사람의 재개 승인 절차, 공식 설치 시야, 실물 입력/제동과 G1 실패는 별도로 남는다. 이번 작업에서는 이 후속 구현/ROS 시험을 시작하지 않았다.
+
+## 8. 10/24 — 새 경기·같은 경기 재개의 선택형 운영 연결
+
+§7.4의 다음 작업을 구현했다. **기본 전환은 하지 않았다.** `local_pursuit`의 `race_control_mode` 기본값은 `legacy`이며, 이때는 새 구독·발행·서비스 동작이 없다(실제 노드 생성 회귀로 확인). `b3_candidate`는 `vision_execution=process`일 때만 허용한다. launch 인자는 `start_signal_mode`와 마찬가지로 아직 없고 노드 매개변수로만 선택한다. 아래는 GPT 검토 뒤 고친 **v2 정책**이다. v1과의 차이는 §8.3에 남긴다.
+
+### 8.1 단일 호출 지점, 세대, 출발 사실과 움직임 권한
+
+[`race_session.py`](../../src/arena_autonomy/arena_autonomy/race_session.py)의 `RaceSupervisor`가 `RacePermission`·`VisionPipeline`·MCU 상태 관측기를 함께 소유한다. ROS 발행이나 MCU 명령은 하지 않으며 STOP/CLEAR/ARM을 자동으로 보내지 않는다. 제어기 프로세스마다 새 `session`을 만들고, 경기 번호(`race_epoch`)와 영상 세대(`vision_epoch`)를 같은 콜백에서 바꾼다.
+
+**출발 사실과 움직임 권한은 별개다.** 출발 사실은 묶인 영상 세대에서 채택된 픽셀 판정(`visual_start_fact`)이며, 래치 중에 얻은 같은 영상 세대의 사실도 검출기에 남는다. 정책은 래치가 없을 때만 이 사실을 채택(`started`)하고, 움직임 권한(`decide`)은 여기에 래치 없음·신선한 센서·실제 MCU 준비를 모두 요구한다. 그래서 같은 경기 STOP 뒤에는 신호를 다시 보지 않아도 되지만, 사실이 있다고 움직이지는 않는다.
+
+| 사건 | 동작 |
+|---|---|
+| 프로세스 시작·재시작 | 새 session, `process_start` 래치(개입 1). 사람 확인 + 시작 뒤 별도 MCU ARM + 새 신호가 필요. **이전 프로세스가 남긴 ARMED는 재사용하지 않는다** |
+| 같은 경기 센서 HOLD·MCU 상태 일시 공백 | 0 요청, 래치/개입 없음. 신선한 입력 복귀 뒤 자동 재개(기존 A4 계약). 교통 HOLD는 기존처럼 계획기 내부 |
+| 명시 STOP(`/race/command` stop, `/autonomy/enable` false) | 개입 증가·래치·즉시 0 `/drive`. **MCU STOP을 보내지 않는다** |
+| MCU의 ESTOP/FAULT 진입 관측, MCU boot 변경 | 래치가 없으면 새 개입으로 변환. 이미 래치 중이면 같은 개입으로 기록 |
+| 영상 작업자 고정 고장 | `fault:vision` 래치. 해제 요청은 `fixed_fault_present`로 거절 |
+| 사람 해제(acknowledge) | session·경기·개입 번호·위험 제거·검토 표시가 모두 맞을 때 상위 래치만 해제. 물리 STOP 유지 중 거절 |
+| 해제 뒤 재개 | 래치 이후의 **실제 별도 ARM 목격**이 필요(아래). 같은 경기면 신호를 다시 보지 않는다 |
+| 새 경기(`new_race`) | session과 **현재** 경기 번호가 맞아야 수락(늦은 중복이 다음 경기를 초기화하지 못함). 새 영상 세대·계획기 기억 초기화와 함께 `new_race` 래치(개입 +1). 사람 확인·재ARM·새 신호가 필요 |
+| 시계 되감기, 구형 `/autonomy/reset` | 새 경기 + 래치(fail-closed) |
+| 구형 `/autonomy/enable` true | 거절. 래치를 풀 수 없다 |
+
+**재ARM 목격(래치 시각 fence):** 수신기 계약에서 generation은 ARM·DISARM·CLEAR·STOP·고장 같은 상태 전환(`_transition`)에서만 오른다. **DRIVE로 바뀌는 ARMED↔ACTIVE는 generation을 올리지 않는다.** 감독은 래치 때 제어기 시각을 fence로 기록한다(시작 직후 시계가 0이면 첫 유효 시각). 원본 `now_us`가 fence+20 ms 이하인 상태는 재ARM 근거로 쓰지 않는다. fence 이후 그 boot에서 처음 본 상태의 generation을 기준으로 삼고, 그보다 높은 generation의 ARMED만 래치 이후 ARM으로 인정한다. 첫 상태가 이미 ARMED여도 그 ARM이 래치 전일 수 있으므로 새 DISARM(또는 CLEAR)→ARM을 다시 요구한다. 래치 전 DISARM→ARM 상태가 늦게 도착해도 fence 이전이라 무시한다. 이전 v1 규칙(래치 뒤 비무장 관측 다음 ARMED)으로 바꾼 변이체는 두 반례 시험에서 모두 검출됐다.
+
+**MCU 상태 입력:** 현행 가상 MCU의 `/actuation/status`(`boot`·`generation`·`state`·`now_us`·`estop_held`)를 쓴다. 같은 boot의 낮은 generation·과거 시각과 이미 지난 boot의 상태는 늦은 응답으로 버린다. 신선도는 소비자 시계의 수신 시각(0.1 s)·벽시계(`sensor_wall_timeout_s`)로 보고, 원본 시각과 수신 시각의 차이가 0.1 s 이상이면 버린다. 0.1 s 두 값과 fence 여유 20 ms는 가상 MCU의 5 ms 상태 발행과 **같은 `/clock`을 받는다는 시험 가정**의 임시값이다. 실물 MCU 시계 변환·중계는 구현하지 않았다.
+
+**명령 형식:** `/race/command`(std_msgs/String JSON). `{"v":1,"request":…,"op":"stop"}`, `new_race`는 `session`·`race_epoch`, `acknowledge`는 여기에 `intervention`·`hazards_cleared`·`operator_reviewed`를 정확히 요구한다. 결과는 `/race/command_result`, 상태는 `/autonomy/status`의 `race`에 session·세대·개입·래치·출발 사실·정책 채택·움직임 사유·재ARM 필요·fence·MCU 상태를 따로 낸다. **STOP은 형식이 불완전하거나 요청 번호가 다른 op와 겹쳐도 실제로 고정한다.** 현재 활성 개입을 만든 같은 STOP 번호의 재전송만 새 개입 없이 수락하고, 이미 해제된 STOP 번호의 재전송은 새로 고정한다. 해제·새 경기 요청은 이미 쓴 번호(STOP 번호 포함)면 거절한다. 별도 메시지 패키지를 만들지 않으려는 선택이며 운영 도구·인증은 없다.
+
+`/drive → lidar_safety → /drive/safe`, MCU의 `CLEAR → DISARMED → 별도 ARM`, 모터축 28카운트·15:1·65 mm, 센서·물성·TTL·보호 한도와 `unknown` 정책은 바꾸지 않았다. 해제는 ARM을 대신하지 않는다.
+
+**남은 정책 선택(검토 대상):** 상위 래치는 프로세스 수명 동안만 유지되지만 시작이 다시 래치이므로 재시작으로 출발 권한이 생기지는 않는다. 실제 정지 유지는 여전히 MCU STOP의 책임이다. MCU FAULT를 사람 해제 대상으로 둔 것은 기본 경로의 CLEAR/ARM 복구보다 엄격하며 선택형에서만 적용된다.
+
+### 8.2 검증
+
+- **순수 결합 26개**([`test_race_session.py`](../../tests/test_race_session.py)): 실제 픽셀 인식·감독·참조 A1 수신기. 시작 래치의 세 순서, 재시작 시 이전 ARMED 미재사용, 센서/MCU 상태 공백 자동 복구, 상위 STOP만 하고 MCU가 ARMED일 때 재ARM 요구, **래치 전 DISARM→ARM 상태의 지연 도착**, **fence 뒤 첫 상태가 이미 ARMED인 경우**, MCU STOP 변환·순서 교환, 늦은 이전 세대 상태, **STOP 번호 규칙**(다른 op 번호와 겹침·활성 재전송·해제된 번호 재전송·다른 개입 뒤 재전송), 해제 거절 사유, 새 경기 래치·이전 작업 거절, 늦은/다른 세션 새 경기, 시계 되감기·구형 reset의 출발 사실/권한 분리, 영상 고장, 물리 STOP, MCU 재부팅, 관측기 거절.
+- **실제 노드 7개**([`test_race_session_node.py`](../../tests/test_race_session_node.py))와 시험기 순서 정적 회귀 2개.
+- **제한 ROS v2 1회**([산출물](../../artifacts/validation/2026-10-24/b3_race_session_ros_v2/README.md)): 사전 회귀 530개, **36/36사례·명령 기대 판정 26/26**, 역할 6개 exit 0, 잔존 0, 소스 불변. 붙잡은 래치 전 상태 7개(DISARMED·ARMED, generation 1–3)는 관측기에는 모두 수용됐지만 fence 이전으로 무시됐고, 해제 뒤에도 재ARM 대기를 유지했다.
+- **전체 회귀:** [4,769통과·실패 0·skip 0](../../artifacts/validation/2026-10-24/b3_race_session_ros_v2/full_regression/). 10/23 C++ 대조 바이너리 6개를 해시와 C++ 원본 22개 불변 확인 뒤 재사용했다. 같은 날 앞선 4실패(R0+ 소스 해시 계약 3·최소 묶음 의존성 1)는 아래처럼 정리했다.
+
+**10/24 R0+/B3 소스 출처 정리:** 이전 계약은 고치지 않고 [`r0_plus_e3_r0_sha256.json`](../../config/tests/r0_plus_e3_r0_sha256.json)→[`b3_race_session_r0_sha256.json`](../../config/tests/b3_race_session_r0_sha256.json) 후속 계약을 추가했다. [검사](../../tests/test_source_provenance_r0_plus_b3.py)는 부모 계약 해시, 이전 계약의 마지막 after, 고정 커밋 `4096314`의 blob, E3 실행 보고서의 실행 소스 해시와 로컬 실행 스냅샷 바이트, 변경 이유, 현재 파일을 대조한다. 출처 기록일 뿐 기본 채택·주행 안전·M3 해결 승인이 아니다. Jetson 최소 묶음에는 `follow_trace.py`의 실제 의존성 `r0_plus.py`를 추가했다.
+
+### 8.3 v1에서 바뀐 점과 남은 것
+
+[v1 ROS](../../artifacts/validation/2026-10-24/b3_race_session_ros_v1/README.md)는 30/30 통과였지만 이전 정책의 결과로 보존한다. GPT 검토에서 네 가지를 고쳤다. (1) STOP 중복 판정이 모든 처리 번호를 봐서 다른 op 번호와 겹친 STOP이나 이미 해제된 STOP 재전송을 고정하지 않고 수락할 수 있었다. (2) 새 경기와 프로세스 시작이 기존 ARMED를 재사용해 새 신호만으로 출발할 수 있었다. (3) 재ARM 목격이 수신 시점의 비무장/세대 변화만 봐서 래치 전에 일어난 DISARM→ARM의 지연 도착을 재ARM으로 오인할 수 있었다. (4) v1 문서의 "모든 상태 전환이 generation을 올린다"는 틀렸다. ARMED↔ACTIVE는 DRIVE로 바뀌며 generation이 그대로다.
+
+교통 HOLD·시계 되감기·MCU 재부팅은 ROS 실행이 아니라 순수/노드 회귀로만 확인했다. ROS v2의 지연 상태는 제어기 입력만 시험기 중계로 바꾼 시험 전용 경로다. 실물 MCU 상태 중계와 시계 변환·전기 STOP·공식 그리드 시야·실물 신호·Gazebo/전체 코스·Jetson은 남는다. 기본 채택 여부는 별도로 결정한다. G1/R0+ 실패와 M1 교착은 이 작업으로 바뀌지 않았다.
+
+### 8.4 명시 운영 도구 후속
+
+[`race_operator.py`](../../scripts/race_operator.py)에 상태 조회·상위 STOP·새 경기·같은 경기 개입 해제 진입점을 추가했다. 기본은 ROS 미연결 JSON 표시이고 `--send`가 있어야 1회 전송한다. 현재 session/경기/개입 번호는 사람이 명시하며 자동 갱신·MCU 명령·재전송은 없다. 응답 유실을 미적용으로 단정하지 않고 `unknown_after_send`로 구분한다. 적용 순서·명령·중요한 한계는 [운영 안내](RACE_OPERATOR_RUNBOOK.md)에 모았다.
+
+[v3 검사](../../artifacts/validation/2026-10-24/b3_operator_v3/README.md) 84개 통과·소스 불변·잔존 0. 실제 B3 노드와 연결했으나 센서/MCU/Gazebo가 없으므로 계속 0목표였다. 상위 해제를 하고 실제 다시 주행하는 시험이 아니다. v1/v2 실패는 별도 보존한다. 운영 도구는 기본 제어 모드를 바꾸지 않는다.
+
+### 8.5 M4 같은 경기 STOP·재출발의 Gazebo 연결 — 10/25 마감
+
+앞선 B3 제한 ROS 검사는 실제 차량 목표가 계속 0이었다. 이를 보충하기 위해 [M4 사전 등록](../../artifacts/validation/2026-10-25/m3_execution_review_v1/M4_SAME_RACE_PLAN.md)대로 `--race-operation-test`에서만 격리 시험용 운영 순서를 추가했다. 제어기 구현과 `legacy` 기본값은 유지하고 G1 launch의 명시 `race_control_mode` 전달만 추가했다.
+
+시험기는 초기 확인/ARM 뒤 주행 중 상위 STOP과 MCU STOP을 각각 한 번 보내고, 확인만 한 상태 및 CLEAR 이후 상태의 정지 대기를 거쳐 새 ARM을 한다. 정답 자세는 이 명령 순서의 입력으로 쓰지 않고, 실제 정지/재개·이동량을 사후 평가한다. 응답 유실·거절·새 session/경기/영상 세대·MCU 고장·다른 STOP은 재시도 없이 실패한다. 실물 운영 도구의 사람 확인·기본 미전송 정책은 그대로다.
+
+run60 첫 검사 **88통과·1실패**는 기존 센서 주입/M4 후속 출처가 오래된 사슬 검사 목록에서 빠진 문제였다. 원본을 보존하고 목록을 보완한 v2는 **89통과**, `arena_bringup` 빌드·설치 바이트 일치를 확인했다. [첫 실패](../../artifacts/validation/2026-10-25/m3_execution_review_v1/run60_m4_preflight/test_stdout.txt), [v2](../../artifacts/validation/2026-10-25/m3_execution_review_v1/run60_m4_preflight_v2/test_stdout.txt).
+
+run61을 한 번 실행했다. 의도된 중간 STOP 때문에 기존 교통 판정의 `no_mcu_latch_before_stop`은 실패하므로 기존 결과는 바꾸지 않고 `m4_operation`에서 등록된 STOP의 시각/boot/generation/사유만 구분한다. 이 별도 판정도 기존 입력 무결성·차간격·노면·마지막 STOP·정상 종료가 모두 통과해야 한다. 임시 신호등 카메라 검출을 사용하며 공식 4-red·그리드 시야·실차 검증과 구분한다.
+
+
+**run61 결과:** 출발 사실·경기/영상 세대를 유지한 채 실제 STOP·해제/CLEAR 뒤 정지 유지·재ARM 후 **0.375 s 재개·3.073 m 진행**을 확인했다. 다만 결합 판정은 실패다. CLEAR 경계를 MCU 원본 시각 대신 pose 수신 시각과 비교해 마지막 STOP 한 표본을 잘못 제외했고, 기존 앞차 정지창 HOLD는 **0.912 s < 1 s**였다. 첫 오류는 같은 MCU 스트림의 세대/순서로 수정해 관련 **135회귀**와 원본 입력 불변의 사후 대조를 통과했다. 후자는 원래 실패로 보존한다. STOP/정상 종료·재생 623/623·130파일 불변·노면 이탈 0을 확인했다. [원본·범위](../../artifacts/validation/2026-10-25/m3_execution_review_v1/run61_b3_same_race/README.md).
+
+
+**새 경기 분리 후속:** [별도 사전 등록](../../artifacts/validation/2026-10-25/m3_execution_review_v1/M4_NEW_RACE_PLAN.md)은 기존 경기에서 움직이다 새 경기로 초기화한 뒤, 확인·CLEAR·ARM을 해도 새 카메라 신호 전에는 실제 정지하는지를 검사한다. 이전 출발 사실 재사용 방지가 목적이며 앞차 추종의 진행/HOLD 기준과 섞지 않는다. 원래 교통 판정은 계속 계산·보존한다. 143회귀 이후 명령 응답/상태 도착 순서 반례를 보완했고 v2 143회귀를 다시 통과했다. 사용자 정리 요청에 따라 이 묶음으로 마쳤다.
+
+
+**run64 결과:** 새 경기 초기화 뒤에도 MCU를 재ARM했지만, 새 출발 신호가 없어 **10.482 s 실제 정지**했다. 경기·영상 세대 각각 +1과 이전 출발 사실 미재사용, 중간/마지막 STOP·정상 종료·잔존 0·133파일 불변·재생 89/89·노면 이탈 0을 확인했다. 등록한 M4 부정 조건은 16항목 모두 통과했다. 원래 교통의 추종/재개 판정은 이 자극과 양립하지 않아 실패 그대로 보존한다. [원본·판정 구분](../../artifacts/validation/2026-10-25/m3_execution_review_v1/run64_b3_new_race/README.md).
+
+**남은 범위와 재개:** 실제 새 신호를 받은 두 번째 경기 출발, 공식 4-red/그리드 시야, 실물 MCU·사람 조작·무선 운영은 아직 미검증이다. 이번 수정으로 M1/M3 문제나 run61 결합 HOLD 미달을 완료 처리하지 않는다. 다음에는 현행 개발 계획의 M3 관측 전제/설계 자료를 먼저 대조하고, M4 추가 검사는 선택 모드의 최종 운영 묶음에 넣는다. 같은 실패의 반복 주행이나 새 거대 행렬은 만들지 않는다.
+
+### 8.6 10/26 — 새 경기의 두 번째 픽셀 신호와 실제 재출발
+
+M3의 초기 양보/후방 사각을 분해한 뒤, 독립적으로 남은 M4 정방향 조건을 [사전 등록](../../artifacts/validation/2026-10-26/m4_second_start_v1/PLAN.md)해 한 번 실행했다. `--race-operation-test new_race_restart`에서만 추가하는 시험기는 기존 새 경기·별도 STOP·확인/CLEAR/재ARM 순서를 그대로 쓴다. 재ARM 목격 후 대기하고 기존 임시 렌즈를 빨강→초록으로 각각 한 번 요청한다. 서비스 수락·렌즈 적용·새 영상 세대 픽셀 출발·실제 움직임은 별도로 확인했다. 신호/actor 정답은 제어 입력이 아니며 기본 `legacy`·주행 제어기·보호·물성은 유지했다.
+
+순수 51회귀 후 이벤트 시각 교차 검사를 추가했다. 통합 회귀에서 ROS 경로가 덮인 수집 실패, 초기 의존성의 후속 소스 변경 사슬을 누락한 출처 검사 1실패를 원본으로 보존했다. 후자는 기존 계약 해시를 고치지 않고 before→after 사슬을 확인하도록 보완했으며 관련 출처/코너 29회귀·빌드·설치본 5모듈/launch SHA 대조를 통과했다. 세부 실행 이력은 [묶음 안내](../../artifacts/validation/2026-10-26/m4_second_start_v1/README.md)에 있다.
+
+| run5 실제 연결 결과 | 확인값 |
+|---|---|
+| 재ARM 후 새 초록 요청 전 실제 정지 | **3.683 s**, 1,821 밀집 구간·최대 속도 0.000502 m/s·최대 공백 3 ms |
+| 새 빨강 / 초록 적용 관측 | 9.801 / 12.001 s(시뮬레이션 시간) |
+| 새 경기/영상 세대의 픽셀 출발 관측 | 12.239 s |
+| 초록 적용 관측 → 실제 재출발 | **0.585 s** |
+| 두 번째 초록 뒤 실제 변위 | **3.146 m** |
+| 마지막 명시 STOP | 0.5 s 밀집 정지창 통과·최대 속도 0.00827 m/s·공백 최대 3 ms |
+| 원시 판단 재생 / 노면 | 418/418 일치, 9,692표본·차체/바퀴 도로 밖 및 벽 접촉 0 |
+| 종료/출처/입력 경계 | 정상 종료·잔존 0·등록 83소스 불변, `/drive`는 local_pursuit·`/drive/safe`는 lidar_safety만 발행 |
+
+[원본 보고서](../../artifacts/validation/2026-10-26/m4_second_start_v1/run5_second_visual_start/run/report.json)의 별도 M4 판정은 **11/11 통과**다. 원래 교통 `passed=false`, 앞차 정지창의 HOLD 미달 및 의도된 중간 STOP의 원문 판정은 그대로 보존했다. 새 신호 이전 구간에는 기존 무신호 정지 판정을 그대로 적용하고, 이후에는 실제 새 출발/진행을 따로 요구했다. 새 신호를 판정값으로 직접 주입하거나 ARM만 보고 실제 주행으로 세지 않았다.
+
+이 결과는 **현재 임시 빨강/초록 렌더링·선택형 B3 운영 연결의 한 조건**이다. 공식 4-red/그리드 시야, 실물 MCU 시계·물리 STOP·사람/무선 운영, 기본 모드 채택과 M1/M3 완주는 남는다. 같은 운영 시험을 더 반복하지 않고 다음 독립 주행 조건으로 넘어간다.

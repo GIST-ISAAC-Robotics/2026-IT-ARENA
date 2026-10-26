@@ -1,0 +1,150 @@
+--- a/src/arena_autonomy/arena_autonomy/m3_execution_trial.py
++++ b/src/arena_autonomy/arena_autonomy/m3_execution_trial.py
+@@ -98,6 +98,8 @@
+     straight_surface_commitment: bool = False
+     # 고정 .025 m 사각 기계 여유 + 방사오차/2D 이동 노름의 원판. 기본 OFF 순수 시험 후보.
+     rounded_occupancy: bool = False
++    # 최대 요청 속도의 외곽이 거절됐을 때만 더 낮은 속도에서 동일 관문을 다시 검사한다.
++    observed_speed_search: bool = False
+     reaction_s: float = .10          # 기존 보호 반응 상수(local_path.braking_speed)
+     deceleration_mps2: float = 2.0   # 기존 보호 감속 상수. 실차 제동 검증값이 아니다
+     history_motion_bound_mps: float = .5   # 기존 점유 취득 시차 팽창과 같은 물체 이동 상계
+@@ -105,7 +107,8 @@
+     def __post_init__(self):
+         if any(type(v) is not bool for v in (self.masked_history_support, self.straight_start, self.command_fallback,
+                                              self.release_to_baseline, self.small_center_straight,
+-                                             self.straight_surface_commitment, self.rounded_occupancy)):
++                                             self.straight_surface_commitment, self.rounded_occupancy,
++                                             self.observed_speed_search)):
+             raise ValueError('execution options must be bool')
+         if self.small_center_straight and not self.release_to_baseline:
+             # 기존 '중앙 후보 선택 = 시험 종료' 경로를 직진 선택이 건너뛰므로 관측 기반 복귀와만 비교한다.
+@@ -991,6 +994,19 @@
+         distance = envelope_distance(envelope_speed, age, control_dt, self.execution)
+         envelope = arc_checks(scene, frames, baseline[2]['path_points'], (steering, previous_steering),
+                               distance, self.lateral_config, self.execution)
++        speed_search = None
++        if self.execution.observed_speed_search and not (envelope['observation_ok'] and envelope['geometry_ok']):
++            from arena_autonomy.observed_speed_candidate import select_lower_speed
++            def evaluate_lower(proposed_envelope_speed):
++                return arc_checks(scene, frames, baseline[2]['path_points'], (steering, previous_steering),
++                    envelope_distance(proposed_envelope_speed, age, control_dt, self.execution),
++                    self.lateral_config, self.execution)
++            found = select_lower_speed(target, speed, evaluate_lower)
++            speed_search = dict(original_target_mps=target, measured_speed_mps=speed,
++                                selected=found['selected'], attempts=found['attempts'])
++            if found['selected']:
++                target, envelope = found['target'], found['envelope']
++                envelope_speed = max(speed, target)
+         detail = dict(m3_selected=True, m3_candidate=name, m3_envelope=envelope,
+             path_points=np.asarray(path).tolist(), occupied_points=len(points), unfiltered_occupancy=True,
+             swept_clearance_m=clearance, observed_path_ahead_m=remaining, desired_steering_rad=desired,
+@@ -999,6 +1015,8 @@
+             body_standstill_verified=False)
+         if self.execution.rounded_occupancy:
+             detail['occupancy_model'] = 'fixed_rectangle_plus_euclidean_disk_candidate'
++        if speed_search is not None:
++            detail['observed_speed_search'] = speed_search
+         result.update(detail=detail, steering=steering, clearance=clearance, target=target, cap=cap)
+         if not (envelope['observation_ok'] and envelope['geometry_ok']):
+             if (self.execution.straight_start and name == 'straight' and abs(speed) <= STOPPED_SPEED_MPS
+--- a/src/arena_autonomy/arena_autonomy/observed_speed_candidate.py
++++ b/src/arena_autonomy/arena_autonomy/observed_speed_candidate.py
+@@ -0,0 +1,27 @@
++"""정해진 명령각에서 같은 관측/기하 검사를 만족하는 낮은 속도의 유한 비교.
++
++실측 속도를 낮게 가정하지 않는다. 각 결과가 해당 속도의 검사 전체를 통과해야
++하며, 관측이 속도에 단조라고 가정한 이분 탐색·실패 상태 재사용은 하지 않는다.
++"""
++import math
++
++
++def lower_request_speeds(target, measured):
++    if not all(math.isfinite(v) and v >= 0 for v in (target, measured)):
++        raise ValueError('finite nonnegative speeds required')
++    # 기존 .35 m/s M3 상한 아래의 시험 격자. 현재 속도가 더 크면 줄어든 외곽을 만들 수 없다.
++    values = (.30, .25, .20, .15, .10, .05, measured)
++    return sorted({v for v in values if 0 < v < target and v >= measured}, reverse=True)
++
++
++def select_lower_speed(target, measured, evaluate):
++    """evaluate(envelope_speed)의 observation_ok와 geometry_ok를 모두 확인한다."""
++    attempts = []
++    for speed in lower_request_speeds(target, measured):
++        envelope = evaluate(max(measured, speed))
++        accepted = bool(envelope['observation_ok'] and envelope['geometry_ok'])
++        attempts.append(dict(target_mps=speed, envelope_speed_mps=max(measured, speed),
++            accepted=accepted, observation_ok=envelope['observation_ok'], geometry_ok=envelope['geometry_ok']))
++        if accepted:
++            return dict(selected=True, target=speed, envelope=envelope, attempts=attempts)
++    return dict(selected=False, attempts=attempts)
+--- a/tests/test_observed_speed_candidate.py
++++ b/tests/test_observed_speed_candidate.py
+@@ -0,0 +1,67 @@
++import pytest
++import numpy as np
++import arena_autonomy.m3_execution_trial as mx
++from arena_autonomy.observed_speed_candidate import lower_request_speeds, select_lower_speed
++from arena_autonomy.m3_execution_trial import ExecutionConfig
++from arena_autonomy.local_follow import FollowConfig
++from arena_autonomy.occupancy_timing import per_ray_padding
++from probe_grid_follow import stationary_history
++from test_startup_straight_state import scene, baseline, SENSOR
++
++
++def test_default_false_and_typed_selection():
++    assert not ExecutionConfig().observed_speed_search
++    with pytest.raises(ValueError):ExecutionConfig(observed_speed_search=1)
++
++
++def test_measured_speed_is_never_replaced_with_lower_requested_speed():
++    assert lower_request_speeds(.35,.243)==[.30,.25,.243]
++    assert lower_request_speeds(.2,.3)==[]
++    assert lower_request_speeds(0.,0.)==[]
++
++
++def test_both_geometry_and_observation_are_required_without_monotonic_assumption():
++    seen=[]
++    def evaluate(v):
++        seen.append(v)
++        return dict(observation_ok=v in (.3,.2),geometry_ok=v in (.25,.2),distance_m=v)
++    result=select_lower_speed(.35,.19,evaluate)
++    assert result['selected'] and result['target']==.2
++    assert seen==[.3,.25,.2]
++    assert result['envelope']['distance_m']==.2
++
++
++def test_no_supported_speed_is_rejected_without_zero_or_blind_credit():
++    def reject(v):return dict(observation_ok=False,geometry_ok=True)
++    result=select_lower_speed(.35,0.,reject)
++    assert not result['selected']
++    assert all(a['target_mps']>0 for a in result['attempts'])
++
++
++@pytest.mark.parametrize('target,measured',[(float('nan'),0),(.2,float('inf')),(-.1,0),(.1,-.01)])
++def test_invalid_speed_rejected(target,measured):
++    with pytest.raises(ValueError):lower_request_speeds(target,measured)
++
++
++@pytest.mark.parametrize('enabled,measured,expected',[(False,0.,False),(True,0.,True),(True,.34,False)])
++def test_command_keeps_angle_and_geometry_checks_and_uses_measured_speed_floor(monkeypatch,enabled,measured,expected):
++    seen=[]
++    execution=ExecutionConfig(observed_speed_search=enabled,straight_start=False)
++    c=mx.M3ExecutionFollow(FollowConfig(occupancy_timing_mode='per_ray_candidate'),execution,allow_simulation_trial=True)
++    s=scene();h=stationary_history(.135,SENSOR);b=baseline()
++    # 저속에서만 통과하는 시험 함수. 여유 계수와 조향은 바꾸지 않는다.
++    limit=mx.envelope_distance(.2,s.t_ref_s-s.source_first_s,.02,execution)
++    def envelope(scene,frames,path,angles,distance,cfg,ex):
++        seen.append((angles,distance,cfg,ex))
++        return dict(observation_ok=distance<=limit+1e-12,geometry_ok=True,distance_m=distance)
++    monkeypatch.setattr(mx,'arc_checks',envelope)
++    result=c._evaluate_command('straight',np.array(b[2]['path_points']),s,[],h,measured,0.,.02,
++        per_ray_padding(s,.055,.5),b)
++    assert result['accepted'] is expected
++    assert all(angles==(0.,0.) and cfg is c.lateral_config and ex is execution for angles,_,cfg,ex in seen)
++    assert all(distance>=mx.envelope_distance(measured,s.t_ref_s-s.source_first_s,.02,execution)-1e-12
++               for _,distance,_,_ in seen)
++    if expected:
++        assert result['target']==.2 and result['detail']['envelope_speed_mps']==.2
++    if not enabled:
++        assert len(seen)==1 and 'observed_speed_search' not in result['detail']

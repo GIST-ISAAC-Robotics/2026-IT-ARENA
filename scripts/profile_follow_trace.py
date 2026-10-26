@@ -20,12 +20,31 @@ from arena_autonomy.scene_motion import motion_scene
 
 ROOT = Path(__file__).resolve().parents[1]
 STAGES = ('restore_ms', 'projection_ms', 'decision_ms', 'total_ms', 'thread_cpu_ms', 'gc_elapsed_ms')
-SNAPSHOT_MODULES = {
-    'arena_autonomy': ('follow_trace', 'local_follow', 'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'occupancy_timing',
-                      'observation_support', 'observation_lateral', 'linear_observation',
-                      'local_scene', 'scene_motion', 'lidar_motion', 'lidar_observation', 'local_path'),
-    'arena_vehicle_interface': ('queued_log',),
-}
+SNAPSHOT_MODULES = {'arena_autonomy': ('boundary_evidence',
+                    'corner_corridor',
+                    'corner_distance',
+                    'corner_evidence',
+                    'corridor_observer',
+                    'follow_trace',
+                    'lateral_intent',
+                    'lidar_motion',
+                    'lidar_observation',
+                    'linear_observation',
+                    'local_follow',
+                    'local_path',
+                    'local_scene',
+                    'm3_execution_trial',
+                    'm3_observed_follow',
+                    'observation_lateral',
+                    'observation_support',
+                    'observed_lateral_trial',
+                    'occupancy_timing',
+                    'polygon_batch',
+                    'r0_plus',
+                    'rounded_occupancy_candidate',
+                    'scan_topology',
+                    'scene_motion'),
+ 'arena_vehicle_interface': ('queued_log',)}
 
 
 class GCObservation:
@@ -108,6 +127,8 @@ def _profile(event_source, repeats, warmups, clock, observation):
         raise ValueError('bounded repeats/warmups required')
     # 실행 전 footer/순서/손실과 전체 출력 일치를 검증한다. 잘못된 기록의 빠른 실행은 성과가 아니다.
     baseline = replay_events(event_source())
+    if baseline['scope'] != 'g1_decision_stage_only':
+        raise ValueError('G1 profiler does not profile R0+ traces')
     if not baseline['passed']:
         raise ValueError('recorded outputs do not match current source')
     matched = baseline['matched']

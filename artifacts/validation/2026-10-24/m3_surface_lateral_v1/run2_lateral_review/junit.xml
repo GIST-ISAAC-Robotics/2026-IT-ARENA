@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="6" skipped="0" tests="24" time="1.289" timestamp="2026-10-24T17:34:48.564876" hostname="DESKTOP-KA11CHH"><testcase classname="tests.test_lateral_intent" name="test_budget_values_and_policy_space_gain" time="0.001"><failure message="assert 0.07400000000000001 == 0.06244994432064365 ± 6.2e-08&#10;  comparison failed&#10;  Obtained: 0.07400000000000001&#10;  Expected: 0.06244994432064365 ± 6.2e-08">def test_budget_values_and_policy_space_gain():
+        b = LateralBudget()
+        edge, detail = b.edge_margin()
+&gt;       assert edge == pytest.approx(.03+.01+math.sqrt(.02**2+.01**2+.002**2))
+E       assert 0.07400000000000001 == 0.06244994432064365 ± 6.2e-08
+E         comparison failed
+E         Obtained: 0.07400000000000001
+E         Expected: 0.06244994432064365 ± 6.2e-08
+
+tests/test_lateral_intent.py:73: AssertionError</failure></testcase><testcase classname="tests.test_lateral_intent" name="test_defaults_are_off_and_road_only" time="0.001" /><testcase classname="tests.test_lateral_intent" name="test_steering_protrusion_matches_wheel_geometry" time="0.000" /><testcase classname="tests.test_lateral_intent" name="test_path_frame_projection_on_curve" time="0.001" /><testcase classname="tests.test_lateral_intent" name="test_offset_candidate_folds_on_tight_inner_side_only" time="0.005" /><testcase classname="tests.test_lateral_intent" name="test_surface_policies_road_only_versus_two_wheel_grass" time="0.013" /><testcase classname="tests.test_lateral_intent" name="test_road_only_allows_holding_existing_deficit_but_not_worsening" time="0.005" /><testcase classname="tests.test_lateral_intent" name="test_corridor_reference_detects_opening_and_nonstandard_wall" time="0.030" /><testcase classname="tests.test_lateral_intent" name="test_grid_keeps_rear_mask_and_unknown_unobserved" time="0.008" /><testcase classname="tests.test_lateral_intent" name="test_hidden_seeds_behind_but_not_beside_observed_front" time="0.024" /><testcase classname="tests.test_lateral_intent" name="test_hidden_tailgater_blocked_by_ego_body" time="0.000" /><testcase classname="tests.test_lateral_intent" name="test_empty_road_recenter_is_blocked_by_rear_blind_cone_unless_policy_accepts_it" time="0.033"><failure message="assert False">def test_empty_road_recenter_is_blocked_by_rear_blind_cone_unless_policy_accepts_it():
+        """후방 60° 사각에 숨을 수 있는 차량(상대 0.5 m/s)은 중앙 복귀보다 먼저 옆에 닿을 수 있다."""
+        scene, path = straight(-.09)
+        hard, _ = run(scene, path, speed=0.)
+        assert hard['mode'] == 'HOLD_OFFSET' and 'recenter_hidden_reach' in hard['reasons']
+&gt;       assert hard['checks']['center']['verified_except_hidden']
+E       assert False
+
+tests/test_lateral_intent.py:208: AssertionError</failure></testcase><testcase classname="tests.test_lateral_intent" name="test_left_side_rear_car_yields_right_never_recenters" time="0.045"><failure message="AssertionError: assert ('HOLD_OFFSET' == 'YIELD'&#10;  - YIELD&#10;  + HOLD_OFFSET)">def test_left_side_rear_car_yields_right_never_recenters():
+        d0 = -.09
+        scene, path = straight(d0, extra=[car(-.40, .13, d0)])
+        out, _ = run(scene, path)
+        assert out['threats']['left']['present']
+&gt;       assert out['mode'] == 'YIELD' and out['checks']['yield']['d_target_m'] &lt; d0
+E       AssertionError: assert ('HOLD_OFFSET' == 'YIELD'
+E         - YIELD
+E         + HOLD_OFFSET)
+
+tests/test_lateral_intent.py:229: AssertionError</failure></testcase><testcase classname="tests.test_lateral_intent" name="test_mirrored_right_car_yields_left" time="0.044"><failure message="AssertionError: assert (True and 'HOLD_OFFSET' == 'YIELD'&#10;  - YIELD&#10;  + HOLD_OFFSET)">def test_mirrored_right_car_yields_left():
+        d0 = .09
+        scene, path = straight(d0, extra=[car(-.40, -.13, d0)])
+        out, _ = run(scene, path)
+&gt;       assert out['threats']['right']['present'] and out['mode'] == 'YIELD'
+E       AssertionError: assert (True and 'HOLD_OFFSET' == 'YIELD'
+E         - YIELD
+E         + HOLD_OFFSET)
+
+tests/test_lateral_intent.py:239: AssertionError</failure></testcase><testcase classname="tests.test_lateral_intent" name="test_road_only_policy_cannot_open_enough_space" time="0.036" /><testcase classname="tests.test_lateral_intent" name="test_side_unknown_blocks_recenter_instead_of_trusting_absence" time="0.055" /><testcase classname="tests.test_lateral_intent" name="test_corner_fixed_wall_is_not_a_side_threat" time="0.038" /><testcase classname="tests.test_lateral_intent" name="test_side_to_front_entry_never_steers_toward_it" time="0.044" /><testcase classname="tests.test_lateral_intent" name="test_invalid_transition_does_not_fall_back_to_center" time="0.051"><failure message="AssertionError: assert 'HOLD_OFFSET' == 'YIELD'&#10;  - YIELD&#10;  + HOLD_OFFSET">def test_invalid_transition_does_not_fall_back_to_center():
+        d0 = -.09
+        scene, path = straight(d0, extra=[car(-.40, .13, d0)])
+        limiter = LateralIntentLimiter(GRASS)
+        first, _ = run(scene, path, limiter=limiter)
+&gt;       assert first['mode'] == 'YIELD'
+E       AssertionError: assert 'HOLD_OFFSET' == 'YIELD'
+E         - YIELD
+E         + HOLD_OFFSET
+
+tests/test_lateral_intent.py:290: AssertionError</failure></testcase><testcase classname="tests.test_lateral_intent" name="test_opening_on_grass_side_blocks_grass_yield" time="0.038" /><testcase classname="tests.test_lateral_intent" name="test_both_sides_occupied_is_squeeze_not_yield" time="0.033" /><testcase classname="tests.test_lateral_intent" name="test_faster_hidden_bound_is_never_more_permissive" time="0.204" /><testcase classname="tests.test_lateral_intent" name="test_stopped_center_car_bypass_needs_grass_policy" time="0.018"><failure message="assert False is True">def test_stopped_center_car_bypass_needs_grass_policy():
+        d0 = 0.
+        scene, path = straight(d0, extra=[car(.9, 0., d0)])
+        for cfg, expected in ((ROAD, False), (GRASS, True)):
+            frame = PathFrame(path)
+            state = ego_state(frame, cfg)
+            cand = bypass_candidate(frame, state, ObservationGrid(scene, cfg).returns, 'right', cfg, stationary=True)
+            assert cand is not None
+&gt;           assert surface_check(frame, cand, cfg, current_pose=(0, 0, 0))['ok'] is expected
+E           assert False is True
+
+tests/test_lateral_intent.py:335: AssertionError</failure></testcase><testcase classname="tests.test_lateral_intent" name="test_coarse_cell_coordinates_match_exact_projection_on_curve" time="0.159" /></testsuite></testsuites>

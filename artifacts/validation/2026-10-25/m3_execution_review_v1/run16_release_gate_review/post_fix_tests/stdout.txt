@@ -1,0 +1,21 @@
+....F.............................................                       [100%]
+=================================== FAILURES ===================================
+________ test_controller_epoch_transition_cannot_erase_an_active_threat ________
+
+    def test_controller_epoch_transition_cannot_erase_an_active_threat():
+        controller = ctl(mx.ExecutionConfig(release_to_baseline=True))
+        h = history()
+        for k in range(7):
+            t = .5+.1*k
+            scene, _ = timed_scene(t, D0, extra=[car(.30, .13, D0)])
+            controller.command(scene, h, 0., 'left')
+>       assert controller.lateral.active
+E       assert False
+E        +  where False = <arena_autonomy.m3_execution_trial.ExecutionLateralTrial object at 0x7997464fe990>.active
+E        +    where <arena_autonomy.m3_execution_trial.ExecutionLateralTrial object at 0x7997464fe990> = <arena_autonomy.m3_execution_trial.M3ExecutionFollow object at 0x7997445eec60>.lateral
+
+tests/test_m3_release_gate_review.py:61: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-25/m3_execution_review_v1/run16_release_gate_review/post_fix_tests/pytest.xml -
+=========================== short test summary info ============================
+FAILED tests/test_m3_release_gate_review.py::test_controller_epoch_transition_cannot_erase_an_active_threat
+1 failed, 49 passed in 11.93s

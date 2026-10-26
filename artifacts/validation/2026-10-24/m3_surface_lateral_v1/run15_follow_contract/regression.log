@@ -1,0 +1,24 @@
+.......F............                                                     [100%]
+=================================== FAILURES ===================================
+_____ test_actual_candidate_output_requires_two_distinct_scans_after_hold ______
+
+    def test_actual_candidate_output_requires_two_distinct_scans_after_hold():
+        follow, h = ctl(), history()
+        _, path = timed_scene(.4)
+        force_candidate(follow, path)
+        for now in (.4, .42, .44, .46):
+            # 같은 원본 스캔의 현재 시각만 진행시킨다.
+            s = replace(timed_scene(.4)[0], t_ref_s=now)
+            out = follow.command(s, h, 0., 'left')
+            assert out[0] == 0
+        assert out[2]['reason'] == 'm3_release_wait'
+        out = follow.command(timed_scene(.5)[0], h, 0., 'left')
+>       assert out[0] > 0 and out[2]['reason'] == 'm3_observed_trial'
+E       assert (0.0 > 0)
+
+tests/test_m3_observed_follow.py:88: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-24/m3_surface_lateral_v1/run15_follow_contract/regression.xml -
+=========================== short test summary info ============================
+FAILED tests/test_m3_observed_follow.py::test_actual_candidate_output_requires_two_distinct_scans_after_hold
+1 failed, 19 passed in 1.72s
+pytest_exit_code=1

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-25 M3 기본 false 시뮬레이션 연결의 출처 기록. 기본 채택·주행 안전 승인 아님",
+  "parent_contract": "config/tests/b3_race_session_r0_sha256.json",
+  "parent_contract_sha256": "d1943978dba3c5e498b1898fc0bf3c037f4d9a97ad3b9be3c0e60638e06f1d20",
+  "before_snapshot": "artifacts/validation/2026-10-24/b3_race_session_ros_v2/source_snapshot_before.tar.gz",
+  "before_snapshot_sha256": "d2f081cefc4aed553364e25ed5609b2bf1003283415496743aedf7b369764516",
+  "changes": {
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "1a1183fe9549fff928af290dcdc21fce2585da4b3dcfd61ed0aac09d1ab4ab96",
+      "after": "e78a5756ba181c15f54398672cdd7b3a59d0345c8c2cc2ba8b4f2f1b88fe88b9",
+      "reason": "기본 false M3 선택·시뮬 시간/기록 필수·타입별 오류 모드. 독립 보호 출력 경계 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/follow_trace.py": {
+      "before": "9e53ca2b3d6b099fcd63a493ae22e908238e8d2b1660ef94a267330cdaae84d2",
+      "after": "277b7296b0dff471ca37a491b373b29f49cac0c941beab4295d16379636dabfc",
+      "reason": "M3 schema 3 및 실행 설정 기록/동일 재생. 기존 G1/R0+ schema 유지"
+    },
+    "src/arena_bringup/launch/g1_follow.launch.py": {
+      "before": "096c9c4e29e75a0892e70f0ebf91e98b2e957917531e49087bec7c40a7f16fac",
+      "after": "50f14e48f03b8c08edc199008f4e02cb89b080800a7aa55a660ee38581457177",
+      "reason": "기본 false M3 시뮬레이션 파라미터만 추가"
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "6ff0021626dd6c17d00a63fe61abe020de838e8bd5a71ac60b615f3ec3ebb10a",
+      "after": "b5d4b22f45ef31dcce25a21f36c54909b25796e7eb54db1f48e140f774db10c3",
+      "reason": "명시 m3 평가 모드·실제 소스 보존·기존 행동/정지 판정 유지"
+    },
+    "scripts/g1_traffic_eval.py": {
+      "before": "d3663561ebeea53dd6f37ee25cac1f2b03c5c23e80ec2c72ec8933de1e6d73c9",
+      "after": "307d9c80300357c8beff2fef955498f63ef0ab5811d57b7ef123f4a22305d73e",
+      "reason": "M3 모드 일치 및 행동 기준 적용, R0 비교용 무결성 통과와 분리"
+    }
+  },
+  "dependencies": {
+    "src/arena_autonomy/arena_autonomy/m3_execution_trial.py": "44443d714765d6c5114e597364b6afab0eca3225efb40d4a10efe6c12c1d0011",
+    "src/arena_autonomy/arena_autonomy/m3_observed_follow.py": "24073567e7b17597cc8099b7fb0c2512c5b6523f39c8c1820ba143a76f118c1a",
+    "src/arena_autonomy/arena_autonomy/lateral_intent.py": "fc8b998463a08a5f4f7a05032add78f15604e6c89ea0ea587f8cf30d613dc9f8",
+    "src/arena_autonomy/arena_autonomy/observed_lateral_trial.py": "df27b78b67a51265f25b4587a5147398632dd23356b60eae06e9ecb0831ca7d5"
+  }
+}

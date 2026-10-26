@@ -39,11 +39,15 @@ def local_pose(world_pose, reference):
     return c*dx+s*dy, -s*dx+c*dy, yaw-ryaw
 
 
-def sequential_scene(rows, t_ref, target_height):
+def sequential_scene(rows, t_ref, target_height, *, target_y=.24, rear_half_angle_deg=30., extra_boxes=()):
+    """추가 인수는 평가 장면 대조용이다. 기존 10/13 기본 입력은 유지한다."""
+    if not math.isfinite(target_y) or not 0 <= rear_half_angle_deg < 180:
+        raise ValueError('finite target position and bounded mask required')
     # G0 폐쇄 직선 시험실. 공식 전체 코스도 아니고 상대 차량 동역학도 아니다.
     boxes = [TruthBox(2., sign*.45, .4, Footprint(8., .05), label='wall') for sign in (-1, 1)]
     boxes += [TruthBox(x, 0, .4, Footprint(.05, .95), label='wall') for x in (-2.025, 6.025)]
-    boxes += [TruthBox(1.5, .24, target_height, label='target')]
+    boxes += [TruthBox(1.5, target_y, target_height, label='target')]
+    boxes += list(extra_boxes)
     count, step = 500, .1/500
     first = t_ref-(count-1)*step
     stamps = [first+i*step for i in range(count)]
@@ -65,7 +69,7 @@ def sequential_scene(rows, t_ref, target_height):
     scene = scene_from_scan(ranges, angle_min=-math.pi, angle_increment=math.tau/count,
                             range_min=.05, range_max=12., acquired_at_s=stamps, t_ref_s=t_ref,
                             sensor_xy_m=(.06, 0.), acquisition_to_ref_se2=transforms,
-                            rear_half_angle_deg=30.)
+                            rear_half_angle_deg=rear_half_angle_deg)
     return scene, labels, reference
 
 

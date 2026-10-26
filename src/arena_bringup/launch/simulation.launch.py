@@ -979,8 +979,8 @@ def _launch_setup(context):
                        "LEGACY rear wheel pair selected explicitly; not the selected hardware.")),
         LogInfo(msg=f"Track: {track}; main width: {scene['track']['width_m']} m; "
                     f"shortcut widths: {[branch['width_m'] for branch in scene['branches']]} m. "
-                    + ("Official v2026.09.14 track and complete gantry markers are preserved; "
-                     "signal, bump profile and checker finish are team-test provisional."
+                    + ("Official v2026.10.24 colors and complete gantry markers are preserved; "
+                     "signal and checker finish are provisional; bump uses published STL visuals with approximate collision."
                      if track == "official" else "Historical reproduction / experimental course.")),
         LogInfo(msg=f"Rear identification marker: enabled={rear_marker['enabled']}; "
                     f"{rear_marker['dictionary']} ID {rear_marker['id']}; "
@@ -1209,6 +1209,7 @@ def _launch_setup(context):
         actions.append(Node(package='arena_vehicle_interface', executable='motion_fault_relay',
                             parameters=[{'use_sim_time': True, 'profile': str(Path(motion_test).resolve()),
                                          'feedback_mode': feedback['mode'],
+                                         'counts_per_motor_revolution': feedback['encoder_node'].get('counts_per_motor_revolution', 0),
                                          'audit_path': str(Path(runtime_artifacts).resolve()/'motion_injection.jsonl') if runtime_artifacts else ''}],
                             output='screen'))
     return actions
@@ -1236,7 +1237,7 @@ def generate_launch_description() -> LaunchDescription:
                 "track",
                 default_value="official",
                 choices=list(TRACK_DIRECTORIES),
-                description="official: v2026.09.14 45/20 cm unchanged gantry markers; experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
+                description="official: v2026.10.24 colors, 45/20 cm unchanged gantry markers; experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
             ),
             DeclareLaunchArgument(
                 "vehicle_config",

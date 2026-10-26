@@ -1,0 +1,31 @@
+FF.                                                                      [100%]
+=================================== FAILURES ===================================
+_____ test_new_same_side_vehicle_cannot_erase_hidden_previous_vehicle[1.0] _____
+
+side = 1.0
+
+    @pytest.mark.parametrize('side', [1., -1.])
+    def test_new_same_side_vehicle_cannot_erase_hidden_previous_vehicle(side):
+        trial, rows = sequence('both', side)
+>       assert not any(row.get('released_to_baseline') for _, row in rows)
+E       assert not True
+E        +  where True = any(<generator object test_new_same_side_vehicle_cannot_erase_hidden_previous_vehicle.<locals>.<genexpr> at 0x793c554c1380>)
+
+tests/test_m3_retained_threats.py:31: AssertionError
+____ test_new_same_side_vehicle_cannot_erase_hidden_previous_vehicle[-1.0] _____
+
+side = -1.0
+
+    @pytest.mark.parametrize('side', [1., -1.])
+    def test_new_same_side_vehicle_cannot_erase_hidden_previous_vehicle(side):
+        trial, rows = sequence('both', side)
+>       assert not any(row.get('released_to_baseline') for _, row in rows)
+E       assert not True
+E        +  where True = any(<generator object test_new_same_side_vehicle_cannot_erase_hidden_previous_vehicle.<locals>.<genexpr> at 0x793c56ddf4c0>)
+
+tests/test_m3_retained_threats.py:31: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-25/m3_execution_review_v1/run43_memory_regression_before/pytest.xml -
+=========================== short test summary info ============================
+FAILED tests/test_m3_retained_threats.py::test_new_same_side_vehicle_cannot_erase_hidden_previous_vehicle[1.0]
+FAILED tests/test_m3_retained_threats.py::test_new_same_side_vehicle_cannot_erase_hidden_previous_vehicle[-1.0]
+2 failed, 1 passed in 5.19s

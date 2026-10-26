@@ -1,0 +1,29 @@
+........................................................................ [ 34%]
+........................................................................ [ 69%]
+...............................FF..............................          [100%]
+=================================== FAILURES ===================================
+______ test_large_center_is_still_first_and_accepted_center_is_unchanged _______
+
+    def test_large_center_is_still_first_and_accepted_center_is_unchanged():
+        on, seen, _ = step_order(ON, -.09)
+        off, old_seen, _ = step_order(OFF, -.09)
+        assert list(on['checks'])[0] == list(off['checks'])[0] == 'center'
+>       assert on['selected'] == off['selected'] == 'center' and seen == old_seen
+E       AssertionError: assert ('straight' == 'hold'
+E         - hold
+E         + straight)
+
+tests/test_m3_straight_before_hold.py:56: AssertionError
+___ test_rejected_center_tries_straight_before_hold_but_keeps_center_failure ___
+
+    def test_rejected_center_tries_straight_before_hold_but_keeps_center_failure():
+        out, seen, follow = step_order(ON, -.09, accept=lambda name: name != 'center')
+        assert list(out['checks'])[:2] == ['center', 'straight']
+>       assert not out['checks']['center']['command']['accepted']
+E       KeyError: 'command'
+
+tests/test_m3_straight_before_hold.py:62: KeyError
+=========================== short test summary info ============================
+FAILED tests/test_m3_straight_before_hold.py::test_large_center_is_still_first_and_accepted_center_is_unchanged
+FAILED tests/test_m3_straight_before_hold.py::test_rejected_center_tries_straight_before_hold_but_keeps_center_failure
+2 failed, 205 passed in 39.42s

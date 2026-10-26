@@ -1,0 +1,159 @@
+............F........................................................... [ 29%]
+........................................................................ [ 59%]
+........................................................................ [ 89%]
+...F...F..........F.......                                               [100%]
+=================================== FAILURES ===================================
+_ test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes _
+
+    def test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes():
+        import hashlib
+        import json
+        from pathlib import Path
+        root=Path(__file__).resolve().parents[1]
+        contract=json.loads((root/'config/tests/corner_anchor_r0_sha256.json').read_text())
+        parent=root/contract['parent_contract']
+        assert hashlib.sha256(parent.read_bytes()).hexdigest()==contract['parent_contract_sha256']
+        previous=json.loads(parent.read_text())
+        successor=json.loads((root/'config/tests/corner_distance_r0_sha256.json').read_text())
+        assert successor['parent_contract']=='config/tests/corner_anchor_r0_sha256.json'
+        assert hashlib.sha256((root/successor['parent_contract']).read_bytes()).hexdigest()==successor['parent_contract_sha256']
+        corridor=json.loads((root/'config/tests/corridor_fallback_r0_sha256.json').read_text())
+        assert corridor['parent_contract']=='config/tests/corner_distance_r0_sha256.json'
+        assert hashlib.sha256((root/corridor['parent_contract']).read_bytes()).hexdigest()==corridor['parent_contract_sha256']
+        recent=json.loads((root/'config/tests/recent_observation_r0_sha256.json').read_text())
+        assert recent['parent_contract']=='config/tests/corridor_fallback_r0_sha256.json'
+        assert hashlib.sha256((root/recent['parent_contract']).read_bytes()).hexdigest()==recent['parent_contract_sha256']
+        followers,parent_name=[],'config/tests/recent_observation_r0_sha256.json'
+        for name in ('r0_plus_e3_r0_sha256.json','b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json'):
+            follower=json.loads((root/'config/tests'/name).read_text(encoding='utf-8'))
+            assert follower['parent_contract']==parent_name
+            assert hashlib.sha256((root/parent_name).read_bytes()).hexdigest()==follower['parent_contract_sha256']
+            followers.append(follower)
+            parent_name='config/tests/'+name
+        for group in ('approved_changes','approved_evaluation_scripts'):
+            for path,row in contract[group].items():
+                assert row['before']==previous[group][path]['after']
+                later=successor[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                later=corridor[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                later=recent[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                # 10/24 R0+/B3 successor provenance (old contracts unchanged, parent hashes checked)
+                for follower in followers:
+                    later=follower[group].get(path)
+                    if later:
+                        assert later['before']==row['after']
+                        row=later
+                assert hashlib.sha256((root/path).read_bytes()).hexdigest()==row['after']
+        for path,value in contract['new_dependencies'].items():
+            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+        for path,value in successor['new_dependencies'].items():
+            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+        for path,value in corridor['new_dependencies'].items():
+            if path in recent['modified_dependencies']:
+                change=recent['modified_dependencies'][path]
+                assert change['before']==value
+                value=change['after']
+            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+        for path,value in recent['new_dependencies'].items():
+            parent_name='config/tests/recent_observation_r0_sha256.json'
+            for name in ('recent_observation_precision_r0_sha256.json','recent_observation_cost_r0_sha256.json',
+                         'recent_observation_wedge_r0_sha256.json','recent_observation_depth_r0_sha256.json',
+                         'recent_observation_transport_r0_sha256.json','recent_observation_window_r0_sha256.json',
+                         'recent_observation_origin_r0_sha256.json','recent_observation_query_batch_r0_sha256.json'):
+                extension=json.loads((root/'config/tests'/name).read_text())
+                assert extension['parent_contract']==parent_name
+                assert hashlib.sha256((root/parent_name).read_bytes()).hexdigest()==extension['parent_contract_sha256']
+                if path in extension['modified_dependencies']:
+                    change=extension['modified_dependencies'][path]
+                    assert change['before']==value
+                    value=change['after']
+                parent_name='config/tests/'+name
+            # 초기 추가 의존성도 이후 본선 계약에서 명시 수정될 수 있다. 이전 bytes에서
+            # 최신 bytes까지 사슬을 확인하며 옛 계약의 고정값 자체는 덮어쓰지 않는다.
+            for follower in followers:
+                later=follower['approved_changes'].get(path)
+                if later:
+>                   assert later['before']==value
+E                   AssertionError: assert 'd151d7ce5ed3...ae3ced74bc8bd' == '883a0545b9f6...a3e0d1ef49832'
+E                     - 883a0545b9f6c5568fba5bc243e66f277e20d55df4d28b2793da3e0d1ef49832
+E                     + d151d7ce5ed3668190f6d458757181fca196de018cb41449b72ae3ced74bc8bd
+
+tests/test_corner_follow.py:198: AssertionError
+_________________ test_registered_r7_chain_and_current_source __________________
+
+    def test_registered_r7_chain_and_current_source():
+        import hashlib
+        sha=lambda p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest()
+        path='config/tests/scheduled_command_r7_sha256.json'
+        c=json.loads((ROOT/path).read_text())
+        parent=json.loads((ROOT/c['parent_contract']).read_text())
+        assert sha(c['parent_contract'])==c['parent_contract_sha256']
+        before=json.loads((ROOT/'artifacts/validation/2026-10-11/scheduled_apply_v1/before_manifest.json').read_text())
+        expected=dict(parent['sha256']);impl=dict(parent['implementation_sha256'])
+        for group,dest in [('approved_changes',expected),('approved_evaluation_scripts',expected),
+                           ('approved_implementation_changes',impl)]:
+            for p,change in c[group].items():
+                assert change['before']==before.get(p)
+>               assert change['after']==sha(p)
+E               AssertionError: assert 'a027f83a1a7f...6a2de30e6f499' == 'c1cac87b402d...e64eadbc70e48'
+E                 - c1cac87b402d3384f8c123fc6d73909551dc576319bda83a04be64eadbc70e48
+E                 + a027f83a1a7f0d8b9b275985edc351acd8db8fcf760a29d6ff56a2de30e6f499
+
+tests/test_scheduled_apply.py:181: AssertionError
+_ test_m3_successor_records_current_bytes_without_rewriting_previous_contract __
+
+    def test_m3_successor_records_current_bytes_without_rewriting_previous_contract():
+        contract = load('config/tests/m3_execution_r0_sha256.json')
+        assert contract['changes'] == {**contract['approved_changes'], **contract['approved_evaluation_scripts']}
+        assert contract['parent_contract'] == B3
+        assert sha((ROOT/B3).read_bytes()) == contract['parent_contract_sha256']
+        snapshot = ROOT/contract['before_snapshot']
+        if snapshot.is_file():
+            assert sha(snapshot.read_bytes()) == contract['before_snapshot_sha256']
+            with tarfile.open(snapshot) as archive:
+                for path, row in contract['changes'].items():
+                    assert sha(archive.extractfile(path).read()) == row['before']
+        for path, row in contract['changes'].items():
+            assert row['reason'].strip()
+>           assert m3_revision_digest(path) == row['after'] != row['before']
+E           AssertionError: assert '556268861192...f45b085c26a90' == '277b7296b0df...16379636dabfc'
+E             - 277b7296b0dff471ca37a491b373b29f49cac0c941beab4295d16379636dabfc
+E             + 5562688611925b5851dcba136ef0f88de6debe76f6349769b68f45b085c26a90
+
+tests/test_source_provenance_r0_plus_b3.py:160: AssertionError
+__ test_oct26_guarded_return_and_second_start_have_preserved_source_chain[10] __
+
+index = 10
+
+    @pytest.mark.parametrize('index', [10, 11, 12, 13, 14, 15, 16, 17])
+    def test_oct26_guarded_return_and_second_start_have_preserved_source_chain(index):
+        child = load(M3_SUCCESSORS[index])
+        assert child['parent_contract'] == M3_SUCCESSORS[index-1]
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for group in GROUPS:
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(archive.read(path)) == row['before'] != row['after']
+>                   assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+E                   AssertionError: assert 'd151d7ce5ed3...ae3ced74bc8bd' == '883a0545b9f6...a3e0d1ef49832'
+E                     - 883a0545b9f6c5568fba5bc243e66f277e20d55df4d28b2793da3e0d1ef49832
+E                     + d151d7ce5ed3668190f6d458757181fca196de018cb41449b72ae3ced74bc8bd
+
+tests/test_source_provenance_r0_plus_b3.py:318: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-26/official_v2026_10_24_update/run4_integration_repairs/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_corner_follow.py::test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
+FAILED tests/test_scheduled_apply.py::test_registered_r7_chain_and_current_source
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_m3_successor_records_current_bytes_without_rewriting_previous_contract
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[10]
+4 failed, 238 passed in 19.47s

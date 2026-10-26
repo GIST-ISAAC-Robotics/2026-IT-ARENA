@@ -22,6 +22,19 @@ def test_default_launch_stays_unmodified():
     assert helpers()['g1_solo_arguments'](False, 'connected', 'oldest', False, '/tmp') == []
 
 
+def test_r0_solo_accepts_existing_one_mps_profile_without_default_change():
+    """교통 비교와 동일한 기존 프로필을 단독 CLI에서도 명시 선택한다."""
+    tree = ast.parse(SOURCE.read_text())
+    calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Attribute) and node.func.attr == 'add_argument'
+             and node.args and isinstance(node.args[0], ast.Constant)
+             and node.args[0].value == '--speed-profile']
+    assert len(calls) == 1
+    options = {kw.arg: ast.literal_eval(kw.value) for kw in calls[0].keywords}
+    assert options['default'] == 'cautious'
+    assert 'g1_compare_1mps' in options['choices']
+
+
 @pytest.mark.parametrize('enabled,boundary,occupancy,record', [
     (False,'connected','oldest',False), (True,'connected','per_ray_candidate',True),
     (True,'corner_distance_candidate','oldest',True), (True,'corner_distance_candidate','per_ray_candidate',False)])

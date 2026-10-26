@@ -7,14 +7,17 @@ import re
 import subprocess
 from zipfile import ZipFile
 
-from build_official_track import ARCHIVE, DESTINATION, REPO, sha256, verify_archive
+from build_official_track import DESTINATION, REPO, sha256, verify_archive
+
+# 이 과거 감사의 입력을 현재 기본 릴리스로 바꾸지 않습니다.
+ARCHIVE=REPO/'assets/track/official/v2026.09.14/it_arena_track_v2026.09.14.zip'
 
 OUT = REPO / 'artifacts/validation/2026-09-15/official_update'
 WORK = REPO / 'build/official_update_20260915'
 
 
 def main():
-    archive = verify_archive()
+    archive = verify_archive(ARCHIVE)
     raw = WORK / 'fixtures/raw'
     raw.mkdir(parents=True, exist_ok=False)
     with ZipFile(ARCHIVE) as current:

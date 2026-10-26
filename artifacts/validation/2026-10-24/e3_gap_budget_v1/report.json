@@ -1,0 +1,59 @@
+{
+  "scope": "static lateral projection decomposition, not counterfactual control or a new verdict",
+  "source_sha256": {
+    "artifacts/validation/2026-10-24/e3_gap_budget_v1/analyze.py": "8f50f5b0c956ed8b5425b1fbeeb1c9a7015a8bab730119f35bd8f926d851ff22",
+    "artifacts/validation/2026-10-24/e3_onroad_analysis_v1/g1.json": "49315c8666a151183d8d1a724446bab1741769980b9d310fecae92453e4574cc",
+    "artifacts/validation/2026-10-24/e3_onroad_geometry_v1/report.json": "7775143befa16113bf57fa3881b17c75eacd86ef0ed4b176631c7553a4710fe3",
+    "config/tests/e3_onroad_encounter_v1.json": "549b0c5dd0c521cba023567fc0c03f5737096c96cc33c7b582cda5ab38972fa6",
+    "scripts/g1_traffic_eval.py": "d3663561ebeea53dd6f37ee25cac1f2b03c5c23e80ec2c72ec8933de1e6d73c9"
+  },
+  "formula": "gap = y_actor-y_ego-(L*abs(sin(yaw))+W*abs(cos(yaw)))/2-W_actor/2",
+  "dimensions_m": {
+    "ego_length": 0.2,
+    "ego_width": 0.15,
+    "actor_width": 0.15
+  },
+  "time_s": 5.44,
+  "nominal_actor_y_m": 0.13,
+  "actor_yaw_from_road_assumed_rad": 0.0,
+  "rows": [
+    {
+      "case": "initial_parallel",
+      "ego_y_m": -0.09000073927551683,
+      "yaw_rad": 0.0,
+      "lateral_projection_gap_m": 0.07000073927551682
+    },
+    {
+      "case": "translation_only",
+      "ego_y_m": -0.05005626237441744,
+      "yaw_rad": 0.0,
+      "lateral_projection_gap_m": 0.030056262374417442
+    },
+    {
+      "case": "yaw_only",
+      "ego_y_m": -0.09000073927551683,
+      "yaw_rad": 0.18323895427100778,
+      "lateral_projection_gap_m": 0.053034814084906665
+    },
+    {
+      "case": "observed_translation_and_yaw",
+      "ego_y_m": -0.05005626237441744,
+      "yaw_rad": 0.18323895427100778,
+      "lateral_projection_gap_m": 0.013090337183807269
+    }
+  ],
+  "translation_loss_m": 0.03994447690109939,
+  "rotation_loss_m": 0.016965925190610173,
+  "total_projection_loss_m": 0.05691040209170956,
+  "original_sampled_polygon_gap_m": 0.013090031112108397,
+  "original_requested_speed_mps": 0.0,
+  "original_motor_feedback_mps": 0.0,
+  "original_behavior": "HOLD",
+  "geometric_identity_checks": 7,
+  "limitations": [
+    "registered straight actor pose, not exact contact reconstruction",
+    "four static combinations do not prove dynamically achievable trajectories",
+    "no sensor-noise allowance or lateral safety threshold adopted",
+    "positive projection gap is a separating-axis lower bound, not general polygon distance"
+  ]
+}

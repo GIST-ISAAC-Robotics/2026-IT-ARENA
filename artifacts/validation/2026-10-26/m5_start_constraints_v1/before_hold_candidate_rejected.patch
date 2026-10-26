@@ -1,0 +1,306 @@
+--- a/src/arena_autonomy/arena_autonomy/m3_execution_trial.py
++++ b/src/arena_autonomy/arena_autonomy/m3_execution_trial.py
+@@ -101,6 +101,9 @@
+     # 측방 위협 중에도 현재 방향이 기준 경로에 평행하고 전체 간격/관측 검사를 통과하면 직진을 먼저 비교한다.
+     # 위협이 사라진 뒤 중앙 복귀 순서는 바꾸지 않는다. 기본 OFF 시험 선택이다.
+     straight_with_threat: bool = False
++    # 위협 소멸 후에도 평행 직진을 hold보다 먼저 검사한다. 큰 중앙 복귀는 먼저 검사하고,
++    # 직진이 거절되면 원래 hold를 검사한다. 미세 hold 조향으로 생기는 반복 정지의 기본 OFF 비교.
++    straight_before_hold: bool = False
+     reaction_s: float = .10          # 기존 보호 반응 상수(local_path.braking_speed)
+     deceleration_mps2: float = 2.0   # 기존 보호 감속 상수. 실차 제동 검증값이 아니다
+     history_motion_bound_mps: float = .5   # 기존 점유 취득 시차 팽창과 같은 물체 이동 상계
+@@ -109,13 +112,16 @@
+         if any(type(v) is not bool for v in (self.masked_history_support, self.straight_start, self.command_fallback,
+                                              self.release_to_baseline, self.small_center_straight,
+                                              self.straight_surface_commitment, self.rounded_occupancy,
+-                                             self.straight_with_threat)):
++                                             self.straight_with_threat, self.straight_before_hold)):
+             raise ValueError('execution options must be bool')
+         if self.small_center_straight and not self.release_to_baseline:
+             # 기존 '중앙 후보 선택 = 시험 종료' 경로를 직진 선택이 건너뛰므로 관측 기반 복귀와만 비교한다.
+             raise ValueError('small center straight requires observed release to baseline')
+         if self.straight_with_threat and not (self.straight_start and self.command_fallback):
+             raise ValueError('straight with threat requires straight start and command fallback')
++        if self.straight_before_hold and not (self.straight_start and self.command_fallback
++                                              and self.release_to_baseline):
++            raise ValueError('straight before hold requires straight start, command fallback and observed release')
+         if self.straight_surface_commitment and not (self.release_to_baseline and self.command_fallback
+                                                       and self.straight_start):
+             raise ValueError('straight surface commitment requires observed release, command fallback and straight start')
+@@ -193,8 +199,8 @@
+ def parallel_straight_check(straight, state, cfg):
+     """현재 횡위치에서 추가로 벗어날 양을 계획 전체에서 확인한다. 안전 판정·복귀 조건이 아니다.
+ 
+-    측방 위협이 있을 때만 선택 순서에 쓰고, 노면/측방 간격·점유·발행 외곽은 별도 원래 검사로 남긴다.
+-    위협 소멸 뒤에는 이 검사를 쓰지 않으므로 큰 중앙 복귀를 생략하지 않는다.
++    선택 순서에만 쓰고 노면/측방 간격·점유·발행 외곽은 별도 원래 검사로 남긴다.
++    위협 중 직진 우선과 위협 소멸 뒤 hold 앞 직진에 사용한다. 후자는 큰 중앙 복귀보다 먼저 선택하지 않는다.
+     """
+     offsets = np.asarray(straight['offset'], dtype=float)
+     drift = float(np.max(np.abs(offsets-state['d_rear0']))) if len(offsets) else math.inf
+@@ -935,6 +941,11 @@
+             if out['parallel_straight']['ok']:
+                 order.remove('straight')
+                 order.insert(0, 'straight')
++        if self.execution.straight_before_hold and not present:
++            out['parallel_hold_straight'] = parallel_straight_check(candidates['straight'], state, cfg)
++            if out['parallel_hold_straight']['ok'] and order.index('straight') > order.index('hold'):
++                order.remove('straight')
++                order.insert(order.index('hold'), 'straight')
+         # 계획과 선택형 실제 발행 검사를 모두 통과한 첫 후보에서 멈춘다.
+         # command_check는 조향/속도 평가만 하며 재개 카운터·출력 상태를 바꾸지 않는다.
+         checks = {}
+--- a/scripts/simulate_grid_departure.py
++++ b/scripts/simulate_grid_departure.py
+@@ -136,7 +136,8 @@
+         return self.outputs[-1], json.loads(self.statuses[-1].data)
+ 
+ 
+-def simulate(slot, other_slots, segments, road, vehicle, sensor, *, rounded, fault=False, straight_priority=False):
++def simulate(slot, other_slots, segments, road, vehicle, sensor, *, rounded, fault=False, straight_priority=False,
++             hold_priority=False):
+     drivetrain, lidar = vehicle['drivetrain'], vehicle['sensors']['lidar_2d']
+     feedback = vehicle['sensors']['drive_feedback']['drive_motor_encoder']
+     wheelbase = drivetrain['wheelbase_m']
+@@ -151,7 +152,7 @@
+         boundary_evidence_mode='corner_distance_candidate', corridor_fallback_enabled=True)
+     execution = ExecutionConfig(command_fallback=True, release_to_baseline=True,
+         small_center_straight=True, straight_surface_commitment=True, rounded_occupancy=rounded,
+-        straight_with_threat=straight_priority)
++        straight_with_threat=straight_priority, straight_before_hold=hold_priority)
+     controller = M3ExecutionFollow(cfg, execution, allow_simulation_trial=True)
+     guard = IndependentGuard(histories[1], cfg)
+     footprint = Footprint(vehicle['footprint']['length_m'], vehicle['footprint']['width_m'])
+@@ -258,7 +259,7 @@
+             if overlap or wall_gap <= 1e-9 or outside > 2:
+                 plant.speed = 0.
+                 break  # 평가 실패를 기록하고 종료한다. 성공할 때까지 다시 달리지 않는다.
+-    summary = dict(rounded=rounded, fault=fault, straight_priority=straight_priority,
++    summary = dict(rounded=rounded, fault=fault, straight_priority=straight_priority, hold_priority=hold_priority,
+         first_motion_s=started, calls=len(calls),
+         controller_cost_p95_ms=float(np.percentile([c['controller_cost_ms'] for c in calls],95)),
+         controller_cost_max_ms=max(c['controller_cost_ms'] for c in calls),
+@@ -281,8 +282,11 @@
+ def main():
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument('--output', type=Path, required=True)
+-    parser.add_argument('--compare-straight-priority', action='store_true',
++    comparisons = parser.add_mutually_exclusive_group()
++    comparisons.add_argument('--compare-straight-priority', action='store_true',
+         help='registered comparison: rounded ON, straight priority OFF/ON, then ON with central dropout')
++    comparisons.add_argument('--compare-hold-priority', action='store_true',
++        help='registered comparison: rounded and threat priority ON, before-hold OFF/ON, then ON with central dropout')
+     args = parser.parse_args(); output = args.output.resolve()
+     if not output.is_relative_to(ROOT/'artifacts/validation'):
+         parser.error('new validation output required')
+@@ -305,11 +309,16 @@
+     with zipfile.ZipFile(output/'sources.zip', 'x', zipfile.ZIP_DEFLATED) as archive:
+         for name, raw in frozen.items(): archive.writestr(name, raw)
+     results = []
+-    modes = ((True,False,False),(True,False,True),(True,True,True)) if args.compare_straight_priority else (
+-        (False,False,False),(True,False,False),(True,True,False))
+-    for rounded, fault, straight_priority in modes:
++    if args.compare_hold_priority:
++        modes = ((True,False,True,False),(True,False,True,True),(True,True,True,True))
++    elif args.compare_straight_priority:
++        modes = ((True,False,False,False),(True,False,True,False),(True,True,True,False))
++    else:
++        modes = ((False,False,False,False),(True,False,False,False),(True,True,False,False))
++    for rounded, fault, straight_priority, hold_priority in modes:
+         results.append(simulate(ego, [s for s in slots if s != ego], segments, road, vehicle, sensor,
+-                                rounded=rounded, fault=fault, straight_priority=straight_priority))
++                                rounded=rounded, fault=fault, straight_priority=straight_priority,
++                                hold_priority=hold_priority))
+         print(json.dumps(results[-1]['summary']), flush=True)
+     unchanged = all((ROOT/n).read_bytes() == b for n, b in frozen.items())
+     report = dict(cases=results, sources_unchanged=unchanged, source_sha256={n:hashlib.sha256(b).hexdigest() for n,b in frozen.items()},
+--- a/scripts/compare_m3_straight_priority.py
++++ b/scripts/compare_m3_straight_priority.py
+@@ -18,9 +18,11 @@
+ from probe_grid_follow import ROOT
+ 
+ 
+-def replay(events, enabled):
++def replay(events, enabled, before_hold=False):
+     header = events[0]['data']
+-    config = replace(ExecutionConfig(**header['execution_config']), straight_with_threat=enabled)
++    config = replace(ExecutionConfig(**header['execution_config']),
++        **({'straight_with_threat': True, 'straight_before_hold': enabled} if before_hold else
++           {'straight_with_threat': enabled}))
+     controller = M3ExecutionFollow(FollowConfig(**header['follow_config']), config, allow_simulation_trial=True)
+     motion = MotionConfig(**header['motion_config'])
+     rows = []
+@@ -41,7 +43,7 @@
+ def compare(off, on):
+     if len(off) != len(on): raise ValueError('event alignment lost')
+     different = []
+-    nonthreat_changes, return_changes, record_changes = [], [], []
++    nonthreat_changes, return_changes, record_changes, accepted_center_changes = [], [], [], []
+     for index, (a, b) in enumerate(zip(off,on)):
+         if a.get('reset'):
+             assert b.get('reset')
+@@ -55,6 +57,7 @@
+         if not has_threat and change: nonthreat_changes.append(index)
+         state = oa.get('state',{})
+         if not has_threat and abs(state.get('d0',0)) >= .08 and change: return_changes.append(index)
++        if oa.get('selected') == 'center' and change: accepted_center_changes.append(index)
+         if oa.get('release_gate') != ob.get('release_gate') or oa.get('threats') != ob.get('threats'):
+             record_changes.append(index)
+     metrics = []
+@@ -67,12 +70,14 @@
+             selected=dict(Counter(r['output'][2].get('m3_candidate','none') for r in calls)),
+             p95_ms=float(np.percentile(times,95)),max_ms=max(times)))
+     return dict(metrics=metrics,changed_actions=different,nonthreat_changed_calls=nonthreat_changes,
+-        large_return_changed_calls=return_changes,threat_or_release_gate_changes=record_changes)
++        large_return_changed_calls=return_changes,threat_or_release_gate_changes=record_changes,
++        accepted_center_changed_calls=accepted_center_changes)
+ 
+ 
+ def main():
+     parser=argparse.ArgumentParser(description=__doc__)
+     parser.add_argument('--output',type=Path,required=True)
++    parser.add_argument('--compare-hold-priority',action='store_true')
+     args=parser.parse_args(); output=args.output.resolve()
+     if not output.is_relative_to(ROOT/'artifacts/validation'): parser.error('new validation directory required')
+     output.mkdir(parents=True,exist_ok=False)
+@@ -90,11 +95,13 @@
+     details, summaries = {}, {}
+     for name,path in zip(names,paths):
+         raw=path.read_bytes(); events=[json.loads(line) for line in raw.decode('utf-8').splitlines()]
+-        off,on=replay(events,False),replay(events,True)
++        off,on=replay(events,False,args.compare_hold_priority),replay(events,True,args.compare_hold_priority)
+         report=compare(off,on)
+-        expected_path=ROOT/'artifacts/validation/2026-10-26/m3_rear_residual_v1/cachefix_runs/run7_premises_cachefix'/(
+-            name+'__plain.json')
++        expected_path=(ROOT/'artifacts/validation/2026-10-26/m5_start_constraints_v1/run21_priority_saved/data/report.json'
++            if args.compare_hold_priority else
++            ROOT/'artifacts/validation/2026-10-26/m3_rear_residual_v1/cachefix_runs/run7_premises_cachefix'/(name+'__plain.json'))
+         expected_raw=expected_path.read_bytes(); expected=json.loads(expected_raw)
++        if args.compare_hold_priority: expected=expected['cases'][name]['on']
+         differences=[]
+         if len(off)!=len(expected):raise ValueError('expected event alignment lost')
+         for i,(row,record) in enumerate(zip(off,expected)):
+@@ -102,7 +109,7 @@
+                 match=record=={'reset':True}
+             else:
+                 digest=hashlib.sha256(json.dumps(row['output'],sort_keys=True).encode()).hexdigest()
+-                match=digest==record['sha']
++                match=(row['output']==record['output']) if args.compare_hold_priority else digest==record['sha']
+             if not match:differences.append(i)
+         report.update(off_expected_differences=differences,
+             expected_sha256=hashlib.sha256(expected_raw).hexdigest(),
+@@ -114,6 +121,7 @@
+         print(json.dumps({name:summaries[name]}),flush=True)
+     unchanged=all((ROOT/n).read_bytes()==b for n,b in frozen.items())
+     common=dict(source_sha256={n:hashlib.sha256(b).hexdigest() for n,b in frozen.items()},
++        comparison='straight_before_hold' if args.compare_hold_priority else 'straight_with_threat',
+         sources_unchanged=unchanged,driving_authorized=False,
+         scope='fixed stored sensor inputs; changed commands do not update next sensor scene')
+     (output/'report.json').write_text(json.dumps(dict(common,cases=details),ensure_ascii=False),encoding='utf-8')
+--- /dev/null
++++ b/tests/test_m3_straight_before_hold.py
+@@ -0,0 +1,103 @@
++"""위협 소멸 뒤 hold 미세 조향의 대안. 중앙 복귀/관측/해제 장부는 유지한다."""
++from dataclasses import replace
++
++import numpy as np
++import pytest
++
++import arena_autonomy.m3_execution_trial as mx
++from test_local_follow import history
++from test_m3_execution_trial import padding
++from test_m3_observed_follow import timed_scene
++from test_m3_parallel_straight import trial as threat_trial, ON as THREAT_ON
++from test_m3_small_center_straight import active, step_order, road_path, GRASS
++
++OFF = mx.ExecutionConfig(command_fallback=True, release_to_baseline=True)
++ON = replace(OFF, straight_before_hold=True)
++
++
++def test_default_off_and_required_contracts():
++    assert not mx.ExecutionConfig().straight_before_hold
++    for values in ({'straight_before_hold': 1}, {'straight_before_hold': True},
++                   {'command_fallback': True, 'straight_before_hold': True},
++                   {'command_fallback': True, 'release_to_baseline': True,
++                    'straight_start': False, 'straight_before_hold': True}):
++        with pytest.raises(ValueError): mx.ExecutionConfig(**values)
++
++
++def waiting(execution, *, reject=False, dropout=None, altered_path=None):
++    follow = active(execution, -.09)
++    follow.clear_fresh = 0
++    scene, path = timed_scene(.4, -.09, dropout=dropout)
++    checked = []
++    def command(name, _):
++        checked.append(name)
++        return {'accepted': not reject or name != 'straight',
++                'reason': 'test_straight_rejection' if reject and name == 'straight' else None}
++    out = follow.step(scene, [], path if altered_path is None else altered_path, .35,
++                      padding(scene), command, history=history())
++    return out, checked, follow
++
++
++def test_wait_for_fresh_center_prefers_parallel_straight_without_releasing():
++    on, seen, a = waiting(ON)
++    off, _, b = waiting(OFF)
++    assert 'center' not in on['checks'] and list(on['checks'])[0] == 'straight'
++    assert list(off['checks'])[0] == 'hold'
++    assert on['selected'] == 'straight' and seen == ['straight']
++    assert a.active and a.clear_fresh == b.clear_fresh == 1
++    assert on['threats'] == off['threats'] and on['release_gate'] == off['release_gate']
++    assert a.records == b.records and a.release_records == b.release_records
++
++
++def test_large_center_is_still_first_and_keeps_real_geometry_rejection():
++    on, seen, _ = step_order(ON, -.09)
++    off, old_seen, _ = step_order(OFF, -.09)
++    assert list(on['checks'])[0] == list(off['checks'])[0] == 'center'
++    # 이 합성 장면의 큰 복귀는 실제 후방 관측 검사에서 거절된다. 허용된 복귀로 오인하지 않는다.
++    assert on['checks']['center'] == off['checks']['center']
++    assert not on['checks']['center']['eligible_for_trial']
++    assert on['selected'] == 'straight'
++
++
++def test_accepted_center_is_unchanged():
++    on, seen, _ = step_order(ON, 0.)
++    off, old_seen, _ = step_order(OFF, 0.)
++    assert list(on['checks'])[0] == list(off['checks'])[0] == 'center'
++    assert on['selected'] == off['selected'] == 'center' and seen == old_seen
++
++
++def test_rejected_center_tries_straight_before_hold_but_keeps_center_failure():
++    out, seen, follow = step_order(ON, 0., accept=lambda name: name != 'center')
++    assert list(out['checks'])[:2] == ['center', 'straight']
++    assert not out['checks']['center']['command']['accepted']
++    assert out['selected'] == 'straight' and follow.active
++
++
++def test_straight_command_rejection_falls_back_and_keeps_record():
++    out, seen, _ = waiting(ON, reject=True)
++    assert list(out['checks'])[:2] == ['straight', 'hold']
++    assert seen[0] == 'straight' and out['selected'] != 'straight'
++    assert not out['checks']['straight']['command']['accepted']
++
++
++def test_unknown_is_not_made_free():
++    out, _, _ = waiting(ON, dropout=lambda deg: np.abs(deg)<12.)
++    assert out['selected'] != 'straight'
++    assert 'current_sweep_unobserved' in out['checks']['straight']['reasons']
++
++
++@pytest.mark.parametrize('path', [road_path(-.09,.03), road_path(-.09,0.,1.2)])
++def test_heading_drift_or_curve_preserves_original_order(path):
++    on, _, _ = waiting(ON, altered_path=path)
++    off, _, _ = waiting(OFF, altered_path=path)
++    assert not on['parallel_hold_straight']['ok']
++    assert list(on['checks']) == list(off['checks'])
++    assert on['selected'] == off['selected']
++
++
++def test_present_threat_order_and_checks_unchanged():
++    on, seen, _ = threat_trial(replace(THREAT_ON, straight_before_hold=True))
++    off, old_seen, _ = threat_trial(THREAT_ON)
++    assert 'parallel_hold_straight' not in on
++    assert on['checks'] == off['checks'] and seen == old_seen
++    assert on['release_gate'] == off['release_gate'] and on['selected'] == off['selected']

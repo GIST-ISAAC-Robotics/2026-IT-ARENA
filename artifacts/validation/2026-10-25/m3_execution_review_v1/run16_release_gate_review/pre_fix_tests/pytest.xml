@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="4" time="1.244" timestamp="2026-10-25T04:53:30.809282" hostname="DESKTOP-KA11CHH"><testcase classname="tests.test_m3_release_gate_review" name="test_empty_record_does_not_turn_next_unknown_scan_into_release" time="0.081"><failure message="AssertionError: {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],&#10;   ...     ],&#10;         [ 1.49428571,  0.09      ],&#10;         [ 1.54714286,  0.09      ],&#10;         [ 1.6       ,  0.09      ]]), ...}&#10;assert not True&#10; +  where True = &lt;built-in method get of dict object at 0x723bc71e4180&gt;('released_to_baseline')&#10; +    where &lt;built-in method get of dict object at 0x723bc71e4180&gt; = {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],\n ...     ],\n       [ 1.49428571,  0.09      ],\n       [ 1.54714286,  0.09      ],\n       [ 1.6       ,  0.09      ]]), ...}.get">def test_empty_record_does_not_turn_next_unknown_scan_into_release():
+        trial = mx.ExecutionLateralTrial(GRASS, mx.ExecutionConfig(release_to_baseline=True))
+        first = call(trial, 1., [car(.30, .13, D0)])
+        assert first['threats']['left']['present']
+        cleared = call(trial, 1.1)
+        assert not cleared.get('released_to_baseline')
+        unknown = call(trial, 1.2, dropout=lambda deg: np.ones_like(deg, dtype=bool))
+&gt;       assert not unknown.get('released_to_baseline'), unknown
+E       AssertionError: {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],
+E          ...     ],
+E                [ 1.49428571,  0.09      ],
+E                [ 1.54714286,  0.09      ],
+E                [ 1.6       ,  0.09      ]]), ...}
+E       assert not True
+E        +  where True = &lt;built-in method get of dict object at 0x723bc71e4180&gt;('released_to_baseline')
+E        +    where &lt;built-in method get of dict object at 0x723bc71e4180&gt; = {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],\n ...     ],\n       [ 1.49428571,  0.09      ],\n       [ 1.54714286,  0.09      ],\n       [ 1.6       ,  0.09      ]]), ...}.get
+
+tests/test_m3_release_gate_review.py:31: AssertionError</failure></testcase><testcase classname="tests.test_m3_release_gate_review" name="test_active_threat_history_loss_is_not_baseline_permission[epoch]" time="0.039"><failure message="AssertionError: {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],&#10;   ...     ],&#10;         [ 1.49428571,  0.09      ],&#10;         [ 1.54714286,  0.09      ],&#10;         [ 1.6       ,  0.09      ]]), ...}&#10;assert ('BASELINE' != 'BASELINE')">change = 'epoch'
+
+    @pytest.mark.parametrize('change', ['epoch', 'regression'])
+    def test_active_threat_history_loss_is_not_baseline_permission(change):
+        trial = mx.ExecutionLateralTrial(GRASS, mx.ExecutionConfig(release_to_baseline=True))
+        call(trial, 1., [car(.30, .13, D0)])
+        assert trial.active
+        out = call(trial, .9 if change == 'regression' else 1.1, epoch=int(change == 'epoch'))
+&gt;       assert out['mode'] != 'BASELINE' and trial.active, out
+E       AssertionError: {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],
+E          ...     ],
+E                [ 1.49428571,  0.09      ],
+E                [ 1.54714286,  0.09      ],
+E                [ 1.6       ,  0.09      ]]), ...}
+E       assert ('BASELINE' != 'BASELINE')
+
+tests/test_m3_release_gate_review.py:41: AssertionError</failure></testcase><testcase classname="tests.test_m3_release_gate_review" name="test_active_threat_history_loss_is_not_baseline_permission[regression]" time="0.035"><failure message="AssertionError: {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],&#10;   ...     ],&#10;         [ 1.49428571,  0.09      ],&#10;         [ 1.54714286,  0.09      ],&#10;         [ 1.6       ,  0.09      ]]), ...}&#10;assert ('BASELINE' != 'BASELINE')">change = 'regression'
+
+    @pytest.mark.parametrize('change', ['epoch', 'regression'])
+    def test_active_threat_history_loss_is_not_baseline_permission(change):
+        trial = mx.ExecutionLateralTrial(GRASS, mx.ExecutionConfig(release_to_baseline=True))
+        call(trial, 1., [car(.30, .13, D0)])
+        assert trial.active
+        out = call(trial, .9 if change == 'regression' else 1.1, epoch=int(change == 'epoch'))
+&gt;       assert out['mode'] != 'BASELINE' and trial.active, out
+E       AssertionError: {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],
+E          ...     ],
+E                [ 1.49428571,  0.09      ],
+E                [ 1.54714286,  0.09      ],
+E                [ 1.6       ,  0.09      ]]), ...}
+E       assert ('BASELINE' != 'BASELINE')
+
+tests/test_m3_release_gate_review.py:41: AssertionError</failure></testcase><testcase classname="tests.test_m3_release_gate_review" name="test_one_positive_clear_scan_after_many_unknowns_is_not_two_confirmations" time="0.482" /></testsuite></testsuites>

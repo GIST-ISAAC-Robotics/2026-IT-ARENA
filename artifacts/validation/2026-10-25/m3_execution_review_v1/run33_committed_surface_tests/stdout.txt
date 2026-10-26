@@ -1,0 +1,29 @@
+..........F............................................................. [ 24%]
+........................................................................ [ 48%]
+........................................................................ [ 72%]
+........................................................................ [ 96%]
+............                                                             [100%]
+=================================== FAILURES ===================================
+_____________ test_interpolated_endpoint_can_be_first_unsafe_pose ______________
+
+    def test_interpolated_endpoint_can_be_first_unsafe_pose():
+        # 현재는 도로 안이지만 45도 방향 오차로 양쪽 바퀴가 같은 도로 끝을 향함.
+        # .30 m 표본까지 통과하고 .3125 m 끝에서 거절되는 자세를 독립 노면 함수로 찾는다.
+        found = False
+        for offset in np.linspace(-.10, .10, 81):
+            frame, candidate = straight(road_path(offset, math.pi/4))
+            coarse = mx.straight_surface_prefix(candidate, .30)
+            exact = mx.straight_surface_prefix(candidate, .3125)
+            if mx.surface_check(frame, coarse, GRASS, current_pose=(0., 0., 0.))['ok']:
+                if not mx.surface_check(frame, exact, GRASS, current_pose=(0., 0., 0.))['ok']:
+                    found = True
+                    break
+>       assert found, '끝 표본을 내려 버리면 놓치는 노면 경계 반례가 필요하다'
+E       AssertionError: 끝 표본을 내려 버리면 놓치는 노면 경계 반례가 필요하다
+E       assert False
+
+tests/test_m3_surface_commitment.py:75: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-25/m3_execution_review_v1/run33_committed_surface_tests/pytest.xml -
+=========================== short test summary info ============================
+FAILED tests/test_m3_surface_commitment.py::test_interpolated_endpoint_can_be_first_unsafe_pose
+1 failed, 299 passed in 43.73s

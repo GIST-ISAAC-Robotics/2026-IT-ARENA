@@ -1,0 +1,66 @@
+FFF.                                                                     [100%]
+=================================== FAILURES ===================================
+________ test_empty_record_does_not_turn_next_unknown_scan_into_release ________
+
+    def test_empty_record_does_not_turn_next_unknown_scan_into_release():
+        trial = mx.ExecutionLateralTrial(GRASS, mx.ExecutionConfig(release_to_baseline=True))
+        first = call(trial, 1., [car(.30, .13, D0)])
+        assert first['threats']['left']['present']
+        cleared = call(trial, 1.1)
+        assert not cleared.get('released_to_baseline')
+        unknown = call(trial, 1.2, dropout=lambda deg: np.ones_like(deg, dtype=bool))
+>       assert not unknown.get('released_to_baseline'), unknown
+E       AssertionError: {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],
+E          ...     ],
+E                [ 1.49428571,  0.09      ],
+E                [ 1.54714286,  0.09      ],
+E                [ 1.6       ,  0.09      ]]), ...}
+E       assert not True
+E        +  where True = <built-in method get of dict object at 0x723bc71e4180>('released_to_baseline')
+E        +    where <built-in method get of dict object at 0x723bc71e4180> = {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],\n ...     ],\n       [ 1.49428571,  0.09      ],\n       [ 1.54714286,  0.09      ],\n       [ 1.6       ,  0.09      ]]), ...}.get
+
+tests/test_m3_release_gate_review.py:31: AssertionError
+______ test_active_threat_history_loss_is_not_baseline_permission[epoch] _______
+
+change = 'epoch'
+
+    @pytest.mark.parametrize('change', ['epoch', 'regression'])
+    def test_active_threat_history_loss_is_not_baseline_permission(change):
+        trial = mx.ExecutionLateralTrial(GRASS, mx.ExecutionConfig(release_to_baseline=True))
+        call(trial, 1., [car(.30, .13, D0)])
+        assert trial.active
+        out = call(trial, .9 if change == 'regression' else 1.1, epoch=int(change == 'epoch'))
+>       assert out['mode'] != 'BASELINE' and trial.active, out
+E       AssertionError: {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],
+E          ...     ],
+E                [ 1.49428571,  0.09      ],
+E                [ 1.54714286,  0.09      ],
+E                [ 1.6       ,  0.09      ]]), ...}
+E       assert ('BASELINE' != 'BASELINE')
+
+tests/test_m3_release_gate_review.py:41: AssertionError
+____ test_active_threat_history_loss_is_not_baseline_permission[regression] ____
+
+change = 'regression'
+
+    @pytest.mark.parametrize('change', ['epoch', 'regression'])
+    def test_active_threat_history_loss_is_not_baseline_permission(change):
+        trial = mx.ExecutionLateralTrial(GRASS, mx.ExecutionConfig(release_to_baseline=True))
+        call(trial, 1., [car(.30, .13, D0)])
+        assert trial.active
+        out = call(trial, .9 if change == 'regression' else 1.1, epoch=int(change == 'epoch'))
+>       assert out['mode'] != 'BASELINE' and trial.active, out
+E       AssertionError: {'checks': {}, 'hidden_future_risk_unresolved': True, 'mode': 'BASELINE', 'path': array([[-0.25      ,  0.09      ],
+E          ...     ],
+E                [ 1.49428571,  0.09      ],
+E                [ 1.54714286,  0.09      ],
+E                [ 1.6       ,  0.09      ]]), ...}
+E       assert ('BASELINE' != 'BASELINE')
+
+tests/test_m3_release_gate_review.py:41: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-25/m3_execution_review_v1/run16_release_gate_review/pre_fix_tests/pytest.xml -
+=========================== short test summary info ============================
+FAILED tests/test_m3_release_gate_review.py::test_empty_record_does_not_turn_next_unknown_scan_into_release
+FAILED tests/test_m3_release_gate_review.py::test_active_threat_history_loss_is_not_baseline_permission[epoch]
+FAILED tests/test_m3_release_gate_review.py::test_active_threat_history_loss_is_not_baseline_permission[regression]
+3 failed, 1 passed in 1.24s

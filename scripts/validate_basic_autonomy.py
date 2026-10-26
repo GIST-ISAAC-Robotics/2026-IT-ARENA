@@ -198,12 +198,14 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
                        control_rate_hz=20.0, render_backend="system", sensor_wall_timeout_s=3.0,
                        speed_bump=True, collision_detector="configured", runtime_artifacts="", grid_slot=0,
                        lidar_test_profile="", motion_test_profile="", actuation_mode="legacy", record_inputs=False,
-                       g1_follow=False, extra_arguments=()):
+                       g1_follow=False, extra_arguments=(), r0_plus=False):
+    if g1_follow and r0_plus:
+        raise ValueError('G1 and R0+ are mutually exclusive')
     # 이 검사기는 터미널 프로세스 그룹이 아니라 ros2 launch에만 SIGINT를
     # 보냅니다. WSL의 TTY 상속 여부와 무관하게 자식에게도 전달되게 합니다.
     return subprocess.Popen(
         ["ros2", "launch", "--noninteractive", "arena_bringup",
-         "g1_follow.launch.py" if g1_follow else "demo.launch.py", "headless:=true",
+         "r0_plus.launch.py" if r0_plus else ("g1_follow.launch.py" if g1_follow else "demo.launch.py"), "headless:=true",
          f"speed_profile:={speed_profile}", f"lidar_rate_hz:={lidar_rate_hz:g}",
          f"tof_safety:={str(bool(tof_safety)).lower()}", f"red_duration_s:={red_duration_s:g}",
          f"autonomy_mode:={autonomy_mode}",
@@ -247,7 +249,7 @@ def main():
     parser.add_argument("--wall-timeout-s", type=float, default=None,
                         help="느린 오프라인 실행의 실제 시간 한도. 센서 시각 제한과 무관.")
     parser.add_argument("--stop-wall-timeout-s", type=float, default=60.)
-    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
+    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
     parser.add_argument("--lidar-rate-hz", type=float, default=10.0,
                         help="Gazebo 이상화 라이다의 시험용 갱신률. C1 실물 회전수를 바꾸지 않습니다.")
     parser.add_argument("--target-progress-m", type=float,

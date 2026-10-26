@@ -14,6 +14,7 @@ from arena_autonomy.scene_motion import relative_poses
 from arena_autonomy.linear_observation import clip_halfplane
 from arena_autonomy.local_path import swept_limit
 from arena_autonomy.occupancy_timing import per_ray_padding
+from arena_autonomy.scan_topology import cyclic_count, adjacent_indices
 
 
 def needs_recent_support(scene):
@@ -28,12 +29,18 @@ def side_missing_candidate(scene):
         if abs(math.atan2(r.direction_xy[1],r.direction_xy[0]))<=math.radians(60))
 
 
-def depth_support(scene, queries, padding):
+def depth_support(scene, queries, padding, *, cycle=None):
     """가능한 양옆 광선을 포함하는 각도 상계. 결측/동률/반환 조건은 불변.
 
     원점 원 내부는 전체 광선으로 계산한다. 어느 광선 원점과든 기존 반경
     수치 경계 1e-9 m 안에 겹친 질의는 방향이 정의되지 않아 지지하지 않는다.
     """
+    cycle_count = cyclic_count(scene, cycle)
+    if cycle_count is not None:
+        checked_pad = np.asarray(padding, dtype=float)
+        if (checked_pad.shape != (len(scene.rays),) or not np.all(np.isfinite(checked_pad))
+                or np.any(checked_pad < 0)):
+            raise ValueError('finite nonnegative per-ray padding required')
     q = np.asarray(queries, dtype=float).reshape(-1, 2)
     result = np.zeros(len(q), dtype=bool)
     if not len(q):
@@ -70,7 +77,7 @@ def depth_support(scene, queries, padding):
         high_radius = np.sqrt(dx[k, upper]**2+dy[k, upper]**2)
         return (~origin_overlap & present[k, lower] & present[k, upper] & (angles[k, lower] >= -1e-10)
             & (angles[k, upper] <= 1e-10) & ((abs(angles[k, lower])+abs(angles[k, upper])) <= .025)
-            & (abs(indices[lo]-indices[hi]) <= 1) & valid[lo] & valid[hi]
+            & adjacent_indices(indices[lo], indices[hi], cycle_count=cycle_count) & valid[lo] & valid[hi]
             & (low_radius > 1e-9) & (high_radius > 1e-9)
             & (depth[lo]-low_radius-pad[lo] > 0) & (depth[hi]-high_radius-pad[hi] > 0))
 

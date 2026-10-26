@@ -1,0 +1,336 @@
+# 전체 평면 외형은 팀이 확정한 설계 목표입니다. 나머지 치수는 실측 전 임시값입니다.
+vehicle:
+  status: partially_confirmed
+  # Sensor xyz values are relative to the model origin at ground level midway
+  # between the axles. This convention is provisional but explicit.
+  reference_frame: model_origin
+
+  # Regulation envelope currently reported by the team.
+  rule_envelope:
+    max_length_m: 0.20
+    max_width_m: 0.15
+    max_height_m: null
+
+  # 2026-08-30 팀 확인: 허용 범위를 최대한 사용하는 20 cm x 15 cm로 제작합니다.
+  # 바퀴·센서·범퍼를 포함한 외형 목표이며, 완성 차량의 실측값은 아닙니다.
+  # 검차에서 조향 중 바퀴 돌출까지 포함하는지는 미확정입니다.
+  # 조향 중 점유 영역은 주행·충돌 판단용이며 검차 외형과 구분합니다.
+  footprint:
+    status: confirmed_team_design_target
+    length_m: 0.20
+    width_m: 0.15
+    inspection_steering_state: unconfirmed
+
+  # 2026-09-28 팀 선택·공식 #1 등록: DICT_4X4_50 ID 49, 흰 여백 포함 5×5 cm.
+  # 공식 생성기 PNG의 코드 696/1000 px 비율을 물리 치수에 그대로 적용합니다.
+  # 후방 중앙·지면 9 cm의 장착 위치는 시뮬 임시값이며 실물 배치는 미확정입니다.
+  identification_marker:
+    enabled: true
+    dictionary: DICT_4X4_50
+    id: 49
+    printed_board_size_m: 0.050
+    black_code_size_m: 0.0348
+    quiet_zone_each_side_m: 0.0076
+    xyz_m: [-0.1005, 0.0, 0.090]
+    rpy_rad: [0.0, 0.0, 3.1415926536]
+    representation: visual_only_sdf_cells
+    purpose: registered_team_vehicle_identification_marker
+    status: team_selected_registered_mount_provisional
+    source_image: artifacts/markers/2026-09-28/id49_preview/marker_DICT_4X4_50_id49.png
+    registration: https://github.com/MOSW626/istech-it-arena/issues/1#issuecomment-5858748518
+
+  # 충돌체는 전체 평면 외형을 단순한 상자로 근사합니다.
+  # 실제 섀시 판의 형상·높이·질량을 확정한 것은 아닙니다.
+  body:
+    length_m: 0.20
+    width_m: 0.15
+    height_m: 0.06
+    # 바퀴 0.160 + 조향 링크 0.020 + D435i 0.072 + C1 0.110 + ToF 0.003
+    # + 잔여 차체 1.635 = 2.000 kg. 사용자가 전달한 예상 총질량, 실측값 아님.
+    # 센서 구성 A/B 시험에서는 빠진 C1·ToF 질량을 중앙 차체의 비교 ballast로
+    # 보충하여 두 모드 모두 2.000 kg으로 둡니다. 실제 부품 배치 확정값이 아닙니다.
+    mass_kg: 1.635
+    center_of_mass_z_offset_m: 0.0
+    height_and_mass_status: provisional
+
+  drivetrain:
+    status: single_motor_mechanical_differential_selected_parameters_provisional
+    layout: rear_wheel_drive_ackermann
+    simulation_drive_mode: single_motor
+    # 직진 시 바퀴 바깥 치수: 축거 + 지름, 윤거 + 바퀴 폭.
+    # 2026-10-02: 바퀴 바깥지름 65 mm는 하드웨어팀 확정(반지름 0.0325 m, 하중별
+    # 유효 구름 반지름은 미측정). 실제 축거는 미확정이며 기존 0.145 m로는 길이
+    # 0.210 m가 되므로 길이 20 cm 목표에 맞춘 임시값 0.135 m를 사용합니다
+    # (0.135 + 0.065 = 0.200 m, 공차 여유 없음). 윤거·바퀴 폭은 기존 임시값이고
+    # 직진 폭은 0.147 m입니다. 조향 시 돌출과 충돌 판단은 별도입니다.
+    wheelbase_m: 0.135
+    wheelbase_status: provisional_fit_to_200mm_length_no_tolerance
+    track_width_m: 0.135
+    wheel_radius_m: 0.0325
+    wheel_radius_status: confirmed_65mm_outer_diameter_effective_rolling_radius_unmeasured
+    wheel_width_m: 0.012
+    wheel_width_status: provisional_unconfirmed
+    max_steering_angle_rad: 0.45
+    # 하드웨어팀의 20 km/h 목표를 시험 상한으로 사용. 실차 성능 보증 아님.
+    max_speed_mps: 5.5555555556
+    # 모터 실측값이 아닌 Gazebo 제어기 설정. jerk 제한은 저속 정지 진동을
+    # 유발하여 제외하고, 속도·가속도 제한은 유지합니다.
+    simulation_steering_p_gain: 12.0
+    simulation_acceleration_limit_mps2: 4.0
+    mechanical_differential:
+      active_profile: ideal_open
+      # 동일 평균속도 관계, 차이는 손실과 수동 차동 저항입니다.
+      profiles:
+        ideal_open:
+          gear_efficiency: 1.0
+          carrier_drag_nm_per_rad_s: 0.0
+          coupling_nm_per_rad_s: 0.0
+          coupling_limit_nm: 0.0
+        lossy_open:
+          gear_efficiency: 0.90
+          carrier_drag_nm_per_rad_s: 0.0001
+          coupling_nm_per_rad_s: 0.0
+          coupling_limit_nm: 0.0
+        viscous_lsd:
+          gear_efficiency: 0.90
+          carrier_drag_nm_per_rad_s: 0.0001
+          coupling_nm_per_rad_s: 0.002
+          coupling_limit_nm: 0.030
+    motor:
+      # 2026-10-02 선정: MB4266-24180 후면축형 브러시 DC + Cytron MD20A(PWM+DIR).
+      # 판매처 사양 두 점(실측 아님): 24 V 무부하 18,000 rpm/2.0 A,
+      # 정격 16,474 rpm/10.28 A/1.079 kgf·cm(약 0.1058 N·m).
+      # Gazebo 플러그인은 `torque_limit × (1 − |ω|/free_speed)`의 근사 외피만 씁니다.
+      # free_speed는 24 V 무부하 사양을 그대로 쓴 값이며 배터리 전압·PWM·드라이버
+      # 강하·전류/열·단락 제동·회전자 반사 관성은 모델에 없습니다.
+      # torque_limit 0.060 N·m은 기존 임시 상한을 유지한 것입니다. 정격 토크보다
+      # 낮고, 두 사양점의 선형 외삽 정지 토크(약 1.25 N·m)로 올리지 않습니다.
+      # 제동 상한 0.045 N·m도 MD20A 단락 제동 모델이 아닌 임시값입니다.
+      model_reference: MB4266-24180_rear_shaft
+      driver_reference: Cytron_MD20A_PWM_DIR_not_modeled
+      specification_points_not_measured:
+        supply_voltage_v: 24.0
+        no_load_rpm: 18000.0
+        no_load_current_a: 2.0
+        rated_rpm: 16474.0
+        rated_current_a: 10.28
+        rated_torque_nm: 0.1058
+      # LaTrax 피니언·스퍼 6:1 × 차동 2.5:1, 팀 전달 초기 구성(잇수·조립 미확인).
+      gear_ratio: 15.0
+      gear_ratio_status: team_initial_configuration_6x2.5_assembly_unverified
+      torque_limit_nm: 0.060
+      torque_limit_status: provisional_simulation_cap_not_stall_capability
+      brake_torque_limit_nm: 0.045
+      free_speed_rad_s: 1884.9555921539
+      free_speed_status: vendor_24v_no_load_18000rpm_not_measured
+      response_time_s: 0.040
+      speed_kp: 0.10
+      speed_ki: 0.20
+      acceleration_limit_mps2: 3.0
+      command_timeout_s: 0.5
+    steering_servo:
+      # 공유 각도 명령·총 조향 토크 예산을 사용하는 가상 서보입니다.
+      position_gain: 0.40
+      integral_gain: 0.25
+      velocity_gain: 0.003
+      torque_limit_nm: 0.12
+      rate_limit_rad_s: 4.0
+    tire_contact:
+      # 실측 전 Coulomb + force-dependent slip 근사. Pacejka 타이어 아님.
+      friction_lateral: 0.9
+      friction_longitudinal: 0.9
+      rear_left_friction_scale: 1.0
+      slip_compliance_lateral: 0.02
+      slip_compliance_longitudinal: 0.02
+      nominal_wheel_normal_force_n: 4.905
+      joint_viscous_damping_nm_per_rad_s: 0.000005
+
+  sensors:
+    # 구동 피드백. 2026-10-02 공간 문제로 좌우 후륜 엔코더 2개 대신 모터 뒤축
+    # PGE-213 하나를 기준으로 합니다. Gazebo의 이상적 좌우 바퀴 관절 각을
+    # 모터 각 = gear_ratio × (좌 + 우) / 2로 합성한 뒤 모터축 카운트로 양자화하여
+    # /drive_motor/encoder 한 채널만 발행합니다. 이 하나로는 평균 바퀴 운동만
+    # 관측하며 좌우 차이·개별 슬립·기어 유격·좌우 반대 회전은 알 수 없습니다.
+    # 회전량은 IMU 자이로가 담당합니다. legacy 모드는 이전 2개 계약의 명시적
+    # 비교·옛 기록 호환용이며 실차 센서 구성이 아닙니다.
+    drive_feedback:
+      enabled: true
+      mode: drive_motor_shaft
+      drive_motor_encoder:
+        model_reference: PGE-213
+        mount: MB4266-24180 rear shaft; exact assembly position unconfirmed
+        # 판매 사양 7 PPR × A/B 양 에지 4체배 = 모터 1회전 28카운트.
+        # 납품품 PPR(일부 페이지 13 CPR 표기)·출력 회로는 실물 확인 필요.
+        pulses_per_revolution_per_channel: 7
+        quadrature_edges_per_pulse: 4
+        counts_per_motor_revolution: 28
+        resolution_status: vendor_7ppr_x4_delivered_unit_unverified
+        # 아래 표본·지연·누락은 MCU 미구현 상태의 시뮬레이션 임시값입니다.
+        sample_rate_hz: 100.0
+        latency_ms: 2.0
+        dropout_probability: 0.0
+        timing_status: provisional_simulation_values_not_mcu_measured
+        simulation_source_joints: [rear_left_wheel_joint, rear_right_wheel_joint]
+      legacy_rear_wheel_encoders:
+        left_joint_name: rear_left_wheel_joint
+        right_joint_name: rear_right_wheel_joint
+        ticks_per_revolution: 2048
+        sample_rate_hz: 100.0
+        latency_ms: 2.0
+        dropout_probability: 0.0
+        status: superseded_2026_10_02_explicit_comparison_and_old_recordings_only
+    d435i:
+      enabled: true
+      xyz_m: [0.055, 0.0, 0.075]
+      rpy_rad: [0.0, 0.0, 0.0]
+      # USB 3.1 Gen 1에서 지원되는 공식 스트림 조합을 사용합니다. RGB와 깊이의
+      # 하드웨어 동기화를 고려할 때는 동일 프레임률인 synchronized_60을
+      # 선택합니다. 아래 표시는 동기화 호환성이지 실제 장치의 설정 상태가 아닙니다.
+      active_stream_profile: high_speed_async
+      stream_profiles:
+        high_speed_async:
+          color_rate_hz: 60.0
+          depth_rate_hz: 90.0
+          hardware_sync_compatible: false
+        synchronized_60:
+          color_rate_hz: 60.0
+          depth_rate_hz: 60.0
+          hardware_sync_compatible: true
+        low_load_30:
+          color_rate_hz: 30.0
+          depth_rate_hz: 30.0
+          hardware_sync_compatible: true
+      color:
+        width_px: 848
+        height_px: 480
+        horizontal_fov_deg: 69.4
+        vertical_fov_deg: 42.5
+        render_near_clip_m: 0.02
+        # 깊이 유효 거리와 무관한 RGB 렌더링 범위입니다. 약 10.3 m의 최장
+        # 직선 시야와 14.5 m 길이의 행사장 전체를 가리지 않도록 설정합니다.
+        render_far_clip_m: 20.0
+        shutter_type: rolling
+      depth:
+        width_px: 848
+        height_px: 480
+        horizontal_fov_deg: 87.0
+        vertical_fov_deg: 58.0
+        minimum_depth_m: 0.195
+        qualified_quality_range_max_m: 2.0
+        nominal_range_max_m: 3.0
+        # 공식 자료의 '3 m 이상, 환경 의존'을 완벽한 4 m 측정으로 오해하지
+        # 않도록 기본 절단 거리는 명목 범위인 3 m로 둡니다.
+        simulation_far_clip_m: 3.0
+        extended_test_far_clip_m: 4.0
+        shutter_type: global
+      imu:
+        update_rate_hz: 200.0
+        model_note: combined Gazebo IMU; verify BMI055/BMI085 revision on the real device
+      specification_source: https://dev.realsenseai.com/download/42003/
+      model_note: separate nominal RGB and depth intrinsics; per-device calibration and range-dependent errors remain pending
+      calibration_status: nominal_intrinsics_only
+      status: official_nominal_profile_with_documented_simulation_limits
+    lidar_2d:
+      enabled: true
+      model_reference: RPLIDAR_C1
+      # 지면 기준 모델 원점. 차체 상단 8.5 cm보다 높여 자기 가림을 피합니다.
+      xyz_m: [-0.03, 0.0, 0.125]
+      rpy_rad: [0.0, 0.0, 0.0]
+      frame_id: laser_frame
+      scan_rate_hz: 10.0
+      samples_per_scan: 500
+      field_of_view_deg: 360.0
+      range_min_m: 0.05
+      range_max_m: 12.0
+      nominal_range_resolution_m: 0.015
+      # ±30 mm 정확도를 가우시안 표준편차로 해석하지 않습니다.
+      simulated_noise_stddev_m: 0.0
+      nominal_accuracy_m: 0.030
+      dark_target_range_max_m: 6.0
+      mass_kg: 0.110
+      # 단순 표시·관성용 대체 형상이며 C1의 기계 도면이 아닙니다.
+      proxy_radius_m: 0.030
+      proxy_height_m: 0.035
+      specification_source: https://www.slamtec.com/en/c1/spec
+      status: provisional_C1_nominal_idealized_scan_not_hardware_selection
+    tof_ring:
+      enabled: true
+      model_reference: VL53L7CX
+      # 아래 두 배치는 2026-09-03 사용자의 개인 검토안입니다. 하드웨어 팀과
+      # 협의하거나 구매를 확정한 구성이 아닙니다. 기본 회귀 배치는 C1+6개이고,
+      # D435i 깊이 조향 비교에서는 정후방을 포기하고 좌우 측면을 4개로 봅니다.
+      active_layout: lidar_tof6
+      layouts:
+        lidar_tof6:
+          modules: [front, front_left, rear_left, rear, rear_right, front_right]
+          autonomy_source: lidar_2d
+          nominal_coverage: full_azimuth_without_spatial_occlusion_guarantee
+          status: user_personal_proposal_not_discussed_with_team
+        stereo_tof4:
+          modules: [front_left, rear_left, rear_right, front_right]
+          autonomy_source: d435i_depth
+          nominal_coverage: front_camera_plus_both_side_arcs_rear_blind
+          status: user_personal_proposal_not_discussed_with_team
+      # 영역 중심 광선 모델에서 4x4는 50 cm 앞 높이 5 cm 표적을 놓쳤습니다.
+      # 같은 시험에서 감지한 8x8을 기본값으로 두고, 4x4는 근거리·지연 비교용으로
+      # 유지합니다. 이는 실물 센서의 영역 적분 성능을 확정한 결과가 아닙니다.
+      active_profile: tracking_8x8_15
+      profiles:
+        low_latency_4x4_60:
+          horizontal_zones: 4
+          vertical_zones: 4
+          update_rate_hz: 60.0
+          intended_use: close_range_latency_comparison
+        tracking_8x8_15:
+          horizontal_zones: 8
+          vertical_zones: 8
+          update_rate_hz: 15.0
+          intended_use: coarse_shape_and_bearing_experiments
+      horizontal_fov_deg: 60.0
+      vertical_fov_deg: 60.0
+      range_min_m: 0.020
+      # 이상화 상한입니다. 8x8·15 Hz에서도 3.5 m 검출을 보장하지 않습니다.
+      # 반사율·외광·영역별 유효 거리와 invalid 모델은 후속입니다.
+      range_max_m: 3.50
+      nominal_depth_resolution_m: 0.001
+      simulated_noise_stddev_m: 0.0
+      # Pololu 3418 캐리어의 명목 외형·헤더 미포함 질량을 표시한 대체 형상입니다.
+      # 브래킷·커버·배선의 부피와 질량은 아직 포함하지 않습니다.
+      carrier_size_m: [0.003, 0.013, 0.018]
+      carrier_mass_kg: 0.0005
+      specification_source: https://www.st.com/en/imaging-and-photonics-solutions/vl53l7cx.html
+      carrier_source: https://www.pololu.com/product/3418
+      # 광학 중심이 서로 떨어져 있으므로 6 x 60도라는 각도 합만으로 전방위를
+      # 덮지 못합니다. 근접 경계 사각과 실제 가림을 평가할 임시 6개 배치입니다.
+      modules:
+        - name: front
+          xyz_m: [0.0980, 0.0000, 0.040]
+          rpy_rad: [0.0, 0.0, 0.0]
+          frame_id: tof_front_frame
+          topic: /tof/front
+        - name: front_left
+          xyz_m: [0.0413, 0.0715, 0.040]
+          rpy_rad: [0.0, 0.0, 1.0471975512]
+          frame_id: tof_front_left_frame
+          topic: /tof/front_left
+        - name: rear_left
+          xyz_m: [-0.0413, 0.0715, 0.040]
+          rpy_rad: [0.0, 0.0, 2.0943951024]
+          frame_id: tof_rear_left_frame
+          topic: /tof/rear_left
+        - name: rear
+          xyz_m: [-0.0980, 0.0000, 0.040]
+          rpy_rad: [0.0, 0.0, 3.1415926536]
+          frame_id: tof_rear_frame
+          topic: /tof/rear
+        - name: rear_right
+          xyz_m: [-0.0413, -0.0715, 0.040]
+          rpy_rad: [0.0, 0.0, -2.0943951024]
+          frame_id: tof_rear_right_frame
+          topic: /tof/rear_right
+        - name: front_right
+          xyz_m: [0.0413, -0.0715, 0.040]
+          rpy_rad: [0.0, 0.0, -1.0471975512]
+          frame_id: tof_front_right_frame
+          topic: /tof/front_right
+      status: provisional_six_module_reference_under_team_selected_lidar_tof_architecture

@@ -1,0 +1,30 @@
+......F.F........................................................        [100%]
+=================================== FAILURES ===================================
+_________ test_threat_and_release_records_unchanged_but_parallel_first _________
+
+    def test_threat_and_release_records_unchanged_but_parallel_first():
+        on, checked, a = trial(ON)
+        off, _, b = trial(OFF)
+        assert on['threats']['left']['present']
+        assert on['threats'] == off['threats'] and on['release_gate'] == off['release_gate']
+>       assert list(on['checks'])[0] == 'straight'
+E       AssertionError: assert 'yield' == 'straight'
+E         - straight
+E         + yield
+
+tests/test_m3_parallel_straight.py:53: AssertionError
+______ test_command_rejection_is_not_bypassed_and_other_candidates_remain ______
+
+    def test_command_rejection_is_not_bypassed_and_other_candidates_remain():
+        out, calls, _ = trial(ON, reject=True)
+        assert out['selected'] is None and out['path'] is None
+>       assert list(out['checks'])[0]=='straight' and len(out['checks']) >= 2
+E       AssertionError: assert ('yield' == 'straight'
+E         - straight
+E         + yield)
+
+tests/test_m3_parallel_straight.py:72: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_m3_parallel_straight.py::test_threat_and_release_records_unchanged_but_parallel_first
+FAILED tests/test_m3_parallel_straight.py::test_command_rejection_is_not_bypassed_and_other_candidates_remain
+2 failed, 63 passed in 4.58s

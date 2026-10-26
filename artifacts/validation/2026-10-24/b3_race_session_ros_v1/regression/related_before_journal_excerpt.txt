@@ -1,0 +1,39 @@
+# 10/24 변경 전 관련 43파일 회귀: 원 로그 파일은 덮어써져 없음. 아래는 같은 세션 기록(journal)에 남은 원 도구 출력만 그대로 옮긴 것이다.
+# source: Claude Code session journal 3922b49c-b4f7-4d90-a527-c9da132ffe8e.jsonl
+
+## journal line 247, timestamp 2026-10-23T19:36:52.760Z, tool_use_id toolu_01VovNfpo9ee7LxVASppCpHE
+
+real	0m47.059s
+user	0m23.639s
+sys	exit=1
+            for node in ast.walk(tree):
+                if isinstance(node,ast.ImportFrom) and node.module and node.module.startswith(('arena_autonomy.','arena_vehicle_interface.')):
+>                   assert node.module in manifest, (module,node.module)
+E                   AssertionError: ('arena_autonomy.local_pursuit', 'arena_autonomy.r0_plus')
+E                   assert 'arena_autonomy.r0_plus' in {'arena_autonomy.boundary_evidence', 'arena_autonomy.core', 'arena_autonomy.corner_corridor', 'arena_autonomy.corner_distance', 'arena_autonomy.corner_evidence', 'arena_autonomy.corridor_observer', ...}
+E                    +  where 'arena_autonomy.r0_plus' = <ast.ImportFrom object at 0x7109ab825690>.module
+
+tests/test_pipeline_fault_validation.py:422: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_corner_follow.py::test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
+FAILED tests/test_g1_dense_stop.py::test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract
+FAILED tests/test_official_start_ros_fixture.py::test_runtime_manifest_covers_static_local_imports_transitively
+FAILED tests/test_physics_step_option.py::test_contract_records_evaluation_script_changes
+FAILED tests/test_pipeline_fault_validation.py::test_pipeline_snapshot_includes_all_internal_dependencies
+5 failed, 1055 passed in 45.12s
+
+## timestamp 2026-10-23T19:37:00.758Z, tool_use_id toolu_01K7MJmNc9AKi6H3Bna5cEnN (grep '^E' of the same log, before overwrite)
+53:E               AssertionError: assert '5d0c53b0ee16...937289d4c0203' == '3a7f98441966...38ad0f7d5c014'
+54:E                 - 3a7f98441966047431ea07fe2bc3ba0a9f5af13af88fd2009e738ad0f7d5c014
+55:E                 + 5d0c53b0ee162ddaed5a9b0b98440240f035e064d24e4439ef7937289d4c0203
+78:E           AssertionError: assert '6ff0021626dd...15f3ec3ebb10a' == '72e9c45c9874...d27ed59bf9f10'
+79:E             - 72e9c45c98741f7e9257915b89bfa60155cd7aebabebc42341ed27ed59bf9f10
+80:E             + 6ff0021626dd6c17d00a63fe61abe020de838e8bd5a71ac60b615f3ec3ebb10a
+101:E           AssertionError: ('arena_autonomy.local_pursuit', ['arena_autonomy.r0_plus'])
+102:E           assert {'arena_autonomy.core', 'arena_autonomy.follow_trace', 'arena_autonomy.lidar_motion', 'arena_autonomy.local_follow', 'arena_autonomy.local_path', 'arena_autonomy.r0_plus', ...} <= {'arena_autonomy.boundary_evidence', 'arena_autonomy.core', 'arena_autonomy.corner_corridor', 'arena_autonomy.corner_distance', 'arena_autonomy.corner_evidence', 'arena_autonomy.corridor_observer', ...}
+136:E           AssertionError: assert '6ff0021626dd...15f3ec3ebb10a' == '72e9c45c9874...d27ed59bf9f10'
+137:E             - 72e9c45c98741f7e9257915b89bfa60155cd7aebabebc42341ed27ed59bf9f10
+138:E             + 6ff0021626dd6c17d00a63fe61abe020de838e8bd5a71ac60b615f3ec3ebb10a
+153:E                   AssertionError: ('arena_autonomy.local_pursuit', 'arena_autonomy.r0_plus')
+154:E                   assert 'arena_autonomy.r0_plus' in {'arena_autonomy.boundary_evidence', 'arena_autonomy.core', 'arena_autonomy.corner_corridor', 'arena_autonomy.corner_distance', 'arena_autonomy.corner_evidence', 'arena_autonomy.corridor_observer', ...}
+155:E                    +  where 'arena_autonomy.r0_plus' = <ast.ImportFrom object at 0x7109ab825690>.module

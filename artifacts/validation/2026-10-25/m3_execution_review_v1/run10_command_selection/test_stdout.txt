@@ -1,0 +1,39 @@
+...F............................................                         [100%]
+=================================== FAILURES ===================================
+_______ test_rejected_alternatives_do_not_reset_or_multiply_fresh_resume _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7046f930b9e0>
+
+    def test_rejected_alternatives_do_not_reset_or_multiply_fresh_resume(monkeypatch):
+        """실제 경로/관측은 그대로 두고 우선 후보 거절만 주입. 재개는 선택된 출력에 한 번 적용된다."""
+        follow = ctl(mx.ExecutionConfig(command_fallback=True))
+        h = history()
+        scene, path = timed_scene(.3)
+        # 실제 G1/관측을 두고 측방 의도만 이미 활성인 상태를 만든다.
+        follow.command(scene, h, 0., 'left')
+        follow.lateral.active, follow.lateral.clear_fresh = True, 1
+        follow.held, follow.release_count = True, 0
+        real_check = follow._evaluate_command
+        seen = []
+    
+        def reject_preferred(name, *args):
+            seen.append(name)
+            check = real_check(name, *args)
+            if name != 'straight':
+                check.update(accepted=False, reason='m3_command_unobserved')
+            return check
+    
+        monkeypatch.setattr(follow, '_evaluate_command', reject_preferred)
+        first = follow.command(timed_scene(.4)[0], h, 0., 'left')
+>       assert first[0] == 0 and first[2]['reason'] == 'm3_release_wait'
+E       AssertionError: assert (0.0 == 0 and 'follow_release_wait' == 'm3_release_wait'
+E         - m3_release_wait
+E         ? ^^
+E         + follow_release_wait
+E         ? ^^^^^^)
+
+tests/test_m3_command_selection.py:69: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-25/m3_execution_review_v1/run10_command_selection/pytest.xml -
+=========================== short test summary info ============================
+FAILED tests/test_m3_command_selection.py::test_rejected_alternatives_do_not_reset_or_multiply_fresh_resume
+1 failed, 47 passed in 5.98s

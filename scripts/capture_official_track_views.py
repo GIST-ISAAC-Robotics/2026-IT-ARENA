@@ -60,10 +60,10 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def look_at_quaternion(position: tuple[float, float, float]) -> tuple[float, float, float, float]:
-    dx = TRACK_CENTER[0] - position[0]
-    dy = TRACK_CENTER[1] - position[1]
-    dz = TRACK_CENTER[2] - position[2]
+def look_at_quaternion(position: tuple[float, float, float], target=TRACK_CENTER) -> tuple[float, float, float, float]:
+    dx = target[0] - position[0]
+    dy = target[1] - position[1]
+    dz = target[2] - position[2]
     horizontal = math.hypot(dx, dy)
     yaw = math.atan2(dy, dx) if horizontal > 1e-12 else 0.0
     pitch = math.atan2(-dz, horizontal)
@@ -74,7 +74,7 @@ def look_at_quaternion(position: tuple[float, float, float]) -> tuple[float, flo
 
 def camera_sdf(view: dict[str, object], topic: str) -> str:
     px, py, pz = view["position"]
-    qx, qy, qz, qw = look_at_quaternion(view["position"])
+    qx, qy, qz, qw = look_at_quaternion(view["position"], view.get('target', TRACK_CENTER))
     name = view["name"]
     return f'''<sdf version="1.10">
       <model name="capture_{name}">
@@ -172,7 +172,8 @@ def main() -> int:
     report = {
         "started_at_utc": datetime.now(timezone.utc).isoformat(),
         "passed": False,
-        "scope": "v2026.09.02 기반 팀 런타임 코스의 고정 외부 카메라 기록",
+        "scope": "현재 공식 입력 기반 팀 런타임 코스의 고정 외부 카메라 기록",
+        "upstream_release": json.loads((world.parent / 'provenance.json').read_text(encoding='utf-8'))['upstream']['release'],
         "world_sha256": sha256(world),
         "vehicle_config_sha256": sha256(vehicle),
         "resolution_px": [WIDTH, HEIGHT],
@@ -204,6 +205,7 @@ def main() -> int:
                 "ros2", "launch", "--noninteractive", "arena_bringup", "simulation.launch.py",
                 "headless:=true", "track:=official", "render_sensors:=false",
                 "tof_safety:=false", "depth_camera:=false",
+                "render_backend:=auto",
             ],
             cwd=REPO,
             stdin=subprocess.DEVNULL,
@@ -256,7 +258,7 @@ def main() -> int:
                     "label": view["label"],
                     "file": path.name,
                     "position_m": view["position"],
-                    "quaternion_xyzw": look_at_quaternion(view["position"]),
+                    "quaternion_xyzw": look_at_quaternion(view["position"], view.get('target', TRACK_CENTER)),
                     "encoding": message.encoding,
                     "grayscale_stddev": float(grayscale.std()),
                     "sha256": sha256(path),

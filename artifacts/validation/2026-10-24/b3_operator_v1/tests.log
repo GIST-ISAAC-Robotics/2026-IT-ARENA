@@ -1,0 +1,60 @@
+.........................F....F......................................... [ 85%]
+............                                                             [100%]
+=================================== FAILURES ===================================
+_____________________ test_endpoint_identity_and_ambiguity _____________________
+
+    def test_endpoint_identity_and_ambiguity():
+        peer = SimpleNamespace(node_namespace='/', node_name='controller')
+        mapping = {operator.COMMAND:[peer], operator.RESULT:[peer], operator.STATUS:[peer]}
+        node = SimpleNamespace(get_subscriptions_info_by_topic=lambda t:mapping[t], get_publishers_info_by_topic=lambda t:mapping[t])
+        assert operator.endpoints_ready(node)
+        mapping[operator.STATUS] = []
+        assert not operator.endpoints_ready(node)
+        assert operator.endpoints_ready(node, stop_only=True)
+        mapping[operator.RESULT] = [peer, peer]
+        with pytest.raises(ValueError, match='ambiguous'):
+            operator.endpoints_ready(node)
+        mapping[operator.RESULT] = [SimpleNamespace(node_namespace='/', node_name='other')]
+>       with pytest.raises(ValueError, match='different'):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/test_race_operator.py:111: Failed
+_____________ test_result_loss_is_unknown_and_never_retransmitted ______________
+
+server = <arena_autonomy.local_pursuit.LocalPursuit object at 0x758f82f59df0>
+
+    def test_result_loss_is_unknown_and_never_retransmitted(server):
+        original = server.race_result_publisher
+        server.race_result_publisher = SimpleNamespace(publish=lambda message: None)
+        before = server.race.counts['commands']
+        code, result = operator.exchange('stop', operator.build_command('stop'), timeout_s=1.5)
+        server.race_result_publisher = original
+>       assert code == 4 and result['outcome'] == 'unknown_after_send'
+E       assert (2 == 4)
+
+tests/test_race_operator_ros.py:70: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+[WARN] [1792788618.374792242] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1792788618.374815786] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[INFO] [1792788618.390967034] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=both; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+[INFO] [1792788619.716315025] [local_pursuit]: B3 race supervisor candidate: session=211a1b7b575a49dd92fd522f2bc7ae93
+----------------------------- Captured stderr call -----------------------------
+[WARN] [1792788619.718006976] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1792788619.718031131] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[INFO] [1792788619.730778293] [local_pursuit]: t=1792788619.717113 SENSOR_STOP / left 벽 / unknown
+=============================== warnings summary ===============================
+tests/test_race_operator_ros.py::test_unavailable_server_does_not_send
+  Warning: Exception ignored in: <function Executor.__del__ at 0x758fa5cdb600>
+  
+  Traceback (most recent call last):
+    File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 305, in __del__
+      if self._sigint_gc is not None:
+         ^^^^^^^^^^^^^^^
+  AttributeError: 'SingleThreadedExecutor' object has no attribute '_sigint_gc'
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-24/b3_operator_v1/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_race_operator.py::test_endpoint_identity_and_ambiguity - Fa...
+FAILED tests/test_race_operator_ros.py::test_result_loss_is_unknown_and_never_retransmitted
+2 failed, 82 passed, 1 warning in 24.83s

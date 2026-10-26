@@ -1,0 +1,690 @@
+<?xml version="1.0"?>
+<sdf version="1.10" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="body_length" default="0.20"/>
+  <xacro:arg name="body_width" default="0.15"/>
+  <xacro:arg name="body_height" default="0.06"/>
+  <xacro:arg name="body_mass" default="1.635"/>
+  <xacro:arg name="body_cg_z_offset" default="0.0"/>
+  <xacro:arg name="drive_mode" default="single_motor"/>
+  <xacro:arg name="render_sensors" default="true"/>
+  <xacro:arg name="rear_marker_enabled" default="true"/>
+  <xacro:arg name="rear_marker_x" default="-0.1005"/>
+  <xacro:arg name="rear_marker_y" default="0.0"/>
+  <xacro:arg name="rear_marker_z" default="0.090"/>
+  <xacro:arg name="rear_marker_yaw" default="3.1415926536"/>
+  <xacro:arg name="rear_marker_board_size" default="0.050"/>
+  <xacro:arg name="rear_marker_code_size" default="0.0348"/>
+  <xacro:arg name="gear_ratio" default="15.0"/>
+  <xacro:arg name="gear_efficiency" default="1.0"/>
+  <xacro:arg name="motor_torque_limit" default="0.060"/>
+  <xacro:arg name="motor_brake_torque_limit" default="0.045"/>
+  <xacro:arg name="motor_free_speed" default="1884.9555921539"/>
+  <xacro:arg name="motor_response_time" default="0.040"/>
+  <xacro:arg name="motor_speed_kp" default="0.10"/>
+  <xacro:arg name="motor_speed_ki" default="0.20"/>
+  <xacro:arg name="motor_acceleration" default="3.0"/>
+  <xacro:arg name="motor_timeout" default="0.5"/>
+  <xacro:arg name="carrier_drag" default="0.0"/>
+  <xacro:arg name="differential_viscosity" default="0.0"/>
+  <xacro:arg name="differential_torque_limit" default="0.0"/>
+  <xacro:arg name="servo_position_gain" default="0.40"/>
+  <xacro:arg name="servo_integral_gain" default="0.25"/>
+  <xacro:arg name="servo_velocity_gain" default="0.003"/>
+  <xacro:arg name="servo_torque_limit" default="0.12"/>
+  <xacro:arg name="servo_rate_limit" default="4.0"/>
+  <xacro:arg name="tire_mu_lateral" default="0.9"/>
+  <xacro:arg name="tire_mu_longitudinal" default="0.9"/>
+  <xacro:arg name="tire_slip_lateral" default="0.02"/>
+  <xacro:arg name="tire_slip_longitudinal" default="0.02"/>
+  <xacro:arg name="tire_normal_force" default="4.905"/>
+  <xacro:arg name="wheel_damping" default="0.000005"/>
+  <!-- 시험용 한쪽 타이어 마찰 배율. 기본값은 좌우 동일합니다. -->
+  <xacro:arg name="rear_left_friction_scale" default="1.0"/>
+  <xacro:arg name="wheelbase" default="0.135"/>
+  <xacro:arg name="track_width" default="0.135"/>
+  <xacro:arg name="wheel_radius" default="0.0325"/>
+  <xacro:arg name="wheel_width" default="0.012"/>
+  <xacro:arg name="max_steering_angle" default="0.45"/>
+  <xacro:arg name="max_speed" default="5.5555555556"/>
+  <xacro:arg name="steering_p_gain" default="12.0"/>
+  <xacro:arg name="acceleration_limit" default="4.0"/>
+  <xacro:arg name="lidar_enabled" default="true"/>
+  <xacro:arg name="lidar_x" default="-0.03"/>
+  <xacro:arg name="lidar_y" default="0.0"/>
+  <xacro:arg name="lidar_z" default="0.125"/>
+  <xacro:arg name="lidar_roll" default="0.0"/>
+  <xacro:arg name="lidar_pitch" default="0.0"/>
+  <xacro:arg name="lidar_yaw" default="0.0"/>
+  <xacro:arg name="lidar_rate" default="10.0"/>
+  <xacro:arg name="lidar_topic" default="/scan"/>
+  <xacro:arg name="lidar_samples" default="500"/>
+  <xacro:arg name="lidar_min" default="0.05"/>
+  <xacro:arg name="lidar_max" default="12.0"/>
+  <xacro:arg name="lidar_resolution" default="0.015"/>
+  <xacro:arg name="lidar_noise" default="0.0"/>
+  <xacro:arg name="lidar_mass" default="0.110"/>
+  <xacro:arg name="lidar_radius" default="0.030"/>
+  <xacro:arg name="lidar_height" default="0.035"/>
+  <xacro:arg name="tof_enabled" default="true"/>
+  <xacro:arg name="tof_rate" default="15.0"/>
+  <xacro:arg name="tof_horizontal_zones" default="8"/>
+  <xacro:arg name="tof_vertical_zones" default="8"/>
+  <xacro:arg name="tof_horizontal_fov" default="1.0471975512"/>
+  <xacro:arg name="tof_vertical_fov" default="1.0471975512"/>
+  <xacro:arg name="tof_min" default="0.020"/>
+  <xacro:arg name="tof_max" default="3.50"/>
+  <xacro:arg name="tof_resolution" default="0.001"/>
+  <xacro:arg name="tof_noise" default="0.0"/>
+  <xacro:arg name="tof_carrier_size_x" default="0.003"/>
+  <xacro:arg name="tof_carrier_size_y" default="0.013"/>
+  <xacro:arg name="tof_carrier_size_z" default="0.018"/>
+  <xacro:arg name="tof_carrier_mass" default="0.0005"/>
+  <xacro:arg name="tof_front_enabled" default="true"/>
+  <xacro:arg name="tof_front_left_enabled" default="true"/>
+  <xacro:arg name="tof_rear_left_enabled" default="true"/>
+  <xacro:arg name="tof_rear_enabled" default="true"/>
+  <xacro:arg name="tof_rear_right_enabled" default="true"/>
+  <xacro:arg name="tof_front_right_enabled" default="true"/>
+  <xacro:arg name="tof_front_pose" default="0.0980 0.0000 0.040 0 0 0"/>
+  <xacro:arg name="tof_front_left_pose" default="0.0413 0.0715 0.040 0 0 1.0471975512"/>
+  <xacro:arg name="tof_rear_left_pose" default="-0.0413 0.0715 0.040 0 0 2.0943951024"/>
+  <xacro:arg name="tof_rear_pose" default="-0.0980 0.0000 0.040 0 0 3.1415926536"/>
+  <xacro:arg name="tof_rear_right_pose" default="-0.0413 -0.0715 0.040 0 0 -2.0943951024"/>
+  <xacro:arg name="tof_front_right_pose" default="0.0413 -0.0715 0.040 0 0 -1.0471975512"/>
+  <xacro:arg name="tof_front_topic" default="/tof/front"/>
+  <xacro:arg name="tof_front_left_topic" default="/tof/front_left"/>
+  <xacro:arg name="tof_rear_left_topic" default="/tof/rear_left"/>
+  <xacro:arg name="tof_rear_topic" default="/tof/rear"/>
+  <xacro:arg name="tof_rear_right_topic" default="/tof/rear_right"/>
+  <xacro:arg name="tof_front_right_topic" default="/tof/front_right"/>
+  <xacro:arg name="d435i_x" default="0.055"/>
+  <xacro:arg name="d435i_y" default="0.0"/>
+  <xacro:arg name="d435i_z" default="0.075"/>
+  <xacro:arg name="d435i_roll" default="0.0"/>
+  <xacro:arg name="d435i_pitch" default="0.0"/>
+  <xacro:arg name="d435i_yaw" default="0.0"/>
+  <xacro:arg name="d435i_color_horizontal_fov" default="1.2112585008840648"/>
+  <xacro:arg name="d435i_color_width" default="848"/>
+  <xacro:arg name="d435i_color_height" default="480"/>
+  <xacro:arg name="d435i_color_rate" default="60.0"/>
+  <xacro:arg name="d435i_color_near" default="0.02"/>
+  <xacro:arg name="d435i_color_far" default="20.0"/>
+  <xacro:arg name="d435i_color_fx" default="612.3337640816779"/>
+  <xacro:arg name="d435i_color_fy" default="617.1589761579678"/>
+  <xacro:arg name="d435i_color_cx" default="424.0"/>
+  <xacro:arg name="d435i_color_cy" default="240.0"/>
+  <xacro:arg name="d435i_depth_horizontal_fov" default="1.5184364492350666"/>
+  <xacro:arg name="d435i_depth_enabled" default="true"/>
+  <xacro:arg name="d435i_depth_width" default="848"/>
+  <xacro:arg name="d435i_depth_height" default="480"/>
+  <xacro:arg name="d435i_depth_rate" default="90.0"/>
+  <xacro:arg name="d435i_depth_near" default="0.195"/>
+  <xacro:arg name="d435i_depth_far" default="3.0"/>
+  <xacro:arg name="d435i_depth_fx" default="446.80277311912806"/>
+  <xacro:arg name="d435i_depth_fy" default="432.97146126514167"/>
+  <xacro:arg name="d435i_depth_cx" default="424.0"/>
+  <xacro:arg name="d435i_depth_cy" default="240.0"/>
+  <xacro:arg name="d435i_imu_rate" default="200.0"/>
+  <!-- 검증 영상 전용. 제어 노드는 이 토픽을 구독하지 않습니다. -->
+  <xacro:arg name="chase_camera_enabled" default="false"/>
+  <xacro:arg name="chase_camera_rate" default="20.0"/>
+
+  <xacro:property name="body_length" value="$(arg body_length)"/>
+  <xacro:property name="body_width" value="$(arg body_width)"/>
+  <xacro:property name="body_height" value="$(arg body_height)"/>
+  <xacro:property name="body_mass" value="$(arg body_mass)"/>
+  <xacro:property name="wheelbase" value="$(arg wheelbase)"/>
+  <xacro:property name="track_width" value="$(arg track_width)"/>
+  <xacro:property name="wheel_radius" value="$(arg wheel_radius)"/>
+  <xacro:property name="wheel_width" value="$(arg wheel_width)"/>
+  <xacro:property name="max_steering_angle" value="$(arg max_steering_angle)"/>
+  <xacro:property name="max_speed" value="$(arg max_speed)"/>
+  <xacro:property name="lidar_samples" value="$(arg lidar_samples)"/>
+  <xacro:property name="d435i_x" value="$(arg d435i_x)"/>
+  <xacro:property name="d435i_y" value="$(arg d435i_y)"/>
+  <xacro:property name="d435i_z" value="$(arg d435i_z)"/>
+  <xacro:property name="d435i_roll" value="$(arg d435i_roll)"/>
+  <xacro:property name="d435i_pitch" value="$(arg d435i_pitch)"/>
+  <xacro:property name="d435i_yaw" value="$(arg d435i_yaw)"/>
+  <xacro:property name="d435i_color_horizontal_fov" value="$(arg d435i_color_horizontal_fov)"/>
+  <xacro:property name="d435i_color_width" value="$(arg d435i_color_width)"/>
+  <xacro:property name="d435i_color_height" value="$(arg d435i_color_height)"/>
+  <xacro:property name="d435i_color_rate" value="$(arg d435i_color_rate)"/>
+  <xacro:property name="d435i_color_near" value="$(arg d435i_color_near)"/>
+  <xacro:property name="d435i_color_far" value="$(arg d435i_color_far)"/>
+  <xacro:property name="d435i_color_fx" value="$(arg d435i_color_fx)"/>
+  <xacro:property name="d435i_color_fy" value="$(arg d435i_color_fy)"/>
+  <xacro:property name="d435i_color_cx" value="$(arg d435i_color_cx)"/>
+  <xacro:property name="d435i_color_cy" value="$(arg d435i_color_cy)"/>
+  <xacro:property name="d435i_depth_horizontal_fov" value="$(arg d435i_depth_horizontal_fov)"/>
+  <xacro:property name="d435i_depth_width" value="$(arg d435i_depth_width)"/>
+  <xacro:property name="d435i_depth_height" value="$(arg d435i_depth_height)"/>
+  <xacro:property name="d435i_depth_rate" value="$(arg d435i_depth_rate)"/>
+  <xacro:property name="d435i_depth_near" value="$(arg d435i_depth_near)"/>
+  <xacro:property name="d435i_depth_far" value="$(arg d435i_depth_far)"/>
+  <xacro:property name="d435i_depth_fx" value="$(arg d435i_depth_fx)"/>
+  <xacro:property name="d435i_depth_fy" value="$(arg d435i_depth_fy)"/>
+  <xacro:property name="d435i_depth_cx" value="$(arg d435i_depth_cx)"/>
+  <xacro:property name="d435i_depth_cy" value="$(arg d435i_depth_cy)"/>
+  <xacro:property name="d435i_imu_rate" value="$(arg d435i_imu_rate)"/>
+  <xacro:property name="tof_horizontal_zones" value="$(arg tof_horizontal_zones)"/>
+  <xacro:property name="tof_vertical_zones" value="$(arg tof_vertical_zones)"/>
+  <xacro:property name="tof_horizontal_fov" value="$(arg tof_horizontal_fov)"/>
+  <xacro:property name="tof_vertical_fov" value="$(arg tof_vertical_fov)"/>
+  <xacro:property name="tof_carrier_size_x" value="$(arg tof_carrier_size_x)"/>
+  <xacro:property name="tof_carrier_size_y" value="$(arg tof_carrier_size_y)"/>
+  <xacro:property name="tof_carrier_size_z" value="$(arg tof_carrier_size_z)"/>
+  <xacro:property name="tof_carrier_mass" value="$(arg tof_carrier_mass)"/>
+  <xacro:property name="wheel_mass" value="0.04"/>
+  <xacro:property name="steering_link_mass" value="0.01"/>
+  <xacro:property name="rear_marker_cell_size" value="${float('$(arg rear_marker_code_size)') / 6.0}"/>
+
+  <xacro:macro name="box_inertial" params="mass x y z cg_z:=0">
+    <inertial>
+      <pose>0 0 ${cg_z} 0 0 0</pose>
+      <mass>${mass}</mass>
+      <inertia>
+        <ixx>${mass * (y * y + z * z) / 12.0}</ixx>
+        <ixy>0</ixy>
+        <ixz>0</ixz>
+        <iyy>${mass * (x * x + z * z) / 12.0}</iyy>
+        <iyz>0</iyz>
+        <izz>${mass * (x * x + y * y) / 12.0}</izz>
+      </inertia>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="wheel_inertial" params="mass radius width">
+    <inertial>
+      <mass>${mass}</mass>
+      <inertia>
+        <ixx>${mass * (3.0 * radius * radius + width * width) / 12.0}</ixx>
+        <ixy>0</ixy>
+        <ixz>0</ixz>
+        <iyy>${mass * (3.0 * radius * radius + width * width) / 12.0}</iyy>
+        <iyz>0</iyz>
+        <izz>${mass * radius * radius / 2.0}</izz>
+      </inertia>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="wheel_link" params="name x y friction_scale:=1">
+    <link name="${name}">
+      <pose>${x} ${y} ${wheel_radius} ${-pi / 2.0} 0 0</pose>
+      <xacro:wheel_inertial mass="${wheel_mass}" radius="${wheel_radius}" width="${wheel_width}"/>
+      <visual name="visual">
+        <geometry>
+          <cylinder>
+            <radius>${wheel_radius}</radius>
+            <length>${wheel_width}</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.03 0.03 0.03 1</ambient>
+          <diffuse>0.05 0.05 0.05 1</diffuse>
+        </material>
+      </visual>
+      <collision name="collision">
+        <geometry>
+          <cylinder>
+            <radius>${wheel_radius}</radius>
+            <length>${wheel_width}</length>
+          </cylinder>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>${float('$(arg tire_mu_lateral)') * float(friction_scale)}</mu>
+              <mu2>${float('$(arg tire_mu_longitudinal)') * float(friction_scale)}</mu2>
+              <!-- WheelSlip 규약: 바퀴 로컬 회전축 Z와 평행, 횡방향 마찰. -->
+              <fdir1>0 0 1</fdir1>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+    </link>
+  </xacro:macro>
+
+  <xacro:macro name="wheel_joint" params="name parent child">
+    <joint name="${name}" type="revolute">
+      <parent>${parent}</parent>
+      <child>${child}</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1.79769e+308</lower>
+          <upper>1.79769e+308</upper>
+          <effort>5.0</effort>
+          <velocity>1500.0</velocity>
+        </limit>
+        <dynamics><damping>$(arg wheel_damping)</damping></dynamics>
+      </axis>
+    </joint>
+  </xacro:macro>
+
+  <!--
+    VL53L7CX급 다중영역 ToF의 이상화 모델입니다. 실제 센서의 히스토그램,
+    반사율·주변광 의존성, 다중 반사, 센서 간 적외선 간섭과 invalid 상태는
+    재현하지 않습니다. 2차원 LaserScan 대신 각 영역의 3차원 점군을 사용합니다.
+  -->
+  <xacro:macro name="tof_module" params="name pose topic">
+    <link name="tof_${name}_link">
+      <pose>${pose}</pose>
+      <xacro:box_inertial mass="${tof_carrier_mass}" x="${tof_carrier_size_x}" y="${tof_carrier_size_y}" z="${tof_carrier_size_z}"/>
+      <visual name="carrier_visual">
+        <!-- 광학 중심 뒤쪽으로 얇은 캐리어 보드를 배치합니다. -->
+        <pose>${-tof_carrier_size_x / 2.0} 0 0 0 0 0</pose>
+        <geometry><box><size>${tof_carrier_size_x} ${tof_carrier_size_y} ${tof_carrier_size_z}</size></box></geometry>
+        <material>
+          <ambient>0.02 0.25 0.24 1</ambient>
+          <diffuse>0.03 0.48 0.45 1</diffuse>
+          <specular>0.10 0.10 0.10 1</specular>
+        </material>
+      </visual>
+      <xacro:if value="$(arg render_sensors)">
+      <sensor name="tof_${name}" type="gpu_lidar">
+        <always_on>true</always_on>
+        <update_rate>$(arg tof_rate)</update_rate>
+        <visualize>false</visualize>
+        <topic>${topic}</topic>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>${int(tof_horizontal_zones)}</samples>
+              <resolution>1</resolution>
+              <!-- 각 광선을 VL53L7CX 영역의 가장자리가 아니라 중심에 둡니다. -->
+              <min_angle>${-tof_horizontal_fov / 2.0 + tof_horizontal_fov / (2.0 * int(tof_horizontal_zones))}</min_angle>
+              <max_angle>${tof_horizontal_fov / 2.0 - tof_horizontal_fov / (2.0 * int(tof_horizontal_zones))}</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>${int(tof_vertical_zones)}</samples>
+              <resolution>1</resolution>
+              <min_angle>${-tof_vertical_fov / 2.0 + tof_vertical_fov / (2.0 * int(tof_vertical_zones))}</min_angle>
+              <max_angle>${tof_vertical_fov / 2.0 - tof_vertical_fov / (2.0 * int(tof_vertical_zones))}</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>$(arg tof_min)</min>
+            <max>$(arg tof_max)</max>
+            <resolution>$(arg tof_resolution)</resolution>
+          </range>
+          <noise><type>gaussian</type><mean>0</mean><stddev>$(arg tof_noise)</stddev></noise>
+        </lidar>
+      </sensor>
+      </xacro:if>
+    </link>
+    <joint name="tof_${name}_fixed_joint" type="fixed">
+      <parent>chassis</parent>
+      <child>tof_${name}_link</child>
+    </joint>
+  </xacro:macro>
+
+  <!--
+    2026-09-28 팀 등록 후방 마커: DICT_4X4_50 ID 49. 등록 PNG와 동일한
+    5 cm 판·3.48 cm 코드·양쪽 7.6 mm 흰 여백입니다. 기존 셀 렌더링을 유지하며
+    장착 위치는 임시값, 충돌체가 없는 표시용 형상입니다.
+  -->
+  <xacro:macro name="rear_marker_id49_cell" params="row col">
+    <xacro:property name="marker_local_y" value="${-float('$(arg rear_marker_code_size)') / 2.0 + (float(col) + 0.5) * rear_marker_cell_size}"/>
+    <xacro:property name="marker_local_z" value="${float('$(arg rear_marker_code_size)') / 2.0 - (float(row) + 0.5) * rear_marker_cell_size}"/>
+    <visual name="rear_marker_id49_ink_${row}_${col}">
+      <pose>${float('$(arg rear_marker_x)') + 0.0007 * cos(float('$(arg rear_marker_yaw)')) - marker_local_y * sin(float('$(arg rear_marker_yaw)'))}
+            ${float('$(arg rear_marker_y)') + 0.0007 * sin(float('$(arg rear_marker_yaw)')) + marker_local_y * cos(float('$(arg rear_marker_yaw)'))}
+            ${float('$(arg rear_marker_z)') - (wheel_radius + body_height / 2.0) + marker_local_z}
+            0 0 $(arg rear_marker_yaw)</pose>
+      <geometry><box><size>0.0004 ${rear_marker_cell_size} ${rear_marker_cell_size}</size></box></geometry>
+      <material>
+        <ambient>0.002 0.002 0.002 1</ambient>
+        <diffuse>0.002 0.002 0.002 1</diffuse>
+        <specular>0 0 0 1</specular>
+      </material>
+      <cast_shadows>false</cast_shadows>
+    </visual>
+  </xacro:macro>
+
+  <model name="arena_car">
+    <self_collide>false</self_collide>
+    <allow_auto_disable>false</allow_auto_disable>
+
+    <link name="chassis">
+      <pose>0 0 ${wheel_radius + body_height / 2.0} 0 0 0</pose>
+      <xacro:box_inertial mass="${body_mass}" x="${body_length}" y="${body_width}" z="${body_height}" cg_z="$(arg body_cg_z_offset)"/>
+      <visual name="visual">
+        <geometry>
+          <!-- 센서 보드가 파묻히지 않게 표시용 상자만 안쪽으로 넣습니다.
+               아래 충돌체와 20x15 cm 설계 외형·관성은 줄이지 않습니다. -->
+          <box><size>${body_length - 0.012} ${body_width - 0.020} ${body_height}</size></box>
+        </geometry>
+        <material>
+          <ambient>0.04 0.24 0.65 1</ambient>
+          <diffuse>0.05 0.32 0.85 1</diffuse>
+          <specular>0.2 0.2 0.2 1</specular>
+        </material>
+      </visual>
+      <xacro:if value="$(arg rear_marker_enabled)">
+        <visual name="rear_marker_id49_board">
+          <pose>$(arg rear_marker_x) $(arg rear_marker_y)
+                ${float('$(arg rear_marker_z)') - (wheel_radius + body_height / 2.0)}
+                0 0 $(arg rear_marker_yaw)</pose>
+          <geometry><box><size>0.001 $(arg rear_marker_board_size) $(arg rear_marker_board_size)</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient><diffuse>1 1 1 1</diffuse><specular>0 0 0 1</specular>
+          </material>
+          <cast_shadows>false</cast_shadows>
+        </visual>
+        <xacro:rear_marker_id49_cell row="0" col="0"/><xacro:rear_marker_id49_cell row="0" col="1"/>
+        <xacro:rear_marker_id49_cell row="0" col="2"/><xacro:rear_marker_id49_cell row="0" col="3"/>
+        <xacro:rear_marker_id49_cell row="0" col="4"/><xacro:rear_marker_id49_cell row="0" col="5"/>
+        <xacro:rear_marker_id49_cell row="1" col="0"/><xacro:rear_marker_id49_cell row="1" col="1"/>
+        <xacro:rear_marker_id49_cell row="1" col="3"/><xacro:rear_marker_id49_cell row="1" col="5"/>
+        <xacro:rear_marker_id49_cell row="2" col="0"/><xacro:rear_marker_id49_cell row="2" col="1"/>
+        <xacro:rear_marker_id49_cell row="2" col="2"/><xacro:rear_marker_id49_cell row="2" col="3"/>
+        <xacro:rear_marker_id49_cell row="2" col="4"/><xacro:rear_marker_id49_cell row="2" col="5"/>
+        <xacro:rear_marker_id49_cell row="3" col="0"/><xacro:rear_marker_id49_cell row="3" col="1"/>
+        <xacro:rear_marker_id49_cell row="3" col="2"/><xacro:rear_marker_id49_cell row="3" col="3"/>
+        <xacro:rear_marker_id49_cell row="3" col="5"/>
+        <xacro:rear_marker_id49_cell row="4" col="0"/><xacro:rear_marker_id49_cell row="4" col="1"/>
+        <xacro:rear_marker_id49_cell row="4" col="2"/><xacro:rear_marker_id49_cell row="4" col="5"/>
+        <xacro:rear_marker_id49_cell row="5" col="0"/><xacro:rear_marker_id49_cell row="5" col="1"/>
+        <xacro:rear_marker_id49_cell row="5" col="2"/><xacro:rear_marker_id49_cell row="5" col="3"/>
+        <xacro:rear_marker_id49_cell row="5" col="4"/><xacro:rear_marker_id49_cell row="5" col="5"/>
+      </xacro:if>
+      <collision name="collision">
+        <geometry>
+          <box><size>${body_length} ${body_width} ${body_height}</size></box>
+        </geometry>
+      </collision>
+    </link>
+
+    <frame name="base_link" attached_to="chassis">
+      <pose relative_to="__model__">0 0 0 0 0 0</pose>
+    </frame>
+
+    <link name="d435i_link">
+      <pose>${d435i_x} ${d435i_y} ${d435i_z} ${d435i_roll} ${d435i_pitch} ${d435i_yaw}</pose>
+      <xacro:box_inertial mass="0.072" x="0.09" y="0.025" z="0.025"/>
+      <visual name="body_visual">
+        <geometry><box><size>0.09 0.025 0.025</size></box></geometry>
+        <material>
+          <ambient>0.08 0.08 0.08 1</ambient>
+          <diffuse>0.10 0.10 0.10 1</diffuse>
+        </material>
+      </visual>
+      <xacro:if value="$(arg render_sensors)">
+      <sensor name="d435i_color" type="camera">
+        <camera name="color">
+          <horizontal_fov>${d435i_color_horizontal_fov}</horizontal_fov>
+          <image>
+            <width>${int(d435i_color_width)}</width>
+            <height>${int(d435i_color_height)}</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>${d435i_color_near}</near>
+            <far>${d435i_color_far}</far>
+          </clip>
+          <lens>
+            <intrinsics>
+              <fx>${d435i_color_fx}</fx>
+              <fy>${d435i_color_fy}</fy>
+              <cx>${d435i_color_cx}</cx>
+              <cy>${d435i_color_cy}</cy>
+              <s>0.0</s>
+            </intrinsics>
+          </lens>
+          <optical_frame_id>camera_color_optical_frame</optical_frame_id>
+        </camera>
+        <always_on>true</always_on>
+        <update_rate>${d435i_color_rate}</update_rate>
+        <visualize>false</visualize>
+        <!-- Gazebo는 영상 토픽의 마지막 경로를 camera_info로 바꿔 정보 토픽을 만듭니다. -->
+        <topic>camera/color/image_raw</topic>
+      </sensor>
+      <xacro:if value="$(arg d435i_depth_enabled)">
+      <sensor name="d435i_depth" type="depth_camera">
+        <camera name="depth">
+          <horizontal_fov>${d435i_depth_horizontal_fov}</horizontal_fov>
+          <image>
+            <width>${int(d435i_depth_width)}</width>
+            <height>${int(d435i_depth_height)}</height>
+            <format>R_FLOAT32</format>
+          </image>
+          <clip>
+            <near>${d435i_depth_near}</near>
+            <far>${d435i_depth_far}</far>
+          </clip>
+          <depth_camera>
+            <clip>
+              <near>${d435i_depth_near}</near>
+              <far>${d435i_depth_far}</far>
+            </clip>
+          </depth_camera>
+          <lens>
+            <intrinsics>
+              <fx>${d435i_depth_fx}</fx>
+              <fy>${d435i_depth_fy}</fy>
+              <cx>${d435i_depth_cx}</cx>
+              <cy>${d435i_depth_cy}</cy>
+              <s>0.0</s>
+            </intrinsics>
+          </lens>
+          <optical_frame_id>camera_depth_optical_frame</optical_frame_id>
+        </camera>
+        <always_on>true</always_on>
+        <update_rate>${d435i_depth_rate}</update_rate>
+        <visualize>false</visualize>
+        <topic>camera/depth/image_rect_raw</topic>
+      </sensor>
+      </xacro:if>
+      </xacro:if>
+      <sensor name="d435i_imu" type="imu">
+        <always_on>true</always_on>
+        <update_rate>${d435i_imu_rate}</update_rate>
+        <visualize>false</visualize>
+        <topic>camera/imu</topic>
+      </sensor>
+    </link>
+    <joint name="d435i_fixed_joint" type="fixed">
+      <parent>chassis</parent>
+      <child>d435i_link</child>
+    </joint>
+
+    <!--
+      게임식 3인칭 기록을 위한 1 mg·충돌체 없는 관찰 카메라입니다. 차량과 함께
+      움직이지만 /sim/chase/image는 평가·영상에만 쓰며 자율주행 입력이 아닙니다.
+    -->
+    <xacro:if value="$(arg chase_camera_enabled)">
+      <link name="chase_camera_link">
+        <pose>-0.32 0 0.38 0 0.72 0</pose>
+        <xacro:box_inertial mass="0.000001" x="0.001" y="0.001" z="0.001"/>
+        <sensor name="chase_camera" type="camera">
+          <camera name="chase">
+            <horizontal_fov>1.35</horizontal_fov>
+            <image><width>960</width><height>540</height><format>R8G8B8</format></image>
+            <clip><near>0.05</near><far>30</far></clip>
+          </camera>
+          <always_on>true</always_on>
+          <update_rate>$(arg chase_camera_rate)</update_rate>
+          <visualize>false</visualize>
+          <topic>sim/chase/image</topic>
+        </sensor>
+      </link>
+      <joint name="chase_camera_fixed_joint" type="fixed">
+        <parent>chassis</parent><child>chase_camera_link</child>
+      </joint>
+    </xacro:if>
+
+    <xacro:if value="$(arg lidar_enabled)">
+      <link name="lidar_link">
+        <pose>$(arg lidar_x) $(arg lidar_y) $(arg lidar_z) $(arg lidar_roll) $(arg lidar_pitch) $(arg lidar_yaw)</pose>
+        <xacro:box_inertial mass="$(arg lidar_mass)" x="0.06" y="0.06" z="$(arg lidar_height)"/>
+        <!-- 스캔 평면 아래의 단순 몸체이며 실물 CAD가 아닙니다. -->
+        <visual name="lidar_body">
+          <pose>0 0 -0.020 0 0 0</pose>
+          <geometry><cylinder><radius>$(arg lidar_radius)</radius><length>$(arg lidar_height)</length></cylinder></geometry>
+          <material><ambient>0.045 0.045 0.05 1</ambient><diffuse>0.06 0.065 0.075 1</diffuse></material>
+        </visual>
+        <visual name="lidar_cap">
+          <pose>0 0 -0.003 0 0 0</pose>
+          <geometry><cylinder><radius>0.023</radius><length>0.002</length></cylinder></geometry>
+          <material><ambient>0.9 0.27 0.025 1</ambient><diffuse>0.95 0.32 0.03 1</diffuse></material>
+        </visual>
+        <xacro:if value="$(arg render_sensors)">
+        <sensor name="rplidar_c1" type="gpu_lidar">
+          <always_on>true</always_on>
+          <update_rate>$(arg lidar_rate)</update_rate>
+          <visualize>false</visualize>
+          <topic>$(arg lidar_topic)</topic>
+          <lidar>
+            <scan><horizontal>
+              <samples>${int(lidar_samples)}</samples>
+              <resolution>1</resolution>
+              <min_angle>${-pi}</min_angle>
+              <!-- 360도를 500개 표본으로 나누며 양 끝을 중복하지 않습니다. -->
+              <max_angle>${pi - 2.0 * pi / int(lidar_samples)}</max_angle>
+            </horizontal></scan>
+            <range><min>$(arg lidar_min)</min><max>$(arg lidar_max)</max><resolution>$(arg lidar_resolution)</resolution></range>
+            <noise><type>gaussian</type><mean>0</mean><stddev>$(arg lidar_noise)</stddev></noise>
+          </lidar>
+        </sensor>
+        </xacro:if>
+      </link>
+      <joint name="lidar_fixed_joint" type="fixed"><parent>chassis</parent><child>lidar_link</child></joint>
+    </xacro:if>
+
+    <xacro:if value="$(arg tof_enabled)">
+      <xacro:if value="$(arg tof_front_enabled)"><xacro:tof_module name="front" pose="$(arg tof_front_pose)" topic="$(arg tof_front_topic)"/></xacro:if>
+      <xacro:if value="$(arg tof_front_left_enabled)"><xacro:tof_module name="front_left" pose="$(arg tof_front_left_pose)" topic="$(arg tof_front_left_topic)"/></xacro:if>
+      <xacro:if value="$(arg tof_rear_left_enabled)"><xacro:tof_module name="rear_left" pose="$(arg tof_rear_left_pose)" topic="$(arg tof_rear_left_topic)"/></xacro:if>
+      <xacro:if value="$(arg tof_rear_enabled)"><xacro:tof_module name="rear" pose="$(arg tof_rear_pose)" topic="$(arg tof_rear_topic)"/></xacro:if>
+      <xacro:if value="$(arg tof_rear_right_enabled)"><xacro:tof_module name="rear_right" pose="$(arg tof_rear_right_pose)" topic="$(arg tof_rear_right_topic)"/></xacro:if>
+      <xacro:if value="$(arg tof_front_right_enabled)"><xacro:tof_module name="front_right" pose="$(arg tof_front_right_pose)" topic="$(arg tof_front_right_topic)"/></xacro:if>
+    </xacro:if>
+
+    <xacro:wheel_link name="front_left_wheel" x="${wheelbase / 2.0}" y="${track_width / 2.0}"/>
+    <xacro:wheel_link name="front_right_wheel" x="${wheelbase / 2.0}" y="${-track_width / 2.0}"/>
+    <xacro:wheel_link name="rear_left_wheel" x="${-wheelbase / 2.0}" y="${track_width / 2.0}" friction_scale="$(arg rear_left_friction_scale)"/>
+    <xacro:wheel_link name="rear_right_wheel" x="${-wheelbase / 2.0}" y="${-track_width / 2.0}"/>
+
+    <link name="front_left_steering_link">
+      <pose>${wheelbase / 2.0} ${track_width / 2.0} ${wheel_radius} 0 0 0</pose>
+      <xacro:box_inertial mass="${steering_link_mass}" x="0.008" y="0.008" z="0.012"/>
+      <visual name="visual">
+        <geometry><cylinder><radius>0.004</radius><length>0.012</length></cylinder></geometry>
+        <material><ambient>0.8 0.8 0.8 1</ambient><diffuse>0.8 0.8 0.8 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="front_right_steering_link">
+      <pose>${wheelbase / 2.0} ${-track_width / 2.0} ${wheel_radius} 0 0 0</pose>
+      <xacro:box_inertial mass="${steering_link_mass}" x="0.008" y="0.008" z="0.012"/>
+      <visual name="visual">
+        <geometry><cylinder><radius>0.004</radius><length>0.012</length></cylinder></geometry>
+        <material><ambient>0.8 0.8 0.8 1</ambient><diffuse>0.8 0.8 0.8 1</diffuse></material>
+      </visual>
+    </link>
+
+    <joint name="front_left_steering_joint" type="revolute">
+      <parent>chassis</parent>
+      <child>front_left_steering_link</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>${-max_steering_angle}</lower>
+          <upper>${max_steering_angle}</upper>
+          <effort>5.0</effort>
+          <velocity>8.0</velocity>
+        </limit>
+      </axis>
+    </joint>
+    <joint name="front_right_steering_joint" type="revolute">
+      <parent>chassis</parent>
+      <child>front_right_steering_link</child>
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>${-max_steering_angle}</lower>
+          <upper>${max_steering_angle}</upper>
+          <effort>5.0</effort>
+          <velocity>8.0</velocity>
+        </limit>
+      </axis>
+    </joint>
+
+    <xacro:wheel_joint name="front_left_wheel_joint" parent="front_left_steering_link" child="front_left_wheel"/>
+    <xacro:wheel_joint name="front_right_wheel_joint" parent="front_right_steering_link" child="front_right_wheel"/>
+    <xacro:wheel_joint name="rear_left_wheel_joint" parent="chassis" child="rear_left_wheel"/>
+    <xacro:wheel_joint name="rear_right_wheel_joint" parent="chassis" child="rear_right_wheel"/>
+
+    <xacro:if value="${'$(arg drive_mode)' == 'legacy_velocity'}">
+    <plugin filename="gz-sim-ackermann-steering-system" name="gz::sim::systems::AckermannSteering">
+      <left_joint>rear_left_wheel_joint</left_joint>
+      <right_joint>rear_right_wheel_joint</right_joint>
+      <left_steering_joint>front_left_steering_joint</left_steering_joint>
+      <right_steering_joint>front_right_steering_joint</right_steering_joint>
+      <kingpin_width>${track_width}</kingpin_width>
+      <wheel_separation>${track_width}</wheel_separation>
+      <wheel_base>${wheelbase}</wheel_base>
+      <wheel_radius>${wheel_radius}</wheel_radius>
+      <steering_limit>${max_steering_angle}</steering_limit>
+      <steer_p_gain>$(arg steering_p_gain)</steer_p_gain>
+      <min_velocity>${-max_speed}</min_velocity>
+      <max_velocity>${max_speed}</max_velocity>
+      <min_acceleration>-${float('$(arg acceleration_limit)')}</min_acceleration>
+      <max_acceleration>$(arg acceleration_limit)</max_acceleration>
+      <!-- jerk 제한의 정지 진동을 피하고 속도·가속도 제한은 유지합니다. -->
+      <odom_publish_frequency>50</odom_publish_frequency>
+      <topic>/model/arena_car/cmd_vel</topic>
+      <odom_topic>/model/arena_car/odometry</odom_topic>
+      <tf_topic>/model/arena_car/tf</tf_topic>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_link</child_frame_id>
+    </plugin>
+    </xacro:if>
+
+    <xacro:if value="${'$(arg drive_mode)' == 'single_motor'}">
+    <plugin filename="arena-single-motor-system" name="arena::SingleMotorDrive">
+      <wheel_radius>${wheel_radius}</wheel_radius>
+      <wheelbase>${wheelbase}</wheelbase>
+      <track_width>${track_width}</track_width>
+      <steering_limit>${max_steering_angle}</steering_limit>
+      <max_speed>${max_speed}</max_speed>
+      <gear_ratio>$(arg gear_ratio)</gear_ratio>
+      <gear_efficiency>$(arg gear_efficiency)</gear_efficiency>
+      <motor_torque_limit>$(arg motor_torque_limit)</motor_torque_limit>
+      <motor_brake_torque_limit>$(arg motor_brake_torque_limit)</motor_brake_torque_limit>
+      <motor_free_speed>$(arg motor_free_speed)</motor_free_speed>
+      <motor_response_time>$(arg motor_response_time)</motor_response_time>
+      <speed_kp>$(arg motor_speed_kp)</speed_kp>
+      <speed_ki>$(arg motor_speed_ki)</speed_ki>
+      <acceleration_limit>$(arg motor_acceleration)</acceleration_limit>
+      <command_timeout>$(arg motor_timeout)</command_timeout>
+      <carrier_drag>$(arg carrier_drag)</carrier_drag>
+      <differential_viscosity>$(arg differential_viscosity)</differential_viscosity>
+      <differential_torque_limit>$(arg differential_torque_limit)</differential_torque_limit>
+      <steering_gain>$(arg servo_position_gain)</steering_gain>
+      <steering_integral_gain>$(arg servo_integral_gain)</steering_integral_gain>
+      <steering_velocity_gain>$(arg servo_velocity_gain)</steering_velocity_gain>
+      <steering_torque_limit>$(arg servo_torque_limit)</steering_torque_limit>
+      <steering_rate_limit>$(arg servo_rate_limit)</steering_rate_limit>
+    </plugin>
+    <plugin filename="gz-sim-wheel-slip-system" name="gz::sim::systems::WheelSlip">
+      <xacro:macro name="slip_wheel" params="name">
+        <wheel link_name="${name}">
+          <slip_compliance_lateral>$(arg tire_slip_lateral)</slip_compliance_lateral>
+          <slip_compliance_longitudinal>$(arg tire_slip_longitudinal)</slip_compliance_longitudinal>
+          <wheel_normal_force>$(arg tire_normal_force)</wheel_normal_force>
+          <wheel_radius>${wheel_radius}</wheel_radius>
+        </wheel>
+      </xacro:macro>
+      <xacro:slip_wheel name="front_left_wheel"/>
+      <xacro:slip_wheel name="front_right_wheel"/>
+      <xacro:slip_wheel name="rear_left_wheel"/>
+      <xacro:slip_wheel name="rear_right_wheel"/>
+    </plugin>
+    </xacro:if>
+
+    <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+      <topic>/model/arena_car/joint_state</topic>
+    </plugin>
+  </model>
+</sdf>

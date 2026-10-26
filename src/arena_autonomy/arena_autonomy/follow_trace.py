@@ -58,8 +58,24 @@ def snapshot_call(scan, history, reference_s, epoch, speed, side, steering, dt,
         'rear_half_angle_deg': rear_half_angle})
 
 
+def controller_mode(follow):
+    from arena_autonomy.r0_plus import R0Plus
+    from arena_autonomy.m3_execution_trial import M3ExecutionFollow
+    if isinstance(follow, M3ExecutionFollow):
+        return 'm3_execution_trial'
+    return 'r0_plus_candidate' if isinstance(follow, R0Plus) else 'g1_follow'
+
+
 class FollowTrace:
-    def __init__(self, path, motion_config, follow_config, capacity=128):
+    def __init__(self, path, motion_config, follow_config, capacity=128, *, mode='g1_follow', execution_config=None):
+        if mode not in ('g1_follow', 'r0_plus_candidate', 'm3_execution_trial'):
+            raise ValueError('unsupported decision trace mode')
+        if mode == 'm3_execution_trial':
+            from arena_autonomy.m3_execution_trial import ExecutionConfig
+            if not isinstance(execution_config, ExecutionConfig):
+                raise ValueError('M3 trace requires typed execution config')
+        elif execution_config is not None:
+            raise ValueError('execution config requires M3 trace')
         target = Path(path)
         if not target.is_absolute():
             raise ValueError('g1_trace_path must be absolute')
@@ -69,7 +85,12 @@ class FollowTrace:
         self.capture_errors = 0
         self.closed = False
         self.writer = QueuedLog(self._write, capacity=capacity)
-        self.emit('header', {'schema': 1, 'scope': 'g1_decision_stage_only',
+        identity = ({'schema': 1, 'scope': 'g1_decision_stage_only'} if mode == 'g1_follow' else
+                    {'schema': 2, 'scope': 'r0plus_decision_stage_only', 'controller_mode': mode})
+        if mode == 'm3_execution_trial':
+            identity = {'schema': 3, 'scope': 'm3_execution_decision_stage_only', 'controller_mode': mode,
+                        'execution_config': asdict(execution_config)}
+        self.emit('header', {**identity,
                             'history_units': {'wheels': 'm/s_after_conversion', 'gyro': 'rad/s_after_bias'},
                             'motion_config': asdict(motion_config), 'follow_config': asdict(follow_config)})
 
@@ -142,7 +163,7 @@ def replay_call(follow, data, motion_config):
     except (MotionUnavailable, ValueError) as error:
         follow.reset()
         return 0., 0., {'reason': 'follow_input_stop', 'behavior': 'HOLD',
-                       'input_error': str(error), 'mode': 'g1_follow'}
+                       'input_error': str(error), 'mode': controller_mode(follow)}
 
 
 def equal_output(a, b, tolerance=1e-10):
@@ -159,6 +180,7 @@ def equal_output(a, b, tolerance=1e-10):
 def replay_events(events):
     count, calls, mismatches, footer = 0, 0, [], None
     follow = motion = None
+    scope = None
     outcomes = []
     for event in events:
         if footer is not None or event.get('seq') != count:
@@ -166,10 +188,25 @@ def replay_events(events):
         count += 1
         kind, data = event['kind'], event['data']
         if count == 1:
-            if kind != 'header' or data.get('schema') != 1 or data.get('scope') != 'g1_decision_stage_only':
+            standard = data.get('schema') == 1 and data.get('scope') == 'g1_decision_stage_only'
+            plus = (data.get('schema') == 2 and data.get('scope') == 'r0plus_decision_stage_only'
+                    and data.get('controller_mode') == 'r0_plus_candidate')
+            m3 = (data.get('schema') == 3 and data.get('scope') == 'm3_execution_decision_stage_only'
+                  and data.get('controller_mode') == 'm3_execution_trial')
+            if kind != 'header' or not (standard or plus or m3):
                 raise ValueError('unsupported trace header')
+            scope = data['scope']
             motion = MotionConfig(**data['motion_config'])
-            follow = LocalFollow(FollowConfig(**data['follow_config']))
+            follow_type = LocalFollow
+            if plus:
+                from arena_autonomy.r0_plus import R0Plus
+                follow_type = R0Plus
+            if m3:
+                from arena_autonomy.m3_execution_trial import M3ExecutionFollow, ExecutionConfig
+                follow = M3ExecutionFollow(FollowConfig(**data['follow_config']),
+                    ExecutionConfig(**data['execution_config']), allow_simulation_trial=True)
+            else:
+                follow = follow_type(FollowConfig(**data['follow_config']))
         elif kind == 'reset':
             follow.reset()
         elif kind == 'call':
@@ -189,5 +226,5 @@ def replay_events(events):
             or footer.get('pending') != 0 or footer.get('worker_alive') is not False
             or footer.get('written') != count-1 or footer.get('accepted') != count-1):
         raise ValueError('incomplete trace capture')
-    return {'scope': 'g1_decision_stage_only', 'calls': calls, 'matched': calls-len(mismatches),
+    return {'scope': scope, 'calls': calls, 'matched': calls-len(mismatches),
             'mismatches': mismatches, 'passed': not mismatches, 'outcomes': outcomes}

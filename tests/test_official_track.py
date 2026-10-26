@@ -1,4 +1,4 @@
-"""공식 v2026.09.14 입력·보정 범위·실행 월드 회귀 검사."""
+"""공식 v2026.10.24 입력·보정 범위·실행 월드 회귀 검사. 옛 보존본은 별도 대조."""
 
 import json
 import math
@@ -19,7 +19,7 @@ import build_official_track as official_builder  # noqa: E402
 
 
 def test_pinned_official_release_is_preserved():
-    assert ARCHIVE.stat().st_size == 805_607
+    assert ARCHIVE.stat().st_size == 812_042
     assert sha256(ARCHIVE) == EXPECTED_ARCHIVE_SHA256
     with ZipFile(ARCHIVE) as archive:
         assert sum(not item.is_dir() for item in archive.infolist()) == 23
@@ -28,6 +28,53 @@ def test_pinned_official_release_is_preserved():
 
 def test_official_runtime_hash_manifest_is_current():
     assert check(DESTINATION)["status"] == "ok"
+
+
+def test_previous_release_archive_remains_verifiable():
+    previous = REPO / 'assets/track/official/v2026.09.14/it_arena_track_v2026.09.14.zip'
+    assert official_builder.verify_archive(previous)['size_bytes'] == 805_607
+
+
+def test_published_colors_survive_runtime_conversion():
+    with ZipFile(ARCHIVE) as archive:
+        source = ET.fromstring(archive.read('output_final/world.sdf'))
+    model = ET.parse(DESTINATION / 'world.sdf').find("./world/model[@name='it_arena_track_static']")
+    expected = {'ground_plane_link': [.55, .40, .26, 1],
+                'track_surface': [.90, .90, .90, 1],
+                'walls': [.50, .50, .50, 1], 'grass': [.13, .55, .13, 1]}
+    for name, color in expected.items():
+        link = source.find(f"./world/model/link[@name='{name}']")
+        for visual in link.findall('visual'):
+            original = visual.attrib['name']
+            converted = model.find(f"link[@name='{name}']/visual[@name='{original}']")
+            if converted is None:
+                converted = model.find(f"link[@name='track_geometry_merged']/visual[@name='{name}__{original}']")
+            assert converted is not None, (name, original)
+            assert [float(x) for x in visual.findtext('material/diffuse').split()] == color
+            assert converted.findtext('material/diffuse') == visual.findtext('material/diffuse')
+
+
+def test_published_bump_mesh_identity_and_metric_assembly():
+    model = ET.parse(DESTINATION / 'world.sdf').find("./world/model[@name='it_arena_track_static']")
+    bump = model.find("link[@name='safety_bump_0']")
+    assert len(bump.findall('visual')) == 2
+    assert len(bump.findall('collision')) == 20
+    for i, (name, expected, _, y) in enumerate(official_builder.PUBLISHED_BUMP_PARTS, 1):
+        visual = bump.find(f"visual[@name='published_piece_{i}']")
+        assert sha256(DESTINATION / 'meshes' / name) == expected
+        assert visual.findtext('geometry/mesh/scale') == '0.001 0.001 0.001'
+        assert [float(x) for x in visual.findtext('pose').split()] == [-.025, y, 0, 0, 0, 0]
+        assert visual.findtext('material/diffuse') == '0.9 0.6 0.1 1'
+    scene = json.loads((DESTINATION / 'scene.json').read_text(encoding='utf-8'))
+    assert scene['speed_bumps']['published_visual']['assembly_size_m'] == [.05, .45, .01]
+
+
+def test_published_mesh_cannot_silently_be_stretched_to_proposed_length(tmp_path):
+    import yaml
+    profile = yaml.safe_load(official_builder.PROFILE.read_text(encoding='utf-8'))
+    profile['facilities']['speed_bump']['length_m'] = .15
+    with pytest.raises(ValueError, match='혼용'):
+        official_builder.apply_published_bump_visual(tmp_path, profile)
 
 
 def test_vehicle_change_invalidates_official_clearance_report(monkeypatch, tmp_path):
@@ -46,7 +93,7 @@ def test_official_geometry_and_classification_are_explicit():
     assert scene["track"]["lap_length_m"] == 46.6329
     assert provenance["official_values"]["vehicle_envelope_m"] == {"length": .2, "width": .15}
     assert provenance["runtime_corrections"]["facilities"]["status"] == (
-        "official_v2026.09.14_markers_unchanged_provisional_light_bump_finish"
+        "official_v2026.10.24_colors_markers_published_bump_visual_provisional_light_finish"
     )
     verification = scene["verification"]
     assert verification["surface_coverage_ok"] is True
@@ -155,7 +202,7 @@ def test_official_filled_starting_grid_visuals_are_preserved_without_provisional
     paint = scene["starting_grid"]["paint"]
     assert paint == {
         "representation": "official_filled_slots",
-        "source": "official v2026.09.14 world.sdf grid_slot_0..5 visuals",
+        "source": "official v2026.10.24 world.sdf grid_slot_0..5 visuals",
         "length_m": .25,
         "width_m": .17,
         "paint_center_height_m": .0037,

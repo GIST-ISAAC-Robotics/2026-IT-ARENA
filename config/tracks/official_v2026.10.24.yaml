@@ -1,0 +1,59 @@
+profile: official_v2026.10.24
+status: official_colors_markers_with_published_bump_visual_and_provisional_light
+upstream_repository: https://github.com/MOSW626/istech-it-arena
+upstream_commit: d8107de6ccff14ae17db7fb08732b55fed82b5b4
+upstream_release: v2026.10.24
+release_asset: it_arena_track_v2026.10.24.zip
+release_sha256: 16b2f078609abea45ac3f351215df6576ced02bc6c40e933998ab91578de8a79
+
+# 공식 마커의 SDF 링크 전체와 PNG, scene 위치는 변경하지 않습니다.
+# 방지턱 시각 형상은 공개 STL, 충돌은 반코사인 20구간 근사입니다. 신호등·결승 체크무늬는 팀 임시입니다.
+facilities:
+  status: official_v2026.10.24_colors_markers_published_bump_visual_provisional_light_finish
+  speed_bump:
+    profile: raised_cosine
+    length_m: 0.05
+    height_m: 0.01
+    subdivisions: 20
+    lateral_stripes: 10
+    # #2의 100/150 mm 완화안은 미확정. 공개 파일의 50 mm 길이를 유지합니다.
+    published_visual: official_two_piece_225mm_h10
+  traffic_light:
+    # 공식 4-red+green 시퀀스는 공개됐으나 이 낮은 3등 데모 시설과 배치는 임시입니다.
+    # 새 ID 0 마커를 가리지 않도록 임시 시설만 출발선 0.6 m 뒤로 이동합니다.
+    route_offset_m: 0.60
+    gantry_height_m: 0.42
+    lamp_center_height_m: 0.30
+    lamp_radius_m: 0.026
+    initial_state: red
+    # 10/7 사용자 결정: 실물 시공 사진 전에는 가정한 바닥 기둥을 기본 코스에서 제외합니다.
+    # 등 본체/가로대/램프는 유지하며 실제 지지 방식이 확정됐다는 뜻은 아닙니다.
+    ground_post_enabled: false
+  markers:
+    representation: official_pbr_texture
+    mount_type: gantry
+    orientation_mode: official_pose
+    printed_board_size_m: 0.10
+    black_square_size_m: 0.07
+    quiet_zone_m: 0.015
+    bottom_height_m: 0.35
+  gantry_supports:
+    # 기존 시각/가림 시험용 구조는 보존 자료에서만 사용합니다. 공식 시공 도면이 아닙니다.
+    enabled: false
+    post_offset_m: 0.30
+    post_width_m: 0.020
+    beam_height_m: 0.52
+    beam_width_m: 0.022
+    hanger_width_m: 0.010
+    # ID 30의 -Y측은 지름길 입구이므로 그쪽 기둥 없이 한쪽 지지로 둡니다.
+    omit_right_post_ids: [30]
+  starting_grid:
+    representation: official_filled_slots
+    length_m: 0.25
+    width_m: 0.17
+    center_height_m: 0.0037
+    thickness_m: 0.001
+  finish_line:
+    depth_m: 0.10
+    cells_across: 9
+    rows: 2

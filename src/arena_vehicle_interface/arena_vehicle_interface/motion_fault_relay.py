@@ -20,6 +20,7 @@ from arena_vehicle_interface.drive_feedback import (
     LEGACY_JOINTS, MODE_LEGACY, MODE_MOTOR, MOTOR_JOINT, TOPIC_BY_MODE, validate_mode,
 )
 from arena_vehicle_interface.motion_impairment import MotionFaultConfig
+from arena_vehicle_interface.motor_count_impairment import MODEL, MotorCountTransform
 from arena_vehicle_interface.node_lifecycle import run_node
 
 
@@ -30,7 +31,7 @@ def stamp_s(msg):
 RAW_FEEDBACK_TOPIC = {MODE_MOTOR: '/test/raw_drive_motor', MODE_LEGACY: '/test/raw_wheels'}
 
 
-def alter_message(kind, original, fault, feedback_mode=MODE_LEGACY):
+def alter_message(kind, original, fault, feedback_mode=MODE_LEGACY, *, motor_transform=None):
     msg = copy.deepcopy(original)
     stamp = stamp_s(original)
     if kind == 'imu':
@@ -50,10 +51,16 @@ def alter_message(kind, original, fault, feedback_mode=MODE_LEGACY):
             if len(indices) != 2 or any(i >= len(msg.velocity) for i in indices):
                 raise ValueError('both named wheel velocities are required')
         before = [original.velocity[i] for i in indices]
-        for i in indices:
-            msg.velocity[i] = fault.transform(original.velocity[i], stamp)
-            if i < len(msg.position):
-                msg.position[i] = fault.transform(original.position[i], stamp)
+        if feedback_mode == MODE_MOTOR:
+            if motor_transform is None or len(msg.position) != 1:
+                raise ValueError('motor count transform and one position required')
+            position, velocity = motor_transform.apply(original.position[0], original.velocity[0], stamp, fault)
+            msg.position, msg.velocity = [position], [velocity]
+        else:
+            for i in indices:
+                msg.velocity[i] = fault.transform(original.velocity[i], stamp)
+                if i < len(msg.position):
+                    msg.position[i] = fault.transform(original.position[i], stamp)
         after = [msg.velocity[i] for i in indices]
     ns = round(fault.claimed_stamp(stamp) * 1e9)
     msg.header.stamp.sec, msg.header.stamp.nanosec = divmod(ns, 1_000_000_000)
@@ -66,9 +73,13 @@ class MotionFaultRelay(Node):
         self.feedback_mode = validate_mode(str(self.declare_parameter('feedback_mode', MODE_LEGACY).value))
         profile = Path(str(self.declare_parameter('profile', '').value))
         self.config = MotionFaultConfig.from_dict(json.loads(profile.read_text()))
+        self.motor_transform = (MotorCountTransform(self.declare_parameter('counts_per_motor_revolution', 0).value)
+                                if self.feedback_mode == MODE_MOTOR else None)
         audit = str(self.declare_parameter('audit_path', '').value)
         self.audit = Path(audit).open('x', encoding='utf-8', buffering=1) if audit else None
-        self.emit({'event': 'config', 'config': self.config.as_dict(), 'feedback_mode': self.feedback_mode})
+        self.emit({'event': 'config', 'config': self.config.as_dict(), 'feedback_mode': self.feedback_mode,
+                   'motor_count_model': MODEL if self.motor_transform else None,
+                   'counts_per_motor_revolution': self.motor_transform.spec.counts_per_motor_revolution if self.motor_transform else None})
         self.pending = {kind: deque() for kind in ('imu', 'wheels')}
         self.rng = {kind: random.Random(self.config.seed + i) for i, kind in enumerate(self.pending)}
         self.sequence = 0
@@ -90,6 +101,8 @@ class MotionFaultRelay(Node):
         if self.last_clock is not None and now < self.last_clock:
             for queue in self.pending.values():
                 queue.clear()
+            if self.feedback_mode == MODE_MOTOR:
+                self.motor_transform.reset()
             self.emit({'event': 'clock_reset', 'time': now})
         self.last_clock = now
         return now
@@ -104,12 +117,17 @@ class MotionFaultRelay(Node):
         if fault.drop and base['fault_active']:
             self.emit({**base, 'event': 'drop'})
             return
-        msg, before, after = alter_message(kind, original, fault, self.feedback_mode)
+        msg, before, after = alter_message(kind, original, fault, self.feedback_mode,
+                                           motor_transform=getattr(self, 'motor_transform', None))
         delay = fault.delay(source_stamp, self.rng[kind])
         row = {**base, 'event': 'publish', 'claimed_stamp_s': stamp_s(msg), 'delay_s': delay,
                'due_s': now + delay,
                'before': [v if math.isfinite(v) else None for v in before],
                'after': [v if math.isfinite(v) else None for v in after]}
+        if kind == 'wheels' and self.feedback_mode == MODE_MOTOR:
+            row.update(before_position=list(original.position), after_position=list(msg.position),
+                       before_velocity_kind='finite' if math.isfinite(before[0]) else 'nan' if math.isnan(before[0]) else 'infinite',
+                       after_velocity_kind='finite' if math.isfinite(after[0]) else 'nan' if math.isnan(after[0]) else 'infinite')
         self.pending[kind].append((msg, row))
         if len(self.pending[kind]) > 10000:
             raise RuntimeError('test relay queue exceeded bound')

@@ -1,0 +1,45 @@
+F..................                                                      [100%]
+=================================== FAILURES ===================================
+______ test_registry_source_and_runtime_match_and_origin_is_not_rear_axle ______
+
+    def test_registry_source_and_runtime_match_and_origin_is_not_rear_axle():
+        scene, raw, vehicle, camera = inputs()
+        rows = registry(scene, raw, vehicle)
+        assert [r['index'] for r in rows] == [2, 5, 1, 4, 0, 3]
+>       assert rows == registry(json.loads((RUNTIME/'scene.json').read_text()), (RUNTIME/'world.sdf').read_bytes(), vehicle)
+
+tests/test_grid_start.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = {'alt_routes': {}, 'aruco_markers': {'dictionary': 'DICT_4X4_50', 'marker_size_m': 0.1, 'markers': [{'id': 0, 'normal_...시 합류하는 별도의 좁은 지름길 (양쪽 모두 주행 가능)', ...}], 'course_name': 'IT ARENA official release v2026.09.14 team-test runtime', ...}
+raw_world = b'<?xml version=\'1.0\' encoding=\'utf-8\'?>\n<sdf version="1.8">\n  <world name="it_arena_track">\n    <physics name=...ial>\n          <cast_shadows>false</cast_shadows>\n        </visual>\n      </link>\n    </model>\n  </world>\n</sdf>'
+vehicle = {'body': {'center_of_mass_z_offset_m': 0.0, 'height_and_mass_status': 'provisional', 'height_m': 0.06, 'length_m': 0.2...dentification_marker': {'black_code_size_m': 0.0348, 'dictionary': 'DICT_4X4_50', 'enabled': True, 'id': 49, ...}, ...}
+
+    def registry(scene, raw_world, vehicle):
+        """scene의 칸 중심 = model origin = 축간 중앙 지면. 후축으로 이동하지 않는다."""
+        if vehicle['reference_frame'] != 'model_origin':
+            raise ValueError('unsupported vehicle reference frame')
+        grid = scene['starting_grid']
+        slots = grid['slots']
+        if len(slots) != 6 or {s['index'] for s in slots} != set(range(6)):
+            raise ValueError('six unique official slots required')
+        model = ET.fromstring(raw_world).find("world/model[@name='it_arena_track_static']")
+        if model is None:
+            raise ValueError('missing track')
+        origin, orientation = pose(model)
+        if not np.allclose(origin, 0) or not np.allclose(orientation, np.eye(3)):
+            raise ValueError('world-origin model required')
+        rows = []
+        for slot in sorted(slots, key=lambda s: -s['s_m']):
+            if not all(math.isfinite(slot[k]) for k in ('x', 'y', 'yaw_rad', 's_m')):
+                raise ValueError('nonfinite grid pose')
+            link = model.find(f"link[@name='grid_slot_{slot['index']}']")
+            if link is None:
+>               raise ValueError('grid paint missing')
+E               ValueError: grid paint missing
+
+scripts/audit_grid_start.py:47: ValueError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-24/m5_grid_v1/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_grid_start.py::test_registry_source_and_runtime_match_and_origin_is_not_rear_axle
+1 failed, 18 passed in 2.14s

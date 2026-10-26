@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-24 B3 선택형 경기 감독(race_control_mode 기본 legacy)의 소스 출처 기록. 기본 채택·주행 안전 승인 아님",
+  "parent_contract": "config/tests/r0_plus_e3_r0_sha256.json",
+  "parent_contract_sha256": "e75790e95b038bd03d92117e87f043c5bfe82fb19feb3aed2ea0229052d4dc8f",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "5d0c53b0ee162ddaed5a9b0b98440240f035e064d24e4439ef7937289d4c0203",
+      "after": "1a1183fe9549fff928af290dcdc21fce2585da4b3dcfd61ed0aac09d1ab4ab96",
+      "reason": "b3_candidate에서만 경기 감독·/race/command·MCU 상태 입력 연결. 기본 legacy 그래프 불변"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "newly_tracked_changes": {
+    "src/arena_autonomy/arena_autonomy/wall_follow.py": {
+      "before": "aace3676ee9aaebbe7c56fd461352ef323974d7aadc3696632a1abbd5d8008a0",
+      "after": "f5a744a6967763dffa9640caed3bd2bc7753ba33b7a9815e4222a8697f7ab622",
+      "reason": "경기 감독이 있을 때만 출발 관문을 대체하고 상태에 race 요약 추가. 기본 분기는 같은 시각 출발 판정"
+    }
+  },
+  "newly_tracked_before_source": {
+    "git_commit": "409631436ccf2b238593900e06a4b7179ed54814",
+    "e3_report": "artifacts/validation/2026-10-24/e3_onroad_v1/r0plus/report.json"
+  },
+  "modified_dependencies": {},
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/race_session.py": "9f2914cdbade9265d0d39b4712fbfb4da2dd339b37f097d3dac9c814e4962a1f"
+  },
+  "evidence": [
+    "docs/autonomy/RACE_START_CONTRACT_2026_10_13.md",
+    "artifacts/validation/2026-10-24/b3_race_session_ros_v2/README.md"
+  ]
+}

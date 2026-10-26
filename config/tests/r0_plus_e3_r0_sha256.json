@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "scope": "2026-10-24 R0+ 선택형 후보와 E3 평가기 확장의 소스 출처 기록. 기본 채택·주행 안전·M3 해결 승인 아님",
+  "parent_contract": "config/tests/recent_observation_r0_sha256.json",
+  "parent_contract_sha256": "be4defb5dad622a969c0709b0aefa924ed15a2e80daba01d58caaed66c72f840",
+  "before_source": {
+    "git_commit": "409631436ccf2b238593900e06a4b7179ed54814",
+    "interpretation": "before 해시는 이 커밋의 blob과 같다"
+  },
+  "after_source": {
+    "report": "artifacts/validation/2026-10-24/e3_onroad_v1/r0plus/report.json",
+    "snapshot": "artifacts/validation/2026-10-24/e3_onroad_v1/r0plus/source_snapshot.zip",
+    "interpretation": "after 해시는 E3 도로 옆차 R0+ 실행이 기록한 실행 소스와 보존 바이트다"
+  },
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "3a7f98441966047431ea07fe2bc3ba0a9f5af13af88fd2009e738ad0f7d5c014",
+      "after": "5d0c53b0ee162ddaed5a9b0b98440240f035e064d24e4439ef7937289d4c0203",
+      "reason": "r0_plus_enabled 기본 false 선택과 G1 동시 사용 거절, R0+ 판단 기록 모드 표시"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "72e9c45c98741f7e9257915b89bfa60155cd7aebabebc42341ed27ed59bf9f10",
+      "after": "6ff0021626dd6c17d00a63fe61abe020de838e8bd5a71ac60b615f3ec3ebb10a",
+      "reason": "복수 actor overlay·도로 옆차 경로·R0+ 모드·고정 E3 G1 회랑 옵션. 기본 단일 actor 유지"
+    },
+    "scripts/g1_traffic_eval.py": {
+      "before": "bba827ef2658b9b23c301380eeefb086450746d9dc2b0557f2127fd659b553a5",
+      "after": "d3663561ebeea53dd6f37ee25cac1f2b03c5c23e80ec2c72ec8933de1e6d73c9",
+      "reason": "R0+ 행 집계와 모드 일치 판정. 기존 G1/R0 판정 유지"
+    },
+    "scripts/validate_basic_autonomy.py": {
+      "before": "c974a90df418c6d7c9cd76ef0f7a9a97c64725eb56a9c0fe6f654241e849933e",
+      "after": "00e7df2633a04cd3b05361db42404d67ba8f951c4994e072980b912f42f98c3a",
+      "reason": "r0_plus.launch.py 선택과 G1 동시 사용 거절, 비교용 속도 프로필 이름"
+    }
+  },
+  "modified_dependencies": {},
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/r0_plus.py": "8ef2c44cbf759a19343f61cf6df61182ce02909e52b440fb733a15017bb000d5"
+  },
+  "evidence": [
+    "docs/autonomy/MULTI_ACTOR_E3_2026_10_24.md",
+    "artifacts/validation/2026-10-24/e3_onroad_v1/r0plus/report.json"
+  ]
+}

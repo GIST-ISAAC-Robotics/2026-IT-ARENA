@@ -32,6 +32,12 @@ from validate_basic_autonomy import (DEMO_WORLD, REPO, add_rate_metrics, configu
 from validate_facility_visibility import yaw_of
 import g1_traffic_eval as ev
 from g1_lidar_stress import load_test_profile, audit_injection, require_injection_evidence
+from g1_motion_stress import load_motion_profile, require_motion_evidence, motor_count_resolution
+from traffic_actors import actor_specs, compose_sdf, overlay_case, check_additional_routes, contact_events
+from traffic_actor_runtime import ExtraActors
+from traffic_road_route import check_onroad_route
+from traffic_merge import (merge_profile_for_case, scheduled_merge_pose, validate_merge_route,
+                           audit_merge_motion)
 
 CONFIG = REPO/'config/tests/g1_traffic_v1.json'
 WORLD_NAME = 'it_arena_track'
@@ -39,25 +45,45 @@ SET_POSE_SERVICE = f'/world/{WORLD_NAME}/set_pose'
 CONTACT_TOPIC = '/eval/g1b_actor/contact'
 CONTACT_PROBE_REPORT = REPO/'artifacts/validation/2026-10-07/g1b_contact_probe_v1/report.json'
 SOURCE_FILES = [
+    'scripts/g1_motion_stress.py', 'scripts/motion_fault_audit.py',
     'scripts/g1_lidar_stress.py',
     'scripts/validate_g1_traffic.py', 'scripts/g1_traffic_eval.py', 'scripts/validate_basic_autonomy.py',
     'scripts/lidar_shutdown.py', 'scripts/audit_local_pursuit_road.py', 'scripts/probe_static_actor_contact.py',
+    'scripts/traffic_actors.py', 'scripts/traffic_actor_runtime.py',
+    'scripts/traffic_road_route.py', 'scripts/traffic_encounter.py', 'scripts/traffic_merge.py',
+    'scripts/m4_operation_trial.py', 'scripts/m4_operation_eval.py', 'scripts/m4_second_start.py',
     'config/tests/g1_traffic_v1.json', 'config/tests/g1b_r0_sha256.json',
+    'config/tests/m3_execution_r0_sha256.json',
+    'config/tests/m3_command_selection_r0_sha256.json',
+    'config/tests/m3_baseline_release_r0_sha256.json',
+    'config/tests/m3_release_gate_r0_sha256.json',
+    'config/tests/m3_small_center_r0_sha256.json',
+    'config/tests/m3_retained_threats_r0_sha256.json',
+    'config/tests/m3_sensor_stress_r0_sha256.json',
+    'config/tests/m4_operation_r0_sha256.json',
+    'config/tests/m3_guarded_return_r0_sha256.json',
+    'config/tests/m4_second_start_r0_sha256.json',
+    'config/tests/m2_merge_r0_sha256.json',
+    'config/tests/m3_surface_commitment_r0_sha256.json',
     'src/arena_gazebo/worlds/it_arena_official/world.sdf', 'src/arena_gazebo/worlds/it_arena_official/scene.json',
     'src/arena_gazebo/worlds/it_arena_official/centerline.csv',
     'src/arena_description/config/vehicle.yaml', 'src/arena_description/config/b0183_c1.yaml',
     'src/arena_description/models/arena_car/model.sdf.xacro',
     'src/arena_bringup/launch/simulation.launch.py', 'src/arena_bringup/launch/demo.launch.py',
     'src/arena_bringup/launch/local_pursuit.launch.py', 'src/arena_bringup/launch/g1_follow.launch.py',
+    'src/arena_bringup/launch/r0_plus.launch.py',
     'src/arena_bringup/config/b0183_imu_bridge.yaml',
     *[f'src/arena_autonomy/arena_autonomy/{name}.py' for name in (
-        'core', 'wall_follow', 'local_path', 'local_pursuit', 'local_follow', 'scene_motion', 'local_scene',
+        'core', 'wall_follow', 'local_path', 'local_pursuit', 'local_follow', 'r0_plus', 'scene_motion', 'local_scene',
+        'm3_execution_trial', 'm3_observed_follow', 'lateral_intent', 'observed_lateral_trial',
+        'polygon_batch', 'rounded_occupancy_candidate',
         'vision_process', 'lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'follow_trace',
         'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'occupancy_timing', 'race_start',
-        'observation_support', 'observation_lateral', 'linear_observation')],
+        'observation_support', 'scan_topology', 'observation_lateral', 'linear_observation', 'race_session', 'race_permission')],
     *[f'src/arena_vehicle_interface/arena_vehicle_interface/{name}.py' for name in (
         'rotating_lidar', 'lidar_impairment', 'sim_wheel_encoder', 'ackermann_to_twist', 'timing_probe', 'queued_log',
-        'actuation_ros', 'applied_guard', 'actuation_contract', 'actuation_wire')],
+        'actuation_ros', 'applied_guard', 'actuation_contract', 'actuation_wire', 'motion_fault_relay',
+        'motion_impairment', 'motor_count_impairment', 'drive_feedback')],
     'src/arena_gazebo/src/single_motor_drive.cpp', 'src/arena_gazebo/include/arena_gazebo/drivetrain.hpp',
     'src/arena_gazebo/scripts/traffic_light_controller.py',
 ]
@@ -91,8 +117,9 @@ def load_config(path=CONFIG):
         lateral = actor_lateral_offset(config, case)
         if not math.isfinite(lateral) or abs(lateral) > .45:
             raise ValueError('invalid actor lateral offset')
-        if lateral and case.get('route_kind') != 'side_grass_straight':
-            raise ValueError('lateral actor requires registered side-grass route')
+        if lateral and case.get('route_kind') not in ('side_grass_straight', 'side_road_straight', 'merge_straight'):
+            raise ValueError('lateral actor requires registered road or grass side route')
+        merge_profile_for_case(case)
     if set(config['seeds']) != {'0', '1', '2'}:
         raise ValueError('three fixed seeds are required')
     return config
@@ -131,6 +158,10 @@ def check_straight(config, centerline, case, s0):
 def check_route(config, centerline, case, s0, road=None, obstacles=()):
     """확장 시험만 등록한 첫 코너까지 허용한다. 기존 직선 제한은 유지한다."""
     kind = case.get('route_kind', 'straight')
+    if kind == 'merge_straight':
+        return validate_merge_route(config, centerline, case, s0, road, obstacles, check_straight)
+    if kind == 'side_road_straight':
+        return check_onroad_route(config, centerline, case, s0, road, obstacles, check_straight, actor_pose_at)
     if kind == 'straight':
         return {'kind': kind, **check_straight(config, centerline, case, s0)}
     if kind == 'side_grass_straight':
@@ -178,10 +209,14 @@ def check_route(config, centerline, case, s0, road=None, obstacles=()):
             'actor_road_wall_samples': len(samples), 'maximum_sample_step_m': .01}
 
 
-def source_paths(config_path, lidar_profile=None):
+def source_paths(config_path, lidar_profile=None, actor_overlay=None, motion_profile=None):
     """사용자 지정 시험 설정도 소스 사본에 포함하며 저장소 내부 경로만 허용한다."""
     relative = Path(config_path).resolve().relative_to(REPO).as_posix()
     extra = [Path(lidar_profile).resolve().relative_to(REPO).as_posix()] if lidar_profile else []
+    if actor_overlay:
+        extra.append(Path(actor_overlay).resolve().relative_to(REPO).as_posix())
+    if motion_profile:
+        extra.append(Path(motion_profile).resolve().relative_to(REPO).as_posix())
     return list(dict.fromkeys([*SOURCE_FILES, relative, *extra]))
 
 
@@ -192,6 +227,15 @@ def actor_lateral_offset(config, case):
 def actor_pose_at(centerline, s0, schedule, elapsed, lateral_offset=0.):
     x, y, yaw = centerline.pose(s0+ev.actor_travel_m(schedule, elapsed))
     return x-lateral_offset*math.sin(yaw), y+lateral_offset*math.cos(yaw), yaw
+
+
+def primary_pose_at(config, centerline, s0, case, elapsed):
+    """주 actor만 명시 합류 경로를 선택한다. 기존/추가 actor의 자세 계산은 그대로다."""
+    profile = merge_profile_for_case(case)
+    lateral = actor_lateral_offset(config, case)
+    if profile is not None:
+        return scheduled_merge_pose(centerline, s0, case['schedule'], elapsed, lateral, profile)
+    return actor_pose_at(centerline, s0, case['schedule'], elapsed, lateral)
 
 
 def actor_sdf(config, pose):
@@ -293,11 +337,28 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--case', required=True)
     parser.add_argument('--seed', type=int, choices=(0, 1, 2), required=True)
-    parser.add_argument('--mode', choices=('g1', 'r0'), required=True)
+    parser.add_argument('--mode', choices=('g1', 'r0', 'r0plus', 'm3'), required=True)
+    parser.add_argument('--m3-command-fallback', action='store_true',
+                        help='M3 실제 발행 검사까지 포함한 경로 후보 선택 비교; 기본 비활성')
+    parser.add_argument('--m3-release-to-baseline', action='store_true',
+                        help='M3 옆차가 앞으로 지나간 뒤 기본 G1 복귀 비교; 기본 비활성')
+    parser.add_argument('--m3-small-center-straight', action='store_true',
+                        help='M3 중앙 복귀 보정이 직선 추종 오차 예산 안이면 직진 먼저 검사; 관측 복귀 필요, 기본 비활성')
+    parser.add_argument('--m3-straight-surface-commitment', action='store_true',
+                        help='M3 직진 노면 검사 범위 정합성 비교; 관측 복귀/명령 재선택 필요, 기본 비활성')
+    for name in ('rounded-occupancy', 'straight-with-threat', 'defer-center-on-straight'):
+        parser.add_argument('--m3-'+name, action='store_true',
+                            help='선택형 M3 밀집 출발 후보 비교; 기본 비활성, 원래 보호/관측 검사 유지')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--config', type=Path, default=CONFIG)
+    parser.add_argument('--actor-overlay', type=Path,
+                        help='명시한 사전 등록 overlay에서만 추가 actor 삽입; 기본 단일 actor 유지')
+    parser.add_argument('--corridor-fallback', action='store_true',
+                        help='고정 E3 G1 회랑 후보. corner-distance/per-ray/판단 기록 필요, 최근 관측 OFF')
     parser.add_argument('--lidar-test-profile', type=Path,
-                        help='선택형 G1 시험용 거리오차/추가 지연. 기본 무주입, 취득 시각 유지')
+                        help='선택형 G1/M3 시험용 거리오차/추가 지연. 기본 무주입, 취득 시각 유지')
+    parser.add_argument('--motion-test-profile', type=Path,
+                        help='선택형 G1/M3 시험용 IMU/단일 모터축 오차·지연. 기본 무주입')
     parser.add_argument('--record-braking-diagnostics', action='store_true',
                         help='평가 전용 바퀴/차체/토크 시계열 보존; 제어 및 판정은 변경하지 않음')
     parser.add_argument('--record-wheel-contacts', action='store_true',
@@ -312,20 +373,59 @@ def main():
                         help='평가 전용 0목표 구동 특성 대조. 기본 legacy는 실행 인자를 추가하지 않음')
     parser.add_argument('--physics-step', choices=PHYSICS_STEPS,
                         help='평가 전용 물리 step. 생략하면 월드 기본 1 ms')
+    parser.add_argument('--race-operation-test', nargs='?', const='same_race', choices=('same_race', 'new_race', 'new_race_restart'),
+                        help='격리 Gazebo 전용 B3 운영자 명령 순서; 실제 운영 자동 해제 아님')
     args = parser.parse_args()
-    if args.occupancy_timing != 'oldest' and (args.mode != 'g1' or not args.record_follow_decisions):
+    if args.race_operation_test and (args.mode != 'g1' or args.case != 'stop_restart'
+                                    or not args.record_follow_decisions or args.actor_overlay
+                                    or args.lidar_test_profile or args.motion_test_profile):
+        parser.error('--race-operation-test requires recorded G1 stop_restart without additional actors or sensor stress')
+    if args.m3_command_fallback and args.mode != 'm3':
+        parser.error('--m3-command-fallback requires --mode m3')
+    if args.m3_release_to_baseline and args.mode != 'm3':
+        parser.error('--m3-release-to-baseline requires --mode m3')
+    if args.m3_small_center_straight and (args.mode != 'm3' or not args.m3_release_to_baseline):
+        parser.error('--m3-small-center-straight requires --mode m3 and --m3-release-to-baseline')
+    if args.m3_straight_surface_commitment and (args.mode != 'm3' or not args.m3_release_to_baseline
+                                               or not args.m3_command_fallback):
+        parser.error('--m3-straight-surface-commitment requires --mode m3, --m3-release-to-baseline and --m3-command-fallback')
+    departure_options = ('rounded_occupancy', 'straight_with_threat', 'defer_center_on_straight')
+    if any(getattr(args, 'm3_'+name) for name in departure_options) and args.mode != 'm3':
+        parser.error('M3 departure options require --mode m3')
+    if (args.m3_straight_with_threat or args.m3_defer_center_on_straight) and not args.m3_command_fallback:
+        parser.error('M3 straight priority requires --m3-command-fallback')
+    if args.m3_defer_center_on_straight and not args.m3_release_to_baseline:
+        parser.error('--m3-defer-center-on-straight requires --m3-release-to-baseline')
+    if args.mode in ('r0plus', 'm3') and (not args.record_follow_decisions or args.occupancy_timing != 'per_ray_candidate'):
+        parser.error('R0+/M3 requires per-ray occupancy and decision recording')
+    if args.occupancy_timing != 'oldest' and (args.mode not in ('g1', 'r0plus', 'm3') or not args.record_follow_decisions):
         parser.error('--occupancy-timing candidate requires G1 with decision recording')
-    if args.lidar_test_profile and (args.mode != 'g1' or not args.record_follow_decisions):
-        parser.error('--lidar-test-profile requires G1 with decision recording')
+    if args.lidar_test_profile and (args.mode not in ('g1', 'm3') or not args.record_follow_decisions):
+        parser.error('--lidar-test-profile requires G1/M3 with decision recording')
+    if args.motion_test_profile and (args.mode not in ('g1','m3') or not args.record_follow_decisions
+                                    or args.lidar_test_profile or args.actor_overlay):
+        parser.error('--motion-test-profile requires recorded G1/M3 without other stress or actor overlays')
     lidar_profile, lidar_requested = load_test_profile(args.lidar_test_profile, REPO)
-    if args.record_follow_decisions and args.mode != 'g1':
-        parser.error('--record-follow-decisions requires --mode g1')
-    if args.boundary_evidence != 'connected' and (args.mode != 'g1' or not args.record_follow_decisions):
+    motion_profile, motion_requested = load_motion_profile(args.motion_test_profile, REPO)
+    if motion_profile and configured_feedback_topic() != '/drive_motor/encoder':
+        parser.error('registered motion stress requires current single motor-shaft feedback')
+    if args.record_follow_decisions and args.mode not in ('g1', 'r0plus', 'm3'):
+        parser.error('--record-follow-decisions requires --mode g1 or r0plus')
+    if args.boundary_evidence != 'connected' and (args.mode not in ('g1', 'm3') or not args.record_follow_decisions):
         parser.error('fragmented candidate requires G1 with decision recording')
     if (args.zero_speed_mode != 'legacy' or args.physics_step) and not args.record_braking_diagnostics:
         parser.error('구동 평가 옵션은 --record-braking-diagnostics로 적용 상태를 보존해야 합니다.')
+    if args.corridor_fallback and (args.mode not in ('g1', 'm3') or args.boundary_evidence != 'corner_distance_candidate'
+                                  or args.occupancy_timing != 'per_ray_candidate' or not args.record_follow_decisions):
+        parser.error('corridor fallback requires G1 corner-distance/per-ray/decision recording')
     config = load_config(args.config)
-    case = case_named(config, args.case)
+    if args.actor_overlay:
+        args.actor_overlay.resolve().relative_to(REPO)
+    case = overlay_case(case_named(config, args.case), args.actor_overlay)
+    merge_profile = merge_profile_for_case(case)
+    if merge_profile is not None and (args.mode != 'g1' or args.race_operation_test or args.lidar_test_profile or motion_profile):
+        raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
+    specs = actor_specs(config, case)
     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
     if lidar_profile and (launch['lidar_rate_hz'] != 10 or launch['lidar_acquisition'] != 'sequential'):
         raise ValueError('registered G1 lidar stress requires sequential 10 Hz')
@@ -337,10 +437,20 @@ def main():
     lateral = actor_lateral_offset(config, case)
     route = check_route(config, centerline, case, s0, road_polygon(DEMO_WORLD/'world.sdf'),
                         obstacle_polygons(DEMO_WORLD/'world.sdf'))
+    starts, additional_routes = check_additional_routes(config, case, specs, scene, args.seed, centerline,
+        road_polygon(DEMO_WORLD/'world.sdf'), obstacle_polygons(DEMO_WORLD/'world.sdf'),
+        actor_start_s, check_route, actor_pose_at) if len(specs) > 1 else ([s0], None)
     output.mkdir(parents=True, exist_ok=False)
     actor_path = output/'evaluation_actor.sdf'
-    actor_path.write_text(actor_sdf(config, actor_pose_at(centerline, s0, case['schedule'], 0., lateral)), encoding='utf-8')
-    sources = {rel: sha256(REPO/rel) for rel in source_paths(args.config, lidar_profile)}
+    actor_text = (compose_sdf(specs, [actor_pose_at(centerline, s, a['schedule'], 0., a['lateral_offset_m'])
+                                    for s, a in zip(starts, specs)], actor_sdf) if len(specs) > 1 else
+                  actor_sdf(config, primary_pose_at(config, centerline, s0, case, 0.)))
+    actor_path.write_text(actor_text, encoding='utf-8')
+    sources = {rel: sha256(REPO/rel) for rel in source_paths(args.config, lidar_profile, args.actor_overlay, motion_profile)}
+    runtime_motion_profile = None
+    if motion_profile:
+        runtime_motion_profile = output/'motion_test_profile.json'
+        runtime_motion_profile.write_text(json.dumps(motion_requested, indent=2), encoding='utf-8')
     runtime_lidar_profile = None
     if lidar_profile:
         runtime_lidar_profile = output/'lidar_test_profile.json'
@@ -351,6 +461,8 @@ def main():
         bundle.write(actor_path, 'evaluation_actor.sdf')
         if runtime_lidar_profile:
             bundle.write(runtime_lidar_profile, 'evaluation_lidar_test_profile.json')
+        if runtime_motion_profile:
+            bundle.write(runtime_motion_profile, 'evaluation_motion_test_profile.json')
     os.environ.update(ROS_DOMAIN_ID=str(150+os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
                       ROS_STATIC_PEERS='', GZ_PARTITION=f'arena_autonomy_test_{os.getpid()}')
     # 위 파티션 이름은 lidar_shutdown.stop_gazebo_service의 시험 소유 확인 규칙과 같아야 한다.
@@ -375,10 +487,22 @@ def main():
               'actor_sdf_sha256': sha256(actor_path), 'route_check': route,
               'straight_section': route if route['kind'] == 'straight' else None,
               'actor_visible_section': actor_cfg['visible_section'], 'started_wall_monotonic': time.monotonic()}
+    if args.actor_overlay:
+        report['actor_overlay'] = {'path': str(args.actor_overlay.resolve().relative_to(REPO)),
+            'sha256': sha256(args.actor_overlay), 'scope': case['additional_actor_scope'], 'routes': additional_routes}
+    if args.corridor_fallback:
+        report['corridor_fallback_enabled'] = True
+        report['recent_observation_enabled'] = False
     if runtime_lidar_profile:
         report['lidar_test_profile'] = {'path': str(lidar_profile.relative_to(REPO)),
             'requested': lidar_requested, 'runtime_sha256': sha256(runtime_lidar_profile),
             'scope': 'synthetic bounded radial error and publish delay, acquisition timestamps preserved'}
+    if runtime_motion_profile:
+        report['motion_test_profile'] = {'path': str(motion_profile.relative_to(REPO)),
+            'requested': motion_requested, 'runtime_sha256': sha256(runtime_motion_profile),
+            'feedback_mode':'drive_motor_shaft',
+            'counts_per_motor_revolution': motor_count_resolution(REPO),
+            'scope':'synthetic bias/gain/transport/time error; not raw tick loss or measured hardware'}
     if args.zero_speed_mode != 'legacy' or args.physics_step:
         # 평가 전용 구동 대조일 때만 기록한다. 기본 보고서 형식은 유지한다.
         report['drivetrain_evaluation'] = {'zero_speed_mode': args.zero_speed_mode,
@@ -480,6 +604,13 @@ def main():
     ]
     arm_service = node.create_client(Trigger, '/actuation/arm')
     mcu_stop_service = node.create_client(Trigger, '/actuation/stop')
+    operation_trial = second_start = None
+    if args.race_operation_test:
+        from m4_operation_trial import RosOperatorTrial
+        operation_trial = RosOperatorTrial(node, Trigger, String, new_race=args.race_operation_test != 'same_race')
+        if args.race_operation_test == 'new_race_restart':
+            from m4_second_start import RosSecondStart
+            second_start = RosSecondStart(node, Trigger)
     actor_client = node.create_client(SetEntityPose, SET_POSE_SERVICE)
     obstacles = obstacle_polygons(DEMO_WORLD/'world.sdf')
     tree = STRtree(obstacles)
@@ -492,6 +623,7 @@ def main():
     t_green = None
     outcome = {'abort': None}
     began = time.monotonic()
+    extras = ExtraActors(specs[1:], starts[1:], centerline, actor_pose_at, output, began)
 
     def receive_ego(data):
         nonlocal rejected_ego_times
@@ -516,7 +648,7 @@ def main():
 
     def schedule_pose(t):
         elapsed = 0. if t_green is None else t-t_green
-        x, y, _ = actor_pose_at(centerline, s0, case['schedule'], elapsed, lateral)
+        x, y, _ = primary_pose_at(config, centerline, s0, case, elapsed)
         return x, y
 
     def complete_actor_future():
@@ -533,12 +665,29 @@ def main():
 
     try:
         extra = [f'evaluation_actor_sdf:={actor_path}']
+        if operation_trial is not None:
+            extra.append('race_control_mode:=b3_candidate')
         if args.boundary_evidence != 'connected':
             extra.append(f'g1_boundary_evidence_mode:={args.boundary_evidence}')
         if args.record_follow_decisions:
             extra.append(f'g1_trace_path:={output / "follow_decisions.jsonl"}')
         if args.occupancy_timing != 'oldest':
             extra.append(f'g1_occupancy_timing_mode:={args.occupancy_timing}')
+        if args.corridor_fallback:
+            extra.extend(['g1_corridor_fallback_enabled:=true', 'g1_recent_observation_enabled:=false'])
+        if args.mode == 'm3':
+            extra.append('g1_m3_execution_trial:=true')
+            if args.m3_command_fallback:
+                extra.append('g1_m3_command_fallback:=true')
+            if args.m3_release_to_baseline:
+                extra.append('g1_m3_release_to_baseline:=true')
+            if args.m3_small_center_straight:
+                extra.append('g1_m3_small_center_straight:=true')
+            if args.m3_straight_surface_commitment:
+                extra.append('g1_m3_straight_surface_commitment:=true')
+            for name in departure_options:
+                if getattr(args, 'm3_'+name):
+                    extra.append('g1_m3_'+name+':=true')
         if args.record_wheel_contacts:
             extra.append('evaluation_wheel_contacts:=true')
         extra += drivetrain_evaluation_arguments(args.zero_speed_mode, args.physics_step)
@@ -547,16 +696,19 @@ def main():
             launch['autonomy_mode'], False, launch['lidar_acquisition'], launch['lidar_compensation'],
             launch['control_rate_hz'], launch['render_backend'], launch['sensor_wall_timeout_s'],
             launch['speed_bump'], launch['collision_detector'], str(output), launch['grid_slot'],
-            str(runtime_lidar_profile) if runtime_lidar_profile else '', '',
-            launch['actuation_mode'], False, args.mode == 'g1', extra))
+            str(runtime_lidar_profile) if runtime_lidar_profile else '',
+            str(runtime_motion_profile) if runtime_motion_profile else '',
+            launch['actuation_mode'], False, args.mode in ('g1', 'm3'), extra, r0_plus=args.mode == 'r0plus'))
         from ament_index_python.packages import get_package_prefix
         bridge_executable = Path(get_package_prefix('ros_gz_bridge'))/'lib/ros_gz_bridge/parameter_bridge'
+        extra_topics, extra_qos = extras.bridge_arguments()
         processes.append(subprocess.Popen([str(bridge_executable),
             f'{SET_POSE_SERVICE}@ros_gz_interfaces/srv/SetEntityPose',
             f"/model/{actor_cfg['model_name']}/pose@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V",
+            *extra_topics,
             '--ros-args', '-r', '__node:=eval_actor_bridge',
             '-p', f"qos_overrides./model/{actor_cfg['model_name']}/pose.publisher.reliability:=reliable",
-            '-p', f"qos_overrides./model/{actor_cfg['model_name']}/pose.publisher.depth:=200"],
+            '-p', f"qos_overrides./model/{actor_cfg['model_name']}/pose.publisher.depth:=200", *extra_qos],
             cwd=REPO, stdin=subprocess.DEVNULL, stdout=reader_log, stderr=reader_log, start_new_session=True))
         readers.append(json_reader(['gz', 'topic', '-e', '-t', f'/world/{WORLD_NAME}/dynamic_pose/info', '--json-output'],
                                    capture_gate.wrap(receive_ego), reader_log, reader_audit['ego']))
@@ -565,6 +717,7 @@ def main():
         if args.record_wheel_contacts:
             readers.append(json_reader(['gz', 'topic', '-e', '-t', '/eval/wheels/contact', '--json-output'],
                                        capture_gate.wrap(wheel_contacts.append), reader_log, reader_audit['wheel_contact']))
+        extras.connect(node, reliable, json_reader, capture_gate, reader_log, readers)
         last_record = -math.inf
         last_command_s = None
         first_pose_time = None
@@ -582,7 +735,8 @@ def main():
             if time.monotonic()-began > limits['wall_timeout_s']:
                 raise TimeoutError('wall timeout')
             complete_actor_future()
-            if 'actuation' in state:
+            extras.complete()
+            if 'actuation' in state and operation_trial is None:
                 status = state['actuation']
                 if (arm_future is None and status['stationary_ready'] and status['output_ready']
                         and arm_service.service_is_ready() and status['now_us']-actuation_trace[0]['now_us'] > 1_000_000):
@@ -594,9 +748,9 @@ def main():
                     break
             required = {'pose', 'autonomy', 'light', 'rgb', 'odom', 'drive', 'dynamics', 'scan', 'safety',
                         'safe_drive', 'imu'}
-            if not required.issubset(state) or not actor:
+            if not required.issubset(state) or not actor or not extras.ready:
                 if time.monotonic()-began > limits['startup_wall_timeout_s']:
-                    raise TimeoutError(f'startup data missing: {sorted(required-set(state))}, actor={len(actor)}')
+                    raise TimeoutError(f'startup data missing: {sorted(required-set(state))}, actor={len(actor)}, extras_ready={extras.ready}')
                 continue
             pose = state['pose']
             now = pose['time']
@@ -605,9 +759,20 @@ def main():
             if t_green is None and light.get('applied') == 'green':
                 t_green = now
                 report['green_observed_sim_s'] = now
+            if operation_trial is not None:
+                try:
+                    operation_trial.tick(now, state['autonomy'].get('race'), state.get('actuation', {}), t_green,
+                                         state['safe_drive'].drive.speed, state['autonomy']['sim_time_s'])
+                    if second_start is not None:
+                        second_start.tick(now, operation_trial.logic.snapshot(), state['autonomy'].get('race'),
+                                          state.get('actuation', {}), light)
+                except Exception as error:
+                    outcome['abort'] = f'M4 operator: {type(error).__name__}: {error}'
+                    break
+            extras.tick(actor_client, SetEntityPose.Request, now, t_green)
             if case['schedule'] and t_green is not None and actor_future is None and (
                     last_command_s is None or now-last_command_s >= 1/actor_cfg['command_hz']):
-                x, y, yaw = actor_pose_at(centerline, s0, case['schedule'], now-t_green, lateral)
+                x, y, yaw = primary_pose_at(config, centerline, s0, case, now-t_green)
                 request = SetEntityPose.Request()
                 request.entity.name = actor_cfg['model_name']
                 request.entity.type = request.entity.MODEL
@@ -651,14 +816,7 @@ def main():
                 'safety_reason': state['safety'].get('reason'), 'safety_clearance_m': state['safety'].get('swept_clearance_m'),
                 'actor_x': latest_actor[1], 'actor_y': latest_actor[2], 'actor_stamp_s': latest_actor[0],
                 'sampled_gap_m': gap,
-                'autonomy': {k: autonomy.get(k) for k in (
-                    'state', 'started', 'mode', 'behavior', 'reason', 'side', 'signal', 'marker_ids',
-                    'speed_command_mps', 'steering_command_rad', 'swept_clearance_m', 'occupancy_padding_m',
-                    'boundary_selection', 'boundary_from_memory', 'boundary_age_s', 'path_wall', 'wall_fallback',
-                    'observed_path_ahead_m', 'fresh_boundary_accepted', 'target_speed_before_hold_mps',
-                    'source_first_s', 'reference_stamp_s', 'sim_time_s', 'passing_enabled',
-                    'boundary_candidate_reason', 'boundary_candidate_ahead_m', 'bilateral_alternative_confirmed',
-                    'input_error', 'source_epoch')},
+                'autonomy': ev.compact_autonomy_status(autonomy),
                 'mcu_state': state.get('actuation', {}).get('state'),
             }
             if args.record_braking_diagnostics:
@@ -684,18 +842,25 @@ def main():
                                  'duration_s': case['duration_s']}
         # 일정이 끝난 뒤 actor는 마지막 명령 자세에 정지한다. 명령 응답을 먼저 회수한다.
         drain = time.monotonic()+8
-        while actor_future is not None and time.monotonic() < drain:
+        while (actor_future is not None or extras.has_pending) and time.monotonic() < drain:
             rclpy.spin_once(node, timeout_sec=.01)
             complete_actor_future()
+            extras.complete()
         controller = 'local_pursuit'
         inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node(controller, '/')}
         required_inputs = {'/scan', '/camera/color/image_raw', configured_feedback_topic(), '/imu/data'}
+        if operation_trial is not None:
+            # 운영/MCU 상태만 추가 허용한다. 평가용 정답·신호 상태는 여전히 금지한다.
+            required_inputs |= {'/race/command', '/actuation/status'}
         report['autonomy_subscriptions'] = sorted(inputs)
         report['sensor_only_inputs'] = required_inputs.issubset(inputs) and inputs.issubset(required_inputs | {'/clock', '/parameter_events'})
         safety_inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node('lidar_safety', '/')}
         safety_expected = {'/scan', '/imu/data', configured_feedback_topic(), '/drive'}
         report['safety_subscriptions'] = sorted(safety_inputs)
         report['safety_sensor_only_inputs'] = safety_expected.issubset(safety_inputs) and safety_inputs.issubset(safety_expected | {'/clock', '/parameter_events'})
+        if runtime_motion_profile:
+            report['motion_relay_publishers'] = {topic: sorted(i.node_name for i in node.get_publishers_info_by_topic(topic))
+                                                for topic in ('/imu/data', configured_feedback_topic())}
         actor_topic = f"/model/{actor_cfg['model_name']}/pose"
         report['actor_pose_subscribers'] = sorted(i.node_name for i in node.get_subscriptions_info_by_topic(actor_topic))
         report['drive_publishers'] = sorted(i.node_name for i in node.get_publishers_info_by_topic('/drive'))
@@ -705,6 +870,7 @@ def main():
         report['contact_topic_connection'] = {'topic': CONTACT_TOPIC, 'returncode': contact_info.returncode,
             'output': contact_info.stdout, 'stderr': contact_info.stderr,
             'reader_alive_at_graph_audit': readers[1].poll() is None}
+        extras.graph_audit(node)
         host_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('actuation_host', '/')})
         mcu_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('virtual_mcu', '/')})
         sink_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('guarded_sim_actuator', '/')})
@@ -770,7 +936,8 @@ def main():
         latch_timing = ev.stop_latch_timing(actuation_trace, stop_request_clock_ns,
                                             acceptance['stop']['mcu_state'], acceptance['stop']['mcu_reason'])
         report['actuation'] = {
-            'arm_acknowledged': bool(arm_future is not None and arm_future.done() and arm_future.result().success),
+            'arm_acknowledged': (operation_trial.logic.initial_arm_ok if operation_trial is not None else
+                                bool(arm_future is not None and arm_future.done() and arm_future.result().success)),
             'final_mcu': final, 'final_output': state.get('actuation_output'),
             'positive_command_samples': sum(s['target_speed_mps'] > 0 for s in actuation_trace),
             'latched_before_stop_samples': latch_timing['latched_before_stop_samples'],
@@ -893,6 +1060,35 @@ def main():
         except Exception as error:
             report['evaluation'] = {'error': f'{type(error).__name__}: {error}'}
         ev.finalize_verdict(report, args.mode)
+        if merge_profile is not None:
+            try:
+                result = audit_merge_motion(config, case, centerline, s0, t_green, actor,
+                    road_polygon(DEMO_WORLD/'world.sdf'), obstacle_polygons(DEMO_WORLD/'world.sdf'))
+            except Exception as error:
+                result = {'valid': False, 'error': f'{type(error).__name__}: {error}'}
+            report['m2_merge_motion'] = result
+            report['harness_valid'] = report['harness_valid'] and result['valid']
+            report['run_valid'] = report['run_valid'] and result['valid']
+            report['passed'] = report['run_valid'] and report['behavior_gates_passed']
+        if extras.specs:
+            try:
+                result = extras.save_and_evaluate(ego=ego, green=t_green, duration=case['duration_s'], config=config,
+                    runtime_world=(output/'runtime_world.sdf').read_text(encoding='utf-8') if (output/'runtime_world.sdf').exists() else '',
+                    known_contact_source=(probe.get('interpretation', {}).get('moved_contact_reported') is True
+                                          and probe.get('server_returncode') == 0), digest=sha256)
+                combined = contact_events([{'actor': actor_cfg['model_name'], 'topic': CONTACT_TOPIC, **row}
+                                            for row in contacts]+extras.contacts, specs)
+                result['combined_contacts'] = combined
+                result['harness_valid'] = result['harness_valid'] and combined['valid']
+            except Exception as error:
+                result = {'harness_valid': False, 'behavior_gates_passed': False, 'error': f'{type(error).__name__}: {error}'}
+            report['additional_actors'] = result
+            report['harness_valid'] = report['harness_valid'] and result['harness_valid']
+            report['run_valid'] = report['run_valid'] and result['harness_valid']
+            report['behavior_gates_passed'] = report['behavior_gates_passed'] and result['behavior_gates_passed']
+            report['passed'] = report['run_valid'] and (report['behavior_gates_passed'] if args.mode in ('g1', 'r0plus', 'm3') else True)
+            if args.mode == 'r0':
+                report['r0_meets_g1_gates'] = report['behavior_gates_passed']
         if runtime_lidar_profile:
             try:
                 with (output/'scans_received.jsonl').open(encoding='utf-8') as stream:
@@ -906,10 +1102,29 @@ def main():
             except Exception as error:
                 stress = {'verified': False, 'error': f'{type(error).__name__}: {error}'}
             require_injection_evidence(report, stress)
+        if runtime_motion_profile:
+            require_motion_evidence(report, output, motion_requested, report['motion_test_profile']['runtime_sha256'])
+        if operation_trial is not None:
+            trial_data = operation_trial.snapshot()
+            if second_start is not None:
+                trial_data['second_start'] = second_start.snapshot()
+            (output/'m4_operation_trace.json').write_text(json.dumps(trial_data, ensure_ascii=False), encoding='utf-8')
+            try:
+                if second_start is not None:
+                    from m4_second_start import evaluate_second_start
+                    report['m4_operation'] = evaluate_second_start(trial_data, report, tuple(ego), actuation_trace)
+                else:
+                    from m4_operation_eval import evaluate_trial
+                    report['m4_operation'] = evaluate_trial(trial_data, report, tuple(ego), actuation_trace)
+            except Exception as error:
+                report['m4_operation'] = dict(passed=False, error=f'{type(error).__name__}: {error}')
+            report['m4_operation']['trace_sha256'] = sha256(output/'m4_operation_trace.json')
+            report['m4_operation']['original_traffic_verdict_preserved'] = True
         (output/'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
         print(json.dumps({k: report.get(k) for k in ('case', 'seed', 'mode', 'passed', 'harness_valid', 'error', 'abort')}
                          | {'gates': report.get('gates')}, ensure_ascii=False, indent=1), flush=True)
-    return 0 if report['passed'] else 1
+    passed = report['m4_operation']['passed'] if args.race_operation_test else report['passed']
+    return 0 if passed else 1
 
 
 if __name__ == '__main__':

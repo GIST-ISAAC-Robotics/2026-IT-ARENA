@@ -1,0 +1,31 @@
+..............................F......................................... [ 85%]
+............                                                             [100%]
+=================================== FAILURES ===================================
+_____________ test_result_loss_is_unknown_and_never_retransmitted ______________
+
+server = <arena_autonomy.local_pursuit.LocalPursuit object at 0x7d3e04057cb0>
+
+    def test_result_loss_is_unknown_and_never_retransmitted(server):
+        original = server.race_result_publisher
+        server.race_result_publisher = SimpleNamespace(publish=lambda message: None)
+        before = server.race.counts['commands']
+        code, result = operator.exchange('stop', operator.build_command('stop'), timeout_s=1.5)
+        server.race_result_publisher = original
+>       assert code == 4 and result['outcome'] == 'unknown_after_send', result
+E       AssertionError: {'boundary': 'upper race policy only; no MCU STOP/CLEAR/ARM or drive publication; accepted does not prove physical sto...t': '34961be083724e7786ec6b91fc53d46c', 'v': 1}, 'error': 'timeout; do not automatically retry', 'outcome': 'not_sent'}
+E       assert (2 == 4)
+
+tests/test_race_operator_ros.py:70: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+[WARN] [1792788779.758699039] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1792788779.758724988] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[INFO] [1792788779.777435766] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=both; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+[INFO] [1792788781.197376978] [local_pursuit]: B3 race supervisor candidate: session=1a5ecbc3a06349858d6a056ecb9e8f71
+----------------------------- Captured stderr call -----------------------------
+[WARN] [1792788781.199798014] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1792788781.199816499] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[INFO] [1792788781.213506770] [local_pursuit]: t=1792788781.198435 SENSOR_STOP / left 벽 / unknown
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-24/b3_operator_v2/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_race_operator_ros.py::test_result_loss_is_unknown_and_never_retransmitted
+1 failed, 83 passed in 25.77s

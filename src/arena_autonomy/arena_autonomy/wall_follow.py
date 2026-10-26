@@ -149,7 +149,8 @@ class WallFollow(Node):
             status["state"] = "DISABLED"
         elif not (scan_fresh and image_fresh and wall_fresh):
             status["state"] = "SENSOR_STOP"
-        elif self.signal.started:
+        # 기본은 시각 출발 사실만 본다. 선택형 경기 감독이 있을 때만 그 판정을 쓴다.
+        elif self.signal.started if getattr(self, 'race', None) is None else self.motion_gate(status):
             try:
                 if self.motion:
                     points, valid_count = self.timing.call('motion_projection', self.motion.project, self.scan)
@@ -183,6 +184,8 @@ class WallFollow(Node):
         status['text_log'] = self.state_log.snapshot()
         if getattr(self, 'vision_pipeline', None) is not None:
             status['vision'] = self.vision_pipeline.snapshot()
+        if getattr(self, 'race', None) is not None:
+            status['race'] = self.race.snapshot(now, time.monotonic())
         if now - self.last_status_time > .2 or status["state"] != self.last_status:
             payload = self.timing.call('status_json', json.dumps, status, ensure_ascii=False, allow_nan=False)
             self.timing.call('status_publish', self.status_publisher.publish, String(data=payload))

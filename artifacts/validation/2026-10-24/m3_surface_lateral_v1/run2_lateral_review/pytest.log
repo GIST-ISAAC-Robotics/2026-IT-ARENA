@@ -1,0 +1,87 @@
+F..........FFF....F...F.                                                 [100%]
+=================================== FAILURES ===================================
+___________________ test_budget_values_and_policy_space_gain ___________________
+
+    def test_budget_values_and_policy_space_gain():
+        b = LateralBudget()
+        edge, detail = b.edge_margin()
+>       assert edge == pytest.approx(.03+.01+math.sqrt(.02**2+.01**2+.002**2))
+E       assert 0.07400000000000001 == 0.06244994432064365 ± 6.2e-08
+E         comparison failed
+E         Obtained: 0.07400000000000001
+E         Expected: 0.06244994432064365 ± 6.2e-08
+
+tests/test_lateral_intent.py:73: AssertionError
+_ test_empty_road_recenter_is_blocked_by_rear_blind_cone_unless_policy_accepts_it _
+
+    def test_empty_road_recenter_is_blocked_by_rear_blind_cone_unless_policy_accepts_it():
+        """후방 60° 사각에 숨을 수 있는 차량(상대 0.5 m/s)은 중앙 복귀보다 먼저 옆에 닿을 수 있다."""
+        scene, path = straight(-.09)
+        hard, _ = run(scene, path, speed=0.)
+        assert hard['mode'] == 'HOLD_OFFSET' and 'recenter_hidden_reach' in hard['reasons']
+>       assert hard['checks']['center']['verified_except_hidden']
+E       assert False
+
+tests/test_lateral_intent.py:208: AssertionError
+_____________ test_left_side_rear_car_yields_right_never_recenters _____________
+
+    def test_left_side_rear_car_yields_right_never_recenters():
+        d0 = -.09
+        scene, path = straight(d0, extra=[car(-.40, .13, d0)])
+        out, _ = run(scene, path)
+        assert out['threats']['left']['present']
+>       assert out['mode'] == 'YIELD' and out['checks']['yield']['d_target_m'] < d0
+E       AssertionError: assert ('HOLD_OFFSET' == 'YIELD'
+E         - YIELD
+E         + HOLD_OFFSET)
+
+tests/test_lateral_intent.py:229: AssertionError
+_____________________ test_mirrored_right_car_yields_left ______________________
+
+    def test_mirrored_right_car_yields_left():
+        d0 = .09
+        scene, path = straight(d0, extra=[car(-.40, -.13, d0)])
+        out, _ = run(scene, path)
+>       assert out['threats']['right']['present'] and out['mode'] == 'YIELD'
+E       AssertionError: assert (True and 'HOLD_OFFSET' == 'YIELD'
+E         - YIELD
+E         + HOLD_OFFSET)
+
+tests/test_lateral_intent.py:239: AssertionError
+_____________ test_invalid_transition_does_not_fall_back_to_center _____________
+
+    def test_invalid_transition_does_not_fall_back_to_center():
+        d0 = -.09
+        scene, path = straight(d0, extra=[car(-.40, .13, d0)])
+        limiter = LateralIntentLimiter(GRASS)
+        first, _ = run(scene, path, limiter=limiter)
+>       assert first['mode'] == 'YIELD'
+E       AssertionError: assert 'HOLD_OFFSET' == 'YIELD'
+E         - YIELD
+E         + HOLD_OFFSET
+
+tests/test_lateral_intent.py:290: AssertionError
+______________ test_stopped_center_car_bypass_needs_grass_policy _______________
+
+    def test_stopped_center_car_bypass_needs_grass_policy():
+        d0 = 0.
+        scene, path = straight(d0, extra=[car(.9, 0., d0)])
+        for cfg, expected in ((ROAD, False), (GRASS, True)):
+            frame = PathFrame(path)
+            state = ego_state(frame, cfg)
+            cand = bypass_candidate(frame, state, ObservationGrid(scene, cfg).returns, 'right', cfg, stationary=True)
+            assert cand is not None
+>           assert surface_check(frame, cand, cfg, current_pose=(0, 0, 0))['ok'] is expected
+E           assert False is True
+
+tests/test_lateral_intent.py:335: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-24/m3_surface_lateral_v1/run2_lateral_review/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_lateral_intent.py::test_budget_values_and_policy_space_gain
+FAILED tests/test_lateral_intent.py::test_empty_road_recenter_is_blocked_by_rear_blind_cone_unless_policy_accepts_it
+FAILED tests/test_lateral_intent.py::test_left_side_rear_car_yields_right_never_recenters
+FAILED tests/test_lateral_intent.py::test_mirrored_right_car_yields_left - As...
+FAILED tests/test_lateral_intent.py::test_invalid_transition_does_not_fall_back_to_center
+FAILED tests/test_lateral_intent.py::test_stopped_center_car_bypass_needs_grass_policy
+6 failed, 18 passed in 1.29s
+pytest_exit_code=1

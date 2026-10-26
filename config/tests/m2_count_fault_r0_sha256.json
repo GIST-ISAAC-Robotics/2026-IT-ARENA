@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "scope": "명시 시험 중계의 정수 모터축 카운트·차분 속도 교정. 제어·보호 변경 및 주행 안전 승인 아님",
+  "parent_contract": "config/tests/m2_motion_stress_r0_sha256.json",
+  "parent_contract_sha256": "85a76307a219e4ab0fa84217a2a2589b5fae08dac28195604f33cc3b606b338b",
+  "before_snapshot": "artifacts/validation/2026-10-26/m2_motion_stress_v1/count_fix_before.zip",
+  "before_snapshot_sha256": "637dd9aaa060cf0a3d9717af85a893cde5ab2753cc151d19cb97c666196d20b4",
+  "approved_changes": {
+    "src/arena_vehicle_interface/arena_vehicle_interface/motion_fault_relay.py": {
+      "before": "3c95634c67804e7628187139bf4e59c6d83c34f540e81d0f5294daf275c4f79e",
+      "after": "922e7dbd5294973c58f575cc532ae94cc7daf6f5a25761c583833a3e0667978e",
+      "reason": "시험용 모터축 정수 누적 카운트와 속도 일관성 및 시작 NaN·분해능 감사. 무주입 기본과 보호 유지"
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "a027f83a1a7f0d8b9b275985edc351acd8db8fcf760a29d6ff56a2de30e6f499",
+      "after": "c1cac87b402d3384f8c123fc6d73909551dc576319bda83a04be64eadbc70e48",
+      "reason": "시험용 모터축 정수 누적 카운트와 속도 일관성 및 시작 NaN·분해능 감사. 무주입 기본과 보호 유지"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/motion_fault_audit.py": {
+      "before": "a3c46deb771a9a226bfcf8011348985e7a5f3245ea35eafa150cb0026262371f",
+      "after": "8b198e998df69aa0198cbaf25c88cff2caba2f52b9388e1a862b629d282bbc94",
+      "reason": "시험용 모터축 정수 누적 카운트와 속도 일관성 및 시작 NaN·분해능 감사. 무주입 기본과 보호 유지"
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "858e9fb133ac6518026dd3f412311c65848f70660fdd645ddda924ed08c6679b",
+      "after": "04e6ac920ab7c0c2a8bbb60284eb6571de404517189cf77676573b6f1367695b",
+      "reason": "시험용 모터축 정수 누적 카운트와 속도 일관성 및 시작 NaN·분해능 감사. 무주입 기본과 보호 유지"
+    },
+    "scripts/g1_motion_stress.py": {
+      "before": "9760abdeaa8ae71d8e8fa2d415a398473e7b7dff8d79874a7cbb06569af3e038",
+      "after": "e3df808b084d3f319ad3a7ff33564735eebfb0657521b8cdf5be896f1595f067",
+      "reason": "시험용 모터축 정수 누적 카운트와 속도 일관성 및 시작 NaN·분해능 감사. 무주입 기본과 보호 유지"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_vehicle_interface/arena_vehicle_interface/motor_count_impairment.py": "8b3986d3fd154aa468b350597b8007b117bd5f72836207d020fce62f3256ab91"
+  }
+}

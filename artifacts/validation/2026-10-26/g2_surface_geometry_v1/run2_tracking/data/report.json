@@ -1,0 +1,411 @@
+{
+  "scope": "exact-reference kinematic tracking only; no sensor/independent protection/Gazebo",
+  "source_unchanged": true,
+  "source_sha256": {
+    "scripts/g2_surface_tracking.py": "854b68df2a58da3c3247a7077fe5d4861f6172bc0be5a0f2ce1bfa334191cb63",
+    "scripts/g2_tracking_probe.py": "99f5e70bc6371ea55d233e1b702d631ccacf2ee8b70b4799d6b61a0aa7d93606",
+    "scripts/g2_geometry_probe.py": "63684fd6e03c6ed2eac94dcbf8c968953a4f8f9b062d41b3fd9488742465b406",
+    "scripts/g0_geometry.py": "a79904f7fcefbf79224cdf466f35b92882c53a44ae272800e7405f159558e4ff",
+    "scripts/surface_contact_eval.py": "0081768061865a5544711499cc28bc3351a31e95ccdcb25fbfc0c720cd8c9b76",
+    "src/arena_autonomy/arena_autonomy/lateral_intent.py": "4683fa9e3532ee5b12447dfcfd083fe87815150cde6d715491513c91101da934",
+    "src/arena_autonomy/arena_autonomy/local_follow.py": "2efaafe7a29d17b07b1561045e5a70caeccc423d69917ebdd0cf783f4ac9e86a",
+    "src/arena_autonomy/arena_autonomy/local_path.py": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e",
+    "tests/test_g2_surface_tracking.py": "3e7ff3515591d433af5cf1d9774e7914842d40983c0a6ad6d4f18c01589bcd32"
+  },
+  "config": {
+    "enabled": false,
+    "surface_policy": "two_wheel_grass",
+    "budget": {
+      "range_bias_m": 0.03,
+      "grass_width_tolerance_m": 0.01,
+      "tracking_straight_m": 0.022,
+      "tracking_curve_m": 0.04,
+      "timing_m": 0.0,
+      "slip_m": 0.01,
+      "heading_lever_m": 0.002,
+      "other_lateral_speed_mps": 0.15,
+      "observation_age_s": 0.12,
+      "reaction_s": 0.1
+    },
+    "length_m": 0.2,
+    "width_m": 0.15,
+    "wheelbase_m": 0.135,
+    "track_m": 0.135,
+    "wheel_radius_m": 0.0325,
+    "wheel_width_m": 0.012,
+    "contact_patch_length_m": 0.01,
+    "road_half_m": 0.225,
+    "grass_width_m": 0.2,
+    "blend_min_m": 0.6,
+    "blend_per_offset": 6.0,
+    "max_steering_rad": 0.37,
+    "horizon_m": 1.2,
+    "min_ahead_m": 0.65,
+    "curved_curvature_m_inv": 0.5,
+    "band_behind_m": 0.6,
+    "band_ahead_m": 0.35,
+    "min_threat_points": 3,
+    "wall_tolerance_m": 0.03,
+    "wall_bin_m": 0.05,
+    "wall_min_coverage": 0.8,
+    "wall_max_gap_m": 0.1,
+    "opposite_min_coverage": 0.3,
+    "grid_resolution_m": 0.01,
+    "grid_x_m": [
+      -1.0,
+      2.0
+    ],
+    "grid_y_m": [
+      -0.8,
+      0.8
+    ],
+    "hidden_vehicle_width_m": 0.1,
+    "hidden_vehicle_length_m": 0.15,
+    "hidden_relative_speed_mps": 0.5,
+    "hidden_lateral_speed_mps": 0.15,
+    "commit_horizon_s": 0.5,
+    "planned_speed_floor_mps": 0.2,
+    "release_fresh": 2,
+    "grass_max_continuous_s": 3.0,
+    "recenter_hidden_policy": "hard",
+    "max_vehicle_width_m": 0.15,
+    "max_vehicle_length_m": 0.2,
+    "compact_point_motion_bound_mps": 0.5
+  },
+  "results": [
+    {
+      "name": "speed0.4_delay0",
+      "historical_road_only_metrics": {
+        "offset_m": -0.16,
+        "transition_m": 1.2,
+        "speed_cap_mps": 0.4,
+        "delay_steps": 0,
+        "delay_s": 0.0,
+        "ideal_geometry": {
+          "offset_m": -0.16,
+          "transition_m": 1.2,
+          "minimum_sampled_body_gap_m": 0.16,
+          "minimum_body_gap_lower_m": 0.15884803532877412,
+          "minimum_road_edge_lower_m": -0.018559587904243786,
+          "steering_upper_rad": 0.08638700311698805,
+          "sampled_max_steering_rad": 0.08489053486360536,
+          "max_interval_motion_bound_m": 0.001151964671225892,
+          "checks": {
+            "road_margin": false,
+            "body_gap": true,
+            "steering_bound": true
+          },
+          "geometry_conditions_met": false,
+          "driving_authorized": false,
+          "observation_verified": false,
+          "tracking_verified": false
+        },
+        "checks": {
+          "checkpoint_reached": true,
+          "no_path_fault": true,
+          "body_gap": true,
+          "road_margin": false,
+          "rejoins_center": true,
+          "rejoins_heading": true
+        },
+        "tracking_probe_conditions_met": false,
+        "driving_authorized": false,
+        "minimum_body_gap_lower_m": 0.15415267989525616,
+        "minimum_road_edge_lower_m": -0.025142260682738317,
+        "final_rear_pose": [
+          3.075729302040925,
+          0.0005650049180837075,
+          0.03773298807950254
+        ],
+        "fault": null,
+        "steps": 396
+      },
+      "surface": {
+        "required_gap_m": 0.097,
+        "required_edge_margin_m": 0.07400000000000001,
+        "minimum_gap_lower_m": 0.16200842563681905,
+        "minimum_road_edge_lower_m": -0.01724639002498765,
+        "minimum_wall_edge_lower_m": 0.1827536099750124,
+        "minimum_inner_patch_edge_lower_m": {
+          "left": 0.12015496869413636,
+          "right": -0.014806334786291482
+        },
+        "maximum_outside_wheels_upper": 2,
+        "maximum_grass_duration_upper_s": 2.5579999999998293,
+        "team_grass_duration_limit_s": 3.0,
+        "samples": 8316,
+        "curved_budget": false,
+        "checks": {
+          "body_and_wheel_gap": true,
+          "wall_margin": true,
+          "two_wheel_surface": true,
+          "grass_duration_within_team_limit": true
+        },
+        "driving_authorized": false
+      },
+      "checks": {
+        "body_and_wheel_gap": true,
+        "wall_margin": true,
+        "two_wheel_surface": true,
+        "grass_duration_within_team_limit": true,
+        "checkpoint_reached": true,
+        "no_path_fault": true,
+        "rejoins_center": true,
+        "rejoins_heading": true
+      },
+      "conditions_met": true,
+      "driving_authorized": false
+    },
+    {
+      "name": "speed0.4_delay5",
+      "historical_road_only_metrics": {
+        "offset_m": -0.16,
+        "transition_m": 1.2,
+        "speed_cap_mps": 0.4,
+        "delay_steps": 5,
+        "delay_s": 0.1,
+        "ideal_geometry": {
+          "offset_m": -0.16,
+          "transition_m": 1.2,
+          "minimum_sampled_body_gap_m": 0.16,
+          "minimum_body_gap_lower_m": 0.15884803532877412,
+          "minimum_road_edge_lower_m": -0.018559587904243786,
+          "steering_upper_rad": 0.08638700311698805,
+          "sampled_max_steering_rad": 0.08489053486360536,
+          "max_interval_motion_bound_m": 0.001151964671225892,
+          "checks": {
+            "road_margin": false,
+            "body_gap": true,
+            "steering_bound": true
+          },
+          "geometry_conditions_met": false,
+          "driving_authorized": false,
+          "observation_verified": false,
+          "tracking_verified": false
+        },
+        "checks": {
+          "checkpoint_reached": true,
+          "no_path_fault": true,
+          "body_gap": true,
+          "road_margin": false,
+          "rejoins_center": true,
+          "rejoins_heading": true
+        },
+        "tracking_probe_conditions_met": false,
+        "driving_authorized": false,
+        "minimum_body_gap_lower_m": 0.1550038079164621,
+        "minimum_road_edge_lower_m": -0.02539332085446711,
+        "final_rear_pose": [
+          3.0744856742124145,
+          0.0018174792709027513,
+          0.02846119351610623
+        ],
+        "fault": null,
+        "steps": 401
+      },
+      "surface": {
+        "required_gap_m": 0.097,
+        "required_edge_margin_m": 0.07400000000000001,
+        "minimum_gap_lower_m": 0.16284653834270452,
+        "minimum_road_edge_lower_m": -0.017393233943888364,
+        "minimum_wall_edge_lower_m": 0.18260676605611167,
+        "minimum_inner_patch_edge_lower_m": {
+          "left": 0.12029509811001436,
+          "right": -0.01463496991967957
+        },
+        "maximum_outside_wheels_upper": 2,
+        "maximum_grass_duration_upper_s": 2.660999999999818,
+        "team_grass_duration_limit_s": 3.0,
+        "samples": 8421,
+        "curved_budget": false,
+        "checks": {
+          "body_and_wheel_gap": true,
+          "wall_margin": true,
+          "two_wheel_surface": true,
+          "grass_duration_within_team_limit": true
+        },
+        "driving_authorized": false
+      },
+      "checks": {
+        "body_and_wheel_gap": true,
+        "wall_margin": true,
+        "two_wheel_surface": true,
+        "grass_duration_within_team_limit": true,
+        "checkpoint_reached": true,
+        "no_path_fault": true,
+        "rejoins_center": true,
+        "rejoins_heading": true
+      },
+      "conditions_met": true,
+      "driving_authorized": false
+    },
+    {
+      "name": "speed0.8_delay0",
+      "historical_road_only_metrics": {
+        "offset_m": -0.16,
+        "transition_m": 1.2,
+        "speed_cap_mps": 0.8,
+        "delay_steps": 0,
+        "delay_s": 0.0,
+        "ideal_geometry": {
+          "offset_m": -0.16,
+          "transition_m": 1.2,
+          "minimum_sampled_body_gap_m": 0.16,
+          "minimum_body_gap_lower_m": 0.15884803532877412,
+          "minimum_road_edge_lower_m": -0.018559587904243786,
+          "steering_upper_rad": 0.08638700311698805,
+          "sampled_max_steering_rad": 0.08489053486360536,
+          "max_interval_motion_bound_m": 0.001151964671225892,
+          "checks": {
+            "road_margin": false,
+            "body_gap": true,
+            "steering_bound": true
+          },
+          "geometry_conditions_met": false,
+          "driving_authorized": false,
+          "observation_verified": false,
+          "tracking_verified": false
+        },
+        "checks": {
+          "checkpoint_reached": true,
+          "no_path_fault": true,
+          "body_gap": false,
+          "road_margin": false,
+          "rejoins_center": true,
+          "rejoins_heading": true
+        },
+        "tracking_probe_conditions_met": false,
+        "driving_authorized": false,
+        "minimum_body_gap_lower_m": 0.14443322324300858,
+        "minimum_road_edge_lower_m": -0.033283665742402144,
+        "final_rear_pose": [
+          3.0743431759143434,
+          -0.001215842278788883,
+          0.045213244796114826
+        ],
+        "fault": null,
+        "steps": 198
+      },
+      "surface": {
+        "required_gap_m": 0.097,
+        "required_edge_margin_m": 0.07400000000000001,
+        "minimum_gap_lower_m": 0.1601395641015173,
+        "minimum_road_edge_lower_m": -0.017635636993134113,
+        "minimum_wall_edge_lower_m": 0.18236436300686593,
+        "minimum_inner_patch_edge_lower_m": {
+          "left": 0.11956539084009168,
+          "right": -0.015411438542321184
+        },
+        "maximum_outside_wheels_upper": 2,
+        "maximum_grass_duration_upper_s": 1.2369999999999746,
+        "team_grass_duration_limit_s": 3.0,
+        "samples": 4158,
+        "curved_budget": false,
+        "checks": {
+          "body_and_wheel_gap": true,
+          "wall_margin": true,
+          "two_wheel_surface": true,
+          "grass_duration_within_team_limit": true
+        },
+        "driving_authorized": false
+      },
+      "checks": {
+        "body_and_wheel_gap": true,
+        "wall_margin": true,
+        "two_wheel_surface": true,
+        "grass_duration_within_team_limit": true,
+        "checkpoint_reached": true,
+        "no_path_fault": true,
+        "rejoins_center": true,
+        "rejoins_heading": true
+      },
+      "conditions_met": true,
+      "driving_authorized": false
+    },
+    {
+      "name": "speed0.8_delay5",
+      "historical_road_only_metrics": {
+        "offset_m": -0.16,
+        "transition_m": 1.2,
+        "speed_cap_mps": 0.8,
+        "delay_steps": 5,
+        "delay_s": 0.1,
+        "ideal_geometry": {
+          "offset_m": -0.16,
+          "transition_m": 1.2,
+          "minimum_sampled_body_gap_m": 0.16,
+          "minimum_body_gap_lower_m": 0.15884803532877412,
+          "minimum_road_edge_lower_m": -0.018559587904243786,
+          "steering_upper_rad": 0.08638700311698805,
+          "sampled_max_steering_rad": 0.08489053486360536,
+          "max_interval_motion_bound_m": 0.001151964671225892,
+          "checks": {
+            "road_margin": false,
+            "body_gap": true,
+            "steering_bound": true
+          },
+          "geometry_conditions_met": false,
+          "driving_authorized": false,
+          "observation_verified": false,
+          "tracking_verified": false
+        },
+        "checks": {
+          "checkpoint_reached": true,
+          "no_path_fault": true,
+          "body_gap": false,
+          "road_margin": false,
+          "rejoins_center": true,
+          "rejoins_heading": true
+        },
+        "tracking_probe_conditions_met": false,
+        "driving_authorized": false,
+        "minimum_body_gap_lower_m": 0.14719886251606518,
+        "minimum_road_edge_lower_m": -0.03446271495382065,
+        "final_rear_pose": [
+          3.0738789629680197,
+          0.0025434940454153233,
+          0.023989433258394567
+        ],
+        "fault": null,
+        "steps": 203
+      },
+      "surface": {
+        "required_gap_m": 0.097,
+        "required_edge_margin_m": 0.07400000000000001,
+        "minimum_gap_lower_m": 0.16287910551650525,
+        "minimum_road_edge_lower_m": -0.01834410641694381,
+        "minimum_wall_edge_lower_m": 0.18165589358305623,
+        "minimum_inner_patch_edge_lower_m": {
+          "left": 0.1195240347840015,
+          "right": -0.015380496140933154
+        },
+        "maximum_outside_wheels_upper": 2,
+        "maximum_grass_duration_upper_s": 1.3579999999999612,
+        "team_grass_duration_limit_s": 3.0,
+        "samples": 4263,
+        "curved_budget": false,
+        "checks": {
+          "body_and_wheel_gap": true,
+          "wall_margin": true,
+          "two_wheel_surface": true,
+          "grass_duration_within_team_limit": true
+        },
+        "driving_authorized": false
+      },
+      "checks": {
+        "body_and_wheel_gap": true,
+        "wall_margin": true,
+        "two_wheel_surface": true,
+        "grass_duration_within_team_limit": true,
+        "checkpoint_reached": true,
+        "no_path_fault": true,
+        "rejoins_center": true,
+        "rejoins_heading": true
+      },
+      "conditions_met": true,
+      "driving_authorized": false
+    }
+  ],
+  "driving_authorized": false,
+  "grass_duration_limit_is_team_assumption_not_official": true
+}

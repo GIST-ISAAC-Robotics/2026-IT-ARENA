@@ -1,0 +1,25 @@
+......................F.....                                             [100%]
+=================================== FAILURES ===================================
+________ test_stopped_center_car_static_width_does_not_prove_transition ________
+
+    def test_stopped_center_car_static_width_does_not_prove_transition():
+        d0 = 0.
+        scene, path = straight(d0, extra=[car(.9, 0., d0)])
+        for cfg in (ROAD, GRASS):
+            frame = PathFrame(path)
+            state = ego_state(frame, cfg)
+            cand = bypass_candidate(frame, state, ObservationGrid(scene, cfg).returns, 'right', cfg, stationary=True)
+            assert cand is not None
+            assert not surface_check(frame, cand, cfg, current_pose=(0, 0, 0))['ok']
+            if cfg.surface_policy == 'two_wheel_grass':
+                # 직진 최종 위치는 예산 안이나 전이 중 yaw 때문에 안쪽 바퀴 여유가 부족하다.
+>               assert abs(cand['d_target_m']) < cfg.policy_limit_m()['selected_m']
+E               assert 0.21364454804541883 < 0.21249999999999997
+E                +  where 0.21364454804541883 = abs(-0.21364454804541883)
+
+tests/test_lateral_intent.py:345: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-24/m3_surface_lateral_v1/run4_lateral_tests/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_lateral_intent.py::test_stopped_center_car_static_width_does_not_prove_transition
+1 failed, 27 passed in 1.47s
+pytest_exit_code=1

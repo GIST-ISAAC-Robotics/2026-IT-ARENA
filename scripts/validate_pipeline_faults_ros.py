@@ -22,21 +22,53 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 DT = .005
-MODULES = {
-    'arena_autonomy': ('local_pursuit', 'wall_follow', 'vision_process', 'race_start', 'core', 'local_path',
-                       'local_follow', 'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'occupancy_timing', 'scene_motion', 'local_scene', 'follow_trace',
-                       'lidar_safety', 'lidar_motion', 'lidar_motion_ros', 'lidar_observation',
-                       'observation_support', 'observation_lateral', 'linear_observation'),
-    'arena_vehicle_interface': ('actuation_ros', 'actuation_contract', 'actuation_wire',
-                                'applied_guard', 'drive_feedback', 'node_lifecycle',
-                                'queued_log', 'timing_probe'),
-}
+MODULES = {'arena_autonomy': ('boundary_evidence',
+                    'core',
+                    'corner_corridor',
+                    'corner_distance',
+                    'corner_evidence',
+                    'corridor_observer',
+                    'follow_trace',
+                    'lateral_intent',
+                    'lidar_motion',
+                    'lidar_motion_ros',
+                    'lidar_observation',
+                    'lidar_safety',
+                    'linear_observation',
+                    'local_follow',
+                    'local_path',
+                    'local_pursuit',
+                    'local_scene',
+                    'm3_execution_trial',
+                    'm3_observed_follow',
+                    'observation_lateral',
+                    'observation_support',
+                    'observed_lateral_trial',
+                    'occupancy_timing',
+                    'polygon_batch',
+                    'r0_plus',
+                    'race_permission',
+                    'race_session',
+                    'race_start',
+                    'rounded_occupancy_candidate',
+                    'scan_topology',
+                    'scene_motion',
+                    'vision_process',
+                    'wall_follow'),
+ 'arena_vehicle_interface': ('actuation_contract',
+                             'actuation_ros',
+                             'actuation_wire',
+                             'applied_guard',
+                             'drive_feedback',
+                             'node_lifecycle',
+                             'queued_log',
+                             'timing_probe')}
 SOURCES = [f'src/{package}/{package}/{name}.py'
            for package, names in MODULES.items() for name in names]
 FIXTURE_SOURCES = ['scripts/audit_start_signal_layout.py', 'scripts/pipeline_mcu_rejection_probe.py',
                    'scripts/pipeline_restart_probe.py']
 PROVENANCE = ['tests/test_pipeline_fault_validation.py', 'src/arena_description/config/vehicle.yaml',
-              'config/tracks/official_v2026.09.14.yaml']
+              'config/tracks/official_v2026.10.24.yaml']
 ZERO_TOPICS = ('applied', 'sink', 'mcu')
 ZERO_GAP_SIM_S, ZERO_GAP_WALL_S = .25, 3.
 STARTUP_GRAPH_WALL_S = 5.
@@ -447,6 +479,8 @@ class OwnedProcesses:
             parameters.update(controller_profile_parameters(self.report.get('controller_profile', 'r0')))
             if self.report.get('signal_mode', 'temporary_3light') != 'temporary_3light':
                 parameters['start_signal_mode'] = self.report['signal_mode']
+            if self.report.get('scenario') == 'race_session':
+                parameters['race_control_mode'] = 'b3_candidate'
         if role == 'mcu':
             parameters.update(feedback_mode='drive_motor_shaft', wheel_radius_m=.0325,
                               ticks_per_revolution=28, gear_ratio=15.)
@@ -455,6 +489,9 @@ class OwnedProcesses:
         command = [sys.executable, '-c', bootstrap, '--ros-args']
         for name, value in parameters.items():
             command.extend(['-p', f'{name}:={str(value).lower() if isinstance(value, bool) else value}'])
+        if role == 'controller' and self.report.get('scenario') == 'race_session':
+            # 시험 전용: 제어기의 MCU 상태 입력만 시험기 중계로 받아 지연 전달을 주입한다.
+            command.extend(['-r', '/actuation/status:=/validator/controller_mcu_status'])
         child = subprocess.Popen(command, cwd=ROOT, stdout=log, stderr=log, start_new_session=True)
         identity = proc_identity(child.pid)
         record = dict(role=role, pid=child.pid, identity=identity, log=log_path.name,
@@ -635,6 +672,9 @@ class PipelineValidator:
         self.publishers = {key: self.node.create_publisher(self.types[key], topic,
                           qos_profile_sensor_data if key in ('scan', 'imu') else 100)
                            for key, topic in topics.items()}
+        self.relay_pub, self.relay_hold = None, None
+        if scenario == 'race_session':
+            self.relay_pub = self.node.create_publisher(String, '/validator/controller_mcu_status', 1000)
         for key, topic in [('autonomy', '/autonomy/status'), ('safety', '/safety/status'),
                            ('mcu', '/actuation/status'), ('sink', '/actuation/output_status')]:
             self.node.create_subscription(String, topic, lambda m, key=key: self.on_status(key, m), 100)
@@ -652,7 +692,17 @@ class PipelineValidator:
                                       lambda m: self.monitor.receive('applied', m.linear.x, self.t), 100)
         self.clients = {name: self.node.create_client(Trigger, topic) for name, topic in
                         [('arm', '/actuation/arm'), ('clear_stop', '/actuation/clear_stop'),
-                         ('stop', '/actuation/stop'), ('reset', '/autonomy/reset')]}
+                         ('stop', '/actuation/stop'), ('reset', '/autonomy/reset'),
+                         ('disarm', '/actuation/disarm')]}
+        from std_srvs.srv import SetBool
+        self.SetBool = SetBool
+        self.enable_client = self.node.create_client(SetBool, '/autonomy/enable')
+        self.race_results, self.race_request = [], 0
+        if scenario == 'race_session':
+            # 경기 감독 명령은 사람 운영 도구를 대신하는 시험 입력이다. 정답/신호 상태를 담지 않는다.
+            self.race_pub = self.node.create_publisher(String, '/race/command', 10)
+            self.node.create_subscription(String, '/race/command_result',
+                                          lambda m: self.race_results.append(json.loads(m.data)), 10)
         self.color, self.images, self.held_stamp = 'green', True, None
         colors = ('red', 'green', 'red1', 'red2', 'red3', 'off') if signal_mode == 'official_4red_candidate' else ('red', 'green')
         self.rgb = {name: signal_rgb(name, signal_mode) for name in colors}
@@ -662,6 +712,11 @@ class PipelineValidator:
         self.trace, self.traces = None, []
 
     def on_status(self, key, message):
+        if key == 'mcu' and getattr(self, 'relay_pub', None) is not None:
+            if self.relay_hold is not None:
+                self.relay_hold.append(message)
+            else:
+                self.relay_pub.publish(message)
         value = json.loads(message.data)
         stamp = value.get('sim_time_s') if key == 'autonomy' else (
             value.get('now_us', 0) * 1e-6 if key in ('mcu', 'sink') else None)
@@ -669,6 +724,12 @@ class PipelineValidator:
 
     def data(self, key):
         return self.monitor.latest.get(key, {}).get('value', {})
+
+    def release_relay(self):
+        held, self.relay_hold = self.relay_hold or [], None
+        for message in held:
+            self.relay_pub.publish(message)
+        self.monitor.events.append(dict(kind='relay_release', count=len(held), wall_s=time.monotonic(), sim_s=self.t))
 
     def fresh(self, key, after, predicate):
         return self.monitor.fresh(key, after, predicate, time.monotonic(), self.t,
@@ -869,14 +930,15 @@ class PipelineValidator:
         self.finish(case, expected=expected, duration=.1)
         return case
 
-    def red_green(self):
+    def red_green(self, name='fresh_red_to_green_recovery', expect_motion=True):
         self.images, self.held_stamp, self.color = True, None, 'red'
         baseline = self.monitor.sequence
         observed = 'red4_confirmed' if self.signal_mode == 'official_4red_candidate' else 'red'
         self.wait(lambda: self.fresh('autonomy', baseline, lambda v: v['signal'] == observed), 'actual red pixels')
         self.pump(.8)
         self.color = 'green'
-        self.moving('fresh_red_to_green_recovery')
+        if expect_motion:
+            self.moving(name)
 
     def restart_controller(self):
         """지역 제어기만 교체한다. 보호층의 신선한 0 명령으로 MCU 허가는 유지돼야 한다.
@@ -952,18 +1014,24 @@ class PipelineValidator:
     def graph_snapshot(self):
         expected_publishers = {'/drive': 'local_pursuit', '/drive/safe': 'lidar_safety',
                                '/sim/cmd_vel': 'guarded_sim_actuator'}
+        race_mode = getattr(self, 'scenario', None) == 'race_session'
+        if race_mode:
+            expected_publishers['/race/command_result'] = 'local_pursuit'
+            expected_publishers['/validator/controller_mcu_status'] = 'pipeline_fault_validator'
         audit = dict(publishers={}, subscriptions={})
         # 시작 감사 전용 분류. discovery는 아직 발견되지 않은 것, definite는 이미 관측된 잘못된 그래프다.
         discovery, definite = [], []
         for topic, owner in expected_publishers.items():
             audit['publishers'][topic] = [dict(node=info.node_name, namespace=info.node_namespace,
                 gid=list(info.endpoint_gid)) for info in self.node.get_publishers_info_by_topic(topic)]
-        for topic in ('/clock', '/scan', '/camera/color/image_raw', '/drive_motor/encoder', '/imu/data'):
+        for topic in ('/clock', '/scan', '/camera/color/image_raw', '/drive_motor/encoder', '/imu/data') + (
+                ('/race/command', '/race/command_result', '/validator/controller_mcu_status') if race_mode else ()):
             audit['publishers'][topic] = [dict(node=info.node_name, namespace=info.node_namespace,
                 gid=list(info.endpoint_gid)) for info in self.node.get_publishers_info_by_topic(topic)]
         sensor_topics = {'/scan', '/camera/color/image_raw', '/drive_motor/encoder', '/imu/data',
                          '/clock', '/parameter_events'}
-        for name, allowed in [('local_pursuit', sensor_topics),
+        race_inputs = {'/validator/controller_mcu_status', '/race/command'} if race_mode else set()
+        for name, allowed in [('local_pursuit', sensor_topics | race_inputs),
                               ('lidar_safety', sensor_topics - {'/camera/color/image_raw'} | {'/drive'})]:
             try:
                 topics = {t for t, _ in self.node.get_subscriber_names_and_types_by_node(name, '/')}
@@ -978,12 +1046,13 @@ class PipelineValidator:
                 continue
             audit['subscriptions'][name] = sorted(topics)
             required = {'/scan', '/clock', '/drive_motor/encoder', '/imu/data'} | (
-                {'/camera/color/image_raw'} if name == 'local_pursuit' else {'/drive'})
+                {'/camera/color/image_raw'} | race_inputs if name == 'local_pursuit' else {'/drive'})
             audit.setdefault('input_checks', {})[name] = not topics - allowed and required <= topics
             definite.extend(f'unexpected_subscription:{name}:{topic}' for topic in sorted(topics - allowed))
             discovery.extend(f'subscription_missing:{name}:{topic}' for topic in sorted(required - topics))
         expected_publishers.update({topic: 'pipeline_fault_validator' for topic in
-            ('/clock', '/scan', '/camera/color/image_raw', '/drive_motor/encoder', '/imu/data')})
+            ('/clock', '/scan', '/camera/color/image_raw', '/drive_motor/encoder', '/imu/data')
+            + (('/race/command',) if race_mode else ())})
         audit['valid'] = all([entry['node'] for entry in audit['publishers'][topic]] == [owner]
             and all(entry['namespace'] == '/' for entry in audit['publishers'][topic])
             for topic, owner in expected_publishers.items()) and all(audit['input_checks'].values())
@@ -1041,11 +1110,19 @@ class PipelineValidator:
         # 시작 그래프도 정확한 단일 발행자·입력이어야 한다. 이름 미갱신·필요 endpoint 부족만 제한 대기한다.
         self.graph_audit(convergence_wall_s=STARTUP_GRAPH_WALL_S, startup=True)
         self.wait(lambda: self.stopped(0), 'fresh startup zero outputs')
+        if self.scenario == 'race_session':
+            # 시작 뒤 ARM을 목격하려면 제어기가 ARM 전의 fence 이후 상태를 먼저 받아야 한다.
+            baseline = self.monitor.sequence
+            self.wait(lambda: self.fresh('autonomy', baseline, lambda v: bool((v.get('race') or {}).get(
+                'rearm_baseline'))), 'controller observed post-start MCU state before ARM')
         self.stop_case('boot_disarmed', lambda: None, {'mcu': lambda v: v['state'] == 'DISARMED'}, no_resume=True)
         self.stop_case('armed_green_only_cannot_start', lambda: self.call('arm'),
                        {'autonomy': lambda v: not v['started'] and v['speed_command_mps'] == 0.}, no_resume=True)
         if self.scenario == 'start_contract':
             self.run_start_contract()
+            return
+        if self.scenario == 'race_session':
+            self.run_race_session()
             return
         self.red_green()
         if self.controller_profile == 'g1_recent_observation_candidate' and self.scenario == 'full':
@@ -1199,6 +1276,271 @@ class PipelineValidator:
         self.moving('official_separate_rearm_after_existing_visual_start')
         self.final_stop()
 
+    def call_result(self, name):
+        """서비스 거절을 시험 실패로 바꾸지 않고 결과만 기록한다."""
+        client = self.clients[name]
+        self.wait(client.service_is_ready, name + ' service ready')
+        future = client.call_async(self.Trigger.Request())
+        self.wait(future.done, name + ' ACK')
+        result = future.result()
+        self.monitor.events.append(dict(kind='service', name=name, wall_s=time.monotonic(),
+                                        sim_s=self.t, success=result.success, message=result.message))
+        return result
+
+    def enable(self, value):
+        self.wait(self.enable_client.service_is_ready, 'autonomy enable ready')
+        future = self.enable_client.call_async(self.SetBool.Request(data=value))
+        self.wait(future.done, 'autonomy enable ACK')
+        result = future.result()
+        self.monitor.events.append(dict(kind='service', name='autonomy_enable_' + str(value).lower(),
+            wall_s=time.monotonic(), sim_s=self.t, success=result.success, message=result.message))
+        return result
+
+    def race_state(self):
+        return self.data('autonomy').get('race') or {}
+
+    def race_send(self, payload, request=None):
+        """`/race/command` 결과를 같은 요청 번호로 회수한다. 형식 오류 사례는 결과 개수로 기다린다."""
+        self.wait(lambda: self.race_pub.get_subscription_count() >= 1, 'race command subscriber')
+        before = len(self.race_results)
+        text = payload if isinstance(payload, str) else json.dumps(payload)
+        self.race_pub.publish(self.types_string(data=text))
+        self.wait(lambda: any(r.get('request') == request for r in self.race_results[before:])
+                  if request else len(self.race_results) > before, 'race command result')
+        result = next(r for r in self.race_results[before:] if not request or r.get('request') == request)
+        self.monitor.events.append(dict(kind='race_command', payload=text, result=result,
+                                        wall_s=time.monotonic(), sim_s=self.t))
+        return result
+
+    def race_command(self, op, **fields):
+        self.race_request += 1
+        request = 'validator-%d' % self.race_request
+        return self.race_send(dict(v=1, request=request, op=op, **fields), request)
+
+    def race_ack(self, **override):
+        state = self.race_state()
+        fields = dict(session=state['session'], race_epoch=state['race_epoch'],
+                      intervention=state['intervention'], hazards_cleared=True, operator_reviewed=True)
+        fields.update(override)
+        return self.race_command('acknowledge', **fields)
+
+    def expect(self, result, accepted, reason=None):
+        if not isinstance(result, dict):
+            result = dict(success=result.success, message=result.message)
+        ok = result.get('accepted', result.get('success')) is accepted and (
+            reason is None or str(result.get('reason', result.get('message', ''))).startswith(reason))
+        self.report.setdefault('race_expectations', []).append(dict(result=result, accepted=accepted,
+                                                                     reason=reason, passed=ok, sim_s=self.t))
+        if not ok:
+            raise AssertionError('unexpected race result: ' + json.dumps(result, ensure_ascii=False))
+        return result
+
+    def run_race_session(self):
+        """선택형 B3 경기 감독 v2: 시작/새 경기 handshake·같은 경기 재개·STOP 번호·지연 MCU 상태.
+
+        STOP 판단(상위 래치), MCU STOP 배송/ACK, 가상 모형 정지를 각각 따로 기록한다.
+        제어기의 MCU 상태 입력만 시험기 중계를 거치며 host/출력 보호는 원래 토픽을 쓴다.
+        """
+        if self.signal_mode != 'official_4red_candidate':
+            raise ValueError('race_session requires official candidate')
+        from std_msgs.msg import String
+        self.types_string = String
+        latched = lambda reason: (lambda v: v['state'] == 'RACE_LATCHED' and
+                                  str(v['race']['latch']).startswith(reason))
+        rearm_wait = lambda v: (v['state'] == 'ACTUATOR_WAIT' and v['race']['latch'] is None and
+                                v['race']['actuator_reason'] == 'mcu_rearm_required')
+        def lights_until(predicate, label):
+            self.red_green(expect_motion=False)
+            baseline = self.monitor.sequence
+            self.wait(lambda: self.fresh('autonomy', baseline, predicate), label)
+        # 0) 프로세스 시작: 래치, 신호만으로 출발 불가. 시작 뒤 ARM(공통 접두 사례)과 사람 확인이 필요.
+        first = self.race_state()
+        if first['latch'] != 'process_start' or first['intervention'] != 1 or first['race_epoch'] != 0:
+            raise AssertionError('process start is not latched: ' + json.dumps(first))
+        self.stop_case('b3_startup_lights_without_ack_no_start',
+                       lambda: lights_until(lambda v: latched('process_start')(v) and v['race']['visual_start_fact'],
+                                            'startup lights stay latched'),
+                       {'autonomy': latched('process_start'), 'mcu': lambda v: v['state'] == 'ARMED'}, no_resume=True)
+        self.expect(self.race_ack(), True, 'policy_latch_cleared')
+        self.moving('b3_startup_ack_with_post_start_arm_and_lights')
+        self.color = 'off'
+        self.moving('b3_green_extinguished_keeps_race_start')
+        self.stop_case('b3_rgb_gap_sensor_hold', lambda: setattr(self, 'images', False),
+                       {'autonomy': lambda v: v['state'] == 'SENSOR_STOP' and v['race']['latch'] is None,
+                        'drive': lambda v: v == 0., 'safe': lambda v: v == 0.})
+        self.images = True
+        before = self.race_state()['intervention']
+        self.moving('b3_sensor_hold_automatic_resume')
+        if self.race_state()['intervention'] != before:
+            raise AssertionError('temporary sensor hold created an intervention')
+        self.expect(self.enable(True), False, 'B3: enable cannot')
+        self.moving('b3_legacy_enable_true_rejected_while_running')
+        # 1) 상위 STOP만: MCU는 ARMED. 활성 STOP 재전송만 같은 개입, 해제 뒤에도 실제 재ARM 필요.
+        stop_ids = {}
+        def upper_stop():
+            stop_ids['first'] = self.expect(self.race_command('stop'), True, 'stop_latched')['request']
+        self.stop_case('b3_upper_stop_policy_latch_mcu_still_armed', upper_stop,
+                       {'autonomy': latched('explicit_stop'), 'mcu': lambda v: v['state'] == 'ARMED'})
+        def rejected_inputs():
+            active = self.race_state()['intervention']
+            self.expect(self.race_send(dict(v=1, request=stop_ids['first'], op='stop'), stop_ids['first']),
+                        True, 'duplicate_stop_already_applied')
+            if self.race_state()['intervention'] != active:
+                raise AssertionError('active STOP resend created a new intervention')
+            self.expect(self.enable(True), False, 'B3: enable cannot')
+            self.expect(self.race_send('{not json'), False, 'invalid_payload')
+            self.expect(self.race_ack(intervention=active - 1), False, 'acknowledge_rejected')
+            self.expect(self.race_ack(session='0' * 32), False, 'session_mismatch')
+        self.stop_case('b3_stop_resend_enable_stale_ack_and_malformed_no_resume', rejected_inputs,
+                       {'autonomy': latched('explicit_stop')}, no_resume=True)
+        ack_ids = []
+        def ack_rearm_wait():
+            ack_ids.append(self.expect(self.race_ack(), True, 'policy_latch_cleared')['request'])
+        self.stop_case('b3_ack_without_mcu_rearm_no_resume', ack_rearm_wait,
+                       {'autonomy': rearm_wait, 'mcu': lambda v: v['state'] == 'ARMED'}, no_resume=True)
+        # 2) 래치 전 DISARM→ARM 상태를 제어기에 늦게 전달: 재ARM 증거가 아니다.
+        def delayed_pre_latch_states():
+            self.relay_hold = []
+            self.call('disarm')
+            self.call('arm')
+            held = list(self.relay_hold)
+            self.expect(self.race_command('stop'), True, 'stop_latched')
+            state = self.race_state()
+            self.report['delayed_status_injection'] = dict(held_messages=len(held),
+                held_states=sorted({json.loads(m.data)['state'] for m in held}),
+                held_generations=sorted({json.loads(m.data)['generation'] for m in held}),
+                fence_s=state['rearm_fence_s'], before_release_counts=state['mcu_counts'],
+                before_release_ignored=state['counts']['rearm_ignored_before_fence'])
+            self.release_relay()
+            self.pump(.3)
+            self.expect(self.race_ack(), True, 'policy_latch_cleared')
+            baseline = self.monitor.sequence
+            self.wait(lambda: self.fresh('autonomy', baseline, rearm_wait), 'delayed states are not re-ARM')
+            after = self.race_state()
+            self.report['delayed_status_injection'].update(after_release_counts=after['mcu_counts'],
+                after_release_ignored=after['counts']['rearm_ignored_before_fence'],
+                rearm_baseline=after['rearm_baseline'], mcu_generation=after['mcu']['generation'])
+            if not {'DISARMED', 'ARMED'} <= set(self.report['delayed_status_injection']['held_states']):
+                raise AssertionError('delayed injection did not hold both DISARM and ARM states')
+        self.stop_case('b3_delayed_pre_latch_disarm_arm_not_rearm', delayed_pre_latch_states,
+                       {'autonomy': rearm_wait}, no_resume=True)
+        self.stop_case('b3_post_fence_disarm_no_resume', lambda: self.call('disarm'),
+                       {'mcu': lambda v: v['state'] == 'DISARMED'}, no_resume=True)
+        self.call('arm')
+        self.moving('b3_same_race_resume_after_post_fence_rearm_without_new_lights')
+        # 3) MCU STOP 직접: 상위 개입으로 변환, CLEAR/ARM만으로는 재개 불가.
+        before = self.race_state()['intervention']
+        self.stop_case('b3_mcu_stop_becomes_intervention', lambda: self.call('stop'),
+                       {'mcu': lambda v: v['state'] == 'ESTOP_LATCHED', 'sink': lambda v: v['blocked'],
+                        'autonomy': latched('mcu:ESTOP_LATCHED')})
+        if self.race_state()['intervention'] != before + 1:
+            raise AssertionError('MCU STOP was not one new intervention')
+        def clear_arm():
+            self.expect(self.call_result('arm'), False)
+            self.call('clear_stop')
+            self.call('arm')
+        self.stop_case('b3_mcu_clear_arm_without_ack_no_resume', clear_arm,
+                       {'mcu': lambda v: v['state'] == 'ARMED', 'autonomy': latched('mcu:ESTOP_LATCHED')},
+                       no_resume=True)
+        self.expect(self.race_ack(), True, 'policy_latch_cleared')
+        self.moving('b3_same_race_resume_after_mcu_stop_ack')
+        # 4) STOP 요청 번호: 다른 op 번호와 겹쳐도, 이미 해제된 STOP 번호여도 실제로 고정한다.
+        def resume_after_ack_rearm(name):
+            self.expect(self.race_ack(), True, 'policy_latch_cleared')
+            self.pump(.2)
+            self.call('disarm')
+            self.call('arm')
+            self.moving(name)
+        self.stop_case('b3_stop_with_previous_ack_id_latches',
+                       lambda: self.expect(self.race_send(dict(v=1, request=ack_ids[0], op='stop'), ack_ids[0]),
+                                           True, 'stop_latched'),
+                       {'autonomy': latched('explicit_stop')})
+        resume_after_ack_rearm('b3_resume_after_colliding_stop')
+        self.stop_case('b3_released_stop_id_resend_latches',
+                       lambda: self.expect(self.race_send(dict(v=1, request=stop_ids['first'], op='stop'),
+                                                          stop_ids['first']), True, 'stop_latched'),
+                       {'autonomy': latched('explicit_stop')})
+        resume_after_ack_rearm('b3_resume_after_released_stop_resend')
+        # 5) 새 경기: 늦은/다른 세션 명령 거절. 정상 명령은 새 영상 세대·새 개입·사람 확인·재ARM·새 신호.
+        state = self.race_state()
+        self.expect(self.race_command('new_race', session=state['session'], race_epoch=state['race_epoch'] + 7),
+                    False, 'race_epoch_mismatch')
+        self.expect(self.race_command('new_race', session='0' * 32, race_epoch=state['race_epoch']),
+                    False, 'session_mismatch')
+        self.moving('b3_rejected_new_race_commands_keep_running')
+        self.stop_case('b3_new_race_latches_and_requires_new_sequence',
+                       lambda: self.expect(self.race_command('new_race', session=state['session'],
+                                                             race_epoch=state['race_epoch']), True, 'new_race'),
+                       {'autonomy': lambda v: latched('new_race')(v) and not v['race']['started'] and
+                        v['race']['race_epoch'] == state['race_epoch'] + 1 and
+                        v['race']['intervention'] == state['intervention'] + 1,
+                        'mcu': lambda v: v['state'] == 'ARMED'})
+        self.stop_case('b3_new_race_green_only_no_start', lambda: setattr(self, 'color', 'green'),
+                       {'autonomy': lambda v: not v['race']['started'] and not v['race']['visual_start_fact']},
+                       no_resume=True)
+        def old_images():
+            self.held_stamp = self.last['image']
+            self.color = 'green'
+        self.stop_case('b3_new_race_old_stamp_images_no_start', old_images,
+                       {'autonomy': lambda v: not v['race']['started']}, no_resume=True)
+        self.held_stamp = None
+        def new_race_release():
+            self.expect(self.race_ack(), True, 'policy_latch_cleared')
+            lights_until(lambda v: v['race']['started'] and rearm_wait(v), 'new race waits for MCU re-ARM')
+        self.stop_case('b3_new_race_ack_and_lights_still_need_rearm', new_race_release,
+                       {'autonomy': rearm_wait}, no_resume=True)
+        self.call('disarm')
+        self.call('arm')
+        self.moving('b3_new_race_start_after_ack_rearm_and_lights')
+        # 6) 구형 reset: 새 경기 + 래치. 이전 경기 번호의 해제 거절.
+        state = self.race_state()
+        self.stop_case('b3_legacy_reset_fail_closed', lambda: self.call('reset'),
+                       {'autonomy': latched('legacy_reset'), 'mcu': lambda v: v['state'] == 'ARMED'})
+        if self.race_state()['race_epoch'] != state['race_epoch'] + 1:
+            raise AssertionError('legacy reset did not start a new race epoch')
+        def reset_release():
+            self.expect(self.race_ack(race_epoch=state['race_epoch']), False, 'race_epoch_mismatch')
+            self.expect(self.race_ack(), True, 'policy_latch_cleared')
+            lights_until(lambda v: v['race']['started'] and rearm_wait(v), 'reset waits for MCU re-ARM')
+        self.stop_case('b3_legacy_reset_ack_and_lights_still_need_rearm', reset_release,
+                       {'autonomy': rearm_wait}, no_resume=True)
+        self.call('disarm')
+        self.call('arm')
+        self.moving('b3_legacy_reset_resume_after_ack_lights_and_rearm')
+        # 7) 영상 고정 고장 → 제어기 재시작: 새 session·시작 래치, 기존 ARMED 재사용 금지.
+        old_session = self.race_state()['session']
+        owned = self.children.register_vision(self.data('autonomy')['vision']['worker_pid'])
+        self.stop_case('b3_vision_kill_latches_fault',
+                       lambda: self.children.send('controller', signal.SIGKILL, vision=owned),
+                       {'autonomy': lambda v: v['state'] == 'SENSOR_STOP' and bool(v['vision']['fault']) and
+                        v['race']['latch'] == 'fault:vision', 'drive': lambda v: v == 0., 'safe': lambda v: v == 0.})
+        self.stop_case('b3_vision_fault_ack_rejected',
+                       lambda: self.expect(self.race_ack(), False, 'fixed_fault_present'),
+                       {'autonomy': lambda v: bool(v['vision']['fault'])}, no_resume=True)
+        def restart():
+            self.children.stop('controller')
+            self.color, self.images, self.held_stamp = 'green', True, None
+            self.children.start('controller')
+            baseline = self.monitor.sequence
+            self.wait(lambda: self.fresh('autonomy', baseline, lambda v: v.get('race') and
+                      v['race']['session'] != old_session and v['vision']['stats']['accepted'] >= 3),
+                      'restarted controller publishes a new session')
+            self.children.register_vision(self.data('autonomy')['vision']['worker_pid'])
+            lights_until(lambda v: latched('process_start')(v) and v['race']['visual_start_fact'],
+                         'restart lights stay latched')
+            self.expect(self.race_ack(session=old_session), False, 'session_mismatch')
+            self.expect(self.race_ack(), True, 'policy_latch_cleared')
+            baseline = self.monitor.sequence
+            self.wait(lambda: self.fresh('autonomy', baseline, lambda v: v['race']['started'] and rearm_wait(v)),
+                      'restart does not reuse previous ARMED')
+        self.stop_case('b3_restart_requires_ack_and_new_arm_not_previous_armed', restart,
+                       {'autonomy': lambda v: rearm_wait(v) and v['race']['session'] != old_session and
+                        v['race']['intervention'] == 1, 'mcu': lambda v: v['state'] == 'ARMED'}, no_resume=True)
+        self.call('disarm')
+        self.call('arm')
+        self.moving('b3_restart_resume_after_ack_rearm_and_lights')
+        self.final_stop()
+
     def final_stop(self):
         self.stop_case('final_explicit_software_stop', lambda: self.call('stop'),
                        {'mcu': lambda v: v['state'] == 'ESTOP_LATCHED' and v['reason'] == 'software_stop',
@@ -1315,7 +1657,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--wall-cap', type=float, default=480.)
     parser.add_argument('--sleep-wall', type=float, default=.005)
-    parser.add_argument('--scenario', choices=('full', 'restart_repro', 'start_contract'), default='full',
+    parser.add_argument('--scenario', choices=('full', 'restart_repro', 'start_contract', 'race_session'), default='full',
                         help='restart_repro: ros_v2 failure segment only; not the 34-condition validation')
     parser.add_argument('--cycles', type=int, default=1, choices=(1, 2, 3))
     parser.add_argument('--signal-mode', choices=('temporary_3light', 'official_4red_candidate'), default='temporary_3light')
@@ -1323,8 +1665,8 @@ def main():
     parser.add_argument('--recent-check-mode',choices=('continuity','evidence_expiry'),default='continuity',
                         help='evidence_expiry checks point support and later expiry, not sustained missing-ray progress')
     args = parser.parse_args()
-    if (args.scenario == 'start_contract') != (args.signal_mode == 'official_4red_candidate'):
-        parser.error('official candidate is limited to start_contract scenario')
+    if (args.scenario in ('start_contract', 'race_session')) != (args.signal_mode == 'official_4red_candidate'):
+        parser.error('official candidate is limited to start_contract/race_session scenarios')
     if args.controller_profile != 'r0' and args.scenario != 'full':
         parser.error('G1 candidate fault regression uses the full scenario only')
     if args.recent_check_mode!='continuity' and args.controller_profile!='g1_recent_observation_candidate':

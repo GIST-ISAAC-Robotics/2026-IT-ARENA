@@ -167,6 +167,7 @@ def test_launch_opt_in_only():
 
 def test_registered_r7_chain_and_current_source():
     import hashlib
+    from source_contract_helpers import hash_before_observation_extension
     sha=lambda p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest()
     path='config/tests/scheduled_command_r7_sha256.json'
     c=json.loads((ROOT/path).read_text())
@@ -178,7 +179,7 @@ def test_registered_r7_chain_and_current_source():
                        ('approved_implementation_changes',impl)]:
         for p,change in c[group].items():
             assert change['before']==before.get(p)
-            assert change['after']==sha(p)
+            assert change['after']==hash_before_observation_extension(ROOT,p)
             dest[p]=change['after']
     assert c['sha256']==expected and c['implementation_sha256']==impl
     from source_contract_helpers import hash_before_observation_extension

@@ -46,12 +46,19 @@ FOLLOW_PROFILE_TOOLS = (
     'src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py',
     'src/arena_autonomy/arena_autonomy/__init__.py',
     *(f'src/arena_autonomy/arena_autonomy/{name}.py' for name in
-      ('follow_trace', 'local_follow', 'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'local_scene', 'scene_motion',
+      ('follow_trace', 'local_follow', 'r0_plus', 'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'local_scene', 'scene_motion',
          'lidar_motion', 'lidar_observation', 'local_path', 'occupancy_timing',
          'observation_support', 'observation_lateral', 'linear_observation')),
     'tests/test_follow_profile.py', 'tests/test_hardware_capture_audit.py',
     'docs/hardware/HARDWARE_CAPTURE_AUDIT_2026_10_13.md',
     'docs/simulation/G1_DECISION_PROFILE_2026_10_13.md',
+    'src/arena_autonomy/arena_autonomy/lateral_intent.py',
+    'src/arena_autonomy/arena_autonomy/m3_execution_trial.py',
+    'src/arena_autonomy/arena_autonomy/m3_observed_follow.py',
+    'src/arena_autonomy/arena_autonomy/observed_lateral_trial.py',
+    'src/arena_autonomy/arena_autonomy/polygon_batch.py',
+    'src/arena_autonomy/arena_autonomy/rounded_occupancy_candidate.py',
+    'src/arena_autonomy/arena_autonomy/scan_topology.py',
 )
 
 

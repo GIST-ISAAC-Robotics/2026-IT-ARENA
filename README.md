@@ -40,7 +40,7 @@ ros2 launch arena_bringup local_pursuit.launch.py
 
 `simulation.launch.py`는 시뮬레이션만, `demo.launch.py`는 기존 LiDAR/스테레오 비교 구성을 실행합니다. 한 번에 하나씩 실행하고 종료를 확인합니다. 트랙은 기본 `official`, 비교용 `experimental`/`original`을 선택할 수 있습니다. [기존 데모](docs/autonomy/BASIC_DEMO.md)
 
-공식 실행 입력은 `config/tracks/official_v2026.09.14.yaml`입니다. 원본 ZIP과 기존 시험은 보존합니다. 변경 영향에 맞게 검증 명령을 선택하십시오.
+공식 실행 입력은 `config/tracks/official_v2026.10.24.yaml`입니다. 백색 도로·회색 벽과 공개 50 mm 방지턱 시각 모델을 적용했으며, 길이 완화안은 아직 미확정입니다. [적용 범위와 검증](docs/track/OFFICIAL_V2026_10_24_UPDATE.md). 원본 ZIP과 기존 시험은 보존합니다. 변경 영향에 맞게 검증 명령을 선택하십시오.
 
 ```bash
 python3 scripts/build_official_track.py --check

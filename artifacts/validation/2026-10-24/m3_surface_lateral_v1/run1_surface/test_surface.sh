@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -uo pipefail
+cd '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local'
+out='artifacts/validation/2026-10-24/m3_surface_lateral_v1/run1_surface'
+set +e
+PYTHONPATH=scripts:src/arena_autonomy:src/arena_vehicle_interface python3 -B -m pytest -q -p no:cacheprovider tests/test_surface_contact_eval.py 2>&1 | tee "$out/test_surface.log"
+rc=${PIPESTATUS[0]}
+printf 'pytest_exit_code=%s\n' "$rc" | tee -a "$out/test_surface.log"
+exit "$rc"

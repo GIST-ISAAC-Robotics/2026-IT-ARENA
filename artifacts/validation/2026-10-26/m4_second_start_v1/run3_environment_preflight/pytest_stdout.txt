@@ -1,0 +1,105 @@
+'tests/test_m4_second_start.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_m4_second_start.py'
+'tests/test_m4_operation_trial.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_m4_operation_trial.py'
+'tests/test_m4_operation_cli.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_m4_operation_cli.py'
+'tests/test_source_provenance_r0_plus_b3.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_source_provenance_r0_plus_b3.py'
+'tests/test_corner_follow.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_corner_follow.py'
+'tests/test_g1_dense_stop.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_g1_dense_stop.py'
+'tests/test_physics_step_option.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_physics_step_option.py'
+'tests/test_g1_traffic_eval.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_g1_traffic_eval.py'
+'tests/test_g1_traffic_extensions.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_g1_traffic_extensions.py'
+'src/arena_autonomy/arena_autonomy/m3_guarded_return_trial.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/m3_guarded_return_trial.py'
+'tests/test_m3_guarded_return_trial.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_m3_guarded_return_trial.py'
+'tests/test_m3_return_guard.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/tests/test_m3_return_guard.py'
+'scripts/m4_second_start.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/scripts/m4_second_start.py'
+'scripts/m4_operation_trial.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/scripts/m4_operation_trial.py'
+'scripts/m4_operation_eval.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/scripts/m4_operation_eval.py'
+'scripts/validate_g1_traffic.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/scripts/validate_g1_traffic.py'
+'config/tests/g1_traffic_v1.json' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/config/tests/g1_traffic_v1.json'
+'src/arena_bringup/launch/g1_follow.launch.py' exists= True resolved= '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_bringup/launch/g1_follow.launch.py'
+IMPORTS {"arena_autonomy.__path__": ["/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy"], "launch": "/opt/ros/jazzy/lib/python3.12/site-packages/launch/__init__.py", "rclpy": "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/__init__.py", "xacro": "/opt/ros/jazzy/lib/python3.12/site-packages/xacro/__init__.py"}
+........................................................................ [ 35%]
+..........F............................................................. [ 71%]
+..........................................................               [100%]
+=================================== FAILURES ===================================
+_ test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes _
+
+    def test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes():
+        import hashlib
+        import json
+        from pathlib import Path
+        root=Path(__file__).resolve().parents[1]
+        contract=json.loads((root/'config/tests/corner_anchor_r0_sha256.json').read_text())
+        parent=root/contract['parent_contract']
+        assert hashlib.sha256(parent.read_bytes()).hexdigest()==contract['parent_contract_sha256']
+        previous=json.loads(parent.read_text())
+        successor=json.loads((root/'config/tests/corner_distance_r0_sha256.json').read_text())
+        assert successor['parent_contract']=='config/tests/corner_anchor_r0_sha256.json'
+        assert hashlib.sha256((root/successor['parent_contract']).read_bytes()).hexdigest()==successor['parent_contract_sha256']
+        corridor=json.loads((root/'config/tests/corridor_fallback_r0_sha256.json').read_text())
+        assert corridor['parent_contract']=='config/tests/corner_distance_r0_sha256.json'
+        assert hashlib.sha256((root/corridor['parent_contract']).read_bytes()).hexdigest()==corridor['parent_contract_sha256']
+        recent=json.loads((root/'config/tests/recent_observation_r0_sha256.json').read_text())
+        assert recent['parent_contract']=='config/tests/corridor_fallback_r0_sha256.json'
+        assert hashlib.sha256((root/recent['parent_contract']).read_bytes()).hexdigest()==recent['parent_contract_sha256']
+        followers,parent_name=[],'config/tests/recent_observation_r0_sha256.json'
+        for name in ('r0_plus_e3_r0_sha256.json','b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json'):
+            follower=json.loads((root/'config/tests'/name).read_text(encoding='utf-8'))
+            assert follower['parent_contract']==parent_name
+            assert hashlib.sha256((root/parent_name).read_bytes()).hexdigest()==follower['parent_contract_sha256']
+            followers.append(follower)
+            parent_name='config/tests/'+name
+        for group in ('approved_changes','approved_evaluation_scripts'):
+            for path,row in contract[group].items():
+                assert row['before']==previous[group][path]['after']
+                later=successor[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                later=corridor[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                later=recent[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                # 10/24 R0+/B3 successor provenance (old contracts unchanged, parent hashes checked)
+                for follower in followers:
+                    later=follower[group].get(path)
+                    if later:
+                        assert later['before']==row['after']
+                        row=later
+                assert hashlib.sha256((root/path).read_bytes()).hexdigest()==row['after']
+        for path,value in contract['new_dependencies'].items():
+            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+        for path,value in successor['new_dependencies'].items():
+            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+        for path,value in corridor['new_dependencies'].items():
+            if path in recent['modified_dependencies']:
+                change=recent['modified_dependencies'][path]
+                assert change['before']==value
+                value=change['after']
+            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+        for path,value in recent['new_dependencies'].items():
+            parent_name='config/tests/recent_observation_r0_sha256.json'
+            for name in ('recent_observation_precision_r0_sha256.json','recent_observation_cost_r0_sha256.json',
+                         'recent_observation_wedge_r0_sha256.json','recent_observation_depth_r0_sha256.json',
+                         'recent_observation_transport_r0_sha256.json','recent_observation_window_r0_sha256.json',
+                         'recent_observation_origin_r0_sha256.json','recent_observation_query_batch_r0_sha256.json'):
+                extension=json.loads((root/'config/tests'/name).read_text())
+                assert extension['parent_contract']==parent_name
+                assert hashlib.sha256((root/parent_name).read_bytes()).hexdigest()==extension['parent_contract_sha256']
+                if path in extension['modified_dependencies']:
+                    change=extension['modified_dependencies'][path]
+                    assert change['before']==value
+                    value=change['after']
+                parent_name='config/tests/'+name
+>           assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+E           AssertionError: assert '883a0545b9f6...a3e0d1ef49832' == 'd151d7ce5ed3...ae3ced74bc8bd'
+E             - d151d7ce5ed3668190f6d458757181fca196de018cb41449b72ae3ced74bc8bd
+E             + 883a0545b9f6c5568fba5bc243e66f277e20d55df4d28b2793da3e0d1ef49832
+
+tests/test_corner_follow.py:193: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_corner_follow.py::test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
+1 failed, 201 passed in 20.10s

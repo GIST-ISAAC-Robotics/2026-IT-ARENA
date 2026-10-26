@@ -24,7 +24,9 @@ def test_eight_cases_preregistered_and_sensor_configuration_unchanged():
     contract=ROOT/'config/tests/scheduled_command_r7_sha256.json'
     comparison=g0.baseline_comparison(contract)
     assert {p for p,row in comparison['files'].items() if not row['matches']}=={
-        'src/arena_autonomy/arena_autonomy/lidar_safety.py'}
+        'src/arena_autonomy/arena_autonomy/lidar_safety.py',
+        # 명시 시험 모터축 카운트 전달은 별도 후속 계약으로 검증한다.
+        'src/arena_bringup/launch/simulation.launch.py'}
     for path,value in json.loads(contract.read_text())['sha256'].items():
         assert hash_before_observation_extension(ROOT,path)==value
 

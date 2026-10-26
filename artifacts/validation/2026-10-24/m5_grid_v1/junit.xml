@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="19" time="2.147" timestamp="2026-10-24T05:37:22.791260" hostname="DESKTOP-KA11CHH"><testcase classname="tests.test_grid_start" name="test_registry_source_and_runtime_match_and_origin_is_not_rear_axle" time="0.115"><failure message="ValueError: grid paint missing">def test_registry_source_and_runtime_match_and_origin_is_not_rear_axle():
+        scene, raw, vehicle, camera = inputs()
+        rows = registry(scene, raw, vehicle)
+        assert [r['index'] for r in rows] == [2, 5, 1, 4, 0, 3]
+&gt;       assert rows == registry(json.loads((RUNTIME/'scene.json').read_text()), (RUNTIME/'world.sdf').read_bytes(), vehicle)
+
+tests/test_grid_start.py:22: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = {'alt_routes': {}, 'aruco_markers': {'dictionary': 'DICT_4X4_50', 'marker_size_m': 0.1, 'markers': [{'id': 0, 'normal_...시 합류하는 별도의 좁은 지름길 (양쪽 모두 주행 가능)', ...}], 'course_name': 'IT ARENA official release v2026.09.14 team-test runtime', ...}
+raw_world = b'&lt;?xml version=\'1.0\' encoding=\'utf-8\'?&gt;\n&lt;sdf version="1.8"&gt;\n  &lt;world name="it_arena_track"&gt;\n    &lt;physics name=...ial&gt;\n          &lt;cast_shadows&gt;false&lt;/cast_shadows&gt;\n        &lt;/visual&gt;\n      &lt;/link&gt;\n    &lt;/model&gt;\n  &lt;/world&gt;\n&lt;/sdf&gt;'
+vehicle = {'body': {'center_of_mass_z_offset_m': 0.0, 'height_and_mass_status': 'provisional', 'height_m': 0.06, 'length_m': 0.2...dentification_marker': {'black_code_size_m': 0.0348, 'dictionary': 'DICT_4X4_50', 'enabled': True, 'id': 49, ...}, ...}
+
+    def registry(scene, raw_world, vehicle):
+        """scene의 칸 중심 = model origin = 축간 중앙 지면. 후축으로 이동하지 않는다."""
+        if vehicle['reference_frame'] != 'model_origin':
+            raise ValueError('unsupported vehicle reference frame')
+        grid = scene['starting_grid']
+        slots = grid['slots']
+        if len(slots) != 6 or {s['index'] for s in slots} != set(range(6)):
+            raise ValueError('six unique official slots required')
+        model = ET.fromstring(raw_world).find("world/model[@name='it_arena_track_static']")
+        if model is None:
+            raise ValueError('missing track')
+        origin, orientation = pose(model)
+        if not np.allclose(origin, 0) or not np.allclose(orientation, np.eye(3)):
+            raise ValueError('world-origin model required')
+        rows = []
+        for slot in sorted(slots, key=lambda s: -s['s_m']):
+            if not all(math.isfinite(slot[k]) for k in ('x', 'y', 'yaw_rad', 's_m')):
+                raise ValueError('nonfinite grid pose')
+            link = model.find(f"link[@name='grid_slot_{slot['index']}']")
+            if link is None:
+&gt;               raise ValueError('grid paint missing')
+E               ValueError: grid paint missing
+
+scripts/audit_grid_start.py:47: ValueError</failure></testcase><testcase classname="tests.test_grid_start" name="test_bad_metadata_cannot_silently_make_a_valid_registry[duplicate]" time="0.029" /><testcase classname="tests.test_grid_start" name="test_bad_metadata_cannot_silently_make_a_valid_registry[position]" time="0.059" /><testcase classname="tests.test_grid_start" name="test_bad_metadata_cannot_silently_make_a_valid_registry[size]" time="0.052" /><testcase classname="tests.test_grid_start" name="test_bad_metadata_cannot_silently_make_a_valid_registry[frame]" time="0.029" /><testcase classname="tests.test_grid_start" name="test_bad_metadata_cannot_silently_make_a_valid_registry[nan]" time="0.054" /><testcase classname="tests.test_grid_start" name="test_touch_or_overlap_and_road_exit_are_distinct_from_clearance" time="0.002" /><testcase classname="tests.test_grid_start" name="test_fixture_preserves_official_lights_and_geometry_and_has_no_drive_plugins" time="0.196" /><testcase classname="tests.test_start_signal_geometry" name="test_ros_forward_left_up_projection_and_diameter" time="0.001" /><testcase classname="tests.test_start_signal_geometry" name="test_high_lamps_outside_is_not_detection_failure" time="0.000" /><testcase classname="tests.test_start_signal_geometry" name="test_projection_invariant_to_world_yaw_and_translation" time="0.037" /><testcase classname="tests.test_start_signal_geometry" name="test_behind_camera_is_unknown_not_valid_pixel" time="0.000" /><testcase classname="tests.test_start_signal_geometry" name="test_named_frame_is_not_silently_accepted" time="0.000" /><testcase classname="tests.test_start_signal_geometry" name="test_ninety_degree_sign_changes_red_green_order" time="0.000" /><testcase classname="tests.test_start_signal_render_fixture" name="test_render_fixture_isolated_views_and_correct_colors" time="0.001" /><testcase classname="tests.test_start_signal_render_fixture" name="test_static_pixel_replay_labels_synthetic_time_separately" time="0.035" /><testcase classname="tests.test_start_signal_render_fixture" name="test_native_bridge_must_belong_to_this_launch" time="0.000" /><testcase classname="tests.test_start_signal_render_fixture" name="test_bridge_pid_reuse_is_not_signaled" time="0.000" /><testcase classname="tests.test_start_signal_render_fixture" name="test_residue_does_not_kill_unknown_or_reused_pid" time="0.000" /></testsuite></testsuites>

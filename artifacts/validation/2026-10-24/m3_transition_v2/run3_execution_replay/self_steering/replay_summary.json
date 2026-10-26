@@ -1,0 +1,938 @@
+{
+ "scope": "open_loop_sensor_replay_not_driving",
+ "runtime_node_connected": false,
+ "previous_steering_source": "own_previous_output_counterfactual",
+ "truth_used_for_control": false,
+ "variants": {
+  "full": {
+   "masked_history_support": true,
+   "straight_start": true,
+   "reaction_s": 0.1,
+   "deceleration_mps2": 2.0,
+   "history_motion_bound_mps": 0.5
+  },
+  "no_history": {
+   "masked_history_support": false,
+   "straight_start": true,
+   "reaction_s": 0.1,
+   "deceleration_mps2": 2.0,
+   "history_motion_bound_mps": 0.5
+  },
+  "no_straight": {
+   "masked_history_support": true,
+   "straight_start": false,
+   "reaction_s": 0.1,
+   "deceleration_mps2": 2.0,
+   "history_motion_bound_mps": 0.5
+  },
+  "strict": {
+   "masked_history_support": false,
+   "straight_start": false,
+   "reaction_s": 0.1,
+   "deceleration_mps2": 2.0,
+   "history_motion_bound_mps": 0.5
+  },
+  "frozen_run17": "M3ObservedFollow"
+ },
+ "records": {
+  "e3_onroad_g1": {
+   "full": {
+    "active_calls": 187,
+    "active_ms_p50_p95_max": [
+     35.41690099996231,
+     56.90736649996779,
+     66.16168200002903
+    ],
+    "calls": 649,
+    "reasons": {
+     "local_follow": 424,
+     "m3_candidate_unavailable": 62,
+     "m3_execution_trial": 51,
+     "m3_gap_hold": 31,
+     "follow_boundary_unconfirmed": 24,
+     "m3_release_wait": 24,
+     "m3_command_unobserved": 19,
+     "follow_release_wait": 10,
+     "follow_reverse_motion": 4
+    },
+    "lateral_modes": {
+     "BASELINE": 434,
+     "HOLD_STOP_TRIAL": 62,
+     "YIELD_TRIAL": 45,
+     "CENTER_TRIAL": 45,
+     "BASE_GATE": 28,
+     "STRAIGHT_TRIAL": 19,
+     "HOLD_TRIAL": 16
+    },
+    "candidate_positive": 475,
+    "baseline_positive": 510,
+    "equal_commands": 533,
+    "trial_positive": 51,
+    "trial_positive_by_candidate": {
+     "center": 34,
+     "straight": 10,
+     "yield": 7
+    },
+    "selected_by_candidate": {
+     "yield": 45,
+     "center": 45,
+     "straight": 19,
+     "hold": 16
+    },
+    "envelope_history_calls": 42,
+    "positive_lost_vs_baseline": 35,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     5.391175999989173,
+     48.662711999918436,
+     66.16168200002903
+    ],
+    "over_20ms": 182,
+    "posthoc_truth": {
+     "trial_positive_calls": 51,
+     "recorded_pose_nearest_actor_gap_min_m": 0.09106314103020847,
+     "p50_m": 0.6482727617935096,
+     "note": "open-loop recorded ego pose, not candidate-driven pose"
+    },
+    "elapsed_s": 13.493299615999945
+   },
+   "no_history": {
+    "active_calls": 187,
+    "active_ms_p50_p95_max": [
+     35.81690000009985,
+     55.62718669998503,
+     63.664929999958986
+    ],
+    "calls": 649,
+    "reasons": {
+     "local_follow": 424,
+     "m3_candidate_unavailable": 62,
+     "m3_command_unobserved": 46,
+     "m3_release_wait": 41,
+     "m3_gap_hold": 27,
+     "follow_boundary_unconfirmed": 24,
+     "m3_execution_trial": 11,
+     "follow_release_wait": 10,
+     "follow_reverse_motion": 4
+    },
+    "lateral_modes": {
+     "BASELINE": 434,
+     "HOLD_STOP_TRIAL": 62,
+     "YIELD_TRIAL": 44,
+     "CENTER_TRIAL": 43,
+     "BASE_GATE": 28,
+     "STRAIGHT_TRIAL": 22,
+     "HOLD_TRIAL": 16
+    },
+    "candidate_positive": 435,
+    "baseline_positive": 510,
+    "equal_commands": 533,
+    "trial_positive": 11,
+    "trial_positive_by_candidate": {
+     "straight": 11
+    },
+    "selected_by_candidate": {
+     "yield": 44,
+     "center": 43,
+     "straight": 22,
+     "hold": 16
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 75,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     5.132258000003276,
+     48.38050640000802,
+     63.664929999958986
+    ],
+    "over_20ms": 182,
+    "posthoc_truth": {
+     "trial_positive_calls": 11,
+     "recorded_pose_nearest_actor_gap_min_m": 0.1475914771968507,
+     "p50_m": 0.18405494623057683,
+     "note": "open-loop recorded ego pose, not candidate-driven pose"
+    },
+    "elapsed_s": 13.278595873999961
+   },
+   "no_straight": {
+    "active_calls": 187,
+    "active_ms_p50_p95_max": [
+     33.037902000046415,
+     50.81622160001871,
+     55.72046199995384
+    ],
+    "calls": 649,
+    "reasons": {
+     "local_follow": 424,
+     "m3_candidate_unavailable": 81,
+     "m3_execution_trial": 41,
+     "m3_gap_hold": 30,
+     "follow_boundary_unconfirmed": 24,
+     "m3_command_unobserved": 19,
+     "m3_release_wait": 16,
+     "follow_release_wait": 10,
+     "follow_reverse_motion": 4
+    },
+    "lateral_modes": {
+     "BASELINE": 434,
+     "HOLD_STOP_TRIAL": 81,
+     "YIELD_TRIAL": 45,
+     "CENTER_TRIAL": 45,
+     "BASE_GATE": 28,
+     "HOLD_TRIAL": 16
+    },
+    "candidate_positive": 465,
+    "baseline_positive": 510,
+    "equal_commands": 533,
+    "trial_positive": 41,
+    "trial_positive_by_candidate": {
+     "center": 34,
+     "yield": 7
+    },
+    "selected_by_candidate": {
+     "yield": 45,
+     "center": 45,
+     "hold": 16
+    },
+    "envelope_history_calls": 42,
+    "positive_lost_vs_baseline": 45,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     5.042168000045422,
+     40.98663419999867,
+     55.72046199995384
+    ],
+    "over_20ms": 176,
+    "posthoc_truth": {
+     "trial_positive_calls": 41,
+     "recorded_pose_nearest_actor_gap_min_m": 0.09106314103020847,
+     "p50_m": 0.6571087935166898,
+     "note": "open-loop recorded ego pose, not candidate-driven pose"
+    },
+    "elapsed_s": 12.40083380100009
+   },
+   "strict": {
+    "active_calls": 187,
+    "active_ms_p50_p95_max": [
+     33.90473599995403,
+     47.80381119996946,
+     63.65328900005807
+    ],
+    "calls": 649,
+    "reasons": {
+     "local_follow": 424,
+     "m3_candidate_unavailable": 84,
+     "m3_command_unobserved": 46,
+     "m3_release_wait": 31,
+     "m3_gap_hold": 26,
+     "follow_boundary_unconfirmed": 24,
+     "follow_release_wait": 10,
+     "follow_reverse_motion": 4
+    },
+    "lateral_modes": {
+     "BASELINE": 434,
+     "HOLD_STOP_TRIAL": 84,
+     "YIELD_TRIAL": 44,
+     "CENTER_TRIAL": 43,
+     "BASE_GATE": 28,
+     "HOLD_TRIAL": 16
+    },
+    "candidate_positive": 424,
+    "baseline_positive": 510,
+    "equal_commands": 533,
+    "trial_positive": 0,
+    "trial_positive_by_candidate": {},
+    "selected_by_candidate": {
+     "yield": 44,
+     "center": 43,
+     "hold": 16
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 86,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     4.994259000000056,
+     38.58312239997304,
+     63.65328900005807
+    ],
+    "over_20ms": 169,
+    "posthoc_truth": {
+     "trial_positive_calls": 0
+    },
+    "elapsed_s": 12.298476888000096
+   },
+   "frozen_run17": {
+    "active_calls": 190,
+    "active_ms_p50_p95_max": [
+     33.73887200007175,
+     56.37438235004879,
+     60.9936870000638
+    ],
+    "calls": 649,
+    "reasons": {
+     "local_follow": 421,
+     "m3_candidate_unavailable": 154,
+     "follow_boundary_unconfirmed": 24,
+     "m3_command_unobserved": 20,
+     "m3_release_wait": 14,
+     "follow_release_wait": 10,
+     "follow_reverse_motion": 4,
+     "m3_command_geometry_unconfirmed": 1,
+     "m3_gap_hold": 1
+    },
+    "lateral_modes": {
+     "BASELINE": 431,
+     "HOLD_STOP_TRIAL": 154,
+     "BASE_GATE": 28,
+     "CENTER_TRIAL": 22,
+     "YIELD_TRIAL": 14
+    },
+    "candidate_positive": 421,
+    "baseline_positive": 510,
+    "equal_commands": 530,
+    "trial_positive": 0,
+    "trial_positive_by_candidate": {},
+    "selected_by_candidate": {
+     "null": 36
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 89,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     15.510892000065724,
+     52.71350320006151,
+     60.9936870000638
+    ],
+    "over_20ms": 185,
+    "posthoc_truth": {
+     "trial_positive_calls": 0
+    },
+    "elapsed_s": 17.647236467000084
+   }
+  },
+  "e3_onroad_r0plus": {
+   "full": {
+    "active_calls": 155,
+    "active_ms_p50_p95_max": [
+     44.3035380000083,
+     60.38544379995301,
+     64.52858600005129
+    ],
+    "calls": 636,
+    "reasons": {
+     "local_follow": 424,
+     "m3_execution_trial": 83,
+     "follow_boundary_unconfirmed": 51,
+     "m3_release_wait": 17,
+     "m3_gap_hold": 17,
+     "m3_candidate_unavailable": 15,
+     "m3_command_unobserved": 14,
+     "m3_command_geometry_unconfirmed": 9,
+     "follow_gap_hold": 4,
+     "follow_reverse_motion": 2
+    },
+    "lateral_modes": {
+     "BASELINE": 428,
+     "YIELD_TRIAL": 112,
+     "BASE_GATE": 53,
+     "STRAIGHT_TRIAL": 21,
+     "HOLD_STOP_TRIAL": 15,
+     "HOLD_TRIAL": 5,
+     "CENTER_TRIAL": 2
+    },
+    "candidate_positive": 507,
+    "baseline_positive": 539,
+    "equal_commands": 504,
+    "trial_positive": 83,
+    "trial_positive_by_candidate": {
+     "yield": 78,
+     "straight": 5
+    },
+    "selected_by_candidate": {
+     "yield": 112,
+     "straight": 21,
+     "hold": 5,
+     "center": 2
+    },
+    "envelope_history_calls": 41,
+    "positive_lost_vs_baseline": 32,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     4.692049499965378,
+     54.873444750001,
+     64.52858600005129
+    ],
+    "over_20ms": 154,
+    "posthoc_truth": {
+     "trial_positive_calls": 83,
+     "recorded_pose_nearest_actor_gap_min_m": 0.055118677149899764,
+     "p50_m": 0.12117838823417723,
+     "note": "open-loop recorded ego pose, not candidate-driven pose"
+    },
+    "elapsed_s": 12.70193276100008
+   },
+   "no_history": {
+    "active_calls": 155,
+    "active_ms_p50_p95_max": [
+     42.97407000001385,
+     62.968685899954835,
+     70.40139899993392
+    ],
+    "calls": 636,
+    "reasons": {
+     "local_follow": 424,
+     "m3_release_wait": 64,
+     "follow_boundary_unconfirmed": 51,
+     "m3_command_unobserved": 46,
+     "m3_gap_hold": 15,
+     "m3_candidate_unavailable": 15,
+     "m3_command_geometry_unconfirmed": 9,
+     "m3_execution_trial": 6,
+     "follow_gap_hold": 4,
+     "follow_reverse_motion": 2
+    },
+    "lateral_modes": {
+     "BASELINE": 428,
+     "YIELD_TRIAL": 111,
+     "BASE_GATE": 53,
+     "STRAIGHT_TRIAL": 22,
+     "HOLD_STOP_TRIAL": 15,
+     "HOLD_TRIAL": 5,
+     "CENTER_TRIAL": 2
+    },
+    "candidate_positive": 430,
+    "baseline_positive": 539,
+    "equal_commands": 504,
+    "trial_positive": 6,
+    "trial_positive_by_candidate": {
+     "straight": 6
+    },
+    "selected_by_candidate": {
+     "yield": 111,
+     "straight": 22,
+     "hold": 5,
+     "center": 2
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 109,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     4.357265000010102,
+     54.69646649996207,
+     70.40139899993392
+    ],
+    "over_20ms": 154,
+    "posthoc_truth": {
+     "trial_positive_calls": 6,
+     "recorded_pose_nearest_actor_gap_min_m": 0.19641882552133832,
+     "p50_m": 0.20610465643811374,
+     "note": "open-loop recorded ego pose, not candidate-driven pose"
+    },
+    "elapsed_s": 12.528362969
+   },
+   "no_straight": {
+    "active_calls": 155,
+    "active_ms_p50_p95_max": [
+     43.764841999973214,
+     58.760164100033286,
+     63.05236200000763
+    ],
+    "calls": 636,
+    "reasons": {
+     "local_follow": 424,
+     "m3_execution_trial": 78,
+     "follow_boundary_unconfirmed": 51,
+     "m3_candidate_unavailable": 36,
+     "m3_command_unobserved": 14,
+     "m3_release_wait": 12,
+     "m3_command_geometry_unconfirmed": 9,
+     "m3_gap_hold": 6,
+     "follow_gap_hold": 4,
+     "follow_reverse_motion": 2
+    },
+    "lateral_modes": {
+     "BASELINE": 428,
+     "YIELD_TRIAL": 112,
+     "BASE_GATE": 53,
+     "HOLD_STOP_TRIAL": 36,
+     "HOLD_TRIAL": 5,
+     "CENTER_TRIAL": 2
+    },
+    "candidate_positive": 502,
+    "baseline_positive": 539,
+    "equal_commands": 504,
+    "trial_positive": 78,
+    "trial_positive_by_candidate": {
+     "yield": 78
+    },
+    "selected_by_candidate": {
+     "yield": 112,
+     "hold": 5,
+     "center": 2
+    },
+    "envelope_history_calls": 41,
+    "positive_lost_vs_baseline": 37,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     4.656268000019281,
+     50.68156875003638,
+     63.05236200000763
+    ],
+    "over_20ms": 149,
+    "posthoc_truth": {
+     "trial_positive_calls": 78,
+     "recorded_pose_nearest_actor_gap_min_m": 0.055118677149899764,
+     "p50_m": 0.1207264796109128,
+     "note": "open-loop recorded ego pose, not candidate-driven pose"
+    },
+    "elapsed_s": 12.359470932000022
+   },
+   "strict": {
+    "active_calls": 155,
+    "active_ms_p50_p95_max": [
+     42.790800000034324,
+     58.62148009999827,
+     62.52939700004845
+    ],
+    "calls": 636,
+    "reasons": {
+     "local_follow": 424,
+     "m3_release_wait": 59,
+     "follow_boundary_unconfirmed": 51,
+     "m3_command_unobserved": 46,
+     "m3_candidate_unavailable": 37,
+     "m3_command_geometry_unconfirmed": 9,
+     "m3_gap_hold": 4,
+     "follow_gap_hold": 4,
+     "follow_reverse_motion": 2
+    },
+    "lateral_modes": {
+     "BASELINE": 428,
+     "YIELD_TRIAL": 111,
+     "BASE_GATE": 53,
+     "HOLD_STOP_TRIAL": 37,
+     "HOLD_TRIAL": 5,
+     "CENTER_TRIAL": 2
+    },
+    "candidate_positive": 424,
+    "baseline_positive": 539,
+    "equal_commands": 504,
+    "trial_positive": 0,
+    "trial_positive_by_candidate": {},
+    "selected_by_candidate": {
+     "yield": 111,
+     "hold": 5,
+     "center": 2
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 115,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     4.406237500006682,
+     50.51803000003474,
+     62.52939700004845
+    ],
+    "over_20ms": 149,
+    "posthoc_truth": {
+     "trial_positive_calls": 0
+    },
+    "elapsed_s": 12.047625025999992
+   },
+   "frozen_run17": {
+    "active_calls": 159,
+    "active_ms_p50_p95_max": [
+     39.63018800004647,
+     70.66423449998636,
+     84.66968599998381
+    ],
+    "calls": 636,
+    "reasons": {
+     "local_follow": 424,
+     "m3_candidate_unavailable": 82,
+     "follow_boundary_unconfirmed": 51,
+     "m3_command_unobserved": 43,
+     "m3_release_wait": 25,
+     "m3_command_geometry_unconfirmed": 6,
+     "m3_gap_hold": 3,
+     "follow_reverse_motion": 2
+    },
+    "lateral_modes": {
+     "BASELINE": 424,
+     "HOLD_STOP_TRIAL": 82,
+     "YIELD_TRIAL": 74,
+     "BASE_GATE": 53,
+     "HOLD_TRIAL": 2,
+     "CENTER_TRIAL": 1
+    },
+    "candidate_positive": 424,
+    "baseline_positive": 539,
+    "equal_commands": 504,
+    "trial_positive": 0,
+    "trial_positive_by_candidate": {},
+    "selected_by_candidate": {
+     "null": 77
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 115,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     14.288730999965082,
+     54.881291500009866,
+     84.66968599998381
+    ],
+    "over_20ms": 159,
+    "posthoc_truth": {
+     "trial_positive_calls": 0
+    },
+    "elapsed_s": 16.618023052000012
+   }
+  },
+  "e3_stop_restart_g1": {
+   "full": {
+    "active_calls": 66,
+    "active_ms_p50_p95_max": [
+     37.40358800001786,
+     47.09745075007277,
+     50.94555899995612
+    ],
+    "calls": 798,
+    "reasons": {
+     "local_follow": 553,
+     "follow_release_wait": 136,
+     "m3_release_wait": 47,
+     "follow_gap_hold": 33,
+     "m3_execution_trial": 10,
+     "m3_gap_hold": 8,
+     "follow_reverse_motion": 6,
+     "follow_boundary_unconfirmed": 4,
+     "m3_command_unobserved": 1
+    },
+    "lateral_modes": {
+     "BASELINE": 722,
+     "STRAIGHT_TRIAL": 65,
+     "BASE_GATE": 10,
+     "CENTER_TRIAL": 1
+    },
+    "candidate_positive": 563,
+    "baseline_positive": 564,
+    "equal_commands": 740,
+    "trial_positive": 10,
+    "trial_positive_by_candidate": {
+     "straight": 10
+    },
+    "selected_by_candidate": {
+     "straight": 65,
+     "center": 1
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 1,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     5.262071999993623,
+     36.90977204997807,
+     50.94555899995612
+    ],
+    "over_20ms": 66,
+    "posthoc_truth": {
+     "trial_positive_calls": 10,
+     "recorded_pose_nearest_actor_gap_min_m": 0.22978165896578454,
+     "p50_m": 0.25304538918193387,
+     "note": "open-loop recorded ego pose, not candidate-driven pose"
+    },
+    "elapsed_s": 11.939182175000042
+   },
+   "no_history": {
+    "active_calls": 66,
+    "active_ms_p50_p95_max": [
+     36.81069800006753,
+     46.84236024996835,
+     49.094959000058225
+    ],
+    "calls": 798,
+    "reasons": {
+     "local_follow": 553,
+     "follow_release_wait": 136,
+     "m3_release_wait": 47,
+     "follow_gap_hold": 33,
+     "m3_execution_trial": 10,
+     "m3_gap_hold": 8,
+     "follow_reverse_motion": 6,
+     "follow_boundary_unconfirmed": 4,
+     "m3_command_unobserved": 1
+    },
+    "lateral_modes": {
+     "BASELINE": 722,
+     "STRAIGHT_TRIAL": 65,
+     "BASE_GATE": 10,
+     "CENTER_TRIAL": 1
+    },
+    "candidate_positive": 563,
+    "baseline_positive": 564,
+    "equal_commands": 740,
+    "trial_positive": 10,
+    "trial_positive_by_candidate": {
+     "straight": 10
+    },
+    "selected_by_candidate": {
+     "straight": 65,
+     "center": 1
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 1,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     5.030651999959446,
+     36.344174399994245,
+     49.094959000058225
+    ],
+    "over_20ms": 66,
+    "posthoc_truth": {
+     "trial_positive_calls": 10,
+     "recorded_pose_nearest_actor_gap_min_m": 0.22978165896578454,
+     "p50_m": 0.25304538918193387,
+     "note": "open-loop recorded ego pose, not candidate-driven pose"
+    },
+    "elapsed_s": 11.730243283999926
+   },
+   "no_straight": {
+    "active_calls": 66,
+    "active_ms_p50_p95_max": [
+     26.352673500014134,
+     37.10674674994152,
+     40.73816100003569
+    ],
+    "calls": 798,
+    "reasons": {
+     "local_follow": 553,
+     "follow_release_wait": 136,
+     "m3_candidate_unavailable": 65,
+     "follow_gap_hold": 33,
+     "follow_reverse_motion": 6,
+     "follow_boundary_unconfirmed": 4,
+     "m3_command_unobserved": 1
+    },
+    "lateral_modes": {
+     "BASELINE": 722,
+     "HOLD_STOP_TRIAL": 65,
+     "BASE_GATE": 10,
+     "CENTER_TRIAL": 1
+    },
+    "candidate_positive": 553,
+    "baseline_positive": 564,
+    "equal_commands": 740,
+    "trial_positive": 0,
+    "trial_positive_by_candidate": {},
+    "selected_by_candidate": {
+     "center": 1
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 11,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     5.589687499991669,
+     25.826459599983306,
+     40.73816100003569
+    ],
+    "over_20ms": 61,
+    "posthoc_truth": {
+     "trial_positive_calls": 0
+    },
+    "elapsed_s": 12.056606416000022
+   },
+   "strict": {
+    "active_calls": 66,
+    "active_ms_p50_p95_max": [
+     28.446449499995197,
+     41.10543325001004,
+     44.04849299999114
+    ],
+    "calls": 798,
+    "reasons": {
+     "local_follow": 553,
+     "follow_release_wait": 136,
+     "m3_candidate_unavailable": 65,
+     "follow_gap_hold": 33,
+     "follow_reverse_motion": 6,
+     "follow_boundary_unconfirmed": 4,
+     "m3_command_unobserved": 1
+    },
+    "lateral_modes": {
+     "BASELINE": 722,
+     "HOLD_STOP_TRIAL": 65,
+     "BASE_GATE": 10,
+     "CENTER_TRIAL": 1
+    },
+    "candidate_positive": 553,
+    "baseline_positive": 564,
+    "equal_commands": 740,
+    "trial_positive": 0,
+    "trial_positive_by_candidate": {},
+    "selected_by_candidate": {
+     "center": 1
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 11,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     5.713705499999833,
+     27.736296350030898,
+     44.04849299999114
+    ],
+    "over_20ms": 61,
+    "posthoc_truth": {
+     "trial_positive_calls": 0
+    },
+    "elapsed_s": 12.578208002999986
+   },
+   "frozen_run17": {
+    "active_calls": 71,
+    "active_ms_p50_p95_max": [
+     32.9336400000102,
+     40.06026750005276,
+     63.72668699998485
+    ],
+    "calls": 798,
+    "reasons": {
+     "local_follow": 548,
+     "follow_release_wait": 136,
+     "m3_candidate_unavailable": 70,
+     "follow_gap_hold": 33,
+     "follow_reverse_motion": 6,
+     "follow_boundary_unconfirmed": 4,
+     "m3_command_unobserved": 1
+    },
+    "lateral_modes": {
+     "BASELINE": 717,
+     "HOLD_STOP_TRIAL": 70,
+     "BASE_GATE": 10,
+     "CENTER_TRIAL": 1
+    },
+    "candidate_positive": 548,
+    "baseline_positive": 564,
+    "equal_commands": 735,
+    "trial_positive": 0,
+    "trial_positive_by_candidate": {},
+    "selected_by_candidate": {
+     "null": 1
+    },
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 16,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     16.971879500033538,
+     31.8541391000565,
+     63.72668699998485
+    ],
+    "over_20ms": 161,
+    "posthoc_truth": {
+     "trial_positive_calls": 0
+    },
+    "elapsed_s": 20.168956193999975
+   }
+  },
+  "solo_g1_20261016": {
+   "full": {
+    "active_calls": 0,
+    "active_ms_p50_p95_max": null,
+    "calls": 2837,
+    "reasons": {
+     "local_follow": 2370,
+     "follow_front_unobserved": 383,
+     "follow_release_wait": 36,
+     "local_follow_corridor_candidate": 30,
+     "follow_reverse_motion": 10,
+     "follow_boundary_unconfirmed": 8
+    },
+    "lateral_modes": {
+     "BASELINE": 2436,
+     "BASE_GATE": 401
+    },
+    "candidate_positive": 2400,
+    "baseline_positive": 2400,
+    "equal_commands": 2837,
+    "trial_positive": 0,
+    "trial_positive_by_candidate": {},
+    "selected_by_candidate": {},
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 0,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     5.8374740000317615,
+     8.240195799999128,
+     12.725993000003655
+    ],
+    "over_20ms": 0,
+    "posthoc_truth": null,
+    "elapsed_s": 35.44254165000007
+   },
+   "strict": {
+    "active_calls": 0,
+    "active_ms_p50_p95_max": null,
+    "calls": 2837,
+    "reasons": {
+     "local_follow": 2370,
+     "follow_front_unobserved": 383,
+     "follow_release_wait": 36,
+     "local_follow_corridor_candidate": 30,
+     "follow_reverse_motion": 10,
+     "follow_boundary_unconfirmed": 8
+    },
+    "lateral_modes": {
+     "BASELINE": 2436,
+     "BASE_GATE": 401
+    },
+    "candidate_positive": 2400,
+    "baseline_positive": 2400,
+    "equal_commands": 2837,
+    "trial_positive": 0,
+    "trial_positive_by_candidate": {},
+    "selected_by_candidate": {},
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 0,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     5.396956000026876,
+     7.838571400043293,
+     12.468207999972947
+    ],
+    "over_20ms": 0,
+    "posthoc_truth": null,
+    "elapsed_s": 33.899161221999975
+   },
+   "frozen_run17": {
+    "active_calls": 0,
+    "active_ms_p50_p95_max": null,
+    "calls": 2837,
+    "reasons": {
+     "local_follow": 2370,
+     "follow_front_unobserved": 383,
+     "follow_release_wait": 36,
+     "local_follow_corridor_candidate": 30,
+     "follow_reverse_motion": 10,
+     "follow_boundary_unconfirmed": 8
+    },
+    "lateral_modes": {
+     "BASELINE": 2436,
+     "BASE_GATE": 401
+    },
+    "candidate_positive": 2400,
+    "baseline_positive": 2400,
+    "equal_commands": 2837,
+    "trial_positive": 0,
+    "trial_positive_by_candidate": {},
+    "selected_by_candidate": {},
+    "envelope_history_calls": 0,
+    "positive_lost_vs_baseline": 0,
+    "positive_added_vs_baseline": 0,
+    "ms_p50_p95_max": [
+     20.21098400007304,
+     23.0388511999763,
+     31.544268000061493
+    ],
+    "over_20ms": 1557,
+    "posthoc_truth": null,
+    "elapsed_s": 70.92959076800003
+   }
+  }
+ }
+}

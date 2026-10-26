@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 import random
 import sys
@@ -10,6 +11,7 @@ from sensor_msgs.msg import Imu, JointState
 
 from arena_vehicle_interface.motion_impairment import MotionFaultConfig, StreamFault
 from arena_vehicle_interface.motion_fault_relay import alter_message, MotionFaultRelay
+from arena_vehicle_interface.motor_count_impairment import MotorCountTransform
 
 
 @pytest.mark.parametrize('data', [
@@ -147,13 +149,62 @@ def test_validator_forwards_motion_profile(monkeypatch):
 
 
 def test_motor_shaft_relay_scales_only_the_single_channel():
-    msg = JointState(name=['drive_motor_shaft'], position=[28.], velocity=[150.])
-    result, before, after = alter_message('wheels', msg, StreamFault(scale=1.05), 'drive_motor_shaft')
-    assert before == [150.] and after == pytest.approx([157.5])
-    assert list(result.name) == ['drive_motor_shaft'] and list(result.position) == pytest.approx([29.4])
+    transform = MotorCountTransform(28)
+    spec = transform.spec
+    msg = JointState(name=['drive_motor_shaft'], position=[0.], velocity=[math.nan])
+    first, _, _ = alter_message('wheels', msg, StreamFault(scale=.95), 'drive_motor_shaft', motor_transform=transform)
+    assert math.isnan(first.velocity[0])
+    msg.position=[spec.motor_angle_from_counts(20)]
+    msg.velocity=[20*spec.motor_rad_per_count/.1]
+    msg.header.stamp.nanosec=100000000
+    result, before, after = alter_message('wheels', msg, StreamFault(scale=.95), 'drive_motor_shaft', motor_transform=transform)
+    assert before == list(msg.velocity) and after == pytest.approx([19*spec.motor_rad_per_count/.1])
+    assert list(result.name) == ['drive_motor_shaft']
+    assert spec.counts_from_position(result.position[0])==19
+    assert spec.counts_from_position(msg.position[0])==20
     for bad in (JointState(name=['rear_left_wheel_joint', 'rear_right_wheel_joint'], velocity=[1., 2.]),
                 JointState(name=['drive_motor_shaft'], velocity=[])):
         with pytest.raises(ValueError):
             alter_message('wheels', bad, StreamFault(), 'drive_motor_shaft')
     with pytest.raises(ValueError):
         alter_message('wheels', msg, StreamFault(), 'rear_wheel_pair_legacy')
+
+
+def test_motor_relay_audit_roundtrip_uses_integer_positions_and_initial_nan(tmp_path):
+    from motion_fault_audit import audit
+    cfg=MotionFaultConfig(imu=StreamFault(bias=.01),wheels=StreamFault(scale=.95,delay_s=.01))
+    node=relay_double(cfg)
+    node.feedback_mode='drive_motor_shaft'
+    node.motor_transform=MotorCountTransform(28)
+    node.rows.append(dict(event='config',config=cfg.as_dict(),feedback_mode=node.feedback_mode,
+                          motor_count_model='integer_count_gain_v1',counts_per_motor_revolution=28))
+    spec=node.motor_transform.spec
+    for i in range(31):
+        node.t=i*.02
+        msg=JointState(name=['drive_motor_shaft'],position=[spec.motor_angle_from_counts(i)],
+                       velocity=[math.nan if not i else spec.motor_rad_per_count/.02])
+        ns=round(node.t*1e9);msg.header.stamp.sec,msg.header.stamp.nanosec=divmod(ns,1000000000)
+        imu=Imu();imu.header.stamp=msg.header.stamp
+        node.capture('wheels',msg);node.capture('imu',imu)
+    node.t+=.02;node.release()
+    node.rows.append(dict(event='close'))
+    p=tmp_path/'relay.jsonl';p.write_text('\n'.join(json.dumps(r) for r in node.rows))
+    assert audit(p,cfg.as_dict(),feedback_mode=node.feedback_mode,counts_per_motor_revolution=28)['verified']
+
+
+def test_fractional_old_gain_rejected_but_count_transform_reaches_mcu_queue():
+    from arena_vehicle_interface.actuation_ros import VirtualMCU
+    transform=MotorCountTransform(28);spec=transform.spec
+    node=object.__new__(VirtualMCU);node.motor_spec=spec;node.wheels=deque()
+    bad=JointState(name=['drive_motor_shaft'],position=[.95*spec.motor_rad_per_count],velocity=[1.])
+    VirtualMCU.on_motor(node,bad)
+    assert not node.wheels  # 실제 run2의 분수 카운트 거절 경로
+    fault=StreamFault(scale=.95)
+    for i in range(31):
+        msg=JointState(name=['drive_motor_shaft'],position=[spec.motor_angle_from_counts(i)],
+                       velocity=[math.nan if not i else spec.motor_rad_per_count/.01])
+        msg.header.stamp.nanosec=i*10000000
+        changed,_,_=alter_message('wheels',msg,fault,'drive_motor_shaft',motor_transform=transform)
+        VirtualMCU.on_motor(node,changed)
+    assert len(node.wheels)==31
+    assert all(type(count) is int for _,count in node.wheels)

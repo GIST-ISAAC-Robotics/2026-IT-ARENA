@@ -137,6 +137,13 @@ def test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
     recent=json.loads((root/'config/tests/recent_observation_r0_sha256.json').read_text())
     assert recent['parent_contract']=='config/tests/corridor_fallback_r0_sha256.json'
     assert hashlib.sha256((root/recent['parent_contract']).read_bytes()).hexdigest()==recent['parent_contract_sha256']
+    followers,parent_name=[],'config/tests/recent_observation_r0_sha256.json'
+    for name in ('r0_plus_e3_r0_sha256.json','b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json'):
+        follower=json.loads((root/'config/tests'/name).read_text(encoding='utf-8'))
+        assert follower['parent_contract']==parent_name
+        assert hashlib.sha256((root/parent_name).read_bytes()).hexdigest()==follower['parent_contract_sha256']
+        followers.append(follower)
+        parent_name='config/tests/'+name
     for group in ('approved_changes','approved_evaluation_scripts'):
         for path,row in contract[group].items():
             assert row['before']==previous[group][path]['after']
@@ -152,6 +159,12 @@ def test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
             if later:
                 assert later['before']==row['after']
                 row=later
+            # 10/24 R0+/B3 successor provenance (old contracts unchanged, parent hashes checked)
+            for follower in followers:
+                later=follower[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
             assert hashlib.sha256((root/path).read_bytes()).hexdigest()==row['after']
     for path,value in contract['new_dependencies'].items():
         assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
@@ -177,6 +190,13 @@ def test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
                 assert change['before']==value
                 value=change['after']
             parent_name='config/tests/'+name
+        # 초기 추가 의존성도 이후 본선 계약에서 명시 수정될 수 있다. 이전 bytes에서
+        # 최신 bytes까지 사슬을 확인하며 옛 계약의 고정값 자체는 덮어쓰지 않는다.
+        for follower in followers:
+            later=follower['approved_changes'].get(path)
+            if later:
+                assert later['before']==value
+                value=later['after']
         assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
     for path,change in recent['newly_tracked_changes'].items():
         assert len(change['before'])==64

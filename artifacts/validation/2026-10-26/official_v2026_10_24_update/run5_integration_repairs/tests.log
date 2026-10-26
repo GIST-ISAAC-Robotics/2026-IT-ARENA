@@ -1,0 +1,32 @@
+........................................................................ [ 29%]
+........................................................................ [ 59%]
+........................................................................ [ 89%]
+.......F..................                                               [100%]
+=================================== FAILURES ===================================
+_ test_m3_successor_records_current_bytes_without_rewriting_previous_contract __
+
+    def test_m3_successor_records_current_bytes_without_rewriting_previous_contract():
+        contract = load('config/tests/m3_execution_r0_sha256.json')
+        assert contract['changes'] == {**contract['approved_changes'], **contract['approved_evaluation_scripts']}
+        assert contract['parent_contract'] == B3
+        assert sha((ROOT/B3).read_bytes()) == contract['parent_contract_sha256']
+        snapshot = ROOT/contract['before_snapshot']
+        if snapshot.is_file():
+            assert sha(snapshot.read_bytes()) == contract['before_snapshot_sha256']
+            with tarfile.open(snapshot) as archive:
+                for path, row in contract['changes'].items():
+                    assert sha(archive.extractfile(path).read()) == row['before']
+        for path, row in contract['changes'].items():
+            assert row['reason'].strip()
+            assert m3_revision_digest(path) == row['after'] != row['before']
+        for path, value in contract['dependencies'].items():
+>           assert m3_revision_digest(path) == value
+E           AssertionError: assert 'c3e177ef0b75...74b189a8cf1cd' == 'df27b78b67a5...9ecb0831ca7d5'
+E             - df27b78b67a51265f25b4587a5147398632dd23356b60eae06e9ecb0831ca7d5
+E             + c3e177ef0b75dda1e12f263fb0dbf95f4ee6356072bcbbca48174b189a8cf1cd
+
+tests/test_source_provenance_r0_plus_b3.py:162: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-26/official_v2026_10_24_update/run5_integration_repairs/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_m3_successor_records_current_bytes_without_rewriting_previous_contract
+1 failed, 241 passed in 20.08s

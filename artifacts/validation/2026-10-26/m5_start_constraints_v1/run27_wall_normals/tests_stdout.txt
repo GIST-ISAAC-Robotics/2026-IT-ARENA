@@ -1,0 +1,21 @@
+..F..................                                                    [100%]
+=================================== FAILURES ===================================
+_____ test_same_normal_explains_both_sides_and_keeps_true_center[0.0-0.0] ______
+
+theta = 0.0, bias = 0.0
+
+    @pytest.mark.parametrize('theta,bias',[(.027,.029),(-.04,-.029),(0.,0.)])
+    def test_same_normal_explains_both_sides_and_keeps_true_center(theta,bias):
+        p,d,s=measured(theta=theta,bias=bias)
+        exact=normal_interval(p,d,s,theta)
+        assert exact['center_interval_m'][0] <= .04 <= exact['center_interval_m'][1]
+        found=search_normal(p,d,s)
+        assert found['status']=='compatible' and found['driving_authorized'] is False
+>       assert abs(found['theta_rad']-theta)<.003
+E       assert 0.014222944834829304 < 0.003
+E        +  where 0.014222944834829304 = abs((0.014222944834829304 - 0.0))
+
+tests/test_parallel_wall_normal_probe.py:24: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_parallel_wall_normal_probe.py::test_same_normal_explains_both_sides_and_keeps_true_center[0.0-0.0]
+1 failed, 20 passed in 0.48s

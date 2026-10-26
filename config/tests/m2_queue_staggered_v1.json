@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "registered_at": "2026-10-25 22:20 KST, before first queued-lead execution",
+  "base_case": "stop_restart",
+  "scope": "M2 직선 대기열: 가까운 앞차는 기존 4–9 s 정지, 먼 앞차는 3–8 s 정지. 먼 차만 먼저 움직이는 8.2–8.9 s에 자차가 기다리는지 확인한다. 가려진 차량의 식별/추적, 병렬주행, 코너, 전체 랩 증명은 아니다.",
+  "additional_actors": [
+    {
+      "model_name": "eval_m2_far_lead",
+      "role": "lead",
+      "start_center_gap_m": 2.6,
+      "lateral_offset_m": 0.0,
+      "route_kind": "straight",
+      "minimum_body_gap_m": 0.15,
+      "gap_basis": "기존 앞차 시험의 0.15 m 차체 간격/연속 외곽 하한을 그대로 적용한다.",
+      "schedule": [
+        {"from_s": 0.0, "to_s": 3.0, "speed_mps": 0.35},
+        {"from_s": 3.0, "to_s": 8.0, "speed_mps": 0.0},
+        {"from_s": 8.0, "to_s": 15.0, "speed_mps": 0.35}
+      ]
+    }
+  ],
+  "queue_acceptance": {
+    "far_moves_near_stopped_window_s": [8.2, 8.9],
+    "minimum_far_travel_m": 0.18,
+    "minimum_far_travel_basis": "0.7 s x 0.35 m/s = 0.245 m에서 기존 명령 지연/추적 여유를 남긴 시험 자극 확인값. 자차 보호 간격 변경이 아니다.",
+    "ego_and_near_stationary_speed_mps": 0.01,
+    "safe_command_mps": 0.0,
+    "required_behavior": "HOLD",
+    "basis": "주 actor의 정지/재출발 기본 판정에 추가한다. 전체 구간 밀집 자세와 trace 시각 포괄을 요구하며 원래 실패를 덮어쓰지 않는다. trace 사이 명령이나 연속 물리 안전을 증명하지 않는다."
+  }
+}

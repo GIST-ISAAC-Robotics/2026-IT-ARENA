@@ -1,0 +1,33 @@
+........................................................................ [ 80%]
+................F                                                        [100%]
+=================================== FAILURES ===================================
+__ test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract __
+
+    def test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract():
+        root = Path(__file__).resolve().parents[1]
+        contract = json.loads((root/'config/tests/dense_stop_evidence_r0_sha256.json').read_text())
+        assert hashlib.sha256((root/contract['parent_contract']).read_bytes()).hexdigest() == contract['parent_contract_sha256']
+        successors, parent = [], 'config/tests/dense_stop_evidence_r0_sha256.json'
+        for next_name in ('lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json',
+                          # 10/24 후속 출처 기록. 이전 계약은 그대로 두고 연결만 추가한다.
+                          'r0_plus_e3_r0_sha256.json', 'b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json'):
+            successor = json.loads((root/'config/tests'/next_name).read_text())
+            assert successor['parent_contract'] == parent
+            assert hashlib.sha256((root/parent).read_bytes()).hexdigest() == successor['parent_contract_sha256']
+            successors.append(successor)
+            parent = 'config/tests/'+next_name
+        for name, entry in contract['approved_evaluation_scripts'].items():
+            for successor in successors:
+                later = successor['approved_evaluation_scripts'].get(name)
+                if later:
+                    assert later['before'] == entry['after']
+                    entry = later
+>           assert hashlib.sha256((root/name).read_bytes()).hexdigest() == entry['after']
+E           AssertionError: assert 'ce18f4d52255...8add6324c9734' == 'ac69c3b92ee8...83571fca659e0'
+E             - ac69c3b92ee8068359bfdc3ee7b19d186db3471d38cc992146283571fca659e0
+E             + ce18f4d5225580f86d3177a533521e86481d57986a732a607288add6324c9734
+
+tests/test_g1_dense_stop.py:87: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_g1_dense_stop.py::test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract
+1 failed, 88 passed in 10.75s

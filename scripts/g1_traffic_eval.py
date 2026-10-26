@@ -349,6 +349,30 @@ def _minimum(values):
     return min(values) if values and all(_finite(v) for v in values) else None
 
 
+def compact_autonomy_status(status):
+    """평가 trace에 필요한 상태만 보존한다. M3 선택 표식도 출력 그대로 유지한다."""
+    return {k: status.get(k) for k in (
+        'state', 'started', 'mode', 'behavior', 'reason', 'side', 'signal', 'marker_ids',
+        'speed_command_mps', 'steering_command_rad', 'swept_clearance_m', 'occupancy_padding_m',
+        'boundary_selection', 'boundary_from_memory', 'boundary_age_s', 'path_wall', 'wall_fallback',
+        'observed_path_ahead_m', 'fresh_boundary_accepted', 'target_speed_before_hold_mps',
+        'source_first_s', 'reference_stamp_s', 'sim_time_s', 'passing_enabled',
+        'boundary_candidate_reason', 'boundary_candidate_ahead_m', 'bilateral_alternative_confirmed',
+        'input_error', 'source_epoch', 'simulation_trial_only')}
+
+
+def controller_mode_summary(statuses):
+    return {
+        'behavior_rows': len(statuses),
+        'g1_rows': sum(s.get('mode') == 'g1_follow' and s.get('passing_enabled') is False for s in statuses),
+        'r0plus_rows': sum(s.get('mode') == 'r0_plus_candidate' and s.get('passing_enabled') is False for s in statuses),
+        'm3_rows': sum(s.get('mode') == 'm3_execution_trial' and s.get('passing_enabled') is False
+                       and s.get('simulation_trial_only') is True for s in statuses),
+        'behavior_counts': {name: sum(s.get('behavior') == name for s in statuses) for name in ('CRUISE', 'FOLLOW', 'HOLD')},
+        'hold_reasons': sorted({s.get('reason') for s in statuses if s.get('behavior') == 'HOLD'}),
+    }
+
+
 def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, commands, stop_start,
                  schedule_pose, centerline, s0, road, runtime_world, contact_evidence=None):
     """기록을 사전 등록 판정선과 대조한다. 결과 해석은 판정 항목별로 분리한다."""
@@ -478,7 +502,7 @@ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, co
 
     def stationary(row):
         held = row['ground_speed_mps'] < .01 and row['safe_speed_mps'] == 0
-        return held and (mode != 'g1' or row['autonomy'].get('behavior') == 'HOLD')
+        return held and (mode not in ('g1', 'r0plus', 'm3') or row['autonomy'].get('behavior') == 'HOLD')
     case_metrics, gates = {}, {}
     rules = acceptance.get(case['name'], {})
     behavior = case.get('behavior_kind', case['name'])
@@ -568,12 +592,7 @@ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, co
     if behavior != 'side_occlusion':
         gates['ego_stays_behind'] = behind
     statuses = [r['autonomy'] for r in rows if r['autonomy'].get('behavior') is not None]
-    result['controller_mode'] = {
-        'behavior_rows': len(statuses),
-        'g1_rows': sum(s.get('mode') == 'g1_follow' and s.get('passing_enabled') is False for s in statuses),
-        'behavior_counts': {name: sum(s.get('behavior') == name for s in statuses) for name in ('CRUISE', 'FOLLOW', 'HOLD')},
-        'hold_reasons': sorted({s.get('reason') for s in statuses if s.get('behavior') == 'HOLD'}),
-    }
+    result['controller_mode'] = controller_mode_summary(statuses)
     result['case_metrics'] = case_metrics
     result['gates'] = gates
     return result
@@ -589,6 +608,14 @@ def finalize_verdict(report, mode):
     evaluation = report.get('evaluation', {})
     harness = evaluation.get('harness', {})
     controller = evaluation.get('controller_mode', {})
+    if mode not in ('g1', 'r0', 'r0plus', 'm3'):
+        raise ValueError('unsupported controller mode')
+    rows = controller.get('behavior_rows', 0)
+    mode_matches = ((rows > 0 and controller.get('g1_rows') == rows) if mode == 'g1' else
+                    (rows > 0 and controller.get('r0plus_rows') == rows) if mode == 'r0plus' else
+                    (rows > 0 and controller.get('m3_rows') == rows) if mode == 'm3' else
+                    controller.get('g1_rows', 0) == 0 and controller.get('r0plus_rows', 0) == 0
+                    and controller.get('m3_rows', 0) == 0)
     integrity = {
         'no_runtime_error': 'error' not in report and 'error' not in evaluation,
         'evaluation_readers_valid': report.get('evaluation_readers', {}).get('valid') is True,
@@ -604,8 +631,7 @@ def finalize_verdict(report, mode):
         'source_unchanged': report.get('source_unchanged') is True,
         'signal_sequence': {'red', 'yellow', 'green'}.issubset(report.get('signal_states', [])),
         'no_false_start': report.get('false_start') is False,
-        'controller_mode_matches': (controller.get('behavior_rows', 0) > 0 and controller.get('g1_rows') == controller.get('behavior_rows'))
-                                   if mode == 'g1' else controller.get('g1_rows', 0) == 0,
+        'controller_mode_matches': mode_matches,
     }
     stop = report.get('stop', {})
     actuation = report.get('actuation', {})
@@ -625,7 +651,7 @@ def finalize_verdict(report, mode):
     report['gates'] = behavior
     report['run_valid'] = report['harness_valid'] and all(integrity.values()) and report.get('shutdown_clean') is True
     report['behavior_gates_passed'] = bool(behavior) and all(behavior.values()) and all(stop_checks.values())
-    if mode == 'g1':
+    if mode in ('g1', 'r0plus', 'm3'):
         report['passed'] = report['run_valid'] and report['behavior_gates_passed']
     else:
         # R0는 비교 기준이다. 실행 유효성만 통과 조건이며 G1 판정선 충족 여부는 따로 남긴다.

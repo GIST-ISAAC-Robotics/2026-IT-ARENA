@@ -1,0 +1,46 @@
+.............F..                                                         [100%]
+=================================== FAILURES ===================================
+_ test_partial_reversed_or_duplicate_endpoints_keep_original_indices[-0.012566370614359173] _
+
+increment = -0.012566370614359173
+
+    @pytest.mark.parametrize('increment', [math.pi/500, -math.tau/500, math.tau/499])
+    def test_partial_reversed_or_duplicate_endpoints_keep_original_indices(increment):
+>       cycle = fixture(increment=increment, moving=True)
+
+artifacts/validation/2026-10-26/m3_cost_preserving_v1/test_returned_candidate.py:29: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_scan_topology.py:30: in fixture
+    return scene_with_cycle([4.]*n if values is None else values,angle_min=-math.pi,
+src/arena_autonomy/arena_autonomy/scan_topology.py:37: in scene_with_cycle
+    scene = scene_from_scan(values, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ranges = (4.0, 4.0, 4.0, 4.0, 4.0, 4.0, ...)
+
+    def scene_from_scan(ranges, *, angle_min, angle_increment, range_min, range_max,
+                        acquired_at_s, t_ref_s, source_frame_id='laser_frame', source_epoch=0,
+                        sensor_xy_m=(.06, 0.), sensor_yaw_rad=0.,
+                        acquisition_to_ref_se2=None, rear_half_angle_deg=30.):
+        """각 취득 base_link→기준 base_link SE(2)를 받는 순수 함수.
+    
+        acquisition_to_ref_se2[i]=(dx,dy,dyaw)는 엔코더/자이로 이력으로 계산할
+        수 있다. None은 고정 센서/자차라는 호출자의 명시적 가정이다. 이 함수는
+        Gazebo 위치·운동 이력·ROS를 읽지 않는다. 타임스탬프는 각 원시 출처 시각이다.
+        """
+        if len(ranges) > MAX_RAYS or len(acquired_at_s) != len(ranges):
+            raise ValueError('ray count/timestamps mismatch')
+        values = tuple(ranges)
+        stamps = tuple(_finite(v, 'acquired_at_s') for v in acquired_at_s)
+        minimum, maximum = _finite(range_min, 'range_min'), _finite(range_max, 'range_max')
+        start, increment = _finite(angle_min, 'angle_min'), _finite(angle_increment, 'angle_increment')
+        yaw = _finite(sensor_yaw_rad, 'sensor_yaw_rad')
+        sx, sy = _xy(sensor_xy_m, 'sensor_xy_m')
+        if minimum < 0 or maximum <= minimum or increment <= 0:
+>           raise ValueError('invalid scan metadata')
+E           ValueError: invalid scan metadata
+
+src/arena_autonomy/arena_autonomy/local_scene.py:139: ValueError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-10-26/m3_cost_preserving_v1/test_returned_candidate.py::test_partial_reversed_or_duplicate_endpoints_keep_original_indices[-0.012566370614359173]
+1 failed, 15 passed in 2.61s

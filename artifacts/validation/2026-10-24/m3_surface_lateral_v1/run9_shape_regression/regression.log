@@ -1,0 +1,20 @@
+.................F................................                       [100%]
+=================================== FAILURES ===================================
+_______ test_left_side_rear_car_proposes_right_but_requires_observation ________
+
+    def test_left_side_rear_car_proposes_right_but_requires_observation():
+        d0 = -.09
+        scene, path = straight(d0, extra=[car(-.40, .13, d0)])
+        out, _ = run(scene, path)
+        assert out['threats']['left']['present']
+        assert out['mode'] == 'HOLD_OFFSET' and out['checks']['yield']['d_target_m'] < d0
+        assert not out['checks']['yield']['verified']
+>       assert 'lateral_intent_unverified' in out['checks']['yield']['reasons']
+E       AssertionError: assert 'lateral_intent_unverified' in ['hidden_vehicle_reach']
+
+tests/test_lateral_intent.py:276: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-24/m3_surface_lateral_v1/run9_shape_regression/regression.xml -
+=========================== short test summary info ============================
+FAILED tests/test_lateral_intent.py::test_left_side_rear_car_proposes_right_but_requires_observation
+1 failed, 49 passed in 4.49s
+pytest_exit_code=1

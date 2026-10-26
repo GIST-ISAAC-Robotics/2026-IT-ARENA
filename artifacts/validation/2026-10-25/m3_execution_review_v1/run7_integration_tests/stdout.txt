@@ -1,0 +1,68 @@
+.....F.................................................................. [ 39%]
+........................................................................ [ 79%]
+......................................                                   [100%]
+=================================== FAILURES ===================================
+________ test_actual_ros_constructor_rejects_incompatible_m3[override2] ________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_actual_ros_constructor_re2')
+override = {'g1_trace_path': ''}
+
+    @pytest.mark.parametrize('override', [
+        dict(g1_follow_enabled='false'), dict(use_sim_time='false'), dict(g1_trace_path=''),
+        dict(g1_occupancy_timing_mode='oldest'),
+        dict(g1_corridor_fallback_enabled='true', g1_boundary_evidence_mode='corner_distance_candidate',
+             g1_recent_observation_enabled='true'),
+    ])
+    def test_actual_ros_constructor_rejects_incompatible_m3(tmp_path, override):
+        parameters = dict(g1_follow_enabled='true', g1_m3_execution_trial='true',
+                          g1_occupancy_timing_mode='per_ray_candidate', g1_trace_path=str(tmp_path/'trace.jsonl'))
+        parameters.update(override)
+        with pytest.raises(ValueError, match='M3'):
+>           make_node(**parameters)
+
+tests/test_m3_execution_integration.py:83: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_race_session_node.py:27: in make_node
+    rclpy.init(args=args)
+/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/__init__.py:88: in init
+    context.init(args, domain_id=domain_id)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <rclpy.context.Context object at 0x7910bcfb1e80>
+args = ['--ros-args', '-p', 'use_sim_time:=true', '-p', 'lidar_compensation:=both', '-p', ...]
+
+    def init(self,
+             args: Optional[List[str]] = None,
+             *,
+             initialize_logging: bool = True,
+             domain_id: Optional[int] = None) -> None:
+        """
+        Initialize ROS communications for a given context.
+    
+        :param args: List of command line arguments.
+        """
+        # imported locally to avoid loading extensions on module import
+        from rclpy.impl.implementation_singleton import rclpy_implementation as _rclpy
+    
+        global g_logging_ref_count
+        with self._lock:
+            if domain_id is not None and domain_id < 0:
+                raise RuntimeError(
+                    'Domain id ({}) should not be lower than zero.'
+                    .format(domain_id))
+    
+            if self.__context is not None:
+                raise RuntimeError('Context.init() must only be called once')
+    
+>           self.__context = _rclpy.Context(
+                args if args is not None else sys.argv,
+                domain_id if domain_id is not None else _rclpy.RCL_DEFAULT_DOMAIN_ID)
+E           rclpy._rclpy_pybind11.RCLError: failed to initialize rcl: Couldn't parse parameter override rule: '-p g1_trace_path:='. Error: error not set, at ./src/rcl/arguments.c:352
+
+/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/context.py:99: RCLError
+----------------------------- Captured stderr call -----------------------------
+[ERROR] [1792856251.846397233] [rcl]: Failed to parse global arguments
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-25/m3_execution_review_v1/run7_integration_tests/pytest.xml -
+=========================== short test summary info ============================
+FAILED tests/test_m3_execution_integration.py::test_actual_ros_constructor_rejects_incompatible_m3[override2]
+1 failed, 181 passed in 17.45s
