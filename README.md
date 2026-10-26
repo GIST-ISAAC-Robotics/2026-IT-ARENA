@@ -20,7 +20,7 @@ source install/setup.bash
 ros2 launch arena_bringup local_pursuit.launch.py
 ```
 
-새 주행 모드는 깊이/ToF를 쓰지 않고 방지턱을 실행 사본에서 임시 해제합니다. 현재 코드의 명령 상한은 9 km/h입니다. 10/27 사용자 목표 상한인 약 15 km/h와 구분하며, 목표 정책은 [현재 결정](docs/decisions/0027-completion-first-policy-and-placement.md)을 참조합니다. 실차 성능 검증은 별도입니다. 구동 연결 기본값은 `legacy`이고 `actuation_mode:=virtual_mcu`는 선택형 PC 검증 경로입니다. [주행 설명](docs/autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md) · [구동 계약/ROS 연결](docs/hardware/ACTUATION_ROS_2026_09_22.md)
+새 주행 모드는 깊이/ToF를 쓰지 않고 방지턱을 실행 사본에서 임시 해제합니다. 현재 기본 `local_fast`의 명령 상한은 9 km/h이며 선택형 다중 차량 후보에는 더 낮은 제한이 있습니다. 10/27 사용자 목표 상한인 약 15 km/h와 구분하며, 목표 정책은 [현재 결정](docs/decisions/0027-completion-first-policy-and-placement.md)을 참조합니다. 실차 성능 검증은 별도입니다. 구동 연결 기본값은 `legacy`이고 `actuation_mode:=virtual_mcu`는 선택형 PC 검증 경로입니다. [주행 설명](docs/autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md) · [구동 계약/ROS 연결](docs/hardware/ACTUATION_ROS_2026_09_22.md)
 
 `headless:=true`는 GUI만 끕니다. WSL GPU 비교에는 `render_backend:=wsl_nvidia`를 명시하고 실제 렌더러·정상 종료를 확인합니다. 기본 렌더러는 `system`입니다. [설정·문제 해결](docs/simulation/GPU_RENDERING.md)
 
