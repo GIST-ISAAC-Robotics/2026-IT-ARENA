@@ -1,5 +1,7 @@
 # ADR 0026: 확정 구동 부품과 단일 모터축 엔코더 기준선
 
+> **후속 범위 — 2026-10-27:** 구매 부품·구동 방식을 유지하고 센서 배치는 변경할 수 있다. 약 15 km/h는 목표 상한이며 감속비 변경이나 실차 도달 성능을 확정한 것은 아니다. [ADR 0027](0027-completion-first-policy-and-placement.md).
+
 - 날짜: 2026-10-02
 - 상태: 사용자 결정에 따른 시뮬레이션 구성 변경. 실물 장착·폐루프 주행 검증은 별도다.
 - 대체 범위: [ADR 0008](0008-single-motor-mechanical-differential.md)의 BLDC 임시 가정·좌우 후륜 엔코더 2개와 [ADR 0023](0023-mcu-actuation-contract-reference.md)의 해당 피드백 가정. 단일 모터·기계식 차동·Jetson/MCU 역할과 독립 보호 경계는 유지한다.
