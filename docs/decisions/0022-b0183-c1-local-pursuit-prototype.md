@@ -1,5 +1,7 @@
 # 0022 — B0183·C1·별도 6축 IMU와 지역 Pure Pursuit 시험
 
+> **적용 시점:** 아래는 9월 시제품의 선택·검증 이력이다. IMU 확정은 [10/2 구매안](../hardware/ESP32_BUDGET_REVIEW_2026_10_02.md), 단일 모터축 엔코더는 [ADR 0026](0026-motor-shaft-encoder-baseline.md), 구매 고정·배치 재검토·잔디/속도 방향은 [ADR 0027](0027-completion-first-policy-and-placement.md)을 따른다. 당시 완주를 현재 구동·보호 계약의 완주로 승계하지 않는다.
+
 - 날짜: 2026-09-21
 - 상태: 기초 구현·재개 검증 완료. v7 슬롯 0 두 바퀴는 주행/정지 성공·종료 실패로 보존. 서비스 종료를 적용한 슬롯 3 한 바퀴는 주행/정지/종료 모두 통과. 실차 안전성/성능 확정 아님.
 - 선행: [ADR 0020](0020-b0183-c1-procurement-baseline.md), [ADR 0021](0021-local-path-pure-pursuit.md).

@@ -3,6 +3,7 @@
 GIST-ISAAC-Robotics의 차량 소프트웨어·ROS 2 시뮬레이션 저장소입니다. 현재 개발 구성은 B0183 RGB + C1 LiDAR + 엔코더/자이로 운동 보정 + 지역 Pure Pursuit입니다.
 
 - [현재 구성·검증 상태·다음 작업](docs/PROJECT_CONTEXT.md)
+- [현행 개발 계획](docs/DEVELOPMENT_PLAN.md) · [하드웨어 설계 전달·규정 질문](docs/HARDWARE_AND_RULE_QUESTIONS.md)
 - [작업별 문서 안내와 기록 방식](docs/README.md)
 - [기여·에이전트 작업 규칙](AGENTS.md)
 - [주최 측 공식 저장소](https://github.com/MOSW626/istech-it-arena)
@@ -19,7 +20,7 @@ source install/setup.bash
 ros2 launch arena_bringup local_pursuit.launch.py
 ```
 
-새 주행 모드는 깊이/ToF를 쓰지 않고 방지턱을 실행 사본에서 임시 해제합니다. 9 km/h는 명령 상한이며 실차 성능 보장이 아닙니다. 구동 연결 기본값은 `legacy`이고 `actuation_mode:=virtual_mcu`는 선택형 PC 검증 경로입니다. [주행 설명](docs/autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md) · [구동 계약/ROS 연결](docs/hardware/ACTUATION_ROS_2026_09_22.md)
+새 주행 모드는 깊이/ToF를 쓰지 않고 방지턱을 실행 사본에서 임시 해제합니다. 현재 기본 `local_fast`의 명령 상한은 9 km/h이며 선택형 다중 차량 후보에는 더 낮은 제한이 있습니다. 10/27 사용자 목표 상한인 약 15 km/h와 구분하며, 목표 정책은 [현재 결정](docs/decisions/0027-completion-first-policy-and-placement.md)을 참조합니다. 실차 성능 검증은 별도입니다. 구동 연결 기본값은 `legacy`이고 `actuation_mode:=virtual_mcu`는 선택형 PC 검증 경로입니다. [주행 설명](docs/autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md) · [구동 계약/ROS 연결](docs/hardware/ACTUATION_ROS_2026_09_22.md)
 
 `headless:=true`는 GUI만 끕니다. WSL GPU 비교에는 `render_backend:=wsl_nvidia`를 명시하고 실제 렌더러·정상 종료를 확인합니다. 기본 렌더러는 `system`입니다. [설정·문제 해결](docs/simulation/GPU_RENDERING.md)
 
