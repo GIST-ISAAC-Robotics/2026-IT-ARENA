@@ -1,0 +1,209 @@
+........................................................................ [ 25%]
+........................................................................ [ 50%]
+...................................................................F.... [ 75%]
+............................F........................................... [100%]
+=================================== FAILURES ===================================
+_ test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes _
+
+    def test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes():
+        import hashlib
+        import json
+        from pathlib import Path
+        root=Path(__file__).resolve().parents[1]
+        contract=json.loads((root/'config/tests/corner_anchor_r0_sha256.json').read_text())
+        parent=root/contract['parent_contract']
+        assert hashlib.sha256(parent.read_bytes()).hexdigest()==contract['parent_contract_sha256']
+        previous=json.loads(parent.read_text())
+        successor=json.loads((root/'config/tests/corner_distance_r0_sha256.json').read_text())
+        assert successor['parent_contract']=='config/tests/corner_anchor_r0_sha256.json'
+        assert hashlib.sha256((root/successor['parent_contract']).read_bytes()).hexdigest()==successor['parent_contract_sha256']
+        corridor=json.loads((root/'config/tests/corridor_fallback_r0_sha256.json').read_text())
+        assert corridor['parent_contract']=='config/tests/corner_distance_r0_sha256.json'
+        assert hashlib.sha256((root/corridor['parent_contract']).read_bytes()).hexdigest()==corridor['parent_contract_sha256']
+        recent=json.loads((root/'config/tests/recent_observation_r0_sha256.json').read_text())
+        assert recent['parent_contract']=='config/tests/corridor_fallback_r0_sha256.json'
+        assert hashlib.sha256((root/recent['parent_contract']).read_bytes()).hexdigest()==recent['parent_contract_sha256']
+        followers,parent_name=[],'config/tests/recent_observation_r0_sha256.json'
+        for name in ('r0_plus_e3_r0_sha256.json','b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json', 'partial_observation_r0_sha256.json'):
+            follower=json.loads((root/'config/tests'/name).read_text(encoding='utf-8'))
+            assert follower['parent_contract']==parent_name
+            assert hashlib.sha256((root/parent_name).read_bytes()).hexdigest()==follower['parent_contract_sha256']
+            followers.append(follower)
+            parent_name='config/tests/'+name
+        for group in ('approved_changes','approved_evaluation_scripts'):
+            for path,row in contract[group].items():
+                assert row['before']==previous[group][path]['after']
+                later=successor[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                later=corridor[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                later=recent[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                # 10/24 R0+/B3 successor provenance (old contracts unchanged, parent hashes checked)
+                for follower in followers:
+                    later=follower[group].get(path)
+                    if later:
+                        assert later['before']==row['after']
+                        row=later
+                assert hashlib.sha256((root/path).read_bytes()).hexdigest()==row['after']
+        for path,value in contract['new_dependencies'].items():
+            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+        for path,value in successor['new_dependencies'].items():
+            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+        for path,value in corridor['new_dependencies'].items():
+            if path in recent['modified_dependencies']:
+                change=recent['modified_dependencies'][path]
+                assert change['before']==value
+                value=change['after']
+            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+        for path,value in recent['new_dependencies'].items():
+            parent_name='config/tests/recent_observation_r0_sha256.json'
+            for name in ('recent_observation_precision_r0_sha256.json','recent_observation_cost_r0_sha256.json',
+                         'recent_observation_wedge_r0_sha256.json','recent_observation_depth_r0_sha256.json',
+                         'recent_observation_transport_r0_sha256.json','recent_observation_window_r0_sha256.json',
+                         'recent_observation_origin_r0_sha256.json','recent_observation_query_batch_r0_sha256.json'):
+                extension=json.loads((root/'config/tests'/name).read_text())
+                assert extension['parent_contract']==parent_name
+                assert hashlib.sha256((root/parent_name).read_bytes()).hexdigest()==extension['parent_contract_sha256']
+                if path in extension['modified_dependencies']:
+                    change=extension['modified_dependencies'][path]
+                    assert change['before']==value
+                    value=change['after']
+                parent_name='config/tests/'+name
+            # 초기 추가 의존성도 이후 본선 계약에서 명시 수정될 수 있다. 이전 bytes에서
+            # 최신 bytes까지 사슬을 확인하며 옛 계약의 고정값 자체는 덮어쓰지 않는다.
+            for follower in followers:
+                later=follower['approved_changes'].get(path)
+                if later:
+                    assert later['before']==value
+                    value=later['after']
+            assert hashlib.sha256((root/path).read_bytes()).hexdigest()==value
+        for path,change in recent['newly_tracked_changes'].items():
+            assert len(change['before'])==64
+>           assert hashlib.sha256((root/path).read_bytes()).hexdigest()==change['after']
+E           AssertionError: assert '0ee68d571b8d...96a1865c919a5' == '03040a82b5d9...2d1cf745b296d'
+E             - 03040a82b5d97423cb49e7e57708fafbf85875d9180f50ff62d2d1cf745b296d
+E             + 0ee68d571b8dcbb9afce775662007986e9d8681bb23a0147b4596a1865c919a5
+
+tests/test_corner_follow.py:203: AssertionError
+______________________ test_launch_argument_default_empty ______________________
+
+package_name = 'arena_description'
+
+    def get_package_prefix(package_name: str) -> str:
+        """
+        Return the installation prefix directory of the given package.
+    
+        For example, if you install the package 'foo' into
+        '/home/user/ros2_ws/install' and you called this function with 'foo' as the
+        argument, then it will return that directory.
+    
+        :param str package_name: name of the package to locate
+        :returns: installation prefix of the package
+        :raises: :exc:`PackageNotFoundError` if the package is not found
+        :raises: :exc:`ValueError` if the package name is invalid
+        """
+        # This regex checks for a valid package name as defined by REP-127 including the recommended
+        #  exemptions. See https://ros.org/reps/rep-0127.html#name
+        if re.fullmatch('[a-zA-Z0-9][a-zA-Z0-9_-]+', package_name, re.ASCII) is None:
+            raise ValueError(
+                "'{}' is not a valid package name".format(package_name))
+        try:
+>           content, package_prefix = get_resource('packages', package_name)
+
+/opt/ros/jazzy/lib/python3.12/site-packages/ament_index_python/packages.py:60: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+resource_type = 'packages', resource_name = 'arena_description'
+
+    def get_resource(resource_type: str, resource_name: str) -> Tuple[str, str]:
+        """
+        Get the content of a specific resource and its prefix path.
+    
+        :param resource_type: the type of the resource
+        :type resource_type: str
+        :param resource_names: the name of the resource
+        :type resource_name: str
+        :returns: a tuple of the content (bytes) of the resource and its prefix path
+        :raises: :exc:`EnvironmentError`
+        :raises: :exc:`OSError`
+        :raises: :exc:`LookupError`
+        :raises: :exc:`InvalidResourceTypeNameError`
+        :raises: :exc:`InvalidResourceNameError`
+        """
+        assert resource_type, 'The resource type must not be empty'
+        assert resource_name, 'The resource name must not be empty'
+        if _name_is_invalid(resource_type):
+            raise InvalidResourceTypeNameError(
+                "Resource type '%s' is invalid" % resource_type)
+        if _name_is_invalid(resource_name):
+            raise InvalidResourceNameError(
+                "Resource name '%s' is invalid" % resource_name)
+        for path in get_search_paths():
+            resource_path = os.path.join(path, RESOURCE_INDEX_SUBFOLDER, resource_type, resource_name)
+            if os.path.isfile(resource_path):
+                try:
+                    with open(resource_path, 'r') as h:
+                        content = h.read()
+                except OSError as e:
+                    raise OSError(
+                        "Could not open the resource '%s' of type '%s':\n%s"
+                        % (resource_name, resource_type, e))
+                return content, path
+>       raise LookupError(
+            "Could not find the resource '%s' of type '%s'" % (resource_name, resource_type))
+E       LookupError: Could not find the resource 'arena_description' of type 'packages'
+
+/opt/ros/jazzy/lib/python3.12/site-packages/ament_index_python/resources.py:92: LookupError
+
+During handling of the above exception, another exception occurred:
+
+    def test_launch_argument_default_empty():
+>       description = launch.generate_launch_description()
+
+tests/test_physics_step_option.py:110: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_bringup/launch/simulation.launch.py:1219: in generate_launch_description
+    description_share = Path(get_package_share_directory("arena_description"))
+/opt/ros/jazzy/lib/python3.12/site-packages/ament_index_python/packages.py:82: in get_package_share_directory
+    path = os.path.join(get_package_prefix(package_name), 'share', package_name)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+package_name = 'arena_description'
+
+    def get_package_prefix(package_name: str) -> str:
+        """
+        Return the installation prefix directory of the given package.
+    
+        For example, if you install the package 'foo' into
+        '/home/user/ros2_ws/install' and you called this function with 'foo' as the
+        argument, then it will return that directory.
+    
+        :param str package_name: name of the package to locate
+        :returns: installation prefix of the package
+        :raises: :exc:`PackageNotFoundError` if the package is not found
+        :raises: :exc:`ValueError` if the package name is invalid
+        """
+        # This regex checks for a valid package name as defined by REP-127 including the recommended
+        #  exemptions. See https://ros.org/reps/rep-0127.html#name
+        if re.fullmatch('[a-zA-Z0-9][a-zA-Z0-9_-]+', package_name, re.ASCII) is None:
+            raise ValueError(
+                "'{}' is not a valid package name".format(package_name))
+        try:
+            content, package_prefix = get_resource('packages', package_name)
+        except LookupError:
+>           raise PackageNotFoundError(
+                "package '{}' not found, searching: {}".format(package_name, get_search_paths()))
+E           ament_index_python.packages.PackageNotFoundError: "package 'arena_description' not found, searching: ['/opt/ros/jazzy']"
+
+/opt/ros/jazzy/lib/python3.12/site-packages/ament_index_python/packages.py:62: PackageNotFoundError
+=========================== short test summary info ============================
+FAILED tests/test_corner_follow.py::test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
+FAILED tests/test_physics_step_option.py::test_launch_argument_default_empty
+2 failed, 286 passed in 17.25s

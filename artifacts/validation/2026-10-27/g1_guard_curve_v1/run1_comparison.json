@@ -1,0 +1,446 @@
+{
+  "scope": "one closed-loop run each, unchanged registered scenario; not repeatability or hardware proof",
+  "previous": {
+    "original_passed": false,
+    "run_valid": true,
+    "harness_valid": true,
+    "gates": {
+      "hold": true,
+      "restart": true,
+      "progress_after_restart": true,
+      "final_gap": false,
+      "curve_exit_reached": false,
+      "curve_heading_changed": false,
+      "green_observed": true,
+      "data_coverage": true,
+      "sampled_gap": true,
+      "swept_gap": true,
+      "no_sampled_overlap": true,
+      "no_actor_contact": true,
+      "inside_road": true,
+      "ego_stays_behind": true
+    },
+    "progress": {
+      "at_window_end_m": 8.838989999999885,
+      "projection_jumps": 0,
+      "ego_stays_behind_actor": true,
+      "sampled_gap_at_window_end_m": 3.6213125429649646
+    },
+    "case_metrics": {
+      "longest_hold_in_window_s": 3.3359999999999985,
+      "restart_delay_s": 0.6500000000000004,
+      "progress_after_restart_m": 6.399229999999893,
+      "restart_resolution_s": 0.1,
+      "ego_end_unwrapped_s_m": 53.49208,
+      "required_exit_unwrapped_s_m": 56.432900000000004,
+      "ego_net_heading_change_deg": 49.29746836960486
+    },
+    "gap": {
+      "ego_samples": 20750,
+      "min_sampled_gap_m": 0.3613126047884435,
+      "sampled_overlap_samples": 0,
+      "sampled_missing_actor_samples": 0,
+      "sampled_finite_complete": true,
+      "min_swept_lower_bound_m": 0.3613116001446318,
+      "swept_nonpositive_intervals": 0,
+      "swept_missing_actor_intervals": 0,
+      "max_ego_sample_interval_s": 0.0030000000000001137,
+      "actor_contact_messages_with_ego": 0,
+      "first_contact_sim_s": null,
+      "scope": "sampled gap + conservative swept lower bound between pose samples; event-only contact evidence is separate"
+    },
+    "road": {
+      "outside_samples": 0,
+      "scope": "20x15 cm body vs SDF road union, every ego pose sample"
+    },
+    "contacts": {
+      "validated_source": true,
+      "known_contact_probe": "artifacts/validation/2026-10-07/g1b_contact_probe_v1/report.json",
+      "known_contact_probe_sha256": "3f3078d862a74d4402888da1c5c9026a6dbf9b7ad504121701efa143528c40b3",
+      "topic_connection": {
+        "topic": "/eval/g1b_actor/contact",
+        "returncode": 0,
+        "output": "Publishers [Address, Message Type]:\n  tcp://172.28.140.132:38211, gz.msgs.Contacts\nSubscribers [Address, Message Type]:\n  tcp://172.28.140.132:36361, google.protobuf.Message\n",
+        "stderr": "",
+        "reader_alive_at_graph_audit": true
+      },
+      "observed_events": 0,
+      "scope": "known-contact source capability + this-run connection/error checks; not continuous physical no-contact proof"
+    },
+    "additional_actor_gates": {
+      "raw_sha256": "94842b1ebde1f13d770774db893acb12ba62228e73e48ff57719d246c0ecdcc7",
+      "actor_count": 1,
+      "actors": {
+        "eval_e3_side": {
+          "harness": {
+            "valid": true,
+            "checks": {
+              "finite_ordered": true,
+              "pose_before_start": true,
+              "pose_coverage": true,
+              "runtime_model": true,
+              "acknowledged": true,
+              "command_coverage": true,
+              "moving_tracking": true,
+              "static_tracking": true,
+              "through_stop_coverage": true,
+              "evaluator_only": true,
+              "contact_source": true,
+              "reader_clean": true,
+              "no_pending_command": true
+            },
+            "coverage": {
+              "valid": true,
+              "samples": 4480,
+              "first_s": 0.01,
+              "last_s": 44.8,
+              "required_first_s": 3.601,
+              "required_last_s": 43.601,
+              "max_interval_s": 0.010000000000005116,
+              "maximum_allowed_interval_s": 0.05
+            },
+            "max_moving_error_m": 0.008690181730251,
+            "max_static_error_m": 0.0
+          },
+          "gates": {
+            "registered_gap": true,
+            "complete_gap_samples": true,
+            "complete_swept_intervals": true,
+            "no_ego_contact": true,
+            "sampled_gap": true,
+            "swept_gap": true
+          },
+          "minimum_body_gap_m": 0.15,
+          "min_sampled_gap_m": 0.1638453453535813,
+          "min_swept_lower_bound_m": 0.16383968646711441,
+          "pose_samples": 4480,
+          "command_count": 1873,
+          "contact_connection": {
+            "topic": "/eval/traffic/eval_e3_side/contact",
+            "returncode": 0,
+            "output": "Publishers [Address, Message Type]:\n  tcp://172.28.140.132:38211, gz.msgs.Contacts\nSubscribers [Address, Message Type]:\n  tcp://172.28.140.132:40139, google.protobuf.Message\n",
+            "stderr": "",
+            "reader_alive_at_graph_audit": true
+          }
+        }
+      },
+      "harness_valid": true,
+      "behavior_gates_passed": true,
+      "rejected_pose_times": {
+        "eval_e3_side": 0
+      },
+      "invalid_frames": [],
+      "contacts": {
+        "valid": true,
+        "errors": [],
+        "raw_messages": 0,
+        "duplicate_pair_reports": 0,
+        "events": [],
+        "ego_events": 0,
+        "scope": "event-only; absence of messages is not no-contact proof"
+      },
+      "scope": "additional actor stimulus and per-actor evidence; not interacting vehicle dynamics or on-road passing proof",
+      "combined_contacts": {
+        "valid": true,
+        "errors": [],
+        "raw_messages": 0,
+        "duplicate_pair_reports": 0,
+        "events": [],
+        "ego_events": 0,
+        "scope": "event-only; absence of messages is not no-contact proof"
+      }
+    },
+    "stop": {
+      "stable": true,
+      "pose_evidence": {
+        "complete": true,
+        "passed": true,
+        "reason": "covered",
+        "required_first_s": 44.309,
+        "required_last_s": 44.809,
+        "covered_first_s": 44.309,
+        "covered_last_s": 44.809,
+        "segment_count": 246,
+        "maximum_gap_s": 0.0030000000000001137,
+        "maximum_allowed_gap_s": 0.05,
+        "maximum_speed_mps": 0.006610203940772004
+      },
+      "wait_sim_s": 0.8089999999999975,
+      "displacement_m": 0.040056977969946755,
+      "wall_collision_samples": 0
+    },
+    "actuation_stop_passed": true,
+    "shutdown_clean": true,
+    "process_exit_codes": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "remaining_pids": [],
+    "stop_restart_15s": {
+      "metrics": {
+        "window_end_s": 18.601,
+        "longest_hold_in_window_s": 3.3359999999999985,
+        "restart_delay_s": 0.6500000000000004,
+        "progress_after_restart_m": 1.8197999999999688,
+        "progress_at_window_end_m": 4.259559999999961,
+        "sampled_gap_at_window_end_m": 0.6270828395334958
+      },
+      "gates": {
+        "hold": true,
+        "restart": true,
+        "progress_after_restart": true,
+        "final_gap": true
+      }
+    },
+    "after15_stall_s": 15.845999999999997,
+    "selector_choices": {
+      "baseline": 653,
+      "parallel": 1380,
+      "hold_fault": 19
+    },
+    "selector_reasons": {
+      "baseline_not_normal": 4,
+      "no_side_threat_seen": 399,
+      "solo_reverse_baseline_stop": 1,
+      "side_threat_not_passed": 1380,
+      "reverse_motion_hold": 19,
+      "released_observed_motion_small_masked_tail": 48,
+      "released_large_motion_observed": 105,
+      "released_small_motion": 84,
+      "released_hold_keep_steering": 12
+    },
+    "guard_candidate": {
+      "calls": 0,
+      "max_command_mps": null,
+      "unknown_filled_calls": 0,
+      "not_guard_mode_calls": 0,
+      "unobserved_region_calls": 0,
+      "small_masked_tail_risk_calls": 0
+    }
+  },
+  "candidate": {
+    "original_passed": false,
+    "run_valid": true,
+    "harness_valid": true,
+    "gates": {
+      "hold": true,
+      "restart": true,
+      "progress_after_restart": true,
+      "final_gap": false,
+      "curve_exit_reached": false,
+      "curve_heading_changed": false,
+      "green_observed": true,
+      "data_coverage": true,
+      "sampled_gap": true,
+      "swept_gap": true,
+      "no_sampled_overlap": true,
+      "no_actor_contact": true,
+      "inside_road": true,
+      "ego_stays_behind": true
+    },
+    "progress": {
+      "at_window_end_m": 8.659039999999887,
+      "projection_jumps": 0,
+      "ego_stays_behind_actor": true,
+      "sampled_gap_at_window_end_m": 3.5759868347630874
+    },
+    "case_metrics": {
+      "longest_hold_in_window_s": 3.24,
+      "restart_delay_s": 0.5420000000000016,
+      "progress_after_restart_m": 6.239279999999894,
+      "restart_resolution_s": 0.1,
+      "ego_end_unwrapped_s_m": 53.312129999999996,
+      "required_exit_unwrapped_s_m": 56.432900000000004,
+      "ego_net_heading_change_deg": 37.64806310993786
+    },
+    "gap": {
+      "ego_samples": 20604,
+      "min_sampled_gap_m": 0.3628908845873687,
+      "sampled_overlap_samples": 0,
+      "sampled_missing_actor_samples": 0,
+      "sampled_finite_complete": true,
+      "min_swept_lower_bound_m": 0.3628898800732275,
+      "swept_nonpositive_intervals": 0,
+      "swept_missing_actor_intervals": 0,
+      "max_ego_sample_interval_s": 0.0030000000000001137,
+      "actor_contact_messages_with_ego": 0,
+      "first_contact_sim_s": null,
+      "scope": "sampled gap + conservative swept lower bound between pose samples; event-only contact evidence is separate"
+    },
+    "road": {
+      "outside_samples": 0,
+      "scope": "20x15 cm body vs SDF road union, every ego pose sample"
+    },
+    "contacts": {
+      "validated_source": true,
+      "known_contact_probe": "artifacts/validation/2026-10-07/g1b_contact_probe_v1/report.json",
+      "known_contact_probe_sha256": "3f3078d862a74d4402888da1c5c9026a6dbf9b7ad504121701efa143528c40b3",
+      "topic_connection": {
+        "topic": "/eval/g1b_actor/contact",
+        "returncode": 0,
+        "output": "Publishers [Address, Message Type]:\n  tcp://172.28.140.132:34961, gz.msgs.Contacts\nSubscribers [Address, Message Type]:\n  tcp://172.28.140.132:45021, google.protobuf.Message\n",
+        "stderr": "",
+        "reader_alive_at_graph_audit": true
+      },
+      "observed_events": 0,
+      "scope": "known-contact source capability + this-run connection/error checks; not continuous physical no-contact proof"
+    },
+    "additional_actor_gates": {
+      "raw_sha256": "7e7663fafdd62a6ee60dae79105764682dd8e0503e619f741ac453bff11addcf",
+      "actor_count": 1,
+      "actors": {
+        "eval_e3_side": {
+          "harness": {
+            "valid": true,
+            "checks": {
+              "finite_ordered": true,
+              "pose_before_start": true,
+              "pose_coverage": true,
+              "runtime_model": true,
+              "acknowledged": true,
+              "command_coverage": true,
+              "moving_tracking": true,
+              "static_tracking": true,
+              "through_stop_coverage": true,
+              "evaluator_only": true,
+              "contact_source": true,
+              "reader_clean": true,
+              "no_pending_command": true
+            },
+            "coverage": {
+              "valid": true,
+              "samples": 4450,
+              "first_s": 0.01,
+              "last_s": 44.5,
+              "required_first_s": 3.601,
+              "required_last_s": 43.601,
+              "max_interval_s": 0.010000000000005116,
+              "maximum_allowed_interval_s": 0.05
+            },
+            "max_moving_error_m": 0.008691415228785655,
+            "max_static_error_m": 0.0
+          },
+          "gates": {
+            "registered_gap": true,
+            "complete_gap_samples": true,
+            "complete_swept_intervals": true,
+            "no_ego_contact": true,
+            "sampled_gap": true,
+            "swept_gap": true
+          },
+          "minimum_body_gap_m": 0.15,
+          "min_sampled_gap_m": 0.16802930902399688,
+          "min_swept_lower_bound_m": 0.16802354097492242,
+          "pose_samples": 4450,
+          "command_count": 1876,
+          "contact_connection": {
+            "topic": "/eval/traffic/eval_e3_side/contact",
+            "returncode": 0,
+            "output": "Publishers [Address, Message Type]:\n  tcp://172.28.140.132:34961, gz.msgs.Contacts\nSubscribers [Address, Message Type]:\n  tcp://172.28.140.132:39977, google.protobuf.Message\n",
+            "stderr": "",
+            "reader_alive_at_graph_audit": true
+          }
+        }
+      },
+      "harness_valid": true,
+      "behavior_gates_passed": true,
+      "rejected_pose_times": {
+        "eval_e3_side": 0
+      },
+      "invalid_frames": [],
+      "contacts": {
+        "valid": true,
+        "errors": [],
+        "raw_messages": 0,
+        "duplicate_pair_reports": 0,
+        "events": [],
+        "ego_events": 0,
+        "scope": "event-only; absence of messages is not no-contact proof"
+      },
+      "scope": "additional actor stimulus and per-actor evidence; not interacting vehicle dynamics or on-road passing proof",
+      "combined_contacts": {
+        "valid": true,
+        "errors": [],
+        "raw_messages": 0,
+        "duplicate_pair_reports": 0,
+        "events": [],
+        "ego_events": 0,
+        "scope": "event-only; absence of messages is not no-contact proof"
+      }
+    },
+    "stop": {
+      "stable": true,
+      "pose_evidence": {
+        "complete": true,
+        "passed": true,
+        "reason": "covered",
+        "required_first_s": 44.003,
+        "required_last_s": 44.503,
+        "covered_first_s": 44.003,
+        "covered_last_s": 44.503,
+        "segment_count": 247,
+        "maximum_gap_s": 0.0030000000000001137,
+        "maximum_allowed_gap_s": 0.05,
+        "maximum_speed_mps": 0.0015676534371744221
+      },
+      "wait_sim_s": 0.5,
+      "displacement_m": 0.00013191525789287128,
+      "wall_collision_samples": 0
+    },
+    "actuation_stop_passed": true,
+    "shutdown_clean": true,
+    "process_exit_codes": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "remaining_pids": [],
+    "stop_restart_15s": {
+      "metrics": {
+        "window_end_s": 18.601,
+        "longest_hold_in_window_s": 3.24,
+        "restart_delay_s": 0.5420000000000016,
+        "progress_after_restart_m": 1.8397999999999683,
+        "progress_at_window_end_m": 4.259559999999961,
+        "sampled_gap_at_window_end_m": 0.6269918190321285
+      },
+      "gates": {
+        "hold": true,
+        "restart": true,
+        "progress_after_restart": true,
+        "final_gap": true
+      }
+    },
+    "after15_stall_s": 12.088000000000001,
+    "selector_choices": {
+      "baseline": 879,
+      "parallel": 1115,
+      "guard_baseline": 31,
+      "hold_fault": 12
+    },
+    "selector_reasons": {
+      "baseline_not_normal": 4,
+      "no_side_threat_seen": 400,
+      "side_threat_not_passed": 514,
+      "guard_curve_observed_motion_small_masked_tail": 4,
+      "guard_curve_observed_motion": 27,
+      "released_small_motion": 350,
+      "released_large_motion_observed": 125,
+      "guard_curve_rejected_large_motion_region_unobserved": 601,
+      "reverse_motion_hold": 12
+    },
+    "guard_candidate": {
+      "calls": 31,
+      "max_command_mps": 0.35,
+      "unknown_filled_calls": 0,
+      "not_guard_mode_calls": 0,
+      "unobserved_region_calls": 0,
+      "small_masked_tail_risk_calls": 4
+    }
+  }
+}

@@ -358,11 +358,35 @@ def _evaluation_models(path, world):
     return models, plugins
 
 
+def _evaluation_course_markers(world, mode):
+    """시각 누락 시험: 공식 판의 재질만 바꾸고 자세·형상·충돌·신호는 보존한다."""
+    choices = {'visible': (), 'blank_30': (30,), 'blank_all': (0, 20, 30, 45)}
+    if mode not in choices:
+        raise ValueError('unknown evaluation course marker mode')
+    selected = choices[mode]
+    for marker in selected:
+        links = [link for link in world.iter('link') if link.get('name') == f'aruco_{marker}']
+        if len(links) != 1 or len(links[0].findall('visual')) != 1:
+            raise ValueError('expected exactly one course marker link and visual')
+        material = links[0].find('visual/material')
+        if material is None or material.find('.//albedo_map') is None:
+            raise ValueError('expected textured course marker material')
+        for child in list(material):
+            material.remove(child)
+        for field, color in (('ambient', '.4 .4 .4 1'), ('diffuse', '.4 .4 .4 1'),
+                             ('specular', '0 0 0 1'), ('emissive', '0 0 0 1')):
+            ET.SubElement(material, field).text = color
+    return {'mode': mode, 'hidden_ids': list(selected),
+            'scope': 'course marker visual materials only; collisions and poses unchanged'}
+
+
 def _runtime_world_overrides(source, destination, detector, scene_broadcaster, speed_bump=True, batch_visuals=False,
-                             evaluation_models=None, evaluation_wheel_contacts=False, evaluation_physics_step=""):
+                             evaluation_models=None, evaluation_wheel_contacts=False, evaluation_physics_step="",
+                             evaluation_course_markers="visible"):
     """형상·물성은 보존하고 선택형 런타임 설정만 사본에 적용합니다."""
     tree = ET.parse(source)
     world = tree.getroot().find("world")
+    marker_report = _evaluation_course_markers(world, evaluation_course_markers)
     _evaluation_physics_step(world, evaluation_physics_step)
     if evaluation_wheel_contacts and world.find("plugin[@name='gz::sim::systems::Contact']") is None:
         ET.SubElement(world, "plugin", filename="gz-sim-contact-system", name="gz::sim::systems::Contact")
@@ -396,6 +420,7 @@ def _runtime_world_overrides(source, destination, detector, scene_broadcaster, s
     if batch_visuals:
         _batch_static_visuals(world, destination)
     tree.write(destination, encoding="utf-8", xml_declaration=True)
+    return marker_report
 
 
 ZERO_SPEED_MODES = ("legacy", "reset_integral", "no_lag", "passive_damping")
@@ -818,6 +843,9 @@ def _launch_setup(context):
     batch_visuals = _as_bool(LaunchConfiguration("batch_static_visuals").perform(context))
     evaluation_actor = LaunchConfiguration("evaluation_actor_sdf").perform(context)
     physics_step = LaunchConfiguration("evaluation_physics_step").perform(context)
+    marker_visibility = LaunchConfiguration('evaluation_course_markers').perform(context)
+    if marker_visibility != 'visible' and (not runtime_artifacts or not local_mode or track != 'official' or world_override):
+        raise ValueError('course marker visual test requires official local_pursuit and runtime evidence')
     _check_evaluation_physics_step(physics_step, runtime_artifacts)
     if evaluation_actor:
         # 평가기가 정답 자세를 움직이는 표적. 공식 원본은 그대로 두고 실행 사본에만 넣는다.
@@ -825,11 +853,14 @@ def _launch_setup(context):
         if not local_mode or track != "official" or world_override or not evaluation_actor.is_file():
             raise RuntimeError("evaluation_actor_sdf는 official local_pursuit 실행 사본에서만 사용합니다.")
     if (collision_detector != "configured" or not scene_broadcaster or not speed_bump or batch_visuals
-            or evaluation_actor or evaluation_wheel_contacts or physics_step or startup == "embedded_paused"):
+            or evaluation_actor or evaluation_wheel_contacts or physics_step or startup == "embedded_paused"
+            or marker_visibility != 'visible'):
         temporary_world = tempfile.TemporaryDirectory(prefix="arena_world_")
         runtime_path = Path(temporary_world.name) / "world.sdf"
-        _runtime_world_overrides(world_path, runtime_path, collision_detector, scene_broadcaster, speed_bump, batch_visuals,
-                                 evaluation_actor or None, evaluation_wheel_contacts, physics_step)
+        marker_report = _runtime_world_overrides(world_path, runtime_path, collision_detector, scene_broadcaster, speed_bump, batch_visuals,
+                                 evaluation_actor or None, evaluation_wheel_contacts, physics_step, marker_visibility)
+        if marker_visibility != 'visible':
+            (evidence/'course_marker_render.json').write_text(json.dumps(marker_report, indent=2), encoding='utf-8')
         world_path = runtime_path
     if startup == "embedded_paused":
         _embed_evaluation_vehicle(world_path, model_xml, spawn_x, spawn_y, spawn_yaw)
@@ -1299,6 +1330,8 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("depth_camera", default_value="true", description="깊이 센서와 점군을 켭니다. RGB·IMU는 유지합니다."),
             DeclareLaunchArgument("speed_bump", default_value="true", description="false는 실행 사본에서만 임시 방지턱 제거"),
             DeclareLaunchArgument("runtime_artifacts", default_value="", description="검증 실행 입력 보관 폴더"),
+            DeclareLaunchArgument('evaluation_course_markers', default_value='visible',
+                                 choices=['visible','blank_30','blank_all'], description='평가 전용 코스 마커 무늬 가림; 형상 불변'),
             DeclareLaunchArgument("evaluation_scheduled_apply", default_value="false", choices=["true", "false"],
                                  description="Evaluation-only paired command deadline/ack; native default unchanged"),
             DeclareLaunchArgument("evaluation_startup", default_value="service", choices=["service", "embedded_paused"],

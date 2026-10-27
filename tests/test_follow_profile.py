@@ -83,3 +83,42 @@ def test_snapshot_covers_transitive_internal_imports_including_per_ray_timing():
         imports += [alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names]
         required = {name for name in imports if name.startswith(('arena_autonomy.', 'arena_vehicle_interface.'))}
         assert required <= manifest, (module, sorted(required-manifest))
+
+
+def test_partial_candidate_profile_uses_raw_scan_and_compares_decisions(tmp_path, monkeypatch):
+    import json
+    from arena_autonomy.follow_trace import FollowTrace
+    from arena_autonomy.local_follow import FollowConfig, LocalFollow
+    from test_g1_partial_policy import corridor, call
+    from test_local_follow import history
+    cfg = FollowConfig(partial_observation_policy='bounded_local_v4', parallel_hold_trial=True,
+                       pass_release_trial=True, boundary_evidence_mode='corner_distance_candidate',
+                       occupancy_timing_mode='per_ray_candidate')
+    original = LocalFollow.command
+    calls = []
+
+    def measured(self, *args, **kwargs):
+        assert kwargs.get('raw_scan') is not None
+        result = original(self, *args, **kwargs)
+        # 비용만 매 호출 달라도 비교가 되어야 하며 명령/진단은 계속 대조한다.
+        calls.append(1)
+        result[2].setdefault('partial_observation', {})['surface_correspondence'] = {
+            'processing_ms': float(len(calls)), 'accepted': False}
+        return result
+
+    monkeypatch.setattr(LocalFollow, 'command', measured)
+    h = history(); follow = LocalFollow(cfg)
+    path = tmp_path/'partial_trace.jsonl'
+    trace = FollowTrace(path, h.config, cfg)
+    for first in (.3, .4, .5):
+        scan = corridor(first)
+        out = call(follow, scan, h)
+        trace.record_call(scan, h, first+.1, 0, 0., 'left', 0., .02, True, 30., out)
+    trace.close()
+    events = [json.loads(line) for line in path.read_text().splitlines()]
+    result = profile(events, repeats=1, warmups=0)
+    assert result['passed'] and result['timed_calls'] == 3
+    changed = copy.deepcopy(events)
+    next(e for e in changed if e['kind'] == 'call')['data']['output'][0] += .01
+    with pytest.raises(ValueError, match='outputs'):
+        profile(changed, repeats=1, warmups=0)

@@ -1,0 +1,84 @@
+{
+ "scope": "configuration identity check before run2; not a driving result",
+ "sha256": {
+  "left_overlay": "549b0c5dd0c521cba023567fc0c03f5737096c96cc33c7b582cda5ab38972fa6",
+  "right_overlay": "b793501436fd15d4562acb1b3743f9219e5b61cfc467f02c857655dcc6998b6b",
+  "base_config": "d827bc7c9dd3b9760a3e28f56823bd238c09987b7ff8bbc8c0ba47d8a971d725",
+  "right_grid_config": "3991f152f1e1536099621676cbfdd51d305d04389ffccf24e0c4ba252a116ee9"
+ },
+ "overlay_differences": {
+  "/additional_actors[0]/gap_basis": [
+   "기존 0.15 m 판정 유지. 자차가 중심선이면 명목 간격 -0.02 m이므로 이 상대 일정은 자차가 공간을 유지하지 못할 때 충돌 위협이다. 우측 시작 슬롯에서는 초기 횡방향 차체 간격 약0.07 m. 임계값 하향으로 합격시키지 않는다.",
+   "이전 왼쪽 시험의 0.15 m 비교선 그대로. 슬롯 0의 왼쪽 자차(+0.09 m)와 오른쪽 actor(-0.13 m)의 명목 차체 간격 0.07 m. 새 합격 기준이 아니다."
+  ],
+  "/additional_actors[0]/lateral_offset_m": [
+   0.13,
+   -0.13
+  ],
+  "/parent_overlay/path": [
+   null,
+   "config/tests/e3_onroad_encounter_v1.json"
+  ],
+  "/parent_overlay/sha256": [
+   null,
+   "549b0c5dd0c521cba023567fc0c03f5737096c96cc33c7b582cda5ab38972fa6"
+  ],
+  "/registered_at": [
+   "2026-10-24 before any on-road encounter execution",
+   "2026-10-25 before right-side M3 encounter execution"
+  ],
+  "/scope": [
+   "M3 도로 안 옆차 접근 진단. 기존 0.15 m 간격 기준 유지: 명목 측방 여유가 그보다 작으므로 전체 통과를 기대하지 않는다. 진단에서는 뒤-옆-앞 통과 여부, 접촉/노면/자차 횡이동/정지와 재개를 별도로 기록한다. 이 설정은 새 횡간격 허가나 경기 기본값 변경이 아니다.",
+   "M3 오른쪽 도로 내 피추월 진단. e3_m3_right_grid_v1.json의 왼쪽 슬롯 0과 조합한다. nominal 측방 70 mm는 기존 150 mm와 시험 97 mm 예산 미달이며 같은 기준을 보존한다."
+  ]
+ },
+ "config_differences": {
+  "/launch/grid_slot": [
+   3,
+   0
+  ],
+  "/parent_config/changed_fields[0]": [
+   null,
+   "registered_at"
+  ],
+  "/parent_config/changed_fields[1]": [
+   null,
+   "scope"
+  ],
+  "/parent_config/changed_fields[2]": [
+   null,
+   "launch.grid_slot"
+  ],
+  "/parent_config/note": [
+   null,
+   "슬롯 3→0; 같은 행의 0.20 m 전방 엇갈림은 공식 그리드 그대로다. actor 초기 종방향 간격은 슬롯 기준으로 유지한다."
+  ],
+  "/parent_config/path": [
+   null,
+   "config/tests/g1_traffic_v1.json"
+  ],
+  "/parent_config/sha256": [
+   null,
+   "d827bc7c9dd3b9760a3e28f56823bd238c09987b7ff8bbc8c0ba47d8a971d725"
+  ],
+  "/registered_at": [
+   "2026-10-07 before any G1-b Gazebo traffic run",
+   "2026-10-25 before right-side M3 encounter execution"
+  ],
+  "/scope": [
+   "G1-b bounded low-speed official-course Gazebo closed loop: real Gazebo lead actor, rendered sequential C1 rays, independent LiDAR safety, virtual MCU. Straight start section only; not full G1 gate, curve/side-car/occlusion cases, passing, full lap, Jetson or real vehicle safety.",
+   "E3 오른쪽 도로 내 피추월 비교. 기존 g1_traffic_v1의 조건/판정을 보존하고 자차를 왼쪽 0번 슬롯에 둔다. 좌우 취득 시각·선호 벽 차이는 유지한다. 전체 랩/실차 검증 아님."
+  ]
+ },
+ "unexpected_overlay": [],
+ "unexpected_config": [],
+ "checks": {
+  "run1_used_base_config": true,
+  "run1_used_left_overlay": true,
+  "right_overlay_parent_is_left": true,
+  "right_grid_parent_is_base": true,
+  "overlay_only_mirrored_lateral": true,
+  "config_only_grid_slot": true
+ },
+ "passed": true
+}

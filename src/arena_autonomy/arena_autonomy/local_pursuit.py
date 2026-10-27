@@ -49,6 +49,21 @@ class LocalPursuit(WallFollow):
         occupancy_mode = str(self.declare_parameter('g1_occupancy_timing_mode', 'oldest').value)
         corridor_fallback = bool(self.declare_parameter('g1_corridor_fallback_enabled', False).value)
         recent_observation = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
+        partial_observation = str(self.declare_parameter('partial_observation_policy','strict').value)
+        parallel_hold = bool(self.declare_parameter('g1_parallel_hold_trial', False).value)
+        pass_release = bool(self.declare_parameter('g1_pass_release_trial', False).value)
+        if pass_release and not parallel_hold:
+            raise ValueError('pass release requires explicit parallel hold trial')
+        guard_curve = bool(self.declare_parameter('g1_guard_curve_trial', False).value)
+        if guard_curve and not pass_release:
+            raise ValueError('guard curve trial requires explicit pass release trial')
+        if parallel_hold and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled
+                or not self.get_parameter('use_sim_time').value or not trace_path):
+            raise ValueError('parallel hold requires recorded G1 simulation without R0+ or M3')
+        if partial_observation != 'strict' and (self.r0_plus_enabled or self.m3_execution_enabled):
+            raise ValueError('partial observation is not yet integrated with R0+ or M3')
+        if self.g1_enabled and partial_observation not in ('strict','bounded_local_v2','bounded_local_v3','bounded_local_v4'):
+            raise ValueError('G1 partial observation supports bounded_local_v2/v3/v4')
         if self.m3_execution_enabled and (occupancy_mode != 'per_ray_candidate' or recent_observation):
             raise ValueError('M3 execution trial requires per-ray occupancy and no recent observation')
         if recent_observation and not self.g1_enabled:
@@ -66,6 +81,10 @@ class LocalPursuit(WallFollow):
             from arena_autonomy.r0_plus import R0Plus
             follow_type = R0Plus
         self.follow = follow_type(FollowConfig(
+            partial_observation_policy=partial_observation,
+            parallel_hold_trial=parallel_hold,
+            pass_release_trial=pass_release,
+            guard_curve_trial=guard_curve,
             corridor_fallback_enabled=corridor_fallback,
             recent_observation_enabled=recent_observation,
             boundary_evidence_mode=boundary_mode,
@@ -262,7 +281,8 @@ class LocalPursuit(WallFollow):
                     self.motion.last_meta['reference_stamp_s'], timing_verified=self.motion.verified,
                     epoch=self.motion.counts['resets'], rear_half_angle_deg=self.rear_blind_half_angle)
                 output = self.follow.command(scene, self.motion.history, speed, self.side,
-                                             self.last_steering, 1/self.settings['control_rate_hz'])
+                                             self.last_steering, 1/self.settings['control_rate_hz'],
+                                             **({'raw_scan':self.scan} if self.follow.config.partial_observation_policy!='strict' else {}))
             except (MotionUnavailable, ValueError) as error:
                 self.follow.reset()
                 from arena_autonomy.follow_trace import controller_mode

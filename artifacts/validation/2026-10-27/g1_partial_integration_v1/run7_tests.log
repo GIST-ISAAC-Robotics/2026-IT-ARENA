@@ -1,0 +1,25 @@
+...............F........................................................ [ 24%]
+........................................................................ [ 48%]
+........................................................................ [ 72%]
+........................................................................ [ 97%]
+........                                                                 [100%]
+=================================== FAILURES ===================================
+___ test_v3_is_explicit_and_does_not_replace_current_occupancy_or_path_gate ____
+
+    def test_v3_is_explicit_and_does_not_replace_current_occupancy_or_path_gate():
+        from test_partial_surface_alignment import observed_room
+        raw,points,h=observed_room()
+        ctl=LocalFollow(FollowConfig(partial_observation_policy='bounded_local_v3'))
+        assert ctl.partial_policy.surface_translation_enabled
+        assert not warmed().partial_policy.surface_translation_enabled
+        ctl.partial_epoch=0
+        ctl.partial_policy._remember(points-np.array([.03,.025]),.5,.4,True)
+        scene=motion_scene(raw,h,.6,timing_verified=True)
+        out=ctl.command(scene,h,1.,'left',.37,.02,raw_scan=raw)
+>       assert out[2]['partial_observation']['surface_correspondence']['accepted']
+E       KeyError: 'partial_observation'
+
+tests/test_g1_partial_policy.py:131: KeyError
+=========================== short test summary info ============================
+FAILED tests/test_g1_partial_policy.py::test_v3_is_explicit_and_does_not_replace_current_occupancy_or_path_gate
+1 failed, 295 passed in 15.50s

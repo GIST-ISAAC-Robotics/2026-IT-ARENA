@@ -15,8 +15,19 @@ def generate_launch_description():
                 "timing_probe": "false"}
     demo = Path(get_package_share_directory("arena_bringup"))/"launch/demo.launch.py"
     return LaunchDescription([
+        DeclareLaunchArgument('g1_parallel_hold_trial', default_value='false', choices=['true', 'false']),
+        DeclareLaunchArgument('g1_pass_release_trial', default_value='false', choices=['true', 'false']),
+        DeclareLaunchArgument('g1_guard_curve_trial', default_value='false', choices=['true', 'false']),
+        DeclareLaunchArgument('partial_observation_policy', default_value='strict',
+                              choices=['strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4']),
+        DeclareLaunchArgument('evaluation_course_markers', default_value='visible', choices=['visible','blank_30','blank_all']),
         *[DeclareLaunchArgument(key, default_value=value) for key, value in defaults.items()],
         IncludeLaunchDescription(PythonLaunchDescriptionSource(str(demo)), launch_arguments={
+            'g1_parallel_hold_trial': LaunchConfiguration('g1_parallel_hold_trial'),
+            'g1_pass_release_trial': LaunchConfiguration('g1_pass_release_trial'),
+            'g1_guard_curve_trial': LaunchConfiguration('g1_guard_curve_trial'),
+            'partial_observation_policy': LaunchConfiguration('partial_observation_policy'),
+            'evaluation_course_markers': LaunchConfiguration('evaluation_course_markers'),
             **{key: LaunchConfiguration(key) for key in defaults},
             "autonomy_mode": "local_pursuit", "lidar_acquisition": "sequential",
             "lidar_compensation": "both", "autonomy_control_rate_hz": "50.0",

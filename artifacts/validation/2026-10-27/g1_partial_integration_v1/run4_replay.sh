@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -eo pipefail
+cd '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local'
+source /opt/ros/jazzy/setup.bash
+source install/local_setup.bash
+export PYTHONDONTWRITEBYTECODE=1
+export PYTHONPATH="$PWD/src/arena_autonomy:$PWD/src/arena_vehicle_interface:$PWD/scripts:$PWD/tests${PYTHONPATH:+:$PYTHONPATH}"
+test ! -e artifacts/validation/2026-10-27/g1_partial_integration_v1/run4_replay.log
+/usr/bin/python3 -B artifacts/validation/2026-10-27/g1_partial_integration_v1/replay_candidate.py > artifacts/validation/2026-10-27/g1_partial_integration_v1/run4_replay.log 2>&1

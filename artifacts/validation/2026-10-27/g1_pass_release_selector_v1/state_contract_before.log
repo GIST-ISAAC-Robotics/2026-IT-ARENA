@@ -1,0 +1,201 @@
+..FF..FFFFFFFFF...                                                       [100%]
+=================================== FAILURES ===================================
+_____________ test_disappearance_behind_never_becomes_forward_pass _____________
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f2e057f0>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145da80>)
+
+    def test_disappearance_behind_never_becomes_forward_pass(setup):
+        ctl,state,call=setup;state['view']=view(True,-.2);call(1.)
+        state['view']=view()
+        for t in (1.1,1.2,1.3):out=call(t)
+        assert ctl.sides['left']['vanish']=='rear'
+>       assert ctl.mode=='GUARD' and out[0]==.2
+E       AssertionError: assert ('RELEASED' == 'GUARD'
+E         - GUARD
+E         + RELEASED)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:57: AssertionError
+___ test_second_object_passing_does_not_erase_first_unresolved_disappearance ___
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f36dae70>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145d8a0>)
+
+    def test_second_object_passing_does_not_erase_first_unresolved_disappearance(setup):
+        ctl,state,call=setup;state['view']=view(True,-.2);call(1.)
+        state['view']=view();call(1.1)
+        state['view']=view(True,.25);call(1.2)
+        state['view']=view();call(1.3);out=call(1.4)
+>       assert ctl.mode=='GUARD' and out[0]==.2
+E       AssertionError: assert ('RELEASED' == 'GUARD'
+E         - GUARD
+E         + RELEASED)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:65: AssertionError
+_______ test_invalid_motion_or_output_must_hold_even_in_solo[nan_speed] ________
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f1567620>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145efc0>)
+fault = 'nan_speed'
+
+    @pytest.mark.parametrize('fault',['nan_speed','reverse','nan_previous','bad_dt','nan_baseline','reverse_parallel'])
+    def test_invalid_motion_or_output_must_hold_even_in_solo(setup,fault):
+        ctl,state,call=setup
+        kwargs={'nan_speed':{'speed':math.nan},'reverse':{'speed':-.01},
+            'nan_previous':{'previous':math.nan},'bad_dt':{'dt':.3},
+            'nan_baseline':{'base':output(math.nan)},'reverse_parallel':{'parallel':output(-.1)}}[fault]
+        out=call(1.,**kwargs)
+>       assert out[0]==0. and math.isfinite(out[1])
+E       assert (1.0 == 0.0)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:88: AssertionError
+________ test_invalid_motion_or_output_must_hold_even_in_solo[reverse] _________
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f1568ce0>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145dbc0>)
+fault = 'reverse'
+
+    @pytest.mark.parametrize('fault',['nan_speed','reverse','nan_previous','bad_dt','nan_baseline','reverse_parallel'])
+    def test_invalid_motion_or_output_must_hold_even_in_solo(setup,fault):
+        ctl,state,call=setup
+        kwargs={'nan_speed':{'speed':math.nan},'reverse':{'speed':-.01},
+            'nan_previous':{'previous':math.nan},'bad_dt':{'dt':.3},
+            'nan_baseline':{'base':output(math.nan)},'reverse_parallel':{'parallel':output(-.1)}}[fault]
+        out=call(1.,**kwargs)
+>       assert out[0]==0. and math.isfinite(out[1])
+E       assert (1.0 == 0.0)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:88: AssertionError
+______ test_invalid_motion_or_output_must_hold_even_in_solo[nan_previous] ______
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f15693a0>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145ef20>)
+fault = 'nan_previous'
+
+    @pytest.mark.parametrize('fault',['nan_speed','reverse','nan_previous','bad_dt','nan_baseline','reverse_parallel'])
+    def test_invalid_motion_or_output_must_hold_even_in_solo(setup,fault):
+        ctl,state,call=setup
+        kwargs={'nan_speed':{'speed':math.nan},'reverse':{'speed':-.01},
+            'nan_previous':{'previous':math.nan},'bad_dt':{'dt':.3},
+            'nan_baseline':{'base':output(math.nan)},'reverse_parallel':{'parallel':output(-.1)}}[fault]
+        out=call(1.,**kwargs)
+>       assert out[0]==0. and math.isfinite(out[1])
+E       assert (1.0 == 0.0)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:88: AssertionError
+_________ test_invalid_motion_or_output_must_hold_even_in_solo[bad_dt] _________
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f1569940>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145f100>)
+fault = 'bad_dt'
+
+    @pytest.mark.parametrize('fault',['nan_speed','reverse','nan_previous','bad_dt','nan_baseline','reverse_parallel'])
+    def test_invalid_motion_or_output_must_hold_even_in_solo(setup,fault):
+        ctl,state,call=setup
+        kwargs={'nan_speed':{'speed':math.nan},'reverse':{'speed':-.01},
+            'nan_previous':{'previous':math.nan},'bad_dt':{'dt':.3},
+            'nan_baseline':{'base':output(math.nan)},'reverse_parallel':{'parallel':output(-.1)}}[fault]
+        out=call(1.,**kwargs)
+>       assert out[0]==0. and math.isfinite(out[1])
+E       assert (1.0 == 0.0)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:88: AssertionError
+______ test_invalid_motion_or_output_must_hold_even_in_solo[nan_baseline] ______
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f156a1b0>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145f9c0>)
+fault = 'nan_baseline'
+
+    @pytest.mark.parametrize('fault',['nan_speed','reverse','nan_previous','bad_dt','nan_baseline','reverse_parallel'])
+    def test_invalid_motion_or_output_must_hold_even_in_solo(setup,fault):
+        ctl,state,call=setup
+        kwargs={'nan_speed':{'speed':math.nan},'reverse':{'speed':-.01},
+            'nan_previous':{'previous':math.nan},'bad_dt':{'dt':.3},
+            'nan_baseline':{'base':output(math.nan)},'reverse_parallel':{'parallel':output(-.1)}}[fault]
+        out=call(1.,**kwargs)
+>       assert out[0]==0. and math.isfinite(out[1])
+E       assert (nan == 0.0)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:88: AssertionError
+____ test_invalid_motion_or_output_must_hold_even_in_solo[reverse_parallel] ____
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f156ae70>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145f7e0>)
+fault = 'reverse_parallel'
+
+    @pytest.mark.parametrize('fault',['nan_speed','reverse','nan_previous','bad_dt','nan_baseline','reverse_parallel'])
+    def test_invalid_motion_or_output_must_hold_even_in_solo(setup,fault):
+        ctl,state,call=setup
+        kwargs={'nan_speed':{'speed':math.nan},'reverse':{'speed':-.01},
+            'nan_previous':{'previous':math.nan},'bad_dt':{'dt':.3},
+            'nan_baseline':{'base':output(math.nan)},'reverse_parallel':{'parallel':output(-.1)}}[fault]
+        out=call(1.,**kwargs)
+>       assert out[0]==0. and math.isfinite(out[1])
+E       assert (1.0 == 0.0)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:88: AssertionError
+______ test_time_discontinuity_never_turns_seen_threat_into_solo[rewind] _______
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f1567980>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145ee80>)
+fault = 'rewind'
+
+    @pytest.mark.parametrize('fault',['rewind','epoch','reset'])
+    def test_time_discontinuity_never_turns_seen_threat_into_solo(setup,fault):
+        ctl,state,call=setup;state['view']=view(True,-.2);call(1.)
+        state['view']=view()
+        if fault=='reset':ctl.invalidate('sensor_reset');out=call(1.1)
+        elif fault=='rewind':out=call(.8)
+        else:out=call(1.1,epoch=1)
+        assert out[0]<=.2
+        for t in (1.2,1.3,1.4):out=call(t,epoch=1 if fault=='epoch' else 0)
+>       assert ctl.mode=='GUARD' and out[0]<=.2
+E       AssertionError: assert ('RELEASED' == 'GUARD'
+E         - GUARD
+E         + RELEASED)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:100: AssertionError
+_______ test_time_discontinuity_never_turns_seen_threat_into_solo[epoch] _______
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f1567e30>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145efc0>)
+fault = 'epoch'
+
+    @pytest.mark.parametrize('fault',['rewind','epoch','reset'])
+    def test_time_discontinuity_never_turns_seen_threat_into_solo(setup,fault):
+        ctl,state,call=setup;state['view']=view(True,-.2);call(1.)
+        state['view']=view()
+        if fault=='reset':ctl.invalidate('sensor_reset');out=call(1.1)
+        elif fault=='rewind':out=call(.8)
+        else:out=call(1.1,epoch=1)
+        assert out[0]<=.2
+        for t in (1.2,1.3,1.4):out=call(t,epoch=1 if fault=='epoch' else 0)
+>       assert ctl.mode=='GUARD' and out[0]<=.2
+E       AssertionError: assert ('RELEASED' == 'GUARD'
+E         - GUARD
+E         + RELEASED)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:100: AssertionError
+_______ test_time_discontinuity_never_turns_seen_threat_into_solo[reset] _______
+
+setup = (<pass_release_selector.PassReleaseSelector object at 0x7305f1568f80>, {'band': {'free': True, 'masked': 0, 'observed_...oints': 0, 'present': False, 'rearmost_ds_m': None}, 'state': None}}, <function setup.<locals>.call at 0x7305f145d8a0>)
+fault = 'reset'
+
+    @pytest.mark.parametrize('fault',['rewind','epoch','reset'])
+    def test_time_discontinuity_never_turns_seen_threat_into_solo(setup,fault):
+        ctl,state,call=setup;state['view']=view(True,-.2);call(1.)
+        state['view']=view()
+        if fault=='reset':ctl.invalidate('sensor_reset');out=call(1.1)
+        elif fault=='rewind':out=call(.8)
+        else:out=call(1.1,epoch=1)
+        assert out[0]<=.2
+        for t in (1.2,1.3,1.4):out=call(t,epoch=1 if fault=='epoch' else 0)
+>       assert ctl.mode=='GUARD' and out[0]<=.2
+E       AssertionError: assert ('RELEASED' == 'GUARD'
+E         - GUARD
+E         + RELEASED)
+
+artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py:100: AssertionError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_disappearance_behind_never_becomes_forward_pass
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_second_object_passing_does_not_erase_first_unresolved_disappearance
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_invalid_motion_or_output_must_hold_even_in_solo[nan_speed]
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_invalid_motion_or_output_must_hold_even_in_solo[reverse]
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_invalid_motion_or_output_must_hold_even_in_solo[nan_previous]
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_invalid_motion_or_output_must_hold_even_in_solo[bad_dt]
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_invalid_motion_or_output_must_hold_even_in_solo[nan_baseline]
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_invalid_motion_or_output_must_hold_even_in_solo[reverse_parallel]
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_time_discontinuity_never_turns_seen_threat_into_solo[rewind]
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_time_discontinuity_never_turns_seen_threat_into_solo[epoch]
+FAILED artifacts/validation/2026-10-27/g1_pass_release_selector_v1/test_selector_states.py::test_time_discontinuity_never_turns_seen_threat_into_solo[reset]
+11 failed, 7 passed in 0.60s

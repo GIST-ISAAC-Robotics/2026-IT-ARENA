@@ -33,6 +33,9 @@ from validate_facility_visibility import yaw_of
 import g1_traffic_eval as ev
 from g1_lidar_stress import load_test_profile, audit_injection, require_injection_evidence
 from g1_motion_stress import load_motion_profile, require_motion_evidence, motor_count_resolution
+from g1_partial_trial import (POLICIES, partial_trial_arguments, partial_trace_fields, partial_trial_evidence,
+                              parallel_trial_arguments, parallel_trial_evidence,
+                              pass_release_arguments, pass_release_evidence, guard_curve_arguments)
 from traffic_actors import actor_specs, compose_sdf, overlay_case, check_additional_routes, contact_events
 from traffic_actor_runtime import ExtraActors
 from traffic_road_route import check_onroad_route
@@ -45,6 +48,7 @@ SET_POSE_SERVICE = f'/world/{WORLD_NAME}/set_pose'
 CONTACT_TOPIC = '/eval/g1b_actor/contact'
 CONTACT_PROBE_REPORT = REPO/'artifacts/validation/2026-10-07/g1b_contact_probe_v1/report.json'
 SOURCE_FILES = [
+    'scripts/g1_partial_trial.py', 'config/tests/partial_observation_r0_sha256.json',
     'scripts/g1_motion_stress.py', 'scripts/motion_fault_audit.py',
     'scripts/g1_lidar_stress.py',
     'scripts/validate_g1_traffic.py', 'scripts/g1_traffic_eval.py', 'scripts/validate_basic_autonomy.py',
@@ -78,6 +82,7 @@ SOURCE_FILES = [
         'm3_execution_trial', 'm3_observed_follow', 'lateral_intent', 'observed_lateral_trial',
         'polygon_batch', 'rounded_occupancy_candidate',
         'vision_process', 'lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'follow_trace',
+        'partial_observation', 'partial_surface_alignment', 'parallel_lane_trial', 'pass_release_trial',
         'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'occupancy_timing', 'race_start',
         'observation_support', 'scan_topology', 'observation_lateral', 'linear_observation', 'race_session', 'race_permission')],
     *[f'src/arena_vehicle_interface/arena_vehicle_interface/{name}.py' for name in (
@@ -365,6 +370,14 @@ def main():
                         help='실행 사본에 평가용 바퀴 접촉 센서를 추가하여 원시 접촉 메시지 보존')
     parser.add_argument('--record-follow-decisions', action='store_true',
                         help='선택형 G1 판단 시점의 스캔/운동 이력/출력을 기록; 제어 변경 없음')
+    parser.add_argument('--partial-observation-policy', choices=POLICIES, default='strict',
+                        help='선택형 G1 부분 관측 비교; 기록·순차10 Hz·both·1 m/s·가상 MCU 필요')
+    parser.add_argument('--parallel-hold-trial', action='store_true',
+                        help='직선 전용 현재 횡위치 유지 비교. 기본 OFF, v4·corner-distance·per-ray 필요')
+    parser.add_argument('--pass-release-trial', action='store_true',
+                        help='옆차 관측/통과에 따라 평행 후보와 G1을 선택. 기본 OFF, parallel-hold 필요')
+    parser.add_argument('--guard-curve-trial', action='store_true',
+                        help='GUARD 곡선 저속 후보. 기본 OFF, pass-release 필요')
     parser.add_argument('--boundary-evidence', choices=('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'), default='connected',
                         help='G1 경계 증거 후보; 기본 connected 유지, fragmented는 명시 선택형')
     parser.add_argument('--occupancy-timing', choices=('oldest', 'per_ray_candidate'), default='oldest',
@@ -376,6 +389,9 @@ def main():
     parser.add_argument('--race-operation-test', nargs='?', const='same_race', choices=('same_race', 'new_race', 'new_race_restart'),
                         help='격리 Gazebo 전용 B3 운영자 명령 순서; 실제 운영 자동 해제 아님')
     args = parser.parse_args()
+    if args.partial_observation_policy != 'strict' and (
+            args.mode != 'g1' or not args.record_follow_decisions or args.race_operation_test):
+        parser.error('partial observation trial requires recorded G1 without a race-operation trial')
     if args.race_operation_test and (args.mode != 'g1' or args.case != 'stop_restart'
                                     or not args.record_follow_decisions or args.actor_overlay
                                     or args.lidar_test_profile or args.motion_test_profile):
@@ -427,6 +443,12 @@ def main():
         raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
     specs = actor_specs(config, case)
     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
+    partial_arguments = partial_trial_arguments(args.partial_observation_policy, args.mode,
+                                               args.record_follow_decisions, launch)
+    parallel_arguments = parallel_trial_arguments(args.parallel_hold_trial, args.partial_observation_policy,
+        args.mode, args.record_follow_decisions, args.boundary_evidence, args.occupancy_timing)
+    release_arguments = pass_release_arguments(args.pass_release_trial,args.parallel_hold_trial)
+    guard_arguments = guard_curve_arguments(args.guard_curve_trial, args.pass_release_trial)
     if lidar_profile and (launch['lidar_rate_hz'] != 10 or launch['lidar_acquisition'] != 'sequential'):
         raise ValueError('registered G1 lidar stress requires sequential 10 Hz')
     output = args.output.resolve()
@@ -490,6 +512,10 @@ def main():
     if args.actor_overlay:
         report['actor_overlay'] = {'path': str(args.actor_overlay.resolve().relative_to(REPO)),
             'sha256': sha256(args.actor_overlay), 'scope': case['additional_actor_scope'], 'routes': additional_routes}
+    if partial_arguments:
+        report['partial_observation_trial'] = {'requested_policy': args.partial_observation_policy,
+            'launch_arguments': partial_arguments, 'default_changed': False,
+            'scope': 'explicit low-speed G1 trial; original gap, HOLD, STOP and verdict retained'}
     if args.corridor_fallback:
         report['corridor_fallback_enabled'] = True
         report['recent_observation_enabled'] = False
@@ -664,7 +690,7 @@ def main():
             raise TimeoutError('actor set_pose timeout')
 
     try:
-        extra = [f'evaluation_actor_sdf:={actor_path}']
+        extra = [f'evaluation_actor_sdf:={actor_path}', *partial_arguments, *parallel_arguments, *release_arguments, *guard_arguments]
         if operation_trial is not None:
             extra.append('race_control_mode:=b3_candidate')
         if args.boundary_evidence != 'connected':
@@ -827,6 +853,8 @@ def main():
                     'mcu_target_speed_mps': state.get('actuation', {}).get('target_speed_mps'),
                     'mcu_mean_wheel_mps': state.get('actuation', {}).get('mean_wheel_mps'),
                 }
+            record.update(partial_trace_fields(args.partial_observation_policy, autonomy, state['safety'],
+                                              parallel=args.parallel_hold_trial,pass_release=args.pass_release_trial))
             trace.append(record)
             trace_stream.write(json.dumps(record, ensure_ascii=False)+'\n')
             if wall_collision > 3 or error > .35:
@@ -1120,6 +1148,29 @@ def main():
                 report['m4_operation'] = dict(passed=False, error=f'{type(error).__name__}: {error}')
             report['m4_operation']['trace_sha256'] = sha256(output/'m4_operation_trace.json')
             report['m4_operation']['original_traffic_verdict_preserved'] = True
+        if partial_arguments:
+            evidence = partial_trial_evidence(args.partial_observation_policy, trace)
+            evidence['original_traffic_passed'] = report['passed']
+            report['partial_observation_trial']['evidence'] = evidence
+            report['harness_valid'] = report['harness_valid'] and evidence['passed']
+            report['run_valid'] = report['run_valid'] and evidence['passed']
+            report['passed'] = report['passed'] and evidence['passed']
+        if parallel_arguments and not release_arguments:
+            evidence = parallel_trial_evidence(trace)
+            report['parallel_hold_trial'] = {'launch_arguments': parallel_arguments, 'default_changed': False,
+                'evidence': evidence, 'original_traffic_passed': report['passed']}
+            report['harness_valid'] = report['harness_valid'] and evidence['passed']
+            report['run_valid'] = report['run_valid'] and evidence['passed']
+            report['passed'] = report['passed'] and evidence['passed']
+        if release_arguments:
+            evidence = pass_release_evidence(trace, guard_curve=bool(guard_arguments))
+            report['pass_release_trial'] = {'launch_arguments':release_arguments,'default_changed':False,
+                'evidence':evidence,'original_traffic_passed':report['passed']}
+            if guard_arguments:
+                report['pass_release_trial']['guard_curve_arguments'] = guard_arguments
+            report['harness_valid'] = report['harness_valid'] and evidence['passed']
+            report['run_valid'] = report['run_valid'] and evidence['passed']
+            report['passed'] = report['passed'] and evidence['passed']
         (output/'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
         print(json.dumps({k: report.get(k) for k in ('case', 'seed', 'mode', 'passed', 'harness_valid', 'error', 'abort')}
                          | {'gates': report.get('gates')}, ensure_ascii=False, indent=1), flush=True)

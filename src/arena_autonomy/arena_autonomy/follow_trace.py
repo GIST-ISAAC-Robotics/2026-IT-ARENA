@@ -159,7 +159,8 @@ def replay_call(follow, data, motion_config):
         scene = motion_scene(scan, history, data['reference_s'], timing_verified=data['timing_verified'],
                              epoch=data['epoch'], rear_half_angle_deg=data['rear_half_angle_deg'])
         return follow.command(scene, history, data['speed_mps'], data['side'],
-                              data['previous_steering_rad'], data['dt_s'])
+                              data['previous_steering_rad'], data['dt_s'],
+                              **({'raw_scan':scan} if follow.config.partial_observation_policy!='strict' else {}))
     except (MotionUnavailable, ValueError) as error:
         follow.reset()
         return 0., 0., {'reason': 'follow_input_stop', 'behavior': 'HOLD',
@@ -175,6 +176,21 @@ def equal_output(a, b, tolerance=1e-10):
     if isinstance(a, list) and isinstance(b, list):
         return len(a) == len(b) and all(equal_output(x, y, tolerance) for x, y in zip(a, b))
     return type(a) is type(b) and a == b
+
+
+def comparable_decision(output):
+    """표면 정합의 벽시계 비용만 비교에서 제외한다. 원시 기록/판단값은 보존한다."""
+    import copy
+    result=copy.deepcopy(output)
+    if isinstance(result,(list,tuple)) and len(result)==3 and isinstance(result[2],dict):
+        observation=result[2].get('partial_observation')
+        fit=observation.get('surface_correspondence') if isinstance(observation,dict) else None
+        if isinstance(fit,dict) and 'processing_ms' in fit:
+            value=fit['processing_ms']
+            if isinstance(value,bool) or not isinstance(value,Real) or not math.isfinite(value) or value<0:
+                raise ValueError('invalid surface processing cost')
+            fit['processing_ms']=0.
+    return result
 
 
 def replay_events(events):
@@ -211,7 +227,7 @@ def replay_events(events):
             follow.reset()
         elif kind == 'call':
             actual = freeze(replay_call(follow, data['input'], motion))
-            if not equal_output(actual, data['output']):
+            if not equal_output(comparable_decision(actual), comparable_decision(data['output'])):
                 mismatches.append({'seq': event['seq'], 'expected': data['output'], 'actual': actual})
             calls += 1
             outcomes.append({'seq': event['seq'], 'reference_s': data['input']['reference_s'],

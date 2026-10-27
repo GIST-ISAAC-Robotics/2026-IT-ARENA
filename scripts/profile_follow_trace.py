@@ -13,7 +13,7 @@ import zipfile
 
 import numpy as np
 
-from arena_autonomy.follow_trace import equal_output, freeze, replay_events, restore_call
+from arena_autonomy.follow_trace import comparable_decision, equal_output, freeze, replay_events, restore_call
 from arena_autonomy.lidar_motion import MotionConfig, MotionUnavailable
 from arena_autonomy.local_follow import FollowConfig, LocalFollow
 from arena_autonomy.scene_motion import motion_scene
@@ -39,6 +39,11 @@ SNAPSHOT_MODULES = {'arena_autonomy': ('boundary_evidence',
                     'observation_support',
                     'observed_lateral_trial',
                     'occupancy_timing',
+                    'parallel_lane_trial',
+                    'partial_observation',
+                    'partial_surface_alignment',
+                    'pass_release_trial',
+                    'rear_fringe_trial',
                     'polygon_batch',
                     'r0_plus',
                     'rounded_occupancy_candidate',
@@ -81,7 +86,7 @@ def timed_call(follow, inputs, motion, clock=time.perf_counter_ns, gc_observer=N
         projected = clock()
         stage = 'decision'
         output = follow.command(scene, history, data['speed_mps'], data['side'],
-                                data['previous_steering_rad'], data['dt_s'])
+                                data['previous_steering_rad'], data['dt_s'], raw_scan=scan)
     except (MotionUnavailable, ValueError) as error:
         if stage == 'projection':
             projected = clock()
@@ -146,7 +151,7 @@ def _profile(event_source, repeats, warmups, clock, observation):
                 previous_source = None
             elif event['kind'] == 'call':
                 output, costs = timed_call(follow, event['data']['input'], motion, clock, observation)
-                if not equal_output(freeze(output), event['data']['output']):
+                if not equal_output(comparable_decision(freeze(output)), comparable_decision(event['data']['output'])):
                     mismatches.append(dict(cycle=cycle, seq=event['seq']))
                 raw = event['data']['input']['scan']
                 source = (raw['sec'], raw['nanosec'])

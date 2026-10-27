@@ -1,0 +1,33 @@
+........................................................................ [ 12%]
+........................................................................ [ 25%]
+........................................................................ [ 37%]
+........................................................................ [ 50%]
+.......................................................F................ [ 63%]
+........................................................................ [ 75%]
+........................................................................ [ 88%]
+...................................................................      [100%]
+=================================== FAILURES ===================================
+__ test_oct26_guarded_return_and_second_start_have_preserved_source_chain[17] __
+
+index = 17
+
+    @pytest.mark.parametrize('index', [10, 11, 12, 13, 14, 15, 16, 17])
+    def test_oct26_guarded_return_and_second_start_have_preserved_source_chain(index):
+        child = load(M3_SUCCESSORS[index])
+        assert child['parent_contract'] == M3_SUCCESSORS[index-1]
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for group in GROUPS:
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(archive.read(path)) == row['before'] != row['after']
+>                   assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+E                   AssertionError: assert '6845248fba9f...0ead70aa45f57' == '58032ab30158...06ed3a7c71192'
+E                     - 58032ab301586211470be92394c582ec08dc21bf105c054b1d406ed3a7c71192
+E                     + 6845248fba9fc3e9bf931101c82c96e882c0b2aeb95f42a32270ead70aa45f57
+
+tests/test_source_provenance_r0_plus_b3.py:318: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[17]
+1 failed, 570 passed in 30.56s

@@ -1,0 +1,882 @@
+{
+  "passed": true,
+  "scope": "isolated ROS synthetic inputs and independent safety output; no vehicle or MCU",
+  "partial_observation_policy": "bounded_side_v1",
+  "cases": [
+    {
+      "name": "healthy_initial",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 30,
+      "safe_command_samples": 30,
+      "reasons": {
+        "clear": 30
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "small_side_missing",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "explicit_zero_during_partial",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 16.872616999997092
+    },
+    {
+      "name": "side_gap_recovery",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "known_near_side_return",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "lidar_braking": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 11.558952000001455
+    },
+    {
+      "name": "known_near_return_disappears",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "known_obstacle_latched": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 11.584432000006473
+    },
+    {
+      "name": "known_return_recovery",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "positive_inf_single_steer_0.0",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "central_missing": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 6.1462919999968335
+    },
+    {
+      "name": "finite_recovery_steer_0.0",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "positive_inf_single_steer_0.25",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "central_missing": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 17.089009999999405
+    },
+    {
+      "name": "finite_recovery_steer_0.25",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "positive_inf_single_steer_-0.25",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "central_missing": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 17.10537200000317
+    },
+    {
+      "name": "finite_recovery_steer_-0.25",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "positive_inf_sector",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "wide_or_many_missing": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 16.497266999998317
+    },
+    {
+      "name": "all_positive_inf",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "scan_invalid": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 5.75009199999954
+    },
+    {
+      "name": "nan_front",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "central_missing": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 0.24871299999773555
+    },
+    {
+      "name": "too_close",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "invalid_near_return": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 17.357330000002946
+    },
+    {
+      "name": "above_range",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "central_missing": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 11.488079999999457
+    },
+    {
+      "name": "finite_recovery",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "scan_delay_during_run",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "stale_input": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 113.18286299999869
+    },
+    {
+      "name": "scan_delay_recovery",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "gyro_range",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "motion_stale": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 7.705990000005158
+    },
+    {
+      "name": "gyro_range_recovery",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "gyro_same_stamp",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "motion_stale": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 0.1355720000049132
+    },
+    {
+      "name": "gyro_same_stamp_recovery",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "gyro_drop",
+      "passed": true,
+      "expected_positive": false,
+      "status_samples": 20,
+      "safe_command_samples": 21,
+      "reasons": {
+        "motion_stale": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": 20.626647000000276
+    },
+    {
+      "name": "gyro_drop_recovery",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    },
+    {
+      "name": "fresh_constant_zero_is_not_stuck",
+      "passed": true,
+      "expected_positive": true,
+      "status_samples": 20,
+      "safe_command_samples": 20,
+      "reasons": {
+        "clear": 20
+      },
+      "first_stop_after_first_scan_publish_wall_ms": null
+    }
+  ],
+  "source_sha256": {
+    "scripts/validate_sensor_input_ros.py": "033f957dc18914e58597853333398f2b4860e7e30053cbecc3757fd74b22db48",
+    "src/arena_autonomy/arena_autonomy/lidar_safety.py": "0ee68d571b8dcbb9afce775662007986e9d8681bb23a0147b4596a1865c919a5",
+    "src/arena_autonomy/arena_autonomy/lidar_observation.py": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6",
+    "src/arena_autonomy/arena_autonomy/lidar_motion.py": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5",
+    "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py": "50e85380bcfd48a87b79b9103a9b454840ed0789ef8ec4dee1a9c99a5bb80aa9",
+    "src/arena_autonomy/arena_autonomy/local_path.py": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e",
+    "src/arena_autonomy/arena_autonomy/partial_observation.py": "3d7ed53177b9b1d3fd8f903b3617cb9790bb8245e5dcb36713e6d3ba793438ca",
+    "src/arena_autonomy/arena_autonomy/scene_motion.py": "41dd3567500b21d487aa292874f1e24f79301811616fa1d62b846d1d2bc4dddb",
+    "src/arena_autonomy/arena_autonomy/local_scene.py": "4720821f897806a962091fcbb98e17bc4d66581ea3f66555251935886a633a15"
+  },
+  "child_exit_code": 0,
+  "subscriptions": {
+    "scan": "/scan",
+    "imu": "/imu/data",
+    "motor": "/drive_motor/encoder",
+    "command": "/drive"
+  },
+  "status_transitions": [
+    {
+      "received_wall_s": 31.233858356,
+      "reason": "missing_input",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": null,
+      "partial_observation": null
+    },
+    {
+      "received_wall_s": 31.254089169,
+      "reason": "history_missing",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": null
+    },
+    {
+      "received_wall_s": 31.354072258,
+      "reason": "clear",
+      "safe_speed_mps": 1.0,
+      "swept_clearance_m": 1.84,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    },
+    {
+      "received_wall_s": 35.836498561,
+      "reason": "lidar_braking",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    },
+    {
+      "received_wall_s": 36.75683905,
+      "reason": "known_obstacle_latched",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "front_unobserved",
+        "forward_samples": 277,
+        "unknown_samples": 1
+      },
+      "partial_observation": {
+        "allowed": false,
+        "reason": "known_obstacle_latched",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": 0.5,
+        "unknown_samples": 1,
+        "max_gap_deg": 0.7200000157669572,
+        "total_gap_deg": 0.7200000157669572,
+        "history_distance_m": 0.6176300144195557,
+        "near_boundary_range_m": 0.185
+      }
+    },
+    {
+      "received_wall_s": 37.873871656,
+      "reason": "clear",
+      "safe_speed_mps": 1.0,
+      "swept_clearance_m": 1.84,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    },
+    {
+      "received_wall_s": 38.797077783,
+      "reason": "central_missing",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "front_unobserved",
+        "forward_samples": 277,
+        "unknown_samples": 1
+      },
+      "partial_observation": {
+        "allowed": false,
+        "reason": "central_missing",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": 0.5,
+        "unknown_samples": 1,
+        "max_gap_deg": 0.7200000157669572,
+        "total_gap_deg": 0.7200000157669572
+      }
+    },
+    {
+      "received_wall_s": 39.81695766,
+      "reason": "clear",
+      "safe_speed_mps": 1.0,
+      "swept_clearance_m": 1.84,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    },
+    {
+      "received_wall_s": 40.854927145,
+      "reason": "central_missing",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "front_unobserved",
+        "forward_samples": 277,
+        "unknown_samples": 1
+      },
+      "partial_observation": {
+        "allowed": false,
+        "reason": "central_missing",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": 0.5,
+        "unknown_samples": 1,
+        "max_gap_deg": 0.7200000157669572,
+        "total_gap_deg": 0.7200000157669572
+      }
+    },
+    {
+      "received_wall_s": 41.877303362,
+      "reason": "clear",
+      "safe_speed_mps": 1.0,
+      "swept_clearance_m": 3.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    },
+    {
+      "received_wall_s": 42.795902151,
+      "reason": "central_missing",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "front_unobserved",
+        "forward_samples": 277,
+        "unknown_samples": 1
+      },
+      "partial_observation": {
+        "allowed": false,
+        "reason": "central_missing",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": 0.5,
+        "unknown_samples": 1,
+        "max_gap_deg": 0.7200000157669572,
+        "total_gap_deg": 0.7200000157669572
+      }
+    },
+    {
+      "received_wall_s": 43.815750121,
+      "reason": "clear",
+      "safe_speed_mps": 1.0,
+      "swept_clearance_m": 3.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    },
+    {
+      "received_wall_s": 44.833249482,
+      "reason": "wide_or_many_missing",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "front_unobserved",
+        "forward_samples": 277,
+        "unknown_samples": 55
+      },
+      "partial_observation": {
+        "allowed": false,
+        "reason": "wide_or_many_missing",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": 0.5,
+        "unknown_samples": 55,
+        "max_gap_deg": 39.600000867182644,
+        "total_gap_deg": 39.600000867182644
+      }
+    },
+    {
+      "received_wall_s": 45.85382664,
+      "reason": "scan_invalid",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "front_unobserved",
+        "forward_samples": 277,
+        "unknown_samples": 277
+      },
+      "partial_observation": null
+    },
+    {
+      "received_wall_s": 46.895972376,
+      "reason": "central_missing",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "front_unobserved",
+        "forward_samples": 277,
+        "unknown_samples": 1
+      },
+      "partial_observation": {
+        "allowed": false,
+        "reason": "central_missing",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": 0.5,
+        "unknown_samples": 1,
+        "max_gap_deg": 0.7200000157669572,
+        "total_gap_deg": 0.7200000157669572
+      }
+    },
+    {
+      "received_wall_s": 47.815290136,
+      "reason": "invalid_near_return",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "front_unobserved",
+        "forward_samples": 277,
+        "unknown_samples": 1
+      },
+      "partial_observation": {
+        "allowed": false,
+        "reason": "invalid_near_return",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": 0.5,
+        "unknown_samples": 1
+      }
+    },
+    {
+      "received_wall_s": 48.834617682,
+      "reason": "central_missing",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "front_unobserved",
+        "forward_samples": 277,
+        "unknown_samples": 1
+      },
+      "partial_observation": {
+        "allowed": false,
+        "reason": "central_missing",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": 0.5,
+        "unknown_samples": 1,
+        "max_gap_deg": 0.7200000157669572,
+        "total_gap_deg": 0.7200000157669572
+      }
+    },
+    {
+      "received_wall_s": 49.874105083,
+      "reason": "clear",
+      "safe_speed_mps": 1.0,
+      "swept_clearance_m": 1.84,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    },
+    {
+      "received_wall_s": 50.993968663,
+      "reason": "stale_input",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": null,
+      "partial_observation": null
+    },
+    {
+      "received_wall_s": 51.814935156,
+      "reason": "clear",
+      "safe_speed_mps": 1.0,
+      "swept_clearance_m": 1.84,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    },
+    {
+      "received_wall_s": 52.833039818,
+      "reason": "motion_stale",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": null
+    },
+    {
+      "received_wall_s": 53.795205921,
+      "reason": "motion_gap",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": null
+    },
+    {
+      "received_wall_s": 53.975492004,
+      "reason": "clear",
+      "safe_speed_mps": 1.0,
+      "swept_clearance_m": 1.84,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    },
+    {
+      "received_wall_s": 54.834371233,
+      "reason": "motion_stale",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": null
+    },
+    {
+      "received_wall_s": 55.813984475,
+      "reason": "motion_gap",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": null
+    },
+    {
+      "received_wall_s": 55.914918659,
+      "reason": "clear",
+      "safe_speed_mps": 1.0,
+      "swept_clearance_m": 1.84,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    },
+    {
+      "received_wall_s": 56.836189178,
+      "reason": "motion_stale",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": null
+    },
+    {
+      "received_wall_s": 57.815106775,
+      "reason": "motion_gap",
+      "safe_speed_mps": 0.0,
+      "swept_clearance_m": 0.0,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": null
+    },
+    {
+      "received_wall_s": 57.975256886,
+      "reason": "clear",
+      "safe_speed_mps": 1.0,
+      "swept_clearance_m": 1.84,
+      "sensor": "C1",
+      "no_return_policy": "unknown",
+      "front_observation": {
+        "reason": "ok",
+        "forward_samples": 277,
+        "unknown_samples": 0
+      },
+      "partial_observation": {
+        "allowed": true,
+        "reason": "fully_observed",
+        "unknown_filled": false,
+        "residual_hidden_object_risk": true,
+        "speed_cap_mps": null,
+        "unknown_samples": 0
+      }
+    }
+  ]
+}

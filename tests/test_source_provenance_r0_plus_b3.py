@@ -114,7 +114,8 @@ M3_SUCCESSORS = ('config/tests/m3_command_selection_r0_sha256.json', 'config/tes
                  'config/tests/m3_small_center_r0_sha256.json', 'config/tests/m3_surface_commitment_r0_sha256.json', 'config/tests/m3_retained_threats_r0_sha256.json',
                  'config/tests/m3_sensor_stress_r0_sha256.json', 'config/tests/m4_operation_r0_sha256.json',
                  'config/tests/m4_operation_clock_r0_sha256.json', 'config/tests/m4_new_race_r0_sha256.json',
-                 'config/tests/m3_guarded_return_r0_sha256.json', 'config/tests/m4_second_start_r0_sha256.json', 'config/tests/m2_merge_r0_sha256.json', 'config/tests/m3_exact_cost_r0_sha256.json', 'config/tests/m2_motion_stress_r0_sha256.json', 'config/tests/m2_count_fault_r0_sha256.json', 'config/tests/m2_motion_config_r0_sha256.json', 'config/tests/m5_publication_r0_sha256.json')
+                 'config/tests/m3_guarded_return_r0_sha256.json', 'config/tests/m4_second_start_r0_sha256.json', 'config/tests/m2_merge_r0_sha256.json', 'config/tests/m3_exact_cost_r0_sha256.json', 'config/tests/m2_motion_stress_r0_sha256.json', 'config/tests/m2_count_fault_r0_sha256.json', 'config/tests/m2_motion_config_r0_sha256.json', 'config/tests/m5_publication_r0_sha256.json', 'config/tests/partial_observation_r0_sha256.json',
+                 'config/tests/profile_bundle_selector_r0_sha256.json')
 
 
 def m3_revision_digest(path, newer_than=None):

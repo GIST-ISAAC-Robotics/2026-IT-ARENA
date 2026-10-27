@@ -1,0 +1,751 @@
+{
+  "started_at_utc": "2026-10-27T06:35:09.088901+00:00",
+  "passed": true,
+  "case": "stop_restart_first_curve",
+  "seed": 0,
+  "mode": "g1",
+  "boundary_evidence_mode": "corner_distance_candidate",
+  "occupancy_timing_mode": "per_ray_candidate",
+  "scope": "run27 정지·재개 뒤 해제되지 않은 M3가 첫 U자 코너로 진행하는지의 교착 확인/반증 1회. 앞차는 stop_restart 0–4 s 주행·4–9 s 정지 뒤 first_curve 도로 내 경로를 0.35 m/s로 계속 간다. 통과 유도·대회 성공 판정이 아니다. 평가기 내장 gate는 40 s 창 전체로 계산되므로 정지·재개 판정은 사후 15 s 창, 코너 판정은 그 뒤 창으로 따로 읽는다.",
+  "config_sha256": "b89d309e520a546a0267c2ec6019b3b11a8955a036ab1b074949402dd44fcbd2",
+  "source_sha256": {
+    "scripts/g1_partial_trial.py": "5e96c6e72f43554d5f9d4ee4a3c2a3b9293a7c4e022c09805143f12fe0e81a49",
+    "config/tests/partial_observation_r0_sha256.json": "83903e9171dcf69278017b2b5e63b752a91644d0169220c7054f69ffbbed9f22",
+    "scripts/g1_motion_stress.py": "d9e60ac855a2870f5ed7b66d5525eaf3318914fac046264b1affd0450eb519d4",
+    "scripts/motion_fault_audit.py": "8b198e998df69aa0198cbaf25c88cff2caba2f52b9388e1a862b629d282bbc94",
+    "scripts/g1_lidar_stress.py": "8b96ea8880a9fdce8c4a0472fd6bf4261685f9540a68679e7880f327467c1dc5",
+    "scripts/validate_g1_traffic.py": "f3167eb5872f4ce4f8e888717e016a808dd0f33040ddbb2bddab516a6ca11f12",
+    "scripts/g1_traffic_eval.py": "04808ca609886fc11e7cfc6ab4bb33a52872bf6fb29d036d2d9cd9b2b470ea9b",
+    "scripts/validate_basic_autonomy.py": "a5062720a799b98d36fbc0a0513f51d368fdb10da1688a1add2df9c1eaddb25a",
+    "scripts/lidar_shutdown.py": "c338eedd4e29926c9605dae24e55166b7665f30d3bb77a53b12237d9280ff2f2",
+    "scripts/audit_local_pursuit_road.py": "8ede2e22b474089267a4833825c33ec1079c2e6131d559b2fc3c89282126401b",
+    "scripts/probe_static_actor_contact.py": "d217f1ae35cf120998875c1c576d89d6ca34e546f935f5e9db91a43fc2910ce9",
+    "scripts/traffic_actors.py": "4858f72dfe38172fff4e937301a7349de76ba0d684fd95cd78c40277847227fb",
+    "scripts/traffic_actor_runtime.py": "8b9ada08434e8da7461df51351e31e247c1955633bfcdfffcf7c83cb7b9cac62",
+    "scripts/traffic_road_route.py": "2078fce2891a94dd785d785eb53e3661f2031ca54128411eb54bfa653115193a",
+    "scripts/traffic_encounter.py": "3271e5bc04cf7bb6f682d329593adbd7ab4fe5eea235939be29ce13b38ddb13d",
+    "scripts/traffic_merge.py": "e949b717a9428aba41f533710ccc9f10153223add4acb6ae1ab7af88690bf3cf",
+    "scripts/m4_operation_trial.py": "8134a35d511c05aa250764765b84443004c1bc2b330f9869793ac2d9453d2d84",
+    "scripts/m4_operation_eval.py": "9de5e3d4365cb0b9c4c507c9d223d43c02bbc67bd1950b0f6c348bbb784df83e",
+    "scripts/m4_second_start.py": "0b0619183bddcc726288e145611220f2ca6c934b9c6c11dc6e29b0d240be5a83",
+    "config/tests/g1_traffic_v1.json": "d827bc7c9dd3b9760a3e28f56823bd238c09987b7ff8bbc8c0ba47d8a971d725",
+    "config/tests/g1b_r0_sha256.json": "ed1187fde5411d9f087ccc0772f58054e05acdb479006a9260ed8162fa60b5b4",
+    "config/tests/m3_execution_r0_sha256.json": "9f02dfcaa1dcd1798a254dfb4a1d9de0d4856ec3a72968880ca1afe896c56988",
+    "config/tests/m3_command_selection_r0_sha256.json": "11fec368189ac81118a119abbd3698f6b5a3d2143aa47f268b607c1919e0979d",
+    "config/tests/m3_baseline_release_r0_sha256.json": "276b28608a2bc338407b2cdd2834c3c38dadd309d43aad08af69e35b355b3e22",
+    "config/tests/m3_release_gate_r0_sha256.json": "1ed853483647702cfd25d20ff060ddedbf28e21f093914fdd1897f3075ccee08",
+    "config/tests/m3_small_center_r0_sha256.json": "0ea2cc7f6ba56c0d31f1d5e3619c24c04805ae60eb7a69eae628f3953857d59c",
+    "config/tests/m3_retained_threats_r0_sha256.json": "74a17af330d6c602dc83603806506d2777181b6ccfc35da75c60791de159e297",
+    "config/tests/m3_sensor_stress_r0_sha256.json": "c554074cd078532a2ae78f9cf336bd529a5a3c6c5dea3c2f2d9b533e394e17d1",
+    "config/tests/m4_operation_r0_sha256.json": "f81bfb99b43c046f1af975e5f4ce626fd608f9ee78da17ad1ce3754a5b3c8138",
+    "config/tests/m3_guarded_return_r0_sha256.json": "ac6730438ee29666aa4cb2b264944f3b2e5a907baca2e97a7b3ec8080c8c9a8a",
+    "config/tests/m4_second_start_r0_sha256.json": "28d548194cc0f8cb4363b106ecaef79818d0ace8a942df6f0bceb2002981c462",
+    "config/tests/m2_merge_r0_sha256.json": "00cbb088a23790d90231a33cf942c07bf4d70a9511ab972c0efb6b20db7decea",
+    "config/tests/m3_surface_commitment_r0_sha256.json": "2267ea1d9e869fde97959214561b77ded8e4c297a76feca238730c4306a2b381",
+    "src/arena_gazebo/worlds/it_arena_official/world.sdf": "c122a95514ffc40b965713925ab43989f1c81c70a42f63be4dede279776b14af",
+    "src/arena_gazebo/worlds/it_arena_official/scene.json": "969bc92ddb41f5d278a6de9ef1d865a2133cb464ff8f3fd9feac0c081b7659c9",
+    "src/arena_gazebo/worlds/it_arena_official/centerline.csv": "abf46eea71599d7f3d298f9e9d764e2ec4ef0444f00d481b64c5a6389915078c",
+    "src/arena_description/config/vehicle.yaml": "a9b6530c6eea883ce8e73f5e50b32161d47459699cb52c1d8c15a14aca458b24",
+    "src/arena_description/config/b0183_c1.yaml": "65cc314ff87a588814126095f9250fb6a033a5122356ef709a663bb758edce17",
+    "src/arena_description/models/arena_car/model.sdf.xacro": "b2f26870503af6ab8ec7644f782f4d8c0eaac4c5194dfa74ebd70a248f28f4ab",
+    "src/arena_bringup/launch/simulation.launch.py": "5dd54b1e5e924b101d92519da1c4fed351ffde8efd4eb5de24045b4419c05201",
+    "src/arena_bringup/launch/demo.launch.py": "900965c73573d3902f1d043ae6ca4d4543230665eac102f5839cf7951aa7aeec",
+    "src/arena_bringup/launch/local_pursuit.launch.py": "7aee1a9b82c2bb5d328ed316890bc0f042f8110f6928f4b44e97917f6ce943fc",
+    "src/arena_bringup/launch/g1_follow.launch.py": "e2a01ff8c4ad86776651a72f51afa2eb16cc91a4adbdec9de0204fbdb6bfbd41",
+    "src/arena_bringup/launch/r0_plus.launch.py": "a691a0a901d1919e42f9e1df1d484df1642a1303ecc222cf4a8f22093c0c1ce5",
+    "src/arena_bringup/config/b0183_imu_bridge.yaml": "000ff635925f918d6d7eeced1355ff39cbefa48120f9db60ec106931ace1755a",
+    "src/arena_autonomy/arena_autonomy/core.py": "37fdb7f707211f5378c17cdfe5176a572bad0bfc0c7523ac8bd645dfa299adfb",
+    "src/arena_autonomy/arena_autonomy/wall_follow.py": "f5a744a6967763dffa9640caed3bd2bc7753ba33b7a9815e4222a8697f7ab622",
+    "src/arena_autonomy/arena_autonomy/local_path.py": "96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e",
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": "3184e8664866d786c99a4e4035b0f0bc176b4dd28a9ce1d30be67ad9cead51fa",
+    "src/arena_autonomy/arena_autonomy/local_follow.py": "c4d3f6232f9905d3a87ef803e88685ace3cd1e033f65146ea52ae7cb536e8178",
+    "src/arena_autonomy/arena_autonomy/r0_plus.py": "8ef2c44cbf759a19343f61cf6df61182ce02909e52b440fb733a15017bb000d5",
+    "src/arena_autonomy/arena_autonomy/scene_motion.py": "41dd3567500b21d487aa292874f1e24f79301811616fa1d62b846d1d2bc4dddb",
+    "src/arena_autonomy/arena_autonomy/local_scene.py": "4720821f897806a962091fcbb98e17bc4d66581ea3f66555251935886a633a15",
+    "src/arena_autonomy/arena_autonomy/m3_execution_trial.py": "0c5301dcb90be5f3c9033d977b9e48a1f2a36dd2ce580d193c0cdd9bcfd15a81",
+    "src/arena_autonomy/arena_autonomy/m3_observed_follow.py": "24073567e7b17597cc8099b7fb0c2512c5b6523f39c8c1820ba143a76f118c1a",
+    "src/arena_autonomy/arena_autonomy/lateral_intent.py": "4683fa9e3532ee5b12447dfcfd083fe87815150cde6d715491513c91101da934",
+    "src/arena_autonomy/arena_autonomy/observed_lateral_trial.py": "c3e177ef0b75dda1e12f263fb0dbf95f4ee6356072bcbbca48174b189a8cf1cd",
+    "src/arena_autonomy/arena_autonomy/polygon_batch.py": "2a2d32ea65d0ccab07b6fa0828911a75e5e752f1bafd5bbde354ae553cdf53e9",
+    "src/arena_autonomy/arena_autonomy/rounded_occupancy_candidate.py": "a7f8e26491ccdb4a535e746603ed613fa3e497986205989735aedb2c3f95b921",
+    "src/arena_autonomy/arena_autonomy/vision_process.py": "9fb49a496536884be3bedd13bc0d35deabfb13fbcea51f6d2d75e61e12d4baf9",
+    "src/arena_autonomy/arena_autonomy/lidar_safety.py": "144afcbeacfa951ba7d6ca7ec74e87a261450b3dd2b7774631b12b4663a17ff8",
+    "src/arena_autonomy/arena_autonomy/lidar_observation.py": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6",
+    "src/arena_autonomy/arena_autonomy/lidar_motion.py": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5",
+    "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py": "50e85380bcfd48a87b79b9103a9b454840ed0789ef8ec4dee1a9c99a5bb80aa9",
+    "src/arena_autonomy/arena_autonomy/follow_trace.py": "e3f28e2c4c01e914d26416fac5b34ddc3a8b6769bb79b56df52b1025a5b1788f",
+    "src/arena_autonomy/arena_autonomy/partial_observation.py": "c202694b02f531e1427f5d8d303a042318a55f096235da61be38361063f35bf2",
+    "src/arena_autonomy/arena_autonomy/partial_surface_alignment.py": "53ae8895314a548a0fd5c0733ac465e2ebe57f7560ab9ca098298e935158ce46",
+    "src/arena_autonomy/arena_autonomy/parallel_lane_trial.py": "177e0012a3a4471755b002b53c4f6fd9baae4a5197f0c49c845a7f9ff9031b83",
+    "src/arena_autonomy/arena_autonomy/pass_release_trial.py": "78d45d61674a9f3ba073e02b151a973504b84d530723287522fe6af1178d6db2",
+    "src/arena_autonomy/arena_autonomy/boundary_evidence.py": "1432454c4c8bb4b81edc96d03a08a4c5d842f21d97843ae1190a5ec570df868c",
+    "src/arena_autonomy/arena_autonomy/corner_evidence.py": "131b5b7479eed6a6b012914ae2a21efa80c9e39ed57d87bf249b4579e4ace652",
+    "src/arena_autonomy/arena_autonomy/corner_distance.py": "2ee17d397ba876b32f14a84bc9d1cb9674139617dee509d04cc5e2260ab81ba7",
+    "src/arena_autonomy/arena_autonomy/corner_corridor.py": "c692f8fa86c5a0459d7c58b3dc038ad570d982abe25b01e0c673c94bd7d13dd9",
+    "src/arena_autonomy/arena_autonomy/corridor_observer.py": "e371955fade27ccfc1be9c846361d59f726c20e0dedf1922ab3e0d6870a9db46",
+    "src/arena_autonomy/arena_autonomy/occupancy_timing.py": "4d75e1172d16a50c273fb8f8cffc407bbbec838556b8a3dec9bc87d9a783970f",
+    "src/arena_autonomy/arena_autonomy/race_start.py": "6db739457378a216e791f5c61c71447116b3b058f903c57edb4dfefd5d45491f",
+    "src/arena_autonomy/arena_autonomy/observation_support.py": "883a0545b9f6c5568fba5bc243e66f277e20d55df4d28b2793da3e0d1ef49832",
+    "src/arena_autonomy/arena_autonomy/scan_topology.py": "b8c49aa529c312e415a36072b92220c6674fa1dc931f9070e12ca3e872089324",
+    "src/arena_autonomy/arena_autonomy/observation_lateral.py": "f50fda3243d0243434834d22a45b5c72f2a80db6244d44e1ae4c1320ac9737ba",
+    "src/arena_autonomy/arena_autonomy/linear_observation.py": "cc99b67adba20493b499592ba973cfa50926ecf382f2cee1e30535778708b905",
+    "src/arena_autonomy/arena_autonomy/race_session.py": "9f2914cdbade9265d0d39b4712fbfb4da2dd339b37f097d3dac9c814e4962a1f",
+    "src/arena_autonomy/arena_autonomy/race_permission.py": "47961f9a34343a3819109f401b08328e7039150235168d3ec13782c4aaf0706e",
+    "src/arena_vehicle_interface/arena_vehicle_interface/rotating_lidar.py": "64ed006fd1c1d8b82abe8f71cc034ffb8f362097a008659e798f3835f3385358",
+    "src/arena_vehicle_interface/arena_vehicle_interface/lidar_impairment.py": "f81da6197ac2bc17aab9a215aef0712f8b4e3ecca5b7f0dc25e4a3ec310675e1",
+    "src/arena_vehicle_interface/arena_vehicle_interface/sim_wheel_encoder.py": "8ba83276bf2b07e13301fdfd14f0dba32ca8293890c7396823bc243a9c5332ee",
+    "src/arena_vehicle_interface/arena_vehicle_interface/ackermann_to_twist.py": "a3fff247ee25ef4776b667741ac59e5546f40eb9a563a19848120375603b9909",
+    "src/arena_vehicle_interface/arena_vehicle_interface/timing_probe.py": "44e8e4adeed24e9bfff71974d900236ccdad1230a5a15006703b727d45cff98e",
+    "src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py": "03c96124f5f5e2f4bbee7210e9ff1b16458c62537ef4ac15d00944d6a9b11300",
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py": "ae01245f18b2abeff2b1120d0ae11c64d04f707085e813949d90b58e884025b9",
+    "src/arena_vehicle_interface/arena_vehicle_interface/applied_guard.py": "121f8eefa1954b64d682f940f275d8ba102b3bd4168dbfabd4c7aefe467ebf6a",
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_contract.py": "ed3d12d16a8c156b02767a4351749fdf6bb3cbe0aa998e1385f7eb85e3b235d6",
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_wire.py": "1410828c83ded442749ff05314b056d586d6d322a9bc0de75bcd9bcc7bf02f25",
+    "src/arena_vehicle_interface/arena_vehicle_interface/motion_fault_relay.py": "922e7dbd5294973c58f575cc532ae94cc7daf6f5a25761c583833a3e0667978e",
+    "src/arena_vehicle_interface/arena_vehicle_interface/motion_impairment.py": "4d98d8e2032c9a4baac737413ed066d5db67d0c7110eac01e2de317e7b266fc7",
+    "src/arena_vehicle_interface/arena_vehicle_interface/motor_count_impairment.py": "8b3986d3fd154aa468b350597b8007b117bd5f72836207d020fce62f3256ab91",
+    "src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504",
+    "src/arena_gazebo/src/single_motor_drive.cpp": "50faa7fdbefd14b10676c45e905c9ad87c9cec1907df5bf017768da2977ce4e5",
+    "src/arena_gazebo/include/arena_gazebo/drivetrain.hpp": "3fd02294ef92bb8dfcc0bb5b0bf83b4b326b52bf85263d88d31c0adaf1bbe512",
+    "src/arena_gazebo/scripts/traffic_light_controller.py": "da2bc35d9e2d9bc989478165e706630618e5af9d32f226bb57e18073fe9fc985",
+    "config/tests/g1_corner_after_threat_v1.json": "b89d309e520a546a0267c2ec6019b3b11a8955a036ab1b074949402dd44fcbd2",
+    "config/tests/e3_stop_restart_corner_v1.json": "04a63baa01cbe43dff5a5a31fe8e7fcf6d407bb5687df59a14d6b44e0ec5bd50"
+  },
+  "actor_sdf_sha256": "820c6f54306e3038fd5fc9ff532f0485ef87d73839c9aa9acdc106f673661770",
+  "route_check": {
+    "kind": "first_curve",
+    "actor_start_s_m": 46.246,
+    "actor_end_s_m": 58.496,
+    "required_exit_s_m": 56.432900000000004,
+    "maximum_actor_s_m": 58.7329,
+    "actor_road_wall_samples": 1226,
+    "maximum_sample_step_m": 0.01
+  },
+  "straight_section": null,
+  "actor_visible_section": "the C1 scan plane z=0.095 m crosses the box (0..0.12 m), so the full 0.20x0.15 m rectangle is observable from the side facing the sensor. A vehicle lower than the scan plane is NOT represented; results do not extend to invisible low vehicles.",
+  "started_wall_monotonic": 310.427662831,
+  "actor_overlay": {
+    "path": "config/tests/e3_stop_restart_corner_v1.json",
+    "sha256": "04a63baa01cbe43dff5a5a31fe8e7fcf6d407bb5687df59a14d6b44e0ec5bd50",
+    "scope": "run19/run27과 같은 잔디 쪽 옆차가 15 s까지 같은 속도로 이동하고 경로 종점에 그대로 정지한다. 순간 소멸·새 초기 배치·경로 연장 없음. 종점 정지는 run27에 없던 새 자극이다.",
+    "routes": {
+      "actors": {
+        "eval_e3_side": {
+          "kind": "side_grass_straight",
+          "actor_start_s_m": 44.146,
+          "actor_end_s_m": 49.396,
+          "first_corner_s_m": 51.9329,
+          "lateral_offset_m": 0.32,
+          "actor_offroad_samples": 526,
+          "maximum_sample_step_m": 0.01,
+          "scope": "잔디 쪽 사고/정지차 가림 시험. 정상 병렬 주행이나 잔디 사용 허가가 아님."
+        }
+      },
+      "sample_interval_s": 0.01,
+      "sampled_actor_pair_min_gap_m": 0.22641044098670912,
+      "scope": "registered schedule sample check; not continuous collision proof"
+    }
+  },
+  "partial_observation_trial": {
+    "requested_policy": "bounded_local_v4",
+    "launch_arguments": [
+      "partial_observation_policy:=bounded_local_v4"
+    ],
+    "default_changed": false,
+    "scope": "explicit low-speed G1 trial; original gap, HOLD, STOP and verdict retained",
+    "evidence": {
+      "requested_policy": "bounded_local_v4",
+      "controller_policies": [
+        "bounded_local_v4"
+      ],
+      "controller_rows": 393,
+      "safety_rows": 429,
+      "partial_diagnostic_rows": 0,
+      "invalid_unknown_fill_rows": 0,
+      "passed": true,
+      "scope": "recorded_policy_and_independent_safety_diagnostics_not_closed_loop_success",
+      "original_traffic_passed": true
+    }
+  },
+  "corridor_fallback_enabled": true,
+  "recent_observation_enabled": false,
+  "green_observed_sim_s": 3.601,
+  "case_window": {
+    "green_sim_s": 3.601,
+    "end_sim_s": 43.602,
+    "duration_s": 40.0
+  },
+  "autonomy_subscriptions": [
+    "/camera/color/image_raw",
+    "/clock",
+    "/drive_motor/encoder",
+    "/imu/data",
+    "/scan"
+  ],
+  "sensor_only_inputs": true,
+  "safety_subscriptions": [
+    "/clock",
+    "/drive",
+    "/drive_motor/encoder",
+    "/imu/data",
+    "/scan"
+  ],
+  "safety_sensor_only_inputs": true,
+  "actor_pose_subscribers": [
+    "g1b_traffic_validator"
+  ],
+  "drive_publishers": [
+    "local_pursuit"
+  ],
+  "safe_drive_publishers": [
+    "lidar_safety"
+  ],
+  "contact_topic_connection": {
+    "topic": "/eval/g1b_actor/contact",
+    "returncode": 0,
+    "output": "Publishers [Address, Message Type]:\n  tcp://172.28.140.132:35895, gz.msgs.Contacts\nSubscribers [Address, Message Type]:\n  tcp://172.28.140.132:33713, google.protobuf.Message\n",
+    "stderr": "",
+    "reader_alive_at_graph_audit": true
+  },
+  "lidar": {
+    "frame_id": "laser_frame",
+    "samples": 500,
+    "angle_increment_rad": 0.012566370889544487,
+    "range_min": 0.05000000074505806,
+    "range_max": 12.0,
+    "scan_time": 0.10000000149011612,
+    "time_increment": 0.00019999999494757503,
+    "measured_rate_sim_hz": 10.0,
+    "median_interval_sim_s": 0.10000000000000053,
+    "max_interval_sim_s": 0.10000000000000142,
+    "distance_per_scan_at_peak_speed_m": 0.0,
+    "distance_per_scan_at_20kmh_m": 0.5555555555555556,
+    "idealized_snapshot_model": false
+  },
+  "lidar_rate_passed": true,
+  "lidar_nominal_interface_passed": true,
+  "stop_request_sim_s": 43.984,
+  "stop_request_clock_ns": 43985000000,
+  "stop_request_clock_refresh": {
+    "fresh": true,
+    "receipts_after_mark": 2,
+    "wait_wall_s": 0.013265505999925153,
+    "pose_minus_clock_s": -0.0009999999999976694
+  },
+  "stop": {
+    "stable": true,
+    "pose_evidence": {
+      "complete": true,
+      "passed": true,
+      "reason": "covered",
+      "required_first_s": 44.229,
+      "required_last_s": 44.729,
+      "covered_first_s": 44.229,
+      "covered_last_s": 44.729,
+      "segment_count": 239,
+      "maximum_gap_s": 0.0030000000000001137,
+      "maximum_allowed_gap_s": 0.05,
+      "maximum_speed_mps": 0.009671660392105746
+    },
+    "wait_sim_s": 0.7449999999999974,
+    "displacement_m": 0.011521347184573325,
+    "wall_collision_samples": 0
+  },
+  "actuation": {
+    "arm_acknowledged": true,
+    "final_mcu": {
+      "v": 1,
+      "boot": "ffbaa8210e6c412392906ffdc7d64f2c",
+      "generation": 2,
+      "state": "ESTOP_LATCHED",
+      "reason": "software_stop",
+      "owner": null,
+      "accepted_seq": -1,
+      "target_speed_mps": 0.0,
+      "steering_rad": 0.00026961523690260947,
+      "left_wheel_mps": null,
+      "right_wheel_mps": null,
+      "mean_wheel_mps": 0.0,
+      "feedback_mode": "drive_motor_shaft",
+      "stationary_scope": "mean_wheel_only_opposite_rotation_unobservable",
+      "feedback_valid": true,
+      "feedback_seq": 4473,
+      "left_ticks": null,
+      "right_ticks": null,
+      "motor_counts": 27016,
+      "feedback_capture_us": 44723000,
+      "deadline_us": null,
+      "estop_held": false,
+      "now_us": 44730000,
+      "output_ready": true,
+      "stationary_ready": true
+    },
+    "final_output": {
+      "now_us": 44729000,
+      "speed_mps": 0.0,
+      "blocked": true,
+      "reason": "software_stop",
+      "epoch": [
+        "ffbaa8210e6c412392906ffdc7d64f2c",
+        2
+      ],
+      "last_status_us": 44725000
+    },
+    "positive_command_samples": 9007,
+    "latched_before_stop_samples": 0,
+    "stop_latch_timing": {
+      "valid": true,
+      "request_clock_ns": 43985000000,
+      "request_clock_us": 43985000,
+      "invalid_time_samples": 0,
+      "latched_before_request": 0,
+      "same_instant_stop_response": 1,
+      "same_instant_other_latch": 0,
+      "latched_before_stop_samples": 0,
+      "first_latched": {
+        "now_us": 43985000,
+        "state": "ESTOP_LATCHED",
+        "reason": "software_stop"
+      },
+      "limits": [
+        "request time is the evaluator /clock freshly received (two callbacks after a mark) just before the STOP call; nodes receive /clock at different times, so causal order is not proven",
+        "equal microseconds are attributed to the STOP response only for the configured STOP state and reason",
+        "latched status received before the STOP call is still caught by the case-loop abort in wall order"
+      ]
+    },
+    "host_subscriptions": [
+      "/actuation/rx",
+      "/clock",
+      "/drive/safe"
+    ],
+    "mcu_subscriptions": [
+      "/actuation/output_status",
+      "/actuation/tx",
+      "/clock",
+      "/drive_motor/encoder"
+    ],
+    "sink_subscriptions": [
+      "/actuation/status",
+      "/clock"
+    ],
+    "sensor_only_inputs": true
+  },
+  "actuation_stop_passed": true,
+  "signal_states": [
+    "green",
+    "red",
+    "unknown",
+    "yellow"
+  ],
+  "false_start": false,
+  "wall_collision_samples": 0,
+  "observation_closed_before_serialization": true,
+  "observation_last_ego_sim_s": 44.737,
+  "abort": null,
+  "braking_diagnostics": {
+    "samples": 2160,
+    "sha256": "2584edbbdaf4ffcaad910c3ee7b40aeef3168a921419fd1fe45607ccaafc85aa",
+    "scope": "evaluation only; original drivetrain source timestamps retained; no control or verdict change"
+  },
+  "actuation_diagnostics": {
+    "samples": 0,
+    "control_deadline_samples": 0,
+    "scope": "pre-shutdown fault diagnostics; no message alone does not prove no delay"
+  },
+  "sequential_acquisition_verified": true,
+  "actor_frames_seen": [
+    [
+      "it_arena_track",
+      "eval_g1b_actor"
+    ]
+  ],
+  "actor_pose_rejected_nonincreasing_samples": 0,
+  "ego_pose_rejected_nonincreasing_samples": 0,
+  "evaluation_readers": {
+    "streams": {
+      "ego": {
+        "json_messages": 22084,
+        "handled_messages": 22084,
+        "parse_errors": 0,
+        "handler_errors": 0,
+        "last_error": null
+      },
+      "contact": {
+        "json_messages": 0,
+        "handled_messages": 0,
+        "parse_errors": 0,
+        "handler_errors": 0,
+        "last_error": null
+      }
+    },
+    "valid": true,
+    "scope": "reader parse/handler success; contact event-only silence is not no-contact coverage"
+  },
+  "contact_evidence": {
+    "validated_source": true,
+    "known_contact_probe": "artifacts/validation/2026-10-07/g1b_contact_probe_v1/report.json",
+    "known_contact_probe_sha256": "3f3078d862a74d4402888da1c5c9026a6dbf9b7ad504121701efa143528c40b3",
+    "topic_connection": {
+      "topic": "/eval/g1b_actor/contact",
+      "returncode": 0,
+      "output": "Publishers [Address, Message Type]:\n  tcp://172.28.140.132:35895, gz.msgs.Contacts\nSubscribers [Address, Message Type]:\n  tcp://172.28.140.132:33713, google.protobuf.Message\n",
+      "stderr": "",
+      "reader_alive_at_graph_audit": true
+    },
+    "observed_events": 0,
+    "scope": "known-contact source capability + this-run connection/error checks; not continuous physical no-contact proof"
+  },
+  "gazebo_stop_service": {
+    "method": "server_control",
+    "partition": "arena_autonomy_test_844",
+    "verified": true,
+    "server_processes_before": [
+      909
+    ],
+    "return_code": 0,
+    "stdout": "data: true\n\n",
+    "stderr": "",
+    "acknowledged": true,
+    "remaining_server_pids": [],
+    "elapsed_s": 1.3548918359999789
+  },
+  "scans_received_sha256": "e83f4925e0e5bad1a52fa00e69443733ad88683b0927b4873ba2544923fb523a",
+  "autonomy_status_sha256": "0a39d909d09d0e2c3c72ec461956aa27d9fe25e625dec62f944990250dcb67a9",
+  "process_exit_codes": [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "shutdown_audit": {
+    "clean": true,
+    "launch_return_code": 0,
+    "forced_cleanup": null,
+    "started_child_count": 14,
+    "clean_child_count": 14,
+    "failed_children": {},
+    "unaccounted_child_pids": [],
+    "errors": [],
+    "errors_before_shutdown_count": 0,
+    "errors_after_shutdown_count": 0
+  },
+  "remaining_test_pids": [],
+  "reader_forced_cleanup": [],
+  "shutdown_clean": true,
+  "source_unchanged": true,
+  "follow_decisions": {
+    "exists": true,
+    "sha256": "cba8b66d9ad52354349220e2d0bc2845ff720816180d05a44d37b20c9eea4959",
+    "scope": "decision-stage snapshots only; completeness and replay are separate checks"
+  },
+  "wall_elapsed_s": 517.8584314530001,
+  "ego_poses_sha256": "012fecfa71389879a71bc724254848650e35b9442a7bc845014556f66550c0bf",
+  "ego_poses_samples": 22059,
+  "actor_poses_sha256": "89b1b8e2a8b033f30a34b8dd2f55d460a223e4bf81e4c5765cd907a339096129",
+  "actor_poses_samples": 4472,
+  "actor_contacts_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evaluation": {
+    "t_green": 3.601,
+    "evaluator_version": "g1d_eval_v7_dense_stop_evidence",
+    "data_checks": {
+      "ego_finite_ordered": true,
+      "actor_finite_ordered": true,
+      "trace_finite_ordered": true,
+      "commands_finite_ordered": true,
+      "contacts_finite": true
+    },
+    "coverage": {
+      "ego": {
+        "valid": true,
+        "samples": 20272,
+        "first_s": 3.601,
+        "last_s": 44.737,
+        "required_first_s": 3.601,
+        "required_last_s": 43.601,
+        "max_interval_s": 0.0030000000000001137,
+        "maximum_allowed_interval_s": 0.05
+      },
+      "actor": {
+        "valid": true,
+        "samples": 4113,
+        "first_s": 3.6,
+        "last_s": 44.72,
+        "required_first_s": 3.601,
+        "required_last_s": 44.737,
+        "max_interval_s": 0.010000000000005116,
+        "maximum_allowed_interval_s": 0.05
+      },
+      "trace": {
+        "valid": true,
+        "samples": 396,
+        "first_s": 3.634,
+        "last_s": 43.537,
+        "required_first_s": 3.601,
+        "required_last_s": 43.601,
+        "max_interval_s": 0.10299999999999976,
+        "maximum_allowed_interval_s": 0.2
+      }
+    },
+    "harness": {
+      "checks": {
+        "complete_finite_data": true,
+        "ego_window_covered": true,
+        "actor_window_covered": true,
+        "trace_window_covered": true,
+        "case_reached_stop_request": true,
+        "actor_in_runtime_world": true,
+        "actor_pose_before_green": true,
+        "actor_pose_stream_continuous": true,
+        "commands_acknowledged": true,
+        "command_interval": true,
+        "moving_tracking_error": true,
+        "static_error": true
+      },
+      "valid": true,
+      "commands": 1874,
+      "max_command_interval_s": 0.022999999999999687,
+      "max_moving_error_m": 0.008054209499222201,
+      "max_static_error_m": 0.0,
+      "max_actor_pose_gap_s": 0.010000000000005116
+    },
+    "gap": {
+      "ego_samples": 20764,
+      "min_sampled_gap_m": 0.3645338414540776,
+      "sampled_overlap_samples": 0,
+      "sampled_missing_actor_samples": 0,
+      "sampled_finite_complete": true,
+      "min_swept_lower_bound_m": 0.3645328379410624,
+      "swept_nonpositive_intervals": 0,
+      "swept_missing_actor_intervals": 0,
+      "max_ego_sample_interval_s": 0.0030000000000001137,
+      "actor_contact_messages_with_ego": 0,
+      "first_contact_sim_s": null,
+      "scope": "sampled gap + conservative swept lower bound between pose samples; event-only contact evidence is separate"
+    },
+    "contact_evidence": {
+      "validated_source": true,
+      "known_contact_probe": "artifacts/validation/2026-10-07/g1b_contact_probe_v1/report.json",
+      "known_contact_probe_sha256": "3f3078d862a74d4402888da1c5c9026a6dbf9b7ad504121701efa143528c40b3",
+      "topic_connection": {
+        "topic": "/eval/g1b_actor/contact",
+        "returncode": 0,
+        "output": "Publishers [Address, Message Type]:\n  tcp://172.28.140.132:35895, gz.msgs.Contacts\nSubscribers [Address, Message Type]:\n  tcp://172.28.140.132:33713, google.protobuf.Message\n",
+        "stderr": "",
+        "reader_alive_at_graph_audit": true
+      },
+      "observed_events": 0,
+      "scope": "known-contact source capability + this-run connection/error checks; not continuous physical no-contact proof",
+      "observed_messages": 0,
+      "observed_contact_events_with_ego": 0,
+      "coverage": "event-only; zero messages is not continuous no-contact proof",
+      "limits": "static set_pose actor is an infinite-mass teleported blocker; no vehicle dynamics or real safety claim"
+    },
+    "road": {
+      "outside_samples": 0,
+      "scope": "20x15 cm body vs SDF road union, every ego pose sample"
+    },
+    "progress": {
+      "at_window_end_m": 13.018379999999826,
+      "projection_jumps": 0,
+      "ego_stays_behind_actor": true,
+      "sampled_gap_at_window_end_m": 0.617599893051872
+    },
+    "applicability": {
+      "ego_stays_behind": "required"
+    },
+    "controller_mode": {
+      "behavior_rows": 393,
+      "g1_rows": 393,
+      "r0plus_rows": 0,
+      "m3_rows": 0,
+      "behavior_counts": {
+        "CRUISE": 8,
+        "FOLLOW": 346,
+        "HOLD": 39
+      },
+      "hold_reasons": [
+        "follow_gap_hold",
+        "follow_release_wait",
+        "parallel_hold_baseline_unavailable",
+        "parallel_hold_release_wait"
+      ]
+    },
+    "case_metrics": {
+      "longest_hold_in_window_s": 3.2360000000000007,
+      "restart_delay_s": 0.5420000000000016,
+      "progress_after_restart_m": 10.598619999999833,
+      "restart_resolution_s": 0.1,
+      "ego_end_unwrapped_s_m": 57.67147,
+      "required_exit_unwrapped_s_m": 56.432900000000004,
+      "ego_net_heading_change_deg": 180.51749296154478
+    },
+    "gates": {
+      "hold": true,
+      "restart": true,
+      "progress_after_restart": true,
+      "final_gap": true,
+      "curve_exit_reached": true,
+      "curve_heading_changed": true,
+      "green_observed": true,
+      "data_coverage": true,
+      "sampled_gap": true,
+      "swept_gap": true,
+      "no_sampled_overlap": true,
+      "no_actor_contact": true,
+      "inside_road": true,
+      "ego_stays_behind": true
+    }
+  },
+  "harness_valid": true,
+  "integrity": {
+    "no_runtime_error": true,
+    "evaluation_readers_valid": true,
+    "contact_source_instrumented": true,
+    "sensor_only_controller_inputs": true,
+    "sensor_only_safety_inputs": true,
+    "actuation_sensor_only_inputs": true,
+    "actor_pose_only_evaluator": true,
+    "drive_publisher_controller_only": true,
+    "safe_drive_publisher_safety_only": true,
+    "sequential_acquisition": true,
+    "lidar_interface": true,
+    "source_unchanged": true,
+    "signal_sequence": true,
+    "no_false_start": true,
+    "controller_mode_matches": true
+  },
+  "stop_checks": {
+    "model_stop_stable": true,
+    "dense_pose_stop_evidence": true,
+    "explicit_mcu_stop": true,
+    "no_mcu_latch_before_stop": true,
+    "no_deadline_diagnostic": true,
+    "no_wall_collision": true
+  },
+  "gates": {
+    "hold": true,
+    "restart": true,
+    "progress_after_restart": true,
+    "final_gap": true,
+    "curve_exit_reached": true,
+    "curve_heading_changed": true,
+    "green_observed": true,
+    "data_coverage": true,
+    "sampled_gap": true,
+    "swept_gap": true,
+    "no_sampled_overlap": true,
+    "no_actor_contact": true,
+    "inside_road": true,
+    "ego_stays_behind": true
+  },
+  "run_valid": true,
+  "behavior_gates_passed": true,
+  "additional_actors": {
+    "raw_sha256": "eb398b298bd07992812cd6acd1dcc3488cfdbcd93669a78d18346e2684a8dd68",
+    "actor_count": 1,
+    "actors": {
+      "eval_e3_side": {
+        "harness": {
+          "valid": true,
+          "checks": {
+            "finite_ordered": true,
+            "pose_before_start": true,
+            "pose_coverage": true,
+            "runtime_model": true,
+            "acknowledged": true,
+            "command_coverage": true,
+            "moving_tracking": true,
+            "static_tracking": true,
+            "through_stop_coverage": true,
+            "evaluator_only": true,
+            "contact_source": true,
+            "reader_clean": true,
+            "no_pending_command": true
+          },
+          "coverage": {
+            "valid": true,
+            "samples": 4472,
+            "first_s": 0.01,
+            "last_s": 44.72,
+            "required_first_s": 3.601,
+            "required_last_s": 43.601,
+            "max_interval_s": 0.010000000000005116,
+            "maximum_allowed_interval_s": 0.05
+          },
+          "max_moving_error_m": 0.008690181730251,
+          "max_static_error_m": 0.0
+        },
+        "gates": {
+          "registered_gap": true,
+          "complete_gap_samples": true,
+          "complete_swept_intervals": true,
+          "no_ego_contact": true,
+          "sampled_gap": true,
+          "swept_gap": true
+        },
+        "minimum_body_gap_m": 0.15,
+        "min_sampled_gap_m": 0.16925365299107845,
+        "min_swept_lower_bound_m": 0.169249928714011,
+        "pose_samples": 4472,
+        "command_count": 1874,
+        "contact_connection": {
+          "topic": "/eval/traffic/eval_e3_side/contact",
+          "returncode": 0,
+          "output": "Publishers [Address, Message Type]:\n  tcp://172.28.140.132:35895, gz.msgs.Contacts\nSubscribers [Address, Message Type]:\n  tcp://172.28.140.132:39055, google.protobuf.Message\n",
+          "stderr": "",
+          "reader_alive_at_graph_audit": true
+        }
+      }
+    },
+    "harness_valid": true,
+    "behavior_gates_passed": true,
+    "rejected_pose_times": {
+      "eval_e3_side": 0
+    },
+    "invalid_frames": [],
+    "contacts": {
+      "valid": true,
+      "errors": [],
+      "raw_messages": 0,
+      "duplicate_pair_reports": 0,
+      "events": [],
+      "ego_events": 0,
+      "scope": "event-only; absence of messages is not no-contact proof"
+    },
+    "scope": "additional actor stimulus and per-actor evidence; not interacting vehicle dynamics or on-road passing proof",
+    "combined_contacts": {
+      "valid": true,
+      "errors": [],
+      "raw_messages": 0,
+      "duplicate_pair_reports": 0,
+      "events": [],
+      "ego_events": 0,
+      "scope": "event-only; absence of messages is not no-contact proof"
+    }
+  },
+  "pass_release_trial": {
+    "launch_arguments": [
+      "g1_pass_release_trial:=true"
+    ],
+    "default_changed": false,
+    "evidence": {
+      "diagnostic_rows": 393,
+      "invalid_rows": 0,
+      "modes": [
+        "GUARD",
+        "RELEASED",
+        "SOLO"
+      ],
+      "baseline_rows": 291,
+      "parallel_rows": 90,
+      "passed": true,
+      "scope": "explicit selector diagnostics, not closed-loop success or unseen obstacle absence",
+      "guard_baseline_rows": 12
+    },
+    "original_traffic_passed": true,
+    "guard_curve_arguments": [
+      "g1_guard_curve_trial:=true"
+    ]
+  }
+}

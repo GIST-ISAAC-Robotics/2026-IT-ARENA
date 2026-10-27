@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "scope": "10/27 ADR0027 선택형 부분 관측 v1-v4 및 기본 OFF 직선 현재 횡위치 유지 비교. 실차/전체 코스 채택 아님; 기본 OFF 옆차 통과 뒤 G1 출력 선택 시험",
+  "parent_contract": "config/tests/m5_publication_r0_sha256.json",
+  "parent_contract_sha256": "b267a302ec6c35cac98fb8e1e25e9b9b84a8280343e161045e5bbc773944d179",
+  "before_snapshot": "artifacts/validation/2026-10-27/partial_observation_v1/before_main_v5.zip",
+  "before_snapshot_sha256": "76dc2895be3e1dac1ff4304c3341f9b2e2e5b571ef7b5677431aa22675dd8d5e",
+  "before_source": "git:0e6c28a",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/lidar_safety.py": {
+      "before": "03040a82b5d97423cb49e7e57708fafbf85875d9180f50ff62d2d1cf745b296d",
+      "after": "144afcbeacfa951ba7d6ca7ec74e87a261450b3dd2b7774631b12b4663a17ff8",
+      "reason": "기본 strict 보존, v1/v2 및 v3 표면 대응 독립 보호 선택형 정책"
+    },
+    "src/arena_bringup/launch/demo.launch.py": {
+      "before": "3884e0e631a476a2de3a5cd3374348929215219d601ffbfea9b2fd511ab7b6e5",
+      "after": "900965c73573d3902f1d043ae6ca4d4543230665eac102f5839cf7951aa7aeec",
+      "reason": "기본 strict 정책 인자 전달; 기본 OFF 관측 기반 옆차 통과/G1 출력 선택 연결; 기본 OFF GUARD 곡선 후보 연결"
+    },
+    "src/arena_bringup/launch/local_pursuit.launch.py": {
+      "before": "e1a8fda802549d12d080eac69dc7361884c0eff1f30bea0065c8871eeff4dc0d",
+      "after": "7aee1a9b82c2bb5d328ed316890bc0f042f8110f6928f4b44e97917f6ce943fc",
+      "reason": "단독 실행 진입점의 정책 인자 전달; 기본 OFF 관측 기반 옆차 통과/G1 출력 선택 연결; 기본 OFF GUARD 곡선 후보 연결"
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "59589f9dd7165a23518dc7bb523cac2dc57d580c5cae66570f975ade4f425c4c",
+      "after": "5dd54b1e5e924b101d92519da1c4fed351ffde8efd4eb5de24045b4419c05201",
+      "reason": "기본 visible 불변, 평가용 코스 마커 재질만 가림"
+    },
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "2efaafe7a29d17b07b1561045e5a70caeccc423d69917ebdd0cf783f4ac9e86a",
+      "after": "c4d3f6232f9905d3a87ef803e88685ace3cd1e033f65146ea52ae7cb536e8178",
+      "reason": "기본 strict 보존, G1 원시 센서 기반 v2/v3 관측·표면 대응 선택형 연결; 기본 OFF 관측 기반 옆차 통과/G1 출력 선택 연결; 기본 OFF GUARD 곡선 후보 연결"
+    },
+    "src/arena_autonomy/arena_autonomy/corridor_observer.py": {
+      "before": "643a49252c4729f89a52f5ecb27a95ec6ff4a8e7328b9292be1ee7eed55f8f34",
+      "after": "e371955fade27ccfc1be9c846361d59f726c20e0dedf1922ab3e0d6870a9db46",
+      "reason": "기본 strict 보존, G1 raw 센서 입력 기반 v2 관측 계약 및 기록 재생 연결"
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "fb59e57ccb1aa687744d9280a96f30d6a5007ae68de6c942cda7cf4344417819",
+      "after": "3184e8664866d786c99a4e4035b0f0bc176b4dd28a9ce1d30be67ad9cead51fa",
+      "reason": "기본 strict 보존, G1 원시 센서 기반 v2/v3 관측·표면 대응 선택형 연결; 기본 OFF 관측 기반 옆차 통과/G1 출력 선택 연결; 기본 OFF GUARD 곡선 후보 연결"
+    },
+    "src/arena_autonomy/arena_autonomy/follow_trace.py": {
+      "before": "277b7296b0dff471ca37a491b373b29f49cac0c941beab4295d16379636dabfc",
+      "after": "e3f28e2c4c01e914d26416fac5b34ddc3a8b6769bb79b56df52b1025a5b1788f",
+      "reason": "G1 raw scan 재생; 표면 대응 벽시계 비용만 동일성 비교에서 제외하고 원시 값 보존"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "00e7df2633a04cd3b05361db42404d67ba8f951c4994e072980b912f42f98c3a",
+      "after": "a5062720a799b98d36fbc0a0513f51d368fdb10da1688a1add2df9c1eaddb25a",
+      "reason": "후보 명시·소스 기록·R0 밀집 STOP 및 실패 시 STOP 회수"
+    },
+    "scripts/validate_sensor_input_ros.py": {
+      "before": "0f4c63978c65a1f139a7c650a1e93036b77da27c021ab1a8717bbeb0bf6b575f",
+      "after": "3aa6929ec625fba01996729503e1a3d53a5800749546c2ce2a377790aa26cf1b",
+      "reason": "선택형 정책 ROS 입출력 고장 대조"
+    },
+    "scripts/validate_pipeline_faults_ros.py": {
+      "before": "431a7bddfa822b7e8b31e394b1cb92bfb575f23a21ee54e1dcce43adbfdce8a6",
+      "after": "d839701dd69e31cc486d0d7e41e0e104b043a6a15df60a87bd8953ef67ac7937",
+      "reason": "새 보호 모듈의 실제 ROS 고장 시험 보존 목록 보충; 10/27 후속: G1 지연 import인 평행/통과 선택 모듈 보존 목록 보충; 후반부 결측 분류 의존성 보존"
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "bb6f98dfb6714ebcb1f35677d9155baa91efdddeb1e032fc2a4c9844452ff34b",
+      "after": "f3167eb5872f4ce4f8e888717e016a808dd0f33040ddbb2bddab516a6ca11f12",
+      "reason": "명시 G1 부분 관측 정책을 교통 시험에 전달하고 양쪽 진단·소스·원래 판정 보존; 기본 OFF 관측 기반 옆차 통과/G1 출력 선택 연결; 명시 GUARD 곡선 시험 인자·진단 연결"
+    }
+  },
+  "dependencies": {
+    "src/arena_autonomy/arena_autonomy/partial_observation.py": "c202694b02f531e1427f5d8d303a042318a55f096235da61be38361063f35bf2",
+    "src/arena_autonomy/arena_autonomy/partial_surface_alignment.py": "53ae8895314a548a0fd5c0733ac465e2ebe57f7560ab9ca098298e935158ce46",
+    "scripts/g1_partial_trial.py": "5e96c6e72f43554d5f9d4ee4a3c2a3b9293a7c4e022c09805143f12fe0e81a49",
+    "src/arena_autonomy/arena_autonomy/parallel_lane_trial.py": "177e0012a3a4471755b002b53c4f6fd9baae4a5197f0c49c845a7f9ff9031b83",
+    "src/arena_autonomy/arena_autonomy/pass_release_trial.py": "78d45d61674a9f3ba073e02b151a973504b84d530723287522fe6af1178d6db2",
+    "src/arena_autonomy/arena_autonomy/rear_fringe_trial.py": "69bfa9e15385f9e8d381fca859a095c4191bf2319514664c0e073028cc814c71"
+  }
+}

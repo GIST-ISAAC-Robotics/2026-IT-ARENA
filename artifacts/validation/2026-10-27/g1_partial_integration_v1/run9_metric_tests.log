@@ -1,0 +1,24 @@
+........F............................................................... [ 84%]
+.............                                                            [100%]
+=================================== FAILURES ===================================
+_ test_candidate_does_not_authorize_outside_its_observation_contract[rotated_forward] _
+
+fault = 'rotated_forward'
+
+    @pytest.mark.parametrize('fault',['speed','wide','forward','near_neighbor','missing_all','stale','rotated_forward'])
+    def test_candidate_does_not_authorize_outside_its_observation_contract(fault):
+        p,h=ready();raw=sample(.5,range(361,366));speed=.5;now=.6
+        if fault=='speed':speed=.61
+        if fault=='wide':raw=sample(.5,range(360,368))
+        if fault=='forward':raw=sample(.5,range(249,254))
+        if fault=='near_neighbor':raw.ranges[360]=.9
+        if fault=='missing_all':raw=sample(.5,range(500))
+        if fault=='stale':now=1.
+        if fault=='rotated_forward':h=history(w=4.)
+>       assert not p.evaluate(raw,[],h,now,speed)['allowed']
+E       assert not True
+
+tests/test_partial_lateral_metric.py:38: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_partial_lateral_metric.py::test_candidate_does_not_authorize_outside_its_observation_contract[rotated_forward]
+1 failed, 84 passed in 1.69s

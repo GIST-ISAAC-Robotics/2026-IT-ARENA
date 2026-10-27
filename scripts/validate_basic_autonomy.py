@@ -55,8 +55,9 @@ def g1_solo_arguments(enabled, boundary, occupancy, record, output, corridor=Fal
             *([f'g1_trace_path:={Path(output)/"follow_decisions.jsonl"}'] if record else [])]
 
 
-def solo_route_complete(progress, target, full_lap, markers):
-    return progress >= target and (not full_lap or {20, 30}.issubset(markers))
+def solo_route_complete(progress, target, full_lap, markers, marker_visibility='visible'):
+    required = {'visible': {20,30}, 'blank_30': {20}, 'blank_all': set()}[marker_visibility]
+    return progress >= target and (not full_lap or required.issubset(markers))
 
 
 def configured_feedback_topic(config_path=REPO / "src/arena_description/config/vehicle.yaml"):
@@ -266,6 +267,8 @@ def main():
     parser.add_argument('--record-follow-decisions', action='store_true')
     parser.add_argument('--g1-corridor-fallback', action='store_true', help='별도 승인된 회랑 후보를 단독 시험에서만 명시 선택')
     parser.add_argument('--g1-recent-observation', action='store_true', help='선택형 측방 관측 보완; 후방 사각/실시간 마감 보증 아님')
+    parser.add_argument('--partial-observation-policy', choices=('strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4'), default='strict')
+    parser.add_argument('--course-marker-visibility', choices=('visible','blank_30','blank_all'), default='visible')
     parser.add_argument("--video", action="store_true",
                         help="제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.")
     parser.add_argument("--disable-speed-bump", action="store_true")
@@ -276,6 +279,19 @@ def main():
     extra_arguments = g1_solo_arguments(args.g1_follow, args.g1_boundary_evidence,
         args.g1_occupancy_timing, args.record_follow_decisions, args.output.resolve(), args.g1_corridor_fallback,
         args.g1_recent_observation)
+    if args.course_marker_visibility != 'visible':
+        if args.autonomy_mode != 'local_pursuit' or args.g1_follow:
+            raise ValueError('course marker visual trial currently requires baseline local_pursuit')
+        extra_arguments.append('evaluation_course_markers:='+args.course_marker_visibility)
+    if args.partial_observation_policy != 'strict':
+        if (args.autonomy_mode != 'local_pursuit' or
+                args.lidar_compensation != 'both' or args.lidar_acquisition != 'sequential' or
+                args.speed_profile != 'g1_compare_1mps'):
+            raise ValueError('partial policy trial requires local_pursuit, sequential both and 1 m/s profile')
+        if args.g1_follow and (args.partial_observation_policy not in ('bounded_local_v2','bounded_local_v3','bounded_local_v4') or
+                               args.g1_recent_observation or not args.record_follow_decisions):
+            raise ValueError('G1 partial trial requires v2/v3/v4, decision recording and no recent observation candidate')
+        extra_arguments.append('partial_observation_policy:='+args.partial_observation_policy)
     if args.g1_follow and (args.autonomy_mode != 'local_pursuit' or args.lidar_compensation != 'both'
                           or args.lidar_acquisition != 'sequential' or not args.disable_speed_bump):
         raise ValueError('G1-a는 local_pursuit+both+sequential, 방지턱 비활성 시험 전용입니다.')
@@ -456,6 +472,8 @@ def main():
                                             REPO / "src/arena_autonomy/arena_autonomy/vision_process.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/lidar_safety.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/lidar_observation.py",
+                                            REPO / "src/arena_autonomy/arena_autonomy/partial_observation.py",
+                                            REPO / "src/arena_autonomy/arena_autonomy/partial_surface_alignment.py",
                                             REPO / "src/arena_description/config/b0183_c1.yaml",
                                             REPO / "src/arena_autonomy/arena_autonomy/lidar_motion.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py",
@@ -479,6 +497,7 @@ def main():
                                             REPO / "src/arena_autonomy/arena_autonomy/tof_safety_core.py",
                                             REPO / "src/arena_bringup/config/wall_follow.yaml"]}}
     processes = []
+    report['partial_observation_policy'] = args.partial_observation_policy
     dense_poses, pose_lock = [], threading.Lock()
     pose_rejected_times = 0
     pose_thread = None
@@ -577,7 +596,7 @@ def main():
                     for pose in data.get("pose", []):
                         if pose.get("name") == "arena_car":
                             pose["time"] = float(stamp.get("sec", 0)) + float(stamp.get("nsec", 0)) * 1e-9
-                            if args.g1_follow:
+                            if args.g1_follow or args.partial_observation_policy != 'strict':
                                 with pose_lock:
                                     if not dense_poses or pose['time'] > dense_poses[-1][0]:
                                         dense_poses.append((pose['time'], pose['position']['x'], pose['position']['y'],
@@ -851,7 +870,7 @@ def main():
                     abs(state["dynamics"]["truth_lateral_mps"]) < .01):
                 stable_since = now if stable_since is None else stable_since
                 if now - stable_since >= .5 and future.done() and future.result().success:
-                    if args.g1_follow:
+                    if args.g1_follow or args.partial_observation_policy != 'strict':
                         with pose_lock:
                             if not stop_pose_evidence(tuple(dense_poses), now, .5)['passed']:
                                 continue
@@ -861,7 +880,7 @@ def main():
         report["stop_stable"] = (stable_since is not None and state["pose"]["time"] - stable_since >= .5 and
                                  future.done() and future.result().success)
         report["stop_wait_sim_s"] = state["pose"]["time"] - stop_start
-        if args.g1_follow:
+        if args.g1_follow or args.partial_observation_policy != 'strict':
             with pose_lock:
                 report['dense_pose_stop_evidence'] = stop_pose_evidence(tuple(dense_poses), state['pose']['time'], .5)
             report['stop_stable'] &= report['dense_pose_stop_evidence']['passed']
@@ -900,7 +919,17 @@ def main():
                     final.get('now_us', 0) * 1e-6 >= stop_start and
                     state.get('actuation_output', {}).get('now_us', 0) * 1e-6 >= stop_start)
         (output/'stop_trace.json').write_text(json.dumps(stop_trace, indent=2), encoding='utf-8')
-        route_evidence = solo_route_complete(progress, target_progress, full_lap_validation, markers_seen)
+        route_evidence = solo_route_complete(progress, target_progress, full_lap_validation, markers_seen,
+                                             args.course_marker_visibility)
+        if args.course_marker_visibility != 'visible':
+            hidden = {30} if args.course_marker_visibility == 'blank_30' else {0,20,30,45}
+            actual = json.loads((output/'course_marker_render.json').read_text(encoding='utf-8'))
+            report['marker_visibility_evidence'] = dict(mode=args.course_marker_visibility,
+                hidden_ids=sorted(hidden), observed_ids=sorted(markers_seen),
+                applied=actual['mode']==args.course_marker_visibility and set(actual['hidden_ids'])==hidden,
+                hidden_ids_not_detected=not (hidden & markers_seen))
+            route_evidence &= (report['marker_visibility_evidence']['applied'] and
+                               report['marker_visibility_evidence']['hidden_ids_not_detected'])
         report['route_complete'] = route_evidence
         safety_evidence = (report["safety_sensor_only_inputs"] if safety_active else True)
         report["passed"] = (not false_start and collision_samples == 0 and report['stop_collision_samples'] == 0 and report["stop_stable"] and
@@ -920,7 +949,7 @@ def main():
         report["error"] = str(error)
         print(f"검사 실패: {error}", flush=True)
     finally:
-        if args.g1_follow and 'error' in report and args.actuation_mode == 'virtual_mcu':
+        if (args.g1_follow or args.partial_observation_policy != 'strict') and 'error' in report and args.actuation_mode == 'virtual_mcu':
             # 주행 실패도 명시 STOP과 실제 자세 확인을 남긴 뒤 종료한다. 실패는 그대로다.
             cleanup_stop = {'acknowledged': False, 'dense_pose_stop_passed': False}
             try:
@@ -1094,7 +1123,7 @@ def main():
         cleanup = stop_launch(processes[0] if processes else None)
         if pose_thread is not None:
             pose_thread.join(timeout=2.)
-        if args.g1_follow:
+        if args.g1_follow or args.partial_observation_policy != 'strict':
             with pose_lock:
                 (output/'ego_poses.jsonl').write_text(''.join(json.dumps(row)+'\n' for row in dense_poses), encoding='utf-8')
             report['pose_reader_joined'] = pose_thread is None or not pose_thread.is_alive()

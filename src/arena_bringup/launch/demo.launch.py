@@ -6,6 +6,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import SetParameter
 
 
 def _include_simulation(context):
@@ -41,6 +42,7 @@ def _include_simulation(context):
         "chase_camera": LaunchConfiguration("chase_camera"),
         "speed_bump": LaunchConfiguration("speed_bump"),
         "runtime_artifacts": LaunchConfiguration("runtime_artifacts"),
+        "evaluation_course_markers": LaunchConfiguration("evaluation_course_markers"),
         "batch_static_visuals": LaunchConfiguration("batch_static_visuals"),
         "d435i_profile": "low_load_30", "autonomy": "true", "traffic_light": "true",
     }.items())]
@@ -48,6 +50,15 @@ def _include_simulation(context):
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument('g1_parallel_hold_trial', default_value='false', choices=['true', 'false']),
+        SetParameter(name='g1_parallel_hold_trial', value=LaunchConfiguration('g1_parallel_hold_trial')),
+        DeclareLaunchArgument('g1_pass_release_trial', default_value='false', choices=['true', 'false']),
+        SetParameter(name='g1_pass_release_trial', value=LaunchConfiguration('g1_pass_release_trial')),
+        DeclareLaunchArgument('g1_guard_curve_trial', default_value='false', choices=['true', 'false']),
+        SetParameter(name='g1_guard_curve_trial', value=LaunchConfiguration('g1_guard_curve_trial')),
+        DeclareLaunchArgument('partial_observation_policy', default_value='strict',
+                              choices=['strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4']),
+        SetParameter(name='partial_observation_policy', value=LaunchConfiguration('partial_observation_policy')),
         DeclareLaunchArgument('actuation_mode', default_value='legacy', choices=['legacy', 'virtual_mcu']),
         DeclareLaunchArgument('timing_probe', default_value='false', choices=['true', 'false']),
         DeclareLaunchArgument("headless", default_value="false"),
@@ -75,6 +86,7 @@ def generate_launch_description():
         DeclareLaunchArgument("drive_mode", default_value="configured"),
         DeclareLaunchArgument("speed_bump", default_value="true"),
         DeclareLaunchArgument("runtime_artifacts", default_value=""),
+        DeclareLaunchArgument('evaluation_course_markers', default_value='visible', choices=['visible','blank_30','blank_all']),
         DeclareLaunchArgument("batch_static_visuals", default_value="false"),
         OpaqueFunction(function=_include_simulation),
     ])

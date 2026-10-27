@@ -20,6 +20,10 @@ from arena_autonomy.occupancy_timing import per_ray_padding
 
 @dataclass(frozen=True)
 class FollowConfig:
+    partial_observation_policy: str = 'strict'
+    parallel_hold_trial: bool = False
+    pass_release_trial: bool = False
+    guard_curve_trial: bool = False
     corridor_fallback_enabled: bool = False
     recent_observation_enabled: bool = False
     boundary_evidence_mode: str = 'connected'
@@ -46,12 +50,25 @@ class FollowConfig:
     confirmations: int = 2
 
     def __post_init__(self):
+        if type(self.pass_release_trial) is not bool or (self.pass_release_trial and not self.parallel_hold_trial):
+            raise ValueError('pass release trial requires explicit parallel hold trial')
+        if type(self.guard_curve_trial) is not bool or (self.guard_curve_trial and not self.pass_release_trial):
+            raise ValueError('guard curve trial requires explicit pass release trial')
+        if (type(self.parallel_hold_trial) is not bool or (self.parallel_hold_trial and
+                (self.partial_observation_policy != 'bounded_local_v4' or
+                 self.occupancy_timing_mode != 'per_ray_candidate' or
+                 self.boundary_evidence_mode != 'corner_distance_candidate'))):
+            raise ValueError('parallel hold trial requires v4, corner-distance and per-ray candidates')
+        if self.partial_observation_policy not in ('strict','bounded_local_v2','bounded_local_v3','bounded_local_v4'):
+            raise ValueError('unsupported G1 partial observation policy')
+        if self.partial_observation_policy != 'strict' and (self.recent_observation_enabled or self.max_speed_mps>1.):
+            raise ValueError('G1 partial observation requires <=1 m/s and no recent observation candidate')
         if self.boundary_evidence_mode not in ('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'):
             raise ValueError('invalid boundary evidence mode')
         if self.occupancy_timing_mode not in ('oldest', 'per_ray_candidate'):
             raise ValueError('invalid occupancy timing mode')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'recent_observation_enabled')):
+               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial')):
             raise ValueError('follow configuration must be finite and positive')
         if (type(self.corridor_fallback_enabled) is not bool or
                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
@@ -169,6 +186,12 @@ def pursue_path(path, speed, config, age):
 class LocalFollow:
     def __init__(self, config=None):
         self.config = config or FollowConfig()
+        self.partial_policy = None
+        if self.config.partial_observation_policy != 'strict':
+            from arena_autonomy.partial_observation import PartialObservationPolicy
+            self.partial_policy = PartialObservationPolicy(allow_narrow_forward=True,
+                surface_translation_enabled=self.config.partial_observation_policy in ('bounded_local_v3','bounded_local_v4'),
+                lateral_metric_enabled=self.config.partial_observation_policy=='bounded_local_v4')
         self.observation_cache = None
         if self.config.recent_observation_enabled:
             from arena_autonomy.observation_support import RecentScenes
@@ -178,9 +201,28 @@ class LocalFollow:
             # 관측기는 이 모듈의 순수 추종 함수를 사용한다. 생성 시 import하여 순환 초기화를 피한다.
             from arena_autonomy.corridor_observer import CorridorObserver
             self.corridor_observer = CorridorObserver(self.config)
+        self.parallel_trial = None
+        if self.config.parallel_hold_trial:
+            from arena_autonomy.parallel_lane_trial import ParallelLaneTrial
+            self.parallel_trial = ParallelLaneTrial(self.config)
+        self.pass_selector = None
+        if self.config.pass_release_trial:
+            from arena_autonomy.pass_release_trial import PassReleaseSelector
+            self.pass_selector = PassReleaseSelector(self.config)
         self.reset()
 
     def reset(self):
+        if self.pass_selector is not None:
+            # 센서/운영 중단을 '옆차가 없던 새 장면'으로 만들지 않는다.
+            self.pass_selector.invalidate('controller_reset')
+        if self.partial_policy is not None:
+            self.partial_policy.reset()
+        self.partial_epoch = None
+        self._reset_path()
+
+    def _reset_path(self):
+        if self.parallel_trial is not None:
+            self.parallel_trial.reset()
         if self.observation_cache is not None:
             self.observation_cache.reset()
         if self.corridor_observer is not None:
@@ -193,12 +235,35 @@ class LocalFollow:
         self.path_wall = None
         self.held = True
 
+    def _discard_path(self):
+        # 기존 파생 제어기의 reset() 동작은 보존한다. 새 관측 후보만 기억을 분리한다.
+        if self.partial_policy is None:
+            self.reset()
+        else:
+            self._reset_path()
+
     def _hold(self, reason, detail):
         self.held = True
         self.release_count = 0
         return 0., 0., {**detail, 'reason': reason, 'behavior': 'HOLD'}
 
-    def command(self, scene, history, speed, side, previous_steering=0., control_dt=.02):
+    def command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+        output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
+                                        raw_scan=raw_scan)
+        if self.parallel_trial is not None:
+            parallel = self.parallel_trial.apply(scene, output, speed, previous_steering, control_dt)
+            if self.pass_selector is not None:
+                selected = self.pass_selector.select(scene, output, parallel, speed, previous_steering, control_dt,
+                    **({'raw_scan': raw_scan} if self.config.guard_curve_trial else {}))
+                if selected[2].get('selector_choice') == 'hold_fault':
+                    return selected[0], selected[1], {**output[2], **selected[2]}
+                return selected
+            return parallel
+        return output
+
+    def _observed_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+        if self.partial_policy is not None:
+            return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
         output = self._path_command(scene, history, speed, side, previous_steering, control_dt)
         if self.observation_cache is None:
             return output
@@ -223,11 +288,49 @@ class LocalFollow:
         detail.update(recent_observation_selected=True, observation_speed_cap_mps=.2)
         return target, output[1], detail
 
-    def _path_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02):
-        baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt)
+    def _partial_command(self,scene,history,speed,side,previous_steering,control_dt,raw_scan):
+        detail={'mode':'g1_follow','partial_observation_policy':self.config.partial_observation_policy,
+                'passing_enabled':False,'relative_velocity_credit':False}
+        if raw_scan is None:
+            return self._hold('follow_partial_scan_missing',detail)
+        source=raw_scan.header.stamp.sec+raw_scan.header.stamp.nanosec*1e-9
+        values=np.asarray(raw_scan.ranges,dtype=float)
+        valid=np.isfinite(values)&(values>=raw_scan.range_min)&(values<=raw_scan.range_max)
+        # 미관측/마스크를 유효점으로 바꾸지 않고 같은 입력의 scene만 받는다.
+        if (scene.source_first_s!=source or scene.source_frame_id!=raw_scan.header.frame_id or
+                len(scene.rays)!=len(values) or
+                [r.source_index for r in scene.rays if r.status=='return']!=np.flatnonzero(valid).tolist()):
+            return self._hold('follow_partial_scan_scene_mismatch',detail)
+        if self.partial_epoch!=scene.source_epoch:
+            self.partial_policy.reset()
+            self.partial_epoch=scene.source_epoch
+        # 여기서는 경로 후보만 만든다. 아래 관측 판정 전에 속도를 외부로 반환하지 않는다.
+        output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+        cfg=self.config
+        observation=self.partial_policy.evaluate(raw_scan,scene.occupied_endpoints_xy_m,history,
+            scene.t_ref_s,max(output[0],abs(speed)),output[1],previous_steering,
+            cfg.wheelbase_m,cfg.length_m,cfg.width_m)
+        detail={**output[2],**detail,'partial_observation':observation}
+        # raw 기준 밖 결측이 운동 변환 뒤 전방으로 들어온 경우를 몰래 허용하지 않는다.
+        angles=(raw_scan.angle_min+np.arange(len(values))*raw_scan.angle_increment+
+                history.config.lidar_yaw_rad+math.pi)%math.tau-math.pi
+        covered=set(np.flatnonzero((~valid)&(np.abs(angles)<=math.radians(100)+1e-6)))
+        missing=[r for r in scene.rays if r.status!='return' and
+                 abs(math.atan2(r.direction_xy[1],r.direction_xy[0]))<=math.radians(100)]
+        if any(r.source_index not in covered for r in missing):
+            return self._hold('follow_partial_transformed_gap_uncovered',detail)
+        if not observation['allowed'] or speed<0:
+            return self._hold('follow_'+('reverse_motion' if speed<0 else observation['reason']),detail)
+        cap=observation['speed_cap_mps']
+        return (output[0] if cap is None else min(output[0],cap)),output[1],detail
+
+    def _path_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, allow_partial=False):
+        baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt,
+                                          **({'allow_partial':True} if allow_partial else {}))
         if self.corridor_observer is None:
             return baseline
-        proposal = self.corridor_observer.evaluate(scene, history, speed, side, previous_steering, control_dt)
+        proposal = self.corridor_observer.evaluate(scene, history, speed, side, previous_steering, control_dt,
+                                                  **({'partial_candidate':True} if allow_partial else {}))
         metadata = {k: proposal.get(k) for k in ('positive', 'reason', 'fresh', 'confirmations', 'release_count',
                                                 'source_first_s', 'reference_s', 'swept_clearance_m')}
         detail = {**baseline[2], 'corridor_candidate': metadata,
@@ -249,7 +352,7 @@ class LocalFollow:
                       target_speed_before_hold_mps=proposal['proposed_speed_mps'])
         return proposal['proposed_speed_mps'], proposal['steering_rad'], detail
 
-    def _baseline_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02):
+    def _baseline_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, allow_partial=False):
         cfg, now = self.config, scene.t_ref_s
         detail = {'mode': 'g1_follow', 'source_first_s': scene.source_first_s,
                   'source_last_s': scene.source_last_s, 'source_epoch': scene.source_epoch,
@@ -258,28 +361,28 @@ class LocalFollow:
                   'measured_speed_mps': speed, 'reverse_motion': math.isfinite(speed) and speed < 0.}
         if (side not in ('left', 'right') or not all(math.isfinite(v) for v in (speed, previous_steering, control_dt))
                 or not 0 < control_dt <= .2):
-            self.reset()
+            self._discard_path()
             return self._hold('follow_invalid_state', detail)
         if (self.epoch != scene.source_epoch or self.side != side or
                 (self.last_ref is not None and now < self.last_ref) or
                 (self.last_source is not None and scene.source_first_s is not None and
                  scene.source_first_s < self.last_source)):
-            self.reset()
+            self._discard_path()
         self.epoch, self.side, self.last_ref = scene.source_epoch, side, now
         if scene.source_first_s is None or now-scene.source_first_s >= .3:
-            self.reset()
+            self._discard_path()
             return self._hold('follow_scene_stale', detail)
         # 후방 사각은 직진 전체를 금지하지 않지만 전방 미관측은 현 보호와 같이 정지.
         front = [ray for ray in scene.rays if abs(math.atan2(ray.direction_xy[1], ray.direction_xy[0])) <= math.radians(100)]
         if not front or any(ray.status != 'return' for ray in front):
             from arena_autonomy.observation_support import side_missing_candidate
-            if not (cfg.recent_observation_enabled and side_missing_candidate(scene)):
-                self.reset()
+            if not (allow_partial or (cfg.recent_observation_enabled and side_missing_candidate(scene))):
+                self._discard_path()
                 return self._hold('follow_front_unobserved', detail)
             # 경로 계산만 허용한다. command()의 실제 관측 지지 없이는 양수 출력을 반환하지 않는다.
         points = np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1, 2)
         if len(points) < 30:
-            self.reset()
+            self._discard_path()
             return self._hold('follow_scan_invalid', detail)
         fresh = self.last_source is None or scene.source_first_s > self.last_source
         self.last_source = scene.source_first_s
@@ -475,5 +578,5 @@ class LocalFollow:
             behavior = 'FOLLOW' if target < cap-1e-6 else 'CRUISE'
             return float(target), steering, {**detail, 'reason': 'local_follow', 'behavior': behavior}
         except MotionUnavailable as error:
-            self.reset()
+            self._discard_path()
             return self._hold('follow_'+str(error), detail)

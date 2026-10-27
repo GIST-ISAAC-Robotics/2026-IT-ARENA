@@ -1,0 +1,322 @@
+--- a/src/arena_autonomy/arena_autonomy/pass_release_trial.py
++++ b/src/arena_autonomy/arena_autonomy/pass_release_trial.py
+@@ -32,6 +32,14 @@
+   남는 경우를 별도 제한 위험으로 허용한다. 그보다 큰 가림 이동은 거부한다. 통과 기록을 현재 자유 관측으로 바꾸지 않는다.
+   거부되면 평행 후보 출력을 쓴다. 표본 자세 사이 연속 영역과 숨은 물체의 미래 접근은 여전히 미입증이다.
+ 
++GUARD 곡선 후보(`guard_curve_trial`, 기본 OFF·통과 선택기 필요)
++- GUARD에서 평행 후보가 알려진 기하 실패(`reference_not_straight`)로 정지했을 때만 기존 G1 출력을 별도 저속 후보로
++  검사한다. 평행 후보가 진행 가능하면 그대로 쓴다. 기존 G1이 정상 양수일 때만이며 전방 간격 정지·입력 거절·STOP은 따른다.
++- 목표는 min(G1, 0.35 m/s). 측정 속도가 더 크면 그 속도로 예측한다. 해제되지 않은 쪽마다 차체 모서리의 경로 횡위치가
++  GUARD 진입 때보다 1 cm 넘게 그 쪽으로 가는 예측은 거절한다(누적 접근 포함). 그 뒤 RELEASED와 같은 작은 이동/관측된 이동
++  영역 검사를 받는다. 상태는 GUARD로 남고 통과 증거·vanish 기록은 바꾸지 않는다. 그 방향 영역을 검사했다는 뜻이지 옆 물체나
++  숨은 물체의 위험을 지웠다는 뜻이 아니다.
++
+ 고장: 시각 역행·세대 변경·장면 나이 0.3 s 이상·기존 G1 입력 정지면 이번 판단은 HOLD(양수 금지)이다. 위협을 본 적이 있으면
+ 양쪽을 `unknown`으로 표시하고 새 통과 증거를 다시 요구한다. 해제 뒤 같은 쪽 위협이 다시 보이면 GUARD로 돌아간다.
+ 유한 음수 속도(제동 중 역회전)는 정지를 유지한다. SOLO에서 기존 G1도 이미 정지를 냈다면 그 출력(조향 포함)을 그대로 쓴다.
+@@ -48,6 +56,9 @@
+ from arena_autonomy.parallel_lane_trial import lateral_excursion
+ 
+ NORMAL_BASELINE = ('local_follow', 'follow_gap_hold', 'follow_release_wait', 'local_follow_corridor_candidate')
++# GUARD 곡선 후보를 검사하는 알려진 평행 후보 기하 실패와 양수 기존 G1 출력 이유(그 밖의 정지·입력 거절은 그대로 따른다).
++GUARD_GEOMETRY_REASONS = ('parallel_hold_reference_not_straight',)
++GUARD_BASELINE_REASONS = ('local_follow', 'local_follow_corridor_candidate')
+ SIDES = (('left', 1.), ('right', -1.))
+ 
+ 
+@@ -61,6 +72,7 @@
+     band_step_m: float = .02
+     max_scene_age_s: float = .3       # 기존 평행 후보·M3와 같은 장면 나이 상한
+     masked_tail_allowance_m: float = .01  # 현재 차체 둘레의 작은 가림 이동. 자유 관측으로 표시하지 않음
++    guard_speed_cap_mps: float = .35      # GUARD 곡선 후보 상한. 기존 평행 후보와 같은 시험 상한(새 근거값 아님)
+ 
+     def __post_init__(self):
+         if type(self.release_fresh) is not int or self.release_fresh < 2:
+@@ -183,6 +195,29 @@
+     return result
+ 
+ 
++def region_blocked(region, sel):
++    """큰 이동 영역의 기존 거절 규칙. 일반 미관측, 1 cm 초과 가림 꼬리 또는 전면 가림이면 거절 이유를 돌려준다."""
++    if region['unobserved']:
++        return 'large_motion_region_unobserved'
++    blocked = None
++    for name, key in (('left', 'masked_left'), ('right', 'masked_right')):
++        if region[key] and (region.get('masked_front_samples', 1) > 0 or
++                            region.get('masked_tail_extent_m', math.inf) > sel.masked_tail_allowance_m):
++            blocked = f'large_motion_masked_toward_{name}'
++    return blocked
++
++
++def side_extent(frame, poses, sign, cfg):
++    """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
++    p = np.asarray(poses, dtype=float).reshape(-1, 3)
++    corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
++    c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
++    points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
++                       p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
++    _, lateral = frame.project(points)
++    return float(np.max(sign*lateral))
++
++
+ class PassReleaseSelector:
+     def __init__(self, follow_config, config=None):
+         self.follow_config = follow_config
+@@ -194,6 +229,7 @@
+         """명시 세션 재시작 전용. 센서 중단(reset 이벤트)에는 invalidate를 쓴다."""
+         self.sides = {name: self._side() for name, _ in SIDES}
+         self.epoch = self.last_source = self.last_ref = None
++        self.guard_anchor, self.last_choice = {}, None
+ 
+     @staticmethod
+     def _side():
+@@ -205,6 +241,7 @@
+             for side in self.sides.values():
+                 side.update(seen=True, present=False, clear=0, passed=False, vanish='unknown', last_present=None)
+         self.epoch = self.last_source = self.last_ref = None
++        self.guard_anchor, self.last_choice = {}, None
+         return reason
+ 
+     @property
+@@ -221,6 +258,72 @@
+                           'reason': 'pass_release_'+reason, 'behavior':'HOLD'}
+ 
+     def select(self, scene, baseline, parallel, speed, previous, dt):
++        out = self._select(scene, baseline, parallel, speed, previous, dt)
++        self.last_choice = out[2].get('selector_choice')
++        return out
++
++    def _guard_curve(self, scene, view, baseline, parallel, speed, previous, dt, age, detail):
++        """GUARD 곡선 후보(선택형). 평행 후보가 알려진 직선 적합 실패로 멈췄을 때만 기존 G1 출력을 저속으로 검사한다.
++
++        G1 경로·점유·팽창·조향 변화율·hysteresis는 기존 출력 그대로이며 속도만 min(G1, 0.35 m/s)로 낮춘다. 측정 속도가 더 크면
++        감속 완료를 가정하지 않고 큰 쪽으로 예측한다. 위협을 본(해제되지 않은) 쪽마다 현재/직전 조향 원호의 차체 모서리
++        경로 횡위치가 GUARD 진입 때보다 1 cm 넘게 그 쪽으로 가면 거절한다(누적 접근 포함). 그다음 종전과 같은 1 cm 작은 이동
++        또는 관측된 이동 영역 검사를 받는다. 통과 증거·vanish·GUARD 상태는 바꾸지 않으며 숨은 물체 위험을 지우지 않는다.
++        거절하거나 조건 밖이면 None/평행 후보(정지)를 돌려준다.
++        """
++        b_speed, b_steer, b_detail = baseline
++        p_speed, p_steer, p_detail = parallel
++        trigger = p_detail.get('reason')
++        continuing = trigger == 'parallel_hold_release_wait' and self.last_choice == 'guard_baseline'
++        if p_speed > 0 or not (trigger in GUARD_GEOMETRY_REASONS or continuing):
++            return None
++        if b_detail.get('reason') not in GUARD_BASELINE_REASONS or not b_speed > 0 or speed < 0:
++            return None
++        target = min(b_speed, self.config.guard_speed_cap_mps)
++        v = max(speed, target)
++        info = {'trigger': trigger, 'path': 'baseline_g1', 'baseline_reason': b_detail.get('reason'),
++                'baseline_speed_mps': b_speed, 'target_speed_mps': target, 'prediction_speed_mps': v,
++                'steering_rad': b_steer, 'previous_steering_rad': previous, 'accepted': False}
++
++        def reject(reason):
++            return p_speed, p_steer, {**p_detail, **detail, 'selector_choice': 'parallel',
++                                      'selector_reason': 'guard_curve_rejected_'+reason,
++                                      'selector_guard_candidate': info}
++        if view is None:
++            return reject('no_baseline_view')
++        distance = mx.envelope_distance(v, age, dt, mx.ExecutionConfig())
++        poses = np.vstack([np.vstack((command_arc(a, max(distance, .01), self.lat),
++                                      extrema_arc(a, max(distance, .01), self.lat)))
++                           for a in sorted({float(b_steer), float(previous)})])
++        info.update(envelope_distance_m=distance, guarded_sides={})
++        for name, sign in SIDES:
++            side = self.sides[name]
++            if not side['seen'] or (side['passed'] and not side['present']):
++                continue
++            current = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
++            predicted = side_extent(view['frame'], poses, sign, self.lat)
++            anchor = self.guard_anchor.get(name, current)
++            info['guarded_sides'][name] = {'anchor_m': anchor, 'current_m': current, 'predicted_m': predicted,
++                                           'increase_over_anchor_m': predicted-anchor}
++            if predicted > anchor+self.config.small_excursion_m:
++                return reject(f'toward_{name}')
++        excursion = lateral_excursion(v, age, b_steer, previous, dt, self.follow_config)
++        info['excursion_m'] = excursion
++        region = None
++        if excursion > self.config.small_excursion_m:
++            region = motion_region(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
++            info['region'] = region
++            blocked = region_blocked(region, self.config)
++            if blocked is not None:
++                return reject(blocked)
++        small_tail = bool(region is not None and (region['masked_left'] or region['masked_right']))
++        info['accepted'] = True
++        reason = ('guard_curve_small_motion' if region is None else
++                  'guard_curve_observed_motion_small_masked_tail' if small_tail else 'guard_curve_observed_motion')
++        return target, b_steer, {**b_detail, **detail, 'selector_choice': 'guard_baseline', 'selector_reason': reason,
++                                 'selector_masked_tail_risk_accepted': small_tail, 'selector_guard_candidate': info}
++
++    def _select(self, scene, baseline, parallel, speed, previous, dt):
+         detail = {'selector_mode_before': self.mode, 'pass_release_trial':True,
+                   'selector_unknown_filled':False, 'selector_hidden_rear_risk_unresolved':True}
+         # 두 후보를 모두 검사한다. 미선택 후보의 잘못된 출력도 정상 후보로 숨기지 않는다.
+@@ -286,6 +389,14 @@
+                     side['passed'] = False
+             evidence['view'] = 'no_baseline_path'
+         mode = self.mode
++        if mode != 'GUARD':
++            self.guard_anchor = {}
++        elif c.guard_curve_trial and view is not None:
++            # GUARD 진입 때(첫 관측 경로) 해제되지 않은 쪽의 차체 모서리 경로 횡위치. 누적 접근의 기준이다.
++            for name, sign in SIDES:
++                side = self.sides[name]
++                if name not in self.guard_anchor and side['seen'] and not (side['passed'] and not side['present']):
++                    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+         detail.update(selector_mode=mode, selector_evidence=evidence,
+                       selector_sides={k: {kk: v[kk] for kk in ('seen', 'present', 'clear', 'passed', 'vanish')}
+                                       for k, v in self.sides.items()})
+@@ -309,6 +420,10 @@
+                                       'selector_reason': 'no_side_threat_seen'}
+         if mode == 'GUARD':
+             p_speed, p_steer, p_detail = parallel
++            if c.guard_curve_trial:
++                guarded = self._guard_curve(scene, view, baseline, parallel, speed, previous, dt, age, detail)
++                if guarded is not None:
++                    return guarded
+             return p_speed, p_steer, {**p_detail, **detail, 'selector_choice': 'parallel',
+                                       'selector_reason': 'side_threat_not_passed'}
+         if b_speed <= 0:
+@@ -324,14 +439,7 @@
+                                       'selector_reason': 'released_small_motion'}
+         region = motion_region(scene, speed, b_speed, b_steer, previous, dt, self.follow_config, self.lat)
+         detail['selector_region'] = region
+-        blocked = None
+-        if region['unobserved']:
+-            blocked = 'large_motion_region_unobserved'
+-        else:
+-            for name, key in (('left', 'masked_left'), ('right', 'masked_right')):
+-                if region[key] and (region.get('masked_front_samples',1)>0 or
+-                        region.get('masked_tail_extent_m',math.inf)>self.config.masked_tail_allowance_m):
+-                    blocked = f'large_motion_masked_toward_{name}'
++        blocked = region_blocked(region, self.config)
+         if blocked is None:
+             small_tail=bool(region['masked_left'] or region['masked_right'])
+             return b_speed, b_steer, {**b_detail, **detail, 'selector_choice': 'baseline',
+--- a/src/arena_autonomy/arena_autonomy/local_follow.py
++++ b/src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -23,6 +23,7 @@
+     partial_observation_policy: str = 'strict'
+     parallel_hold_trial: bool = False
+     pass_release_trial: bool = False
++    guard_curve_trial: bool = False
+     corridor_fallback_enabled: bool = False
+     recent_observation_enabled: bool = False
+     boundary_evidence_mode: str = 'connected'
+@@ -51,6 +52,8 @@
+     def __post_init__(self):
+         if type(self.pass_release_trial) is not bool or (self.pass_release_trial and not self.parallel_hold_trial):
+             raise ValueError('pass release trial requires explicit parallel hold trial')
++        if type(self.guard_curve_trial) is not bool or (self.guard_curve_trial and not self.pass_release_trial):
++            raise ValueError('guard curve trial requires explicit pass release trial')
+         if (type(self.parallel_hold_trial) is not bool or (self.parallel_hold_trial and
+                 (self.partial_observation_policy != 'bounded_local_v4' or
+                  self.occupancy_timing_mode != 'per_ray_candidate' or
+@@ -65,7 +68,7 @@
+         if self.occupancy_timing_mode not in ('oldest', 'per_ray_candidate'):
+             raise ValueError('invalid occupancy timing mode')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial')):
++               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -54,6 +54,9 @@
+         pass_release = bool(self.declare_parameter('g1_pass_release_trial', False).value)
+         if pass_release and not parallel_hold:
+             raise ValueError('pass release requires explicit parallel hold trial')
++        guard_curve = bool(self.declare_parameter('g1_guard_curve_trial', False).value)
++        if guard_curve and not pass_release:
++            raise ValueError('guard curve trial requires explicit pass release trial')
+         if parallel_hold and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled
+                 or not self.get_parameter('use_sim_time').value or not trace_path):
+             raise ValueError('parallel hold requires recorded G1 simulation without R0+ or M3')
+@@ -81,6 +84,7 @@
+             partial_observation_policy=partial_observation,
+             parallel_hold_trial=parallel_hold,
+             pass_release_trial=pass_release,
++            guard_curve_trial=guard_curve,
+             corridor_fallback_enabled=corridor_fallback,
+             recent_observation_enabled=recent_observation,
+             boundary_evidence_mode=boundary_mode,
+--- a/src/arena_bringup/launch/demo.launch.py
++++ b/src/arena_bringup/launch/demo.launch.py
+@@ -54,6 +54,8 @@
+         SetParameter(name='g1_parallel_hold_trial', value=LaunchConfiguration('g1_parallel_hold_trial')),
+         DeclareLaunchArgument('g1_pass_release_trial', default_value='false', choices=['true', 'false']),
+         SetParameter(name='g1_pass_release_trial', value=LaunchConfiguration('g1_pass_release_trial')),
++        DeclareLaunchArgument('g1_guard_curve_trial', default_value='false', choices=['true', 'false']),
++        SetParameter(name='g1_guard_curve_trial', value=LaunchConfiguration('g1_guard_curve_trial')),
+         DeclareLaunchArgument('partial_observation_policy', default_value='strict',
+                               choices=['strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4']),
+         SetParameter(name='partial_observation_policy', value=LaunchConfiguration('partial_observation_policy')),
+--- a/src/arena_bringup/launch/local_pursuit.launch.py
++++ b/src/arena_bringup/launch/local_pursuit.launch.py
+@@ -17,6 +17,7 @@
+     return LaunchDescription([
+         DeclareLaunchArgument('g1_parallel_hold_trial', default_value='false', choices=['true', 'false']),
+         DeclareLaunchArgument('g1_pass_release_trial', default_value='false', choices=['true', 'false']),
++        DeclareLaunchArgument('g1_guard_curve_trial', default_value='false', choices=['true', 'false']),
+         DeclareLaunchArgument('partial_observation_policy', default_value='strict',
+                               choices=['strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4']),
+         DeclareLaunchArgument('evaluation_course_markers', default_value='visible', choices=['visible','blank_30','blank_all']),
+@@ -24,6 +25,7 @@
+         IncludeLaunchDescription(PythonLaunchDescriptionSource(str(demo)), launch_arguments={
+             'g1_parallel_hold_trial': LaunchConfiguration('g1_parallel_hold_trial'),
+             'g1_pass_release_trial': LaunchConfiguration('g1_pass_release_trial'),
++            'g1_guard_curve_trial': LaunchConfiguration('g1_guard_curve_trial'),
+             'partial_observation_policy': LaunchConfiguration('partial_observation_policy'),
+             'evaluation_course_markers': LaunchConfiguration('evaluation_course_markers'),
+             **{key: LaunchConfiguration(key) for key in defaults},
+--- a/scripts/g1_partial_trial.py
++++ b/scripts/g1_partial_trial.py
+@@ -7,6 +7,12 @@
+     if enabled and not parallel:
+         raise ValueError('pass release requires explicit parallel hold trial')
+     return ['g1_pass_release_trial:=true'] if enabled else []
++
++
++def guard_curve_arguments(enabled, pass_release):
++    if enabled and not pass_release:
++        raise ValueError('guard curve trial requires explicit pass release trial')
++    return ['g1_guard_curve_trial:=true'] if enabled else []
+ 
+ 
+ def parallel_trial_arguments(enabled, policy, mode, recorded, boundary, occupancy):
+@@ -53,22 +59,29 @@
+         result['pass_release_trial'] = {k:autonomy.get(k) for k in (
+             'pass_release_trial', 'selector_mode', 'selector_mode_before', 'selector_choice', 'selector_reason',
+             'selector_sides', 'selector_evidence', 'selector_region', 'selector_excursion_m',
+-            'selector_unknown_filled', 'selector_hidden_rear_risk_unresolved')}
++            'selector_unknown_filled', 'selector_hidden_rear_risk_unresolved', 'selector_guard_candidate')}
+     return result
+ 
+ 
+-def pass_release_evidence(trace):
++def pass_release_evidence(trace, guard_curve=False):
+     rows=[r['pass_release_trial'] for r in trace if isinstance(r.get('pass_release_trial'),dict)]
+     active=[r for r in rows if r.get('pass_release_trial') is True]
++    choices=('baseline','parallel','hold_fault')+(('guard_baseline',) if guard_curve else ())
+     bad=[r for r in active if r.get('selector_unknown_filled') is not False
+          or (r.get('selector_mode') or r.get('selector_mode_before')) not in ('SOLO','GUARD','RELEASED')
+-         or r.get('selector_choice') not in ('baseline','parallel','hold_fault')]
+-    return {'diagnostic_rows':len(active), 'invalid_rows':len(bad),
++         or r.get('selector_choice') not in choices
++         or (r.get('selector_choice')=='guard_baseline' and (r.get('selector_mode')!='GUARD'
++             or not isinstance(r.get('selector_guard_candidate'),dict)
++             or r['selector_guard_candidate'].get('accepted') is not True))]
++    result={'diagnostic_rows':len(active), 'invalid_rows':len(bad),
+             'modes':sorted({r.get('selector_mode') or r.get('selector_mode_before') or 'missing' for r in active}),
+             'baseline_rows':sum(r.get('selector_choice')=='baseline' for r in active),
+             'parallel_rows':sum(r.get('selector_choice')=='parallel' for r in active),
+             'passed':bool(active) and not bad,
+             'scope':'explicit selector diagnostics, not closed-loop success or unseen obstacle absence'}
++    if guard_curve:
++        result['guard_baseline_rows']=sum(r.get('selector_choice')=='guard_baseline' for r in active)
++    return result
+ 
+ 
+ def parallel_trial_evidence(trace):

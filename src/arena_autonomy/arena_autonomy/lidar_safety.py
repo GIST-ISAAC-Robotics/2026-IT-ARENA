@@ -34,6 +34,17 @@ class LidarSafety(Node):
         if not 0 <= self.rear_blind_half_angle <= 80:
             raise ValueError('rear_blind_half_angle_deg must be within 0..80')
         self.recent_observation_enabled = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
+        self.partial_policy = None
+        policy = str(self.declare_parameter('partial_observation_policy', 'strict').value)
+        if policy not in ('strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4'):
+            raise ValueError('unknown partial observation policy')
+        if policy != 'strict':
+            if self.recent_observation_enabled or self.motion.mode != 'both' or not self.motion.verified:
+                raise ValueError('bounded observation policy requires verified both motion and no recent candidate')
+            from arena_autonomy.partial_observation import PartialObservationPolicy
+            self.partial_policy = PartialObservationPolicy(allow_narrow_forward=policy in ('bounded_local_v2','bounded_local_v3','bounded_local_v4'),
+                                                          surface_translation_enabled=policy in ('bounded_local_v3','bounded_local_v4'),
+                                                          lateral_metric_enabled=policy=='bounded_local_v4')
         self.observation_cache = None
         self.observation_epoch = 0
         self.previous_safe_steering = 0.
@@ -70,6 +81,8 @@ class LidarSafety(Node):
         if self.last_clock is not None and now < self.last_clock:
             self.scan = self.command = None
             self.motion.history.reset()
+            if getattr(self, 'partial_policy', None) is not None:
+                self.partial_policy.reset()
             if getattr(self,'observation_cache',None) is not None:
                 self.observation_cache.reset()
                 self.observation_epoch += 1
@@ -83,6 +96,7 @@ class LidarSafety(Node):
         reason, clearance = "input_stop", 0.
         observation = None
         recent = None
+        partial = None
         try:
             if self.scan is None or self.command is None:
                 raise MotionUnavailable("missing_input")
@@ -100,11 +114,31 @@ class LidarSafety(Node):
                 self.scan.range_min, self.scan.range_max,
                 self.motion.history.config.lidar_yaw_rad)
             candidate = getattr(self,'recent_observation_enabled',False)
-            if observation.reason != 'ok' and not (candidate and observation.reason=='front_unobserved'):
+            partial_policy = getattr(self, 'partial_policy', None)
+            if observation.reason != 'ok' and not ((candidate or partial_policy is not None) and observation.reason=='front_unobserved'):
                 raise MotionUnavailable(observation.reason)
             points, count = self.motion.project(self.scan)
             if count < 30:
                 raise MotionUnavailable("scan_invalid")
+            if partial_policy is not None:
+                stamps, values = self.motion.history.wheels.available(now)
+                if not len(stamps) or now-stamps[-1] > self.motion.history.config.max_extrapolation_s+1e-9:
+                    raise MotionUnavailable('motion_stale')
+                measured = float(values[-1])
+                if not math.isfinite(measured):
+                    raise MotionUnavailable('invalid_or_reverse_feedback')
+                # 역회전 피드백은 출력을 막되, 새 스캔의 관측 기억까지 끊지 않는다.
+                # 제동 때 모터축 값이 왕복하면 실제 센서는 살아 있는데 기억만 만료될 수 있다.
+                # 운동 보정에는 원래 부호를 유지하고, 외곽 크기에만 속력 상계를 사용한다.
+                partial = partial_policy.evaluate(self.scan, points, self.motion.history, now, max(speed, abs(measured)),
+                    output.drive.steering_angle, getattr(self,'previous_safe_steering',0.),
+                    self.wheelbase,self.length,self.width)
+                if measured < 0:
+                    raise MotionUnavailable('invalid_or_reverse_feedback')
+                if not partial['allowed']:
+                    raise MotionUnavailable(partial['reason'])
+                if partial['speed_cap_mps'] is not None:
+                    speed = min(speed, partial['speed_cap_mps'])
             if candidate:
                 from arena_autonomy.observation_support import needs_recent_support, sweep_support, side_missing_candidate
                 from arena_autonomy.scene_motion import motion_scene
@@ -137,13 +171,14 @@ class LidarSafety(Node):
             reason = "clear" if cap >= speed else "lidar_braking"
         except MotionUnavailable as error:
             reason = str(error)
-        if getattr(self,'recent_observation_enabled',False):
+        if getattr(self,'recent_observation_enabled',False) or getattr(self,'partial_policy',None) is not None:
             self.previous_safe_steering = output.drive.steering_angle
         self.publisher.publish(output)
         self.status.publish(String(data=json.dumps({"reason": reason, "safe_speed_mps": output.drive.speed,
                                                     "swept_clearance_m": clearance, "sensor": "C1",
                                                     "no_return_policy": "unknown",
                                                     "front_observation": vars(observation) if observation else None,
+                                                    **({'partial_observation':partial} if getattr(self,'partial_policy',None) is not None else {}),
                                                     **({'recent_observation':recent} if getattr(self,'recent_observation_enabled',False) else {})})))
 
 

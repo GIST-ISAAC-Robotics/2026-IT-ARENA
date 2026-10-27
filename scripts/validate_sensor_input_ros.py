@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--partial-observation-policy', choices=('strict','bounded_side_v1','bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4'),default='strict')
     args = parser.parse_args()
     output = args.output.resolve()
     if not output.is_relative_to(ROOT / 'artifacts'):
@@ -47,8 +48,10 @@ def main():
                              lambda m: safe.append((time.monotonic(), m.drive.speed)), 100)
     sources = [Path(__file__).relative_to(ROOT).as_posix()] + [
         'src/arena_autonomy/arena_autonomy/' + name + '.py'
-        for name in ('lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'local_path')]
+        for name in ('lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'local_path',
+                     'partial_observation', 'scene_motion', 'local_scene')]
     report = dict(passed=False, scope='isolated ROS synthetic inputs and independent safety output; no vehicle or MCU',
+                  partial_observation_policy=args.partial_observation_policy,
                   cases=cases, source_sha256={s: hashlib.sha256((ROOT / s).read_bytes()).hexdigest() for s in sources})
     with zipfile.ZipFile(output / 'source_snapshot.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
         for name in sources:
@@ -58,6 +61,7 @@ def main():
                '--ros-args', '-p', 'lidar_compensation:=both', '-p', 'motion_scan_timing_verified:=true',
                '-p', 'motion_imu_topic:=/imu/data', '-p', 'motion_feedback_mode:=drive_motor_shaft',
                '-p', 'motion_gear_ratio:=15.0', '-p', 'motion_wheel_radius_m:=0.0325']
+    command += ['-p', 'partial_observation_policy:='+args.partial_observation_policy]
     child = subprocess.Popen(command, cwd=ROOT, stdout=log, stderr=log, start_new_session=True)
     last_scan = -math.inf
 
@@ -66,7 +70,7 @@ def main():
         return message
 
     def exercise(name, duration=1., value=2., indices=(), gyro='healthy', steering=0., scan_delay=0.,
-                 expected_speed=True, expected_reasons=('clear',)):
+                 expected_speed=True, expected_reasons=('clear',), expected_cap=None, drive_speed=1.):
         nonlocal last_scan
         began = time.monotonic()
         begin_rows, begin_safe = len(rows), len(safe)
@@ -84,7 +88,7 @@ def main():
                 msg.angular_velocity.z = 100. if gyro == 'range' else 0.
                 publishers['imu'].publish(msg)
             drive = stamp(AckermannDriveStamped(), now)
-            drive.drive.speed, drive.drive.steering_angle = 1., steering
+            drive.drive.speed, drive.drive.steering_angle = drive_speed, steering
             publishers['command'].publish(drive)
             if now - last_scan >= .1:
                 scan = stamp(LaserScan(angle_min=-math.pi, angle_max=math.pi-2*math.pi/500,
@@ -106,8 +110,10 @@ def main():
         reason_counts = {r: sum(x['reason'] == r for x in sample) for r in sorted({x['reason'] for x in sample})}
         passed = (len(sample) >= 5 and len(received_safe) >= 5 and
                   all(r['reason'] in expected_reasons for r in sample) and
-                  all((r['safe_speed_mps'] > .5 if expected_speed else r['safe_speed_mps'] == 0.) for r in sample) and
-                  all((v > .5 if expected_speed else v == 0.) for v in received_safe))
+                  all((abs(r['safe_speed_mps']-expected_cap)<1e-6 if expected_cap is not None else
+                      r['safe_speed_mps'] > .5 if expected_speed else r['safe_speed_mps'] == 0.) for r in sample) and
+                  all((abs(v-expected_cap)<1e-6 if expected_cap is not None else
+                      v > .5 if expected_speed else v == 0.) for v in received_safe))
         stopped = next((r for r in rows[begin_rows:] if not expected_speed and
                         r['received_wall_s'] >= (first_fault or began) and r['safe_speed_mps'] == 0.), None)
         cases.append(dict(name=name, passed=passed, expected_positive=expected_speed,
@@ -125,15 +131,41 @@ def main():
         if publishers['scan'].get_subscription_count() != 1:
             raise RuntimeError('expected exactly one isolated safety subscriber')
         exercise('healthy_initial', duration=1.5)
+        partial = args.partial_observation_policy != 'strict'
+        forward = args.partial_observation_policy in ('bounded_local_v2','bounded_local_v3','bounded_local_v4')
+        if partial:
+            exercise('small_side_missing',value=math.inf,indices=range(373,377),expected_cap=.5)
+            exercise('explicit_zero_during_partial',value=math.inf,indices=range(373,377),
+                     drive_speed=0.,expected_speed=False)
+            exercise('side_gap_recovery')
+            exercise('known_near_side_return',value=.08,indices=[375],expected_speed=False,
+                     expected_reasons=('lidar_braking',))
+            exercise('known_near_return_disappears',value=math.inf,indices=[375],expected_speed=False,
+                     expected_reasons=('known_obstacle_latched',))
+            exercise('known_return_recovery')
         for steering in (0., .25, -.25):
             exercise(f'positive_inf_single_steer_{steering}', value=math.inf, indices=[250], steering=steering,
-                     expected_speed=False, expected_reasons=('front_unobserved',))
+                     expected_cap=.2 if forward else None, expected_speed=forward,
+                     expected_reasons=('clear',) if forward else ('central_missing',) if partial else ('front_unobserved',))
             exercise(f'finite_recovery_steer_{steering}', steering=steering)
         for name, value, indices in [('positive_inf_sector', math.inf, range(223, 278)),
                                      ('all_positive_inf', math.inf, range(500)),
                                      ('nan_front', math.nan, [250]), ('too_close', .01, [250]),
                                      ('above_range', 13., [250])]:
-            exercise(name, value=value, indices=indices, expected_speed=False, expected_reasons=('front_unobserved',))
+            # 서로 다른 고장의 결과에 앞선 큰 공백의 기억 만료를 섞지 않는다.
+            # 큰 공백→좁은 공백만으로 복구되지 않는 반례는 정책 회귀에 별도로 둔다.
+            if forward:
+                exercise('healthy_before_'+name)
+            narrow_forward=forward and name in ('nan_front','above_range')
+            exercise(name, value=value, indices=indices, expected_speed=narrow_forward,
+                     expected_cap=.2 if narrow_forward else None,
+                     expected_reasons=('clear',) if narrow_forward else
+                     ('central_missing','wide_or_many_missing','scan_invalid','invalid_near_return') if partial else ('front_unobserved',))
+        if forward:
+            exercise('forward_three_ray_gap',value=math.inf,indices=range(249,252),expected_speed=False,
+                     expected_reasons=('forward_gap_too_wide',))
+            exercise('explicit_zero_during_forward_partial',value=math.inf,indices=[250],
+                     drive_speed=0.,expected_speed=False)
         exercise('finite_recovery')
         exercise('scan_delay_during_run', scan_delay=.3, expected_speed=False, expected_reasons=('stale_input',))
         exercise('scan_delay_recovery')

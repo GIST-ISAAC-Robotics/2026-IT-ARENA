@@ -1,0 +1,169 @@
+{
+  "passed": false,
+  "harness_valid": true,
+  "run_valid": true,
+  "behavior_gates_passed": false,
+  "gates": {
+    "progress": true,
+    "no_permanent_stall": true,
+    "final_gap": false,
+    "green_observed": true,
+    "data_coverage": true,
+    "sampled_gap": true,
+    "swept_gap": true,
+    "no_sampled_overlap": true,
+    "no_actor_contact": true,
+    "inside_road": true,
+    "ego_stays_behind": true
+  },
+  "stop": {
+    "stable": true,
+    "pose_evidence": {
+      "complete": true,
+      "passed": true,
+      "reason": "covered",
+      "required_first_s": 16.247,
+      "required_last_s": 16.747,
+      "covered_first_s": 16.247,
+      "covered_last_s": 16.747,
+      "segment_count": 250,
+      "maximum_gap_s": 0.0030000000000001137,
+      "maximum_allowed_gap_s": 0.05,
+      "maximum_speed_mps": 0.009360747624524171
+    },
+    "wait_sim_s": 0.7479999999999993,
+    "displacement_m": 0.02013716474865569,
+    "wall_collision_samples": 0
+  },
+  "actuation_stop_passed": true,
+  "shutdown_clean": true,
+  "remaining_test_pids": [],
+  "source_unchanged": true,
+  "parallel_hold_trial": {
+    "launch_arguments": [
+      "g1_parallel_hold_trial:=true"
+    ],
+    "default_changed": false,
+    "evidence": {
+      "diagnostic_rows": 116,
+      "selected_rows": 93,
+      "invalid_rows": 0,
+      "passed": true,
+      "scope": "explicit straight trial activation, not side clearance or closed-loop success"
+    },
+    "original_traffic_passed": false
+  },
+  "partial_observation_trial": {
+    "requested_policy": "bounded_local_v4",
+    "launch_arguments": [
+      "partial_observation_policy:=bounded_local_v4"
+    ],
+    "default_changed": false,
+    "scope": "explicit low-speed G1 trial; original gap, HOLD, STOP and verdict retained",
+    "evidence": {
+      "requested_policy": "bounded_local_v4",
+      "controller_policies": [
+        "bounded_local_v4"
+      ],
+      "controller_rows": 116,
+      "safety_rows": 152,
+      "partial_diagnostic_rows": 0,
+      "invalid_unknown_fill_rows": 0,
+      "passed": true,
+      "scope": "recorded_policy_and_independent_safety_diagnostics_not_closed_loop_success",
+      "original_traffic_passed": false
+    }
+  },
+  "primary_lead": {
+    "progress": {
+      "at_window_end_m": 3.1596799999999803,
+      "projection_jumps": 0,
+      "ego_stays_behind_actor": true,
+      "sampled_gap_at_window_end_m": 2.4305443545475303
+    },
+    "gap": {
+      "ego_samples": 7042,
+      "min_sampled_gap_m": 1.399838691725279,
+      "sampled_overlap_samples": 0,
+      "sampled_missing_actor_samples": 0,
+      "sampled_finite_complete": true,
+      "min_swept_lower_bound_m": 1.399837691725279,
+      "swept_nonpositive_intervals": 0,
+      "swept_missing_actor_intervals": 0,
+      "max_ego_sample_interval_s": 0.0030000000000001137,
+      "actor_contact_messages_with_ego": 0,
+      "first_contact_sim_s": null,
+      "scope": "sampled gap + conservative swept lower bound between pose samples; event-only contact evidence is separate"
+    },
+    "case_metrics": {
+      "first_motion_sim_s": 4.241,
+      "longest_stationary_while_lead_moves_s": 2.122
+    }
+  },
+  "side_actor": {
+    "gates": {
+      "registered_gap": true,
+      "complete_gap_samples": true,
+      "complete_swept_intervals": true,
+      "no_ego_contact": true,
+      "sampled_gap": false,
+      "swept_gap": false
+    },
+    "min_sampled_gap_m": 0.07019680535191816,
+    "min_swept_lower_bound_m": 0.07018737504552523,
+    "encounter": {
+      "valid": true,
+      "coverage": {
+        "ego": {
+          "valid": true,
+          "samples": 5965,
+          "first_s": 3.601,
+          "last_s": 15.599,
+          "required_first_s": 3.601,
+          "required_last_s": 15.600999999999999,
+          "max_interval_s": 0.0030000000000001137,
+          "maximum_allowed_interval_s": 0.05
+        },
+        "actor": {
+          "valid": true,
+          "samples": 1200,
+          "first_s": 3.61,
+          "last_s": 15.6,
+          "required_first_s": 3.601,
+          "required_last_s": 15.600999999999999,
+          "max_interval_s": 0.010000000000001563,
+          "maximum_allowed_interval_s": 0.05
+        }
+      },
+      "samples": 5965,
+      "missing_actor_matches": 0,
+      "minimum_gap_m": 0.07019680535191816,
+      "registered_gap_m": 0.15,
+      "first_below_gap_s": 4.221,
+      "first_below_gap_motion": {
+        "interval_s": 0.0019999999999997797,
+        "ego_translation_m": 0.0002541120285116294,
+        "actor_translation_m": 0.009900178198399799,
+        "ego_road_lateral_change_m": -4.1670600126053614e-07
+      },
+      "behind_observed_s": 3.601,
+      "ahead_after_behind_s": 5.981,
+      "behind_to_ahead_observed": true,
+      "alongside_samples": 439,
+      "initial_ego_road_lateral_m": -0.08999374012725812,
+      "maximum_ego_road_lateral_change_m": 0.005263135024525065,
+      "maximum_absolute_ego_road_lateral_m": 0.09525687515178319,
+      "scope": "sampled encounter diagnosis only; fixed 20x15 cm actor; not continuous collision or blame proof"
+    }
+  },
+  "decision_reasons": {
+    "parallel_hold_baseline_unavailable": 22,
+    "parallel_hold_release_wait": 28,
+    "parallel_hold_follow": 516,
+    "parallel_hold_unchanged_gap_hold": 82
+  },
+  "selected_decisions": 516,
+  "selected_maximum_predicted_body_lateral_m": 0.0006185287450937797,
+  "report_sha256": "81c2de6f3dcb22368cce4a117e0547beedb982327134bb80e8001a2a6b333a74",
+  "scope": "Single left fixed actor straight trial; original failed gates preserved, not full-course/real-vehicle proof"
+}

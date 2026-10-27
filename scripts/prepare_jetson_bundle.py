@@ -48,7 +48,8 @@ FOLLOW_PROFILE_TOOLS = (
     *(f'src/arena_autonomy/arena_autonomy/{name}.py' for name in
       ('follow_trace', 'local_follow', 'r0_plus', 'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'local_scene', 'scene_motion',
          'lidar_motion', 'lidar_observation', 'local_path', 'occupancy_timing',
-         'observation_support', 'observation_lateral', 'linear_observation')),
+         'observation_support', 'observation_lateral', 'linear_observation',
+         'parallel_lane_trial', 'partial_observation', 'partial_surface_alignment', 'pass_release_trial', 'rear_fringe_trial')),
     'tests/test_follow_profile.py', 'tests/test_hardware_capture_audit.py',
     'docs/hardware/HARDWARE_CAPTURE_AUDIT_2026_10_13.md',
     'docs/simulation/G1_DECISION_PROFILE_2026_10_13.md',

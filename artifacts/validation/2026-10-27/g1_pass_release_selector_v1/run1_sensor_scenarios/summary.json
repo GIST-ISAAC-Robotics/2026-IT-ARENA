@@ -1,0 +1,247 @@
+{
+  "scope": "synthetic sequential lidar, fixed motion and supplied candidate commands; no closed loop",
+  "sources": {
+    "artifacts/validation/2026-10-27/g1_pass_release_selector_v1/pass_release_selector.py": "9462156978cc21ed1a03cb1910e3110662f1b8523be4ad51eb040c29b9410da4",
+    "artifacts/validation/2026-10-27/g1_pass_release_selector_v1/synthetic_world.py": "ec89bac9e2de2870813bd98f9827d0a4390684ff0ae93070d4c9615bb51085cc",
+    "artifacts/validation/2026-10-27/g1_pass_release_selector_v1/check_sensor_scenarios.py": "23da2c25eaa0f9b29cb9fe4e0592bbe8617484368f3bb69e52628921ce423311"
+  },
+  "cases": {
+    "walls_only": {
+      "expected_final_mode": "SOLO",
+      "final_mode": "SOLO",
+      "modes": {
+        "SOLO": 29
+      },
+      "checks": {
+        "expected_final_mode": true,
+        "guard_seen_when_objects": true,
+        "no_false_release": true,
+        "all_finite_output": true
+      },
+      "pass": true,
+      "cost_ms_max": 3.2779670000024907,
+      "transitions": [
+        {
+          "t": 0.2,
+          "mode": "SOLO",
+          "evaluation_only": {}
+        }
+      ]
+    },
+    "left_forward_pass": {
+      "expected_final_mode": "RELEASED",
+      "final_mode": "RELEASED",
+      "modes": {
+        "GUARD": 16,
+        "RELEASED": 13
+      },
+      "checks": {
+        "expected_final_mode": true,
+        "guard_seen_when_objects": true,
+        "no_false_release": true,
+        "all_finite_output": true
+      },
+      "pass": true,
+      "cost_ms_max": 12.785755999999537,
+      "transitions": [
+        {
+          "t": 0.2,
+          "mode": "GUARD",
+          "evaluation_only": {
+            "passing": {
+              "forward_m": -0.47,
+              "left_m": 0.22,
+              "body_gap_m": 0.278926513619627
+            }
+          }
+        },
+        {
+          "t": 1.8,
+          "mode": "RELEASED",
+          "evaluation_only": {
+            "passing": {
+              "forward_m": 0.5700000000000002,
+              "left_m": 0.22,
+              "body_gap_m": 0.37656340767525476
+            }
+          }
+        }
+      ]
+    },
+    "left_one_pass_one_remains": {
+      "expected_final_mode": "GUARD",
+      "final_mode": "GUARD",
+      "modes": {
+        "GUARD": 29
+      },
+      "checks": {
+        "expected_final_mode": true,
+        "guard_seen_when_objects": true,
+        "no_false_release": true,
+        "all_finite_output": true
+      },
+      "pass": true,
+      "cost_ms_max": 12.959541999990165,
+      "transitions": [
+        {
+          "t": 0.2,
+          "mode": "GUARD",
+          "evaluation_only": {
+            "passing": {
+              "forward_m": -0.47,
+              "left_m": 0.22,
+              "body_gap_m": 0.278926513619627
+            },
+            "retained": {
+              "forward_m": -0.1,
+              "left_m": 0.22,
+              "body_gap_m": 0.07
+            }
+          }
+        }
+      ]
+    },
+    "right_forward_pass": {
+      "expected_final_mode": "RELEASED",
+      "final_mode": "RELEASED",
+      "modes": {
+        "SOLO": 1,
+        "GUARD": 16,
+        "RELEASED": 12
+      },
+      "checks": {
+        "expected_final_mode": true,
+        "guard_seen_when_objects": true,
+        "no_false_release": true,
+        "all_finite_output": true
+      },
+      "pass": true,
+      "cost_ms_max": 12.493714000001432,
+      "transitions": [
+        {
+          "t": 0.2,
+          "mode": "SOLO",
+          "evaluation_only": {
+            "passing": {
+              "forward_m": -0.47,
+              "left_m": -0.22,
+              "body_gap_m": 0.278926513619627
+            }
+          }
+        },
+        {
+          "t": 0.3,
+          "mode": "GUARD",
+          "evaluation_only": {
+            "passing": {
+              "forward_m": -0.40499999999999997,
+              "left_m": -0.22,
+              "body_gap_m": 0.21662179022434466
+            }
+          }
+        },
+        {
+          "t": 1.9,
+          "mode": "RELEASED",
+          "evaluation_only": {
+            "passing": {
+              "forward_m": 0.6349999999999999,
+              "left_m": -0.22,
+              "body_gap_m": 0.44059618700120395
+            }
+          }
+        }
+      ]
+    },
+    "right_one_pass_one_remains": {
+      "expected_final_mode": "GUARD",
+      "final_mode": "GUARD",
+      "modes": {
+        "GUARD": 29
+      },
+      "checks": {
+        "expected_final_mode": true,
+        "guard_seen_when_objects": true,
+        "no_false_release": true,
+        "all_finite_output": true
+      },
+      "pass": true,
+      "cost_ms_max": 13.152098000006163,
+      "transitions": [
+        {
+          "t": 0.2,
+          "mode": "GUARD",
+          "evaluation_only": {
+            "passing": {
+              "forward_m": -0.47,
+              "left_m": -0.22,
+              "body_gap_m": 0.278926513619627
+            },
+            "retained": {
+              "forward_m": -0.1,
+              "left_m": -0.22,
+              "body_gap_m": 0.07
+            }
+          }
+        }
+      ]
+    },
+    "visible_then_behind": {
+      "expected_final_mode": "GUARD",
+      "final_mode": "GUARD",
+      "modes": {
+        "GUARD": 29
+      },
+      "checks": {
+        "expected_final_mode": true,
+        "guard_seen_when_objects": true,
+        "no_false_release": true,
+        "all_finite_output": true
+      },
+      "pass": true,
+      "cost_ms_max": 12.397124000003146,
+      "transitions": [
+        {
+          "t": 0.2,
+          "mode": "GUARD",
+          "evaluation_only": {
+            "falls_back": {
+              "forward_m": 1.3877787807814457e-17,
+              "left_m": 0.22,
+              "body_gap_m": 0.07
+            }
+          }
+        }
+      ]
+    },
+    "alongside_stays": {
+      "expected_final_mode": "GUARD",
+      "final_mode": "GUARD",
+      "modes": {
+        "GUARD": 29
+      },
+      "checks": {
+        "expected_final_mode": true,
+        "guard_seen_when_objects": true,
+        "no_false_release": true,
+        "all_finite_output": true
+      },
+      "pass": true,
+      "cost_ms_max": 17.889471999993134,
+      "transitions": [
+        {
+          "t": 0.2,
+          "mode": "GUARD",
+          "evaluation_only": {
+            "retained": {
+              "forward_m": -0.1,
+              "left_m": 0.22,
+              "body_gap_m": 0.07
+            }
+          }
+        }
+      ]
+    }
+  },
+  "sources_unchanged": true
+}

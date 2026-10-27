@@ -1,0 +1,27 @@
+..............F......................................................... [ 35%]
+........................................................................ [ 71%]
+.........................................................                [100%]
+=================================== FAILURES ===================================
+____ test_cumulative_toward_side_motion_is_blocked_but_recovery_is_possible ____
+
+guard = (<arena_autonomy.pass_release_trial.PassReleaseSelector object at 0x7c829d480620>, {'offset': -0.012, 'region': {'mask...ions': [(0.2, 0.35, 0.02, 0.0, 0.02), (0.2, 0.35, 0.02, 0.0, 0.02)]}, <function guard.<locals>.call at 0x7c8282644540>)
+
+    def test_cumulative_toward_side_motion_is_blocked_but_recovery_is_possible(guard):
+        _, state, call = guard
+        call(p_speed=.2, angle=0.)  # 진입 기준, 후보 미사용
+        outputs = []
+        for i, offset in enumerate((-.002, -.006, -.012)):
+            state['offset'] = offset
+            outputs.append(call(1.1+i*.1, angle=.02))
+        assert outputs[0][0] > 0.
+        assert outputs[-1][0] == 0. and outputs[-1][2]['selector_reason'] == 'guard_curve_rejected_toward_left'
+        # 이미 넘은 위치에서 더 접근하지 않는 회복 방향은 고착시키지 않는다.
+        out = call(1.5, angle=-.1)
+>       assert out[0] > 0. and out[2]['selector_guard_candidate']['guarded_sides']['left']['not_increasing_present_extent']
+E       assert (0.0 > 0.0)
+
+tests/test_guard_curve_trial.py:117: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_guard_curve_trial.py::test_cumulative_toward_side_motion_is_blocked_but_recovery_is_possible
+1 failed, 200 passed in 14.48s
+exit=1

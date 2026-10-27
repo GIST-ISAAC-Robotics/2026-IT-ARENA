@@ -1,0 +1,301 @@
+........................................................................ [ 36%]
+........................................................................ [ 72%]
+....................................FFFF.FF............F                 [100%]
+=================================== FAILURES ===================================
+__________ test_b3_successor_continues_r0_plus_and_preserves_b3_bytes __________
+
+    def test_b3_successor_continues_r0_plus_and_preserves_b3_bytes():
+        contract, parent = load(B3), load(R0E3)
+        assert contract['parent_contract'] == R0E3
+        assert sha((ROOT/R0E3).read_bytes()) == contract['parent_contract_sha256']
+        assert '승인 아님' in contract['scope']
+        for group in GROUPS:
+            for path, row in contract[group].items():
+                assert row['reason'].strip() and row['before'] == parent[group][path]['after'] != row['after']
+>               assert b3_revision_digest(path) == row['after']
+
+tests/test_source_provenance_r0_plus_b3.py:102: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_source_provenance_r0_plus_b3.py:86: in b3_revision_digest
+    assert m3_revision_digest(path) == row['after']
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py', newer_than = None
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert '3184e8664866...67ad9cead51fa' == 'a72ed22b5e38...cf4a7a82fd2ed'
+E             - a72ed22b5e38f1fb6e242e8d3421ffa0ce724472db13cd8537ecf4a7a82fd2ed
+E             + 3184e8664866d786c99a4e4035b0f0bc176b4dd28a9ce1d30be67ad9cead51fa
+
+tests/test_source_provenance_r0_plus_b3.py:135: AssertionError
+_ test_m3_successor_records_current_bytes_without_rewriting_previous_contract __
+
+    def test_m3_successor_records_current_bytes_without_rewriting_previous_contract():
+        contract = load('config/tests/m3_execution_r0_sha256.json')
+        assert contract['changes'] == {**contract['approved_changes'], **contract['approved_evaluation_scripts']}
+        assert contract['parent_contract'] == B3
+        assert sha((ROOT/B3).read_bytes()) == contract['parent_contract_sha256']
+        snapshot = ROOT/contract['before_snapshot']
+        if snapshot.is_file():
+            assert sha(snapshot.read_bytes()) == contract['before_snapshot_sha256']
+            with tarfile.open(snapshot) as archive:
+                for path, row in contract['changes'].items():
+                    assert sha(archive.extractfile(path).read()) == row['before']
+        for path, row in contract['changes'].items():
+            assert row['reason'].strip()
+>           assert m3_revision_digest(path) == row['after'] != row['before']
+
+tests/test_source_provenance_r0_plus_b3.py:161: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py', newer_than = None
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert '3184e8664866...67ad9cead51fa' == 'a72ed22b5e38...cf4a7a82fd2ed'
+E             - a72ed22b5e38f1fb6e242e8d3421ffa0ce724472db13cd8537ecf4a7a82fd2ed
+E             + 3184e8664866d786c99a4e4035b0f0bc176b4dd28a9ce1d30be67ad9cead51fa
+
+tests/test_source_provenance_r0_plus_b3.py:135: AssertionError
+____________ test_command_selection_continues_m3_recorded_run_bytes ____________
+
+    def test_command_selection_continues_m3_recorded_run_bytes():
+        child = load('config/tests/m3_command_selection_r0_sha256.json')
+        parent = load(child['parent_contract'])
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        snapshot = ROOT/child['before_snapshot']
+        if snapshot.is_file():
+            assert sha(snapshot.read_bytes()) == child['before_snapshot_sha256']
+        for group in GROUPS:
+            for path,row in child[group].items():
+                expected = parent['changes'][path]['after'] if path in parent['changes'] else parent['dependencies'][path]
+>               assert m3_revision_digest(path) == row['before'] == expected
+
+tests/test_source_provenance_r0_plus_b3.py:176: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py', newer_than = None
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert '3184e8664866...67ad9cead51fa' == 'a72ed22b5e38...cf4a7a82fd2ed'
+E             - a72ed22b5e38f1fb6e242e8d3421ffa0ce724472db13cd8537ecf4a7a82fd2ed
+E             + 3184e8664866d786c99a4e4035b0f0bc176b4dd28a9ce1d30be67ad9cead51fa
+
+tests/test_source_provenance_r0_plus_b3.py:135: AssertionError
+________ test_baseline_release_continues_command_selection_run13_bytes _________
+
+    def test_baseline_release_continues_command_selection_run13_bytes():
+        child, parent = load(M3_SUCCESSORS[1]), load(M3_SUCCESSORS[0])
+        assert child['parent_contract'] == M3_SUCCESSORS[0] and '승인 아님' in child['scope']
+        assert sha((ROOT/M3_SUCCESSORS[0]).read_bytes()) == child['parent_contract_sha256']
+        snapshot = ROOT/child['before_snapshot']
+        if snapshot.is_file():
+            assert sha(snapshot.read_bytes()) == child['before_snapshot_sha256']
+        parent_rows = {**parent['approved_changes'], **parent['approved_evaluation_scripts']}
+        for group in GROUPS:
+            for path, row in child[group].items():
+                assert row['reason'].strip()
+>               assert row['before'] == parent_rows[path]['after'] == m3_revision_digest(path, newer_than=M3_SUCCESSORS[0])
+
+tests/test_source_provenance_r0_plus_b3.py:191: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py'
+newer_than = 'config/tests/m3_command_selection_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert '3184e8664866...67ad9cead51fa' == 'a72ed22b5e38...cf4a7a82fd2ed'
+E             - a72ed22b5e38f1fb6e242e8d3421ffa0ce724472db13cd8537ecf4a7a82fd2ed
+E             + 3184e8664866d786c99a4e4035b0f0bc176b4dd28a9ce1d30be67ad9cead51fa
+
+tests/test_source_provenance_r0_plus_b3.py:135: AssertionError
+_____________ test_small_center_continues_release_gate_run19_bytes _____________
+
+    def test_small_center_continues_release_gate_run19_bytes():
+        """run17/19/21/24 실행 사본 바이트에서 작은 중앙 보정 비교 옵션으로. 이전 계약·실행 사본은 수정하지 않는다."""
+        child, parent = load(M3_SUCCESSORS[3]), load(M3_SUCCESSORS[2])
+        assert child['parent_contract'] == M3_SUCCESSORS[2] and '승인 아님' in child['scope']
+        assert sha((ROOT/M3_SUCCESSORS[2]).read_bytes()) == child['parent_contract_sha256']
+        snapshot = ROOT/child['before_snapshot']
+        if snapshot.is_file():
+            assert sha(snapshot.read_bytes()) == child['before_snapshot_sha256']
+        parent_rows = {**parent['approved_changes'], **parent['approved_evaluation_scripts']}
+        for group in GROUPS:
+            for path, row in child[group].items():
+                assert row['reason'].strip()
+                if path in parent_rows:
+                    assert row['before'] == parent_rows[path]['after']
+>               assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[2]) == row['before']
+
+tests/test_source_provenance_r0_plus_b3.py:226: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py'
+newer_than = 'config/tests/m3_release_gate_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert '3184e8664866...67ad9cead51fa' == 'a72ed22b5e38...cf4a7a82fd2ed'
+E             - a72ed22b5e38f1fb6e242e8d3421ffa0ce724472db13cd8537ecf4a7a82fd2ed
+E             + 3184e8664866d786c99a4e4035b0f0bc176b4dd28a9ce1d30be67ad9cead51fa
+
+tests/test_source_provenance_r0_plus_b3.py:135: AssertionError
+________________ test_surface_commitment_continues_run32_source ________________
+
+    def test_surface_commitment_continues_run32_source():
+        child, parent = load(M3_SUCCESSORS[4]), load(M3_SUCCESSORS[3])
+        assert child['parent_contract'] == M3_SUCCESSORS[3]
+        assert sha((ROOT/M3_SUCCESSORS[3]).read_bytes()) == child['parent_contract_sha256']
+        parent_rows = {**parent['approved_changes'], **parent['approved_evaluation_scripts']}
+        for group in GROUPS:
+            for path, row in child[group].items():
+                assert row['before'] == parent_rows[path]['after'] and row['reason'].strip()
+>               assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[3]) == row['before']
+
+tests/test_source_provenance_r0_plus_b3.py:238: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py'
+newer_than = 'config/tests/m3_small_center_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert '3184e8664866...67ad9cead51fa' == 'a72ed22b5e38...cf4a7a82fd2ed'
+E             - a72ed22b5e38f1fb6e242e8d3421ffa0ce724472db13cd8537ecf4a7a82fd2ed
+E             + 3184e8664866d786c99a4e4035b0f0bc176b4dd28a9ce1d30be67ad9cead51fa
+
+tests/test_source_provenance_r0_plus_b3.py:135: AssertionError
+__ test_oct26_guarded_return_and_second_start_have_preserved_source_chain[17] __
+
+index = 17
+
+    @pytest.mark.parametrize('index', [10, 11, 12, 13, 14, 15, 16, 17])
+    def test_oct26_guarded_return_and_second_start_have_preserved_source_chain(index):
+        child = load(M3_SUCCESSORS[index])
+        assert child['parent_contract'] == M3_SUCCESSORS[index-1]
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for group in GROUPS:
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(archive.read(path)) == row['before'] != row['after']
+>                   assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+
+tests/test_source_provenance_r0_plus_b3.py:319: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py'
+newer_than = 'config/tests/m5_publication_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert '3184e8664866...67ad9cead51fa' == 'a72ed22b5e38...cf4a7a82fd2ed'
+E             - a72ed22b5e38f1fb6e242e8d3421ffa0ce724472db13cd8537ecf4a7a82fd2ed
+E             + 3184e8664866d786c99a4e4035b0f0bc176b4dd28a9ce1d30be67ad9cead51fa
+
+tests/test_source_provenance_r0_plus_b3.py:135: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_b3_successor_continues_r0_plus_and_preserves_b3_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_m3_successor_records_current_bytes_without_rewriting_previous_contract
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_command_selection_continues_m3_recorded_run_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_baseline_release_continues_command_selection_run13_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_small_center_continues_release_gate_run19_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_surface_commitment_continues_run32_source
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[17]
+7 failed, 193 passed in 9.16s
+exit=1

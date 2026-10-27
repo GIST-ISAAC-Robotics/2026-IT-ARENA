@@ -11,6 +11,16 @@ def hash_before_observation_extension(root, path):
     명시 모터 카운트 시험의 launch 변경만 검증해 되돌리며 다른 파일은 실제 hash다.
     """
     current=hashlib.sha256((root/path).read_bytes()).hexdigest()
+    partial=root/'config/tests/partial_observation_r0_sha256.json'
+    if partial.exists():
+        extension=json.loads(partial.read_text())
+        change=extension['approved_changes'].get(path)
+        if change:
+            assert hashlib.sha256((root/extension['parent_contract']).read_bytes()).hexdigest()==extension['parent_contract_sha256']
+            assert current==change['after'],path
+            with zipfile.ZipFile(root/extension['before_snapshot']) as archive:
+                assert hashlib.sha256(archive.read(path)).hexdigest()==change['before']
+            current=change['before']
     if path == 'src/arena_bringup/launch/simulation.launch.py':
         display=json.loads((root/'config/tests/m5_publication_r0_sha256.json').read_text())
         assert hashlib.sha256((root/display['parent_contract']).read_bytes()).hexdigest()==display['parent_contract_sha256']

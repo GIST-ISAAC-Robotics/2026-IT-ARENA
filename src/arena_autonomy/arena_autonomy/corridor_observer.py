@@ -16,7 +16,7 @@ from arena_autonomy.occupancy_timing import per_ray_padding
 from arena_autonomy.scene_motion import transport_points
 
 
-def current_proposal(scene, speed, side, previous_steering, dt, config):
+def current_proposal(scene, speed, side, previous_steering, dt, config, *, partial_candidate=False):
     base = dict(geometry_supported=False, point_occupancy_supported=False, proposed_speed_mps=0.,
                 reason='invalid_motion_state', driving_authorized=False, runtime_connected=False,
                 memory_refresh_authorized=False, free_area_certified=False)
@@ -30,7 +30,7 @@ def current_proposal(scene, speed, side, previous_steering, dt, config):
     front = [r for r in scene.rays if abs(math.atan2(r.direction_xy[1],r.direction_xy[0])) <= math.radians(100)]
     if not front or any(r.status != 'return' for r in front):
         from arena_autonomy.observation_support import side_missing_candidate
-        if not (config.recent_observation_enabled and side_missing_candidate(scene)):
+        if not (partial_candidate or (config.recent_observation_enabled and side_missing_candidate(scene))):
             return {**base, 'reason':'front_unobserved'}
         # 선택형 LocalFollow의 관측 확인 전까지는 여전히 경로/점유 제안일 뿐이다.
     points = np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1,2)
@@ -78,7 +78,7 @@ class CorridorObserver:
         self.path = self.path_ref = self.path_source = None
         self.confirmations = self.release_count = 0
 
-    def evaluate(self, scene, history, speed, side, previous_steering=0., dt=.02):
+    def evaluate(self, scene, history, speed, side, previous_steering=0., dt=.02, *, partial_candidate=False):
         now, source = scene.t_ref_s, scene.source_first_s
         key = (scene.source_frame_id,scene.source_epoch,side)
         reset_cause = None
@@ -94,7 +94,8 @@ class CorridorObserver:
                         driving_authorized=False, runtime_connected=False)
         fresh = source is not None and (self.last_source is None or source > self.last_source)
         self.key, self.last_ref, self.last_source = key, now, source
-        proposal = current_proposal(scene,speed,side,previous_steering,dt,self.config)
+        proposal = current_proposal(scene,speed,side,previous_steering,dt,self.config,
+                                    **({'partial_candidate':True} if partial_candidate else {}))
         result = dict(positive=False, reason=proposal['reason'], fresh=fresh, proposed_speed_mps=0.,
                       confirmations=0, release_count=0, geometry_supported=proposal['geometry_supported'],
                       current_point_occupancy_supported=proposal['point_occupancy_supported'],
