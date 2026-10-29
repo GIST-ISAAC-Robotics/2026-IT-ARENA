@@ -10,4 +10,6 @@ setup(name="arena_autonomy", version="0.1.0", packages=find_packages(),
                                          "stereo_wall_follow = arena_autonomy.stereo_wall_follow:main",
                                          "tof_safety = arena_autonomy.tof_safety:main",
                                          "local_pursuit = arena_autonomy.local_pursuit:main",
+                                         "g2_entry_trial = arena_autonomy.g2_entry_node:main",
+                                         "g1_g2_handoff_trial = arena_autonomy.g1_g2_node:main",
                                          "lidar_safety = arena_autonomy.lidar_safety:main"]})

@@ -1,0 +1,384 @@
+{
+ "evaluator": "g1_g2_handoff_eval_v1",
+ "core": "g1_g2_handoff_core_v1",
+ "sources": {
+  "g2_eval_v2.py": "58459ef5f7ea7c63f4a818e7f600857b4d0f32b32e93d60a012576ac4c585c3e",
+  "g2_eval_core.py": "423159d6fc9331b97d91fc416ed8d4640c8c5ce8efa986840aade9fcff33aa42",
+  "g2_entry_gazebo_v1/g2_eval.py": "44d3db7e7eda5322517d011ce10eacaac992c115743cceaf8b253be1b2b5aa0e"
+ },
+ "scope": "G2 stationary-target evaluation v2; truth poses/world are evaluation-only",
+ "rules": {
+  "registered_before_run": true,
+  "version": "handoff_acceptance_v1",
+  "registered_note": "v2 = run1 registered gates + window split + negative-tested core (g2_eval_core.py). Applied to run1 only as a labelled post-hoc audit, never as run1 registered criteria.",
+  "target_passed": "ego body rear corner passes the target body front corner along the centerline (s), before window end",
+  "windows": "drive window = [green, case_window end]; pass/return/hold judged only there. STOP window = (window end, stop trace end] gated separately (lateral/heading within the centre tolerance). Contact/surface/command cap use green..stop end.",
+  "max_sample_interval_s": 0.05,
+  "max_sample_interval_basis": "current g1d evaluator ego pose coverage maximum_allowed_interval_s (report.evaluation.coverage.ego)",
+  "bypass_side_rule": "ego lateral sign at the first pass sample must be opposite to the target offset sign (+left)",
+  "trace_header_expected": {
+   "schema": 5,
+   "controller_mode": "g1_g2_handoff_trial",
+   "execution_config": {
+    "bypass": {
+     "stationary_outer_boundary": true,
+     "wall_reanchor": true,
+     "tracked_wall_fit": true,
+     "rejoin_enabled": true,
+     "wide_entry": true,
+     "prefer_earlier_transition": false
+    },
+    "observation_window_s": 0.8,
+    "maximum_patch_displacement_m": 0.06,
+    "minimum_distinct_scans": 6,
+    "preparation_cap_mps": 0.35,
+    "maximum_initial_steering_rad": 0.08,
+    "reacquire_distinct_scans": 2
+   },
+   "follow_config": {
+    "partial_observation_policy": "bounded_local_v4",
+    "parallel_hold_trial": true,
+    "pass_release_trial": true,
+    "guard_curve_trial": true,
+    "traffic_recovery_trial": true,
+    "traffic_path_recovery_trial": true,
+    "corridor_fallback_enabled": true,
+    "short_boundary_prefix_enabled": false,
+    "recent_observation_enabled": false,
+    "boundary_evidence_mode": "corner_distance_candidate",
+    "occupancy_timing_mode": "per_ray_candidate",
+    "wheelbase_m": 0.135,
+    "length_m": 0.2,
+    "width_m": 0.15,
+    "wall_offset_m": 0.425,
+    "max_steering_rad": 0.3710583448410034,
+    "max_speed_mps": 1.0,
+    "lateral_acceleration_mps2": 3.0
+   },
+   "motion_config": {
+    "wheel_radius_m": 0.0325,
+    "rear_axle_x_m": -0.0675,
+    "lidar_x_m": 0.06,
+    "lidar_y_m": 0.0,
+    "lidar_yaw_rad": 0.0,
+    "gyro_bias_rad_s": 0.0,
+    "wheel_scale": 1.0,
+    "history_s": 2.0,
+    "max_input_gap_s": 0.05,
+    "max_extrapolation_s": 0.03,
+    "scan_timeout_s": 0.45
+   }
+  },
+  "trace_header_basis": "registered integrated G1 plus explicit handoff; not historical G2 defaults",
+  "static_target_basis": "representative median target pose is valid only for this fixed-target case; actor pose error <= acceptance.harness.actor_static_error_max_m",
+  "returned_to_center_lateral_m": 0.05,
+  "returned_to_center_heading_rad": 0.1,
+  "returned_to_center_hold_s": 1.0,
+  "returned_basis": "truth-only check after the pass: G2 own centred state uses 25 mm/0.08 rad on observed walls; the evaluation allows 50 mm/0.10 rad for wall-vs-centerline geometry differences",
+  "actor_contact_messages_with_ego": 0,
+  "overlap_samples": 0,
+  "max_off_road_wheels": 2,
+  "wall_wheel_samples": 0,
+  "off_road_basis": "official two-wheel grass allowance; any/center/full contact-patch interpretations all reported, all must stay <= 2 wheels with zero 3+ wheel events; wheel-centre-only results are not used as contact-patch evidence. Patches use MCU target steering (planned geometry), not measured wheel steering",
+  "command_cap_mps": 1.0,
+  "command_cap_scope": "FOLLOW <=1 m/s; BYPASS/REACQUIRE <=0.35 m/s checked separately",
+  "body_gap_policy": "minimum body gap is reported only; the old 150 mm G1 line is not a G2 gate (completion-first, ADR 0027)",
+  "stop_and_shutdown": "existing explicit software_stop, dense pose stop evidence, MCU latch, clean shutdown",
+  "decision_replay": "schema5 in g2_decisions.jsonl; filename retained for evaluator compatibility",
+  "sensor_only": "controller/safety/actuation subscriptions sensor-only; /drive only from the controller node and /drive/safe only from lidar_safety; actor pose read only by the evaluator"
+ },
+ "case": "handoff_edge_stopped_right",
+ "green_sim_s": 7.763,
+ "window_end_sim_s": 19.763,
+ "stop_end_sim_s": 20.748,
+ "window_note": "return/hold judged only in [first pass, window_end]; STOP window (window_end, stop_end] reported and gated separately",
+ "target": {
+  "x": 10.109698,
+  "y": 5.678597,
+  "yaw": 1.56379294,
+  "signed_lateral_m": -0.14900039490639344,
+  "front_s": 45.94795,
+  "rear_s": 45.747969999999995,
+  "pose_samples": 2076,
+  "static": {
+   "valid": true,
+   "samples": 1298,
+   "max_error_m": 0.0,
+   "maximum_allowed_m": 0.005
+  }
+ },
+ "ego_samples": 6380,
+ "progress_window_m": 1.69482,
+ "progress_to_stop_end_m": 1.69482,
+ "pass_time_since_green_s": 4.763999999999999,
+ "bypass_side": {
+  "expected": "left",
+  "observed": "left",
+  "lateral_at_pass_m": 0.16565351604756107,
+  "matches": true
+ },
+ "maximum_lateral_in_window_m": 0.16565666472505075,
+ "maximum_lateral_time_since_green_s": 4.743,
+ "center_in_window": {
+  "returned": false,
+  "first_start_s": null,
+  "hold_satisfied_s": null,
+  "longest_s": 0.0,
+  "runs": 0,
+  "centered_at_window_end": false,
+  "first_start_since_green_s": null,
+  "hold_satisfied_since_green_s": null
+ },
+ "stop_window": {
+  "samples": 487,
+  "max_abs_lateral_m": 0.1646403232306648,
+  "max_abs_heading_rad": 0.01172013352554302,
+  "within_center_tolerance": false,
+  "progress_m": 0.0
+ },
+ "lateral_at_window_end_m": 0.1646233848545629,
+ "final_lateral_m": 0.1646403232306648,
+ "final_heading_rad": 0.01172013352554302,
+ "minimum_body_gap_m": 0.15217507222913923,
+ "overlap_samples": 0,
+ "actor_contact_messages_with_ego": 0,
+ "harness_gap": {
+  "ego_samples": 6877,
+  "min_sampled_gap_m": 0.15217507222913923,
+  "sampled_overlap_samples": 0,
+  "sampled_missing_actor_samples": 0,
+  "sampled_finite_complete": true,
+  "min_swept_lower_bound_m": 0.15205619891921512,
+  "swept_nonpositive_intervals": 0,
+  "swept_missing_actor_intervals": 0,
+  "max_ego_sample_interval_s": 0.0030000000000001137,
+  "actor_contact_messages_with_ego": 0,
+  "first_contact_sim_s": null,
+  "scope": "sampled gap + conservative swept lower bound between pose samples; event-only contact evidence is separate"
+ },
+ "coverage": {
+  "window": {
+   "valid": true,
+   "samples": 5893,
+   "first_s": 7.763,
+   "last_s": 19.763,
+   "max_interval_s": 0.0030000000000001137,
+   "maximum_allowed_interval_s": 0.05
+  },
+  "stop": {
+   "valid": true,
+   "samples": 488,
+   "first_s": 19.763,
+   "last_s": 20.748,
+   "max_interval_s": 0.0030000000000001137,
+   "maximum_allowed_interval_s": 0.05
+  }
+ },
+ "surface": {
+  "interpretations": {
+   "any": {
+    "max_off_wheels": 2,
+    "penalty_events_merged": 0,
+    "time_by_off_wheel_count_s": {
+     "0": 3.524000000000001,
+     "1": 0.47199999999999953,
+     "2": 8.991000000000003,
+     "3": 0,
+     "4": 0
+    }
+   },
+   "center": {
+    "max_off_wheels": 2,
+    "penalty_events_merged": 0,
+    "time_by_off_wheel_count_s": {
+     "0": 3.694000000000001,
+     "1": 0.5169999999999995,
+     "2": 8.776000000000003,
+     "3": 0,
+     "4": 0
+    }
+   },
+   "full": {
+    "max_off_wheels": 2,
+    "penalty_events_merged": 0,
+    "time_by_off_wheel_count_s": {
+     "0": 3.949,
+     "1": 5.253,
+     "2": 3.7850000000000037,
+     "3": 0,
+     "4": 0
+    }
+   }
+  },
+  "wall_wheel_samples": 0,
+  "samples": 6380,
+  "sample_gaps_over_limit": 0,
+  "evaluator": "surface_contact_v1",
+  "steering_source": "MCU target central steering (actuation_trace)",
+  "steering_limit": "contact patches use the MCU target central steering, not measured wheel steering; they are a planned/target-geometry range, not a measured footprint"
+ },
+ "command_cap": {
+  "ok": true,
+  "cap_mps": 1.0,
+  "maximum_drive_mps": 0.3499999940395355,
+  "maximum_safe_mps": 0.3499999940395355,
+  "maximum_decision_mps": 0.35
+ },
+ "trace_header": {
+  "ok": true,
+  "checks": {
+   "schema": true,
+   "controller_mode": true,
+   "execution_config": true,
+   "follow_config": {
+    "partial_observation_policy": true,
+    "parallel_hold_trial": true,
+    "pass_release_trial": true,
+    "guard_curve_trial": true,
+    "traffic_recovery_trial": true,
+    "traffic_path_recovery_trial": true,
+    "corridor_fallback_enabled": true,
+    "short_boundary_prefix_enabled": true,
+    "recent_observation_enabled": true,
+    "boundary_evidence_mode": true,
+    "occupancy_timing_mode": true,
+    "wheelbase_m": true,
+    "length_m": true,
+    "width_m": true,
+    "wall_offset_m": true,
+    "max_steering_rad": true,
+    "max_speed_mps": true,
+    "lateral_acceleration_mps2": true
+   },
+   "motion_config": {
+    "wheel_radius_m": true,
+    "rear_axle_x_m": true,
+    "lidar_x_m": true,
+    "lidar_y_m": true,
+    "lidar_yaw_rad": true,
+    "gyro_bias_rad_s": true,
+    "wheel_scale": true,
+    "history_s": true,
+    "max_input_gap_s": true,
+    "max_extrapolation_s": true,
+    "scan_timeout_s": true
+   }
+  }
+ },
+ "status_rows": 70,
+ "status_phases": [
+  null
+ ],
+ "status_reasons": {
+  "handoff_bypass": 52,
+  "handoff_follow": 12,
+  "handoff_invalid_input": 6
+ },
+ "gates": {
+  "ego_window_coverage": true,
+  "ego_stop_coverage": true,
+  "target_passed": true,
+  "bypass_side_matches": true,
+  "returned_to_center_in_window": false,
+  "stop_window_within_center_tolerance": false,
+  "no_actor_contact": true,
+  "no_body_overlap": true,
+  "wheels_two_or_fewer_off_road": true,
+  "no_wall_wheel": true,
+  "surface_samples_continuous": true,
+  "command_cap_drive_safe_decision": true,
+  "g2_controller_rows": true,
+  "trace_header_matches_config": true,
+  "decision_replay_identical": true,
+  "harness_valid": true,
+  "static_target_pose_valid": true,
+  "target_lateral_sign_matches_case": true,
+  "automatic_entry_observed": true,
+  "automatic_return_after_entry": false,
+  "first_output_follows": true,
+  "bypass_cap_035": true
+ },
+ "run_checks": {
+  "no_runtime_error": true,
+  "evaluation_readers_valid": true,
+  "contact_source_instrumented": true,
+  "sensor_only_controller_inputs": true,
+  "sensor_only_safety_inputs": true,
+  "actuation_sensor_only_inputs": true,
+  "actor_pose_only_evaluator": true,
+  "drive_publisher_controller_only": true,
+  "safe_drive_publisher_safety_only": true,
+  "sequential_acquisition": true,
+  "lidar_interface": true,
+  "source_unchanged": true,
+  "signal_sequence": true,
+  "no_false_start": true,
+  "stop_model_stop_stable": true,
+  "stop_dense_pose_stop_evidence": true,
+  "stop_explicit_mcu_stop": true,
+  "stop_no_mcu_latch_before_stop": true,
+  "stop_no_deadline_diagnostic": true,
+  "stop_no_wall_collision": true,
+  "shutdown_clean": true,
+  "no_abort": true
+ },
+ "replay": {
+  "passed": true,
+  "calls": 656,
+  "matched": 656,
+  "mismatches": 0,
+  "header_schema": 5,
+  "controller_mode": "g1_g2_handoff_trial",
+  "execution_config_matches_default": false,
+  "follow_config": {
+   "partial_observation_policy": "bounded_local_v4",
+   "boundary_evidence_mode": "corner_distance_candidate",
+   "occupancy_timing_mode": "per_ray_candidate",
+   "corridor_fallback_enabled": true,
+   "max_speed_mps": 1.0,
+   "max_steering_rad": 0.3710583448410034,
+   "wheelbase_m": 0.135,
+   "wall_offset_m": 0.425,
+   "lateral_acceleration_mps2": 3.0
+  },
+  "reason_counts": {
+   "handoff_bypass": 558,
+   "handoff_follow": 90,
+   "handoff_invalid_input": 7,
+   "handoff_entry": 1
+  },
+  "first_phase_reference_s": {},
+  "positive_commands": 594,
+  "maximum_command_mps": 0.35
+ },
+ "original_g1": {
+  "passed": false,
+  "gates": {
+   "hold": false,
+   "approached": true,
+   "green_observed": true,
+   "data_coverage": true,
+   "sampled_gap": true,
+   "swept_gap": true,
+   "no_sampled_overlap": true,
+   "no_actor_contact": true,
+   "inside_road": false,
+   "ego_stays_behind": false
+  },
+  "integrity_controller_mode_matches": false,
+  "scope": "preserved G1 stopped_center verdict; HOLD/stay-behind/body-road-only are not G2 gates"
+ },
+ "handoff": {
+  "entry_times_since_green_s": [
+   1.0570000000000004
+  ],
+  "return_times_since_green_s": [],
+  "state_counts": {
+   "FOLLOW": 44,
+   "BYPASS": 548,
+   "REACQUIRE": 0
+  },
+  "full_decision_replay": true
+ },
+ "passed": false
+}

@@ -32,6 +32,14 @@ def bounded_rear_fringe(scene, raw_scan, queries, padding, length, width):
     if (np.any(q[:, 0] < -length/2) or np.any(q[:, 0] > 0) or np.any(exterior <= 0)
             or np.any(exterior > result['maximum_exterior_m'])):
         return finish('outside_rear_fringe')
+    return _bounded_nonreturn(scene, raw_scan, q, pad, result)
+
+
+def _bounded_nonreturn(scene, raw_scan, q, pad, result):
+    """공통 실제 반환/좁은 무반환 검사. 허용할 이동 영역은 호출자가 검증한다."""
+    def finish(reason, **values):
+        return {**result, 'reason': reason, **values}
+
     try:
         values = np.asarray(raw_scan.ranges, dtype=float)
         first = raw_scan.header.stamp.sec+raw_scan.header.stamp.nanosec*1e-9

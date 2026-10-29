@@ -1,0 +1,18 @@
+............F..........                                                  [100%]
+=================================== FAILURES ===================================
+________ test_multiple_co_moving_surfaces_remain_an_explicit_ambiguity _________
+
+    def test_multiple_co_moving_surfaces_remain_an_explicit_ambiguity():
+        # 모두 움직이는 물체의 관측과 자차 이동 오차는 이 함수만으로 구별할 수 없다.
+        # 이것이 운영 해제기로 채택하지 않는 이유이며 안전 통과를 뜻하지 않는다.
+        probe,p,ids=started()
+        with patch.object(module,'transport_points',stationary):
+            probe.observe(p+[.025,.01],ids,None,1.1,1.)
+            result=probe.observe(p+[.050,.02],ids,None,1.2,1.1)
+>       assert result['matched'] and result['static_background_assumption']
+E       assert (False)
+
+tests/test_surface_anchor_probe.py:91: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_surface_anchor_probe.py::test_multiple_co_moving_surfaces_remain_an_explicit_ambiguity
+1 failed, 22 passed in 1.03s

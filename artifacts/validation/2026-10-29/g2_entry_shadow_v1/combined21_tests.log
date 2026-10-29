@@ -1,0 +1,20 @@
+...............................................F........................ [ 80%]
+.................                                                        [100%]
+=================================== FAILURES ===================================
+__ test_earlier_transition_tiebreak_preserves_observed_clearance_and_steering __
+
+    def test_earlier_transition_tiebreak_preserves_observed_clearance_and_steering():
+        from arena_autonomy.bypass_entry_trial import _compare_entries
+        scene,_=sensor_scene(targets=((1.2,0.),))
+        baseline=_compare_entries(scene,.5,0.,0.,.02,stationary_boundaries=True)
+        early=_compare_entries(scene,.5,0.,0.,.02,stationary_boundaries=True,
+            entry=EntryConfig(prefer_earlier_transition=True))
+        assert baseline['selected']['offset_m']==early['selected']['offset_m']==.24
+        assert baseline['selected']['transition_m']==1.2
+>       assert early['selected']['transition_m']==.9
+E       assert 1.2 == 0.9
+
+tests/test_bypass_entry_trial.py:293: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_bypass_entry_trial.py::test_earlier_transition_tiebreak_preserves_observed_clearance_and_steering
+1 failed, 88 passed in 4.67s

@@ -1,0 +1,20 @@
+--- production/simulation.launch.py
++++ fixture/simulation.launch.py
+@@ -636,6 +636,8 @@
+     if local_mode:
+         profile = yaml.safe_load((description_share / "config/b0183_c1.yaml").read_text())
+         camera = profile["camera"]
++        camera["xyz_m"] = [-.075, 0., .30]  # trial fixed rear camera (existing 5-lap trial)
++        camera["rpy_rad"] = [0., 0., 0.]
+         d435i["xyz_m"], d435i["rpy_rad"] = camera["xyz_m"], camera["rpy_rad"]
+         d435i["color"].update({key: camera[key] for key in ("width_px", "height_px", "horizontal_fov_deg")})
+         d435i["color"]["vertical_fov_deg"] = math.degrees(2 * math.atan(
+@@ -810,7 +812,7 @@
+     track = LaunchConfiguration("track").perform(context)
+     if track not in TRACK_DIRECTORIES:
+         raise RuntimeError(f"track must be one of {sorted(TRACK_DIRECTORIES)}")
+-    world_directory = gazebo_share / "worlds" / TRACK_DIRECTORIES[track]
++    world_directory = Path('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-29/signal_spec_1029_v1/fixture')  # registered test fixture only
+     scene = json.loads((world_directory / "scene.json").read_text(encoding="utf-8"))
+     slots = {int(slot["index"]): slot for slot in scene["starting_grid"]["slots"]}
+     slot_index = int(LaunchConfiguration("grid_slot").perform(context))

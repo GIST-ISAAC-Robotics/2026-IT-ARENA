@@ -1,0 +1,11 @@
+--- g2_entry_gazebo_v1/fixture/simulation.launch.py
++++ handoff/fixture/simulation.launch.py
+@@ -1180,7 +1180,7 @@
+         control_rate = float(LaunchConfiguration("autonomy_control_rate_hz").perform(context))
+         if not math.isfinite(control_rate) or not 5 <= control_rate <= 200:
+             raise ValueError("autonomy_control_rate_hz must be finite and within 5..200")
+-        executable = "g2_entry_trial" if local_mode else "wall_follow" if autonomy_mode == "lidar" else "stereo_wall_follow"
++        executable = "g1_g2_handoff_trial" if local_mode else "wall_follow" if autonomy_mode == "lidar" else "stereo_wall_follow"
+         controller_parameters = {
+             "use_sim_time": True,
+             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',

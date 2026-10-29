@@ -86,10 +86,7 @@ def test_alternative_cannot_replace_preferred_observation(monkeypatch, kind):
     assert result['role_rejection'] == 'preferred_observed_path_disagreement'
 
 
-def test_no_operational_import_or_command_emission():
-    root = Path(__file__).resolve().parents[1]
-    package = root/'src/arena_autonomy/arena_autonomy'
-    for name in ('local_follow.py', 'corridor_observer.py', 'local_pursuit.py', 'lidar_safety.py'):
-        assert 'corridor_roles' not in (package/name).read_text()
+def test_geometry_module_still_has_no_command_emission():
+    # 10/28 별도 기본OFF 연결을 추가했다. 기본 미호출은 연결 회귀에서 검사한다.
     source = Path(module.__file__).read_text()
     assert not any(name in source for name in ('rclpy', 'gazebo', 'create_publisher'))

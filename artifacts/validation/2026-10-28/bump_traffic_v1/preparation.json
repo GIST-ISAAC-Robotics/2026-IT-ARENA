@@ -1,0 +1,34 @@
+{
+  "parent_adapter": "artifacts/validation/2026-10-28/official_traffic_v1/run.py",
+  "parent_sha256": "249bb3640d3fb71dc1ea8d0def02c960da4931a48c3e211bb14579fbfcb182a9",
+  "parent_config": "config/tests/g1_traffic_full_course_v1.json",
+  "parent_config_sha256": "559fdae7ec4314c39d00df43a7c4f176cb58563ed718e6abb8a7a88c691f4bfd",
+  "changes": [
+    [
+      "CONFIG = ROOT / 'config/tests/g1_traffic_full_course_v1.json'",
+      "CONFIG = BASE / 'traffic_bump_case.json'"
+    ],
+    [
+      "arguments.update(evaluation_actor_sdf=str(output / 'evaluation_actor.sdf'))",
+      "arguments.update(evaluation_actor_sdf=str(output / 'evaluation_actor.sdf'), speed_bump='true')"
+    ],
+    [
+      "speed_bump=False, collision_detector='configured'",
+      "speed_bump=True, collision_detector='configured'"
+    ],
+    [
+      "fixed rear 30cm camera; bump OFF",
+      "fixed rear 30cm camera; published bump ON"
+    ]
+  ],
+  "config_change": "launch.speed_bump true and scope descriptions only; cases/acceptance/time limits untouched",
+  "execution": "not started",
+  "prepared_files_sha256": {
+    "run.py": "f6fe9b0bee4679fcfc914c312c04724f8dd2e154229fe279e9e707a8b3049756",
+    "run1_trial.sh": "bf3c3e182c5c99dcb3744a3af72100ac41de9797f9e818e56dbdc6c7196c46c8",
+    "summarize_markers.py": "f127b0312635ea56517a935a5e4ae3676694bbd2ec6e1ccb3d084c47a7003941",
+    "summarize_run.py": "882461179f29be3f87d9612430db4b0d9686f05592e096a4f3ca17c750f1393f",
+    "test_contract.py": "59a3c3a2863d8311a4c0d8dafe757f76c5aa742c099fd2700df8a093e6ba0afb"
+  },
+  "runtime_collision_verification": "runtime_world.sdf의 safety_bump link pose와20개collision을 고정 fixture와 대조"
+}

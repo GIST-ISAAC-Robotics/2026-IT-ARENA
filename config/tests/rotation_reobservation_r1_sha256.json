@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "scope": "회전 오차 run1 원본 이후 짧은 관측 경로와 선택형 재관측 보완의 소스 출처. 과거 판정/기본 설정/실차 승인 변경 아님.",
+  "parent_contract": "config/tests/short_prefix_origin_r1_sha256.json",
+  "parent_contract_sha256": "24eff852d10d7222e91cfa0809d7d8ab1a96ec2b2696e2aa1d8eaa6dbafae698",
+  "before_snapshot": "artifacts/validation/2026-10-28/rotation_stress_v1/run1_course_sources.zip",
+  "before_snapshot_sha256": "86c38d1ad817ec6fabaf6cb8d7036df5529232f1f19732820105102a2422a1c0",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/corner_corridor.py": {
+      "before": "200a7e987350753b1c08d727a50f36f1f8e7109e8564c9d95adb1d5b641cac9e",
+      "after": "9a67934388308368dd635f1ea0cd659a7f19988d79df9a68c43722a7d4e16508",
+      "reason": "실제 안쪽 지지가 짧은 코너는 관측된 첫 경로만 후보로 반환. 원래 실패와 속도/정지 예산을 보존."
+    },
+    "src/arena_autonomy/arena_autonomy/corridor_observer.py": {
+      "before": "ed90803b9656b2985b6982455aa83616933582ebd04a782468366447d27b32b6",
+      "after": "3ed0d3ebe7e858c79b99ef589ffff441590a44722af0082b72e83f7e32ff8518",
+      "reason": "기존 short_boundary_prefix 옵션의 짧은 안쪽 지지를 연결하고 실제 관측 길이로 정지 예산을 제한."
+    },
+    "src/arena_autonomy/arena_autonomy/surface_anchor_trial.py": {
+      "before": "4d1777b9f302f05d64d06f0fcf547247481577dc566ecbabd9176d77e0e08261",
+      "after": "d9636c99811aec0bf8e1f2ece21e3aa083a8837fde2aecbd6cf07b63e7c3d114",
+      "reason": "기본 false의 extended_surface 선택을 추가. 정합 승인과 두 새 스캔 및 모든 점 확인은 유지."
+    },
+    "src/arena_autonomy/arena_autonomy/traffic_recovery_trial.py": {
+      "before": "a884daeb02952b27fc28e0ef2a0a1a991fabf21463fc2b31f5e35f4502dc1a23",
+      "after": "112c0d2ee01157b03541e77c8880ed6c70635b92cd1ff82cab8a4d2a1914ca52",
+      "reason": "명시 교통 회복 옵션에서 네 연속 반환 표면 지지를 사용. 현재 입력 재검사·독립 상태 유지."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/prepare_jetson_bundle.py": {
+      "before": "6a3b3e2f66e090c18325de224caca36ab79450e2008c81f5f112e26a8c82b7a1",
+      "after": "789dee56cd0e81b8f3a6fc93ab49288310beb5a1ac449230a0209182860e8a17",
+      "reason": "surface_reobservation 내부 의존성을 배포/소스 보존 목록에 추가. 제어·판정 변경 없음."
+    },
+    "scripts/profile_follow_trace.py": {
+      "before": "65900fb4dff1683afc70a55bb6055877e893c9902197925c21ac06bcdcb79e31",
+      "after": "9663785a85c506e4f9394729f617aa4df4fc02ed0c16259f00d6218904ed70f8",
+      "reason": "surface_reobservation 내부 의존성을 배포/소스 보존 목록에 추가. 제어·판정 변경 없음."
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "f454dae687e84cfc27cdeece9f1138b83bbae39f1799882216643e97efeaca28",
+      "after": "81cc3de6e9cb193e837b408b1ee5044f499b5c1d1508cf908eef3130039cd135",
+      "reason": "surface_reobservation 내부 의존성을 배포/소스 보존 목록에 추가. 제어·판정 변경 없음."
+    },
+    "scripts/validate_pipeline_faults_ros.py": {
+      "before": "62f31898972f0fb5bd7f2572404c25cc71e1fe09530389c3750cf04416788be7",
+      "after": "faebbed93a7472e2ebe71364423d035fed2537116c993dc5232a75bdc3c00aaa",
+      "reason": "surface_reobservation 내부 의존성을 배포/소스 보존 목록에 추가. 제어·판정 변경 없음."
+    },
+    "scripts/validate_sensor_input_ros.py": {
+      "before": "1396e5c6680fb8453710cb7ff9780ca4bbbdab48829c35de78c8cb32b4e987f3",
+      "after": "0d6018778890e7b9e5c9dcf1d96ea98c1e697aabaa82d92a312023f8d83402e9",
+      "reason": "surface_reobservation 내부 의존성을 배포/소스 보존 목록에 추가. 제어·판정 변경 없음."
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/surface_reobservation.py": "2fe0960723374dd49744bbb41d7d1d131d903ea95e24a301d2946510a17371df"
+  }
+}

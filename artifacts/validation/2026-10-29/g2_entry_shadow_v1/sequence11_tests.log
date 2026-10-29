@@ -1,0 +1,16 @@
+...................................................................F.    [100%]
+=================================== FAILURES ===================================
+_________ test_inner_band_requires_positive_observation_after_passing __________
+
+    def test_inner_band_requires_positive_observation_after_passing():
+        guide=EntryGuide(rejoin_enabled=True);guide.side='left';guide.offset=.16
+        scene=scene_at_side(2.)
+        fit,detail=observed_straight_wall(scene,guide.config,'left')
+        band=guide._rejoin_band(scene,fit)
+>       assert band['supported'] and band['behind_vehicle_not_certified']
+E       assert (False)
+
+tests/test_bypass_entry_guide.py:194: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_bypass_entry_guide.py::test_inner_band_requires_positive_observation_after_passing
+1 failed, 68 passed in 3.73s

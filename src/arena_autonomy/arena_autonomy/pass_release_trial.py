@@ -31,10 +31,16 @@ RELEASED의 기존 G1 출력 허용
   극점 자세를 추가하고 일반 미관측 표본은 거부한다. 차체 가림 마스크의 움직임은 현재 차체 둘레 1 cm 안에만
   남는 경우를 별도 제한 위험으로 허용한다. 그보다 큰 가림 이동은 거부한다. 통과 기록을 현재 자유 관측으로 바꾸지 않는다.
   거부되면 평행 후보 출력을 쓴다. 표본 자세 사이 연속 영역과 숨은 물체의 미래 접근은 여전히 미입증이다.
+- 선택형 교통 회복으로 통과 이력만 유지된 경우 목표를0.35 m/s 이하로 제한하고 작은 이동도 검사한다.
+  이때 GUARD와 같은 후반 옆면1 mm 무반환 분류를 적용한다. 현재 자유 관측/미관측 개수는 바꾸지 않는다.
+- 통과 뒤 원래 경로에 허용된 측방 결측이 있으나 실제 이동 영역에 미관측이 남으면, 같은 경로 후보의
+  0.35 m/s 상한으로 목표만 낮춰 영역을 다시 검사한다. 측정 속도·조향·기존 부분 관측 증거는 그대로다.
+  관측된 원래 이동은 불필요하게 감속하지 않으며 감속 후보도 기존 반례·후방 마스크 검사를 모두 따른다.
 
 GUARD 곡선 후보(`guard_curve_trial`, 기본 OFF·통과 선택기 필요)
-- GUARD에서 평행 후보가 알려진 기하 실패(`reference_not_straight`)로 정지했을 때만 기존 G1 출력을 별도 저속 후보로
+- GUARD에서 평행 후보가 알려진 기하 실패(`reference_not_straight`) 또는 이미 G1에서 허용한 부분 관측 때문에 정지하면 기존 G1 출력을 별도 저속 후보로
   검사한다. 평행 후보가 진행 가능하면 그대로 쓴다. 기존 G1이 정상 양수일 때만이며 전방 간격 정지·입력 거절·STOP은 따른다.
+- 부분 관측 승인은 검사된 G1 경로/조향에만 사용한다. 이동한 평행 경로로 복사하지 않으며 아래 실제 이동 영역 검사도 생략하지 않는다.
 - 목표는 min(G1, 0.35 m/s). 측정 속도가 더 크면 그 속도로 예측한다. 해제되지 않은 쪽마다 차체 모서리의 경로 횡위치가
   GUARD 진입 때보다 1 cm 넘게 그 쪽으로 더 접근하는 예측은 거절한다(누적 접근 포함). 이미 기준 밖이더라도 현재보다
   접근을 늘리지 않는 진행/회복은 후보로 남긴다. 현재/이전 조향의 이동 영역은 작은 이동에서도 검사한다.
@@ -64,6 +70,7 @@ NORMAL_BASELINE = ('local_follow', 'follow_gap_hold', 'follow_release_wait', 'lo
 # GUARD 곡선 후보를 검사하는 알려진 평행 후보 기하 실패와 양수 기존 G1 출력 이유(그 밖의 정지·입력 거절은 그대로 따른다).
 GUARD_GEOMETRY_REASONS = ('parallel_hold_reference_not_straight',)
 GUARD_BASELINE_REASONS = ('local_follow', 'local_follow_corridor_candidate')
+GUARD_PARTIAL_REASONS = ('bounded_side_missing', 'bounded_forward_missing', 'bounded_lateral_metric_missing')
 SIDES = (('left', 1.), ('right', -1.))
 
 
@@ -183,7 +190,7 @@ def motion_queries(scene, speed, target, steering, previous, dt, follow_cfg, lat
     return distance, q
 
 
-def motion_region(scene, speed, target, steering, previous, dt, follow_cfg, lat_cfg):
+def motion_region(scene, speed, target, steering, previous, dt, follow_cfg, lat_cfg, *, context=None):
     """실제 반환에 근거한 관측 분류. 별도 후보의 위험 수용으로 unobserved를 지우지 않는다."""
     distance, q = motion_queries(scene, speed, target, steering, previous, dt, follow_cfg, lat_cfg)
     result = {'distance_m': float(distance), 'queries': int(len(q)), 'unobserved': 0, 'masked_left': 0,
@@ -195,6 +202,8 @@ def motion_region(scene, speed, target, steering, previous, dt, follow_cfg, lat_
     if np.any(~free):
         masked = np.zeros(len(q), dtype=bool)
         masked[~free] = mx.masked_only(scene, q[~free], pad)
+        if context is not None:
+            context.update(queries=q, padding=pad, free=free, masked=masked)
         result['unobserved'] = int(np.sum(~free & ~masked))
         result['masked_left'] = int(np.sum(masked & (q[:, 1] > 0)))
         result['masked_right'] = int(np.sum(masked & (q[:, 1] < 0)))
@@ -227,6 +236,27 @@ def side_extent(frame, poses, sign, cfg):
                        p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
     _, lateral = frame.project(points)
     return float(np.max(sign*lateral))
+
+
+def same_path_risk(owner, scene, raw_scan, region, context, speed, target, steer, previous, baseline):
+    from arena_autonomy.same_path_gap_trial import bounded_same_path_gap
+    rejected = dict(accepted=False, reason='not_needed', unknown_filled=False)
+    if not region['unobserved'] or raw_scan is None or not context:
+        return rejected
+    queries, free, masked = context['queries'], context['free'], context['masked']
+    proof = baseline.get('partial_observation') or {}
+    command = dict(now=scene.t_ref_s, speed=speed, target=target, steering=steer, previous=previous)
+    return bounded_same_path_gap(scene, raw_scan, queries[~free & ~masked], context['padding'],
+        owner.follow_config.length_m, owner.follow_config.width_m, proof, command)
+
+
+def rear_fringe_risk(owner, scene, raw_scan, region, context):
+    """같은 호출의 실제 이동 영역에 기존 후반부 제한을 적용한다."""
+    if not region['unobserved'] or raw_scan is None or not context:
+        return dict(accepted=False, reason='not_needed', unknown_filled=False)
+    queries, free, masked = context['queries'], context['free'], context['masked']
+    return bounded_rear_fringe(scene, raw_scan, queries[~free & ~masked], context['padding'],
+                               owner.follow_config.length_m, owner.follow_config.width_m)
 
 
 class PassReleaseSelector:
@@ -274,7 +304,7 @@ class PassReleaseSelector:
         return out
 
     def _guard_curve(self, scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan):
-        """GUARD 곡선 후보(선택형). 평행 후보가 알려진 직선 적합 실패로 멈췄을 때만 기존 G1 출력을 저속으로 검사한다.
+        """GUARD 후보(선택형). 직선 적합 실패 또는 허용된 부분 관측에서 같은 G1 출력을 저속으로 검사한다.
 
         G1 경로·점유·팽창·조향 변화율·hysteresis는 기존 출력 그대로이며 속도만 min(G1, 0.35 m/s)로 낮춘다. 측정 속도가 더 크면
         감속 완료를 가정하지 않고 큰 쪽으로 예측한다. 위협을 본(해제되지 않은) 쪽마다 현재/직전 조향 원호의 차체 모서리
@@ -287,7 +317,16 @@ class PassReleaseSelector:
         p_speed, p_steer, p_detail = parallel
         trigger = p_detail.get('reason')
         continuing = trigger == 'parallel_hold_release_wait' and self.last_choice == 'guard_baseline'
-        if p_speed > 0 or not (trigger in GUARD_GEOMETRY_REASONS or continuing):
+        partial = b_detail.get('partial_observation') or {}
+        partial_cap = partial.get('speed_cap_mps')
+        partial_baseline = (trigger == 'parallel_hold_partial_observation_outside_trial'
+                            and partial.get('allowed') is True
+                            and partial.get('reason') in GUARD_PARTIAL_REASONS
+                            and isinstance(partial_cap, (int, float)) and math.isfinite(partial_cap)
+                            and 0 < b_speed <= partial_cap <= .5)
+        # 관측 정책은 이미 이 G1 조향/직전 조향과 더 큰 속도의 제동 구간을 검사했다.
+        # 그 승인을 평행 이동한 경로에 복사하지 않고 같은 G1 경로만 아래 GUARD 검사에 넣는다.
+        if p_speed > 0 or not (trigger in GUARD_GEOMETRY_REASONS or continuing or partial_baseline):
             return None
         if b_detail.get('reason') not in GUARD_BASELINE_REASONS or not b_speed > 0 or speed < 0:
             return None
@@ -296,6 +335,8 @@ class PassReleaseSelector:
         info = {'trigger': trigger, 'path': 'baseline_g1', 'baseline_reason': b_detail.get('reason'),
                 'baseline_speed_mps': b_speed, 'target_speed_mps': target, 'prediction_speed_mps': v,
                 'steering_rad': b_steer, 'previous_steering_rad': previous, 'accepted': False}
+        if partial_baseline:
+            info['baseline_partial_reason'] = partial['reason']
 
         def reject(reason):
             return p_speed, p_steer, {**p_detail, **detail, 'selector_choice': 'parallel',
@@ -324,29 +365,44 @@ class PassReleaseSelector:
         excursion = lateral_excursion(v, age, b_steer, previous, dt, self.follow_config)
         info['excursion_m'] = excursion
         # GUARD에는 미해제 물체가 있다. 작은 움직임도 현재 관측/마스크 분류를 생략하지 않는다.
-        region = motion_region(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
+        context = {} if self.follow_config.traffic_recovery_trial else None
+        if context is None:
+            region = motion_region(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
+        else:
+            region = motion_region(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat, context=context)
         info['region'] = region
         fringe = {'accepted': False, 'reason': 'not_needed', 'unknown_filled': False}
         if region['unobserved'] and raw_scan is not None:
-            _, queries = motion_queries(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
-            pad = mx.ray_padding(scene, self.lat, .5)
-            free = depth_support(scene, queries, pad)
-            masked = np.zeros(len(queries), dtype=bool)
-            masked[~free] = mx.masked_only(scene, queries[~free], pad)
+            if context is not None:
+                queries, pad = context['queries'], context['padding']
+                free, masked = context['free'], context['masked']
+            else:
+                _, queries = motion_queries(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
+                pad = mx.ray_padding(scene, self.lat, .5)
+                free = depth_support(scene, queries, pad)
+                masked = np.zeros(len(queries), dtype=bool)
+                masked[~free] = mx.masked_only(scene, queries[~free], pad)
             fringe = bounded_rear_fringe(scene, raw_scan, queries[~free & ~masked], pad,
                                          self.follow_config.length_m, self.follow_config.width_m)
+        same = dict(accepted=False)
+        if self.follow_config.traffic_recovery_trial and not fringe['accepted']:
+            same = same_path_risk(self,scene,raw_scan,region,context,speed,target,b_steer,previous,b_detail)
+            info['same_path_gap'] = same
         info['rear_fringe'] = fringe
-        blocked = region_blocked(region, self.config, bounded_unknown_risk=fringe['accepted'])
+        blocked = region_blocked(region, self.config, bounded_unknown_risk=fringe['accepted'] or same['accepted'])
         if blocked is not None:
             return reject(blocked)
         small_tail = bool(region['masked_left'] or region['masked_right'])
         info['accepted'] = True
         reason = ('guard_curve_bounded_rear_fringe' if fringe['accepted'] else
+                  'guard_curve_bounded_same_path_gap' if same['accepted'] else
                   'guard_curve_observed_motion_small_masked_tail' if small_tail else 'guard_curve_observed_motion')
+        risk_detail = ({'selector_same_path_gap_risk_accepted': same['accepted']}
+                       if self.follow_config.traffic_recovery_trial else {})
         return target, b_steer, {**b_detail, **detail, 'selector_choice': 'guard_baseline', 'selector_reason': reason,
                                  'selector_masked_tail_risk_accepted': small_tail,
                                  'selector_bounded_rear_fringe_risk_accepted': fringe['accepted'],
-                                 'selector_guard_candidate': info}
+                                 'selector_guard_candidate': info, **risk_detail}
 
     def _select(self, scene, baseline, parallel, speed, previous, dt, *, raw_scan=None):
         detail = {'selector_mode_before': self.mode, 'pass_release_trial':True,
@@ -405,8 +461,11 @@ class PassReleaseSelector:
                     evidence[name]['side_window'] = window
                     clear = window['free']
                 side['clear'] = side['clear']+1 if clear else 0
+                previous_passed = side['passed']
                 side['passed'] = side['vanish'] in ('benign', 'rear', 'unknown') and \
                     side['clear'] >= self.config.release_fresh
+                if self.follow_config.traffic_recovery_trial:
+                    side['passed'] = side['passed'] or previous_passed
         elif fresh and view is None:
             for side in self.sides.values():
                 if side['seen'] and not side['present']:
@@ -457,19 +516,59 @@ class PassReleaseSelector:
             return b_speed, previous, {**b_detail, **detail, 'selector_choice': 'baseline',
                                        'selector_reason': 'released_hold_keep_steering',
                                        'selector_held_baseline_steering_rad':b_steer}
+        retained = False
+        if self.follow_config.traffic_recovery_trial:
+            retained = any(s['passed'] and not s['present'] and s['clear'] < self.config.release_fresh
+                           for s in self.sides.values())
+            detail['retained_passage'] = retained
+            if retained:
+                b_speed = min(b_speed, self.config.guard_speed_cap_mps)
         excursion = lateral_excursion(max(speed, b_speed), age, b_steer, previous, dt, self.follow_config)
         detail['selector_excursion_m'] = excursion
-        if excursion <= self.config.small_excursion_m:
+        if excursion <= self.config.small_excursion_m and not retained:
             return b_speed, b_steer, {**b_detail, **detail, 'selector_choice': 'baseline',
                                       'selector_reason': 'released_small_motion'}
-        region = motion_region(scene, speed, b_speed, b_steer, previous, dt, self.follow_config, self.lat)
+        context = {} if self.follow_config.traffic_recovery_trial else None
+        if context is None:
+            region = motion_region(scene, speed, b_speed, b_steer, previous, dt, self.follow_config, self.lat)
+        else:
+            region = motion_region(scene, speed, b_speed, b_steer, previous, dt, self.follow_config, self.lat, context=context)
+        partial = b_detail.get('partial_observation') or {}
+        if (self.follow_config.traffic_recovery_trial and region['unobserved']
+                and partial.get('allowed') is True
+                and partial.get('reason') in ('bounded_side_missing', 'bounded_lateral_metric_missing')
+                and b_speed > self.config.guard_speed_cap_mps):
+            # 같은 경로의 결측 후보는 0.35 m/s 이하만 허용한다. 상한을 올리거나
+            # 높은 목표의 거절을 그대로 정지로 보내지 않고 낮춘 목표로 전부 재검사한다.
+            # 측정 속도는 그대로 전달하므로 감속이 끝났다고 가정하지 않는다.
+            detail['selector_same_path_speed_recheck'] = {
+                'original_target_mps': b_speed, 'target_mps': self.config.guard_speed_cap_mps,
+                'measured_speed_mps': speed, 'original_region': region}
+            b_speed = self.config.guard_speed_cap_mps
+            context.clear()
+            region = motion_region(scene, speed, b_speed, b_steer, previous, dt,
+                                   self.follow_config, self.lat, context=context)
         detail['selector_region'] = region
-        blocked = region_blocked(region, self.config)
+        same, fringe = dict(accepted=False), dict(accepted=False)
+        if self.follow_config.traffic_recovery_trial:
+            # GUARD에서 쓰는 제한을 통과 이력 유지 상태에도 동일하게 적용한다.
+            # 속도는 위에서 이미 제한했고, 영역은 실제 측정 속도/현재·이전 조향으로 계산했다.
+            if retained:
+                fringe = rear_fringe_risk(self,scene,raw_scan,region,context)
+                detail['selector_rear_fringe'] = fringe
+            if not fringe['accepted']:
+                same = same_path_risk(self,scene,raw_scan,region,context,speed,b_speed,b_steer,previous,b_detail)
+            detail['same_path_gap'] = same
+            detail['selector_bounded_rear_fringe_risk_accepted'] = fringe['accepted']
+            detail['selector_same_path_gap_risk_accepted'] = same['accepted']
+        blocked = region_blocked(region, self.config, bounded_unknown_risk=fringe['accepted'] or same['accepted'])
         if blocked is None:
             small_tail=bool(region['masked_left'] or region['masked_right'])
             return b_speed, b_steer, {**b_detail, **detail, 'selector_choice': 'baseline',
                 'selector_masked_tail_risk_accepted':small_tail,
-                'selector_reason':'released_observed_motion_small_masked_tail' if small_tail
+                'selector_reason':'released_bounded_rear_fringe' if fringe['accepted'] else
+                                  'released_bounded_same_path_gap' if same['accepted'] else
+                                  'released_observed_motion_small_masked_tail' if small_tail
                                   else 'released_large_motion_observed'}
         p_speed, p_steer, p_detail = parallel
         return p_speed, p_steer, {**p_detail, **detail, 'selector_choice': 'parallel', 'selector_reason': blocked}

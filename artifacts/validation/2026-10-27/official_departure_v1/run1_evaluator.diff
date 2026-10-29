@@ -1,0 +1,11 @@
+--- legacy/validate_basic_autonomy.py
++++ official signal evaluation only
+@@ -934,7 +934,7 @@
+         safety_evidence = (report["safety_sensor_only_inputs"] if safety_active else True)
+         report["passed"] = (not false_start and collision_samples == 0 and report['stop_collision_samples'] == 0 and report["stop_stable"] and
+                             report["sensor_only_inputs"] and safety_evidence and source_interface_passed and
+-                            {"red", "yellow", "green"}.issubset(signal_states) and route_evidence)
++                            {"red", "green"}.issubset(signal_states) and route_evidence)
+         if args.g1_follow:
+             running_rows = [row['autonomy'] for row in trace if row['autonomy']['state'] == 'RUNNING']
+             report['g1_runtime_verified'] = bool(running_rows) and all(

@@ -1,0 +1,54 @@
+............F........................................................... [ 43%]
+........................................................................ [ 86%]
+......................                                                   [100%]
+=================================== FAILURES ===================================
+___________ test_input_and_point_occupancy_stop_are_preserved[frame] ___________
+
+kind = 'frame'
+
+    @pytest.mark.parametrize('kind',['occupied','unknown','stale','reverse','frame'])
+    def test_input_and_point_occupancy_stop_are_preserved(kind):
+        sample=scene(.4,obstacle=kind=='occupied',unknown=kind=='unknown')
+        if kind=='stale':sample=replace(sample,t_ref_s=1.)
+>       if kind=='frame':sample=replace(sample,source_frame_id='wrong')
+
+tests/test_short_prefix_connection.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/dataclasses.py:1581: in replace
+    return obj.__class__(**changes)
+<string>:10: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = LocalScene(t_ref_s=0.4, source_first_s=0.30000000000000004, source_last_s=0.30000000000000004, source_frame_id='wrong'...ame', source_epoch=0, source_index=416, direction_xy=(-0.8639531992466774, 0.5035721095448306))), frame_id='base_link')
+
+    def __post_init__(self):
+        t_ref = _finite(self.t_ref_s, 't_ref_s')
+        if t_ref < 0 or self.frame_id != 'base_link':
+            raise ValueError('invalid reference time/frame')
+        _source(self.source_frame_id, self.source_epoch)
+        if len(self.rays) > MAX_RAYS:
+            raise ValueError('too many rays')
+        rays = tuple(self.rays)
+        object.__setattr__(self, 'rays', rays)
+        if not rays:
+            if self.source_first_s is not None or self.source_last_s is not None:
+                raise ValueError('empty input has no source observation times')
+            return
+        if any(not isinstance(ray, SensorRay) for ray in rays):
+            raise ValueError('rays must be SensorRay')
+        first = _finite(self.source_first_s, 'source_first_s')
+        last = _finite(self.source_last_s, 'source_last_s')
+        if first != rays[0].acquired_at_s or last != rays[-1].acquired_at_s or last > t_ref or first < 0:
+            raise ValueError('source interval/reference time mismatch')
+        previous = -1.
+        indices = set()
+        for ray in rays:
+            if ray.source_frame_id != self.source_frame_id or ray.source_epoch != self.source_epoch:
+>               raise ValueError('mixed source frame/epoch')
+E               ValueError: mixed source frame/epoch
+
+src/arena_autonomy/arena_autonomy/local_scene.py:99: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_short_prefix_connection.py::test_input_and_point_occupancy_stop_are_preserved[frame]
+1 failed, 165 passed in 6.03s

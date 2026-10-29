@@ -1,0 +1,173 @@
+[WARN] [1793254173.004296191] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1793254173.004992424] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[INFO] [1793254173.801057469] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=both; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+[INFO] [1793254173.955586335] [local_pursuit]: G1/G2 sensor handoff trial (preparation front_patch_v0); /drive through independent safety
+[INFO] [1793254176.005817316] [local_pursuit]: t=0.000000 SENSOR_STOP / left 벽 / unknown
+[WARN] [1793254176.015702724] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1793254176.016473575] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[INFO] [1793254176.045490130] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=both; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+[INFO] [1793254176.068826025] [local_pursuit]: G1/G2 sensor handoff trial (preparation observed_entry_space_v1); /drive through independent safety
+[INFO] [1793254178.105587160] [local_pursuit]: t=0.000000 SENSOR_STOP / left 벽 / unknown
+{
+  "scope": "installed ROS parameters/header/no-input zero output only; no driving or guard-chain validation",
+  "ros_domain_id": "226",
+  "sources": {
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": {
+      "sha256": "e775b7e337a9415df1b8a6d84f6c8e238e03c8cef7a89da2e0ba2457225b5144",
+      "installed": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy/lib/python3.12/site-packages/arena_autonomy/bypass_handoff.py"
+    },
+    "src/arena_autonomy/arena_autonomy/g1_g2_node.py": {
+      "sha256": "e47a38c631f615d22586be02b24a5dde3a4b9063221ea83f930b556584604d7c",
+      "installed": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy/lib/python3.12/site-packages/arena_autonomy/g1_g2_node.py"
+    },
+    "src/arena_autonomy/arena_autonomy/bypass_entry_trial.py": {
+      "sha256": "a11c97d0c0f0ac7d95edc47e5c869cae460ca31e2d47a5e048e609275d7b28ee",
+      "installed": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy/lib/python3.12/site-packages/arena_autonomy/bypass_entry_trial.py"
+    }
+  },
+  "cases": [
+    {
+      "candidate": false,
+      "parameters": {
+        "use_sim_time": true,
+        "vision_execution": "inline",
+        "g1_follow_enabled": true,
+        "g1_g2_simulation_trial": true,
+        "g1_trace_path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-29/g2_follow_reserve_v1/ros_options2/default.jsonl",
+        "lidar_compensation": "both",
+        "motion_scan_timing_verified": true,
+        "motion_feedback_mode": "drive_motor_shaft",
+        "motion_gear_ratio": 15.0,
+        "motion_wheel_radius_m": 0.0325,
+        "motion_rear_axle_x_m": -0.0675,
+        "motion_lidar_x_m": 0.06,
+        "wheelbase_m": 0.135,
+        "lidar_x_m": 0.06,
+        "max_speed_mps": 1.0,
+        "control_rate_hz": 50.0,
+        "partial_observation_policy": "bounded_local_v4",
+        "g1_boundary_evidence_mode": "corner_distance_candidate",
+        "g1_occupancy_timing_mode": "per_ray_candidate",
+        "g1_parallel_hold_trial": true,
+        "g1_pass_release_trial": true,
+        "g1_guard_curve_trial": true,
+        "g1_traffic_recovery_trial": true,
+        "g1_traffic_path_recovery_trial": true,
+        "g1_corridor_fallback_enabled": true
+      },
+      "execution_config": {
+        "bypass": {
+          "stationary_outer_boundary": true,
+          "wall_reanchor": true,
+          "tracked_wall_fit": true,
+          "rejoin_enabled": true,
+          "wide_entry": true,
+          "prefer_earlier_transition": false
+        },
+        "observation_window_s": 0.8,
+        "maximum_patch_displacement_m": 0.06,
+        "minimum_distinct_scans": 6,
+        "preparation_cap_mps": 0.35,
+        "maximum_initial_steering_rad": 0.08,
+        "reacquire_distinct_scans": 2,
+        "preparation_policy": "front_patch_v0",
+        "persistence_window_policy": "compare_then_trim_v0",
+        "follow_entry_space_enabled": false,
+        "reacquire_policy": "positive_command_v0"
+      },
+      "drive_messages": [
+        0.0
+      ],
+      "drive_safe_publishers": 0,
+      "feedback_mode": "drive_motor_shaft",
+      "feedback_topic": "/drive_motor/encoder",
+      "gear_ratio": 15.0,
+      "wheel_radius_m": 0.0325,
+      "trace_sha256": "2005316b840a4051bb140fa340de5a03f51b4b3f27e9d29e142c27ff683ff5f6",
+      "footer": {
+        "accepted": 2,
+        "written": 2,
+        "dropped": 0,
+        "failed": 0,
+        "pending": 0,
+        "worker_alive": false,
+        "capture_errors": 0
+      },
+      "passed": true
+    },
+    {
+      "candidate": true,
+      "parameters": {
+        "use_sim_time": true,
+        "vision_execution": "inline",
+        "g1_follow_enabled": true,
+        "g1_g2_simulation_trial": true,
+        "g1_trace_path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-29/g2_follow_reserve_v1/ros_options2/candidate.jsonl",
+        "lidar_compensation": "both",
+        "motion_scan_timing_verified": true,
+        "motion_feedback_mode": "drive_motor_shaft",
+        "motion_gear_ratio": 15.0,
+        "motion_wheel_radius_m": 0.0325,
+        "motion_rear_axle_x_m": -0.0675,
+        "motion_lidar_x_m": 0.06,
+        "wheelbase_m": 0.135,
+        "lidar_x_m": 0.06,
+        "max_speed_mps": 1.0,
+        "control_rate_hz": 50.0,
+        "partial_observation_policy": "bounded_local_v4",
+        "g1_boundary_evidence_mode": "corner_distance_candidate",
+        "g1_occupancy_timing_mode": "per_ray_candidate",
+        "g1_parallel_hold_trial": true,
+        "g1_pass_release_trial": true,
+        "g1_guard_curve_trial": true,
+        "g1_traffic_recovery_trial": true,
+        "g1_traffic_path_recovery_trial": true,
+        "g1_corridor_fallback_enabled": true,
+        "g1_g2_preparation_policy": "observed_entry_space_v1",
+        "g1_g2_persistence_window": "trim_before_compare_v1",
+        "g1_g2_follow_entry_space": true,
+        "g1_g2_reacquire_policy": "known_hold_v1"
+      },
+      "execution_config": {
+        "bypass": {
+          "stationary_outer_boundary": true,
+          "wall_reanchor": true,
+          "tracked_wall_fit": true,
+          "rejoin_enabled": true,
+          "wide_entry": true,
+          "prefer_earlier_transition": false
+        },
+        "observation_window_s": 0.8,
+        "maximum_patch_displacement_m": 0.06,
+        "minimum_distinct_scans": 6,
+        "preparation_cap_mps": 0.35,
+        "maximum_initial_steering_rad": 0.08,
+        "reacquire_distinct_scans": 2,
+        "preparation_policy": "observed_entry_space_v1",
+        "persistence_window_policy": "trim_before_compare_v1",
+        "follow_entry_space_enabled": true,
+        "reacquire_policy": "known_hold_v1"
+      },
+      "drive_messages": [
+        0.0
+      ],
+      "drive_safe_publishers": 0,
+      "feedback_mode": "drive_motor_shaft",
+      "feedback_topic": "/drive_motor/encoder",
+      "gear_ratio": 15.0,
+      "wheel_radius_m": 0.0325,
+      "trace_sha256": "adfa271e29bf3c58c7c4202692af1af3916f58563a19540ba5a8322c734732b6",
+      "footer": {
+        "accepted": 2,
+        "written": 2,
+        "dropped": 0,
+        "failed": 0,
+        "pending": 0,
+        "worker_alive": false,
+        "capture_errors": 0
+      },
+      "passed": true
+    }
+  ],
+  "source_unchanged": true
+}

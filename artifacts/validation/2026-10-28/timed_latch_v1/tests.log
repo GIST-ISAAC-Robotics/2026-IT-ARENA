@@ -1,0 +1,16 @@
+F.......................                                                 [100%]
+=================================== FAILURES ===================================
+_________________ test_motion_after_measurement_can_reach_body _________________
+
+    def test_motion_after_measurement_can_reach_body():
+        # p=.27 -> q=.17 at t=.1 -> x=.12 at t=.2. Both steps fit 1m/s.
+        # Ignoring the latter step incorrectly excludes the old point.
+        distance, _ = joint_missing_sweep([[.27, 0.]], [[0., 0.]], [0.],
+            math.radians(.5), 1., 0., .1, 0., 0.)
+>       assert distance[0] > .1
+E       assert 0.08000000000000004 > 0.1
+
+tests/test_timed_missing_sweep_probe.py:21: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_timed_missing_sweep_probe.py::test_motion_after_measurement_can_reach_body
+1 failed, 23 passed in 0.67s

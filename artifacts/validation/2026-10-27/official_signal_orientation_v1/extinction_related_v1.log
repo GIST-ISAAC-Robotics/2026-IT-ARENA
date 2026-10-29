@@ -1,0 +1,46 @@
+.......................FF............................................... [ 37%]
+........................................................................ [ 74%]
+.................................................                        [100%]
+=================================== FAILURES ===================================
+________________ test_unknown_red_subset_revokes_pattern[shift] ________________
+
+change = 'shift'
+
+    @pytest.mark.parametrize('change', ['shift', 'scale', 'additional'])
+    def test_unknown_red_subset_revokes_pattern(change):
+        signal = OfficialStartSignal()
+        t = reds(signal)
+        frame = light_image(3, offset=(200,125)) if change == 'shift' else light_image(3)
+        if change == 'scale':
+            frame = light_image(3, red_scale=[2.5]*5)
+        elif change == 'additional':
+            frame[90:105,400:415] = (255,0,0)
+        assert not signal.update(frame, t)
+>       assert signal.bank is None
+E       AssertionError: assert {'cx': 206.5, 'cy': 125.5, 'diameter': 13.0, 'gx': 266.5, ...} is None
+E        +  where {'cx': 206.5, 'cy': 125.5, 'diameter': 13.0, 'gx': 266.5, ...} = <arena_autonomy.race_start.OfficialStartSignal object at 0x7767719c0d10>.bank
+
+tests/test_official_start_signal.py:115: AssertionError
+________________ test_unknown_red_subset_revokes_pattern[scale] ________________
+
+change = 'scale'
+
+    @pytest.mark.parametrize('change', ['shift', 'scale', 'additional'])
+    def test_unknown_red_subset_revokes_pattern(change):
+        signal = OfficialStartSignal()
+        t = reds(signal)
+        frame = light_image(3, offset=(200,125)) if change == 'shift' else light_image(3)
+        if change == 'scale':
+            frame = light_image(3, red_scale=[2.5]*5)
+        elif change == 'additional':
+            frame[90:105,400:415] = (255,0,0)
+        assert not signal.update(frame, t)
+>       assert signal.bank is None
+E       AssertionError: assert {'cx': 206.5, 'cy': 125.5, 'diameter': 13.0, 'gx': 266.5, ...} is None
+E        +  where {'cx': 206.5, 'cy': 125.5, 'diameter': 13.0, 'gx': 266.5, ...} = <arena_autonomy.race_start.OfficialStartSignal object at 0x7767719e8560>.bank
+
+tests/test_official_start_signal.py:115: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_official_start_signal.py::test_unknown_red_subset_revokes_pattern[shift]
+FAILED tests/test_official_start_signal.py::test_unknown_red_subset_revokes_pattern[scale]
+2 failed, 191 passed in 15.17s

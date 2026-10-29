@@ -19,7 +19,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--partial-observation-policy', choices=('strict','bounded_side_v1','bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4'),default='strict')
+    parser.add_argument('--traffic-recovery-trial',action='store_true')
     args = parser.parse_args()
+    if args.traffic_recovery_trial and args.partial_observation_policy!='bounded_local_v4':
+        raise ValueError('traffic recovery requires v4')
     output = args.output.resolve()
     if not output.is_relative_to(ROOT / 'artifacts'):
         raise ValueError('output must be under artifacts')
@@ -49,9 +52,11 @@ def main():
     sources = [Path(__file__).relative_to(ROOT).as_posix()] + [
         'src/arena_autonomy/arena_autonomy/' + name + '.py'
         for name in ('lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'local_path',
-                     'partial_observation', 'scene_motion', 'local_scene')]
+                     'partial_observation', 'scene_motion', 'local_scene', 'partial_surface_alignment',
+                     'traffic_recovery_trial','recovery_geometry','surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff')]
     report = dict(passed=False, scope='isolated ROS synthetic inputs and independent safety output; no vehicle or MCU',
                   partial_observation_policy=args.partial_observation_policy,
+                  traffic_recovery_trial=args.traffic_recovery_trial,
                   cases=cases, source_sha256={s: hashlib.sha256((ROOT / s).read_bytes()).hexdigest() for s in sources})
     with zipfile.ZipFile(output / 'source_snapshot.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
         for name in sources:
@@ -62,6 +67,7 @@ def main():
                '-p', 'motion_imu_topic:=/imu/data', '-p', 'motion_feedback_mode:=drive_motor_shaft',
                '-p', 'motion_gear_ratio:=15.0', '-p', 'motion_wheel_radius_m:=0.0325']
     command += ['-p', 'partial_observation_policy:='+args.partial_observation_policy]
+    if args.traffic_recovery_trial:command += ['-p','g1_traffic_recovery_trial:=true']
     child = subprocess.Popen(command, cwd=ROOT, stdout=log, stderr=log, start_new_session=True)
     last_scan = -math.inf
 

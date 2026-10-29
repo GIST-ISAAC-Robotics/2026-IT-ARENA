@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scope": "명시 교통 회복의 연속 정합 좌표 기반 옛 위치 확인. 기본OFF·1초·두 새 스캔·현재 입력 재검사 유지, 실차/완주 승인 아님.",
+  "parent_contract": "config/tests/small_alignment_r1_sha256.json",
+  "parent_contract_sha256": "9350370fbc096c238d598a260421d14654b9cf7ab81eabaa201221c49c255f08",
+  "before_snapshot": "artifacts/validation/2026-10-28/bump_traffic_v1/run2_sources.zip",
+  "before_snapshot_sha256": "0443fefa4a8db40920e457b3fe8f4a4991b51c4f64df472880beb38f10fc2334",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/anchor_clearance_trial.py": {
+      "before": "dc354714a3ecdbe1e6c439245abdee514dea093251e368cbf30444933737a765",
+      "after": "7fc01687c88d5e7e1f4236fd33eb52d4950d4c64a0ff7298a174d8d8ddac0375",
+      "reason": "기존 원래 위치 확인은 유지하고 전체 위협에 바인딩한 현재 연속 정합 좌표의 반환 지지를 추가."
+    },
+    "src/arena_autonomy/arena_autonomy/traffic_recovery_trial.py": {
+      "before": "fef0313661712345fa06681d35a9048e146cb037727e54effb713f89bb842533",
+      "after": "c43ce2a78a5c36a3f024b9790aacefc408a8f65f966f0dceebe83cc55aa426c3",
+      "reason": "선택형 RecoveryPolicy에서 연속 확인 객체를 캡처 시 같은 전체 anchor에 연결. 독립 보호 상태/최종 재검사 유지."
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {}
+}

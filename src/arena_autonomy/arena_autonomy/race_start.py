@@ -29,15 +29,24 @@ class StartConfig:
             raise ValueError('invalid start timing contract')
 
 
-def _blobs(mask):
+def _components(mask):
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     output = []
+    unclassified = False
     for contour in contours:
+        if cv2.contourArea(contour) <= 10:
+            continue
         x, y, width, height = cv2.boundingRect(contour)
         if (5 <= width <= 100 and 4 <= height <= 100 and
-                .55 < width/height < 1.8 and cv2.contourArea(contour) > 10):
+                .55 < width/height < 1.8):
             output.append((x+width/2, y+height/2, float(width)))
-    return output
+        else:
+            unclassified = True
+    return output, unclassified
+
+
+def _blobs(mask):
+    return _components(mask)[0]
 
 
 def _red_bank(blobs):
@@ -80,6 +89,29 @@ def _red_bank(blobs):
                 vertical=vertical, pairs=len(columns[0]))
 
 
+def _known_red_subset(blobs, bank):
+    """확인한 배열의 남은 광원만 허용한다. 가림/순차 소등을 출발로 해석하지 않는다."""
+    if not blobs or len(blobs) >= 4*bank['pairs']:
+        return False
+    diameter = bank['diameter']
+    slope = (bank['gy']-bank['cy'])/(bank['gx']-bank['cx'])
+    centers = []
+    for column in range(4):
+        x = bank['cx']+(column-1.5)*bank['pitch']
+        y = bank['cy']+slope*(x-bank['cx'])
+        for offset in ((-bank['vertical'], bank['vertical']) if bank['pairs'] == 2 else (0.,)):
+            centers.append((x, y+offset))
+    occupied = set()
+    for x, y, width in blobs:
+        matches = [i for i, (cx, cy) in enumerate(centers)
+                   if abs(x-cx) <= .6*diameter and abs(y-cy) <= .6*diameter]
+        if (not .5*diameter <= width <= 1.8*diameter or len(matches) != 1
+                or matches[0] in occupied):
+            return False
+        occupied.add(matches[0])
+    return True
+
+
 class OfficialStartSignal:
     def __init__(self, config=None):
         self.config = config or StartConfig()
@@ -96,6 +128,9 @@ class OfficialStartSignal:
         self.bank = None
         self.red_frames = self.green_frames = 0
         self.last_red = None
+
+    def _red_observation(self, mask):
+        return _components(mask)
 
     def update(self, rgb, stamp_s):
         if isinstance(stamp_s, bool) or not isinstance(stamp_s, (float, int)) or not math.isfinite(stamp_s) or stamp_s < 0:
@@ -122,7 +157,12 @@ class OfficialStartSignal:
         hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
         red = red_signal_mask(hsv)
         red[int(rgb.shape[0]*.58):] = 0
-        blobs = _blobs(red)
+        blobs, unclassified_red = self._red_observation(red)
+        if unclassified_red:
+            # 연결되거나 찌그러져 광원 형상 검사에서 탈락한 빨강도 소등은 아니다.
+            self._forget_pattern()
+            self.observed = 'red_unclassified'
+            return False
         bank = _red_bank(blobs)
         if bank is not None:
             consistent = (self.bank is not None and
@@ -134,7 +174,15 @@ class OfficialStartSignal:
             self.observed = 'red4_confirmed' if self.red_frames >= self.config.red_confirmations else 'red4_candidate'
             return False
         if blobs:
-            # 불완전 빨강/가림을 소등으로 해석하지 않는다.
+            # 이미 확인한 광원의 짧은 순차 소등/가림은 패턴만 기억한다.
+            # 새 확인이나 last_red 갱신은 없고, 빨강이 남으면 초록 확인도 하지 않는다.
+            if (self.bank is not None and self.red_frames >= self.config.red_confirmations
+                    and stamp_s-self.last_red <= self.config.max_red_to_green_s
+                    and _known_red_subset(blobs, self.bank)):
+                self.green_frames = 0
+                self.observed = 'red_extinction_pending'
+                return False
+            # 다른 위치/크기의 빨강과 만료된 부분 배열은 이전 확인을 폐기한다.
             self._forget_pattern()
             self.observed = 'red_partial_or_ambiguous'
             return False

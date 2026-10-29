@@ -8,7 +8,7 @@ import math
 
 import numpy as np
 
-from arena_autonomy.corner_corridor import corridor_evidence
+from arena_autonomy.corner_corridor import corridor_evidence, short_prefix_evidence, short_inner_prefix_evidence
 from arena_autonomy.lidar_motion import MotionUnavailable
 from arena_autonomy.local_follow import path_agrees, pursue_path
 from arena_autonomy.local_path import braking_speed, swept_limit
@@ -34,7 +34,21 @@ def current_proposal(scene, speed, side, previous_steering, dt, config, *, parti
             return {**base, 'reason':'front_unobserved'}
         # 선택형 LocalFollow의 관측 확인 전까지는 여전히 경로/점유 제안일 뿐이다.
     points = np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1,2)
-    geometry = corridor_evidence(points, side, config)
+    if config.traffic_path_recovery_trial:
+        from arena_autonomy.corridor_roles import role_aware_evidence
+        geometry = role_aware_evidence(points, side, config)
+    else:
+        geometry = corridor_evidence(points, side, config)
+    if (config.short_boundary_prefix_enabled and not geometry['supported']
+            and geometry['reason'] == 'long_outer_reference_unavailable'):
+        alternative = short_prefix_evidence(points,side,config)
+        if alternative['supported']:
+            geometry = alternative
+    if (config.short_boundary_prefix_enabled and not geometry['supported']
+            and geometry['reason'] == 'inner_surface_support_unavailable'):
+        alternative = short_inner_prefix_evidence(geometry,config)
+        if alternative['supported']:
+            geometry = alternative
     base.update(geometry_supported=geometry['supported'], geometry=geometry,
                 occupied_points=len(points), all_return_points_retained=True)
     if not geometry['supported']:
@@ -44,6 +58,9 @@ def current_proposal(scene, speed, side, previous_steering, dt, config, *, parti
         cap, desired, ahead = pursue_path(geometry['path'], speed, config, age)
     except MotionUnavailable as error:
         return {**base, 'reason':'pursuit_unavailable', 'error':str(error)}
+    short_prefix = geometry.get('short_prefix',False)
+    if short_prefix:
+        cap = min(cap,.35)
     steering = float(np.clip(desired,previous_steering-3*dt,previous_steering+3*dt))
     padding = (per_ray_padding(scene,.025+config.measurement_padding_m,config.object_motion_bound_mps)
                if config.occupancy_timing_mode == 'per_ray_candidate' else
@@ -55,6 +72,16 @@ def current_proposal(scene, speed, side, previous_steering, dt, config, *, parti
     target = min(cap,braking_speed(available,age),available/config.headway_s)
     base.update(steering_rad=steering, swept_clearance_m=clearance, observed_path_ahead_m=ahead,
                 point_padding_min_m=float(np.min(padding)), point_padding_max_m=float(np.max(padding)))
+    if short_prefix:
+        # 새 안쪽 지지 후보는 차체 원점의 실제 투영부터 관측 끝까지 잰다.
+        # 후륜축 추종기의 남은 길이가 더 길어도 관측 제동 예산을 늘리지 않는다.
+        budget_ahead = min(ahead,geometry.get('base_observed_ahead_m',ahead))
+        path_budget = max(0.,budget_ahead-config.length_m/2-config.measurement_padding_m)
+        v = max(speed,target)
+        stop_budget = .06+v*(age+.10)+v*v/4
+        base.update(short_prefix=True,path_budget_m=path_budget,stop_budget_m=stop_budget)
+        if stop_budget > path_budget:
+            return {**base,'reason':'short_prefix_stop_budget'}
     if speed < 0:
         return {**base, 'reason':'reverse_motion'}
     if clearance < config.resume_clearance_m:
@@ -103,6 +130,14 @@ class CorridorObserver:
                       swept_clearance_m=proposal.get('swept_clearance_m'),
                       driving_authorized=False, runtime_connected=False, memory_refresh_authorized=False,
                       wall_identity_certified=False, old_path_only_allowed=False)
+        if self.config.traffic_path_recovery_trial:
+            geometry = proposal.get('geometry') or {}
+            result.update({key: geometry.get(key) for key in
+                           ('role_selection','preferred_side','inner_side','outer_side',
+                            'preferred_observed_path_agrees')})
+        if self.config.short_boundary_prefix_enabled:
+            result.update(short_prefix=proposal.get('short_prefix',False),
+                          path_budget_m=proposal.get('path_budget_m'),stop_budget_m=proposal.get('stop_budget_m'))
         if not proposal['geometry_supported'] or proposal['reason'] in ('reverse_motion','pursuit_unavailable'):
             self.clear_evidence()
             return result

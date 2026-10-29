@@ -71,6 +71,14 @@ class PartialObservationPolicy:
         self.lateral_metric_enabled = lateral_metric_enabled
         self.reset()
 
+    def _refine_threat(self, threatening, *args):
+        """기본 정책의 계산을 그대로 유지한다. 선택형 후보만 별도 기하를 사용한다."""
+        return threatening
+
+    def _capture_latched_threat(self, threatening, previous, now):
+        """선택형 재관측만 전체 위협 상태를 보존한다. 기본 정책은 사용하지 않는다."""
+        pass
+
     def reset(self):
         self.previous = None
         self.previous_distinct = None
@@ -214,6 +222,9 @@ class PartialObservationPolicy:
             relevant = near_sweep(carried,speed,now-source,steering,previous_steering,
                                   wheelbase,length,width,.03+2*max(0.,now-reference))
             threatening = (along >= 0) & (along <= required) & (across <= spread) & relevant[None,:]
+            threatening = self._refine_threat(threatening, carried, previous, origins, direction,
+                source + unknown*scan.time_increment, now, step/2, required, speed,
+                now-source, steering, previous_steering, wheelbase, length, width, report)
             # 옛 점 위치를 현재 유효 반환이 다시 관측하면 '소실' 가설에서 제외한다.
             # 물체 신원/정지 증명은 아니며 모든 현재 점은 독립 충돌 검사에 남는다.
             # 2 cm는 이 저속 후보의 대응 거리다. C1 거리 오차의 보장값이 아니다.
@@ -260,7 +271,8 @@ class PartialObservationPolicy:
                             threatening[:,index]=False
                             report['surface_correspondence']['associated_previous_points']+=1
             if np.any(threatening):
-                if not self.latched:
+                new_latch = not self.latched
+                if new_latch:
                     witnesses = []
                     for ray, index in np.argwhere(threatening)[:8]:
                         best,distance = nearest[int(index)]
@@ -286,6 +298,10 @@ class PartialObservationPolicy:
                             current_return_source_indices=current_indices.tolist(),
                             estimated_reference_to_now_se2=relative_poses(history,[reference],now)[0].tolist()))
                 self._latch('previous_point_in_missing_sweep',now)
+                if new_latch:
+                    # 짧은 진단 예시(witnesses)와 제어에 필요한 전체 증거를 분리한다.
+                    # 캡처 오류가 생겨도 위에서 설정한 래치는 남는다.
+                    self._capture_latched_threat(threatening,previous,now)
         self._remember(points, now, source, fresh)
         # 좁은 정면 예외라도 장애물 기억을 먼저 계산한다. 진행을 거절한 동안
         # 살아 있는 관측까지 갱신하지 않아 인위적으로 기억을 만료시키지 않는다.

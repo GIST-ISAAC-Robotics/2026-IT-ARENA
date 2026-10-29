@@ -1,0 +1,56 @@
+--- original/validate_g1_traffic.py
++++ official_traffic/validate_g1_traffic.py
+@@ -564,6 +564,7 @@
+     node = rclpy.create_node('g1b_traffic_validator')
+     state, trace, scans, drive_stamps, acquisition_records = {}, [], [], [], []
+     ego, actor, contacts, commands = [], [], [], []
++    bump_poses = []
+     capture_gate = EvaluationCaptureGate()
+     wheel_contacts = []
+     reader_audit = {name: {'json_messages': 0, 'handled_messages': 0, 'parse_errors': 0,
+@@ -607,6 +608,9 @@
+     def receive_status(message):
+         status = json.loads(message.data)
+         state['autonomy'] = status
++        status['observed_vision_mode'] = status.get('vision', {}).get('mode')
++        status['observed_signal_mode'] = status.get('vision', {}).get('signal_mode')
++        status['observed_race_supervisor'] = status.get('race') is not None
+         status_stream.write(json.dumps({k: v for k, v in status.items() if k not in ('text_log', 'vision')},
+                                        ensure_ascii=False)+'\n')
+ 
+@@ -689,6 +693,7 @@
+                 if not ego or when > ego[-1][0]:
+                     p = pose['position']
+                     ego.append((when, float(p.get('x', 0.)), float(p.get('y', 0.)), yaw_of(pose['orientation'])))
++                    bump_poses.append(dict(time=when, position=dict(p), orientation=dict(pose['orientation'])))
+                 else:
+                     rejected_ego_times += 1
+ 
+@@ -812,6 +817,9 @@
+             now = pose['time']
+             first_pose_time = now if first_pose_time is None else first_pose_time
+             light = state['light']
++            if (output/'signal_driver_failure.json').exists():
++                report['error'] = 'signal_driver_failure: see recorded receipt'
++                break
+             if t_green is None and light.get('applied') == 'green':
+                 t_green = now
+                 report['green_observed_sim_s'] = now
+@@ -893,7 +901,8 @@
+             if t_green is not None and now-t_green >= case['duration_s']:
+                 break
+             if t_green is None and now-first_pose_time > limits['max_sim_after_green_margin_s']+30:
+-                raise TimeoutError('green not observed in time')
++                report['error'] = 'TimeoutError: green not observed in time'
++                break
+             if t_green is not None and now-t_green > case['duration_s']+limits['max_sim_after_green_margin_s']:
+                 raise TimeoutError('case sim window overrun')
+         report['case_window'] = {'green_sim_s': t_green, 'end_sim_s': state['pose']['time'],
+@@ -1106,6 +1115,7 @@
+         path.write_text(''.join(json.dumps(r)+'\n' for r in contacts), encoding='utf-8')
+         report['actor_contacts_sha256'] = sha256(path)
+         (output/'actor_commands.json').write_text(json.dumps(commands, indent=1), encoding='utf-8')
++        (output/'bump_pose_trace.json').write_text(json.dumps(bump_poses), encoding='utf-8')
+         (output/'trace.json').write_text(json.dumps(trace, ensure_ascii=False), encoding='utf-8')
+         try:
+             report['evaluation'] = ev.evaluate_run(

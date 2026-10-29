@@ -1,0 +1,33 @@
+............................................F....                        [100%]
+=================================== FAILURES ===================================
+_______ test_duplicate_commands_share_work_only_within_the_current_call ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77098ec333b0>
+
+    def test_duplicate_commands_share_work_only_within_the_current_call(monkeypatch):
+        import arena_autonomy.bypass_entry_trial as module
+        swept, region = module.swept_limit, module.motion_region
+        angles, commands = [], []
+        def count_swept(points, angle, *args, **kwargs):
+            angles.append(angle)
+            return swept(points, angle, *args, **kwargs)
+        def count_region(scene, speed, target, steer, *args, **kwargs):
+            commands.append((steer, target))
+            return region(scene, speed, target, steer, *args, **kwargs)
+        monkeypatch.setattr(module, 'swept_limit', count_swept)
+        monkeypatch.setattr(module, 'motion_region', count_region)
+        first=evaluate(targets=((1.2,0.),))
+        assert len(angles)==len(set(angles))
+        assert len(commands)==len(set(commands))
+        assert len(angles) < 2*sum('steering_rad' in row for row in first['candidates'])
+        before=len(angles)
+        # 새 가까운 반환은 재평가하며 앞 호출의 허가/거리/장면을 재사용하지 않는다.
+        close=evaluate(targets=((.18,0.),))
+>       assert len(angles)>before and close['selected'] is None
+E       assert (6 > 6)
+E        +  where 6 = len([-1.9905255714182932e-17, 0.0, -0.06, -0.04944259148875325, 0.06, 0.04944259148875348])
+
+tests/test_bypass_entry_trial.py:257: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_bypass_entry_trial.py::test_duplicate_commands_share_work_only_within_the_current_call
+1 failed, 48 passed in 2.67s

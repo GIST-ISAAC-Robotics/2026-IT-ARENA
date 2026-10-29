@@ -59,7 +59,13 @@ def snapshot_call(scan, history, reference_s, epoch, speed, side, steering, dt,
 
 
 def controller_mode(follow):
+    from arena_autonomy.bypass_handoff import BypassHandoffFollow
+    if isinstance(follow, BypassHandoffFollow):
+        return 'g1_g2_handoff_trial'
     from arena_autonomy.r0_plus import R0Plus
+    from arena_autonomy.bypass_entry_follow import BypassEntryFollow
+    if isinstance(follow, BypassEntryFollow):
+        return 'g2_entry_trial'
     from arena_autonomy.m3_execution_trial import M3ExecutionFollow
     if isinstance(follow, M3ExecutionFollow):
         return 'm3_execution_trial'
@@ -68,12 +74,20 @@ def controller_mode(follow):
 
 class FollowTrace:
     def __init__(self, path, motion_config, follow_config, capacity=128, *, mode='g1_follow', execution_config=None):
-        if mode not in ('g1_follow', 'r0_plus_candidate', 'm3_execution_trial'):
+        if mode not in ('g1_follow', 'r0_plus_candidate', 'm3_execution_trial', 'g2_entry_trial', 'g1_g2_handoff_trial'):
             raise ValueError('unsupported decision trace mode')
         if mode == 'm3_execution_trial':
             from arena_autonomy.m3_execution_trial import ExecutionConfig
             if not isinstance(execution_config, ExecutionConfig):
                 raise ValueError('M3 trace requires typed execution config')
+        elif mode == 'g2_entry_trial':
+            from arena_autonomy.bypass_entry_follow import BypassExecutionConfig
+            if not isinstance(execution_config, BypassExecutionConfig):
+                raise ValueError('G2 trace requires typed execution config')
+        elif mode == 'g1_g2_handoff_trial':
+            from arena_autonomy.bypass_handoff import HandoffExecutionConfig
+            if not isinstance(execution_config, HandoffExecutionConfig):
+                raise ValueError('handoff trace requires typed execution config')
         elif execution_config is not None:
             raise ValueError('execution config requires M3 trace')
         target = Path(path)
@@ -89,6 +103,12 @@ class FollowTrace:
                     {'schema': 2, 'scope': 'r0plus_decision_stage_only', 'controller_mode': mode})
         if mode == 'm3_execution_trial':
             identity = {'schema': 3, 'scope': 'm3_execution_decision_stage_only', 'controller_mode': mode,
+                        'execution_config': asdict(execution_config)}
+        if mode == 'g2_entry_trial':
+            identity = {'schema': 4, 'scope': 'g2_entry_decision_stage_only', 'controller_mode': mode,
+                        'execution_config': asdict(execution_config)}
+        if mode == 'g1_g2_handoff_trial':
+            identity = {'schema': 5, 'scope': 'g1_g2_handoff_decision_stage_only', 'controller_mode': mode,
                         'execution_config': asdict(execution_config)}
         self.emit('header', {**identity,
                             'history_units': {'wheels': 'm/s_after_conversion', 'gyro': 'rad/s_after_bias'},
@@ -183,9 +203,22 @@ def comparable_decision(output):
     import copy
     result=copy.deepcopy(output)
     if isinstance(result,(list,tuple)) and len(result)==3 and isinstance(result[2],dict):
-        observation=result[2].get('partial_observation')
-        fit=observation.get('surface_correspondence') if isinstance(observation,dict) else None
-        if isinstance(fit,dict) and 'processing_ms' in fit:
+        fits=[]
+        components=[result[2]]
+        if result[2].get('mode') == 'g1_g2_handoff_trial' and isinstance(result[2].get('normal'),dict):
+            components.append(result[2]['normal'])
+        for component in components:
+            observation=component.get('partial_observation')
+            if isinstance(observation,dict):
+                fits.append(observation.get('surface_correspondence'))
+                anchor=observation.get('anchor_diagnostic')
+                if isinstance(anchor,dict):
+                    fits.append(anchor.get('fit'))
+        # 이름이 같은 다른 수치를 재귀적으로 지우지 않는다. 이 두 위치의
+        # 표면 정합 wall-clock 비용만 비결정적 진단값이며 제어 출력은 아니다.
+        for fit in fits:
+            if not isinstance(fit,dict) or 'processing_ms' not in fit:
+                continue
             value=fit['processing_ms']
             if isinstance(value,bool) or not isinstance(value,Real) or not math.isfinite(value) or value<0:
                 raise ValueError('invalid surface processing cost')
@@ -209,7 +242,11 @@ def replay_events(events):
                     and data.get('controller_mode') == 'r0_plus_candidate')
             m3 = (data.get('schema') == 3 and data.get('scope') == 'm3_execution_decision_stage_only'
                   and data.get('controller_mode') == 'm3_execution_trial')
-            if kind != 'header' or not (standard or plus or m3):
+            g2 = (data.get('schema') == 4 and data.get('scope') == 'g2_entry_decision_stage_only'
+                  and data.get('controller_mode') == 'g2_entry_trial')
+            handoff = (data.get('schema') == 5 and data.get('scope') == 'g1_g2_handoff_decision_stage_only'
+                       and data.get('controller_mode') == 'g1_g2_handoff_trial')
+            if kind != 'header' or not (standard or plus or m3 or g2 or handoff):
                 raise ValueError('unsupported trace header')
             scope = data['scope']
             motion = MotionConfig(**data['motion_config'])
@@ -221,6 +258,14 @@ def replay_events(events):
                 from arena_autonomy.m3_execution_trial import M3ExecutionFollow, ExecutionConfig
                 follow = M3ExecutionFollow(FollowConfig(**data['follow_config']),
                     ExecutionConfig(**data['execution_config']), allow_simulation_trial=True)
+            elif g2:
+                from arena_autonomy.bypass_entry_follow import BypassEntryFollow, BypassExecutionConfig
+                follow = BypassEntryFollow(FollowConfig(**data['follow_config']),
+                    BypassExecutionConfig(**data['execution_config']), allow_simulation_trial=True)
+            elif handoff:
+                from arena_autonomy.bypass_handoff import BypassHandoffFollow, HandoffExecutionConfig
+                follow = BypassHandoffFollow(FollowConfig(**data['follow_config']),
+                    HandoffExecutionConfig.from_mapping(data['execution_config']), allow_simulation_trial=True)
             else:
                 follow = follow_type(FollowConfig(**data['follow_config']))
         elif kind == 'reset':

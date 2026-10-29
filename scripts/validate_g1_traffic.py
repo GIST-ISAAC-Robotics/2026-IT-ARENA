@@ -48,9 +48,10 @@ SET_POSE_SERVICE = f'/world/{WORLD_NAME}/set_pose'
 CONTACT_TOPIC = '/eval/g1b_actor/contact'
 CONTACT_PROBE_REPORT = REPO/'artifacts/validation/2026-10-07/g1b_contact_probe_v1/report.json'
 SOURCE_FILES = [
+    'config/tests/local_start_signal_r0_sha256.json',
     'scripts/g1_partial_trial.py', 'config/tests/partial_observation_r0_sha256.json',
     'scripts/g1_motion_stress.py', 'scripts/motion_fault_audit.py',
-    'scripts/g1_lidar_stress.py',
+    'scripts/g1_lidar_stress.py', 'scripts/g1_course_eval.py',
     'scripts/validate_g1_traffic.py', 'scripts/g1_traffic_eval.py', 'scripts/validate_basic_autonomy.py',
     'scripts/lidar_shutdown.py', 'scripts/audit_local_pursuit_road.py', 'scripts/probe_static_actor_contact.py',
     'scripts/traffic_actors.py', 'scripts/traffic_actor_runtime.py',
@@ -83,7 +84,9 @@ SOURCE_FILES = [
         'polygon_batch', 'rounded_occupancy_candidate',
         'vision_process', 'lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'follow_trace',
         'partial_observation', 'partial_surface_alignment', 'parallel_lane_trial', 'pass_release_trial',
-        'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'occupancy_timing', 'race_start',
+        'traffic_recovery_trial', 'traffic_path_recovery_trial', 'corridor_roles',
+        'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial',
+        'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'occupancy_timing', 'race_start', 'race_start_local',
         'observation_support', 'scan_topology', 'observation_lateral', 'linear_observation', 'race_session', 'race_permission')],
     *[f'src/arena_vehicle_interface/arena_vehicle_interface/{name}.py' for name in (
         'rotating_lidar', 'lidar_impairment', 'sim_wheel_encoder', 'ackermann_to_twist', 'timing_probe', 'queued_log',
@@ -96,6 +99,12 @@ SOURCE_FILES = [
 
 def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def traffic_path_recovery_arguments(enabled, recovery, corridor):
+    if enabled and not (recovery and corridor):
+        raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
+    return ['g1_traffic_path_recovery_trial:=true'] if enabled else []
 
 
 ZERO_SPEED_MODES = ('legacy', 'reset_integral', 'no_lag', 'passive_damping')
@@ -163,6 +172,9 @@ def check_straight(config, centerline, case, s0):
 def check_route(config, centerline, case, s0, road=None, obstacles=()):
     """확장 시험만 등록한 첫 코너까지 허용한다. 기존 직선 제한은 유지한다."""
     kind = case.get('route_kind', 'straight')
+    if kind == 'full_course':
+        from g1_course_eval import check_full_course
+        return check_full_course(config, centerline, case, s0, road, obstacles)
     if kind == 'merge_straight':
         return validate_merge_route(config, centerline, case, s0, road, obstacles, check_straight)
     if kind == 'side_road_straight':
@@ -298,6 +310,28 @@ class EvaluationCaptureGate:
             self.closed = True
 
 
+def drain_actor_tail(target_s, pose_streams, spin_once, *, wall_timeout_s=1., clock=time.monotonic):
+    """고정한 자차 마지막 시각까지 ROS 상대차 큐만 회수한다. 자료를 합성하지 않는다."""
+    began = clock()
+    if (not math.isfinite(target_s) or not math.isfinite(wall_timeout_s) or
+            wall_timeout_s <= 0 or not pose_streams):
+        raise ValueError('invalid actor tail drain target')
+    def latest():
+        return {name: float(rows[-1][0]) if rows else None for name, rows in pose_streams.items()}
+    before = latest()
+    polls = 0
+    while True:
+        after = latest()
+        complete = all(t is not None and math.isfinite(t) and t >= target_s for t in after.values())
+        remaining = wall_timeout_s-(clock()-began)
+        if complete or remaining <= 0:
+            return dict(target_sim_s=target_s, completed=complete, before_sim_s=before,
+                        after_sim_s=after, spin_calls=polls, elapsed_wall_s=clock()-began,
+                        scope='receive existing actor poses after ego capture closes; no extrapolation')
+        spin_once(min(.01, remaining))
+        polls += 1
+
+
 def json_reader(command, handler, log, audit):
     """gz topic JSON 출력의 평가 전용 수신기. 시험자 소유 프로세스 그룹."""
     process = subprocess.Popen(command, cwd=REPO, stdout=subprocess.PIPE, stderr=log, text=True,
@@ -378,6 +412,12 @@ def main():
                         help='옆차 관측/통과에 따라 평행 후보와 G1을 선택. 기본 OFF, parallel-hold 필요')
     parser.add_argument('--guard-curve-trial', action='store_true',
                         help='GUARD 곡선 저속 후보. 기본 OFF, pass-release 필요')
+    parser.add_argument('--traffic-recovery-trial', action='store_true',
+                        help='점별 소실/재관측/같은 경로 통과 회복 후보. 기본 OFF, GUARD 필요')
+    parser.add_argument('--traffic-path-recovery-trial', action='store_true',
+                        help='선호 벽/코너 역할 및 완료 통과 이력 분리. 기본 OFF, traffic-recovery/corridor 필요')
+    parser.add_argument('--short-boundary-prefix',action='store_true',
+                        help='명시 선택형 짧은 관측 경로. G1·corridor/per-ray/기록 필요, 기본 OFF')
     parser.add_argument('--boundary-evidence', choices=('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'), default='connected',
                         help='G1 경계 증거 후보; 기본 connected 유지, fragmented는 명시 선택형')
     parser.add_argument('--occupancy-timing', choices=('oldest', 'per_ray_candidate'), default='oldest',
@@ -434,6 +474,8 @@ def main():
     if args.corridor_fallback and (args.mode not in ('g1', 'm3') or args.boundary_evidence != 'corner_distance_candidate'
                                   or args.occupancy_timing != 'per_ray_candidate' or not args.record_follow_decisions):
         parser.error('corridor fallback requires G1 corner-distance/per-ray/decision recording')
+    if args.short_boundary_prefix and (args.mode != 'g1' or not args.corridor_fallback):
+        parser.error('short boundary prefix requires explicit G1 corridor fallback')
     config = load_config(args.config)
     if args.actor_overlay:
         args.actor_overlay.resolve().relative_to(REPO)
@@ -449,6 +491,11 @@ def main():
         args.mode, args.record_follow_decisions, args.boundary_evidence, args.occupancy_timing)
     release_arguments = pass_release_arguments(args.pass_release_trial,args.parallel_hold_trial)
     guard_arguments = guard_curve_arguments(args.guard_curve_trial, args.pass_release_trial)
+    if args.traffic_recovery_trial and not args.guard_curve_trial:
+        raise ValueError('traffic recovery requires explicit guard curve trial')
+    recovery_arguments = ['g1_traffic_recovery_trial:=true'] if args.traffic_recovery_trial else []
+    path_recovery_arguments = traffic_path_recovery_arguments(
+        args.traffic_path_recovery_trial, args.traffic_recovery_trial, args.corridor_fallback)
     if lidar_profile and (launch['lidar_rate_hz'] != 10 or launch['lidar_acquisition'] != 'sequential'):
         raise ValueError('registered G1 lidar stress requires sequential 10 Hz')
     output = args.output.resolve()
@@ -519,6 +566,8 @@ def main():
     if args.corridor_fallback:
         report['corridor_fallback_enabled'] = True
         report['recent_observation_enabled'] = False
+    if args.short_boundary_prefix:
+        report['short_boundary_prefix_enabled'] = True
     if runtime_lidar_profile:
         report['lidar_test_profile'] = {'path': str(lidar_profile.relative_to(REPO)),
             'requested': lidar_requested, 'runtime_sha256': sha256(runtime_lidar_profile),
@@ -690,7 +739,8 @@ def main():
             raise TimeoutError('actor set_pose timeout')
 
     try:
-        extra = [f'evaluation_actor_sdf:={actor_path}', *partial_arguments, *parallel_arguments, *release_arguments, *guard_arguments]
+        extra = [f'evaluation_actor_sdf:={actor_path}', *partial_arguments, *parallel_arguments, *release_arguments,
+                 *guard_arguments, *recovery_arguments, *path_recovery_arguments]
         if operation_trial is not None:
             extra.append('race_control_mode:=b3_candidate')
         if args.boundary_evidence != 'connected':
@@ -701,6 +751,8 @@ def main():
             extra.append(f'g1_occupancy_timing_mode:={args.occupancy_timing}')
         if args.corridor_fallback:
             extra.extend(['g1_corridor_fallback_enabled:=true', 'g1_recent_observation_enabled:=false'])
+        if args.short_boundary_prefix:
+            extra.append('g1_short_boundary_prefix_enabled:=true')
         if args.mode == 'm3':
             extra.append('g1_m3_execution_trial:=true')
             if args.m3_command_fallback:
@@ -991,11 +1043,21 @@ def main():
             deadline = time.monotonic()+1.
             while not actuation_diagnostics and time.monotonic() < deadline:
                 rclpy.spin_once(node, timeout_sec=.01)
-        # ROS 콜백도 이 시점부터 spin하지 않는다. 정상 STOP 검사 또는 실패 시점까지
-        # 이미 받은 원시 자료를 모두 남기되, 저장/서버 종료 중 뒤늦은 tail은 받지 않는다.
+        # 먼저 자차/접촉 transport 수신을 닫아 저장 중 평가 구간이 늘어나지 않게 한다.
         capture_gate.close()
         report['observation_closed_before_serialization'] = True
         report['observation_last_ego_sim_s'] = ego[-1][0] if ego else None
+        # 자차는 transport thread, 상대차는 ROS spin으로 수신한다. 정상 STOP 후
+        # 보고서 계산 동안 자차만 먼저 늘어난 끝부분을 원래 상대차 메시지로 채운다.
+        # 고장/중단 때는 기다리지 않으며, 시간 내 회수 실패는 기존 coverage 실패로 남긴다.
+        if (report.get('stop', {}).get('stable') and ego and not stop_requested
+                and not report.get('error') and all(p.poll() is None for p in processes)):
+            streams = {actor_cfg['model_name']: actor, **extras.records.poses}
+            try:
+                report['actor_tail_drain'] = drain_actor_tail(ego[-1][0], streams,
+                    lambda timeout: rclpy.spin_once(node, timeout_sec=timeout))
+            except Exception as error:
+                report['actor_tail_drain'] = dict(completed=False, error=f'{type(error).__name__}: {error}')
         report['abort'] = outcome['abort']
         if args.record_wheel_contacts:
             path = output/'wheel_contacts.jsonl'
@@ -1168,6 +1230,11 @@ def main():
                 'evidence':evidence,'original_traffic_passed':report['passed']}
             if guard_arguments:
                 report['pass_release_trial']['guard_curve_arguments'] = guard_arguments
+            report['traffic_recovery_trial'] = dict(enabled=args.traffic_recovery_trial,
+                launch_arguments=recovery_arguments, default_changed=False)
+            if path_recovery_arguments:
+                report['traffic_path_recovery_trial'] = dict(enabled=True,
+                    launch_arguments=path_recovery_arguments, default_changed=False)
             report['harness_valid'] = report['harness_valid'] and evidence['passed']
             report['run_valid'] = report['run_valid'] and evidence['passed']
             report['passed'] = report['passed'] and evidence['passed']

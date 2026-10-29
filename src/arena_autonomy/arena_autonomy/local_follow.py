@@ -24,7 +24,10 @@ class FollowConfig:
     parallel_hold_trial: bool = False
     pass_release_trial: bool = False
     guard_curve_trial: bool = False
+    traffic_recovery_trial: bool = False
+    traffic_path_recovery_trial: bool = False
     corridor_fallback_enabled: bool = False
+    short_boundary_prefix_enabled: bool = False
     recent_observation_enabled: bool = False
     boundary_evidence_mode: str = 'connected'
     occupancy_timing_mode: str = 'oldest'
@@ -50,8 +53,19 @@ class FollowConfig:
     confirmations: int = 2
 
     def __post_init__(self):
+        if (type(self.traffic_path_recovery_trial) is not bool or
+                (self.traffic_path_recovery_trial and
+                 (not self.traffic_recovery_trial or not self.corridor_fallback_enabled))):
+            raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
+        if (type(self.short_boundary_prefix_enabled) is not bool or
+                (self.short_boundary_prefix_enabled and
+                 (not self.corridor_fallback_enabled or self.recent_observation_enabled or self.max_speed_mps > 1.))):
+            raise ValueError('short boundary prefix requires corridor fallback, <=1 m/s and no recent observation')
         if type(self.pass_release_trial) is not bool or (self.pass_release_trial and not self.parallel_hold_trial):
             raise ValueError('pass release trial requires explicit parallel hold trial')
+        if (type(self.traffic_recovery_trial) is not bool or
+                (self.traffic_recovery_trial and not self.guard_curve_trial)):
+            raise ValueError('traffic recovery requires explicit guard curve trial')
         if type(self.guard_curve_trial) is not bool or (self.guard_curve_trial and not self.pass_release_trial):
             raise ValueError('guard curve trial requires explicit pass release trial')
         if (type(self.parallel_hold_trial) is not bool or (self.parallel_hold_trial and
@@ -68,7 +82,7 @@ class FollowConfig:
         if self.occupancy_timing_mode not in ('oldest', 'per_ray_candidate'):
             raise ValueError('invalid occupancy timing mode')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial')):
+               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'traffic_path_recovery_trial')):
             raise ValueError('follow configuration must be finite and positive')
         if (type(self.corridor_fallback_enabled) is not bool or
                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
@@ -189,6 +203,9 @@ class LocalFollow:
         self.partial_policy = None
         if self.config.partial_observation_policy != 'strict':
             from arena_autonomy.partial_observation import PartialObservationPolicy
+            if self.config.traffic_recovery_trial:
+                from arena_autonomy.traffic_recovery_trial import RecoveryPolicy
+                PartialObservationPolicy = RecoveryPolicy
             self.partial_policy = PartialObservationPolicy(allow_narrow_forward=True,
                 surface_translation_enabled=self.config.partial_observation_policy in ('bounded_local_v3','bounded_local_v4'),
                 lateral_metric_enabled=self.config.partial_observation_policy=='bounded_local_v4')
@@ -208,6 +225,9 @@ class LocalFollow:
         self.pass_selector = None
         if self.config.pass_release_trial:
             from arena_autonomy.pass_release_trial import PassReleaseSelector
+            if self.config.traffic_path_recovery_trial:
+                from arena_autonomy.traffic_path_recovery_trial import SuspendedPassageSelector
+                PassReleaseSelector = SuspendedPassageSelector
             self.pass_selector = PassReleaseSelector(self.config)
         self.reset()
 
@@ -333,6 +353,14 @@ class LocalFollow:
                                                   **({'partial_candidate':True} if allow_partial else {}))
         metadata = {k: proposal.get(k) for k in ('positive', 'reason', 'fresh', 'confirmations', 'release_count',
                                                 'source_first_s', 'reference_s', 'swept_clearance_m')}
+        cfg_short = self.config.short_boundary_prefix_enabled
+        if cfg_short:
+            metadata.update(short_prefix=proposal.get('short_prefix',False),
+                            path_budget_m=proposal.get('path_budget_m'),stop_budget_m=proposal.get('stop_budget_m'))
+        if self.config.traffic_path_recovery_trial:
+            metadata.update({key: proposal.get(key) for key in
+                             ('role_selection','preferred_side','inner_side','outer_side',
+                              'preferred_observed_path_agrees')})
         detail = {**baseline[2], 'corridor_candidate': metadata,
                   'corridor_selected': False, 'boundary_memory_from_corridor': False}
         if not (baseline[0] == 0 and baseline[2]['reason'] == 'follow_boundary_unconfirmed' and proposal['positive']):
@@ -350,6 +378,8 @@ class LocalFollow:
                       occupancy_padding_points=len(padding), occupancy_padding_m=float(np.max(padding)),
                       occupancy_padding_min_m=float(np.min(padding)), occupancy_padding_max_m=float(np.max(padding)),
                       target_speed_before_hold_mps=proposal['proposed_speed_mps'])
+        if cfg_short and proposal.get('short_prefix'):
+            detail['boundary_selection'] = 'current_short_observed_prefix_candidate'
         return proposal['proposed_speed_mps'], proposal['steering_rad'], detail
 
     def _baseline_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, allow_partial=False):

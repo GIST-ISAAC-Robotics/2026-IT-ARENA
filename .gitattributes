@@ -79,3 +79,47 @@ tests/test_physics_step_option.py -text whitespace=cr-at-eol
 # 동결된 GC 검증 소스의 마지막 빈 줄도 기존 해시의 일부입니다.
 scripts/evaluation_gc.py whitespace=-blank-at-eof
 tests/test_evaluation_gc.py whitespace=-blank-at-eof
+
+# 10/28–29 실행 증거의 원본 줄바꿈·해시를 보존합니다.
+artifacts/validation/2026-10-28/** -text -whitespace
+artifacts/validation/2026-10-29/** -text -whitespace
+
+# 이번 실행에서 CRLF 바이트로 해시를 남긴 소스/설정도 게시 시 정규화하지 않습니다.
+config/tests/e3_stop_restart_full_course_v1.json -text whitespace=cr-at-eol
+config/tests/g1_traffic_full_course_v1.json -text whitespace=cr-at-eol
+scripts/probe_bypass_entry_sequence.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/anchor_clearance_trial.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/bypass_entry_follow.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/bypass_wall_fit.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/corner_corridor.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/follow_trace.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/g2_entry_node.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/lidar_safety.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/local_follow.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/local_pursuit.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/partial_observation.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/pass_release_trial.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/rear_fringe_trial.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/recovery_geometry.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/same_path_gap_trial.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/surface_anchor_trial.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/traffic_recovery_trial.py -text whitespace=cr-at-eol
+src/arena_autonomy/setup.py -text whitespace=cr-at-eol
+src/arena_bringup/launch/demo.launch.py -text whitespace=cr-at-eol
+src/arena_bringup/launch/local_pursuit.launch.py -text whitespace=cr-at-eol
+tests/fixtures/short_inner_boundary_points.json -text whitespace=cr-at-eol
+tests/fixtures/short_prefix_boundary_points.json -text whitespace=cr-at-eol
+tests/test_bypass_entry_follow.py -text whitespace=cr-at-eol
+tests/test_bypass_entry_guide.py -text whitespace=cr-at-eol
+tests/test_bypass_entry_trial.py -text whitespace=cr-at-eol
+tests/test_bypass_wall_fit.py -text whitespace=cr-at-eol
+tests/test_bypass_wall_reanchor.py -text whitespace=cr-at-eol
+tests/test_short_prefix_connection.py -text whitespace=cr-at-eol
+tests/test_short_prefix_origin.py -text whitespace=cr-at-eol
+tests/test_small_surface_alignment_geometry.py -text whitespace=cr-at-eol
+tests/test_traffic_recovery_contract.py -text whitespace=cr-at-eol
+
+# 10/28 시험 계약에 포함된 EOF/겹친 CR 바이트도 소급 수정하지 않습니다.
+src/arena_autonomy/arena_autonomy/anchor_clearance_trial.py whitespace=cr-at-eol,-blank-at-eof
+src/arena_autonomy/arena_autonomy/traffic_recovery_trial.py -whitespace

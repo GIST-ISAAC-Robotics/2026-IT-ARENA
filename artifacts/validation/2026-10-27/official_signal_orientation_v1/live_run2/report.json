@@ -1,0 +1,551 @@
+{
+  "passed": false,
+  "scope": "live Gazebo material sequence and RGB-only detector; no drive command or hardware proof",
+  "source_sha256": {
+    "artifacts/validation/2026-10-27/official_signal_orientation_v1/live_sequence.py": "a7fd89ff2618d8722ed959190fa27b1c9c5d92179ab5ad603e852a34bf28d11d",
+    "artifacts/validation/2026-10-27/official_signal_orientation_v1/horizontal_red4/fixture.sdf": "7a7ab21a8614ae236d35cc247872b8500b5896179c42bfe23ce99b1b7df21d4d",
+    "artifacts/validation/2026-10-27/official_signal_orientation_v1/horizontal_red4/report.json": "1952ab6ab2518a094e4e64779354862e2e6d1748303a6cd2d9a754557157e8cb",
+    "src/arena_autonomy/arena_autonomy/race_start.py": "d54e05c699cdfff2d0229c3210312247e44e65e1a0e7422bf18c68db75e18895",
+    "src/arena_autonomy/arena_autonomy/core.py": "37fdb7f707211f5378c17cdfe5176a572bad0bfc0c7523ac8bd645dfa299adfb",
+    "scripts/lidar_shutdown.py": "c338eedd4e29926c9605dae24e55166b7665f30d3bb77a53b12237d9280ff2f2",
+    "scripts/validate_start_signal_render.py": "56996b4c7ec793b28fea08f23418010938905dcf4648894ae70969a03f8a9f1c"
+  },
+  "views": {
+    "rear_20cm": {
+      "topic": "/m5_grid/rear_20cm",
+      "xyz": [
+        10.041982779590182,
+        4.4042017834675535,
+        0.2
+      ],
+      "rpy": [
+        0.0,
+        -0.4420569929451238,
+        1.5639
+      ],
+      "camera": {
+        "model": "Arducam_B0183_IMX219",
+        "status": "user_confirmed_camera_mount_provisional",
+        "xyz_m": [
+          -0.075,
+          0.0,
+          0.2
+        ],
+        "rpy_rad": [
+          0.0,
+          -0.4420569929451238,
+          0.0
+        ],
+        "width_px": 1280,
+        "height_px": 720,
+        "rate_hz": 60.0,
+        "horizontal_fov_deg": 75.0,
+        "mass_kg": 0.01,
+        "proxy_size_m": [
+          0.02,
+          0.025,
+          0.025
+        ],
+        "source": "https://docs.arducam.com/Nvidia-Jetson-Camera/Native-Camera/imx219/"
+      }
+    },
+    "rear_30cm": {
+      "topic": "/m5_grid/rear_30cm",
+      "xyz": [
+        10.041982779590182,
+        4.4042017834675535,
+        0.3
+      ],
+      "rpy": [
+        0.0,
+        -0.3824016391119576,
+        1.5639
+      ],
+      "camera": {
+        "model": "Arducam_B0183_IMX219",
+        "status": "user_confirmed_camera_mount_provisional",
+        "xyz_m": [
+          -0.075,
+          0.0,
+          0.3
+        ],
+        "rpy_rad": [
+          0.0,
+          -0.3824016391119576,
+          0.0
+        ],
+        "width_px": 1280,
+        "height_px": 720,
+        "rate_hz": 60.0,
+        "horizontal_fov_deg": 75.0,
+        "mass_kg": 0.01,
+        "proxy_size_m": [
+          0.02,
+          0.025,
+          0.025
+        ],
+        "source": "https://docs.arducam.com/Nvidia-Jetson-Camera/Native-Camera/imx219/"
+      }
+    }
+  },
+  "sequence": [
+    [
+      "green_probe",
+      1.0
+    ],
+    [
+      "off",
+      1.0
+    ],
+    [
+      "red1",
+      1.0
+    ],
+    [
+      "red2",
+      1.0
+    ],
+    [
+      "red3",
+      1.4
+    ],
+    [
+      "red4",
+      1.6
+    ],
+    [
+      "green",
+      5.0
+    ],
+    [
+      "end_off",
+      0.5
+    ]
+  ],
+  "retained_assumptions": "beam1.2m/lamp1.08m, single spheres, 25cm peer boxes; not actual installation",
+  "camera_rate_hz": 10,
+  "rate_scope": "optical test rate only, not final B0183 operating rate",
+  "sequence_complete": true,
+  "green_requested_s": 8.361,
+  "per_view": {
+    "rear_20cm": {
+      "frames": 144,
+      "ordered": true,
+      "max_frame_gap_s": 0.10000000000000142,
+      "start_stamps": [
+        8.8
+      ],
+      "red4_seen_before_green": true,
+      "no_start_before_green": true,
+      "one_start_during_green": true
+    },
+    "rear_30cm": {
+      "frames": 144,
+      "ordered": true,
+      "max_frame_gap_s": 0.10000000000000142,
+      "start_stamps": [
+        8.8
+      ],
+      "red4_seen_before_green": true,
+      "no_start_before_green": true,
+      "one_start_during_green": true
+    }
+  },
+  "bridge_shutdown": {
+    "verified": true,
+    "pid": 1023,
+    "identity": {
+      "ppid": 1019,
+      "start": "4279"
+    }
+  },
+  "server_stop": {
+    "method": "server_control",
+    "partition": "arena_autonomy_test_1004",
+    "verified": false,
+    "server_processes_before": [
+      1022
+    ],
+    "return_code": 0,
+    "stdout": "data: true\n\n",
+    "stderr": "",
+    "acknowledged": true,
+    "remaining_server_pids": [
+      1022
+    ],
+    "elapsed_s": 20.028696131999993
+  },
+  "shutdown": {
+    "clean": false,
+    "launch_return_code": 0,
+    "forced_cleanup": null,
+    "started_child_count": 2,
+    "clean_child_count": 1,
+    "failed_children": {
+      "1022": -9
+    },
+    "unaccounted_child_pids": [],
+    "errors": [
+      {
+        "line": 41,
+        "after_shutdown_request": true,
+        "text": "[ERROR] [gz-1]: process[gz-1] failed to terminate '5' seconds after receiving 'SIGINT', escalating to 'SIGTERM'"
+      },
+      {
+        "line": 43,
+        "after_shutdown_request": true,
+        "text": "[ERROR] [gz-1]: process[gz-1] failed to terminate '10.0' seconds after receiving 'SIGTERM', escalating to 'SIGKILL'"
+      },
+      {
+        "line": 45,
+        "after_shutdown_request": true,
+        "text": "[ERROR] [gz-1]: process has died [pid 1022, exit code -9, cmd 'gz sim -s -r -v 3 /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-10-27/official_signal_orientation_v1/live_run2/fixture.sdf']."
+      }
+    ],
+    "errors_before_shutdown_count": 0,
+    "errors_after_shutdown_count": 3
+  },
+  "residue_cleanup": {
+    "actions": [],
+    "remaining": {}
+  },
+  "source_unchanged": true,
+  "changes": [
+    {
+      "stage": "green_probe",
+      "requested_clock_s": 0.005,
+      "response": [
+        {
+          "lamp": "lamp_red_1",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_2",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_3",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_4",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_green",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        }
+      ],
+      "acknowledged_clock_s": 0.225
+    },
+    {
+      "stage": "off",
+      "requested_clock_s": 1.225,
+      "response": [
+        {
+          "lamp": "lamp_red_1",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_2",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_3",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_4",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_green",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        }
+      ],
+      "acknowledged_clock_s": 1.454
+    },
+    {
+      "stage": "red1",
+      "requested_clock_s": 2.454,
+      "response": [
+        {
+          "lamp": "lamp_red_2",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_3",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_4",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_green",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_1",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        }
+      ],
+      "acknowledged_clock_s": 2.69
+    },
+    {
+      "stage": "red2",
+      "requested_clock_s": 3.69,
+      "response": [
+        {
+          "lamp": "lamp_red_3",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_4",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_green",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_1",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_2",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        }
+      ],
+      "acknowledged_clock_s": 3.919
+    },
+    {
+      "stage": "red3",
+      "requested_clock_s": 4.9190000000000005,
+      "response": [
+        {
+          "lamp": "lamp_red_4",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_green",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_1",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_2",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_3",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        }
+      ],
+      "acknowledged_clock_s": 5.123
+    },
+    {
+      "stage": "red4",
+      "requested_clock_s": 6.524,
+      "response": [
+        {
+          "lamp": "lamp_green",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_1",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_2",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_3",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_4",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        }
+      ],
+      "acknowledged_clock_s": 6.761
+    },
+    {
+      "stage": "green",
+      "requested_clock_s": 8.361,
+      "response": [
+        {
+          "lamp": "lamp_red_1",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_2",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_3",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_4",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_green",
+          "on": true,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        }
+      ],
+      "acknowledged_clock_s": 8.597
+    },
+    {
+      "stage": "end_off",
+      "requested_clock_s": 13.597,
+      "response": [
+        {
+          "lamp": "lamp_red_1",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_2",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_3",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_red_4",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        },
+        {
+          "lamp": "lamp_green",
+          "on": false,
+          "returncode": 0,
+          "stdout": "data: true\n\n",
+          "stderr": ""
+        }
+      ],
+      "acknowledged_clock_s": 13.835
+    }
+  ]
+}

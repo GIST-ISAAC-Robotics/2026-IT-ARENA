@@ -15,10 +15,11 @@ def sample():
                                             'body2Wrench': {'force': {'z': 4.}}}]}]}
 
 
-def test_force_uses_wheel_side_not_always_body_one():
+def test_raw_force_uses_labeled_side_but_does_not_certify_physics_order():
     row, = contact_rows(sample())
     assert row['force_world_xyz_n'] == [0., 0., 4.]
     assert row['force_available']
+    assert row['force_body_assignment_verified'] is False
     assert row['t'] == pytest.approx(5.002)
 
 

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "scope": "선택형 교통 회복 출처. 기본 활성화 또는 실물 안전 승인 아님",
+  "parent_contract": "config/tests/local_start_signal_r0_sha256.json",
+  "parent_contract_sha256": "f5a532629ebfae9ea5913c686ecb99762d55adf6e9c30f4557621ca8741aa8ba",
+  "before_snapshot": "artifacts/validation/2026-10-28/traffic_recovery_connection_v1/before_complete.zip",
+  "before_snapshot_sha256": "2331664edb8b320eac40cc8fa9427b4602a3ef3f212608c79f50479ed2eeb088",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/partial_observation.py": {
+      "before": "c202694b02f531e1427f5d8d303a042318a55f096235da61be38361063f35bf2",
+      "after": "7c4731bb6401d49897cd38a2bc384d8f2e6f14ec1c00256b80bfca83e0ddcd6d",
+      "reason": "기본 계산 동일 protected hook; 새 후보는 별도 계산."
+    },
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "4e6c8fcbb26792e8203b0d3a1968c2f17b2a8ee92b0b7b2065fbd40286d57709",
+      "after": "bf420d067942d0b4ed2c654864c4c4270f9862466f4fcfac2f777c24165312fb",
+      "reason": "기본false 교통 회복·선행 계약과 독립 정책 생성."
+    },
+    "src/arena_autonomy/arena_autonomy/lidar_safety.py": {
+      "before": "144afcbeacfa951ba7d6ca7ec74e87a261450b3dd2b7774631b12b4663a17ff8",
+      "after": "e6d004ee172b24207723dbc79fb6780a9ccea0bb40956b0e2db08089561b29f5",
+      "reason": "명시 v4 회복 객체를 독립 생성. STOP/보호 출력 유지."
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "aa31b3de4677d1f5920605d0c85e864a4ab87d09012b3c20dadffe39007ad202",
+      "after": "28f6f2436ab8795d5812ee8c76926e3b3d70332429dec19502dc57f18d9d9dc6",
+      "reason": "명시 시뮬레이션 선택 옵션을 FollowConfig와 기록에 전달."
+    },
+    "src/arena_autonomy/arena_autonomy/pass_release_trial.py": {
+      "before": "9dfeb689da857b63ec7e1210b7ee68c89636526ab9dfaa4b1065bba41a222735",
+      "after": "f606d646ef601c68d131cd4b7fb07dd811cd40f9b2938258cfeb5ee22a0a14d9",
+      "reason": "후보ON 통과 이력·같은 경로 검사와 같은 호출 계산 재사용."
+    },
+    "src/arena_autonomy/arena_autonomy/rear_fringe_trial.py": {
+      "before": "69bfa9e15385f9e8d381fca859a095c4191bf2319514664c0e073028cc814c71",
+      "after": "a04e73313ed8353ea604145842465d498c76692af0d64fae9221305bf25ff0a1",
+      "reason": "원래1mm 조건을 유지하며 공통 무반환/점유 검사를 분리."
+    },
+    "src/arena_bringup/launch/demo.launch.py": {
+      "before": "900965c73573d3902f1d043ae6ca4d4543230665eac102f5839cf7951aa7aeec",
+      "after": "3202aef2e9477abf5919a7b55aac6a418ea1a42f4b650c0f00893a7da344f02d",
+      "reason": "기본false 선택형 옵션 전달."
+    },
+    "src/arena_bringup/launch/local_pursuit.launch.py": {
+      "before": "7aee1a9b82c2bb5d328ed316890bc0f042f8110f6928f4b44e97917f6ce943fc",
+      "after": "74bb53550579dda5d351c1068e9459f42dda1a961d3abb4777abb7b88c4b132f",
+      "reason": "기본false 선택형 옵션 전달."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "aa4607eb74fcfc5ad4fcf9dcf3de40302983a76a7443c59967582426f9353e17",
+      "after": "227b3b100246cbfda5118eca61d0777662a18ad5df8017024322e848177b4c66",
+      "reason": "교통 회복 명시CLI·선행 검사·소스/선택 기록. 기존 평가선 유지."
+    },
+    "scripts/validate_sensor_input_ros.py": {
+      "before": "3aa6929ec625fba01996729503e1a3d53a5800749546c2ce2a377790aa26cf1b",
+      "after": "03e056e8ab0622e3552cfdd9a101255992e30b22585be5ec4fadaee89aca5d3f",
+      "reason": "실제ROS 고장 시험의 회복 옵션과 소스 보존."
+    },
+    "scripts/profile_follow_trace.py": {
+      "before": "97fb3021537a52c27469e7e1e359f1d112261967b73b228bd99d3db25a150775",
+      "after": "7fdb260990471f356da29406bee5ccf9982d80731f448c9871ac8ea65c27fe3c",
+      "reason": "새 선택형 의존 모듈4개의 정적 소스 보존·Jetson 묶음 목록 추가. 실행/판정 변경 없음."
+    },
+    "scripts/prepare_jetson_bundle.py": {
+      "before": "ee88dd662d76219805207c0396a1678d4777a00c85e8aab5a808e0845f0e8ffd",
+      "after": "248efd944d62493f17f176bc001f62ee031df272b00a84896d9bb17df8b5bd1e",
+      "reason": "새 선택형 의존 모듈4개의 정적 소스 보존·Jetson 묶음 목록 추가. 실행/판정 변경 없음."
+    },
+    "scripts/validate_pipeline_faults_ros.py": {
+      "before": "552658aa596b2240ff6b0b47387bb4c8c7e906112f62be9d35f19bf418ed8557",
+      "after": "1b6216161af5bb91be77a8a475d33918e2240b8f8e7a74a57fb938e2c1fe37ba",
+      "reason": "새 선택형 의존 모듈4개의 정적 소스 보존·Jetson 묶음 목록 추가. 실행/판정 변경 없음."
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/recovery_geometry.py": "d427a49c335f379ba90d7dfd1e86af0c7736129debf237f7b138294bc4e895d3",
+    "src/arena_autonomy/arena_autonomy/traffic_recovery_trial.py": "8479ff009df0e7274f0995055a07c257fad717ced85cd43907601fa2995784be",
+    "src/arena_autonomy/arena_autonomy/surface_anchor_trial.py": "4d1777b9f302f05d64d06f0fcf547247481577dc566ecbabd9176d77e0e08261",
+    "src/arena_autonomy/arena_autonomy/same_path_gap_trial.py": "37af901dde053e814c6379402e046f8133cb2907dbdaa4de8658fc1961eaee2c"
+  }
+}

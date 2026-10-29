@@ -101,3 +101,134 @@ def corridor_evidence(points, side, config):
     return {**base, 'supported':True, 'reason':'paired_geometry_only', 'path':path[:end].tolist(),
             'witnesses':witnesses, 'rejected':rejected, 'candidate_count':1, 'preferred_side':side,
             'common_prefix_m':min(w['prefix_m'] for w in witnesses)}
+
+
+def projected_origin_offset(path, nearest):
+    """최근접 꼭짓점 arc와 인접 선분의 실제 투영 원점 arc 차이.
+
+    표본이 원점 뒤에 있으면 음수, 앞이면 양수다. 다른 경로 가지로
+    원점을 옮기거나 관측 경로를 늘리지 않는다.
+    """
+    lengths = np.linalg.norm(np.diff(path, axis=0), axis=1)
+    arc = np.r_[0., np.cumsum(lengths)]
+    choices = []
+    for index in (nearest-1, nearest):
+        if not 0 <= index < len(path)-1 or lengths[index] <= 1e-12:
+            continue
+        direction = path[index+1]-path[index]
+        fraction = float(np.clip(-np.dot(path[index], direction)/lengths[index]**2, 0., 1.))
+        point = path[index]+fraction*direction
+        choices.append((float(np.dot(point, point)), index, fraction))
+    if not choices:
+        raise ValueError('no valid origin segment')
+    _, index, fraction = min(choices)
+    return float(arc[nearest]-(arc[index]+fraction*lengths[index]))
+
+
+def short_inner_prefix_evidence(geometry, config):
+    """긴 바깥 경로 중 안쪽 실제점이 함께 지지한 첫 구간까지만 남긴다.
+
+    기존 회랑의 거리/법선·연결·코너 검사를 재사용한다. 0.65 m 길이만
+    충족하지 못한 경우를 선택형 저속/제동 예산 검사에 넘기며 연장하지 않는다.
+    """
+    rejected = {**geometry, 'supported':False, 'path':None}
+    if geometry.get('reason') != 'inner_surface_support_unavailable':
+        return rejected
+    try:
+        info = geometry['outer_info']
+        path = np.asarray(info['path_points'], dtype=float)
+        if (path.ndim != 2 or path.shape[1] != 2 or len(path) < 6 or
+                not np.all(np.isfinite(path)) or
+                not math.isfinite(info['boundary_observed_ahead_m']) or
+                not math.isfinite(info['wall_distance_m']) or
+                info['boundary_observed_ahead_m'] < config.boundary_min_ahead_m or
+                abs(info['wall_distance_m']-config.wall_offset_m) > config.boundary_anchor_error_m):
+            return rejected
+        origin = int(np.argmin(np.linalg.norm(path, axis=1)))
+        if np.linalg.norm(path[origin]) > config.boundary_anchor_error_m:
+            return rejected
+        arc = np.r_[0.,np.cumsum(np.linalg.norm(np.diff(path,axis=0),axis=1))]
+        correction = projected_origin_offset(path,origin)
+        witnesses = []
+        for item in geometry['rejected']:
+            end = item['end_exclusive']
+            if (item['reason'] != 'short_geometric_support' or type(end) is not int or
+                    not origin+5 <= end <= len(path) or not math.isfinite(item['turn_rad']) or
+                    item['turn_rad'] < math.radians(30)):
+                continue
+            span = float(arc[end-1]-arc[origin])
+            if (not math.isclose(span,item['prefix_m'],abs_tol=1e-9) or
+                    not .25 <= span+correction < config.boundary_min_ahead_m):
+                continue
+            witnesses.append(item)
+        if not witnesses:
+            return rejected
+        end = min(w['end_exclusive'] for w in witnesses)
+        ahead = float(arc[end-1]-arc[origin]+correction)
+    except (KeyError, TypeError, ValueError, IndexError):
+        return rejected
+    return {**geometry, 'supported':True, 'reason':'short_inner_supported_prefix_geometry_only',
+            'path':path[:end].tolist(), 'witnesses':witnesses, 'short_prefix':True,
+            'short_prefix_kind':'paired_inner_observed', 'base_observed_ahead_m':ahead,
+            'origin_arc_correction_m':correction, 'common_prefix_m':ahead,
+            'opposite_path_used_for_steering':True, 'unknown_filled':False}
+
+
+def short_prefix_evidence(points, side, config):
+    """반대 경로와 일치하는 첫 구간 끝에서 선호 경로를 자르는 기하 후보.
+
+    반대 경로는 대조에만 쓰며 그 먼 끝으로 연장하지 않는다. 편측 지지만
+    있는 시작 부분은 차체 길이 이내, 공동 지지는 기존 비교와 같은 0.25 m다.
+    이는 시험 가정이며 벽 정체·자유 공간·차량 주행 허가가 아니다.
+    """
+    base = dict(supported=False, reason='invalid_input', path=None,
+                runtime_connected=False, driving_authorized=False,
+                memory_refresh_authorized=False, wall_identity_certified=False)
+    try:
+        p = np.asarray(points, dtype=float)
+    except (TypeError, ValueError):
+        return base
+    if side not in ('left', 'right') or p.ndim != 2 or p.shape[1] != 2 or not np.all(np.isfinite(p)):
+        return base
+    own, info = local_path(p, side, config.wall_offset_m)
+    other, other_info = local_path(p, 'left' if side == 'right' else 'right', config.wall_offset_m)
+    base.update(preferred_info=info, opposite_info=other_info)
+    if own is None or other is None:
+        return {**base, 'reason':'missing_path'}
+    if info['boundary_observed_ahead_m'] >= config.boundary_min_ahead_m:
+        return {**base, 'reason':'not_a_short_boundary'}
+    if abs(info['wall_distance_m']-config.wall_offset_m) > config.boundary_anchor_error_m:
+        return {**base, 'reason':'preferred_anchor_unconfirmed'}
+    if other_info['boundary_observed_ahead_m'] < config.boundary_min_ahead_m:
+        return {**base, 'reason':'opposite_reference_short'}
+    nearest = int(np.argmin(np.linalg.norm(own, axis=1)))
+    if np.linalg.norm(own[nearest]) > config.boundary_anchor_error_m:
+        return {**base, 'reason':'path_origin_displaced'}
+    prefix = own[nearest:]
+    if len(prefix) < 6 or prefix[1, 0] <= prefix[0, 0]:
+        return {**base, 'reason':'path_not_forward'}
+    arc = np.r_[0., np.cumsum(np.linalg.norm(np.diff(prefix, axis=0), axis=1))]
+    distances = np.linalg.norm(prefix[:, None]-other[None], axis=2)
+    selected = np.argmin(distances, axis=1)
+    close = (np.min(distances, axis=1) <= config.boundary_agreement_m) & (prefix[:, 0] >= .05)
+    starts = np.flatnonzero(close & np.r_[True, ~close[:-1]])
+    ends = np.flatnonzero(close & np.r_[~close[1:], True])+1
+    # 두 번째 섬으로 넘어가며 중간의 형상 불일치를 덮지 않는다.
+    if not len(starts):
+        return {**base, 'reason':'no_common_prefix'}
+    first, end = int(starts[0]), int(ends[0])
+    try:
+        origin_offset = projected_origin_offset(own, nearest)
+    except ValueError:
+        return {**base, 'reason':'degenerate_path_origin'}
+    lead_in = float(arc[first]+origin_offset)
+    if (not 0. <= lead_in <= config.length_m or end-first < 5 or arc[end-1]-arc[first] < .25
+            or np.any(np.diff(selected[first:end]) < 0)):
+        return {**base, 'reason':'insufficient_contiguous_common_prefix'}
+    return {**base, 'supported':True, 'short_prefix':True, 'reason':'short_observed_prefix_geometry_only',
+            'path':own[:nearest+end].tolist(),
+            'shared_span_m':float(arc[end-1]-arc[first]),
+            'one_sided_lead_in_m':lead_in, 'origin_arc_correction_m':origin_offset,
+            'retained_ahead_m':float(arc[end-1]),
+            'max_common_distance_m':float(np.max(np.min(distances[first:end],axis=1))),
+            'opposite_path_used_for_steering':False, 'unknown_filled':False}

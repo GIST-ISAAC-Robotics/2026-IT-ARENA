@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "scope": "공식 출발 지역 빨강 후보의 소스 출처. 기본 활성화 또는 실물 안전 승인 아님",
+  "parent_contract": "config/tests/short_boundary_prefix_r0_sha256.json",
+  "parent_contract_sha256": "6d183589d8bdbfcb2524fc3e64fdbd264f78bda41c76ad4ac34753df62660fe3",
+  "before_snapshot": "artifacts/validation/2026-10-27/official_departure_v2/local_signal_before.zip",
+  "before_snapshot_sha256": "39ec07b7394d05e78b76e72b384d849e0e4052049e96ac646b3197c1f2273bd0",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/race_start.py": {
+      "before": "d54e05c699cdfff2d0229c3210312247e44e65e1a0e7422bf18c68db75e18895",
+      "after": "fdc66e007ec3680d9dd8e2b338e10ea14b41c6a13a63c6b3ee9f59dc5d92b1b4",
+      "reason": "원래 전역 빨강 검사 결과를 유지하는 재정의 진입점만 추가."
+    },
+    "src/arena_autonomy/arena_autonomy/vision_process.py": {
+      "before": "9fb49a496536884be3bedd13bc0d35deabfb13fbcea51f6d2d75e61e12d4baf9",
+      "after": "6a627f8e3862aebba1592034deeb2950b2ddfcfa0fe1b23292550b49b031c50c",
+      "reason": "명시 선택형 지역 신호 후보 생성과 영상 시각 전달. 기본 모드 유지."
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "5e6ae85d4fb87fdf656ed736f56e5a8e62dc70f56dd734977adf9f26e1018890",
+      "after": "aa31b3de4677d1f5920605d0c85e864a4ab87d09012b3c20dadffe39007ad202",
+      "reason": "새 선택형 신호 모드 이름만 허용. 경로/물성/보호 출력 유지."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "4e9711dc0d554df6c3e4bc5d66441c50f4498edd23ca14033105eff1b8ee1636",
+      "after": "aa4607eb74fcfc5ad4fcf9dcf3de40302983a76a7443c59967582426f9353e17",
+      "reason": "새 후보 모듈과 출처 계약을 실행 소스 보존 대상에 추가. 평가 기준 변경 없음."
+    },
+    "scripts/validate_pipeline_faults_ros.py": {
+      "before": "d839701dd69e31cc486d0d7e41e0e104b043a6a15df60a87bd8953ef67ac7937",
+      "after": "552658aa596b2240ff6b0b47387bb4c8c7e906112f62be9d35f19bf418ed8557",
+      "reason": "영상 모듈이 import하는 새 지역 신호 모듈도 런타임 소스 보존 목록에 포함. 고장 판정 변경 없음."
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/race_start_local.py": "b1c3b8e5e7d9925f990cc8b464816c1bea6d3d15a822696db858ccfba68920cd"
+  }
+}

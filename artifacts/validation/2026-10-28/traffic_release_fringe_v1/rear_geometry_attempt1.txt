@@ -1,0 +1,5 @@
+첫 진단 실행은 report['last_observation'] 조회에서 KeyError로 종료했다.
+이전 단독 주행 보고서와 교통 보고서의 스키마가 달랐다. 결과 JSON은 생성되지 않았다.
+기본 ego_poses 로그가 평면 자세만 담으므로 첫 결과는 명목 SDF 높이를 사용한 평면 대조로
+제한했다. 이후 별도 braking_diagnostics에 실제 z/roll/pitch가 있음을 찾아 pose3d 진단을
+추가했다. 첫 명목 높이 대조를 실제 취득 자세 또는 GPU 재실행으로 해석하지 않는다.

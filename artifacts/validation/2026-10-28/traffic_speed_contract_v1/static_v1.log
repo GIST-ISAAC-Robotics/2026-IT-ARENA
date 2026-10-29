@@ -1,0 +1,35 @@
+........................................................................ [ 41%]
+........................................................................ [ 82%]
+......F........................                                          [100%]
+=================================== FAILURES ===================================
+________ test_successor_preserves_failed_run_code_and_previous_contract ________
+
+    def test_successor_preserves_failed_run_code_and_previous_contract():
+        import hashlib
+        import json
+        from pathlib import Path
+        import zipfile
+        from test_source_provenance_r0_plus_b3 import m3_revision_digest
+        root = Path(__file__).resolve().parents[1]
+        name = 'config/tests/traffic_recovery_release_fringe_r1_sha256.json'
+        contract = json.loads((root/name).read_text(encoding='utf-8'))
+        sha = lambda data: hashlib.sha256(data).hexdigest()
+        assert contract['parent_contract'] == 'config/tests/traffic_recovery_trial_r0_sha256.json'
+        parent = (root/contract['parent_contract']).read_bytes()
+        assert sha(parent) == contract['parent_contract_sha256']
+        assert not contract['approved_evaluation_scripts'] and not contract['new_dependencies']
+        snapshot = root/contract['before_snapshot']
+        assert sha(snapshot.read_bytes()) == contract['before_snapshot_sha256']
+        assert set(contract['approved_changes']) == {'src/arena_autonomy/arena_autonomy/pass_release_trial.py'}
+        with zipfile.ZipFile(snapshot) as archive:
+            for path, row in contract['approved_changes'].items():
+                assert sha(archive.read(path)) == row['before'] == json.loads(parent)['approved_changes'][path]['after']
+>               assert row['before'] != row['after'] == m3_revision_digest(path, newer_than=name)
+E               AssertionError: assert '5fab389ed917...c902cb5403acd' == '1e094c419f68...22b0c1b0e6cb3'
+E                 - 1e094c419f682f5b6ce992a04f5b7b5bbf2ebc6f22dbd3fc55f22b0c1b0e6cb3
+E                 + 5fab389ed9177316457c0a91301750d2b490b8b0e11fa6770a8c902cb5403acd
+
+tests/test_traffic_release_fringe.py:104: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_traffic_release_fringe.py::test_successor_preserves_failed_run_code_and_previous_contract
+1 failed, 174 passed in 3.78s

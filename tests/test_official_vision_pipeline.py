@@ -22,9 +22,10 @@ def complete(pipe, worker, t, red=4, green=False):
     return pipe.pump(t+.01, wall_now=t+10.01)
 
 
-def test_pipeline_uses_only_accepted_candidate_state():
+@pytest.mark.parametrize('mode', ['official_4red_candidate', 'official_4red_local_candidate'])
+def test_pipeline_uses_only_accepted_candidate_state(mode):
     worker = WorkerDouble()
-    pipe = VisionPipeline(worker, signal_mode='official_4red_candidate')
+    pipe = VisionPipeline(worker, signal_mode=mode)
     for t in (1., 1.1):
         assert complete(pipe, worker, t)
     for t in (1.2, 1.3):
@@ -32,12 +33,13 @@ def test_pipeline_uses_only_accepted_candidate_state():
         assert not pipe.signal.started
     assert complete(pipe, worker, 1.4, 0, True)
     assert pipe.signal.started
-    assert pipe.snapshot()['signal_mode'] == 'official_4red_candidate'
+    assert pipe.snapshot()['signal_mode'] == mode
 
 
-def test_reset_rejects_old_candidate_green_and_keeps_mode():
+@pytest.mark.parametrize('mode', ['official_4red_candidate', 'official_4red_local_candidate'])
+def test_reset_rejects_old_candidate_green_and_keeps_mode(mode):
     worker = WorkerDouble()
-    pipe = VisionPipeline(worker, signal_mode='official_4red_candidate')
+    pipe = VisionPipeline(worker, signal_mode=mode)
     for t in (1., 1.1):
         complete(pipe, worker, t)
     for t in (1.2, 1.3):
@@ -55,9 +57,10 @@ def test_reset_rejects_old_candidate_green_and_keeps_mode():
     assert not pipe.signal.started
 
 
-def test_mixed_signal_modes_latch_fault():
+@pytest.mark.parametrize('mode', ['official_4red_candidate', 'official_4red_local_candidate'])
+def test_mixed_signal_modes_latch_fault(mode):
     worker = WorkerDouble()
-    pipe = VisionPipeline(worker, signal_mode='official_4red_candidate')
+    pipe = VisionPipeline(worker, signal_mode=mode)
     pipe.offer(message(1.), wall_now=11.)
     pipe.pump(1., 11.)
     worker.finish()
@@ -71,9 +74,10 @@ def test_invalid_mode_not_silently_replaced():
         VisionPipeline(WorkerDouble(), signal_mode='green_anywhere')
 
 
-def test_real_spawn_worker_roundtrip_and_clean_close():
+@pytest.mark.parametrize('mode', ['official_4red_candidate', 'official_4red_local_candidate'])
+def test_real_spawn_worker_roundtrip_and_clean_close(mode):
     worker = VisionProcess()
-    pipe = VisionPipeline(worker, work_timeout=3., signal_mode='official_4red_candidate')
+    pipe = VisionPipeline(worker, work_timeout=3., signal_mode=mode)
     try:
         for i in range(5):
             t = 1.+i*.1

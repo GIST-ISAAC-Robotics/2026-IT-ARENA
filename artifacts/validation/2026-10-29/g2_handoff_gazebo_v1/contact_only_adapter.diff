@@ -1,0 +1,46 @@
+--- run.py
++++ run_contact.py
+@@ -63,7 +63,7 @@
+         autonomy_control_rate_hz='50.0',depth_camera='false',speed_bump='false',chase_camera='false',
+         batch_static_visuals='true',scene_broadcaster='true',speed_profile='g1_compare_1mps',
+         render_backend='wsl_nvidia',sensor_wall_timeout_s='30',actuation_mode='virtual_mcu',runtime_artifacts=str(output),
+-        d435i_profile='low_load_30',evaluation_actor_sdf=str(output/'evaluation_actor.sdf'))
++        d435i_profile='low_load_30',evaluation_wheel_contacts='true',evaluation_actor_sdf=str(output/'evaluation_actor.sdf'))
+     rows=[f'SetParameter(name={k!r},value={v!r})' for k,v in settings.items()]
+     rows+=['IncludeLaunchDescription(PythonLaunchDescriptionSource('+repr(str(FIXTURE/'simulation.launch.py'))+
+            '),launch_arguments='+repr(arguments)+'.items())',
+@@ -90,7 +90,7 @@
+         if key in requested:raise ValueError('duplicate requested parameter: '+key)
+         requested[key]=value
+     # 시험 launch가 schema5 기록과 후보 옵션을 명시한다. 하네스 요청값은 별도로 확인한다.
+-    if set(requested)!={'evaluation_actor_sdf'} or requested['evaluation_actor_sdf']!=arguments['evaluation_actor_sdf']:
++    if requested!={'evaluation_actor_sdf':arguments['evaluation_actor_sdf'],'evaluation_wheel_contacts':'true'}:
+         raise ValueError('missing or unexpected trial parameter')
+     return True
+ 
+@@ -128,7 +128,7 @@
+     metadata=dict(source_sha256=before,output=str(output),launch_path=str(launch_path),
+         controller_parameters=settings,launch_arguments=arguments,fixture=manifest,
+         scope=('single G1/G2 automatic handoff trial: right-edge stationary box, ego on centerline, official signal v2 fixture, '
+-               'rear 30 cm trial camera, bump OFF; not centre target, hidden rear car or hardware proof'),
++               'rear 30 cm trial camera, bump OFF; diagnostic wheel contact instrumentation, no dynamics/control change; not hardware proof'),
+         route=dict(case=CASE,config=str(CONFIG),seed=0))
+     write_new(BASE/(output.name+'_prepared.json'),json.dumps(metadata,ensure_ascii=False,indent=2))
+     return metadata
+@@ -159,6 +159,7 @@
+         exact_applied_stages=stages==['green_probe','off','red1','red2','red3','red4','green'],
+         all_lamp_acks=len(receipts)==70 and all(all(r.get(k) is True for k in ('parsed','executed','service_result','applied')) for r in receipts),
+         no_signal_failure=not (output/'signal_driver_failure.json').exists(),
++        wheel_contacts_recorded=report.get('wheel_contacts',{}).get('samples',0)>0,
+         no_false_start=report.get('false_start') is False)
+     return dict(passed=all(checks.values()),checks=checks,stages=stages,receipt_count=len(receipts),status_rows=len(statuses),
+                 follow_config={k:follow.get(k) for k in ('max_steering_rad','wheelbase_m','wall_offset_m','lateral_acceleration_mps2')},
+@@ -192,7 +193,7 @@
+             stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
+     validator.start_demo_process=start
+     sys.argv=[validator.__file__,'--config',str(CONFIG),'--case',CASE,'--seed','0','--mode','g1',
+-              '--output',str(output),'--record-braking-diagnostics']
++              '--output',str(output),'--record-braking-diagnostics','--record-wheel-contacts']
+     code=validator.main()
+     metadata.update(argv=sys.argv,source_unchanged=unchanged(),harness_exit_original_g1=code)
+     report=json.loads((output/'report.json').read_text(encoding='utf-8'))

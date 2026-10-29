@@ -36,12 +36,18 @@ class LidarSafety(Node):
         self.recent_observation_enabled = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
         self.partial_policy = None
         policy = str(self.declare_parameter('partial_observation_policy', 'strict').value)
+        traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
+        if traffic_recovery and policy != 'bounded_local_v4':
+            raise ValueError('traffic recovery safety requires explicit v4 policy')
         if policy not in ('strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4'):
             raise ValueError('unknown partial observation policy')
         if policy != 'strict':
             if self.recent_observation_enabled or self.motion.mode != 'both' or not self.motion.verified:
                 raise ValueError('bounded observation policy requires verified both motion and no recent candidate')
             from arena_autonomy.partial_observation import PartialObservationPolicy
+            if traffic_recovery:
+                from arena_autonomy.traffic_recovery_trial import RecoveryPolicy
+                PartialObservationPolicy = RecoveryPolicy
             self.partial_policy = PartialObservationPolicy(allow_narrow_forward=policy in ('bounded_local_v2','bounded_local_v3','bounded_local_v4'),
                                                           surface_translation_enabled=policy in ('bounded_local_v3','bounded_local_v4'),
                                                           lateral_metric_enabled=policy=='bounded_local_v4')

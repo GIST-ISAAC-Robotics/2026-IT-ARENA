@@ -19,6 +19,23 @@ R0E3, B3 = 'config/tests/r0_plus_e3_r0_sha256.json', 'config/tests/b3_race_sessi
 GROUPS = ('approved_changes', 'approved_evaluation_scripts')
 
 
+def test_short_boundary_prefix_successor_preserves_before_and_current_bytes():
+    name='config/tests/short_boundary_prefix_r0_sha256.json'
+    child=load(name)
+    assert child['parent_contract']=='config/tests/g1_course_evaluation_r0_sha256.json'
+    assert sha((ROOT/child['parent_contract']).read_bytes())==child['parent_contract_sha256']
+    snapshot=ROOT/child['before_snapshot']
+    assert sha(snapshot.read_bytes())==child['before_snapshot_sha256']
+    assert len(child['approved_changes'])==5
+    assert set(child['approved_evaluation_scripts'])=={'scripts/validate_g1_traffic.py'}
+    with zipfile.ZipFile(snapshot) as archive:
+        for group in GROUPS:
+            for path,row in child[group].items():
+                assert row['reason'].strip()
+                assert sha(archive.read(path))==row['before']!=row['after']
+                assert m3_revision_digest(path, newer_than=name)==row['after']
+
+
 def sha(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -115,7 +132,26 @@ M3_SUCCESSORS = ('config/tests/m3_command_selection_r0_sha256.json', 'config/tes
                  'config/tests/m3_sensor_stress_r0_sha256.json', 'config/tests/m4_operation_r0_sha256.json',
                  'config/tests/m4_operation_clock_r0_sha256.json', 'config/tests/m4_new_race_r0_sha256.json',
                  'config/tests/m3_guarded_return_r0_sha256.json', 'config/tests/m4_second_start_r0_sha256.json', 'config/tests/m2_merge_r0_sha256.json', 'config/tests/m3_exact_cost_r0_sha256.json', 'config/tests/m2_motion_stress_r0_sha256.json', 'config/tests/m2_count_fault_r0_sha256.json', 'config/tests/m2_motion_config_r0_sha256.json', 'config/tests/m5_publication_r0_sha256.json', 'config/tests/partial_observation_r0_sha256.json',
-                 'config/tests/profile_bundle_selector_r0_sha256.json')
+                 'config/tests/profile_bundle_selector_r0_sha256.json', 'config/tests/g1_course_evaluation_r0_sha256.json', 'config/tests/short_boundary_prefix_r0_sha256.json',
+                 'config/tests/local_start_signal_r0_sha256.json', 'config/tests/traffic_recovery_trial_r0_sha256.json', 'config/tests/traffic_recovery_release_fringe_r1_sha256.json', 'config/tests/traffic_path_recovery_r0_sha256.json', 'config/tests/traffic_anchor_set_r1_sha256.json', 'config/tests/traffic_speed_recheck_r1_sha256.json', 'config/tests/traffic_positive_clearance_r1_sha256.json', 'config/tests/traffic_positive_bundle_r1_sha256.json', 'config/tests/traffic_side_scope_r1_sha256.json', 'config/tests/traffic_manifest_r1_sha256.json', 'config/tests/short_prefix_origin_r1_sha256.json', 'config/tests/rotation_reobservation_r1_sha256.json', 'config/tests/actor_tail_capture_r1_sha256.json', 'config/tests/small_alignment_r1_sha256.json', 'config/tests/rolling_clearance_r1_sha256.json', 'config/tests/fresh_scan_wait_r1_sha256.json', 'config/tests/g2_handoff_manifest_r1_sha256.json')
+
+
+def test_local_signal_successor_preserves_failed_five_car_source():
+    name = 'config/tests/local_start_signal_r0_sha256.json'
+    child = load(name)
+    assert child['parent_contract'] == 'config/tests/short_boundary_prefix_r0_sha256.json'
+    assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+    assert set(child['approved_evaluation_scripts']) == {'scripts/validate_g1_traffic.py', 'scripts/validate_pipeline_faults_ros.py'}
+    assert set(child['new_dependencies']) == {'src/arena_autonomy/arena_autonomy/race_start_local.py'}
+    with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+        for group in GROUPS:
+            for path, row in child[group].items():
+                assert row['reason'].strip()
+                assert sha(archive.read(path)) == row['before'] != row['after']
+                assert m3_revision_digest(path, newer_than=name) == row['after']
+    for path, digest in child['new_dependencies'].items():
+        assert sha((ROOT/path).read_bytes()) == digest
 
 
 def m3_revision_digest(path, newer_than=None):

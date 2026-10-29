@@ -4,6 +4,8 @@ import json
 import zipfile
 
 
+RECOVERY_CONTRACTS = ('g2_handoff_manifest_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'small_alignment_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_recovery_trial_r0_sha256.json')
+
 def hash_before_observation_extension(root, path):
     """새 보호층 bytes까지 확인한 뒤 이전 계약 시점의 값을 반환한다.
 
@@ -11,6 +13,16 @@ def hash_before_observation_extension(root, path):
     명시 모터 카운트 시험의 launch 변경만 검증해 되돌리며 다른 파일은 실제 hash다.
     """
     current=hashlib.sha256((root/path).read_bytes()).hexdigest()
+    for name in RECOVERY_CONTRACTS:
+        recovery=json.loads((root/'config/tests'/name).read_text(encoding='utf-8'))
+        change={**recovery['approved_changes'],**recovery['approved_evaluation_scripts']}.get(path)
+        if change:
+            assert hashlib.sha256((root/recovery['parent_contract']).read_bytes()).hexdigest()==recovery['parent_contract_sha256']
+            assert current==change['after'],path
+            assert hashlib.sha256((root/recovery['before_snapshot']).read_bytes()).hexdigest()==recovery['before_snapshot_sha256']
+            with zipfile.ZipFile(root/recovery['before_snapshot']) as archive:
+                assert hashlib.sha256(archive.read(path)).hexdigest()==change['before']
+            current=change['before']
     partial=root/'config/tests/partial_observation_r0_sha256.json'
     if partial.exists():
         extension=json.loads(partial.read_text())

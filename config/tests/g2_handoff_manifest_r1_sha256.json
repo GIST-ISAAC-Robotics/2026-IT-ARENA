@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "scope": "G2 명시 실행·schema4/5 기록 연결의 후속 출처와 정적 import 의존성 보존. 기본 채택·안전 승인 아님. 기존 주행 제어/판정 변경 없음.",
+  "parent_contract": "config/tests/fresh_scan_wait_r1_sha256.json",
+  "parent_contract_sha256": "e7ba830c379007a25cde5165e45f9232c29f6f66332273baf31c3423bf11cccb",
+  "before_snapshot": "artifacts/validation/2026-10-29/final_regression_v1/before_g2_manifest.zip",
+  "before_snapshot_sha256": "ff7ee3cf3cafa41fe895ae90b95da02ee3a39da8bef1692dbd28524cc65631dd",
+  "before_source": {
+    "snapshot": "artifacts/validation/2026-10-28/multilap_preparation_v1/run1_sources.zip",
+    "snapshot_sha256": "8e931b3fe66d4d604e2c8fd58f9407eebc516e071076226e310df8f99ac17b3b",
+    "scope": "10/29 5랩 당시 보존된 실제 소스에서 해당 8파일을 원래 바이트로 추출"
+  },
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/follow_trace.py": {
+      "before": "ab63c91f13dff45dac842b373368513dc8c4da11547764d32a1fe4ea813244a2",
+      "after": "fac23b0e486c94b0a0769975d175bd91c65e15243ed9b830755c1299c32f0751",
+      "reason": "G2 별도 실행 파일 및 schema4/5 기록 연결. 주행 시험에서 이미 사용한 변경의 출처를 후속 계약으로 기록."
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "1422e5fde6fb0924256992e9077dfe5657331dc9085651ea94c34d2f4047c220",
+      "after": "870703d744f40bd10b717f0eb841726f515978b10d7c7f0cfd9e3058244dafae",
+      "reason": "G2 별도 실행 파일 및 schema4/5 기록 연결. 주행 시험에서 이미 사용한 변경의 출처를 후속 계약으로 기록."
+    },
+    "src/arena_autonomy/setup.py": {
+      "before": "4af9fa9e4dc9d328f8844969a3f8aa975e5e8bfd91f72fcbac4ea9c2996b6049",
+      "after": "a3379ca32b648e18d25f83f8c69487166d4d4349b784f0d8f071fec6af466e97",
+      "reason": "G2 별도 실행 파일 및 schema4/5 기록 연결. 주행 시험에서 이미 사용한 변경의 출처를 후속 계약으로 기록."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/prepare_jetson_bundle.py": {
+      "before": "789dee56cd0e81b8f3a6fc93ab49288310beb5a1ac449230a0209182860e8a17",
+      "after": "e796f3f5a61a7be1867b101621673b731c9b34ab62e60c77da5c63ca623e169d",
+      "reason": "follow_trace에서 참조하는 G2 순수 Python 모듈 4개의 전이 의존성을 보존/이관 목록에 추가. 제어·판정 변경 없음."
+    },
+    "scripts/profile_follow_trace.py": {
+      "before": "9663785a85c506e4f9394729f617aa4df4fc02ed0c16259f00d6218904ed70f8",
+      "after": "6aeac6f1a7abb308bce29317c42ea29afcbcf237cede144392157246c2d70b70",
+      "reason": "follow_trace에서 참조하는 G2 순수 Python 모듈 4개의 전이 의존성을 보존/이관 목록에 추가. 제어·판정 변경 없음."
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "d339c48af85a63cd22ed626f54575644043a09454136dfa6eb50a4699017aad3",
+      "after": "6182ecf96e45bd55204125d81b54c3e6881041411b7b6039fd5f011b1ee91fad",
+      "reason": "follow_trace에서 참조하는 G2 순수 Python 모듈 4개의 전이 의존성을 보존/이관 목록에 추가. 제어·판정 변경 없음."
+    },
+    "scripts/validate_pipeline_faults_ros.py": {
+      "before": "faebbed93a7472e2ebe71364423d035fed2537116c993dc5232a75bdc3c00aaa",
+      "after": "318dcc56fafd270a3e0e5de0625bc387314f8d0aa52db7f558f58b7670aae5af",
+      "reason": "follow_trace에서 참조하는 G2 순수 Python 모듈 4개의 전이 의존성을 보존/이관 목록에 추가. 제어·판정 변경 없음."
+    },
+    "scripts/validate_sensor_input_ros.py": {
+      "before": "0d6018778890e7b9e5c9dcf1d96ea98c1e697aabaa82d92a312023f8d83402e9",
+      "after": "6fd23e6d0b00107449fed0d9bba30548e6dab5a187ed60e41752ef007b190b03",
+      "reason": "follow_trace에서 참조하는 G2 순수 Python 모듈 4개의 전이 의존성을 보존/이관 목록에 추가. 제어·판정 변경 없음."
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/bypass_wall_fit.py": "ff31ecad34e6197dd1d7b1234e98dfd3cd7b1fa18d5cf08d12ce1361f6d68dda",
+    "src/arena_autonomy/arena_autonomy/bypass_entry_trial.py": "a11c97d0c0f0ac7d95edc47e5c869cae460ca31e2d47a5e048e609275d7b28ee",
+    "src/arena_autonomy/arena_autonomy/bypass_entry_follow.py": "fbf9e410019565db8acfa84d0f464b7a9371ea6c092184c3e23a64bc82ede67a",
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": "a0ef71a7f88fb7e9f855d3862fdf3e37c68759a158910fe573135f210d45fd9f",
+    "src/arena_autonomy/arena_autonomy/g2_entry_node.py": "74ceb071241d859015060f438bb297757fecb00f0c1b8515718809e46d2b3f6a",
+    "src/arena_autonomy/arena_autonomy/g1_g2_node.py": "e47a38c631f615d22586be02b24a5dde3a4b9063221ea83f930b556584604d7c"
+  }
+}

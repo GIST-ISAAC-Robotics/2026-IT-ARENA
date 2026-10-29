@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "scope": "선택형 옛 위치의 현재 유효 반환 재검사. 기본 활성화/실물 안전 승인 아님",
+  "parent_contract": "config/tests/traffic_speed_recheck_r1_sha256.json",
+  "parent_contract_sha256": "224a7b185151e4c2823a100effd5dd4647ae1f0949bb0a6e9a5146aee1de52e8",
+  "before_snapshot": "artifacts/validation/2026-10-28/traffic_positive_clearance_v1/before_source.zip",
+  "before_snapshot_sha256": "ef953aae5eb85a0e9d48f0253875326ada26870949e1459c48dde6b9226d5a0f",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/traffic_recovery_trial.py": {
+      "before": "6d5b8f771ce5e2b0de009f69643439137a315830685833c191cd9be645fb3618",
+      "after": "a884daeb02952b27fc28e0ef2a0a1a991fabf21463fc2b31f5e35f4502dc1a23",
+      "reason": "전체 원래 위협 위치를1초 안의 서로 다른 두 새 스캔에서 양성 관측한 경우만 현재 정책 재검사. 기존 재관측 조건·기본OFF 유지."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/probe_anchor_clearance.py": {
+      "before": "74bb514a0ab324d56a1ac9cb9f77af70a4e368225c7c124cd5534ac1d487fdcf",
+      "after": "d98d65530a6b3c896b19503fc8b4de05ddbca2ecb55445dce87bd668db27e75a",
+      "reason": "미연결 진단에서 검증한 함수를 동일 구현의 분석 가져오기 경로로 정리."
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/anchor_clearance_trial.py": "dc354714a3ecdbe1e6c439245abdee514dea093251e368cbf30444933737a765"
+  }
+}

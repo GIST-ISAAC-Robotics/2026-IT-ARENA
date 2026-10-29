@@ -16,6 +16,9 @@ def make_start_signal(mode):
     if mode == 'official_4red_candidate':
         from arena_autonomy.race_start import OfficialStartSignal
         return OfficialStartSignal()
+    if mode == 'official_4red_local_candidate':
+        from arena_autonomy.race_start_local import LocalOfficialStartSignal
+        return LocalOfficialStartSignal()
     raise ValueError('unsupported visual start mode')
 
 
@@ -27,7 +30,7 @@ def recognize(request, data):
     signal_mode = request.get('signal_mode', 'temporary_3light')
     start = make_start_signal(signal_mode)
     start.__dict__.update(copy.deepcopy(request['signal']))
-    if signal_mode == 'official_4red_candidate':
+    if signal_mode in ('official_4red_candidate', 'official_4red_local_candidate'):
         start.update(rgb, request['stamp'])
     else:
         start.update(rgb)

@@ -1,0 +1,178 @@
+{
+ "scope": "G2 single registered run evaluation; truth poses/world are evaluation-only",
+ "rules": {
+  "registered_before_run": true,
+  "target_passed": "ego body rear corner passes the target body front corner along the centerline (s), before window end",
+  "returned_to_center_lateral_m": 0.05,
+  "returned_to_center_heading_rad": 0.1,
+  "returned_to_center_hold_s": 1.0,
+  "returned_basis": "truth-only check after the pass: G2 own centred state uses 25 mm/0.08 rad on observed walls; the evaluation allows 50 mm/0.10 rad for wall-vs-centerline geometry differences",
+  "actor_contact_messages_with_ego": 0,
+  "overlap_samples": 0,
+  "max_off_road_wheels": 2,
+  "wall_wheel_samples": 0,
+  "off_road_basis": "official two-wheel grass allowance; any/center/full contact-patch interpretations all reported, all must stay <= 2 wheels; wheel-centre-only results are not used as contact-patch evidence",
+  "command_cap_mps": 0.35,
+  "body_gap_policy": "minimum body gap is reported only; the old 150 mm G1 line is not a G2 gate (completion-first, ADR 0027)",
+  "stop_and_shutdown": "existing explicit software_stop, dense pose stop evidence, MCU latch, clean shutdown",
+  "decision_replay": "schema4 g2_decisions.jsonl replays every call identically",
+  "sensor_only": "controller/safety/actuation subscriptions sensor-only; /drive only from the controller node and /drive/safe only from lidar_safety; actor pose read only by the evaluator"
+ },
+ "green_sim_s": 7.7170000000000005,
+ "window_end_sim_s": 19.719,
+ "stop_end_sim_s": 20.685,
+ "target": {
+  "x": 10.109698,
+  "y": 5.678597,
+  "yaw": 1.56379294,
+  "front_s": 45.94795,
+  "rear_s": 45.747969999999995,
+  "pose_samples": 2069
+ },
+ "ego_samples": 6471,
+ "progress_m": 3.9845900000000043,
+ "pass_time_since_green_s": 4.575999999999999,
+ "maximum_lateral_m": 0.16543394090926913,
+ "maximum_lateral_time_since_green_s": 4.273999999999999,
+ "center_return_first_time_since_green_s": 8.161999999999999,
+ "longest_centered_after_pass_s": 4.805999999999999,
+ "final_lateral_m": 0.00017319977175568062,
+ "final_heading_rad": -0.00023400627066472168,
+ "minimum_body_gap_m": 0.15989485062248623,
+ "overlap_samples": 0,
+ "actor_contact_messages_with_ego": 0,
+ "harness_gap": {
+  "ego_samples": 6973,
+  "min_sampled_gap_m": 0.15989485062248623,
+  "sampled_overlap_samples": 0,
+  "sampled_missing_actor_samples": 0,
+  "sampled_finite_complete": true,
+  "min_swept_lower_bound_m": 0.15982473439104863,
+  "swept_nonpositive_intervals": 0,
+  "swept_missing_actor_intervals": 0,
+  "max_ego_sample_interval_s": 0.0030000000000001137,
+  "actor_contact_messages_with_ego": 0,
+  "first_contact_sim_s": null,
+  "scope": "sampled gap + conservative swept lower bound between pose samples; event-only contact evidence is separate"
+ },
+ "surface": {
+  "interpretations": {
+   "any": {
+    "max_off_wheels": 2,
+    "penalty_events_merged": 0
+   },
+   "center": {
+    "max_off_wheels": 2,
+    "penalty_events_merged": 0
+   },
+   "full": {
+    "max_off_wheels": 2,
+    "penalty_events_merged": 0
+   }
+  },
+  "wall_wheel_samples": 0,
+  "samples": 6471,
+  "evaluator": "surface_contact_v1",
+  "steering_source": "MCU target central steering (actuation_trace)"
+ },
+ "maximum_drive_mps": 0.3499999940395355,
+ "maximum_safe_mps": 0.3499999940395355,
+ "status_rows": 63,
+ "status_mode_g2": true,
+ "status_phases": [
+  null,
+  "centered",
+  "entry",
+  "rejoin"
+ ],
+ "status_reasons": {
+  "entry_command_candidates_available": 60,
+  "entry_guide_input_reset": 1,
+  "entry_initial_distinct_boundaries_wait": 2
+ },
+ "gates": {
+  "target_passed": true,
+  "returned_to_center": true,
+  "no_actor_contact": true,
+  "no_body_overlap": true,
+  "wheels_two_or_fewer_off_road": true,
+  "no_wall_wheel": true,
+  "command_cap": true,
+  "g2_controller_rows": true
+ },
+ "run_checks": {
+  "no_runtime_error": true,
+  "evaluation_readers_valid": true,
+  "contact_source_instrumented": true,
+  "sensor_only_controller_inputs": true,
+  "sensor_only_safety_inputs": true,
+  "actuation_sensor_only_inputs": true,
+  "actor_pose_only_evaluator": true,
+  "drive_publisher_controller_only": true,
+  "safe_drive_publisher_safety_only": true,
+  "sequential_acquisition": true,
+  "lidar_interface": true,
+  "source_unchanged": true,
+  "signal_sequence": true,
+  "no_false_start": true,
+  "stop_model_stop_stable": true,
+  "stop_dense_pose_stop_evidence": true,
+  "stop_explicit_mcu_stop": true,
+  "stop_no_mcu_latch_before_stop": true,
+  "stop_no_deadline_diagnostic": true,
+  "stop_no_wall_collision": true,
+  "shutdown_clean": true,
+  "no_abort": true
+ },
+ "original_g1": {
+  "passed": false,
+  "gates": {
+   "hold": false,
+   "approached": false,
+   "green_observed": true,
+   "data_coverage": true,
+   "sampled_gap": true,
+   "swept_gap": true,
+   "no_sampled_overlap": true,
+   "no_actor_contact": true,
+   "inside_road": false,
+   "ego_stays_behind": false
+  },
+  "integrity_controller_mode_matches": false,
+  "scope": "preserved G1 stopped_center verdict; HOLD/stay-behind/body-road-only are not G2 gates"
+ },
+ "replay": {
+  "passed": true,
+  "calls": 640,
+  "matched": 640,
+  "mismatches": 0,
+  "header_schema": 4,
+  "controller_mode": "g2_entry_trial",
+  "execution_config_matches_default": true,
+  "follow_config": {
+   "partial_observation_policy": "strict",
+   "boundary_evidence_mode": "connected",
+   "occupancy_timing_mode": "oldest",
+   "corridor_fallback_enabled": false,
+   "max_speed_mps": 1.0,
+   "max_steering_rad": 0.3710583448410034,
+   "wheelbase_m": 0.135,
+   "wall_offset_m": 0.425,
+   "lateral_acceleration_mps2": 3.0
+  },
+  "reason_counts": {
+   "entry_command_candidates_available": 628,
+   "entry_initial_distinct_boundaries_wait": 6,
+   "entry_guide_input_reset": 6
+  },
+  "first_phase_reference_s": {
+   "entry": 8.040000000000001,
+   "rejoin": 12.82,
+   "centered": 16.12
+  },
+  "positive_commands": 628,
+  "maximum_command_mps": 0.35
+ },
+ "passed": true,
+ "plot": "run1_path.png"
+}

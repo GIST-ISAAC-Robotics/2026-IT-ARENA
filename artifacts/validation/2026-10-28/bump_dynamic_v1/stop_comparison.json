@@ -1,0 +1,87 @@
+{
+  "rows": [
+    {
+      "run": "run1",
+      "stop_initial_ground_speed_mps": 0.3500334366589789,
+      "displacement_m": 0.019592235072015567,
+      "report_displacement_m": 0.019592235072015567,
+      "path_length_m": 0.027249010340124502,
+      "stable_wait_s": 0.7620000000000005,
+      "location_xy_m": [
+        9.952941817187504,
+        10.728091437155292
+      ],
+      "max_sample_gap_s": 0.0030000000000001137,
+      "no_delay_equivalent_deceleration_mps2": 2.248217554508359,
+      "ideal_braking_at_2mps2_m": 0.03063085169482385,
+      "formula_clearance_at_age_0_m": 0.12563419536072173,
+      "formula_clearance_at_age_point1_m": 0.16063753902661962,
+      "last_pre_stop_controller_scan_age_s": 0.15800000000000125,
+      "last_pre_stop_controller_reference_s": 26.26,
+      "stop_first_pose_s": 26.401,
+      "formula_clearance_at_last_controller_age_m": 0.18093947835284083
+    },
+    {
+      "run": "run2",
+      "stop_initial_ground_speed_mps": 0.7022269990322462,
+      "displacement_m": 0.08016145487024746,
+      "report_displacement_m": 0.08016145487024746,
+      "path_length_m": 0.08830439658168537,
+      "stable_wait_s": 0.8780000000000001,
+      "location_xy_m": [
+        9.953351598910048,
+        10.705526812780075
+      ],
+      "max_sample_gap_s": 0.0030000000000001137,
+      "no_delay_equivalent_deceleration_mps2": 2.7921755725586914,
+      "ideal_braking_at_2mps2_m": 0.12328068954245856,
+      "formula_clearance_at_age_0_m": 0.2535033894456832,
+      "formula_clearance_at_age_point1_m": 0.3237260893489078,
+      "last_pre_stop_controller_scan_age_s": 0.1180000000000021,
+      "last_pre_stop_controller_reference_s": 17.42,
+      "stop_first_pose_s": 17.515,
+      "formula_clearance_at_last_controller_age_m": 0.3363661753314897
+    },
+    {
+      "run": "course1",
+      "stop_initial_ground_speed_mps": 0.7000468247041263,
+      "displacement_m": 0.2878153240594107,
+      "report_displacement_m": 0.2878153240594107,
+      "path_length_m": 0.2965145479725503,
+      "stable_wait_s": 1.3019999999999925,
+      "location_xy_m": [
+        9.9657351351048,
+        6.523719286980177
+      ],
+      "max_sample_gap_s": 0.0030000000000143245,
+      "no_delay_equivalent_deceleration_mps2": 0.8263769183151467,
+      "ideal_braking_at_2mps2_m": 0.12251638919458242,
+      "formula_clearance_at_age_0_m": 0.25252107166499504,
+      "formula_clearance_at_age_point1_m": 0.3225257541354077,
+      "last_pre_stop_controller_scan_age_s": 0.1980000000000075,
+      "last_pre_stop_controller_reference_s": 152.70000000000002,
+      "stop_first_pose_s": 152.851,
+      "formula_clearance_at_last_controller_age_m": 0.39113034295641724
+    }
+  ],
+  "sources_sha256": {
+    "run1\\report.json": "f96a0c6e2a0aaa1978d475a08c7b5aea7004ea35f731930db446fe2d8101631c",
+    "run1\\stop_trace.json": "a2710c6a73d4b7f88339552a659e41759c815dfde994b950903ebfc55d44da1f",
+    "run1\\trace.json": "fdc39a44edab855954becf8618b8a12c284d5e6429558b3899a26f14848b8e80",
+    "run2\\report.json": "68aa2f4da2c693a48d3fe600a3d75fca89f7b3ef7f7362871ff22dedf493d661",
+    "run2\\stop_trace.json": "c8261328e4dfbe8e944095b3c48b6ac39a6de4f3480a77ee4f3d187894112903",
+    "run2\\trace.json": "dbb45d71b6beb468d84ee829025cca04dbb88dd5cef7c3fddf0edd443b4bf9d2",
+    "course1\\report.json": "c271cca55bd94be231355f4f33331f1b126092719f538e39ab6a57da599ebabd",
+    "course1\\stop_trace.json": "fb00b16a0cb7bd315c9d4c4c98f17bfa5a1156ee15d8bb94dca58955bb9041c5",
+    "course1\\trace.json": "2b62a2682ebfaa07e71bd4a7cf88c8d73ece55ca8ee9030eaff89d5f3d83a540"
+  },
+  "scope": "three prior ending STOP samples only; no controlled same-position brake comparison or calibrated deceleration",
+  "formula": "current braking_speed inverse: clearance = 0.06 + v*(scan_age+0.10) + v*v/(2*2.0)",
+  "limitations": [
+    "STOP start evidence is a pose sample, not hardware response timestamp",
+    "last controller scan age is earlier than the STOP request and is not the exact guard age",
+    "equivalent deceleration includes delay and variable braking; not a fitted actuator parameter",
+    "SW STOP output and ordinary speed limiting have different histories; not interchangeable proof"
+  ],
+  "inputs_unchanged": true
+}

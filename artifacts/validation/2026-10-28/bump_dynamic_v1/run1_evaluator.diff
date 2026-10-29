@@ -1,0 +1,94 @@
+--- base_evaluator
++++ bump_trial_evaluator
+@@ -286,14 +286,14 @@
+     if args.partial_observation_policy != 'strict':
+         if (args.autonomy_mode != 'local_pursuit' or
+                 args.lidar_compensation != 'both' or args.lidar_acquisition != 'sequential' or
+-                args.speed_profile != 'g1_compare_1mps'):
++                args.speed_profile not in ('g1_compare_1mps', 'cautious')):
+             raise ValueError('partial policy trial requires local_pursuit, sequential both and 1 m/s profile')
+         if args.g1_follow and (args.partial_observation_policy not in ('bounded_local_v2','bounded_local_v3','bounded_local_v4') or
+                                args.g1_recent_observation or not args.record_follow_decisions):
+             raise ValueError('G1 partial trial requires v2/v3/v4, decision recording and no recent observation candidate')
+         extra_arguments.append('partial_observation_policy:='+args.partial_observation_policy)
+     if args.g1_follow and (args.autonomy_mode != 'local_pursuit' or args.lidar_compensation != 'both'
+-                          or args.lidar_acquisition != 'sequential' or not args.disable_speed_bump):
++                          or args.lidar_acquisition != 'sequential'):
+         raise ValueError('G1-a는 local_pursuit+both+sequential, 방지턱 비활성 시험 전용입니다.')
+     validate_limits(args.record_max_raw_gib, args.record_max_wall_seconds)
+     if args.record_inputs and args.autonomy_mode != 'local_pursuit':
+@@ -350,6 +350,7 @@
+     node = rclpy.create_node("basic_autonomy_validator")
+     state, trace, scans, depth_stamps, pictures = {}, [], [], [], set()
+     drive_stamps = []
++    bump_poses, bump_imu, bump_scans = [], [], []
+     rgb_stamps, imu_stamps = [], []
+     safety_active = args.autonomy_mode == 'local_pursuit' or not args.disable_tof_safety
+     acquisition_records = []
+@@ -361,6 +362,11 @@
+     signal.signal(signal.SIGTERM, interrupted)
+     def remember(message, key):
+         state[key] = message
++        if key == 'imu':
++            bump_imu.append(dict(time=message.header.stamp.sec + message.header.stamp.nanosec * 1e-9,
++                orientation=[getattr(message.orientation, k) for k in ('x','y','z','w')],
++                angular_velocity=[getattr(message.angular_velocity, k) for k in ('x','y','z')],
++                linear_acceleration=[getattr(message.linear_acceleration, k) for k in ('x','y','z')]))
+         if key == "drive":
+             drive_stamps.append(float(message.header.stamp.sec) + message.header.stamp.nanosec * 1e-9)
+         elif key in ('rgb', 'imu'):
+@@ -368,6 +374,11 @@
+                 float(message.header.stamp.sec) + message.header.stamp.nanosec * 1e-9)
+     def receive_scan(message):
+         state["scan"] = message
++        bump_scans.append(dict(time=message.header.stamp.sec + message.header.stamp.nanosec * 1e-9,
++            angle_min=message.angle_min, angle_increment=message.angle_increment,
++            time_increment=message.time_increment, scan_time=message.scan_time,
++            range_min=message.range_min, range_max=message.range_max,
++            ranges=[float(v) if math.isfinite(v) else str(v) for v in message.ranges]))
+         scans.append(float(message.header.stamp.sec) + message.header.stamp.nanosec * 1e-9)
+         # 주행 전 자기 가림 확인용 원시 관측 요약이다. 제어/안전 입력을 바꾸지 않는다.
+         # 초기 10프레임만 보존하며 근거리 반환을 자동으로 자기 가림이라고 단정하지 않는다.
+@@ -603,6 +614,8 @@
+                                                             yaw_of(pose['orientation'])))
+                                     else:
+                                         pose_rejected_times += 1
++                            bump_poses.append(dict(time=pose['time'], position=pose['position'],
++                                                   orientation=pose['orientation']))
+                             state["pose"] = pose
+                 except (ValueError, TypeError):
+                     continue
+@@ -718,6 +731,14 @@
+                       "safe_drive_speed_mps": (state["safe_drive"].drive.speed
+                                                if "safe_drive" in state else None)}
+             trace.append(record)
++            # 평가용 사진 저장 조건이며 제어 노드에 정답 자세를 전달하지 않는다.
++            bump = scene['speed_bumps']['bumps'][0]
++            if math.hypot(position[0]-bump['x'], position[1]-bump['y']) < .7:
++                label = 'bump_rgb_' + str(int(now * 4))
++                if label not in pictures:
++                    cv2.imwrite(str(output / (label + '.png')),
++                                cv2.cvtColor(image_array(state['rgb']), cv2.COLOR_RGB2BGR))
++                    pictures.add(label)
+             trace_stream.write(json.dumps(record, ensure_ascii=False) + "\n")
+             for label in [f"signal_{light['applied']}", *[f"marker_{value}" for value in autonomous["marker_ids"]]]:
+                 if label not in pictures and label != "signal_unknown":
+@@ -934,7 +955,7 @@
+         safety_evidence = (report["safety_sensor_only_inputs"] if safety_active else True)
+         report["passed"] = (not false_start and collision_samples == 0 and report['stop_collision_samples'] == 0 and report["stop_stable"] and
+                             report["sensor_only_inputs"] and safety_evidence and source_interface_passed and
+-                            {"red", "yellow", "green"}.issubset(signal_states) and route_evidence)
++                            {"red", "green"}.issubset(signal_states) and route_evidence)
+         if args.g1_follow:
+             running_rows = [row['autonomy'] for row in trace if row['autonomy']['state'] == 'RUNNING']
+             report['g1_runtime_verified'] = bool(running_rows) and all(
+@@ -1183,6 +1204,9 @@
+             report.setdefault("completed_laps", int(max(0, trace[-1]["progress_m"]) // lap_length))
+             report.setdefault("max_centerline_error_m", max(row["centerline_error_m"] for row in trace))
+             report.setdefault("collision_samples", sum(row["collision"] for row in trace))
++        (output / 'bump_pose_trace.json').write_text(json.dumps(bump_poses), encoding='utf-8')
++        (output / 'bump_imu_trace.json').write_text(json.dumps(bump_imu), encoding='utf-8')
++        (output / 'bump_scan_trace.json').write_text(json.dumps(bump_scans), encoding='utf-8')
+         (output / "trace.json").write_text(json.dumps(trace, ensure_ascii=False, indent=2), encoding="utf-8")
+         (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+         checkpoint({"completed": True, "passed": report["passed"], "pid": os.getpid(),

@@ -69,12 +69,90 @@ def test_frame_gap_cannot_reuse_old_red(gap):
         assert not signal.update(light_image(0, True), .5+gap+i*.1)
 
 
-def test_partial_red_occlusion_invalidates_previous_red_confirmation():
+def test_known_red_extinction_keeps_pattern_but_requires_green():
     signal = OfficialStartSignal()
     t = reds(signal)
     assert not signal.update(light_image(3), t)
-    for i in range(4):
-        assert not signal.update(light_image(0, True), t+.1+i*.1)
+    assert signal.observed == 'red_extinction_pending'
+    assert signal.last_red == pytest.approx(t-.1)
+    assert not signal.update(light_image(0, True), t+.1)
+    assert not signal.update(light_image(0, True), t+.2)
+    assert signal.update(light_image(0, True), t+.3)
+
+
+@pytest.mark.parametrize('paired', [False, True])
+def test_red_subset_and_green_simultaneous_never_starts(paired):
+    signal = OfficialStartSignal()
+    t = reds(signal, paired=paired)
+    for i, count in enumerate((3, 2, 1)):
+        assert not signal.update(light_image(count, True, paired=paired), t+i*.1)
+        assert signal.green_frames == 0
+    for i in range(3):
+        started = signal.update(light_image(0, True, paired=paired), t+.3+i*.1)
+        assert started == (i == 2)
+
+
+def test_partial_red_never_renews_last_full_pattern_deadline():
+    signal = OfficialStartSignal()
+    t = reds(signal)
+    for i in range(10):
+        assert not signal.update(light_image(3), t+i*.1)
+    assert signal.bank is None
+    for i in range(3):
+        assert not signal.update(light_image(0, True), t+1.+i*.1)
+
+
+@pytest.mark.parametrize('change', ['shift', 'scale', 'additional'])
+def test_unknown_red_subset_revokes_pattern(change):
+    signal = OfficialStartSignal()
+    t = reds(signal)
+    frame = light_image(3, offset=(182,125)) if change == 'shift' else light_image(3)
+    if change == 'scale':
+        frame = light_image(3, red_scale=[2.5]*5)
+    elif change == 'additional':
+        frame[90:105,400:415] = (255,0,0)
+    assert not signal.update(frame, t)
+    assert signal.bank is None
+    for i in range(3):
+        assert not signal.update(light_image(0,True),t+.1+i*.1)
+
+
+@pytest.mark.parametrize('red_count', [0, 2, 4])
+def test_unclassified_red_is_not_extinction_or_confirmed_bank(red_count):
+    signal = OfficialStartSignal()
+    t = reds(signal)
+    frame = light_image(red_count, green=True)
+    frame[90:100,400:480] = (255,0,0)  # 면적은 크지만 광원 모양이 아닌 빨강
+    assert not signal.update(frame,t)
+    assert signal.observed == 'red_unclassified'
+    assert signal.bank is None
+    for i in range(3):
+        assert not signal.update(light_image(0,True),t+.1+i*.1)
+
+
+def test_small_red_pixel_noise_does_not_count_as_a_signal():
+    signal = OfficialStartSignal()
+    t = reds(signal)
+    frame = light_image(0,True)
+    frame[90:92,400:402] = (255,0,0)
+    for i in range(3):
+        assert signal.update(frame,t+i*.1) == (i == 2)
+
+
+def test_incomplete_pattern_was_never_armed():
+    signal = OfficialStartSignal()
+    for i in range(3):
+        assert not signal.update(light_image(3), i*.1)
+    for i in range(3):
+        assert not signal.update(light_image(0,True), .3+i*.1)
+
+
+def test_frame_gap_after_known_extinction_still_discards_pattern():
+    signal = OfficialStartSignal()
+    t = reds(signal)
+    assert not signal.update(light_image(3), t)
+    for i in range(3):
+        assert not signal.update(light_image(0,True),t+.36+i*.1)
 
 
 def test_green_outside_image_cannot_start():

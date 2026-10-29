@@ -1,0 +1,19 @@
+F...................                                                     [100%]
+=================================== FAILURES ===================================
+________ test_retained_pass_uses_existing_rear_fringe_and_keeps_unknown ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73e62b078380>
+
+    def test_retained_pass_uses_existing_rear_fringe_and_keeps_unknown(monkeypatch):
+        ctl, result = execute(monkeypatch)
+>       assert ctl.mode == 'RELEASED' and result[0] == pytest.approx(.35)
+E       AssertionError: assert ('RELEASED' == 'RELEASED'
+E           RELEASED and 0.0 == 0.35 ± 3.5e-07
+E         comparison failed
+E         Obtained: 0.0
+E         Expected: 0.35 ± 3.5e-07)
+
+artifacts/validation/2026-10-28/traffic_release_fringe_v1/test_release_fringe_candidate.py:45: AssertionError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-10-28/traffic_release_fringe_v1/test_release_fringe_candidate.py::test_retained_pass_uses_existing_rear_fringe_and_keeps_unknown
+1 failed, 19 passed in 0.83s

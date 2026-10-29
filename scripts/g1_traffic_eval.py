@@ -575,6 +575,18 @@ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, co
                             ego_net_heading_change_deg=math.degrees(turn) if turn is not None else None)
         gates.update(curve_exit_reached=end_s is not None and end_s >= exit_s,
                      curve_heading_changed=turn is not None and math.degrees(turn) >= rules['minimum_heading_change_deg'])
+    if case.get('route_kind') == 'full_course':
+        from g1_course_eval import full_course_progress, wheel_center_surface
+        # 전체 랩에서 초기 s0 근처로 매번 감으면 반 랩 뒤 앞뒤 순서가 뒤집힌다.
+        # 명시 전체 코스 시험에서만 밀집 자세의 연속 호길이를 사용한다. 기존 판정은 그대로다.
+        course=full_course_progress(centerline,window_tuples(ego,t_green,t_end),
+            window_tuples(actor,t_green-POSE_MAX_GAP_S,t_end),s0,actor_cfg['length_m'])
+        wheels=wheel_center_surface(road,window_tuples(ego,t_green,last_time))
+        result['full_course_progress'],result['wheel_centers']=course,wheels
+        result['progress']['ego_stays_behind_actor']=course['ego_stays_behind']
+        behind=course['valid'] and course['ego_stays_behind']
+        gates.update(full_lap=course['valid'] and course['progress_m']>=rules['minimum_laps']*centerline.lap,
+                     two_wheel_surface=wheels['valid'] and wheels['three_plus_samples']==0)
     gap = result['gap']
     gates.update(
         green_observed=True,
@@ -586,6 +598,9 @@ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, co
         no_actor_contact=gap['actor_contact_messages_with_ego'] <= acceptance['actor_contact_messages_with_ego'],
         inside_road=outside is not None and outside <= acceptance['outside_road_samples'],
     )
+    if case.get('route_kind') == 'full_course':
+        # 이전 차체전체 road 지표를 보존하고, 새 시험의 사전 등록 바퀴 중심 판정과 구분한다.
+        result['historical_road_only_gate']=gates.pop('inside_road')
     # 도로 밖 물체를 본래 주행선으로 지나가는 G1 가림 시험에만 뒤따름 조건이 적용되지 않는다.
     # 기존 앞차·코너 시험의 뒤따름 조건은 유지하며, 새 사례는 도로 유지/간격/실제 통과를 따로 검사한다.
     result['applicability'] = {'ego_stays_behind': 'not_applicable_offroad_actor' if behavior == 'side_occlusion' else 'required'}

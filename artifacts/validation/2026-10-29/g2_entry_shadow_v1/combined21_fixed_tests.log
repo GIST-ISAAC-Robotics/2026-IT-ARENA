@@ -1,0 +1,28 @@
+..................................F..................................... [ 80%]
+.................                                                        [100%]
+=================================== FAILURES ===================================
+_____ test_intent_prevents_opposite_side_flip_but_never_reuses_permission ______
+
+    def test_intent_prevents_opposite_side_flip_but_never_reuses_permission():
+        state=EntryIntent();scene,_=sensor_scene()
+        a=state.select(scene,intent_comparison())
+        assert a['selected']['offset_m']>0
+>       b=state.select(scene,intent_comparison(left=.8,right=1.2))
+
+tests/test_bypass_entry_trial.py:163: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:384: in select
+    best = max(same, key=lambda r:(math.floor(r['preview_return_progress_m']/.02),
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = {'eligible': True, 'offset_m': 0.16, 'preview_return_progress_m': 0.8, 'steering_rad': 0.16, ...}
+
+    best = max(same, key=lambda r:(math.floor(r['preview_return_progress_m']/.02),
+                                  math.floor(r.get('preview_point_gap_m',0.)/.005),
+>                                 -abs(r['offset_m']), -r['transition_m'] if entry.prefer_earlier_transition else r['transition_m']))
+E   NameError: name 'entry' is not defined
+
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:386: NameError
+=========================== short test summary info ============================
+FAILED tests/test_bypass_entry_trial.py::test_intent_prevents_opposite_side_flip_but_never_reuses_permission
+1 failed, 88 passed in 4.70s

@@ -48,6 +48,10 @@ class LocalPursuit(WallFollow):
         boundary_mode = str(self.declare_parameter('g1_boundary_evidence_mode', 'connected').value)
         occupancy_mode = str(self.declare_parameter('g1_occupancy_timing_mode', 'oldest').value)
         corridor_fallback = bool(self.declare_parameter('g1_corridor_fallback_enabled', False).value)
+        short_prefix = bool(self.declare_parameter('g1_short_boundary_prefix_enabled', False).value)
+        if short_prefix and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled
+                or not self.get_parameter('use_sim_time').value or not trace_path):
+            raise ValueError('short boundary prefix requires recorded G1 simulation without R0+ or M3')
         recent_observation = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
         partial_observation = str(self.declare_parameter('partial_observation_policy','strict').value)
         parallel_hold = bool(self.declare_parameter('g1_parallel_hold_trial', False).value)
@@ -55,6 +59,12 @@ class LocalPursuit(WallFollow):
         if pass_release and not parallel_hold:
             raise ValueError('pass release requires explicit parallel hold trial')
         guard_curve = bool(self.declare_parameter('g1_guard_curve_trial', False).value)
+        traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
+        traffic_path_recovery = bool(self.declare_parameter('g1_traffic_path_recovery_trial', False).value)
+        if traffic_path_recovery and (not traffic_recovery or not corridor_fallback):
+            raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
+        if traffic_recovery and not guard_curve:
+            raise ValueError('traffic recovery requires explicit guard curve trial')
         if guard_curve and not pass_release:
             raise ValueError('guard curve trial requires explicit pass release trial')
         if parallel_hold and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled
@@ -85,7 +95,10 @@ class LocalPursuit(WallFollow):
             parallel_hold_trial=parallel_hold,
             pass_release_trial=pass_release,
             guard_curve_trial=guard_curve,
+            traffic_recovery_trial=traffic_recovery,
+            traffic_path_recovery_trial=traffic_path_recovery,
             corridor_fallback_enabled=corridor_fallback,
+            short_boundary_prefix_enabled=short_prefix,
             recent_observation_enabled=recent_observation,
             boundary_evidence_mode=boundary_mode,
             occupancy_timing_mode=occupancy_mode,
@@ -105,7 +118,7 @@ class LocalPursuit(WallFollow):
         if self.vision_execution not in ('inline', 'process'):
             raise ValueError('vision_execution must be inline or process')
         self.start_signal_mode = str(self.declare_parameter('start_signal_mode', 'temporary_3light').value)
-        if self.start_signal_mode not in ('temporary_3light', 'official_4red_candidate'):
+        if self.start_signal_mode not in ('temporary_3light', 'official_4red_candidate', 'official_4red_local_candidate'):
             raise ValueError('unsupported start_signal_mode')
         if self.start_signal_mode != 'temporary_3light' and self.vision_execution != 'process':
             raise ValueError('official start candidate requires process vision')
@@ -130,13 +143,17 @@ class LocalPursuit(WallFollow):
             self.create_subscription(String, '/actuation/status', self.on_mcu_status, 10)
             self.create_subscription(String, '/race/command', self.on_race_command, 10)
             self.get_logger().info('B3 race supervisor candidate: session='+self.race.session)
-        self.follow_trace = None
+        self.follow_trace = self.create_follow_trace(trace_path)
+
+    def create_follow_trace(self, trace_path):
+        """기본 기록 생성. 별도 명시 실행 파일은 제어기/기록 형식을 함께 선택한다."""
         if trace_path:
             if self.follow is None:
                 raise ValueError('decision trace requires explicit G1 or R0+ activation')
             from arena_autonomy.follow_trace import FollowTrace, controller_mode
-            self.follow_trace = FollowTrace(trace_path, self.motion.history.config, self.follow.config,
+            return FollowTrace(trace_path, self.motion.history.config, self.follow.config,
                 mode=controller_mode(self.follow), execution_config=getattr(self.follow, 'execution', None))
+        return None
 
     def reset_follow(self, reason):
         self.follow.reset()

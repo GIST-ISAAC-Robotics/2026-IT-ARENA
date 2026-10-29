@@ -1,0 +1,65 @@
+{
+  "scope": "208 Hz ROS callback functions, synthetic 1+sin(2*pi*t) rad/s turn; no transport or vehicle physics",
+  "assumptions": {
+    "residual_sigma": 0.02,
+    "residual_bias_dps": 1.0,
+    "spike_rad_s": 4.0,
+    "vibration_amplitude_rad_s": 0.3,
+    "vibration_hz": 30.0
+  },
+  "source_sha256": {
+    "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py": "50e85380bcfd48a87b79b9103a9b454840ed0789ef8ec4dee1a9c99a5bb80aa9",
+    "src/arena_autonomy/arena_autonomy/lidar_motion.py": "7cd3a500b1bb91301fb1157c87595cf13aba64f5d34d20fe400473ffad2998c5",
+    "artifacts/validation/2026-10-28/motion_uncertainty_v1/probe_gyro_gate.py": "a9fbabffc13d1cd815ce2b1dc554a20f310bcc7ee81c71c8a6a77ae4d7c64f0c",
+    "tests/test_lidar_motion_ros.py": "27efa5f6c5a426212e6ec1e81111e630ba18b0612817127b27862436770a1e82",
+    "artifacts/validation/2026-10-28/motion_uncertainty_v1/perturb.py": "afefeec4110f62e6369d3ddf5cae1cf35ecccd898df63b628737739f06f41122"
+  },
+  "results": [
+    {
+      "case": "baseline",
+      "samples": 209,
+      "accepted": 209,
+      "rejected": {},
+      "input_error_peak_rad_s": 0.0,
+      "max_yaw_error_rad": 6.661338147750939e-16,
+      "final_yaw_error_rad": -2.220446049250313e-16,
+      "no_gate_max_yaw_error_rad": 0.0,
+      "no_gate_final_yaw_error_rad": 0.0
+    },
+    {
+      "case": "residual",
+      "samples": 209,
+      "accepted": 209,
+      "rejected": {},
+      "input_error_peak_rad_s": 0.07860777499508775,
+      "max_yaw_error_rad": 0.01944536576357292,
+      "final_yaw_error_rad": 0.01944536576357292,
+      "no_gate_max_yaw_error_rad": 0.01944536576357292,
+      "no_gate_final_yaw_error_rad": 0.01944536576357292
+    },
+    {
+      "case": "two_spikes",
+      "samples": 209,
+      "accepted": 207,
+      "rejected": {
+        "gyro_slew": 2
+      },
+      "input_error_peak_rad_s": 4.0,
+      "max_yaw_error_rad": 0.0004356205979373362,
+      "final_yaw_error_rad": 0.00043562059793700314,
+      "no_gate_max_yaw_error_rad": 0.03846154000000013,
+      "no_gate_final_yaw_error_rad": 0.038461539999999905
+    },
+    {
+      "case": "vibration",
+      "samples": 209,
+      "accepted": 209,
+      "rejected": {},
+      "input_error_peak_rad_s": 0.30000000000000004,
+      "max_yaw_error_rad": 0.0031276991736771675,
+      "final_yaw_error_rad": -2.220446049250313e-16,
+      "no_gate_max_yaw_error_rad": 0.0031276991736768345,
+      "no_gate_final_yaw_error_rad": -6.661338147750939e-16
+    }
+  ]
+}

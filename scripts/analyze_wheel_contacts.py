@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""평가 접촉 메시지와 구동 정답의 시간 대조. 미수신을 0하중으로 보간하지 않는다."""
+"""평가 접촉 메시지와 구동 정답의 시간 대조. 미수신을 0하중으로 보간하지 않는다.
+
+주의: Gazebo Sim 8.11.0의 ContactSensorData는 센서 충돌체를 collision1으로
+재배열하면서 원래 물리 접촉의 force/normal 부호를 그대로 복사한다. 아래
+force_world_xyz_n은 메시지의 이름에 맞춰 고른 원시 필드이며, 실제 그 바퀴에
+작용하는 방향이 확인된 힘이 아니다. 음수/작은 합계를 무하중으로 해석하지 않는다.
+근거: artifacts/validation/2026-10-29/g2_handoff_dynamics_v1/README.md
+"""
 import argparse
 from bisect import bisect_left
 import hashlib
@@ -24,7 +31,8 @@ def contact_rows(message):
             if wheel is None:
                 continue
             row = grouped.setdefault(wheel, {'t': t, 'wheel': wheel, 'force_world_xyz_n': [0., 0., 0.],
-                                            'force_available': True, 'points': 0, 'other_collisions': []})
+                                            'force_available': True, 'force_body_assignment_verified': False,
+                                            'points': 0, 'other_collisions': []})
             row['other_collisions'].append(names[2-i])
             positions, wrenches = contact.get('position', []), contact.get('wrench', [])
             row['points'] += len(positions)
@@ -93,7 +101,8 @@ def analyze(folder, onset=None):
             'observed_samples': len(window), 'missing_force_samples': sum(not r['force_available'] for r in window),
             'observed_fz_n_min_p05_median_p95_max': np.percentile(loads, [0, 5, 50, 95, 100]).tolist() if loads else None,
             'max_observed_gap_s': max((b['t']-a['t'] for a, b in zip(window, window[1:])), default=None),
-            'observed_load_below_0_1_n_fraction': sum(v < .1 for v in loads)/len(loads) if loads else None,
+            'observed_load_below_0_1_n_fraction': None,
+            'signed_load_interpretation': 'unavailable: original physics collision order is not preserved in this contact message',
             'at_peak_velocity_mismatch': nearest(records, peak['sim_time_s']),
         }
     # 초기 낙하 충격을 제외하고, 정지 구간의 총 하중이 약 mg인지 확인할 참고값.
@@ -109,7 +118,7 @@ def analyze(folder, onset=None):
             'peak_dynamics': peak, 'wheel_contact_stats': stats,
             'initial_reference_t_s': reference_t, 'initial_reference_contacts': reference,
             'identical_duplicate_rows_removed': duplicates,
-            'limits': 'event-only force on each wheel in world frame. Missing/stale rows remain null, never assumed zero load. Diagnostic window does not override whole-run coverage or safety verdict.'}
+            'limits': 'Event-only raw world-frame force fields selected by labeled wheel. Gazebo 8.11.0 may reorder collision labels without force/normal signs; signed wheel load and low-load fraction are not verified. Missing/stale rows remain null, never assumed zero load. Diagnostic window does not override whole-run coverage or safety verdict.'}
 
 
 if __name__ == '__main__':
