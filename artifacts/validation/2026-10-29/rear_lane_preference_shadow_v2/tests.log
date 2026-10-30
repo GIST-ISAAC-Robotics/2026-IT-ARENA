@@ -1,0 +1,47 @@
+.....................F.F.                                                [100%]
+=================================== FAILURES ===================================
+__________ test_speed_increase_requires_its_own_observed_region[True] __________
+
+setup = (<candidate.StraightLanePreferenceSelector object at 0x72a0ddf98e60>, {'band': {'free': True, 'masked': 0, 'observed_f...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x72a0dde40900>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x72a0ddf98c20>
+blocked = True
+
+    @pytest.mark.parametrize('blocked', [False, True])
+    def test_speed_increase_requires_its_own_observed_region(setup, monkeypatch, blocked):
+        ctl, state, call = setup
+        release_from_rear(state, call)
+        def proposal(scene, base, speed, previous, dt, cfg, cap):
+            return dict(eligible=True, reason='parallel_current_position', target_speed_mps=min(.8, cap),
+                        steering_rad=0., path_points=PATH, clearance_m=1.5, maximum_padding_m=.1)
+        monkeypatch.setattr(parallel_speed, 'proposal', proposal)
+        region = dict(distance_m=.5, queries=10, unobserved=1 if blocked else 0,
+                      masked_left=0, masked_right=0, masked_tail_extent_m=0., masked_front_samples=0)
+        monkeypatch.setattr(ps, 'motion_region', lambda *a, **k: region)
+        out = call(1.3, base=baseline(1., .2))
+        assert out[0] == (.35 if blocked else .8)
+>       assert out[2]['rear_lane_keep']['observed_speed']['applied'] is (not blocked)
+E       KeyError: 'observed_speed'
+
+artifacts/validation/2026-10-29/rear_lane_preference_shadow_v2/test_candidate.py:236: KeyError
+______________ test_large_masked_tail_cannot_approve_higher_speed ______________
+
+setup = (<candidate.StraightLanePreferenceSelector object at 0x72a0ddf992e0>, {'band': {'free': True, 'masked': 0, 'observed_f...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x72a0dde42840>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x72a0ddf9a060>
+
+    def test_large_masked_tail_cannot_approve_higher_speed(setup, monkeypatch):
+        ctl, state, call = setup
+        release_from_rear(state, call)
+        monkeypatch.setattr(parallel_speed, 'proposal', lambda *a: dict(eligible=True, reason='parallel_current_position',
+            target_speed_mps=.8, steering_rad=0., path_points=PATH, clearance_m=1.5, maximum_padding_m=.1))
+        monkeypatch.setattr(ps, 'motion_region', lambda *a, **k: dict(distance_m=.5, queries=10, unobserved=0,
+            masked_left=2, masked_right=0, masked_tail_extent_m=.011, masked_front_samples=0))
+        out = call(1.3, base=baseline(1., .2))
+        assert out[0] == .35
+>       assert not out[2]['rear_lane_keep']['observed_speed']['applied']
+E       KeyError: 'observed_speed'
+
+artifacts/validation/2026-10-29/rear_lane_preference_shadow_v2/test_candidate.py:261: KeyError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-10-29/rear_lane_preference_shadow_v2/test_candidate.py::test_speed_increase_requires_its_own_observed_region[True]
+FAILED artifacts/validation/2026-10-29/rear_lane_preference_shadow_v2/test_candidate.py::test_large_masked_tail_cannot_approve_higher_speed
+2 failed, 23 passed in 0.76s

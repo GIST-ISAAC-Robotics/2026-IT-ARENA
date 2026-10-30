@@ -1,0 +1,58 @@
+"""기존 주행의 기구·제어·평가를 유지한 복합 오차 시험인지 검사한다. 주행 증거가 아니다."""
+import hashlib
+import json
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+from sensor_stress import apply_stress, BIAS, SIGMA, YAW, sensor
+
+BASE = Path(__file__).resolve().parent
+ROOT = BASE.parents[3]
+OLD = BASE.parent/'g2_center_gazebo_v1'
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def main():
+    original = ET.parse(OLD/'run1/runtime_vehicle.sdf').getroot()
+    changed = ET.fromstring(apply_stress(ET.tostring(original, encoding='unicode')))
+    lidar = sensor(changed, 'rplidar_c1')
+    pose = list(map(float, lidar.findtext('pose').split()))
+    lidar.remove(lidar.find('pose'))
+    imu = sensor(changed, 'lsm6dsox_imu')
+    native_ok = True
+    for axis in ('x', 'y', 'z'):
+        noise = imu.find('imu/angular_velocity/'+axis+'/noise')
+        native_ok &= float(noise.findtext('stddev')) == SIGMA
+        native_ok &= float(noise.findtext('mean')) == (BIAS if axis == 'z' else 0.)
+        noise.find('mean').text = '0'
+        noise.find('stddev').text = '0.001'
+    # XML formatting can differ, so normalize text-only numeric representation before comparing.
+    for axis in ('x', 'y', 'z'):
+        noise = sensor(original, 'lsm6dsox_imu').find('imu/angular_velocity/'+axis+'/noise')
+        noise.find('mean').text = '0'
+        noise.find('stddev').text = '0.001'
+    model_only = ET.tostring(original) == ET.tostring(changed)
+    manifest = json.loads((OLD/'run1_prepared.json').read_text())['source_sha256']
+    relevant = {p:h for p,h in manifest.items() if p.startswith(('src/', 'scripts/', 'config/'))}
+    altered = [p for p,h in relevant.items() if not (ROOT/p).is_file() or sha(ROOT/p) != h]
+    geometry = json.loads((OLD/'preflight.json').read_text())
+    cfg = 'g2_center_config_v1.json'
+    checks = dict(baseline_geometry_passed=geometry['passed'], same_config=sha(BASE/cfg) == sha(OLD/cfg),
+        same_evaluation=all(sha(BASE/p) == sha(OLD/p) for p in ('g2_eval_core.py', 'g2_eval_v2.py')),
+        controller_and_physics_unchanged=not altered, only_registered_model_errors=model_only,
+        gyro_model=native_ok, lidar_pose=pose == [0., 0., 0., 0., 0., YAW])
+    result = dict(passed=all(checks.values()), checks=checks, changed=altered,
+        inherited_geometry_file=str(OLD/'preflight.json'), inherited_geometry_sha256=sha(OLD/'preflight.json'),
+        inherited_straight_ahead_m=geometry['straight_ahead_m'],
+        scope='same geometry/controller/evaluation as nominal run1, sensor errors only; not a driving result')
+    with (BASE/'preflight.json').open('x', encoding='utf-8') as stream:
+        json.dump(result, stream, ensure_ascii=False, indent=2)
+    print(json.dumps(result, ensure_ascii=False))
+    return 0 if result['passed'] else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -44,13 +44,13 @@ SNAPSHOT_MODULES = {'arena_autonomy': ('boundary_evidence',
                     'partial_surface_alignment',
                     'pass_release_trial',
                     'traffic_recovery_trial', 'traffic_path_recovery_trial', 'corridor_roles',
-                    'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial',
+                    'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial', 'rear_lane_keep_trial', 'observed_lane_preference_trial', 'observed_parallel_speed_trial', 'measured_lane_preference_trial', 'measured_parallel_speed_trial', 'measured_parallel_trial', 'fresh_parallel_trial', 'fresh_parallel_speed_trial',
                     'polygon_batch',
                     'r0_plus',
                     'rounded_occupancy_candidate',
                     'scan_topology',
                     'scene_motion'),
- 'arena_vehicle_interface': ('queued_log',)}
+ 'arena_vehicle_interface': ('queued_log', 'drive_feedback')}
 
 
 class GCObservation:

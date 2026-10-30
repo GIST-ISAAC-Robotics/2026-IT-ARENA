@@ -1,0 +1,34 @@
+## v4 original reproduction
+....                                                                     [100%]
+4 passed in 0.58s
+rc_original=0
+## runtime successor
+.....................................................................F   [100%]
+=================================== FAILURES ===================================
+_______ test_low_maximum_selector_request_cap_stays_below_configuration ________
+
+setup = (<arena_autonomy.measured_lane_preference_trial.StraightLanePreferenceSelector object at 0x78596f238d70>, {'band': {'f...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x78596f100ae0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x78596f238e30>
+
+    def test_low_maximum_selector_request_cap_stays_below_configuration(setup, monkeypatch):
+        ctl, state, call = setup
+        ctl.follow_config = config(max_speed_mps=.3)
+        release_from_rear(state, call)
+        caps = []
+    
+        def proposal(scene, base, speed, previous, dt, cfg, cap):
+            caps.append(cap)
+            return dict(eligible=True, reason='parallel_current_position', target_speed_mps=cap,
+                        steering_rad=0., path_points=PATH, clearance_m=1.5, maximum_padding_m=.1)
+        monkeypatch.setattr(parallel_speed, 'proposal', proposal)
+        out = call(1.3, base=baseline(.3, .2), par=parallel(.3))
+>       assert caps == pytest.approx([.3-lk.ENCODER_SPEED_QUANTUM_MPS])
+E       assert [] == approx([0.275...18 ± 2.8e-07])
+E         Impossible to compare lists with different sizes.
+E         Lengths: 1 and 0
+
+tests/test_measured_lane_preference_trial.py:517: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_measured_lane_preference_trial.py::test_low_maximum_selector_request_cap_stays_below_configuration
+1 failed, 69 passed in 1.13s
+rc_successor=1

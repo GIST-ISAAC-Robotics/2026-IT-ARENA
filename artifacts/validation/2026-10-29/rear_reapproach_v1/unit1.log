@@ -1,0 +1,639 @@
+.......FFFFFFFFFFFFFFFF                                                  [100%]
+=================================== FAILURES ===================================
+___________ test_rear_release_toward_hidden_side_keeps_current_lane ____________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cadc40>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b42520>)
+
+    def test_rear_release_toward_hidden_side_keeps_current_lane(setup):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+_____________ test_motion_away_or_straight_keeps_original_release ______________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0caf6e0>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b74b80>)
+
+    def test_motion_away_or_straight_keeps_original_release(setup):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:98: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+_____________________ test_hold_expires_after_two_seconds ______________________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0caeed0>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b76840>)
+
+    def test_hold_expires_after_two_seconds(setup):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+______________________ test_forward_pass_never_holds_lane ______________________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cafb60>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b76ca0>)
+
+    def test_forward_pass_never_holds_lane(setup):
+        ctl, state, call = setup
+>       release_from_rear(state, call, rear=.25)
+
+tests/test_rear_lane_keep_trial.py:114: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+________ test_sticky_rear_record_does_not_hold_after_later_forward_pass ________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cd6750>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b76de0>)
+
+    def test_sticky_rear_record_does_not_hold_after_later_forward_pass(setup):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:121: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+____________ test_parallel_that_cannot_move_never_creates_new_stop _____________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cd6a20>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b76ac0>)
+
+    def test_parallel_that_cannot_move_never_creates_new_stop(setup):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:135: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+_______________ test_slower_parallel_ends_hold_for_this_release ________________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cae900>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b77920>)
+
+    def test_slower_parallel_ends_hold_for_this_release(setup):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:143: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+_________________ test_near_return_on_opposite_side_ends_hold __________________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cd66f0>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b77740>)
+
+    def test_near_return_on_opposite_side_ends_hold(setup):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:152: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+_ test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold[point0] _
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cd74a0>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b777e0>)
+point = [0.8, -0.3]
+
+    @pytest.mark.parametrize('point', [[.8, -.30], [.8, .195], [3., -.195], [.8, -.05]])
+    def test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold(setup, point):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:164: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+_ test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold[point1] _
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cd67e0>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b77560>)
+point = [0.8, 0.195]
+
+    @pytest.mark.parametrize('point', [[.8, -.30], [.8, .195], [3., -.195], [.8, -.05]])
+    def test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold(setup, point):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:164: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+_ test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold[point2] _
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cd64b0>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b91440>)
+point = [3.0, -0.195]
+
+    @pytest.mark.parametrize('point', [[.8, -.30], [.8, .195], [3., -.195], [.8, -.05]])
+    def test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold(setup, point):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:164: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+_ test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold[point3] _
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cd8470>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b90ea0>)
+point = [0.8, -0.05]
+
+    @pytest.mark.parametrize('point', [[.8, -.30], [.8, .195], [3., -.195], [.8, -.05]])
+    def test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold(setup, point):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:164: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+______________ test_reappearing_side_goes_back_to_original_guard _______________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cd5850>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b911c0>)
+
+    def test_reappearing_side_goes_back_to_original_guard(setup):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:171: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+______________ test_sensor_reset_unknown_release_also_holds_lane _______________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cdb4d0>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b91a80>)
+
+    def test_sensor_reset_unknown_release_also_holds_lane(setup):
+        ctl, state, call = setup
+        state['view'] = view(True, -.2)
+>       call(1.)
+
+tests/test_rear_lane_keep_trial.py:181: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+____________________ test_baseline_stop_is_unchanged[base0] ____________________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cdbe60>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b91080>)
+base = (0.0, 0.2, {'path_points': [[0.0, 0.0], [0.1, 0.0], [0.2, 0.0], [0.3, 0.0], [0.4, 0.0], [0.5, 0.0], ...], 'reason': 'follow_gap_hold', 'swept_clearance_m': 1.4})
+
+    @pytest.mark.parametrize('base', [baseline(0., .2, 'follow_gap_hold'), baseline(0., .2, 'follow_release_wait')])
+    def test_baseline_stop_is_unchanged(setup, base):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:194: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+____________________ test_baseline_stop_is_unchanged[base1] ____________________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x7feac0cd6e40>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x7feac0b92520>)
+base = (0.0, 0.2, {'path_points': [[0.0, 0.0], [0.1, 0.0], [0.2, 0.0], [0.3, 0.0], [0.4, 0.0], [0.5, 0.0], ...], 'reason': 'follow_release_wait', 'swept_clearance_m': 1.4})
+
+    @pytest.mark.parametrize('base', [baseline(0., .2, 'follow_gap_hold'), baseline(0., .2, 'follow_release_wait')])
+    def test_baseline_stop_is_unchanged(setup, base):
+        ctl, state, call = setup
+>       release_from_rear(state, call)
+
+tests/test_rear_lane_keep_trial.py:194: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_rear_lane_keep_trial.py:62: in release_from_rear
+    call(1.)
+tests/test_rear_lane_keep_trial.py:55: in call
+    return ctl.select(scene, baseline() if base is None else base, parallel() if par is None else par,
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:302: in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py:93: in _select
+    output = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py:49: in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:483: in _select
+    self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+frame = None, poses = [[0.0, 0.0, 0.0]], sign = 1.0
+cfg = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def side_extent(frame, poses, sign, cfg):
+        """기본 경로 좌표에서 차체 네 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+        p = np.asarray(poses, dtype=float).reshape(-1, 3)
+        corner = np.array([[x, y] for x in (-cfg.length_m/2, cfg.length_m/2) for y in (-cfg.width_m/2, cfg.width_m/2)])
+        c, s = np.cos(p[:, 2])[:, None], np.sin(p[:, 2])[:, None]
+        points = np.stack((p[:, :1]+c*corner[None, :, 0]-s*corner[None, :, 1],
+                           p[:, 1:2]+s*corner[None, :, 0]+c*corner[None, :, 1]), axis=-1).reshape(-1, 2)
+>       _, lateral = frame.project(points)
+E       AttributeError: 'NoneType' object has no attribute 'project'
+
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:237: AttributeError
+=========================== short test summary info ============================
+FAILED tests/test_rear_lane_keep_trial.py::test_rear_release_toward_hidden_side_keeps_current_lane
+FAILED tests/test_rear_lane_keep_trial.py::test_motion_away_or_straight_keeps_original_release
+FAILED tests/test_rear_lane_keep_trial.py::test_hold_expires_after_two_seconds
+FAILED tests/test_rear_lane_keep_trial.py::test_forward_pass_never_holds_lane
+FAILED tests/test_rear_lane_keep_trial.py::test_sticky_rear_record_does_not_hold_after_later_forward_pass
+FAILED tests/test_rear_lane_keep_trial.py::test_parallel_that_cannot_move_never_creates_new_stop
+FAILED tests/test_rear_lane_keep_trial.py::test_slower_parallel_ends_hold_for_this_release
+FAILED tests/test_rear_lane_keep_trial.py::test_near_return_on_opposite_side_ends_hold
+FAILED tests/test_rear_lane_keep_trial.py::test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold[point0]
+FAILED tests/test_rear_lane_keep_trial.py::test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold[point1]
+FAILED tests/test_rear_lane_keep_trial.py::test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold[point2]
+FAILED tests/test_rear_lane_keep_trial.py::test_far_same_side_out_of_range_or_inside_corridor_returns_do_not_end_hold[point3]
+FAILED tests/test_rear_lane_keep_trial.py::test_reappearing_side_goes_back_to_original_guard
+FAILED tests/test_rear_lane_keep_trial.py::test_sensor_reset_unknown_release_also_holds_lane
+FAILED tests/test_rear_lane_keep_trial.py::test_baseline_stop_is_unchanged[base0]
+FAILED tests/test_rear_lane_keep_trial.py::test_baseline_stop_is_unchanged[base1]
+16 failed, 7 passed in 1.88s

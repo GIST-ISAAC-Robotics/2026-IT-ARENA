@@ -1,0 +1,52 @@
+--- original/validate_g1_traffic.py
++++ g2_trial/validate_g1_traffic.py
+@@ -371,6 +371,10 @@
+             continue
+     return forced
+ 
++
++from merge_actor import TRIAL as MERGE_TRIAL
++primary_pose_at = MERGE_TRIAL.pose
++check_route = MERGE_TRIAL.validate_route
+ 
+ def main():
+     parser = argparse.ArgumentParser(description=__doc__)
+@@ -629,6 +633,9 @@
+     def receive_status(message):
+         status = json.loads(message.data)
+         state['autonomy'] = status
++        status['observed_vision_mode'] = status.get('vision', {}).get('mode')
++        status['observed_signal_mode'] = status.get('vision', {}).get('signal_mode')
++        status['observed_race_supervisor'] = status.get('race') is not None
+         status_stream.write(json.dumps({k: v for k, v in status.items() if k not in ('text_log', 'vision')},
+                                        ensure_ascii=False)+'\n')
+ 
+@@ -711,6 +718,8 @@
+                 if not ego or when > ego[-1][0]:
+                     p = pose['position']
+                     ego.append((when, float(p.get('x', 0.)), float(p.get('y', 0.)), yaw_of(pose['orientation'])))
++                    if t_green is not None:
++                        MERGE_TRIAL.observe(when-t_green, ego[-1][1:])
+                 else:
+                     rejected_ego_times += 1
+ 
+@@ -834,6 +843,9 @@
+             now = pose['time']
+             first_pose_time = now if first_pose_time is None else first_pose_time
+             light = state['light']
++            if (output/'signal_driver_failure.json').exists():
++                report['error'] = 'signal_driver_failure: see recorded receipt'
++                break
+             if t_green is None and light.get('applied') == 'green':
+                 t_green = now
+                 report['green_observed_sim_s'] = now
+@@ -915,7 +927,8 @@
+             if t_green is not None and now-t_green >= case['duration_s']:
+                 break
+             if t_green is None and now-first_pose_time > limits['max_sim_after_green_margin_s']+30:
+-                raise TimeoutError('green not observed in time')
++                report['error'] = 'TimeoutError: green not observed in time'
++                break
+             if t_green is not None and now-t_green > case['duration_s']+limits['max_sim_after_green_margin_s']:
+                 raise TimeoutError('case sim window overrun')
+         report['case_window'] = {'green_sim_s': t_green, 'end_sim_s': state['pose']['time'],

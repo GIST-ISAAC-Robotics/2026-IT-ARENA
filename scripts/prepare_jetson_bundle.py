@@ -50,7 +50,7 @@ FOLLOW_PROFILE_TOOLS = (
          'lidar_motion', 'lidar_observation', 'local_path', 'occupancy_timing',
          'observation_support', 'observation_lateral', 'linear_observation',
          'parallel_lane_trial', 'partial_observation', 'partial_surface_alignment', 'pass_release_trial', 'traffic_recovery_trial',
-         'traffic_path_recovery_trial', 'corridor_roles', 'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial')),
+         'traffic_path_recovery_trial', 'corridor_roles', 'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial', 'rear_lane_keep_trial', 'observed_lane_preference_trial', 'observed_parallel_speed_trial', 'measured_lane_preference_trial', 'measured_parallel_speed_trial', 'measured_parallel_trial', 'fresh_parallel_trial', 'fresh_parallel_speed_trial')),
     'tests/test_follow_profile.py', 'tests/test_hardware_capture_audit.py',
     'docs/hardware/HARDWARE_CAPTURE_AUDIT_2026_10_13.md',
     'docs/simulation/G1_DECISION_PROFILE_2026_10_13.md',

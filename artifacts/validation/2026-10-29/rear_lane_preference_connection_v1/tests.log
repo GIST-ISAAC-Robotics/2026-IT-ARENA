@@ -1,0 +1,147 @@
+........................................................................ [ 13%]
+........................................................................ [ 27%]
+........................................................................ [ 40%]
+.......................................................................F [ 54%]
+...........F............................................................ [ 68%]
+.................F....................F................................. [ 81%]
+........................................................................ [ 95%]
+.......................                                                  [100%]
+=================================== FAILURES ===================================
+_ test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes _
+
+    def test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes():
+        import hashlib
+        import json
+        from pathlib import Path
+        root=Path(__file__).resolve().parents[1]
+        contract=json.loads((root/'config/tests/corner_anchor_r0_sha256.json').read_text())
+        parent=root/contract['parent_contract']
+        assert hashlib.sha256(parent.read_bytes()).hexdigest()==contract['parent_contract_sha256']
+        previous=json.loads(parent.read_text())
+        successor=json.loads((root/'config/tests/corner_distance_r0_sha256.json').read_text())
+        assert successor['parent_contract']=='config/tests/corner_anchor_r0_sha256.json'
+        assert hashlib.sha256((root/successor['parent_contract']).read_bytes()).hexdigest()==successor['parent_contract_sha256']
+        corridor=json.loads((root/'config/tests/corridor_fallback_r0_sha256.json').read_text())
+        assert corridor['parent_contract']=='config/tests/corner_distance_r0_sha256.json'
+        assert hashlib.sha256((root/corridor['parent_contract']).read_bytes()).hexdigest()==corridor['parent_contract_sha256']
+        recent=json.loads((root/'config/tests/recent_observation_r0_sha256.json').read_text())
+        assert recent['parent_contract']=='config/tests/corridor_fallback_r0_sha256.json'
+        assert hashlib.sha256((root/recent['parent_contract']).read_bytes()).hexdigest()==recent['parent_contract_sha256']
+        followers,parent_name=[],'config/tests/recent_observation_r0_sha256.json'
+        for name in ('r0_plus_e3_r0_sha256.json','b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json', 'partial_observation_r0_sha256.json', 'profile_bundle_selector_r0_sha256.json', 'g1_course_evaluation_r0_sha256.json', 'short_boundary_prefix_r0_sha256.json', 'local_start_signal_r0_sha256.json', 'traffic_recovery_trial_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'small_alignment_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'g2_handoff_manifest_r1_sha256.json', 'rear_lane_keep_r1_sha256.json'):
+            follower=json.loads((root/'config/tests'/name).read_text(encoding='utf-8'))
+            assert follower['parent_contract']==parent_name
+            assert hashlib.sha256((root/parent_name).read_bytes()).hexdigest()==follower['parent_contract_sha256']
+            followers.append(follower)
+            parent_name='config/tests/'+name
+        for group in ('approved_changes','approved_evaluation_scripts'):
+            for path,row in contract[group].items():
+                assert row['before']==previous[group][path]['after']
+                later=successor[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                later=corridor[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                later=recent[group].get(path)
+                if later:
+                    assert later['before']==row['after']
+                    row=later
+                # 10/24 R0+/B3 successor provenance (old contracts unchanged, parent hashes checked)
+                for follower in followers:
+                    later=follower[group].get(path)
+                    if later:
+                        assert later['before']==row['after']
+                        row=later
+>               assert hashlib.sha256((root/path).read_bytes()).hexdigest()==row['after']
+E               AssertionError: assert '32e8be761167...70d7014998006' == 'c7b5465f973c...8c5653db82978'
+E                 - c7b5465f973c723f9fd215e9c2ca28ec247243cc7d924a1b5248c5653db82978
+E                 + 32e8be76116700cd7cb573c3b99053d1369a568e70a700324c870d7014998006
+
+tests/test_corner_follow.py:168: AssertionError
+__ test_snapshot_covers_transitive_internal_imports_including_per_ray_timing ___
+
+    def test_snapshot_covers_transitive_internal_imports_including_per_ray_timing():
+        import ast
+        from profile_follow_trace import ROOT, SNAPSHOT_MODULES
+        manifest = {f'{package}.{name}' for package, names in SNAPSHOT_MODULES.items() for name in names}
+        assert 'arena_autonomy.occupancy_timing' in manifest
+        for module in manifest:
+            package, name = module.split('.')
+            tree = ast.parse((ROOT/'src'/package/package/f'{name}.py').read_text(encoding='utf-8'))
+            imports = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module]
+            imports += [alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names]
+            required = {name for name in imports if name.startswith(('arena_autonomy.', 'arena_vehicle_interface.'))}
+>           assert required <= manifest, (module, sorted(required-manifest))
+E           AssertionError: ('arena_autonomy.observed_lane_preference_trial', ['arena_vehicle_interface.drive_feedback'])
+E           assert {'arena_autonomy.m3_execution_trial', 'arena_autonomy.m3_observed_follow', 'arena_autonomy.observed_parallel_speed_tri...a_autonomy.pass_release_trial', 'arena_autonomy.traffic_path_recovery_trial', 'arena_vehicle_interface.drive_feedback'} <= {'arena_autonomy.anchor_clearance_trial', 'arena_autonomy.boundary_evidence', 'arena_autonomy.bypass_entry_follow', 'arena_autonomy.bypass_entry_trial', 'arena_autonomy.bypass_handoff', 'arena_autonomy.bypass_wall_fit', ...}
+
+tests/test_follow_profile.py:85: AssertionError
+__ test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract __
+
+    def test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract():
+        root = Path(__file__).resolve().parents[1]
+        contract = json.loads((root/'config/tests/dense_stop_evidence_r0_sha256.json').read_text())
+        assert hashlib.sha256((root/contract['parent_contract']).read_bytes()).hexdigest() == contract['parent_contract_sha256']
+        successors, parent = [], 'config/tests/dense_stop_evidence_r0_sha256.json'
+        for next_name in ('lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json',
+                          # 10/24 후속 출처 기록. 이전 계약은 그대로 두고 연결만 추가한다.
+                          'r0_plus_e3_r0_sha256.json', 'b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json', 'partial_observation_r0_sha256.json', 'profile_bundle_selector_r0_sha256.json', 'g1_course_evaluation_r0_sha256.json', 'short_boundary_prefix_r0_sha256.json', 'local_start_signal_r0_sha256.json', 'traffic_recovery_trial_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'small_alignment_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'g2_handoff_manifest_r1_sha256.json', 'rear_lane_keep_r1_sha256.json'):
+            successor = json.loads((root/'config/tests'/next_name).read_text())
+            assert successor['parent_contract'] == parent
+            assert hashlib.sha256((root/parent).read_bytes()).hexdigest() == successor['parent_contract_sha256']
+            successors.append(successor)
+            parent = 'config/tests/'+next_name
+        for name, entry in contract['approved_evaluation_scripts'].items():
+            for successor in successors:
+                later = successor['approved_evaluation_scripts'].get(name)
+                if later:
+                    assert later['before'] == entry['after']
+                    entry = later
+>           assert hashlib.sha256((root/name).read_bytes()).hexdigest() == entry['after']
+E           AssertionError: assert '54aca1c0c497...2fda7f13e4c04' == '148d8eab6b1a...493e2c7efaedd'
+E             - 148d8eab6b1ad1d003851a8861c77dddd0a26604631acc35457493e2c7efaedd
+E             + 54aca1c0c497dff1eb364b7112e1f052198bef1f2f868d3d9172fda7f13e4c04
+
+tests/test_g1_dense_stop.py:87: AssertionError
+_______________ test_contract_records_evaluation_script_changes ________________
+
+    def test_contract_records_evaluation_script_changes():
+        contract = json.loads((ROOT/'config/tests/physics_step_r0_sha256.json').read_text())
+        scripts = contract['approved_evaluation_scripts']
+        assert set(scripts) == {'scripts/probe_braking_contact.py', 'scripts/validate_g1_traffic.py'}
+        # 직전 1 ms 실행이 기록한 실행 소스 해시가 변경 전 값이다.
+        previous = json.loads((PREVIOUS_RUN/'report.json').read_text())['source_sha256']
+        # 10/8 격자 발행 후속 계약이 probe의 다음 변경을 등록한다. 이 계약은 소급 수정하지 않는다.
+        chain, parent = [], 'config/tests/physics_step_r0_sha256.json'
+        for name in ('scheduled_command_r0_sha256.json', 'scheduled_command_r1_sha256.json', 'scheduled_command_r2_sha256.json',
+                     'scheduled_command_r3_sha256.json', 'scheduled_command_r4_sha256.json', 'scheduled_command_r5_sha256.json',
+                     'scheduled_command_r6_sha256.json', 'scheduled_command_r7_sha256.json',
+                     'follow_trace_r0_sha256.json', 'fragmented_boundary_r0_sha256.json', 'dense_stop_evidence_r0_sha256.json',
+                     'lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json',
+                     'r0_plus_e3_r0_sha256.json', 'b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json', 'partial_observation_r0_sha256.json', 'profile_bundle_selector_r0_sha256.json', 'g1_course_evaluation_r0_sha256.json', 'short_boundary_prefix_r0_sha256.json', 'local_start_signal_r0_sha256.json', 'traffic_recovery_trial_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'small_alignment_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'g2_handoff_manifest_r1_sha256.json', 'rear_lane_keep_r1_sha256.json'):
+            successor = json.loads((ROOT/'config/tests'/name).read_text())
+            assert successor['parent_contract'] == parent
+            if name in ('follow_trace_r0_sha256.json', 'fragmented_boundary_r0_sha256.json', 'dense_stop_evidence_r0_sha256.json',
+                        'lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json',
+                     'r0_plus_e3_r0_sha256.json', 'b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json', 'partial_observation_r0_sha256.json', 'profile_bundle_selector_r0_sha256.json', 'g1_course_evaluation_r0_sha256.json', 'short_boundary_prefix_r0_sha256.json', 'local_start_signal_r0_sha256.json', 'traffic_recovery_trial_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'small_alignment_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'g2_handoff_manifest_r1_sha256.json', 'rear_lane_keep_r1_sha256.json'):
+                assert hashlib.sha256((ROOT/parent).read_bytes()).hexdigest() == successor['parent_contract_sha256']
+            chain.append(successor)
+            parent = 'config/tests/'+name
+        for path, change in scripts.items():
+            assert change['before'] == previous[path]
+            latest = change
+            for successor in chain:
+                later = successor['approved_evaluation_scripts'].get(path)
+                if later:
+                    assert later['before'] == latest['after']
+                    latest = later
+>           assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest() == latest['after']
+E           AssertionError: assert '54aca1c0c497...2fda7f13e4c04' == '148d8eab6b1a...493e2c7efaedd'
+E             - 148d8eab6b1ad1d003851a8861c77dddd0a26604631acc35457493e2c7efaedd
+E             + 54aca1c0c497dff1eb364b7112e1f052198bef1f2f868d3d9172fda7f13e4c04
+
+tests/test_physics_step_option.py:167: AssertionError
+4 failed, 523 passed in 39.39s

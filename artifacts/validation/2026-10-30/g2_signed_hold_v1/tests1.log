@@ -1,0 +1,96 @@
+.......F.F.                                                              [100%]
+=================================== FAILURES ===================================
+_________________ test_new_epoch_and_stale_source_still_reset __________________
+
+    def test_new_epoch_and_stale_source_still_reset():
+        scene, history = inputs()
+>       for bad in (replace(scene, source_epoch=1), replace(scene, t_ref_s=1.)):
+
+artifacts/validation/2026-10-30/g2_signed_hold_v1/test_candidate.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/dataclasses.py:1581: in replace
+    return obj.__class__(**changes)
+<string>:10: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = LocalScene(t_ref_s=0.5, source_first_s=0.4, source_last_s=0.4998, source_frame_id='laser_frame', source_epoch=1, rays=...e', source_epoch=0, source_index=499, direction_xy=(-0.9999210442038161, 0.012566039883351948))), frame_id='base_link')
+
+    def __post_init__(self):
+        t_ref = _finite(self.t_ref_s, 't_ref_s')
+        if t_ref < 0 or self.frame_id != 'base_link':
+            raise ValueError('invalid reference time/frame')
+        _source(self.source_frame_id, self.source_epoch)
+        if len(self.rays) > MAX_RAYS:
+            raise ValueError('too many rays')
+        rays = tuple(self.rays)
+        object.__setattr__(self, 'rays', rays)
+        if not rays:
+            if self.source_first_s is not None or self.source_last_s is not None:
+                raise ValueError('empty input has no source observation times')
+            return
+        if any(not isinstance(ray, SensorRay) for ray in rays):
+            raise ValueError('rays must be SensorRay')
+        first = _finite(self.source_first_s, 'source_first_s')
+        last = _finite(self.source_last_s, 'source_last_s')
+        if first != rays[0].acquired_at_s or last != rays[-1].acquired_at_s or last > t_ref or first < 0:
+            raise ValueError('source interval/reference time mismatch')
+        previous = -1.
+        indices = set()
+        for ray in rays:
+            if ray.source_frame_id != self.source_frame_id or ray.source_epoch != self.source_epoch:
+>               raise ValueError('mixed source frame/epoch')
+E               ValueError: mixed source frame/epoch
+
+src/arena_autonomy/arena_autonomy/local_scene.py:99: ValueError
+______________ test_same_scan_cannot_supply_forward_confirmations ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7647606e8b30>
+
+    def test_same_scan_cannot_supply_forward_confirmations(monkeypatch):
+        scene, history = inputs()
+        guide = active()
+        guide.evaluate(scene, history, -.1, 0., .02)
+        current = dict(reason='candidate', selected=dict(speed_mps=.1, steering_rad=0.),
+            reference=dict(reason='current_outer_wall_rechecked_for_remembered_guide'),
+            outer_wall_fresh_confirmations=2)
+        monkeypatch.setattr(CorridorGuide, 'evaluate', lambda *a: current)
+        assert guide.evaluate(scene, history, 0., 0., .02)['selected'] is None
+>       newer = replace(scene, source_first_s=scene.source_first_s+.1, t_ref_s=.6)
+
+artifacts/validation/2026-10-30/g2_signed_hold_v1/test_candidate.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/dataclasses.py:1581: in replace
+    return obj.__class__(**changes)
+<string>:10: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = LocalScene(t_ref_s=0.6, source_first_s=0.5, source_last_s=0.4998, source_frame_id='laser_frame', source_epoch=0, rays=...e', source_epoch=0, source_index=499, direction_xy=(-0.9999210442038161, 0.012566039883351948))), frame_id='base_link')
+
+    def __post_init__(self):
+        t_ref = _finite(self.t_ref_s, 't_ref_s')
+        if t_ref < 0 or self.frame_id != 'base_link':
+            raise ValueError('invalid reference time/frame')
+        _source(self.source_frame_id, self.source_epoch)
+        if len(self.rays) > MAX_RAYS:
+            raise ValueError('too many rays')
+        rays = tuple(self.rays)
+        object.__setattr__(self, 'rays', rays)
+        if not rays:
+            if self.source_first_s is not None or self.source_last_s is not None:
+                raise ValueError('empty input has no source observation times')
+            return
+        if any(not isinstance(ray, SensorRay) for ray in rays):
+            raise ValueError('rays must be SensorRay')
+        first = _finite(self.source_first_s, 'source_first_s')
+        last = _finite(self.source_last_s, 'source_last_s')
+        if first != rays[0].acquired_at_s or last != rays[-1].acquired_at_s or last > t_ref or first < 0:
+>           raise ValueError('source interval/reference time mismatch')
+E           ValueError: source interval/reference time mismatch
+
+src/arena_autonomy/arena_autonomy/local_scene.py:94: ValueError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-10-30/g2_signed_hold_v1/test_candidate.py::test_new_epoch_and_stale_source_still_reset
+FAILED artifacts/validation/2026-10-30/g2_signed_hold_v1/test_candidate.py::test_same_scan_cannot_supply_forward_confirmations
+2 failed, 9 passed in 1.41s

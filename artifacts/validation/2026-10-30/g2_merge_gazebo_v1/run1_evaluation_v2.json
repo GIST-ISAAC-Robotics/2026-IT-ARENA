@@ -1,0 +1,209 @@
+{
+  "evaluator": "g2_s_merge_saved_alias_v2",
+  "passed": true,
+  "gates": {
+    "actor_trigger_established": true,
+    "actor_pulse_complete": true,
+    "actor_actually_moved": true,
+    "harness_valid": true,
+    "posttrigger_progress": true,
+    "g1_follow_return": true,
+    "controller_mode": true,
+    "output_caps": true,
+    "moving_gap_complete": true,
+    "no_body_overlap": true,
+    "no_actor_contact": true,
+    "no_wall_collision": true,
+    "no_more_than_two_grass_wheels": true,
+    "surface_coverage": true,
+    "no_wall_wheel_samples": true,
+    "replay_exact": true
+  },
+  "run_checks": {
+    "no_runtime_error": true,
+    "evaluation_readers_valid": true,
+    "contact_source_instrumented": true,
+    "sensor_only_controller_inputs": true,
+    "sensor_only_safety_inputs": true,
+    "actuation_sensor_only_inputs": true,
+    "actor_pose_only_evaluator": true,
+    "drive_publisher_controller_only": true,
+    "safe_drive_publisher_safety_only": true,
+    "sequential_acquisition": true,
+    "lidar_interface": true,
+    "source_unchanged": true,
+    "signal_sequence": true,
+    "no_false_start": true,
+    "stop_recorded": true,
+    "stop_model_stop_stable": true,
+    "stop_dense_pose_stop_evidence": true,
+    "stop_explicit_mcu_stop": true,
+    "stop_no_mcu_latch_before_stop": true,
+    "stop_no_deadline_diagnostic": true,
+    "stop_no_wall_collision": true,
+    "shutdown_clean": true,
+    "no_abort": true
+  },
+  "scope": "one scripted kinematic merge in Gazebo; no stationary-target pass criterion or hardware proof",
+  "green_sim_s": 7.741,
+  "window_end_sim_s": 27.741,
+  "trigger": {
+    "elapsed_s": 6.984,
+    "ego_center_local": [
+      1.1501555674278108,
+      -0.2714906844191994,
+      -0.00972361198583016
+    ]
+  },
+  "actor_displacement_after_trigger_m": 2.4782675359845348,
+  "progress_window_m": 4.639519999999997,
+  "posttrigger_progress_m": 3.4996399999999994,
+  "mode_transitions": [
+    {
+      "time_s": 7.94,
+      "state": "FOLLOW",
+      "reason": "handoff_follow"
+    },
+    {
+      "time_s": 8.82,
+      "state": "BYPASS",
+      "reason": "handoff_entry"
+    },
+    {
+      "time_s": 21.32,
+      "state": "REACQUIRE",
+      "reason": "handoff_bypass"
+    },
+    {
+      "time_s": 21.42,
+      "state": "FOLLOW",
+      "reason": "handoff_return"
+    },
+    {
+      "time_s": 22.62,
+      "state": "BYPASS",
+      "reason": "handoff_entry"
+    }
+  ],
+  "minimum_body_gap_m": 0.07412597949238074,
+  "overlap_samples": 0,
+  "actor_contact_count": 0,
+  "surface": {
+    "any": {
+      "max_off_wheels": 2,
+      "penalty_events_merged": 0
+    },
+    "center": {
+      "max_off_wheels": 2,
+      "penalty_events_merged": 0
+    },
+    "full": {
+      "max_off_wheels": 2,
+      "penalty_events_merged": 0
+    }
+  },
+  "harness": {
+    "checks": {
+      "complete_finite_data": true,
+      "ego_window_covered": true,
+      "actor_window_covered": true,
+      "trace_window_covered": true,
+      "case_reached_stop_request": true,
+      "actor_in_runtime_world": true,
+      "actor_pose_before_green": true,
+      "actor_pose_stream_continuous": true,
+      "commands_acknowledged": true,
+      "command_interval": true,
+      "moving_tracking_error": true,
+      "static_error": true
+    },
+    "valid": true,
+    "commands": 933,
+    "max_command_interval_s": 0.022999999999999687,
+    "max_moving_error_m": 0.0117113854951366,
+    "max_static_error_m": 0.0,
+    "max_actor_pose_gap_s": 0.010000000000001563
+  },
+  "command_caps": {
+    "passed": true,
+    "violations": [],
+    "count": 0
+  },
+  "replay": {
+    "scope": "g1_g2_handoff_decision_stage_only",
+    "calls": 1043,
+    "matched": 1043,
+    "passed": true,
+    "mismatch_count": 0
+  },
+  "original_g1": {
+    "passed": false,
+    "gates": {}
+  },
+  "source_sha256": {
+    "merge_eval.py": "f23bb54e57ddcbb59b870e5879a62ef28ea6d8eaea6b821a612aacfd899f1677",
+    "g2_handoff_eval_core_v3.py": "fe9d7a5443de98a72b8c5d36cfcad0048825353c11ec78b5c252e0a9bb50faee"
+  },
+  "original_g1_after_alias": {
+    "passed": false,
+    "gates": {
+      "hold": false,
+      "approached": false,
+      "green_observed": true,
+      "data_coverage": true,
+      "sampled_gap": false,
+      "swept_gap": false,
+      "no_sampled_overlap": true,
+      "no_actor_contact": true,
+      "inside_road": false,
+      "ego_stays_behind": false
+    },
+    "integrity": {
+      "no_runtime_error": true,
+      "evaluation_readers_valid": true,
+      "contact_source_instrumented": true,
+      "sensor_only_controller_inputs": true,
+      "sensor_only_safety_inputs": true,
+      "actuation_sensor_only_inputs": true,
+      "actor_pose_only_evaluator": true,
+      "drive_publisher_controller_only": true,
+      "safe_drive_publisher_safety_only": true,
+      "sequential_acquisition": true,
+      "lidar_interface": true,
+      "source_unchanged": true,
+      "signal_sequence": true,
+      "no_false_start": true,
+      "controller_mode_matches": false
+    }
+  },
+  "saved_reevaluation": {
+    "scope": "same drive records; only missing legacy G1 comparison rule alias",
+    "source_sha256": "a1075506c4b0626ce58002ce69da360c03fd9e42d6fd0d5c6e8ae7c45933d151",
+    "original_sha256": {
+      "run1/report.json": "a724726b3da544125d48cf5efb0dbdf5524c4998a376e37060fc7bf671f06e1b",
+      "run1_g2_evaluation.json": "c1d4035faa9126da9ea88f7ffb3ebfbfd37b64781cb88a0f1a0c512c6318292a",
+      "g2_center_config_v1.json": "f316da862f3f2f0bc65adaad12566de8066be2fc342d513947790ffc5cabd4ad",
+      "run1_sources.zip": "471c9401fec4e2af5ba2d543ea90123b891318ce54a8752c46957c829d10c619"
+    },
+    "original_files_unchanged": true,
+    "alias": {
+      "minimum_continuous_hold_s": 3.0,
+      "maximum_final_gap_m": 0.7,
+      "basis": "HOLD at G1 swept clearance <= 0.20 m (+ about 0.06-0.13 m padding) predicts a 0.2-0.45 m body gap (synthetic 0.405 m). 0.70 m is half of the 1.40 m initial gap: it separates an approach-and-hold from a stall near the start. 3.0 s of continuous zero speed within a 10 s window."
+    },
+    "prior_failure": "KeyError: 'minimum_continuous_hold_s'",
+    "new_drive": false,
+    "changed_gates": {
+      "harness_valid": [
+        false,
+        true
+      ]
+    },
+    "changed_run_checks": {
+      "no_runtime_error": [
+        false,
+        true
+      ]
+    }
+  }
+}

@@ -4,7 +4,7 @@ import json
 import zipfile
 
 
-RECOVERY_CONTRACTS = ('g2_handoff_manifest_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'small_alignment_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_recovery_trial_r0_sha256.json')
+RECOVERY_CONTRACTS = ('fresh_confirmation_r2_sha256.json', 'measured_lane_preference_r1_sha256.json', 'observed_lane_preference_r1_sha256.json', 'rear_lane_keep_r1_sha256.json', 'g2_handoff_manifest_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'small_alignment_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_recovery_trial_r0_sha256.json')
 
 def hash_before_observation_extension(root, path):
     """새 보호층 bytes까지 확인한 뒤 이전 계약 시점의 값을 반환한다.

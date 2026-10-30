@@ -1,0 +1,49 @@
+{
+ "schema_version": 1,
+ "scope": "후방 소실 직후 차선 유지 후보의 연결과 보존 목록. 기본 OFF·운영 채택 아님. 합성 비교 결과는 rear_reapproach_v1 참고.",
+ "parent_contract": "config/tests/g2_handoff_manifest_r1_sha256.json",
+ "parent_contract_sha256": "353e21f7f7723ca0502cc35c9cc814e938043308d874b1f9a194b89132254e55",
+ "before_snapshot": "artifacts/validation/2026-10-29/rear_reapproach_v1/before_rear_lane_keep.zip",
+ "before_snapshot_sha256": "6441470b289210e6fecea4e3169760f6af46cb2ff72a7775b537be6cdba8e409",
+ "before_source": {
+  "commit": "5f8ae55ff1d1da5f9eae0c843f0441fe9dbbce4b",
+  "scope": "직전 main 게시 바이트. 이후 Gazebo 실행 소스 사본은 없음"
+ },
+ "approved_changes": {
+  "src/arena_autonomy/arena_autonomy/local_follow.py": {
+   "before": "0ed03ef42fd170b4e8b2b3b36bd7ca0e2c5f5f812575edb2b510368ba3e2b84c",
+   "after": "c7b5465f973c723f9fd215e9c2ca28ec247243cc7d924a1b5248c5653db82978",
+   "reason": "FollowConfig 선택 플래그와 선택기 연결. 후방 소실 직후 차선 유지 선택형 후보(rear_lane_keep_trial, 기본 OFF) 연결."
+  },
+  "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+   "before": "870703d744f40bd10b717f0eb841726f515978b10d7c7f0cfd9e3058244dafae",
+   "after": "34ab131886abba0079f32b89edfa8dde6b486a3b2977695894da28377d9af242",
+   "reason": "ROS 매개변수 g1_rear_lane_keep_trial(기본 false) 연결. 후방 소실 직후 차선 유지 선택형 후보(rear_lane_keep_trial, 기본 OFF) 연결."
+  }
+ },
+ "approved_evaluation_scripts": {
+  "scripts/validate_pipeline_faults_ros.py": {
+   "before": "318dcc56fafd270a3e0e5de0625bc387314f8d0aa52db7f558f58b7670aae5af",
+   "after": "42deea797d6ef68079644272ea3b49b21c725e8ec1f6e15255810e86575f0732",
+   "reason": "새 정적 import 모듈 rear_lane_keep_trial을 보존/이관 목록에 추가. 제어 판정 변경 없음."
+  },
+  "scripts/prepare_jetson_bundle.py": {
+   "before": "e796f3f5a61a7be1867b101621673b731c9b34ab62e60c77da5c63ca623e169d",
+   "after": "1d51c2a1700a2973dea9ada87afba4fe68cd9017e662b4cd8b2d8f8e1ac30657",
+   "reason": "새 정적 import 모듈 rear_lane_keep_trial을 보존/이관 목록에 추가. 제어 판정 변경 없음."
+  },
+  "scripts/profile_follow_trace.py": {
+   "before": "6aeac6f1a7abb308bce29317c42ea29afcbcf237cede144392157246c2d70b70",
+   "after": "285be1ecd4dfdb73eb9686eee0a91c2c6a8c7f579165d46f1ef3e30a491baecd",
+   "reason": "새 정적 import 모듈 rear_lane_keep_trial을 보존/이관 목록에 추가. 제어 판정 변경 없음."
+  },
+  "scripts/validate_g1_traffic.py": {
+   "before": "6182ecf96e45bd55204125d81b54c3e6881041411b7b6039fd5f011b1ee91fad",
+   "after": "148d8eab6b1ad1d003851a8861c77dddd0a26604631acc35457493e2c7efaedd",
+   "reason": "새 정적 import 모듈 rear_lane_keep_trial을 보존/이관 목록에 추가. 제어 판정 변경 없음."
+  }
+ },
+ "new_dependencies": {
+  "src/arena_autonomy/arena_autonomy/rear_lane_keep_trial.py": "4315e70166799b43cfc5baf0b91520ea70f93d5c14f9c5bd0d19087d8f8cca49"
+ }
+}

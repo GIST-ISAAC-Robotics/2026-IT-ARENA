@@ -2,6 +2,7 @@
 from pathlib import Path
 
 from arena_autonomy.local_pursuit import LocalPursuit
+from arena_autonomy.bypass_entry_follow import BypassExecutionConfig, CORRIDOR_POLICIES
 from arena_autonomy.bypass_handoff import BypassHandoffFollow, HandoffExecutionConfig, PREPARATION_POLICIES, PERSISTENCE_WINDOWS
 from arena_autonomy.follow_trace import FollowTrace, freeze
 from arena_autonomy.g2_entry_node import status_detail as g2_status
@@ -24,7 +25,8 @@ def status_detail(detail):
             ('policy','applied','reason') if key in detail['preparation']}
     if isinstance(detail.get('follow_entry_space'),dict):
         result['follow_entry_space'] = {key:detail['follow_entry_space'][key] for key in
-            ('applied','reason','rear_axle_to_patch_m','reserve_m','cap_mps') if key in detail['follow_entry_space']}
+            ('applied','reason','rear_axle_to_patch_m','reserve_m','cap_mps',
+             'hold_age_s','maximum_age_s','current_front_evidence','bypass_permission') if key in detail['follow_entry_space']}
     return freeze(result)
 
 
@@ -40,15 +42,22 @@ class G1G2Node(LocalPursuit):
         window = self.declare_parameter('g1_g2_persistence_window','compare_then_trim_v0').value
         if type(window) is not str or window not in PERSISTENCE_WINDOWS:
             raise ValueError('registered G1/G2 persistence window required')
+        entry_policy = self.declare_parameter('g1_g2_entry_policy','registered_v0').value
+        corridor = self.declare_parameter('g1_g2_corridor_policy','off').value
+        if type(entry_policy) is not str or type(corridor) is not str or corridor not in CORRIDOR_POLICIES:
+            raise ValueError('typed G1/G2 entry and corridor policies required')
         reserve = self.declare_parameter('g1_g2_follow_entry_space',False).value
         reacquire = self.declare_parameter('g1_g2_reacquire_policy','positive_command_v0').value
-        if type(reserve) is not bool or type(reacquire) is not str:
+        preparation_hold = self.declare_parameter('g1_g2_preparation_hold','off').value
+        if type(reserve) is not bool or type(reacquire) is not str or type(preparation_hold) is not str:
             raise ValueError('typed G1/G2 follow space and reacquire options required')
         if (not self.g1_enabled or self.follow is None or self.r0_plus_enabled or self.m3_execution_enabled
                 or not trace_path or not Path(trace_path).is_absolute()):
             raise ValueError('G1/G2 handoff requires G1 sensors, its own absolute trace and no competing controller')
         self.follow = BypassHandoffFollow(self.follow.config,HandoffExecutionConfig(preparation_policy=policy,
-            persistence_window_policy=window,follow_entry_space_enabled=reserve,reacquire_policy=reacquire),
+            persistence_window_policy=window,follow_entry_space_enabled=reserve,reacquire_policy=reacquire,
+            entry_policy=entry_policy,preparation_hold_policy=preparation_hold,
+            bypass=BypassExecutionConfig(corridor_policy=corridor)),
             allow_simulation_trial=True)
         trace = FollowTrace(trace_path,self.motion.history.config,self.follow.config,
             mode='g1_g2_handoff_trial',execution_config=self.follow.execution)

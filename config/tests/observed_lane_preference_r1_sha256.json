@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "scope": "현재 직선 차선 선호를 명시 observed 정책으로 연결. 기본값/2초 정책 불변. 운영 채택 및 실차 안전 승인 아님.",
+  "parent_contract": "config/tests/rear_lane_keep_r1_sha256.json",
+  "parent_contract_sha256": "d7dabe9f50111ab6f22fa692d35b6fc0e6f25cb425a14f23fcf5053c800bbfb8",
+  "before_snapshot": "artifacts/validation/2026-10-29/rear_lane_preference_connection_v1/before_connection.zip",
+  "before_snapshot_sha256": "1a1b84d0df52edb6611f1171149b2ca084c4750ff58715224fcaa5bf81cb470b",
+  "before_source": {
+    "scope": "직전 미커밋 rear_lane_keep 연결 및 Gazebo v2 실행과 같은 소스 바이트"
+  },
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "c7b5465f973c723f9fd215e9c2ca28ec247243cc7d924a1b5248c5653db82978",
+      "after": "32e8be76116700cd7cb573c3b99053d1369a568e70a700324c870d7014998006",
+      "reason": "기본 timed 유지·명시 observed 연결 및 기록"
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "34ab131886abba0079f32b89edfa8dde6b486a3b2977695894da28377d9af242",
+      "after": "e60cb3551dc6724370f830a242ff82bfc3b86f94187ecce655832591269352d3",
+      "reason": "기본 timed 유지·명시 observed 연결 및 기록"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_pipeline_faults_ros.py": {
+      "before": "42deea797d6ef68079644272ea3b49b21c725e8ec1f6e15255810e86575f0732",
+      "after": "236fb391dd39f90c9eaa404c6da81afe2173b72eb34c5e941dd20f11130560fc",
+      "reason": "새 선택기와 속도 제안 모듈의 보존/이관 의존성 추가"
+    },
+    "scripts/prepare_jetson_bundle.py": {
+      "before": "1d51c2a1700a2973dea9ada87afba4fe68cd9017e662b4cd8b2d8f8e1ac30657",
+      "after": "c7a7df53b85ed4e5033524cdaaecb8dde274921b55a0be7823eed4d0502d0b66",
+      "reason": "새 선택기와 속도 제안 모듈의 보존/이관 의존성 추가"
+    },
+    "scripts/profile_follow_trace.py": {
+      "before": "285be1ecd4dfdb73eb9686eee0a91c2c6a8c7f579165d46f1ef3e30a491baecd",
+      "after": "e335acbe951aab59a0ded44db192801756416fbe83aaf8b6f7f72ba5fdf6bf2c",
+      "reason": "새 선택기와 속도 제안 모듈의 보존/이관 의존성 추가 및 모터축 환산 drive_feedback 전이 의존성 보존"
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "148d8eab6b1ad1d003851a8861c77dddd0a26604631acc35457493e2c7efaedd",
+      "after": "54aca1c0c497dff1eb364b7112e1f052198bef1f2f868d3d9172fda7f13e4c04",
+      "reason": "새 선택기와 속도 제안 모듈의 보존/이관 의존성 추가"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/observed_lane_preference_trial.py": "5b3f969c458de8d40dc1ef924ab3de953c4dba774c8843417e1ca612aac44867",
+    "src/arena_autonomy/arena_autonomy/observed_parallel_speed_trial.py": "e9921c1031c8568d35a6a099cbf868a2ad368864496a998bc6fba55b57e88d21"
+  }
+}

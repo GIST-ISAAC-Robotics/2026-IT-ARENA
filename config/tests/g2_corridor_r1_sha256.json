@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "scope": "G2 중앙 통로 시험 후보의 명시 기본 OFF 연결. 기본 경로·경기 기본값·실차 위험 수용 변경이 아니다.",
+  "parent_contract": "config/tests/fresh_confirmation_r2_sha256.json",
+  "parent_contract_sha256": "358ec496a8b150addb67615351d95dc171f2fd2913ef26ef33a5f6f5519b17ad",
+  "before_snapshot": "artifacts/validation/2026-10-30/g2_corridor_connection_v1/before_connection.zip",
+  "before_snapshot_sha256": "94c4c56f6b1e012488ccaafdcced93e2b97841e3fe7c06b06f40a3a32bce7a6d",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/bypass_entry_trial.py": {
+      "before": "a11c97d0c0f0ac7d95edc47e5c869cae460ca31e2d47a5e048e609275d7b28ee",
+      "after": "0b918d051f6e60c4acb6018c54f16dbc105b567c8ce44eec440eb0804d9d609b",
+      "reason": "선택형 padding_provider. 기본 None은 기존 함수 호출과 같다"
+    },
+    "src/arena_autonomy/arena_autonomy/bypass_entry_follow.py": {
+      "before": "fbf9e410019565db8acfa84d0f464b7a9371ea6c092184c3e23a64bc82ede67a",
+      "after": "3d527df62f7d6546f6089d750f8a873627d0ba9e9e72940ab66f8ea559c0b144",
+      "reason": "명시 corridor_policy. 기본 off는 기존 EntryGuide를 만든다"
+    },
+    "src/arena_autonomy/arena_autonomy/g2_entry_node.py": {
+      "before": "74ceb071241d859015060f438bb297757fecb00f0c1b8515718809e46d2b3f6a",
+      "after": "82c65da2277195e24d47f744ee36ce53f27e2ab772ac94ac7ed532710a3e493f",
+      "reason": "g2_corridor_policy 파라미터. 기본 off"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/bypass_corridor_trial.py": "80e63ff21ea1db73c25a7248a7aea42959198187055d3aed78c1e76d8598e6ec"
+  }
+}

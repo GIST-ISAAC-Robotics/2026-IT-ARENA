@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from arena_autonomy.bypass_entry_trial import EntryConfig,EntryGuide
 from arena_autonomy.local_follow import FollowConfig
 
+CORRIDOR_POLICIES = ('off','corridor_v1','corridor_v2_signed_hold')
+
 
 @dataclass(frozen=True)
 class BypassExecutionConfig:
@@ -12,10 +14,13 @@ class BypassExecutionConfig:
     rejoin_enabled: bool = True
     wide_entry: bool = True
     prefer_earlier_transition: bool = False
+    corridor_policy: str = 'off'
 
     def __post_init__(self):
-        if any(type(value) is not bool for value in vars(self).values()):
+        if any(type(value) is not bool for key,value in vars(self).items() if key!='corridor_policy'):
             raise ValueError('explicit boolean G2 execution options required')
+        if self.corridor_policy not in CORRIDOR_POLICIES:
+            raise ValueError('registered G2 corridor policy required')
         if self.tracked_wall_fit and not self.wall_reanchor:
             raise ValueError('tracked wall fit requires reanchor')
         if self.wall_reanchor and not self.stationary_outer_boundary:
@@ -29,11 +34,21 @@ class BypassEntryFollow:
         self.config=config or FollowConfig()
         self.execution=execution or BypassExecutionConfig()
         offsets=(0.,-.16,.16,-.20,.20,-.24,.24)+((-.27,.27) if self.execution.wide_entry else ())
-        self.guide=EntryGuide(self.config,EntryConfig(offsets_m=offsets,
+        guide_type,options=EntryGuide,{}
+        if self.execution.corridor_policy!='off':
+            from arena_autonomy.bypass_corridor_trial import CorridorGuide,REGISTERED_POLICIES
+            guide_type=CorridorGuide
+            policy=self.execution.corridor_policy
+            if policy=='corridor_v2_signed_hold':
+                from arena_autonomy.bypass_signed_hold_trial import SignedHoldGuide
+                guide_type=SignedHoldGuide
+                policy='corridor_v1'  # 공간/운동 여유는 v1 등록값 그대로다.
+            options['corridor_policy']=REGISTERED_POLICIES[policy]
+        self.guide=guide_type(self.config,EntryConfig(offsets_m=offsets,
             prefer_earlier_transition=self.execution.prefer_earlier_transition),
             stationary_outer_boundary=self.execution.stationary_outer_boundary,
             wall_reanchor=self.execution.wall_reanchor,tracked_wall_fit=self.execution.tracked_wall_fit,
-            rejoin_enabled=self.execution.rejoin_enabled)
+            rejoin_enabled=self.execution.rejoin_enabled,**options)
 
     def reset(self):
         self.guide.reset()

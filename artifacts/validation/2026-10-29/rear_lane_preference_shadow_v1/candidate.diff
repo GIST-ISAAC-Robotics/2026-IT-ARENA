@@ -1,0 +1,122 @@
+--- rear_lane_keep_trial.py
++++ candidate.py
+@@ -1,27 +1,10 @@
+-"""선택형 시험: 후방으로 사라진 옆 위협 쪽으로의 중앙 복귀를 해제 직후 짧게 보류한다. 기본 OFF.
++"""저장 입력/합성 전용: 시간 대신 현재 관측 직선에서의 차선 유지 선호를 비교한다.
+ 
+-`rear`/`unknown`으로 사라진 쪽을 기존 확장 측방 창으로 해제한 뒤 `hold_s` 동안, 기존 RELEASED 선택이
+-기존 G1 출력을 고르고 그 출력의 현재/직전 조향 원호에서 그쪽 차체 모서리의 경로 횡위치가 해제 때
+-기준과 현재 중 큰 값보다 조금이라도 커지면(누적 접근 포함) 같은 호출의 평행 후보 출력을 쓴다. GUARD 곡선 후보의
+-1 cm 허용을 쓰지 않는 이유: 1 cm 아래의 첫 복귀 조향이 적용되면 다음 호출의 평행 후보가 직전 조향 원호의
+-1 cm 횡변위 검사로 진행 불가가 되어 보류가 시작되지 못했다(합성 복합 오차 B). 평행 후보도 정지하지 않는 후보다.
+-횡위치는 앞 두 모서리로 잰다. 반대쪽으로 꺾을 때 뒤 돌출부가 그쪽으로 최대 약 1.25 mm 흔들리는 것을 접근으로
+-세지 않기 위한 것이며, 전진 중 그쪽으로의 복귀·방향 편차는 앞 모서리가 먼저 드러낸다.
+-평행 후보는 현재 횡위치 유지·0.35 m/s 상한·점유·1 cm 횡변위 검사를 그대로 받는다. 평행 후보가 진행할 수
+-없으면(곡선·부분 관측·간격 정지·출발 대기) 기존 RELEASED 판단을 바꾸지 않는다. 평행 후보가 min(G1, 0.35 m/s)보다
+-느리면(유지한 차선 쪽 관측 점유가 더 가까움) 그 해제의 보류를 끝내고 기존 판단으로 돌아간다. 유지할 차선의
+-반대쪽 옆·앞(2.5 m 스윕 범위)에 차체 옆면 밖 관측 반환이 현재 점유 팽창 + 물체 이동 상한×스캔 길이 안에 있어도
+-보류를 끝낸다. 같은 종방향 위치(차체 길이 안)에 통로 안쪽 반환도 있는 물체(앞차처럼 통로를 가로막는 물체)는
+-추종 대상이므로 세지 않는다. 다음 스캔 전 팽창이 커져 기존 간격 정지/재출발 확인이 반복되는 근접 물체 옆에 차선을
+-묶지 않기 위한 것이다. 확인된 점유를 숨은 후방 가능성보다 앞세우며, 차선 유지가 기존 판단보다 더 막히는 상태를 만들지 않는다.
+-보류는 원래 선택기의 고정 `rear` 기록이 아니라 이번에 사라진 방향(마지막 관측의 최후단이 앞면+여유보다 뒤,
+-또는 시간 단절 뒤 unknown)으로 정한다. 앞으로 지나간 물체에는 걸지 않는다. 새 정지·새 경로·자유 공간을
+-만들지 않고, 위협·통과 기록·창 확인·영역 검사·고장 처리는 원래 선택기가 수행한다.
+-
+-입력은 기존 선택기와 같은 현재 장면 시각과 기존 G1 경로뿐이다. 지도·actor 정답·그리드는 쓰지 않는다.
+-숨은 차량의 부재 증명이 아니며 보류 시간 뒤의 재접근 위험과 곡선에서의 복귀 위험은 그대로 남는다.
++ROS 연결/운영 채택이 아니다. 후방 사각 부재를 추정하지 않는다. 현재 양의 RELEASED 출력에서
++소실 쪽으로 꺾을 때 기존 평행 후보를 택하며 새 정지를 만들지 않는다. 곡선/경로/관측 맥락 상실,
++벽 선택 변경, 현재 반대쪽 점유, 앞쪽 통과에는 원래 판단으로 돌아간다. 0.35 m/s 비용은 그대로다.
++anchor_m은 이전 후보와의 진단 비교용이고 새 정책의 판단에는 현재 프레임의 현재 모서리만 쓴다.
+ """
+-from dataclasses import dataclass
+ import math
+ 
+ import numpy as np
+@@ -35,17 +18,6 @@
+ from arena_autonomy.traffic_path_recovery_trial import SuspendedPassageSelector
+ 
+ 
+-@dataclass(frozen=True)
+-class LaneKeepConfig:
+-    # 기존 운동 이력 보존 길이(MotionConfig.history_s 2.0 s)와 같게 둔 개발 시험값.
+-    # 과거 경로 좌표의 횡위치를 비교하는 기간의 상한이며 숨은 차량의 재접근 시각에 대한 근거가 아니다.
+-    hold_s: float = 2.
+-
+-    def __post_init__(self):
+-        if isinstance(self.hold_s, bool) or not math.isfinite(self.hold_s) or not 0 < self.hold_s <= 2.:
+-            raise ValueError('lane keep hold must be finite, positive and within the motion history')
+-
+-
+ def front_extent(frame, poses, sign, cfg):
+     """경로 좌표에서 차체 앞 두 모서리의 한쪽 방향 최대 횡위치. 표본 자세 사이 연속 극값 인증은 아니다."""
+     p = np.asarray(poses, dtype=float).reshape(-1, 3)
+@@ -57,7 +29,7 @@
+     return float(np.max(sign*lateral))
+ 
+ 
+-class RearLaneKeepSelector(SuspendedPassageSelector):
++class StraightLanePreferenceSelector(SuspendedPassageSelector):
+     def _opposite_near(self, scene, p_detail, toward):
+         """유지할 평행 경로의 반대쪽 옆면 밖 근접 관측 반환 수. 경로가 없으면 None."""
+         trial = p_detail.get('parallel_hold_trial') or {}
+@@ -89,13 +61,10 @@
+             result['count'] += int(np.sum(mask))
+         return result
+ 
+-    def __init__(self, follow_config, config=None, lane_keep=None):
+-        self.lane_keep_config = lane_keep or LaneKeepConfig()
+-        super().__init__(follow_config, config)
+-
+     def reset(self):
+         self.lane_keep = {}
+         self.last_direction = {}
++        self.preference_wall = None
+         super().reset()
+ 
+     def invalidate(self, reason):
+@@ -144,9 +113,19 @@
+                 self.lane_keep[name] = {'released_s': now, 'vanish': side['vanish'],
+                                         'direction': self.last_direction.get(name),
+                                         'anchor_m': front_extent(frame, [[0., 0., 0.]], sign, self.lat)}
+-        for name in [n for n, r in self.lane_keep.items() if not 0 <= now-r['released_s'] <= self.lane_keep_config.hold_s]:
+-            self.lane_keep.pop(name)
+-        info = {'active_sides': sorted(self.lane_keep), 'hold_s': self.lane_keep_config.hold_s,
++        # 시간 경과가 후방 부재 증거는 아니다. 현재 같은 직선 맥락이 사라질 때만 선호를 끝낸다.
++        preferred = baseline[2].get('preferred_wall')
++        context_reason = (parallel[2].get('parallel_hold_trial') or {}).get('reason')
++        wall_changed = (self.preference_wall is not None and preferred is not None
++                        and preferred != self.preference_wall)
++        self.preference_wall = preferred
++        context_lost = context_reason in ('reference_not_straight', 'short_reference',
++            'partial_observation_outside_trial', 'baseline_unavailable', 'invalid_motion', 'occupancy_invalid')
++        if wall_changed or context_lost or frame is None:
++            self.lane_keep.clear()
++        info = {'active_sides': sorted(self.lane_keep), 'hold_s': None,
++                'release_policy': 'current_straight_context', 'context_lost': context_lost,
++                'wall_changed': wall_changed,
+                 'unknown_filled': False, 'hidden_rear_risk_unresolved': True, 'applied': False}
+         detail = output[2]
+         if (not self.lane_keep or detail.get('selector_mode') != 'RELEASED'
+@@ -169,7 +148,7 @@
+             current = front_extent(frame, [[0., 0., 0.]], sign, self.lat)
+             predicted = front_extent(frame, poses, sign, self.lat)
+             info.setdefault('sides', {})[name] = {**record, 'current_m': current, 'predicted_m': predicted}
+-            if predicted > max(record['anchor_m'], current)+1e-9:
++            if predicted > current+1e-9:
+                 toward.append(name)
+         info['toward_sides'] = toward
+         if not toward:
+@@ -198,10 +177,10 @@
+             info.update(reason='opposite_near_occupancy_end_hold' if near else 'parallel_path_unavailable_end_hold',
+                         ended_sides=toward)
+             return output[0], output[1], {**detail, 'rear_lane_keep': info}
+-        info.update(applied=True, reason='parallel_lane_keep', replaced_speed_mps=output[0],
++        info.update(applied=True, reason='straight_lane_preference', replaced_speed_mps=output[0],
+                     replaced_steering_rad=output[1])
+         selector = {k: v for k, v in detail.items() if k.startswith('selector_') or k in (
+             'pass_release_trial', 'retained_passage', 'same_path_gap', 'suspended_passage_history',
+             'restored_passage_history', 'restored_history_is_current_free_space')}
+         return p_speed, p_steer, {**p_detail, **selector, 'selector_choice': 'parallel',
+-                                  'selector_reason': 'released_recent_rear_lane_keep', 'rear_lane_keep': info}
++                                  'selector_reason': 'released_straight_lane_preference', 'rear_lane_keep': info}

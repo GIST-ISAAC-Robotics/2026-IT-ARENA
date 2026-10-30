@@ -1,0 +1,20 @@
+........F..............                                                  [100%]
+=================================== FAILURES ===================================
+_____________ test_motion_away_or_straight_keeps_original_release ______________
+
+setup = (<arena_autonomy.rear_lane_keep_trial.RearLaneKeepSelector object at 0x758e22240560>, {'band': {'free': True, 'masked'...'free': True, 'masked': 0, 'observed_free': 40, 'samples': 40, ...}}, <function setup.<locals>.call at 0x758e220ea5c0>)
+
+    def test_motion_away_or_straight_keeps_original_release(setup):
+        ctl, state, call = setup
+        release_from_rear(state, call)
+        for angle in (0., -.2):
+            out = call(1.3+abs(angle), base=baseline(1., angle))
+>           assert out[:2] == (1., angle) and out[2]['rear_lane_keep']['applied'] is False
+E           assert ((0.35, 0.0) == (1.0, -0.2)
+E             At index 0 diff: 0.35 != 1.0
+E             Use -v to get more diff)
+
+tests/test_rear_lane_keep_trial.py:105: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_rear_lane_keep_trial.py::test_motion_away_or_straight_keeps_original_release
+1 failed, 22 passed in 0.95s

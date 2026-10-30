@@ -42,6 +42,8 @@ class HandoffExecutionConfig:
     follow_entry_space_enabled: bool = False
     reacquire_policy: str = 'positive_command_v0'
     front_patch_policy: str = 'contiguous_three_v0'
+    entry_policy: str = 'registered_v0'
+    preparation_hold_policy: str = 'off'
 
     def __post_init__(self):
         if not isinstance(self.bypass, BypassExecutionConfig):
@@ -59,6 +61,19 @@ class HandoffExecutionConfig:
         if self.follow_entry_space_enabled and (self.preparation_policy != 'observed_entry_space_v1'
                 or self.persistence_window_policy != 'trim_before_compare_v1'):
             raise ValueError('follow entry space requires explicit space and bounded window policies')
+        if self.entry_policy not in ('registered_v0','corridor_local_v1'):
+            raise ValueError('registered handoff entry policy required')
+        if self.preparation_hold_policy not in ('off', 'bounded_hold_v1'):
+            raise ValueError('registered preparation hold policy required')
+        if self.preparation_hold_policy != 'off' and self.entry_policy != 'corridor_local_v1':
+            raise ValueError('preparation hold requires explicit corridor handoff')
+        if self.entry_policy == 'corridor_local_v1' and (
+                self.bypass.corridor_policy != 'corridor_v2_signed_hold'
+                or self.preparation_policy != 'observed_entry_space_v1'
+                or self.persistence_window_policy != 'trim_before_compare_v1'
+                or self.follow_entry_space_enabled is not True
+                or self.reacquire_policy != 'known_hold_v1'):
+            raise ValueError('corridor handoff requires explicit signed, space, bounded window and known hold policies')
         for name, lo, hi in (('observation_window_s', .5, 1.5),
                              ('maximum_patch_displacement_m', .01, .06),
                              ('preparation_cap_mps', .05, .35),
@@ -234,9 +249,18 @@ class BypassHandoffFollow:
         # G2 비교의 OFF 기록도 같은 코드로 그대로 재생할 수 있어야 한다.
         self.normal = LocalFollow(self.config)
         self.bypass = BypassEntryFollow(self.config, self.execution.bypass, allow_simulation_trial=True)
+        if self.execution.entry_policy == 'corridor_local_v1':
+            from arena_autonomy.bypass_handoff_corridor_trial import configure_guide
+            configure_guide(self)
         self.monitor = BlockingPersistence(self.execution, self.config.object_motion_bound_mps)
         self.mode = 'FOLLOW'; self.last_key = None; self.last_ref = None
         self.reacquire = 0
+
+        self._preparation_hold = None
+        self._preparation_history = None
+        if self.execution.preparation_hold_policy == 'bounded_hold_v1':
+            from arena_autonomy.bypass_preparation_hold import BoundedPreparationHold
+            self._preparation_hold = BoundedPreparationHold()
 
     def _execution_entries(self, scene, speed, previous, dt):
         """다음 새 스캔 직전 실행 검사와 같은 표적 여유로 본 진입 후보. 허가/자유 공간 아님.
@@ -244,6 +268,9 @@ class BypassHandoffFollow:
         여유 증가는 낮은 이동 누적의 마지막 두 스캔 간격(측정값)×G1 물체 이동 한도다.
         고정 외벽 분류·기본/측정 여유·후보·조향 한계는 G2 비교 그대로 쓴다.
         """
+        if self.execution.entry_policy == 'corridor_local_v1':
+            from arena_autonomy.bypass_handoff_corridor_trial import execution_entries
+            return execution_entries(self,scene,speed,previous,dt)
         rows = self.monitor.rows
         growth = rows[-1]['source']-rows[-2]['source'] if len(rows) >= 2 else None
         if growth is None or not 0 < growth <= .25:
@@ -300,6 +327,12 @@ class BypassHandoffFollow:
         return dict(result, applied=True, reason='observed_entry_preparation')
 
     def _follow_entry_space(self, scene, normal, previous, target):
+        target, detail = self._follow_entry_space_current(scene, normal, previous, target)
+        if self._preparation_hold is not None:
+            return self._preparation_hold.limit(self, scene, self._preparation_history, target, detail)
+        return target, detail
+
+    def _follow_entry_space_current(self, scene, normal, previous, target):
         """명시 시험용 전방 추종 여유. 물체 ID/정지 판정·우회 허가가 아니다.
 
         현재 진행 원호를 막는 조각과 양벽 직선이 관측되면 가장 긴 진입 전이의
@@ -343,8 +376,26 @@ class BypassHandoffFollow:
     def reset(self):
         self.normal.reset(); self.bypass.reset(); self.monitor.reset()
         self.mode = 'FOLLOW'; self.last_key = None; self.last_ref = None; self.reacquire = 0
+        self._preparation_history = None
+        if self._preparation_hold is not None:
+            self._preparation_hold.clear()
+
+    def _discard_path_only(self):
+        if self.execution.entry_policy == 'corridor_local_v1':
+            from arena_autonomy.bypass_handoff_corridor_trial import discard_path_only
+            discard_path_only(self)
+        else:
+            self.bypass.reset()
 
     def command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
+        if self._preparation_hold is None:
+            return self._command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
+        self._preparation_history = history
+        output = self._command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
+        self._preparation_hold.observe(self, scene, output)
+        return output
+
+    def _command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
         if (raw_scan is None or not all(isinstance(v, (int,float)) and not isinstance(v,bool)
                 and math.isfinite(v) for v in (speed,previous,dt))
                 or abs(previous) > self.config.max_steering_rad or not 0 < dt <= .2
@@ -358,6 +409,8 @@ class BypassHandoffFollow:
             self.reset()
             return self._output(0., previous, {}, 'handoff_source_reset')
         # G1의 옆차/소실 이력은 G2 중에도 관측한다. 모드 전환만으로 지우지 않는다.
+        if self.execution.entry_policy == 'corridor_local_v1':
+            self.bypass.guide.motion_history = history
         normal = self.normal.command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
         persistence = self.monitor.update(scene, history)
         fresh = key != self.last_key
@@ -365,7 +418,8 @@ class BypassHandoffFollow:
         detail = dict(mode_before=self.mode, normal=normal[2], persistence=persistence,
                       scope='explicit_simulation_handoff_trial')
         fault = normal[2].get('selector_choice') == 'hold_fault'
-        if fault or not source_valid(scene) or not math.isfinite(speed) or speed < 0:
+        if fault or not source_valid(scene) or not math.isfinite(speed) or (speed < 0 and
+                (self.execution.entry_policy != 'corridor_local_v1' or self.mode == 'FOLLOW')):
             self.bypass.reset(); self.monitor.reset(); self.mode = 'FOLLOW'; self.reacquire = 0
             # 유한한 음의 엔코더 속도는 기존 G1이 정지하면서 관측/옆차 이력을
             # 보존하는 입력이다. 새 우회 경로만 버리고 G1 전체를 reset하지 않는다.
@@ -407,7 +461,7 @@ class BypassHandoffFollow:
                     # 진입 순간의 여유로만 고른 경로가 다음 새 스캔 전에 막히면 반쯤 들어가 멈춘다.
                     usable, detail['entry_admission'] = self._execution_entries(scene, speed, previous, dt)
                     if (chosen['offset_m'], chosen['transition_m']) not in usable:
-                        self.bypass.reset()
+                        self._discard_path_only()
                         detail['entry_admission']['admitted'] = False
                         return self._output(target, normal[1], detail, 'handoff_follow')
                     detail['entry_admission']['admitted'] = True
@@ -420,7 +474,7 @@ class BypassHandoffFollow:
                         return self._output(candidate[0], candidate[1], detail, 'handoff_entry')
                     self.bypass.reset()
             else:
-                self.bypass.reset()
+                self._discard_path_only()
             return self._output(target, normal[1], detail, 'handoff_follow')
         candidate = self.bypass.command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
         detail['bypass'] = candidate[2]

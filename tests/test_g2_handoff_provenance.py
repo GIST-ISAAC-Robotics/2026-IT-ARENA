@@ -27,4 +27,4 @@ def test_g2_handoff_successor_preserves_previous_run_and_current_bytes():
                 assert m3_revision_digest(path, newer_than=NAME) == row['after']
     assert len(child['new_dependencies']) == 6
     for path, digest in child['new_dependencies'].items():
-        assert sha((ROOT/path).read_bytes()) == digest
+        assert m3_revision_digest(path, newer_than=NAME) == digest

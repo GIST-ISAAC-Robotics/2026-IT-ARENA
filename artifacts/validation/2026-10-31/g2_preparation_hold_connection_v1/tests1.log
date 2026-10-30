@@ -1,0 +1,77 @@
+........................................................................ [ 19%]
+........................................................................ [ 38%]
+........................................................................ [ 57%]
+........................................................................ [ 76%]
+FF...................................................................... [ 95%]
+..................                                                       [100%]
+=================================== FAILURES ===================================
+__________ test_handoff_corridor_successor_preserves_previous_source ___________
+
+    def test_handoff_corridor_successor_preserves_previous_source():
+        sha = lambda data: hashlib.sha256(data).hexdigest()
+        child = json.loads((ROOT/NAME).read_text(encoding='utf-8'))
+        assert child['parent_contract'] == 'config/tests/g2_signed_hold_r1_sha256.json'
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        assert set(child['approved_changes']) == {'src/arena_autonomy/arena_autonomy/bypass_handoff.py','src/arena_autonomy/arena_autonomy/g1_g2_node.py'}
+        assert not child['approved_evaluation_scripts']
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for path, change in child['approved_changes'].items():
+                assert sha(archive.read(path)) == change['before'] != change['after']
+>               assert m3_revision_digest(path, newer_than=NAME) == change['after']
+E               AssertionError: assert '27e2a27212f9...62d88a04e8499' == 'c9d57238cd6f...7a2904b5ec239'
+E                 - c9d57238cd6fea41b6d9d1e476ce3b2ac1e118be7bd9ab4d47b7a2904b5ec239
+E                 + 27e2a27212f956d3d13702d47ddb5196ae602572a7717733b3662d88a04e8499
+
+tests/test_g2_handoff_corridor_provenance.py:24: AssertionError
+______ test_g2_handoff_successor_preserves_previous_run_and_current_bytes ______
+
+    def test_g2_handoff_successor_preserves_previous_run_and_current_bytes():
+        sha = lambda data: hashlib.sha256(data).hexdigest()
+        child = json.loads((ROOT/NAME).read_text(encoding='utf-8'))
+        assert child['parent_contract'] == 'config/tests/fresh_scan_wait_r1_sha256.json'
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        snapshot = ROOT/child['before_snapshot']
+        assert sha(snapshot.read_bytes()) == child['before_snapshot_sha256']
+        assert len(child['approved_changes']) == 3
+        assert len(child['approved_evaluation_scripts']) == 5
+        with zipfile.ZipFile(snapshot) as previous:
+            for group in ('approved_changes', 'approved_evaluation_scripts'):
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(previous.read(path)) == row['before'] != row['after']
+                    assert m3_revision_digest(path, newer_than=NAME) == row['after']
+        assert len(child['new_dependencies']) == 6
+        for path, digest in child['new_dependencies'].items():
+>           assert m3_revision_digest(path, newer_than=NAME) == digest
+
+tests/test_g2_handoff_provenance.py:30: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/bypass_handoff.py'
+newer_than = 'config/tests/g2_handoff_manifest_r1_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert '27e2a27212f9...62d88a04e8499' == 'c9d57238cd6f...7a2904b5ec239'
+E             - c9d57238cd6fea41b6d9d1e476ce3b2ac1e118be7bd9ab4d47b7a2904b5ec239
+E             + 27e2a27212f956d3d13702d47ddb5196ae602572a7717733b3662d88a04e8499
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_g2_handoff_corridor_provenance.py::test_handoff_corridor_successor_preserves_previous_source
+FAILED tests/test_g2_handoff_provenance.py::test_g2_handoff_successor_preserves_previous_run_and_current_bytes
+2 failed, 376 passed in 18.79s

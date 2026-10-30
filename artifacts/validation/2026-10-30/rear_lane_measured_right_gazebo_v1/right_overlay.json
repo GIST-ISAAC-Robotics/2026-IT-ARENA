@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "registered_at": "2026-10-30 before right-side observed_measured_v1 Gazebo (single run)",
+  "base_case": "slow_lead",
+  "scope": "10/30 왼쪽 overlay의 거울상. 상자 20x15x12cm, 중심 횡위치 -0.20m(오른쪽 걸침). 일정 0.15 m/s 7초 → 1.0 m/s, 자차/벽/도로/물성 불변.",
+  "additional_actors": [
+    {
+      "model_name": "eval_e3_side",
+      "role": "side",
+      "start_center_gap_m": 0.0,
+      "lateral_offset_m": -0.2,
+      "route_kind": "side_straddle_straight",
+      "minimum_body_gap_m": 0.15,
+      "gap_basis": "원래 0.15m 비교선 유지. 이번 전이/접촉/정체 판정은 사전 등록 SCENARIO_PLAN으로 별도 표시.",
+      "schedule": [
+        {
+          "from_s": 0.0,
+          "to_s": 7.0,
+          "speed_mps": 0.15
+        },
+        {
+          "from_s": 7.0,
+          "to_s": 12.0,
+          "speed_mps": 1.0
+        }
+      ],
+      "length_m": 0.2,
+      "width_m": 0.15,
+      "height_m": 0.12,
+      "bottom_m": 0.0,
+      "visible_section": "C1 0.095m plane intersects complete 0..0.12m box"
+    }
+  ],
+  "parent_overlay": {
+    "path": "artifacts/validation/2026-10-30/rear_lane_measured_gazebo_v1/left_overlay.json",
+    "sha256": "b524c95eda97e861758630281b3ec6600bc983ffa9308454748d92bfdc1279a0",
+    "changed_fields": [
+      "registered_at",
+      "scope",
+      "additional_actors[0].lateral_offset_m",
+      "parent_overlay"
+    ]
+  }
+}

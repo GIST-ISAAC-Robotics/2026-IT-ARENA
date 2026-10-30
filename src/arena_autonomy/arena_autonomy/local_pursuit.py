@@ -63,6 +63,10 @@ class LocalPursuit(WallFollow):
         traffic_path_recovery = bool(self.declare_parameter('g1_traffic_path_recovery_trial', False).value)
         if traffic_path_recovery and (not traffic_recovery or not corridor_fallback):
             raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
+        rear_lane_keep = bool(self.declare_parameter('g1_rear_lane_keep_trial', False).value)
+        rear_lane_policy = str(self.declare_parameter('g1_rear_lane_keep_policy', 'timed').value)
+        if rear_lane_keep and not traffic_path_recovery:
+            raise ValueError('rear lane keep trial requires explicit traffic path recovery')
         if traffic_recovery and not guard_curve:
             raise ValueError('traffic recovery requires explicit guard curve trial')
         if guard_curve and not pass_release:
@@ -97,6 +101,8 @@ class LocalPursuit(WallFollow):
             guard_curve_trial=guard_curve,
             traffic_recovery_trial=traffic_recovery,
             traffic_path_recovery_trial=traffic_path_recovery,
+            rear_lane_keep_trial=rear_lane_keep,
+            rear_lane_keep_policy=rear_lane_policy,
             corridor_fallback_enabled=corridor_fallback,
             short_boundary_prefix_enabled=short_prefix,
             recent_observation_enabled=recent_observation,

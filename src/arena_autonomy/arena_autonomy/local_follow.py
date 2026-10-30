@@ -26,6 +26,8 @@ class FollowConfig:
     guard_curve_trial: bool = False
     traffic_recovery_trial: bool = False
     traffic_path_recovery_trial: bool = False
+    rear_lane_keep_trial: bool = False
+    rear_lane_keep_policy: str = 'timed'
     corridor_fallback_enabled: bool = False
     short_boundary_prefix_enabled: bool = False
     recent_observation_enabled: bool = False
@@ -53,10 +55,16 @@ class FollowConfig:
     confirmations: int = 2
 
     def __post_init__(self):
+        if (self.rear_lane_keep_policy not in ('timed', 'observed', 'observed_measured_v1', 'observed_fresh_v2') or
+                (self.rear_lane_keep_policy != 'timed' and not self.rear_lane_keep_trial)):
+            raise ValueError('observed lane preference requires explicit rear lane keep trial')
         if (type(self.traffic_path_recovery_trial) is not bool or
                 (self.traffic_path_recovery_trial and
                  (not self.traffic_recovery_trial or not self.corridor_fallback_enabled))):
             raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
+        if (type(self.rear_lane_keep_trial) is not bool or
+                (self.rear_lane_keep_trial and not self.traffic_path_recovery_trial)):
+            raise ValueError('rear lane keep trial requires explicit traffic path recovery')
         if (type(self.short_boundary_prefix_enabled) is not bool or
                 (self.short_boundary_prefix_enabled and
                  (not self.corridor_fallback_enabled or self.recent_observation_enabled or self.max_speed_mps > 1.))):
@@ -82,7 +90,7 @@ class FollowConfig:
         if self.occupancy_timing_mode not in ('oldest', 'per_ray_candidate'):
             raise ValueError('invalid occupancy timing mode')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'traffic_path_recovery_trial')):
+               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
             raise ValueError('follow configuration must be finite and positive')
         if (type(self.corridor_fallback_enabled) is not bool or
                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
@@ -221,6 +229,11 @@ class LocalFollow:
         self.parallel_trial = None
         if self.config.parallel_hold_trial:
             from arena_autonomy.parallel_lane_trial import ParallelLaneTrial
+            if self.config.rear_lane_keep_policy == 'observed_measured_v1':
+                # 10/29 오프라인 v4와 같이 평행 후보도 측정속도를 자르지 않는 별도 시험본을 쓴다.
+                from arena_autonomy.measured_parallel_trial import MeasuredParallelTrial as ParallelLaneTrial
+            if self.config.rear_lane_keep_policy == 'observed_fresh_v2':
+                from arena_autonomy.fresh_parallel_trial import FreshMemoryParallelTrial as ParallelLaneTrial
             self.parallel_trial = ParallelLaneTrial(self.config)
         self.pass_selector = None
         if self.config.pass_release_trial:
@@ -228,6 +241,15 @@ class LocalFollow:
             if self.config.traffic_path_recovery_trial:
                 from arena_autonomy.traffic_path_recovery_trial import SuspendedPassageSelector
                 PassReleaseSelector = SuspendedPassageSelector
+                if self.config.rear_lane_keep_trial:
+                    from arena_autonomy.rear_lane_keep_trial import RearLaneKeepSelector
+                    PassReleaseSelector = RearLaneKeepSelector
+                    if self.config.rear_lane_keep_policy == 'observed':
+                        from arena_autonomy.observed_lane_preference_trial import StraightLanePreferenceSelector
+                        PassReleaseSelector = StraightLanePreferenceSelector
+                    elif self.config.rear_lane_keep_policy in ('observed_measured_v1', 'observed_fresh_v2'):
+                        from arena_autonomy.measured_lane_preference_trial import StraightLanePreferenceSelector
+                        PassReleaseSelector = StraightLanePreferenceSelector
             self.pass_selector = PassReleaseSelector(self.config)
         self.reset()
 

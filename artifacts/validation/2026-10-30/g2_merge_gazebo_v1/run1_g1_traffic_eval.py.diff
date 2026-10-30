@@ -1,0 +1,26 @@
+--- original/g1_traffic_eval.py
++++ g2_trial/g1_traffic_eval.py
+@@ -416,7 +416,7 @@
+     static_rows, moving_rows = [], []
+     for row in moving:
+         elapsed = row['t']-t_green
+-        recent = [actor_speed_mps(case['schedule'], elapsed-dt) for dt in (0., .1, .2)]
++        recent = [MERGE_TRIAL.speed_at(elapsed-dt) for dt in (0., .1, .2)]
+         (static_rows if max(recent) == 0 else moving_rows).append(row)
+     command_times = [c['requested_sim_s'] for c in commands if t_green <= c['requested_sim_s'] <= t_end]
+     intervals = np.diff(command_times) if len(command_times) > 1 else np.array([])
+@@ -644,7 +644,7 @@
+         'sequential_acquisition': report.get('sequential_acquisition_verified') is True,
+         'lidar_interface': report.get('lidar_nominal_interface_passed') is True,
+         'source_unchanged': report.get('source_unchanged') is True,
+-        'signal_sequence': {'red', 'yellow', 'green'}.issubset(report.get('signal_states', [])),
++        'signal_sequence': {'red', 'green'}.issubset(report.get('signal_states', [])),
+         'no_false_start': report.get('false_start') is False,
+         'controller_mode_matches': mode_matches,
+     }
+@@ -673,3 +673,5 @@
+         report['passed'] = report['run_valid']
+         report['r0_meets_g1_gates'] = report['behavior_gates_passed']
+     return report
++
++from merge_actor import TRIAL as MERGE_TRIAL

@@ -217,9 +217,11 @@ def compare_entries(scene, now, speed, previous_steering, dt, *, config=None, en
 
 
 def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, entry=None, guide=None,
-                     stationary_boundaries=False, padding_growth_s=0.):
+                     stationary_boundaries=False, padding_growth_s=0., padding_provider=None):
     """순수 비교 출력. selected가 있어도 독립 보호/운영 연결 전까지 구동 허가 아님."""
     config, entry = config or FollowConfig(), entry or EntryConfig()
+    # 기본은 기존 함수다. 명시 시험 후보만 같은 호출 형식의 공급자를 넘긴다.
+    outer_padding = current_outer_wall_padding if padding_provider is None else padding_provider
     # 명령 상한과 측정 입력 범위를 구분한다. 모터축 정수 카운트 차분은
     # 정상 저속에서도 명령 상한을 넘을 수 있다. G1 입력 범위 안의 측정값은
     # 자르지 않고 추종과 반응/제동 외곽 검사에 그대로 전달한다.
@@ -246,7 +248,7 @@ def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, e
                + config.object_motion_bound_mps*padding_growth_s)
     if guide is not None and guide.get('stationary_outer_boundary',False):
         side=guide['outer_side']
-        padding,classification=current_outer_wall_padding(scene,config,side,evidence['walls'][side],padding_growth_s)
+        padding,classification=outer_padding(scene,config,side,evidence['walls'][side],padding_growth_s)
         result['outer_boundary_padding']=classification
     age = now-scene.source_first_s
     lateral = lateral_config(config)
@@ -276,7 +278,7 @@ def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, e
             wall = walls[wall_name]
             if stationary_boundaries:
                 if wall_name not in padding_by_side:
-                    padding_by_side[wall_name]=current_outer_wall_padding(scene,config,wall_name,wall,padding_growth_s)
+                    padding_by_side[wall_name]=outer_padding(scene,config,wall_name,wall,padding_growth_s)
                 padding,classification=padding_by_side[wall_name]
                 row['outer_boundary_padding']=classification
             candidate_reference = (wall['slope'],wall['intercept_m'],*wall['observed_x_m'])
@@ -439,6 +441,7 @@ class EntryGuide:
         if type(tracked_wall_fit) is not bool or (tracked_wall_fit and not wall_reanchor):
             raise ValueError('tracked wall fit requires explicit wall reanchor trial')
         self.tracked_wall_fit=tracked_wall_fit
+        self.padding_provider=None
         self.reset()
 
     def reset(self):
@@ -539,7 +542,8 @@ class EntryGuide:
                     return self._hold('entry_initial_distinct_boundaries_wait',reference=evidence,
                         boundary_confirmations=self.start_confirmations)
             result = self.intent.select(scene, _compare_entries(scene,now,speed,previous_steering,dt,
-                config=self.config,entry=self.entry,stationary_boundaries=self.stationary_outer_boundary))
+                config=self.config,entry=self.entry,stationary_boundaries=self.stationary_outer_boundary,
+                padding_provider=self.padding_provider))
             chosen=result['selected']
             if chosen is not None and chosen['offset_m'] != 0.:
                 row=next(r for r in result['candidates'] if r.get('eligible') and
@@ -635,7 +639,8 @@ class EntryGuide:
         result=_compare_entries(scene,now,speed,previous_steering,dt,config=self.config,entry=self.entry,
             guide=dict(reference=reference,path=path,offset_m=self.offset,transition_m=self.transition,
                 outer_side=self.side,
-                stationary_outer_boundary=self.stationary_outer_boundary and self.wall_confirmations>=2))
+                stationary_outer_boundary=self.stationary_outer_boundary and self.wall_confirmations>=2),
+            padding_provider=self.padding_provider)
         return {**result,'intent_direction':self.intent.sign,'intent_remembered_permission':False,
             'guide_mode':'measured_motion_transport_current_outer_wall', 'guide_permission_remembered':False,
             'outer_wall_fresh_confirmations':self.wall_confirmations,

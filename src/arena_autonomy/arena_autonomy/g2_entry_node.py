@@ -1,7 +1,7 @@
 """별도 실행 파일에서만 선택하는 G2 동역학 시험. 기본 LocalPursuit는 변경하지 않는다."""
 from pathlib import Path
 from arena_autonomy.local_pursuit import LocalPursuit
-from arena_autonomy.bypass_entry_follow import BypassEntryFollow,BypassExecutionConfig
+from arena_autonomy.bypass_entry_follow import BypassEntryFollow,BypassExecutionConfig,CORRIDOR_POLICIES
 from arena_autonomy.follow_trace import FollowTrace, freeze
 from arena_vehicle_interface.node_lifecycle import run_node
 
@@ -37,15 +37,21 @@ class G2EntryNode(LocalPursuit):
         super().__init__()
         enabled=bool(self.declare_parameter('g2_entry_simulation_trial',False).value)
         trace_path=str(self.declare_parameter('g2_trace_path','').value)
+        corridor=self.declare_parameter('g2_corridor_policy','off').value
+        if type(corridor) is not str or corridor not in CORRIDOR_POLICIES:
+            raise ValueError('registered G2 corridor policy required')
         if not enabled or self.get_parameter('use_sim_time').value is not True:
             raise ValueError('G2 requires explicit simulation-only activation')
         if (not self.g1_enabled or self.follow is None or self.r0_plus_enabled or self.m3_execution_enabled
                 or self.follow_trace is not None or not trace_path or not Path(trace_path).is_absolute()):
             raise ValueError('G2 requires G1 sensor configuration, its own absolute trace and no competing controller')
-        self.follow=BypassEntryFollow(self.follow.config,BypassExecutionConfig(),allow_simulation_trial=True)
+        self.follow=BypassEntryFollow(self.follow.config,BypassExecutionConfig(corridor_policy=corridor),
+            allow_simulation_trial=True)
         self.follow_trace=FollowTrace(trace_path,self.motion.history.config,self.follow.config,
             mode='g2_entry_trial',execution_config=self.follow.execution)
         self.get_logger().info('G2 explicit sensor entry trial; publishes /drive through independent safety')
+        if corridor!='off':
+            self.get_logger().info('G2 corridor test policy '+corridor+' (simulation assumption, not race default)')
 
     def command(self, points):
         # 기존 센서 입력·판단 기록·예외 처리를 그대로 쓰고 상태 발행용 detail만 줄인다.

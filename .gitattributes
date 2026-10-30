@@ -123,3 +123,15 @@ tests/test_traffic_recovery_contract.py -text whitespace=cr-at-eol
 # 10/28 시험 계약에 포함된 EOF/겹친 CR 바이트도 소급 수정하지 않습니다.
 src/arena_autonomy/arena_autonomy/anchor_clearance_trial.py whitespace=cr-at-eol,-blank-at-eof
 src/arena_autonomy/arena_autonomy/traffic_recovery_trial.py -whitespace
+
+# 10/30–31 실행 증거와 새 CRLF 소스 계약을 게시 시에도 동일 바이트로 보존합니다.
+artifacts/validation/2026-10-30/** -text -whitespace
+artifacts/validation/2026-10-31/** -text -whitespace
+src/arena_autonomy/arena_autonomy/bypass_handoff.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/bypass_handoff_corridor_trial.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/bypass_signed_hold_trial.py -text whitespace=cr-at-eol
+src/arena_autonomy/arena_autonomy/g1_g2_node.py -text whitespace=cr-at-eol
+tests/test_bypass_handoff_corridor_trial.py -text whitespace=cr-at-eol
+tests/test_bypass_signed_hold_trial.py -text whitespace=cr-at-eol
+tests/test_g2_handoff_corridor_provenance.py -text whitespace=cr-at-eol
+tests/test_source_provenance_r0_plus_b3.py -text whitespace=cr-at-eol

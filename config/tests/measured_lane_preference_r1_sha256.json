@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "scope": "10/29 오프라인 v4(측정속도 비클리핑·자체 정지공간/관측 영역 검사)를 목표 상한 경계 수정 후 별도 명시 정책 observed_measured_v1로 연결. 기본값/기존 timed·observed 불변. 운영 채택·실차 안전 승인 아님.",
+  "parent_contract": "config/tests/observed_lane_preference_r1_sha256.json",
+  "parent_contract_sha256": "0814098a2dc63dd92f63192b8c77e6de354b37f12b40e08052df8f5b83bf87a9",
+  "before_snapshot": "artifacts/validation/2026-10-30/rear_lane_measured_v1/before_connection.zip",
+  "before_snapshot_sha256": "26b5ce3ca9c4f168261b2161493b5d94df270a096e60d02cd74640c5f1a46db7",
+  "before_source": {
+    "scope": "v3 observed 연결·Gazebo v1 이후 미커밋 상태의 연결 직전 바이트"
+  },
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "32e8be76116700cd7cb573c3b99053d1369a568e70a700324c870d7014998006",
+      "after": "919564a9194fc3ca959d3afc557bf16de659c8612c8c4921c8d6b3a379dc371f",
+      "reason": "명시 rear_lane_keep_policy=observed_measured_v1 연결(기본 timed/OFF, 기존 observed 의미 불변)"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_pipeline_faults_ros.py": {
+      "before": "236fb391dd39f90c9eaa404c6da81afe2173b72eb34c5e941dd20f11130560fc",
+      "after": "772b43c38c7ba3a77602e63e32da2b6bc4ada85975254394e993a90d4720a0a9",
+      "reason": "새 선택기·평행 후보·속도 제안 모듈의 보존/이관/재생 의존성 추가"
+    },
+    "scripts/prepare_jetson_bundle.py": {
+      "before": "c7a7df53b85ed4e5033524cdaaecb8dde274921b55a0be7823eed4d0502d0b66",
+      "after": "ce7ddf94b295117e05ca85a42640c9ebb29f144037163fb9d5dcac3a8ff24527",
+      "reason": "새 선택기·평행 후보·속도 제안 모듈의 보존/이관/재생 의존성 추가"
+    },
+    "scripts/profile_follow_trace.py": {
+      "before": "e335acbe951aab59a0ded44db192801756416fbe83aaf8b6f7f72ba5fdf6bf2c",
+      "after": "d5579642169b4f8a6e3fb008b8c39a7892aaaa56d7a90ea3341f3cc6060b3021",
+      "reason": "새 선택기·평행 후보·속도 제안 모듈의 보존/이관/재생 의존성 추가"
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "54aca1c0c497dff1eb364b7112e1f052198bef1f2f868d3d9172fda7f13e4c04",
+      "after": "366b28a7df8edb3c4b6013b81862b83af98628cb2861559d8a05c4b43efea41f",
+      "reason": "새 선택기·평행 후보·속도 제안 모듈의 보존/이관/재생 의존성 추가"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/measured_lane_preference_trial.py": "1b99c34a43cbc6139e8a140db3c4a394f863dc28c9eb4c9f9821124d5ef2d6c1",
+    "src/arena_autonomy/arena_autonomy/measured_parallel_speed_trial.py": "f8a403a947e5a8455e3c8893e409cf245578e4da903f840b44478a7ab017ba55",
+    "src/arena_autonomy/arena_autonomy/measured_parallel_trial.py": "c50cfa1cbf4787f4f040e1ade8a65c1e3608fdb08ca9158270719920fe6c9ed3"
+  },
+  "offline_origin": {
+    "artifacts/validation/2026-10-29/rear_lane_preference_shadow_v4/candidate.py": "23f5a8bcfa1138c5429000385ef5ec8c81b8e17e9b7744ab5815260daad7107f",
+    "artifacts/validation/2026-10-29/rear_lane_preference_shadow_v4/parallel_speed.py": "421ffbdacc4ac6d2710dfe32431798e71525bdda52244fc3ade16fc534a1f84d",
+    "artifacts/validation/2026-10-29/rear_lane_preference_shadow_v4/parallel_state.py": "93cc35cb4d7820c03200c97633513cd1400862b79be69c9095e4b66a6e12f91b"
+  },
+  "offline_origin_archive": {
+    "path": "artifacts/validation/2026-10-29/rear_lane_preference_shadow_v4/offline_sources2.zip",
+    "sha256": "55ea1dacc75fa769c369374c7824e9fde6f2c161a2df2dcfcd7ec5fe0cf9e22e"
+  },
+  "successor_fix": "measured_parallel_speed_trial.proposal: target_cap 유효성(유한 양수)과 설정 최대속도 min 결합. v4 원본은 max_speed_mps<.35에서 기본 .35를 invalid_target_cap으로 거부했다."
+}
