@@ -1,0 +1,26 @@
+........................................................................ [ 19%]
+........................................................................ [ 38%]
+........................................................................ [ 57%]
+.....................................................................F.. [ 77%]
+........................................................................ [ 96%]
+.............                                                            [100%]
+=================================== FAILURES ===================================
+_______________ test_candidate_ast_and_source_history_preserved ________________
+
+    def test_candidate_ast_and_source_history_preserved():
+        root=Path(__file__).resolve().parents[1];name='config/tests/g2_motion_pause_r1_sha256.json'
+        c=json.loads((root/name).read_text(encoding='utf-8'));sha=lambda b:hashlib.sha256(b).hexdigest()
+        assert sha((root/c['parent_contract']).read_bytes())==c['parent_contract_sha256']
+        assert sha((root/c['before_snapshot']).read_bytes())==c['before_snapshot_sha256']
+        with zipfile.ZipFile(root/c['before_snapshot']) as archive:
+            for path,row in c['approved_changes'].items():
+                assert sha(archive.read(path))==row['before']!=row['after']
+>               assert m3_revision_digest(path,newer_than=name)==row['after']
+E               AssertionError: assert '9a9a3c7af57a...01bdc8fb46b1c' == '309306e9a006...b251212723ac0'
+E                 - 309306e9a00621fc1fd22aaeee1b18d097ba94011e072207e28b251212723ac0
+E                 + 9a9a3c7af57a42f8dd117a0ebf6bb7e383acbb7eb32d934abc601bdc8fb46b1c
+
+tests/test_bypass_motion_pause_connection.py:68: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_bypass_motion_pause_connection.py::test_candidate_ast_and_source_history_preserved
+1 failed, 372 passed in 13.75s

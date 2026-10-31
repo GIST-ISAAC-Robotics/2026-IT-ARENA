@@ -217,7 +217,7 @@ def compare_entries(scene, now, speed, previous_steering, dt, *, config=None, en
 
 
 def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, entry=None, guide=None,
-                     stationary_boundaries=False, padding_growth_s=0., padding_provider=None):
+                     stationary_boundaries=False, padding_growth_s=0., padding_provider=None, reference_provider=None):
     """순수 비교 출력. selected가 있어도 독립 보호/운영 연결 전까지 구동 허가 아님."""
     config, entry = config or FollowConfig(), entry or EntryConfig()
     # 기본은 기존 함수다. 명시 시험 후보만 같은 호출 형식의 공급자를 넘긴다.
@@ -235,7 +235,8 @@ def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, e
             or abs(previous_steering) > config.max_steering_rad
             or abs(now-scene.t_ref_s) > 1e-9 or not source_valid(scene)):
         return result
-    reference, evidence = straight_reference(scene, config) if guide is None else (True, guide['reference'])
+    reference_fn = straight_reference if reference_provider is None else reference_provider
+    reference, evidence = reference_fn(scene, config) if guide is None else (True, guide['reference'])
     result['reference'] = evidence
     if reference is None:
         return {**result, 'reason':evidence['reason']}
@@ -429,6 +430,7 @@ class EntryGuide:
     """
     def __init__(self, config=None, entry=None, *, stationary_outer_boundary=False, rejoin_enabled=False, wall_reanchor=False, tracked_wall_fit=False):
         self.config, self.entry = config or FollowConfig(), entry or EntryConfig()
+        self.reference_provider = None
         if type(stationary_outer_boundary) is not bool:
             raise ValueError('explicit boolean boundary assumption required')
         self.stationary_outer_boundary=stationary_outer_boundary
@@ -460,8 +462,12 @@ class EntryGuide:
             unknown_filled=False, full_bypass_verified=False, road_surface_verified=False,
             intent_direction=self.intent.sign, intent_remembered_permission=False, **detail)
 
+    def _straight_reference(self,scene):
+        provider=straight_reference if self.reference_provider is None else self.reference_provider
+        return provider(scene,self.config)
+
     def _confirm_initial_boundaries(self,scene,history,fresh):
-        reference,evidence=straight_reference(scene,self.config)
+        reference,evidence=self._straight_reference(scene)
         if reference is None:
             self.start_walls=self.start_reference_s=None
             self.start_confirmations=0
@@ -543,7 +549,7 @@ class EntryGuide:
                         boundary_confirmations=self.start_confirmations)
             result = self.intent.select(scene, _compare_entries(scene,now,speed,previous_steering,dt,
                 config=self.config,entry=self.entry,stationary_boundaries=self.stationary_outer_boundary,
-                padding_provider=self.padding_provider))
+                padding_provider=self.padding_provider,reference_provider=self.reference_provider))
             chosen=result['selected']
             if chosen is not None and chosen['offset_m'] != 0.:
                 row=next(r for r in result['candidates'] if r.get('eligible') and

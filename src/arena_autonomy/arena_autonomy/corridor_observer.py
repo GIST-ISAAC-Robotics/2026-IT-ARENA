@@ -42,6 +42,9 @@ def current_proposal(scene, speed, side, previous_steering, dt, config, *, parti
     if (config.short_boundary_prefix_enabled and not geometry['supported']
             and geometry['reason'] == 'long_outer_reference_unavailable'):
         alternative = short_prefix_evidence(points,side,config)
+        if alternative.get('reason') == 'insufficient_contiguous_common_prefix':
+            from arena_autonomy.continuous_prefix import refine
+            alternative = refine(alternative,config)
         if alternative['supported']:
             geometry = alternative
     if (config.short_boundary_prefix_enabled and not geometry['supported']

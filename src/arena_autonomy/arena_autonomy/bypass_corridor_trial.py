@@ -291,7 +291,8 @@ class CorridorGuide(EntryGuide):
         p = self.corridor_policy
         if not source_valid(scene):
             return None
-        reference, evidence = straight_reference(scene, self.config)
+        provider = straight_reference if self.reference_provider is None else self.reference_provider
+        reference, evidence = provider(scene, self.config)
         if reference is None:
             return None
         points = np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1, 2)

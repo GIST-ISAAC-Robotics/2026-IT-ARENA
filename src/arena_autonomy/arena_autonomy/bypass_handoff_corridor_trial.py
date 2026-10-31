@@ -108,9 +108,10 @@ class ForecastGuide(SignedHoldGuide):
         return padding, dict(evidence, corridor=use)
 
 
-def configure_guide(owner):
+def configure_guide(owner,guide_type=None):
     old=owner.bypass.guide
-    owner.bypass.guide=ForecastGuide(owner.config,old.registered_entry,
+    guide_type=ForecastGuide if guide_type is None else guide_type
+    owner.bypass.guide=guide_type(owner.config,old.registered_entry,
         stationary_outer_boundary=old.stationary_outer_boundary,wall_reanchor=old.wall_reanchor,
         tracked_wall_fit=old.tracked_wall_fit,rejoin_enabled=old.rejoin_enabled,
         corridor_policy=old.corridor_policy)
@@ -141,7 +142,8 @@ def execution_entries(owner,scene,speed,previous,dt):
     transition=guide.transition if guide.path is not None else row['transition_m']
     entry=replace(guide.registered_entry,offsets_m=(0.,offset),transitions_m=(transition,))
     result=_compare_entries(scene,scene.t_ref_s,speed,previous,dt,config=owner.config,
-        entry=entry,stationary_boundaries=True,padding_growth_s=growth,padding_provider=guide._padding)
+        entry=entry,stationary_boundaries=True,padding_growth_s=growth,padding_provider=guide._padding,
+        reference_provider=getattr(guide,'reference_provider',None))
     # 재관측을 수반하는 지역 진행이다. 전체 전이의 자유 공간을 선언하지 않는다.
     # 미래 여유로 실제 상한 명령과 정지 영역까지 성립하는 후보만 받는다.
     usable=sorted((r['offset_m'],r['transition_m']) for r in result['candidates']

@@ -1,0 +1,54 @@
+........................................................................ [ 16%]
+........................................................................ [ 33%]
+........................................................................ [ 49%]
+........................................................................ [ 66%]
+..F............................F........................................ [ 82%]
+........................................................................ [ 99%]
+...                                                                      [100%]
+=================================== FAILURES ===================================
+_______________ test_corridor_successor_preserves_previous_bytes _______________
+
+    def test_corridor_successor_preserves_previous_bytes():
+        sha = lambda data: hashlib.sha256(data).hexdigest()
+        contract = json.loads((ROOT/NAME).read_text(encoding='utf-8'))
+        assert contract['parent_contract'] == 'config/tests/fresh_confirmation_r2_sha256.json'
+        assert sha((ROOT/contract['parent_contract']).read_bytes()) == contract['parent_contract_sha256']
+        assert sha((ROOT/contract['before_snapshot']).read_bytes()) == contract['before_snapshot_sha256']
+        assert len(contract['approved_changes']) == 3 and not contract['approved_evaluation_scripts']
+        with zipfile.ZipFile(ROOT/contract['before_snapshot']) as archive:
+            for path, row in contract['approved_changes'].items():
+                assert row['reason'].strip()
+                assert sha(archive.read(path)) == row['before'] != row['after']
+                assert m3_revision_digest(path, newer_than=NAME) == row['after']
+        for path, digest in contract['new_dependencies'].items():
+>           assert sha((ROOT/path).read_bytes()) == digest
+E           AssertionError: assert 'ef97bdd869d5...aca92ed4c958b' == '80e63ff21ea1...1e76d8598e6ec'
+E             - 80e63ff21ea1db73c25a7248a7aea42959198187055d3aed78c1e76d8598e6ec
+E             + ef97bdd869d5d5dc9ee049b11711d326f60972e6756e6dcad46aca92ed4c958b
+
+tests/test_g2_corridor_provenance.py:26: AssertionError
+__________ test_handoff_corridor_successor_preserves_previous_source ___________
+
+    def test_handoff_corridor_successor_preserves_previous_source():
+        sha = lambda data: hashlib.sha256(data).hexdigest()
+        child = json.loads((ROOT/NAME).read_text(encoding='utf-8'))
+        assert child['parent_contract'] == 'config/tests/g2_signed_hold_r1_sha256.json'
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        assert set(child['approved_changes']) == {'src/arena_autonomy/arena_autonomy/bypass_handoff.py','src/arena_autonomy/arena_autonomy/g1_g2_node.py'}
+        assert not child['approved_evaluation_scripts']
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for path, change in child['approved_changes'].items():
+                assert sha(archive.read(path)) == change['before'] != change['after']
+                assert m3_revision_digest(path, newer_than=NAME) == change['after']
+        for path, digest in child['new_dependencies'].items():
+>           assert sha((ROOT/path).read_bytes()) == digest
+E           AssertionError: assert '64d7a3326e48...27e7399e48341' == '59f08507cd1f...d51a1c1047868'
+E             - 59f08507cd1f908e07f5e230bb2e6aa1c8d055f5c09160595c2d51a1c1047868
+E             + 64d7a3326e4864f5d1b16327e10007a3ecfc76706e29da3c79327e7399e48341
+
+tests/test_g2_handoff_corridor_provenance.py:26: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_g2_corridor_provenance.py::test_corridor_successor_preserves_previous_bytes
+FAILED tests/test_g2_handoff_corridor_provenance.py::test_handoff_corridor_successor_preserves_previous_source
+2 failed, 433 passed in 40.82s

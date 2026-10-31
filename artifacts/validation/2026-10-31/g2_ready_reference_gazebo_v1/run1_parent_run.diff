@@ -1,0 +1,20 @@
+--- original/run
++++ blocked/run
+@@ -19,6 +19,8 @@
+     evaluator, validator = modules
+     validator.ev = evaluator
+     validator.DEMO_WORLD = FIXTURE
++    from blocked_route import install_route_check
++    install_route_check(validator)
+     original_load = validator.load_centerline
+     validator.load_centerline = lambda: original_load(FIXTURE)
+     original_start = validator.start_demo_process
+@@ -29,7 +31,7 @@
+         return subprocess.Popen(['ros2', 'launch', '--noninteractive', metadata['launch_path']], cwd=ROOT,
+             stdin=subprocess.DEVNULL, stdout=log, stderr=log, start_new_session=True)
+     validator.start_demo_process = start
+-    sys.argv = [validator.__file__, '--config', str(CONFIG), '--case', 'stop_restart_full_course',
++    sys.argv = [validator.__file__, '--config', str(CONFIG), '--case', 'blocked_entry_return',
+         '--seed', '0', '--mode', 'g1', '--output', str(output), '--actor-overlay', str(OVERLAY),
+         '--record-follow-decisions', '--record-braking-diagnostics',
+         '--boundary-evidence', 'corner_distance_candidate', '--occupancy-timing', 'per_ray_candidate',

@@ -1,0 +1,21 @@
+........................................................................ [ 37%]
+........................................................................ [ 74%]
+..............F..................................                        [100%]
+=================================== FAILURES ===================================
+___ test_minimal_bundle_has_all_static_internal_dependencies_and_no_ros_node ___
+
+    def test_minimal_bundle_has_all_static_internal_dependencies_and_no_ros_node():
+        paths = {name for name in bundle.FOLLOW_PROFILE_TOOLS if name.startswith('src/')}
+        for name in paths:
+            tree = ast.parse((bundle.ROOT/name).read_text(encoding='utf-8'), feature_version=(3, 10))
+            imports = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module]
+            for imported in imports:
+                if imported.startswith(('arena_autonomy.', 'arena_vehicle_interface.')):
+                    package, module = imported.split('.')
+>                   assert f'src/{package}/{package}/{module}.py' in paths
+E                   AssertionError: assert 'src/arena_autonomy/arena_autonomy/bypass_handoff_corridor_trial.py' in {'src/arena_autonomy/arena_autonomy/__init__.py', 'src/arena_autonomy/arena_autonomy/anchor_clearance_trial.py', 'src/... 'src/arena_autonomy/arena_autonomy/bypass_entry_trial.py', 'src/arena_autonomy/arena_autonomy/bypass_handoff.py', ...}
+
+tests/test_follow_profile_bundle.py:17: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_follow_profile_bundle.py::test_minimal_bundle_has_all_static_internal_dependencies_and_no_ros_node
+1 failed, 192 passed in 26.65s

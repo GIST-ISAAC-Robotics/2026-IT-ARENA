@@ -23,4 +23,4 @@ def test_corridor_successor_preserves_previous_bytes():
             assert sha(archive.read(path)) == row['before'] != row['after']
             assert m3_revision_digest(path, newer_than=NAME) == row['after']
     for path, digest in contract['new_dependencies'].items():
-        assert sha((ROOT/path).read_bytes()) == digest
+        assert m3_revision_digest(path, newer_than=NAME) == digest

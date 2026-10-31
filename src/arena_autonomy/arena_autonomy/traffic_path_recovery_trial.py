@@ -31,7 +31,9 @@ class SuspendedPassageSelector(OriginalSelector):
         self.passage_preference=preferred
         reason=detail.get('reason')
         reverse_pause=(math.isfinite(speed) and speed<0 and reason=='follow_reverse_motion')
-        if reason not in NORMAL_BASELINE and reason!='follow_boundary_unconfirmed' and not reverse_pause:
+        # 같은 스캔의 일시 대기는 새 관측/주행 허가가 아니다. 통과 이력만 유지하고
+        # 아래의 서로 다른 새 스캔·현재 이동영역 검사에서 복원을 판단한다.
+        if reason not in NORMAL_BASELINE and reason not in ('follow_boundary_unconfirmed','follow_same_scan_missing_wait') and not reverse_pause:
             self.suspended_passage.clear()
         prior_passed={n for n,s in self.sides.items() if s['passed'] and not s['present']}
         source=scene.source_first_s
@@ -49,7 +51,7 @@ class SuspendedPassageSelector(OriginalSelector):
         output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
         # 경계 재획득과 유한 역방향은 출력0을 유지하는 연속 관측 대기다.
         # 일반 입력 고장/시계 단절/STOP은 이 경로로 보내지 않는다.
-        path_pause=(reason=='follow_boundary_unconfirmed' and
+        path_pause=(reason in ('follow_boundary_unconfirmed','follow_same_scan_missing_wait') and
                     output[2].get('selector_reason')=='baseline_not_normal')
         valid_reverse_pause=reverse_pause and output[2].get('selector_reason')=='reverse_motion_hold'
         if ((path_pause or valid_reverse_pause) and output[0]==0.

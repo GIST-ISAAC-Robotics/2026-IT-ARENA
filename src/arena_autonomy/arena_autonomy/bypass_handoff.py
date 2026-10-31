@@ -44,6 +44,9 @@ class HandoffExecutionConfig:
     front_patch_policy: str = 'contiguous_three_v0'
     entry_policy: str = 'registered_v0'
     preparation_hold_policy: str = 'off'
+    initial_reference_policy: str = 'off'
+    motion_pause_policy: str = 'off'
+    relative_yield_policy: str = 'off'
 
     def __post_init__(self):
         if not isinstance(self.bypass, BypassExecutionConfig):
@@ -67,6 +70,20 @@ class HandoffExecutionConfig:
             raise ValueError('registered preparation hold policy required')
         if self.preparation_hold_policy != 'off' and self.entry_policy != 'corridor_local_v1':
             raise ValueError('preparation hold requires explicit corridor handoff')
+        if self.initial_reference_policy not in ('off','ready_current_pair_v1','ready_directional_pair_v2'):
+            raise ValueError('registered initial reference policy required')
+        if self.initial_reference_policy != 'off' and self.entry_policy != 'corridor_local_v1':
+            raise ValueError('initial reference requires explicit corridor handoff')
+        if self.motion_pause_policy not in ('off','bounded_motion_pause_v1'):
+            raise ValueError('registered motion pause policy required')
+        if self.motion_pause_policy != 'off' and self.entry_policy != 'corridor_local_v1':
+            raise ValueError('motion pause requires explicit signed corridor handoff')
+        if self.relative_yield_policy not in ('off', 'bounded_relative_yield_v1', 'bounded_relative_yield_v2'):
+            raise ValueError('registered relative yield policy required')
+        if self.relative_yield_policy != 'off' and (
+                self.entry_policy != 'corridor_local_v1'
+                or self.motion_pause_policy != 'bounded_motion_pause_v1'):
+            raise ValueError('relative yield requires explicit corridor and bounded motion pause')
         if self.entry_policy == 'corridor_local_v1' and (
                 self.bypass.corridor_policy != 'corridor_v2_signed_hold'
                 or self.preparation_policy != 'observed_entry_space_v1'
@@ -251,7 +268,11 @@ class BypassHandoffFollow:
         self.bypass = BypassEntryFollow(self.config, self.execution.bypass, allow_simulation_trial=True)
         if self.execution.entry_policy == 'corridor_local_v1':
             from arena_autonomy.bypass_handoff_corridor_trial import configure_guide
-            configure_guide(self)
+            guide_type = None
+            if self.execution.motion_pause_policy == 'bounded_motion_pause_v1':
+                from arena_autonomy.bypass_motion_pause_trial import OverspeedHoldGuide
+                guide_type = OverspeedHoldGuide
+            configure_guide(self,guide_type)
         self.monitor = BlockingPersistence(self.execution, self.config.object_motion_bound_mps)
         self.mode = 'FOLLOW'; self.last_key = None; self.last_ref = None
         self.reacquire = 0
@@ -261,6 +282,27 @@ class BypassHandoffFollow:
         if self.execution.preparation_hold_policy == 'bounded_hold_v1':
             from arena_autonomy.bypass_preparation_hold import BoundedPreparationHold
             self._preparation_hold = BoundedPreparationHold()
+
+        self._initial_reference = None
+        if self.execution.initial_reference_policy != 'off':
+            from arena_autonomy.bypass_initial_reference import ReadyInitialReference
+            self._initial_reference = ReadyInitialReference(
+                directional_coverage=self.execution.initial_reference_policy=='ready_directional_pair_v2')
+            self.bypass.guide.reference_provider = self._straight_reference
+
+        self._relative_yield = None
+        if self.execution.relative_yield_policy == 'bounded_relative_yield_v1':
+            from arena_autonomy.bypass_relative_yield import RelativeYieldCommand
+            self._relative_yield = RelativeYieldCommand()
+        elif self.execution.relative_yield_policy == 'bounded_relative_yield_v2':
+            from arena_autonomy.bypass_relative_yield_pause import MotionPauseRelativeYieldCommand
+            self._relative_yield = MotionPauseRelativeYieldCommand()
+
+    def _straight_reference(self,scene,config=None):
+        config=self.config if config is None else config
+        if self._initial_reference is None:
+            return straight_reference(scene,config)
+        return self._initial_reference.reference(scene,config,self.monitor)
 
     def _execution_entries(self, scene, speed, previous, dt):
         """다음 새 스캔 직전 실행 검사와 같은 표적 여유로 본 진입 후보. 허가/자유 공간 아님.
@@ -320,7 +362,7 @@ class BypassHandoffFollow:
             return dict(result, reason='patch_outside_g1_swept_arc')
         # G2 진입의 초기 조건과 같은 현재 두 벽 직선 기준. 곡선/한쪽 벽 결측에서는
         # 우회를 시작할 수 없으므로 준비 감속도 하지 않는다. 경로 허가로 쓰지 않는다.
-        reference, evidence = straight_reference(scene, cfg)
+        reference, evidence = self._straight_reference(scene, cfg)
         if reference is None:
             return dict(result, reason='two_wall_straight_reference_unavailable',
                         reference_reason=evidence.get('reason'))
@@ -353,7 +395,7 @@ class BypassHandoffFollow:
                               length=cfg.length_m, width=cfg.width_m) for angle in (normal[1],previous))
         if arc >= 2.5:
             return target, dict(result, reason='patch_outside_g1_swept_arc')
-        reference, evidence = straight_reference(scene, cfg)
+        reference, evidence = self._straight_reference(scene, cfg)
         if reference is None:
             return target, dict(result, reason='two_wall_straight_reference_unavailable')
         # 희소 조각은 앞/뒤 기둥을 함께 포함할 수 있다. 중앙값으로 앞쪽 실제
@@ -379,6 +421,10 @@ class BypassHandoffFollow:
         self._preparation_history = None
         if self._preparation_hold is not None:
             self._preparation_hold.clear()
+        if self._initial_reference is not None:
+            self._initial_reference.clear()
+        if self._relative_yield is not None:
+            self._relative_yield.reset()
 
     def _discard_path_only(self):
         if self.execution.entry_policy == 'corridor_local_v1':
@@ -388,6 +434,12 @@ class BypassHandoffFollow:
             self.bypass.reset()
 
     def command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
+        if self._relative_yield is not None:
+            return self._relative_yield.command(self, scene, speed,
+                lambda: self._prepared_command(scene, history, speed, side, previous, dt, raw_scan=raw_scan))
+        return self._prepared_command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
+
+    def _prepared_command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
         if self._preparation_hold is None:
             return self._command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
         self._preparation_history = history
@@ -418,13 +470,20 @@ class BypassHandoffFollow:
         detail = dict(mode_before=self.mode, normal=normal[2], persistence=persistence,
                       scope='explicit_simulation_handoff_trial')
         fault = normal[2].get('selector_choice') == 'hold_fault'
+        if fault and self.execution.motion_pause_policy == 'bounded_motion_pause_v1':
+            from arena_autonomy.bypass_motion_pause_trial import signed_bypass_pause
+            fault = not signed_bypass_pause(self,normal,speed)
         if fault or not source_valid(scene) or not math.isfinite(speed) or (speed < 0 and
                 (self.execution.entry_policy != 'corridor_local_v1' or self.mode == 'FOLLOW')):
             self.bypass.reset(); self.monitor.reset(); self.mode = 'FOLLOW'; self.reacquire = 0
+            if self._initial_reference is not None:
+                self._initial_reference.clear()
             # 유한한 음의 엔코더 속도는 기존 G1이 정지하면서 관측/옆차 이력을
             # 보존하는 입력이다. 새 우회 경로만 버리고 G1 전체를 reset하지 않는다.
             return self._output(0., previous, detail,
                 'handoff_reverse_motion_hold' if speed < 0 else 'handoff_input_fault')
+        if self._initial_reference is not None:
+            self._initial_reference.update(scene,self.config,history)
         if self.mode == 'FOLLOW':
             # 확실한 현재 전방 반환을 보면서 관측 시간을 확보한다. 반환이 없어지면
             # G1을 따르며, 무반환 자체를 장애물/우회 신호로 사용하지 않는다.

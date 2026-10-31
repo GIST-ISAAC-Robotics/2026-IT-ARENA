@@ -86,7 +86,7 @@ SOURCE_FILES = [
         'partial_observation', 'partial_surface_alignment', 'parallel_lane_trial', 'pass_release_trial',
         'traffic_recovery_trial', 'traffic_path_recovery_trial', 'corridor_roles',
         'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial', 'rear_lane_keep_trial', 'observed_lane_preference_trial', 'observed_parallel_speed_trial', 'measured_lane_preference_trial', 'measured_parallel_speed_trial', 'measured_parallel_trial', 'fresh_parallel_trial', 'fresh_parallel_speed_trial',
-        'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'occupancy_timing', 'race_start', 'race_start_local',
+        'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'continuous_prefix', 'occupancy_timing', 'race_start', 'race_start_local',
         'observation_support', 'scan_topology', 'observation_lateral', 'linear_observation', 'race_session', 'race_permission')],
     *[f'src/arena_vehicle_interface/arena_vehicle_interface/{name}.py' for name in (
         'rotating_lidar', 'lidar_impairment', 'sim_wheel_encoder', 'ackermann_to_twist', 'timing_probe', 'queued_log',

@@ -513,6 +513,7 @@ def main():
                          'src/arena_autonomy/arena_autonomy/corner_distance.py',
                          'src/arena_autonomy/arena_autonomy/corner_corridor.py',
                          'src/arena_autonomy/arena_autonomy/corridor_observer.py',
+                         'src/arena_autonomy/arena_autonomy/continuous_prefix.py',
                          'src/arena_autonomy/arena_autonomy/observation_support.py',
                          'src/arena_autonomy/arena_autonomy/observation_lateral.py',
                          'src/arena_autonomy/arena_autonomy/linear_observation.py',

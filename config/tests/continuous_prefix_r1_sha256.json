@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "scope": "선택형 짧은 경로의 연속 선분 비교. 기본 활성화나 과거 실패 판정 변경 아님.",
+  "parent_contract": "config/tests/rotation_reobservation_r1_sha256.json",
+  "parent_contract_sha256": "eb5bb75190e3957509348c5865927fd8d18a8c85bf5e83ae71a67ece71885713",
+  "before_snapshot": "artifacts/validation/2026-10-31/g1_continuous_prefix_v1/before.zip",
+  "before_snapshot_sha256": "617e67f82217c0776ecd3d9f62e4373cc02634c42b3d1e953cf379c1f4dc0ecb",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/corridor_observer.py": {
+      "before": "3ed0d3ebe7e858c79b99ef589ffff441590a44722af0082b72e83f7e32ff8518",
+      "after": "42b9db9bba4035515d97180cdaf2cb63e871a130106d6bbb47ed289c0bcf9f60",
+      "reason": "20cm/8cm/25cm 기존 기준을 유지하며 경로점 사이 연속 공통 prefix를 확인"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/prepare_jetson_bundle.py": {
+      "before": "1b03359efa850db3d6204b06f68a067bf14a9d80e6e309d8ea76f9ab7143d695",
+      "after": "f6e00b18c3be99206a2f1a47bcf6bcf9ed813a104009eda1749244bbbca0dbc1",
+      "reason": "새 기하 의존성과 검사에서 발견한 기존 G2 내부 의존성 8개를 재생 배포/소스 계측 목록에 포함. 제어/판정 변경 없음."
+    },
+    "scripts/profile_follow_trace.py": {
+      "before": "cedb6e4b66d55c1eea709a82028c1b9b93ab68e7f9986c0d85b5f65294cfe3e3",
+      "after": "5235005ff45353ffe8c506bc8efab6ee56c557e2bb86ec764e8aba5fd7197f6d",
+      "reason": "새 기하 의존성과 검사에서 발견한 기존 G2 내부 의존성 8개를 재생 배포/소스 계측 목록에 포함. 제어/판정 변경 없음."
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "61917b447bfb1e9984e2e796f37235abf9e0cd9b89897b31243832853d32b994",
+      "after": "2c63c190f510116bb86354a06feaa4835e92c0c8380c350e1ea9c15ebcefaa6a",
+      "reason": "새 내부 기하 의존성을 소스 보존/배포/계측 목록에 포함. 주행 판정 변경 없음."
+    },
+    "scripts/validate_pipeline_faults_ros.py": {
+      "before": "e5de5918e85f63d0ee795ff9a85581573a83da5e39dbd39087174a85f90b66b4",
+      "after": "157396612d986ab0604c63fe40754be2c86c647641c9acd47238bae1b0fba8d9",
+      "reason": "새 내부 기하 의존성을 소스 보존/배포/계측 목록에 포함. 주행 판정 변경 없음."
+    },
+    "scripts/validate_basic_autonomy.py": {
+      "before": "a5062720a799b98d36fbc0a0513f51d368fdb10da1688a1add2df9c1eaddb25a",
+      "after": "0edcc3e14cab8520654e232c7f2432a232f47854887bc7d0d204d3bda70186e4",
+      "reason": "새 내부 기하 의존성을 소스 보존/배포/계측 목록에 포함. 주행 판정 변경 없음."
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/continuous_prefix.py": "95e0cffea02d2ac040a77778aa3e98be2dcb20f27daeaae32be205843f63e567"
+  }
+}

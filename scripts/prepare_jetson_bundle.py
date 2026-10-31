@@ -46,7 +46,7 @@ FOLLOW_PROFILE_TOOLS = (
     'src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py',
     'src/arena_autonomy/arena_autonomy/__init__.py',
     *(f'src/arena_autonomy/arena_autonomy/{name}.py' for name in
-      ('follow_trace', 'local_follow', 'r0_plus', 'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'local_scene', 'scene_motion',
+      ('follow_trace', 'local_follow', 'r0_plus', 'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'continuous_prefix', 'bypass_corridor_trial', 'bypass_handoff_corridor_trial', 'bypass_initial_reference', 'bypass_motion_pause_trial', 'bypass_preparation_hold', 'bypass_relative_yield', 'bypass_relative_yield_pause', 'bypass_signed_hold_trial', 'local_scene', 'scene_motion',
          'lidar_motion', 'lidar_observation', 'local_path', 'occupancy_timing',
          'observation_support', 'observation_lateral', 'linear_observation',
          'parallel_lane_trial', 'partial_observation', 'partial_surface_alignment', 'pass_release_trial', 'traffic_recovery_trial',

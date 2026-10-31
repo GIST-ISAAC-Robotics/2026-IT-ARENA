@@ -23,4 +23,4 @@ def test_handoff_corridor_successor_preserves_previous_source():
             assert sha(archive.read(path)) == change['before'] != change['after']
             assert m3_revision_digest(path, newer_than=NAME) == change['after']
     for path, digest in child['new_dependencies'].items():
-        assert sha((ROOT/path).read_bytes()) == digest
+        assert m3_revision_digest(path, newer_than=NAME) == digest
