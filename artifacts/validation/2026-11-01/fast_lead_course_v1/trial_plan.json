@@ -1,0 +1,23 @@
+{
+  "scope": "앞차 정지/재출발 뒤 0.55→0.825 m/s. 78초 한 랩. 자차 상한1.5 m/s, paced + observed_progress_yield_v3.",
+  "defaults": "OFF; 선택형 v3만 비교",
+  "criteria": {
+    "run_valid": true,
+    "source_unchanged": true,
+    "shutdown_clean": true,
+    "explicit_stop": true,
+    "actor_contact_messages": 0,
+    "sampled_overlap": 0,
+    "wall_collision_samples": 0,
+    "max_grass_wheels": 2,
+    "representative_course_full_lap": true,
+    "representative_course_nonprogress_5cm_under_s": 10.0
+  },
+  "reporting": "기존 HOLD/뒤유지/15cm 간격/차체도로안 raw gates 그대로 보존. 새 평가로 raw 실패 덮어쓰기 금지.",
+  "short_scope": "15초 정지각본은 진행·간격·양보갱신·접촉·STOP 관측. 시간창 밖 복귀 증명하지 않음.",
+  "compare": "우선 paced 같은각본 1회. 기존 정책은 저장입력으로 보존. closing 별도주행은 새근거가 있을때만.",
+  "source": "팀의 계속 주행·두 바퀴 잔디 허용, 기존 대표 10초 정체 기준. 값은 실차 검증 아님.",
+  "comparisons": "yield_progress_v1 대표 완주와 같은 코드/물성/센서. 상대 속도와 종료 시각만 변경.",
+  "repeat_policy": "기하와 소스 등록 후 실제 주행 1회. 원인 변화 없이 성공할 때까지 반복 금지.",
+  "interpretation": "기존 원시 HOLD/15 cm/뒤 유지 게이트도 보존. 복귀·한 랩·연속 진행과 실제 접촉/최대2바퀴 잔디를 우선한다."
+}

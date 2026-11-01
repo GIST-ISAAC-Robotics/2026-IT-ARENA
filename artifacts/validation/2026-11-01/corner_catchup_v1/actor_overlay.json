@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "registered_at": "2026-11-01 실행 전",
+  "base_case": "first_curve",
+  "scope": "왼쪽 +0.25 m·출발 위치 뒤 5 m, 1.1 m/s로 접근 후 14초부터 0.6 m/s. 고정 시간표이며 센서 전용 제어기와 분리.",
+  "reference": {
+    "path": "artifacts/validation/2026-11-01/rolling_lead_v1/curve_paced/trace.json",
+    "sha256": "cb4bb698d62357b1ee59062c56fcf02c90275cd9a5ccdf8a047530eb8fbf1d83"
+  },
+  "additional_actors": [
+    {
+      "model_name": "eval_corner_side",
+      "role": "side",
+      "start_center_gap_m": -5.0,
+      "lateral_offset_m": 0.25,
+      "route_kind": "first_curve",
+      "minimum_body_gap_m": 0.08,
+      "gap_basis": "기존 80 mm 측방 진단선. 실제 접촉·정체·두 바퀴 노면은 별도 보고.",
+      "schedule": [
+        {
+          "from_s": 0.0,
+          "to_s": 14.0,
+          "speed_mps": 1.1
+        },
+        {
+          "from_s": 14.0,
+          "to_s": 20.0,
+          "speed_mps": 0.6
+        }
+      ]
+    }
+  ]
+}

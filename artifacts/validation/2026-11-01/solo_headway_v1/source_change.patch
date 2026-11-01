@@ -1,0 +1,60 @@
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -56,6 +56,9 @@
+         partial_observation = str(self.declare_parameter('partial_observation_policy','strict').value)
+         signed_motion = str(self.declare_parameter('signed_motion_policy', 'forward_drive').value)
+         solo_route = bool(self.declare_parameter('g1_solo_route_only', False).value)
++        solo_headway = float(self.declare_parameter('g1_solo_headway_s', .8).value)
++        if not .5 <= solo_headway <= .8 or (solo_headway != .8 and not solo_route):
++            raise ValueError('changed headway requires solo route and a 0.5-0.8 s trial range')
+         if solo_route and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled
+                 or not self.get_parameter('use_sim_time').value or not trace_path):
+             raise ValueError('solo route requires recorded G1 simulation without R0+ or M3')
+@@ -102,6 +105,7 @@
+         self.follow = follow_type(FollowConfig(
+             signed_motion_policy=signed_motion,
+             solo_route_only=solo_route,
++            headway_s=solo_headway,
+             partial_observation_policy=partial_observation,
+             parallel_hold_trial=parallel_hold,
+             pass_release_trial=pass_release,
+--- a/src/arena_bringup/launch/simulation.launch.py
++++ b/src/arena_bringup/launch/simulation.launch.py
+@@ -72,6 +72,8 @@
+ # 단독 프리랩의 측방 교통 선택만 제외. 관측/점유·독립 보호 설정은 그대로 유지한다.
+ SPEED_PROFILES["g1_open_10kmh_solo"] = {
+     **SPEED_PROFILES["g1_open_10kmh_turn15_arc"], "g1_solo_route_only": True}
++SPEED_PROFILES["g1_open_10kmh_solo_gap05"] = {
++    **SPEED_PROFILES["g1_open_10kmh_solo"], "g1_solo_headway_s": .5}
+ 
+ 
+ def _float32_limit_not_above(limit):
+--- a/scripts/validate_basic_autonomy.py
++++ b/scripts/validate_basic_autonomy.py
+@@ -275,7 +275,7 @@
+     parser.add_argument("--wall-timeout-s", type=float, default=None,
+                         help="느린 오프라인 실행의 실제 시간 한도. 센서 시각 제한과 무관.")
+     parser.add_argument("--stop-wall-timeout-s", type=float, default=60.)
+-    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
++    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "g1_open_10kmh_solo_gap05", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
+     parser.add_argument("--lidar-rate-hz", type=float, default=10.0,
+                         help="Gazebo 이상화 라이다의 시험용 갱신률. C1 실물 회전수를 바꾸지 않습니다.")
+     parser.add_argument("--target-progress-m", type=float,
+@@ -305,7 +305,7 @@
+                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
+     args = parser.parse_args()
+     if args.team_signal_prelap and not (args.g1_race_path and args.laps==1 and args.target_progress_m is None
+-            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo')
++            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05')
+             and args.actuation_stop=='software_stop'
+             and args.grid_slot==3 and args.video and args.disable_speed_bump):
+         raise ValueError('2×5 신호 단독 시험 조건 불일치')
+@@ -573,7 +573,7 @@
+                          'scripts/g1_traffic_eval.py',
+                          'src/arena_bringup/launch/g1_follow.launch.py'):
+             report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
+-    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo'):
++    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05'):
+         rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
+         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+     recorder = recorder_log = None

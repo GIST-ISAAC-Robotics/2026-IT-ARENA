@@ -364,6 +364,14 @@ def test_comparison_speed_profile_only_changes_cap():
     assert profiles['g1_compare_1mps'] == {**profiles['exploratory'], 'max_speed_mps': 1.0}
 
 
+def test_combined_qualifying_profile_keeps_acceleration_and_only_enables_preview():
+    profiles = launch.SPEED_PROFILES
+    assert profiles['g1_open_10kmh_turn15'] == {
+        **profiles['g1_open_10kmh_rise15'], 'g1_preview_turn_speed': True}
+    assert launch.virtual_command_limit('g1_open_10kmh_turn15') == pytest.approx(10/3.6)
+    assert profiles['cautious']['max_speed_mps'] == .35
+
+
 @pytest.mark.parametrize('stream', ['ego', 'actor', 'trace'])
 def test_empty_or_truncated_required_stream_is_not_valid(stream):
     empty = synthetic_run(3.2, **{stream: []})

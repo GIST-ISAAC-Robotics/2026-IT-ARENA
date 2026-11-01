@@ -325,7 +325,8 @@ class GuardedSimActuator(TransportNode):
         self.wheelbase = float(self.get_parameter('wheelbase_m').value)
         if not math.isfinite(self.wheelbase) or self.wheelbase <= 0:
             raise ValueError('invalid wheelbase')
-        self.guard = AppliedGuard(wall_timeout_s=self.wall_limit())
+        limit = float(self.declare_parameter('applied_max_speed_mps', 2.5).value)
+        self.guard = AppliedGuard(wall_timeout_s=self.wall_limit(), max_speed=limit)
         self.pending = deque(maxlen=16)
         self.twist = self.create_publisher(Twist, '/sim/cmd_vel', 1)
         self.steer = self.create_publisher(Float64, '/sim/steering_angle', 1)

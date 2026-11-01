@@ -411,9 +411,16 @@ class PassReleaseSelector:
         c = self.follow_config
         motion_valid = (all(math.isfinite(v) for v in (speed, previous, dt))
                         and 0. < dt <= .2 and abs(previous) <= c.max_steering_rad+1e-9)
+        # 현재 보이는 본선 벽으로 만든 G1 경로만 별도 순항 상한을 쓴다.
+        # 평행·가림 경로의 출력이나 통과 판정까지 같은 상한으로 풀지는 않는다.
+        base_limit = c.max_speed_mps
+        if (c.open_route_speed_mps and baseline[2].get('open_route_speed_enabled') is True
+                and baseline[2].get('reason') == 'local_follow'):
+            base_limit = c.open_route_speed_mps
         outputs_valid = all(math.isfinite(o[0]) and math.isfinite(o[1])
-                            and 0. <= o[0] <= c.max_speed_mps+1e-9
-                            and abs(o[1]) <= c.max_steering_rad+1e-9 for o in (baseline, parallel))
+                            and 0. <= o[0] <= limit+1e-9
+                            and abs(o[1]) <= c.max_steering_rad+1e-9
+                            for o, limit in ((baseline, base_limit), (parallel, c.max_speed_mps)))
         if not motion_valid or not outputs_valid:
             return self._hold(previous, detail, self.invalidate('invalid_motion_or_output'))
         source, now = scene.source_first_s, scene.t_ref_s
@@ -556,17 +563,32 @@ class PassReleaseSelector:
             if retained:
                 fringe = rear_fringe_risk(self,scene,raw_scan,region,context)
                 detail['selector_rear_fringe'] = fringe
+                if (self.follow_config.released_rear_sweep_trial and region['unobserved']
+                        and context and not fringe['accepted']
+                        and partial.get('allowed') is True and partial.get('reason') == 'fully_observed'
+                        and all(not s['present'] for s in self.sides.values())):
+                    from arena_autonomy.released_rear_sweep import bounded_released_rear_sweep
+                    q = context['queries'][~context['free'] & ~context['masked']]
+                    sweep = bounded_released_rear_sweep(scene,raw_scan,q,context['padding'],
+                        self.follow_config.length_m,self.follow_config.width_m,speed,b_speed,
+                        self.config.small_excursion_m)
+                    detail['selector_released_rear_sweep'] = sweep
+                    if sweep['accepted']:
+                        fringe = sweep
             if not fringe['accepted']:
                 same = same_path_risk(self,scene,raw_scan,region,context,speed,b_speed,b_steer,previous,b_detail)
             detail['same_path_gap'] = same
-            detail['selector_bounded_rear_fringe_risk_accepted'] = fringe['accepted']
+            detail['selector_bounded_rear_fringe_risk_accepted'] = fringe['accepted'] and fringe.get('policy') is None
+            if self.follow_config.released_rear_sweep_trial:
+                detail['selector_released_rear_sweep_risk_accepted'] = bool((detail.get('selector_released_rear_sweep') or {}).get('accepted'))
             detail['selector_same_path_gap_risk_accepted'] = same['accepted']
         blocked = region_blocked(region, self.config, bounded_unknown_risk=fringe['accepted'] or same['accepted'])
         if blocked is None:
             small_tail=bool(region['masked_left'] or region['masked_right'])
             return b_speed, b_steer, {**b_detail, **detail, 'selector_choice': 'baseline',
                 'selector_masked_tail_risk_accepted':small_tail,
-                'selector_reason':'released_bounded_rear_fringe' if fringe['accepted'] else
+                'selector_reason':'released_bounded_rear_sweep' if fringe.get('policy') in ('released_low_speed_rear_sweep_v1','released_low_speed_body_fringe_v2') and fringe['accepted'] else
+                                  'released_bounded_rear_fringe' if fringe['accepted'] else
                                   'released_bounded_same_path_gap' if same['accepted'] else
                                   'released_observed_motion_small_masked_tail' if small_tail
                                   else 'released_large_motion_observed'}

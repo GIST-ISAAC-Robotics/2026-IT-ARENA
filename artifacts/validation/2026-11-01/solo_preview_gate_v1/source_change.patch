@@ -1,0 +1,70 @@
+--- before/src/arena_autonomy/arena_autonomy/local_follow.py
++++ src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -49,4 +49,5 @@
+     blend_open_speed_by_length: bool = False
+     preview_turn_speed: bool = False
++    preview_above_base_speed: bool = False  # 단독 선택형. 코너 예측을 통상 상한 위의 양수 목표에도 적용.
+     low_speed_arc_reacquire: bool = False  # 단독 시험 선택. 낮은 측정 속도의 양측 경로 재획득만.
+     lateral_acceleration_mps2: float = 3.5
+@@ -121,9 +122,12 @@
+                 (not self.blend_open_speed_by_length or self.occupancy_timing_mode != 'per_ray_candidate')):
+             raise ValueError('turn preview requires observed route speed and timed beam occupancy')
++        if (type(self.preview_above_base_speed) is not bool or
++                (self.preview_above_base_speed and not (self.solo_route_only and self.preview_turn_speed))):
++            raise ValueError('preview above base speed requires solo route and turn preview')
+         if (type(self.low_speed_arc_reacquire) is not bool or
+                 (self.low_speed_arc_reacquire and not self.blend_open_speed_by_length)):
+             raise ValueError('low speed arc reacquire requires the solo observed route speed profile')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
++               if k not in ('corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+@@ -762,5 +766,6 @@
+                     return 0., steering, {**detail, 'reason': 'follow_release_wait', 'behavior': 'HOLD'}
+                 self.held = False
+-            if (cfg.preview_turn_speed and open_route and 0. < target <= cfg.max_speed_mps
++            if (cfg.preview_turn_speed and open_route and 0. < target
++                    and (target <= cfg.max_speed_mps or cfg.preview_above_base_speed)
+                     and target < cap and clearance >= cfg.resume_clearance_m):
+                 from arena_autonomy.turn_preview import preview_speed
+--- before/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -128,4 +128,5 @@
+             blend_open_speed_by_length=bool(self.declare_parameter('g1_blend_open_speed_by_length',False).value),
+             preview_turn_speed=bool(self.declare_parameter('g1_preview_turn_speed',False).value),
++            preview_above_base_speed=bool(self.declare_parameter('g1_preview_above_base_speed',False).value),
+             low_speed_arc_reacquire=bool(self.declare_parameter('g1_low_speed_arc_reacquire',False).value),
+             lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),
+--- before/src/arena_bringup/launch/simulation.launch.py
++++ src/arena_bringup/launch/simulation.launch.py
+@@ -79,4 +79,6 @@
+ SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_ray"] = {
+     **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"], "g1_ray_wall_continuity": True}
++SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview"] = {
++    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"], "g1_preview_above_base_speed": True}
+ 
+ 
+--- before/scripts/validate_basic_autonomy.py
++++ scripts/validate_basic_autonomy.py
+@@ -276,5 +276,5 @@
+                         help="느린 오프라인 실행의 실제 시간 한도. 센서 시각 제한과 무관.")
+     parser.add_argument("--stop-wall-timeout-s", type=float, default=60.)
+-    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "g1_open_10kmh_solo_gap05", "g1_open_10kmh_solo_gap05_arc", "g1_open_10kmh_solo_gap05_arc_ray", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
++    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "g1_open_10kmh_solo_gap05", "g1_open_10kmh_solo_gap05_arc", "g1_open_10kmh_solo_gap05_arc_ray", "g1_open_10kmh_solo_gap05_arc_preview", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
+     parser.add_argument("--lidar-rate-hz", type=float, default=10.0,
+                         help="Gazebo 이상화 라이다의 시험용 갱신률. C1 실물 회전수를 바꾸지 않습니다.")
+@@ -306,5 +306,5 @@
+     args = parser.parse_args()
+     if args.team_signal_prelap and not (args.g1_race_path and args.laps==1 and args.target_progress_m is None
+-            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray')
++            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview')
+             and args.actuation_stop=='software_stop'
+             and args.grid_slot==3 and args.video and args.disable_speed_bump):
+@@ -574,5 +574,5 @@
+                          'src/arena_bringup/launch/g1_follow.launch.py'):
+             report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
+-    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray'):
++    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview'):
+         rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
+         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()

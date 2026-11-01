@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "scope": "등속·급정지 각본에서 센서 기반 상대 속도와 여유 거리의 추종 비교. 실차 승인 아님.",
+  "parent_contract": "config/tests/prelap_signal_r1_sha256.json",
+  "parent_contract_sha256": "1daaaca91afc75292ce17e662b7229966eab0325f12ba9d7b1450554e5d07872",
+  "before_snapshot": "artifacts/validation/2026-11-01/race_follow_closing_v1/before.zip",
+  "before_snapshot_sha256": "f99a0949a62be506d305360f96faa7236f836bc4d5de7508e14edda0d8823fde",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": {
+      "before": "b4755c0ce2c064cbbd3861093c5707b57dc91b002e8bd01558891a0fd7f99345",
+      "after": "cabf4b7e46d8174fa35a3b5dab8432dc13e1fc98aea82ae347a73fb57ab6dd30",
+      "reason": "등속 앞차가 실제로 전진한 관측이 있을 때만 남은 거리로 접근한다."
+    },
+    "src/arena_autonomy/arena_autonomy/g1_g2_node.py": {
+      "before": "267c3347ce9a5af77fcf58d9426ab6e71f546d7d58d07900ace37bcdc3b238d1",
+      "after": "cb7bb767328ac05024312e9371a4f621e5d68cc96f23fdcb6f0a45d6a29f6437",
+      "reason": "등속 앞차가 실제로 전진한 관측이 있을 때만 남은 거리로 접근한다."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "89e600e083ade2744bde6900aa6c1c65ce5d0db7013cb765ddbf26bb87729586",
+      "after": "290efd883295f16063a53a49b1cb59487747767cef34aecaf67989b99487ee5e",
+      "reason": "시험 인자가 closing일 때만 노드를 해당 비교로 기동한다."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "937031dd91f2fc40f0faad3571d2f8b45759bc4c2f3d7afb1e2c65ae88fd6c4c",
+      "after": "e63ddd883aff2baa7b02063f69869101829917ec09162429ba4b551da0d89687",
+      "reason": "선택형 추종 속도의 요청과 실제 기동 헤더를 구별한다."
+    },
+    "scripts/g1_handoff_eval.py": {
+      "before": "77b87628777d5062d92480ee39bc25fcd2c298dfe90cb626d5989f029ceeb06a",
+      "after": "e580164af3b08cbdc89c35946b67431616f402f904351b5ca70f8672ae13bc0d",
+      "reason": "선택형 추종 속도의 요청과 실제 기동 헤더를 구별한다."
+    }
+  },
+  "new_dependencies": {}
+}

@@ -1,0 +1,68 @@
+"""경로 근거 잇기 옵션 하나만 더한 단독 1회. 기준은 36.992초본이며 자동 재실행하지 않는다."""
+import argparse
+from hashlib import sha256
+import importlib.util
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[3]
+sys.path.insert(0, str(ROOT/'scripts'))
+from prelap_signal_eval import fixture_inputs  # noqa: E402
+
+BASE = HERE.parent/'solo_preview_gate_v1'
+ENV = HERE.parent/'turn_preview_v1/environment.sh'
+OLD, NEW = 'g1_open_10kmh_solo_gap05_arc_preview', 'g1_open_10kmh_solo_gap05_arc_preview_bridge'
+
+
+def digest(path):
+    return sha256(path.read_bytes()).hexdigest()
+
+
+def register():
+    prior = json.loads((BASE/'registered.json').read_bytes())
+    spec = importlib.util.spec_from_file_location('registered_speed_profiles', ROOT/'src/arena_bringup/launch/simulation.launch.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    old, new = module.SPEED_PROFILES[OLD], module.SPEED_PROFILES[NEW]
+    if new != {**old, 'g1_boundary_bridge': True} or old != prior['trial'] or 'g1_ray_wall_continuity' in new:
+        raise ValueError('비교 구성 변경은 경로 근거 잇기 하나여야 한다')
+    args = list(prior['args'])
+    index = args.index('--speed-profile')+1
+    if args[index] != OLD or args[-2:] != ['--output', str(BASE/'run1')]:
+        raise ValueError('기준 실행 인자 변경')
+    args[index], args[-1] = NEW, str(HERE/'run1')
+    files = set(prior['source_sha256'])
+    files.update(p.relative_to(ROOT).as_posix() for p in (
+        Path(__file__).resolve(), HERE/'before.zip', BASE/'registered.json', ENV, HERE/'README.md',
+        ROOT/'config/tests/boundary_bridge_r1_sha256.json', ROOT/'tests/test_boundary_bridge.py'))
+    files.update(p.relative_to(ROOT).as_posix() for p in (ROOT/'src/arena_autonomy/arena_autonomy').glob('*.py'))
+    sources = fixture_inputs()
+    sources.update({p: digest(ROOT/p) for p in sorted(files)})
+    changed = sorted(p for p, h in prior['source_sha256'].items() if sources[p] != h)
+    return dict(args=args, source_sha256=sources, baseline=old, trial=new, changed_since_preview=changed,
+                scope='36.992초 코너 예측 완주본과 같은 2×5·ID45 이동·방지턱 OFF·촬영·감속비·10 Hz 입력의 단독 1회. '
+                      'changed_since_preview는 등록 이후 변경 목록이며 이번 제어 기능 차이는 경로 근거 잇기다. 연속 광선 연결은 OFF다.')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--prepare-only', action='store_true')
+    options = parser.parse_args()
+    if (HERE/'run1').exists():
+        raise FileExistsError('기존 실행')
+    data, registered = register(), HERE/'registered.json'
+    if options.prepare_only:
+        with registered.open('x', encoding='utf-8', newline='\n') as stream:
+            json.dump(data, stream, ensure_ascii=False, indent=2)
+    else:
+        if data != json.loads(registered.read_bytes()):
+            raise ValueError('등록 후 입력 변경')
+        with (HERE/'run1_console.log').open('x') as stream:
+            result = subprocess.run(['bash', str(ENV), sys.executable, '-B', *data['args']], cwd=ROOT,
+                                    stdout=stream, stderr=subprocess.STDOUT)
+        with (HERE/'run1_exit.log').open('x') as stream:
+            stream.write(f'ACTUAL_EXIT_CODE={result.returncode}\n')
+        raise SystemExit(result.returncode)

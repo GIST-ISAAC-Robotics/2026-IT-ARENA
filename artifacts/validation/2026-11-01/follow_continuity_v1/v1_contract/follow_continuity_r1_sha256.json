@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "scope": "기존 1.5 m/s 교통 기준에서 고정 우회 여유를 연속 낮은 이동 조각에만 적용하는 선택형 비교",
+  "parent_contract": "config/tests/recent_forward_r1_sha256.json",
+  "parent_contract_sha256": "5a43c7a9fa6949a88bf789dee5135c17df1f33896fd2e7f09dc862f0795505ec",
+  "before_snapshot": "artifacts/validation/2026-11-01/follow_continuity_v1/before.zip",
+  "before_snapshot_sha256": "d38cfd4b3a6b875d80e28f450a59d0fd8819c8848a8801c30ae0d51fc19cd4ab",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": {
+      "before": "5d9ec8888f6e9f06e1e9ff2471b338bb5b859c824ac3661cbe26218e747f15d5",
+      "after": "9ec398a4313ec7d60ee11fa0dafa3d5361229a76c5f2938bbd89aa141a133861",
+      "reason": "전진율을 못 얻은 움직이는 조각에 정지 대비 고정 여유·준비 정지를 걸지 않는 선택형 비교; 기본값과 기존 정책은 그대로"
+    },
+    "src/arena_autonomy/arena_autonomy/g1_g2_node.py": {
+      "before": "bc5329a5a9cd04f4c340f7e92a11d1006e1dad1e84aaa8800621bf8b1808e3aa",
+      "after": "7f26b589f205069fcc322cfd30197d7a9d6f8456c26a4dc5df8c0b8d8ac05d8c",
+      "reason": "전진율을 못 얻은 움직이는 조각에 정지 대비 고정 여유·준비 정지를 걸지 않는 선택형 비교; 기본값과 기존 정책은 그대로"
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "7bc55261d6ae7db1f0c66acd3451cb57988534c41e4d09a0083e9f3af8717bab",
+      "after": "5afc957cae12919283f08204d452931e5efe7aedcfdf6a8a831492d8857511c0",
+      "reason": "전진율을 못 얻은 움직이는 조각에 정지 대비 고정 여유·준비 정지를 걸지 않는 선택형 비교; 기본값과 기존 정책은 그대로"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/g1_handoff_eval.py": {
+      "before": "d2bc90610de6f0d1a16efecff6a545c3269bb6249cf14db97144bada50bd2031",
+      "after": "bb31c436304003170f75db36704cc0f3f6728d3244a3ca5341a8a80394e19b76",
+      "reason": "전진율을 못 얻은 움직이는 조각에 정지 대비 고정 여유·준비 정지를 걸지 않는 선택형 비교; 기본값과 기존 정책은 그대로"
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "f3f872429522cf22faa49482249c3e378960336823a0622d2191a4198c00a262",
+      "after": "ae3846ef538066190645c283c2f3561bf1a5055c5d69246e87fb3d77cd33bc44",
+      "reason": "전진율을 못 얻은 움직이는 조각에 정지 대비 고정 여유·준비 정지를 걸지 않는 선택형 비교; 기본값과 기존 정책은 그대로"
+    }
+  },
+  "new_dependencies": {}
+}

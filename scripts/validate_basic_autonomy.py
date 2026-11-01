@@ -34,6 +34,16 @@ DEMO_TRACK = "official"
 DEMO_WORLD = REPO / "src/arena_gazebo/worlds/it_arena_official"
 
 
+def imu_sample(message):
+    """평가 진단 전용 최근 IMU 표본. 제어·보호 입력에는 쓰지 않는다."""
+    if message is None:
+        return None
+    linear, angular = message.linear_acceleration, message.angular_velocity
+    return {"stamp_s": float(message.header.stamp.sec) + message.header.stamp.nanosec * 1e-9,
+            "linear_acceleration_mps2": [linear.x, linear.y, linear.z],
+            "angular_velocity_rad_s": [angular.x, angular.y, angular.z]}
+
+
 def g1_solo_arguments(enabled, boundary, occupancy, record, output, corridor=False, recent=False):
     if not enabled:
         if boundary != 'connected' or occupancy != 'oldest' or record or corridor or recent:
@@ -199,14 +209,29 @@ def start_demo_process(log, speed_profile="cautious", lidar_rate_hz=10.0, tof_sa
                        control_rate_hz=20.0, render_backend="system", sensor_wall_timeout_s=3.0,
                        speed_bump=True, collision_detector="configured", runtime_artifacts="", grid_slot=0,
                        lidar_test_profile="", motion_test_profile="", actuation_mode="legacy", record_inputs=False,
-                       g1_follow=False, extra_arguments=(), r0_plus=False):
+                       g1_follow=False, extra_arguments=(), r0_plus=False, team_signal_prelap=False,
+                       team_signal_course=False):
     if g1_follow and r0_plus:
         raise ValueError('G1 and R0+ are mutually exclusive')
+    if team_signal_prelap or team_signal_course:
+        if team_signal_prelap and team_signal_course:
+            raise ValueError('단독과 교통 시험 입력을 함께 선택할 수 없다')
+        if team_signal_course:
+            from race_traffic_course import entry_for_output
+            ENTRY = entry_for_output(runtime_artifacts)
+        else:
+            from prelap_signal_eval import ENTRY
+        if not (g1_follow and not r0_plus and chase_camera and not speed_bump and grid_slot==3
+                and actuation_mode=='virtual_mcu' and runtime_artifacts):
+            raise ValueError('2×5 신호는 등록한 그리드·카메라·구동 조건에서만 사용한다')
+        launch_entry = [str(ENTRY)]
+    else:
+        launch_entry = ["arena_bringup", "r0_plus.launch.py" if r0_plus else
+                        ("g1_follow.launch.py" if g1_follow else "demo.launch.py")]
     # 이 검사기는 터미널 프로세스 그룹이 아니라 ros2 launch에만 SIGINT를
     # 보냅니다. WSL의 TTY 상속 여부와 무관하게 자식에게도 전달되게 합니다.
     return subprocess.Popen(
-        ["ros2", "launch", "--noninteractive", "arena_bringup",
-         "r0_plus.launch.py" if r0_plus else ("g1_follow.launch.py" if g1_follow else "demo.launch.py"), "headless:=true",
+        ["ros2", "launch", "--noninteractive", *launch_entry, "headless:=true",
          f"speed_profile:={speed_profile}", f"lidar_rate_hz:={lidar_rate_hz:g}",
          f"tof_safety:={str(bool(tof_safety)).lower()}", f"red_duration_s:={red_duration_s:g}",
          f"autonomy_mode:={autonomy_mode}",
@@ -250,7 +275,7 @@ def main():
     parser.add_argument("--wall-timeout-s", type=float, default=None,
                         help="느린 오프라인 실행의 실제 시간 한도. 센서 시각 제한과 무관.")
     parser.add_argument("--stop-wall-timeout-s", type=float, default=60.)
-    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
+    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "g1_open_10kmh_solo_gap05", "g1_open_10kmh_solo_gap05_arc", "g1_open_10kmh_solo_gap05_arc_ray", "g1_open_10kmh_solo_gap05_arc_preview", "g1_open_10kmh_solo_gap05_arc_preview_bridge", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
     parser.add_argument("--lidar-rate-hz", type=float, default=10.0,
                         help="Gazebo 이상화 라이다의 시험용 갱신률. C1 실물 회전수를 바꾸지 않습니다.")
     parser.add_argument("--target-progress-m", type=float,
@@ -266,28 +291,47 @@ def main():
     parser.add_argument('--g1-occupancy-timing', choices=('oldest', 'per_ray_candidate'), default='oldest')
     parser.add_argument('--record-follow-decisions', action='store_true')
     parser.add_argument('--g1-corridor-fallback', action='store_true', help='별도 승인된 회랑 후보를 단독 시험에서만 명시 선택')
+    parser.add_argument('--g1-race-path', action='store_true', help='10/31 경기 구성의 관측 경로 복구를 단독 속도 시험에 사용')
     parser.add_argument('--g1-recent-observation', action='store_true', help='선택형 측방 관측 보완; 후방 사각/실시간 마감 보증 아님')
     parser.add_argument('--partial-observation-policy', choices=('strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4'), default='strict')
     parser.add_argument('--course-marker-visibility', choices=('visible','blank_30','blank_all'), default='visible')
     parser.add_argument("--video", action="store_true",
                         help="제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.")
     parser.add_argument("--disable-speed-bump", action="store_true")
+    parser.add_argument('--team-signal-prelap',action='store_true',
+                        help='제작측 2×5 신호·ID45 팀 배치의 등록 단독 1랩 영상')
     parser.add_argument("--collision-detector", choices=("configured", "ode", "bullet", "fcl"), default="configured")
     parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy_official",
                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
     args = parser.parse_args()
+    if args.team_signal_prelap and not (args.g1_race_path and args.laps==1 and args.target_progress_m is None
+            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge')
+            and args.actuation_stop=='software_stop'
+            and args.grid_slot==3 and args.video and args.disable_speed_bump):
+        raise ValueError('2×5 신호 단독 시험 조건 불일치')
     extra_arguments = g1_solo_arguments(args.g1_follow, args.g1_boundary_evidence,
         args.g1_occupancy_timing, args.record_follow_decisions, args.output.resolve(), args.g1_corridor_fallback,
         args.g1_recent_observation)
+    if args.g1_race_path:
+        if not (args.g1_follow and args.g1_corridor_fallback and args.record_follow_decisions
+                and args.partial_observation_policy == 'bounded_local_v4' and not args.g1_recent_observation
+                and args.actuation_mode == 'virtual_mcu'):
+            raise ValueError('race path requires recorded G1 corridor, bounded_local_v4 and virtual MCU')
+        extra_arguments += [key+':=true' for key in ('g1_short_boundary_prefix_enabled',
+            'g1_parallel_hold_trial', 'g1_pass_release_trial', 'g1_guard_curve_trial',
+            'g1_traffic_recovery_trial', 'g1_traffic_path_recovery_trial')]
     if args.course_marker_visibility != 'visible':
         if args.autonomy_mode != 'local_pursuit' or args.g1_follow:
             raise ValueError('course marker visual trial currently requires baseline local_pursuit')
         extra_arguments.append('evaluation_course_markers:='+args.course_marker_visibility)
+    open_speed_trial = args.speed_profile.startswith('g1_open_')
+    if open_speed_trial and not (args.g1_follow and args.actuation_mode == 'virtual_mcu' and args.record_follow_decisions):
+        raise ValueError('open speed trial requires recorded solo G1 with independent guard and virtual MCU')
     if args.partial_observation_policy != 'strict':
         if (args.autonomy_mode != 'local_pursuit' or
                 args.lidar_compensation != 'both' or args.lidar_acquisition != 'sequential' or
-                args.speed_profile != 'g1_compare_1mps'):
-            raise ValueError('partial policy trial requires local_pursuit, sequential both and 1 m/s profile')
+                (args.speed_profile != 'g1_compare_1mps' and not open_speed_trial)):
+            raise ValueError('partial policy trial requires sequential both and a registered G1 speed profile')
         if args.g1_follow and (args.partial_observation_policy not in ('bounded_local_v2','bounded_local_v3','bounded_local_v4') or
                                args.g1_recent_observation or not args.record_follow_decisions):
             raise ValueError('G1 partial trial requires v2/v3/v4, decision recording and no recent observation candidate')
@@ -427,7 +471,12 @@ def main():
             lambda m: actuation_diagnostics.append(json.loads(m.data)),
             QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)))
     # demo.launch.py의 track=official과 같은 월드로 진행 거리와 충돌을 판정합니다.
-    world = DEMO_WORLD
+    if args.team_signal_prelap:
+        from prelap_signal_eval import FIXTURE,fixture_inputs,sequence_evidence
+        world=FIXTURE
+        facility_sources=fixture_inputs()
+    else:
+        world=DEMO_WORLD
     route = np.genfromtxt(world / "centerline.csv", delimiter=",", names=True)
     xy = np.column_stack((route["x_m"], route["y_m"]))
     scene = json.loads((world / "scene.json").read_text())
@@ -496,6 +545,8 @@ def main():
                                             REPO / "src/arena_autonomy/arena_autonomy/tof_safety.py",
                                             REPO / "src/arena_autonomy/arena_autonomy/tof_safety_core.py",
                                             REPO / "src/arena_bringup/config/wall_follow.yaml"]}}
+    if args.team_signal_prelap:
+        report['input_sha256'].update(facility_sources)
     processes = []
     report['partial_observation_policy'] = args.partial_observation_policy
     dense_poses, pose_lock = [], threading.Lock()
@@ -522,6 +573,9 @@ def main():
                          'scripts/g1_traffic_eval.py',
                          'src/arena_bringup/launch/g1_follow.launch.py'):
             report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
+    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge'):
+        rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
+        report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
     recorder = recorder_log = None
     if args.record_inputs:
         for rel in ('scripts/record_sensor_bag.py', 'scripts/recording_guard.py',
@@ -584,7 +638,8 @@ def main():
                                             args.render_backend, args.sensor_wall_timeout_s,
                                             not args.disable_speed_bump, args.collision_detector, str(output),
                                             args.grid_slot, args.lidar_test_profile, args.motion_test_profile,
-                                            args.actuation_mode, args.record_inputs, args.g1_follow, extra_arguments))
+                                            args.actuation_mode, args.record_inputs, args.g1_follow, extra_arguments,
+                                            team_signal_prelap=args.team_signal_prelap))
         pose_process = subprocess.Popen(["gz", "topic", "-e", "-t", "/world/it_arena_track/dynamic_pose/info", "--json-output"],
                                         cwd=REPO, stdout=subprocess.PIPE, stderr=log, text=True, start_new_session=True)
         processes.append(pose_process)
@@ -715,7 +770,7 @@ def main():
                       "progress_m": progress, "centerline_error_m": error, "collision": collision,
                       "yaw": yaw_of(pose["orientation"]), "autonomy": autonomous, "light": light["applied"],
                       "odom_speed": state["odom"].twist.twist.linear.x,
-                      "dynamics": state["dynamics"], "safety": state.get("safety"),
+                      "dynamics": state["dynamics"], "safety": state.get("safety"), "imu": imu_sample(state.get("imu")),
                       "safe_drive_speed_mps": (state["safe_drive"].drive.speed
                                                if "safe_drive" in state else None)}
             trace.append(record)
@@ -933,9 +988,14 @@ def main():
                                report['marker_visibility_evidence']['hidden_ids_not_detected'])
         report['route_complete'] = route_evidence
         safety_evidence = (report["safety_sensor_only_inputs"] if safety_active else True)
+        if args.team_signal_prelap:
+            report['team_signal_evidence']=sequence_evidence(output,signal_states,trace)
+            signal_evidence=report['team_signal_evidence']['passed']
+        else:
+            signal_evidence={"red", "yellow", "green"}.issubset(signal_states)
         report["passed"] = (not false_start and collision_samples == 0 and report['stop_collision_samples'] == 0 and report["stop_stable"] and
                             report["sensor_only_inputs"] and safety_evidence and source_interface_passed and
-                            {"red", "yellow", "green"}.issubset(signal_states) and route_evidence)
+                            signal_evidence and route_evidence)
         if args.g1_follow:
             running_rows = [row['autonomy'] for row in trace if row['autonomy']['state'] == 'RUNNING']
             report['g1_runtime_verified'] = bool(running_rows) and all(

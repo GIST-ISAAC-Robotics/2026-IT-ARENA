@@ -15,22 +15,61 @@ def mask_scan(scan, rear_half_angle_deg=30.):
     return result
 
 
-def local_path(points, side, offset=.425, horizon=1.8):
-    """연결된 관측 벽의 호길이 매개곡선. 수직 벽/급커브도 y=f(x)로 강제하지 않는다."""
+def ray_continuous_gaps(points, gaps, limits, rays, horizon, tolerance=.03, near=6, span=.30, heading=20.):
+    """전방으로 멀어지는 옆 벽에서 광선 간격 때문에 생긴 단절만 고른다.
+
+    같은 회전에서 원시 광선 번호가 이어진 가까운 여섯 점의 직선에 다음 두 실제 점이
+    수직 3 cm 안으로 놓일 때만 잇는다. 벽 방향이 차체 전방에서 벗어나거나 결측/다른 면이
+    끼면 잇지 않는다. 점을 만들거나 옮기지 않으며 실제 벽의 연속을 인증하지 않는다.
+    """
+    joined = np.zeros(len(gaps), dtype=bool)
+    ranges = np.linalg.norm(points, axis=1)
+    for index in np.flatnonzero(gaps > limits):
+        first, stop = index+1-near, index+3
+        if first < 0 or stop > len(points) or ranges[index+1] > horizon:
+            continue
+        steps = np.diff(rays[first:stop])
+        if abs(steps[0]) != 1 or np.any(steps != steps[0]):
+            continue
+        base = points[first:index+1]
+        if np.linalg.norm(base[-1]-base[0]) < span:
+            continue
+        center = base.mean(axis=0)
+        tangent = np.linalg.svd(base-center, full_matrices=False)[2][0]
+        if tangent @ (base[-1]-base[0]) < 0:
+            tangent = -tangent
+        if tangent[0] <= 0 or abs(tangent[1]) > math.sin(math.radians(heading)):
+            continue
+        offsets = points[first:stop]-center
+        joined[index] = (np.max(np.abs(offsets @ [-tangent[1], tangent[0]])) <= tolerance
+                         and np.all(np.diff(offsets @ tangent) > 0))
+    return joined
+
+
+def local_path(points, side, offset=.425, horizon=1.8, rays=None):
+    """연결된 관측 벽의 호길이 매개곡선. 수직 벽/급커브도 y=f(x)로 강제하지 않는다.
+
+    rays는 points와 같은 순서의 원시 광선 번호다. 주지 않으면 거리 간격만으로 연결한다.
+    """
     sign = 1 if side == "left" else -1
     points = np.asarray(points, dtype=float)
     if points.ndim != 2 or points.shape[1] != 2:
         return None, {"reason": "wall_lost"}
-    points = points[np.all(np.isfinite(points), axis=1)]
+    finite = np.all(np.isfinite(points), axis=1)
+    points = points[finite]
     if len(points) < 12:
         return None, {"reason": "wall_lost"}
     # 보정이 끝난 현재 좌표의 방위 순서. 왼쪽은 감소, 오른쪽은 증가 방향이 전진이다.
     angles = np.arctan2(points[:, 1], points[:, 0])
-    points = points[np.argsort(-sign * angles)]
+    order = np.argsort(-sign * angles)
+    points = points[order]
     gaps = np.linalg.norm(np.diff(points, axis=0), axis=1)
     # 먼 점의 각도 간격은 넓지만, 떨어진 벽/차량 사이를 잇는 임의 선분은 만들지 않는다.
     limits = .10 + .035 * np.minimum(np.linalg.norm(points[:-1], axis=1), np.linalg.norm(points[1:], axis=1))
-    breaks = np.flatnonzero(gaps > limits)
+    broken = gaps > limits
+    if rays is not None:
+        broken &= ~ray_continuous_gaps(points, gaps, limits, np.asarray(rays)[finite][order], horizon)
+    breaks = np.flatnonzero(broken)
     eligible = []
     for wall in np.split(points, breaks + 1):
         if len(wall) < 12:
@@ -170,17 +209,25 @@ def swept_limit(points, steering, wheelbase=.145, horizon=3., margin=.025, lengt
     """정곡률 예측 차체와 점군의 첫 간섭까지 후륜축 이동 거리를 계산한다."""
     points = np.asarray(points, dtype=float)
     curvature = math.tan(steering) / wheelbase
-    for distance in np.arange(0., horizon + .001, .04):
-        yaw = curvature * distance
+    distances = np.arange(0., horizon + .001, .04)
+    # 같은 4 cm 표본을 여덟 개씩 묶는다. libm 삼각함수와 연산 순서를 유지하여
+    # 경계의 포함 판정·첫 간섭·4 cm 차감이 기존 순차 계산과 같도록 한다.
+    for start in range(0, len(distances), 8):
+        steps = distances[start:start+8]
+        yaw = curvature * steps
+        c = np.asarray([math.cos(value) for value in yaw])[:, None]
+        s = np.asarray([math.sin(value) for value in yaw])[:, None]
         if abs(curvature) < 1e-5:
-            rx, ry = distance - wheelbase / 2, 0.
+            rx, ry = steps[:, None] - wheelbase / 2, 0.
         else:
-            rx, ry = math.sin(yaw) / curvature - wheelbase / 2, (1 - math.cos(yaw)) / curvature
+            rx, ry = s / curvature - wheelbase / 2, (1 - c) / curvature
         dx, dy = points[:, 0] - rx, points[:, 1] - ry
-        local_x = math.cos(yaw) * dx + math.sin(yaw) * dy - wheelbase / 2
-        local_y = -math.sin(yaw) * dx + math.cos(yaw) * dy
-        if np.any((np.abs(local_x) <= length/2 + margin) & (np.abs(local_y) <= width/2 + margin)):
-            return max(0., float(distance) - .04)  # 이산 검사 간격을 안전 여유로 차감
+        local_x = c * dx + s * dy - wheelbase / 2
+        local_y = -s * dx + c * dy
+        hit = np.any((np.abs(local_x) <= length/2 + margin) & (np.abs(local_y) <= width/2 + margin), axis=1)
+        indices = np.flatnonzero(hit)
+        if len(indices):
+            return max(0., float(steps[indices[0]]) - .04)  # 이산 검사 간격을 안전 여유로 차감
     return horizon
 
 

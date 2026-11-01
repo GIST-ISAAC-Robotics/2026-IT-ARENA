@@ -1,7 +1,7 @@
 """G2의 명시적 저속 시뮬레이션 실행 어댑터. 자동 경기 우회 선택기가 아니다."""
 from dataclasses import dataclass
 from arena_autonomy.bypass_entry_trial import EntryConfig,EntryGuide
-from arena_autonomy.local_follow import FollowConfig
+from arena_autonomy.local_follow import FollowConfig, forward_planning_speed, signed_feedback_detail
 
 CORRIDOR_POLICIES = ('off','corridor_v1','corridor_v2_signed_hold')
 
@@ -54,11 +54,12 @@ class BypassEntryFollow:
         self.guide.reset()
 
     def command(self,scene,history,speed,side,previous_steering,dt,*,raw_scan=None):
-        result=self.guide.evaluate(scene,history,speed,previous_steering,dt)
+        planning=forward_planning_speed(self.config,speed)
+        result=self.guide.evaluate(scene,history,planning,previous_steering,dt)
         chosen=result['selected']
         target,steering=(0.,previous_steering) if chosen is None else (chosen['speed_mps'],chosen['steering_rad'])
         detail={**result,'mode':'g2_entry_trial','behavior':'BYPASS' if target>0 else 'HOLD',
             'passing_enabled':True,'simulation_trial_only':True,'automatic_race_mode_selection':False,
             'output_requires_independent_guard':True,'source_first_s':scene.source_first_s,
             'reference_stamp_s':scene.t_ref_s,'source_epoch':scene.source_epoch}
-        return target,steering,detail
+        return signed_feedback_detail((target,steering,detail),speed,planning)

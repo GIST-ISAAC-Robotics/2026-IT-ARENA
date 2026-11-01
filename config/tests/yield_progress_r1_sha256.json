@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "scope": "현재 면 전진 확인 시에만 양보 예산 갱신, 기본 OFF 및 기존 모드 보존",
+  "parent_contract": "config/tests/follow_continuity_r1_sha256.json",
+  "parent_contract_sha256": "33c0026752db751cb018d70366d847939a50464b63f9f82dec63c686e645cec3",
+  "before_snapshot": "artifacts/validation/2026-11-01/yield_progress_v1/before.zip",
+  "before_snapshot_sha256": "466758c6633d93c8910735136f254a3474e806a18abfff68e5d95170caacfa8c",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": {
+      "before": "243eb1d2bfb6bf24f61e67208c3a085dfa81188664666fede814662e5b7c77d8",
+      "after": "580a131d5d930a6451b9d2a37613e6eff46666cbb9d539d0a18134a4e937360d",
+      "reason": "5초 경과로 같은 속도 병렬 주행에 고착되는 복귀 문제를 현재 상대전진 근거로만 보완"
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "c9be2ede8851f1f45495c2e4e7ddc3d4deab0988272317f63db7afdc0d5912a8",
+      "after": "95f9d3b9665c1d2bbc01ece9fcf3a92a19c1bc4b2bbc008970c10711cef184f9",
+      "reason": "5초 경과로 같은 속도 병렬 주행에 고착되는 복귀 문제를 현재 상대전진 근거로만 보완"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/g1_handoff_eval.py": {
+      "before": "7dba940dbbca7b9a546096428b238cf4e7c862ebc0ee38cbbde18ad794367c21",
+      "after": "d2a0fdaec15654cd54ee32ddbe91747c5fdbd458e6b39d68b1dc1b49224270f8",
+      "reason": "5초 경과로 같은 속도 병렬 주행에 고착되는 복귀 문제를 현재 상대전진 근거로만 보완"
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "f1688287576d21c42489154bdb322b50d232f32ba0a39aca5e46fb144c86db2b",
+      "after": "8ae03a60ef08767574340c4ba0c32aafc01551bcf842105a3db4cf91017806e3",
+      "reason": "5초 경과로 같은 속도 병렬 주행에 고착되는 복귀 문제를 현재 상대전진 근거로만 보완"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/bypass_yield_progress.py": "4190d2c5594c0b50110b2956def7560e3a9900d54e87f1edb6e2ccd6ca7d980f"
+  }
+}

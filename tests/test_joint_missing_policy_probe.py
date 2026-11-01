@@ -20,14 +20,14 @@ def shadow_only(monkeypatch):
     existing.test_forward_hidden_known_object_remains_latched_after_it_disappears,
     existing.test_wide_blind_interval_does_not_recover_from_one_narrow_gap,
     existing.test_independent_gate_caps_request_not_scan_and_preserves_zero_command,
-    existing.test_reverse_feedback_stops_output_but_does_not_expire_live_observations,
+    existing.test_reverse_feedback_can_drive_forward_without_expiring_live_observations,
 ])
 def test_existing_essential_loss_and_recovery_contracts(check):
     check()
 
 
 @pytest.mark.parametrize('fault',['near_obstacle','stale_command','stale_scan','transport',
-                                 'missing_motion','reverse_motion','invalid_scan','central_gap'])
+                                 'missing_motion','invalid_scan','central_gap'])
 def test_independent_faults_remain_stop(fault):
     existing.test_partial_policy_does_not_bypass_independent_faults(fault)
 

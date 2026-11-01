@@ -1,0 +1,57 @@
+...................................................................F.... [ 43%]
+........................................................................ [ 87%]
+....................                                                     [100%]
+=================================== FAILURES ===================================
+________ test_successor_preserves_failed_run_code_and_previous_contract ________
+
+    def test_successor_preserves_failed_run_code_and_previous_contract():
+        import hashlib
+        import json
+        from pathlib import Path
+        import zipfile
+        from test_source_provenance_r0_plus_b3 import m3_revision_digest
+        root = Path(__file__).resolve().parents[1]
+        name = 'config/tests/traffic_recovery_release_fringe_r1_sha256.json'
+        contract = json.loads((root/name).read_text(encoding='utf-8'))
+        sha = lambda data: hashlib.sha256(data).hexdigest()
+        assert contract['parent_contract'] == 'config/tests/traffic_recovery_trial_r0_sha256.json'
+        parent = (root/contract['parent_contract']).read_bytes()
+        assert sha(parent) == contract['parent_contract_sha256']
+        assert not contract['approved_evaluation_scripts'] and not contract['new_dependencies']
+        snapshot = root/contract['before_snapshot']
+        assert sha(snapshot.read_bytes()) == contract['before_snapshot_sha256']
+        assert set(contract['approved_changes']) == {'src/arena_autonomy/arena_autonomy/pass_release_trial.py'}
+        with zipfile.ZipFile(snapshot) as archive:
+            for path, row in contract['approved_changes'].items():
+                assert sha(archive.read(path)) == row['before'] == json.loads(parent)['approved_changes'][path]['after']
+>               assert row['before'] != row['after'] == m3_revision_digest(path, newer_than=name)
+
+tests/test_traffic_release_fringe.py:104: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/pass_release_trial.py'
+newer_than = 'config/tests/traffic_recovery_release_fringe_r1_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert '88bcd3074da9...604c5d73b164f' == '2b3991cebf08...3741c66f5c3ef'
+E             - 2b3991cebf0871075d5e95b00a00c46317d5b993e44f31e31693741c66f5c3ef
+E             + 88bcd3074da9285ff1447d75e650ee3fad39562943ea8502d34604c5d73b164f
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_traffic_release_fringe.py::test_successor_preserves_failed_run_code_and_previous_contract
+1 failed, 163 passed in 2.16s

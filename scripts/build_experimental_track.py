@@ -100,6 +100,16 @@ def obstacle_polygons(world_path: Path) -> list[Polygon]:
             sx, sy, sz = map(float, size.split())
             cp = [float(value) for value in collision.findtext("pose", "0 0 0 0 0 0").split()]
             if any(abs(value) > 1e-8 for value in (lp[3], lp[4], cp[3], cp[4])):
+                # 링크 원점에 둔 외접구는 하위 상자가 어떤 각도로 돌아도 포함한다.
+                # 기울어진 신호 외함처럼 구 전체가 기존 차체 검사 높이 밖이면
+                # 무시할 수 있다. 낮게 걸친 기울어진 상자는 여전히 지원하지 않는다.
+                radius = math.hypot(*cp[:3]) + .5 * math.hypot(sx, sy, sz)
+                model_pose = model.find("pose")
+                ordinary_frames = (all(elem is None or not elem.attrib for elem in
+                                       (model_pose,link.find("pose"),collision.find("pose"))) and
+                    (model_pose is None or all(float(v)==0 for v in model_pose.text.split())))
+                if ordinary_frames and (lp[2]+radius<=.02 or lp[2]-radius>=.10):
+                    continue
                 raise ValueError("기울어진 충돌체는 현재 평면 검사기가 지원하지 않습니다.")
             z = lp[2] + cp[2]
             if z + sz / 2 <= 0.02 or z - sz / 2 >= 0.10:

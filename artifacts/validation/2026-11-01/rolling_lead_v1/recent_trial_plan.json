@@ -1,0 +1,28 @@
+{
+  "purpose": "마지막 재가속에서 우회용 1.20m 여유 때문에 정지/급감속하는 손실을 줄인다.",
+  "one_change": "recent_forward_reserve true; separate three-scan evidence, existing0.5m/s cap and6cm endpoint uncertainty",
+  "keep": [
+    "1.5m/s original open profile",
+    "10Hz sequential LiDAR",
+    "same wheel/gear/physics",
+    "STOP and guard",
+    "stationary persistence and bypass admission",
+    "original final gap and contact gates"
+  ],
+  "cases": [
+    {
+      "name": "curve",
+      "reference": "run1",
+      "duration_s": 17,
+      "expect": "최종 간격 감소·접촉/도로이탈/긴정체 없음"
+    },
+    {
+      "name": "stop",
+      "reference": "../race_follow_closing_v1/stop",
+      "duration_s": 15,
+      "expect": "기존 급정지·우회 기록에 비해 제동·접촉 손실 증가 여부"
+    }
+  ],
+  "acceptance": "raw gate failure preserved; narrower final gap alone insufficient if new collision/road loss occurs",
+  "status": "candidate and replay only; wait for running solo trial to complete before changing shared sources"
+}

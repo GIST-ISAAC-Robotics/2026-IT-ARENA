@@ -1,0 +1,40 @@
+--- before/src/arena_autonomy/arena_autonomy/released_rear_sweep.py
++++ after/src/arena_autonomy/arena_autonomy/released_rear_sweep.py
+@@ -1,7 +1,8 @@
+ """측방 통과 뒤 저속의 작은 후반부 무반환 이동. 자유 공간 증명이 아니다.
+ 
+-기존 통과 이력 유지 분기에서만 호출한다. 앞부분·범퍼 너머·현재 점유·넓은
+-결측을 풀지 않고 기존 1 cm 작은 횡이동 위험 범위를 뒤쪽 옆면에도 일치시킨다.
++기존 통과 이력 유지 분기에서만 호출한다. 앞부분·범퍼 너머·현재 점유는 유지한다.
++1 cm 영역은 공백 하나 3도, 그중 1 mm 영역만 기존 전체 공백 6도 예산을
++한 공백에도 적용한다. 가려진 돌출물·차체/운동 오차의 위험은 남는다.
+ """
+ import math
+ import numpy as np
+@@ -32,4 +33,15 @@
+         return {**result,'reason':'outside_released_rear_sweep'}
+     answer=_bounded_nonreturn(scene,raw_scan,q,pad,result)
+     if answer['accepted']:answer['reason']='bounded_released_rear_sweep_risk'
++    elif answer['reason']=='wide_nonreturn' and float(exterior.max())<=.001:
++        # 이미 쓰는 1 mm 후반부 기하와 전체 6도 예산의 조합이다. 공백의 수/합계,
++        # 양옆 실제 반환·팽창·시각·원시 +inf는 같은 함수로 다시 검사한다.
++        retry=_bounded_nonreturn(scene,raw_scan,q,pad,{**result,
++            'maximum_gap_rad':math.radians(6),
++            'maximum_exterior_m':min(.001,maximum_exterior_m),
++            'policy':'released_low_speed_body_fringe_v2'})
++        if retry['accepted']:
++            retry.update(reason='bounded_released_body_fringe_risk',
++                         previous_rejection='wide_nonreturn')
++            return retry
+     return answer
+--- before/src/arena_autonomy/arena_autonomy/pass_release_trial.py
++++ after/src/arena_autonomy/arena_autonomy/pass_release_trial.py
+@@ -587,7 +587,7 @@
+             small_tail=bool(region['masked_left'] or region['masked_right'])
+             return b_speed, b_steer, {**b_detail, **detail, 'selector_choice': 'baseline',
+                 'selector_masked_tail_risk_accepted':small_tail,
+-                'selector_reason':'released_bounded_rear_sweep' if fringe.get('policy') == 'released_low_speed_rear_sweep_v1' and fringe['accepted'] else
++                'selector_reason':'released_bounded_rear_sweep' if fringe.get('policy') in ('released_low_speed_rear_sweep_v1','released_low_speed_body_fringe_v2') and fringe['accepted'] else
+                                   'released_bounded_rear_fringe' if fringe['accepted'] else
+                                   'released_bounded_same_path_gap' if same['accepted'] else
+                                   'released_observed_motion_small_masked_tail' if small_tail

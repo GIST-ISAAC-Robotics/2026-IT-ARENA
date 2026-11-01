@@ -31,6 +31,7 @@ from validate_basic_autonomy import (DEMO_WORLD, REPO, add_rate_metrics, configu
                                      early_start_detected, start_demo_process)
 from validate_facility_visibility import yaw_of
 import g1_traffic_eval as ev
+import g1_handoff_eval
 from g1_lidar_stress import load_test_profile, audit_injection, require_injection_evidence
 from g1_motion_stress import load_motion_profile, require_motion_evidence, motor_count_resolution
 from g1_partial_trial import (POLICIES, partial_trial_arguments, partial_trace_fields, partial_trial_evidence,
@@ -49,6 +50,7 @@ CONTACT_TOPIC = '/eval/g1b_actor/contact'
 CONTACT_PROBE_REPORT = REPO/'artifacts/validation/2026-10-07/g1b_contact_probe_v1/report.json'
 SOURCE_FILES = [
     'config/tests/local_start_signal_r0_sha256.json',
+    'scripts/g1_handoff_eval.py',
     'scripts/g1_partial_trial.py', 'config/tests/partial_observation_r0_sha256.json',
     'scripts/g1_motion_stress.py', 'scripts/motion_fault_audit.py',
     'scripts/g1_lidar_stress.py', 'scripts/g1_course_eval.py',
@@ -85,7 +87,7 @@ SOURCE_FILES = [
         'vision_process', 'lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'follow_trace',
         'partial_observation', 'partial_surface_alignment', 'parallel_lane_trial', 'pass_release_trial',
         'traffic_recovery_trial', 'traffic_path_recovery_trial', 'corridor_roles',
-        'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial', 'rear_lane_keep_trial', 'observed_lane_preference_trial', 'observed_parallel_speed_trial', 'measured_lane_preference_trial', 'measured_parallel_speed_trial', 'measured_parallel_trial', 'fresh_parallel_trial', 'fresh_parallel_speed_trial',
+        'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial', 'released_rear_sweep', 'rear_lane_keep_trial', 'observed_lane_preference_trial', 'observed_parallel_speed_trial', 'measured_lane_preference_trial', 'measured_parallel_speed_trial', 'measured_parallel_trial', 'fresh_parallel_trial', 'fresh_parallel_speed_trial',
         'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'continuous_prefix', 'occupancy_timing', 'race_start', 'race_start_local',
         'observation_support', 'scan_topology', 'observation_lateral', 'linear_observation', 'race_session', 'race_permission')],
     *[f'src/arena_vehicle_interface/arena_vehicle_interface/{name}.py' for name in (
@@ -375,8 +377,15 @@ def stop_owned(process, timeouts=((signal.SIGINT, 15), (signal.SIGTERM, 5), (sig
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--case', required=True)
+    parser.add_argument('--team-signal-course', action='store_true',
+                        help='11/1 등록된 155초 앞차·옆차와 2×5 픽셀 출발을 사용한다.')
     parser.add_argument('--seed', type=int, choices=(0, 1, 2), required=True)
-    parser.add_argument('--mode', choices=('g1', 'r0', 'r0plus', 'm3'), required=True)
+    parser.add_argument('--mode', choices=('g1', 'r0', 'r0plus', 'm3', 'g1g2'), required=True)
+    parser.add_argument('--handoff-reserve', choices=('fixed','moving','closing','recent','low_motion','paced'),
+                        help='G1/G2 앞차 비교: 고정 여유, 이동 속도 추종, 또는 이동 속도와 남은 거리로 접근.')
+    parser.add_argument('--handoff-rear-sweep', action='store_true', help='통과 후 저속 후반부 이동 시험')
+    parser.add_argument('--handoff-yield-progress', action='store_true',
+                        help='현재 면의 전진 근거로 우회 양보 예산을 갱신하는 선택형 비교')
     parser.add_argument('--m3-command-fallback', action='store_true',
                         help='M3 실제 발행 검사까지 포함한 경로 후보 선택 비교; 기본 비활성')
     parser.add_argument('--m3-release-to-baseline', action='store_true',
@@ -465,8 +474,8 @@ def main():
     motion_profile, motion_requested = load_motion_profile(args.motion_test_profile, REPO)
     if motion_profile and configured_feedback_topic() != '/drive_motor/encoder':
         parser.error('registered motion stress requires current single motor-shaft feedback')
-    if args.record_follow_decisions and args.mode not in ('g1', 'r0plus', 'm3'):
-        parser.error('--record-follow-decisions requires --mode g1 or r0plus')
+    if args.record_follow_decisions and args.mode not in ('g1', 'r0plus', 'm3', 'g1g2'):
+        parser.error('--record-follow-decisions requires a recorded controller mode')
     if args.boundary_evidence != 'connected' and (args.mode not in ('g1', 'm3') or not args.record_follow_decisions):
         parser.error('fragmented candidate requires G1 with decision recording')
     if (args.zero_speed_mode != 'legacy' or args.physics_step) and not args.record_braking_diagnostics:
@@ -485,6 +494,27 @@ def main():
         raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
     specs = actor_specs(config, case)
     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
+    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep)
+    facility_sources = {}
+    world_dir = DEMO_WORLD
+    if args.team_signal_course:
+        import race_traffic_course as course
+        from prelap_signal_eval import FIXTURE
+        facility_sources = course.inputs(args, config, case)
+        world_dir = FIXTURE
+    if handoff_arguments and ((not args.team_signal_course and (args.case not in ('stop_restart','slow_lead') or args.actor_overlay))
+            or args.seed != 0 or
+            args.race_operation_test or lidar_profile or motion_profile or args.partial_observation_policy != 'strict'
+            or args.zero_speed_mode != 'legacy' or args.physics_step
+            or args.corridor_fallback or args.short_boundary_prefix or args.parallel_hold_trial
+            or args.pass_release_trial or args.traffic_recovery_trial or args.guard_curve_trial
+            or args.traffic_path_recovery_trial or args.boundary_evidence != 'connected' or args.occupancy_timing != 'oldest'):
+        raise ValueError('registered G1/G2 traffic comparison uses its fixed configuration, seed 0 and no overlays')
+    if handoff_arguments and not args.team_signal_course:
+        reference=load_config(CONFIG)
+        if (case != case_named(reference,args.case) or actor_cfg != reference['actor']
+                or acceptance != reference['acceptance'] or config['seeds']['0'] != reference['seeds']['0']):
+            raise ValueError('G1/G2 traffic comparison must retain the original lead, schedule and acceptance gates')
     partial_arguments = partial_trial_arguments(args.partial_observation_policy, args.mode,
                                                args.record_follow_decisions, launch)
     parallel_arguments = parallel_trial_arguments(args.parallel_hold_trial, args.partial_observation_policy,
@@ -501,13 +531,13 @@ def main():
     output = args.output.resolve()
     if not output.is_relative_to(REPO/'artifacts'):
         raise ValueError('output must be under artifacts')
-    centerline, scene = load_centerline()
+    centerline, scene = load_centerline(world_dir) if args.team_signal_course else load_centerline()
     s0 = actor_start_s(config, scene, args.seed, case)
     lateral = actor_lateral_offset(config, case)
-    route = check_route(config, centerline, case, s0, road_polygon(DEMO_WORLD/'world.sdf'),
-                        obstacle_polygons(DEMO_WORLD/'world.sdf'))
+    route = check_route(config, centerline, case, s0, road_polygon(world_dir/'world.sdf'),
+                        obstacle_polygons(world_dir/'world.sdf'))
     starts, additional_routes = check_additional_routes(config, case, specs, scene, args.seed, centerline,
-        road_polygon(DEMO_WORLD/'world.sdf'), obstacle_polygons(DEMO_WORLD/'world.sdf'),
+        road_polygon(world_dir/'world.sdf'), obstacle_polygons(world_dir/'world.sdf'),
         actor_start_s, check_route, actor_pose_at) if len(specs) > 1 else ([s0], None)
     output.mkdir(parents=True, exist_ok=False)
     actor_path = output/'evaluation_actor.sdf'
@@ -516,6 +546,10 @@ def main():
                   actor_sdf(config, primary_pose_at(config, centerline, s0, case, 0.)))
     actor_path.write_text(actor_text, encoding='utf-8')
     sources = {rel: sha256(REPO/rel) for rel in source_paths(args.config, lidar_profile, args.actor_overlay, motion_profile)}
+    sources.update(facility_sources)
+    if handoff_arguments:
+        for path in sorted((REPO/'src/arena_autonomy/arena_autonomy').glob('*.py')):
+            sources[path.relative_to(REPO).as_posix()] = sha256(path)
     runtime_motion_profile = None
     if motion_profile:
         runtime_motion_profile = output/'motion_test_profile.json'
@@ -687,7 +721,7 @@ def main():
             from m4_second_start import RosSecondStart
             second_start = RosSecondStart(node, Trigger)
     actor_client = node.create_client(SetEntityPose, SET_POSE_SERVICE)
-    obstacles = obstacle_polygons(DEMO_WORLD/'world.sdf')
+    obstacles = obstacle_polygons(world_dir/'world.sdf')
     tree = STRtree(obstacles)
     log_path = output/'simulation.log'
     log = log_path.open('w', encoding='utf-8')
@@ -740,7 +774,11 @@ def main():
 
     try:
         extra = [f'evaluation_actor_sdf:={actor_path}', *partial_arguments, *parallel_arguments, *release_arguments,
-                 *guard_arguments, *recovery_arguments, *path_recovery_arguments]
+                 *guard_arguments, *recovery_arguments, *path_recovery_arguments, *handoff_arguments]
+        if handoff_arguments:
+            report.update(boundary_evidence_mode='corner_distance_candidate', occupancy_timing_mode='per_ray_candidate',
+                handoff_reserve=args.handoff_reserve, handoff_launch_arguments=handoff_arguments,
+                partial_observation_policy='bounded_local_v4')
         if operation_trial is not None:
             extra.append('race_control_mode:=b3_candidate')
         if args.boundary_evidence != 'connected':
@@ -771,12 +809,13 @@ def main():
         extra += drivetrain_evaluation_arguments(args.zero_speed_mode, args.physics_step)
         processes.append(start_demo_process(
             log, launch['speed_profile'], launch['lidar_rate_hz'], True, launch['red_duration_s'],
-            launch['autonomy_mode'], False, launch['lidar_acquisition'], launch['lidar_compensation'],
+            launch['autonomy_mode'], args.team_signal_course, launch['lidar_acquisition'], launch['lidar_compensation'],
             launch['control_rate_hz'], launch['render_backend'], launch['sensor_wall_timeout_s'],
             launch['speed_bump'], launch['collision_detector'], str(output), launch['grid_slot'],
             str(runtime_lidar_profile) if runtime_lidar_profile else '',
             str(runtime_motion_profile) if runtime_motion_profile else '',
-            launch['actuation_mode'], False, args.mode in ('g1', 'm3'), extra, r0_plus=args.mode == 'r0plus'))
+            launch['actuation_mode'], False, args.mode in ('g1', 'm3', 'g1g2'), extra, r0_plus=args.mode == 'r0plus',
+            team_signal_course=args.team_signal_course))
         from ament_index_python.packages import get_package_prefix
         bridge_executable = Path(get_package_prefix('ros_gz_bridge'))/'lib/ros_gz_bridge/parameter_bridge'
         extra_topics, extra_qos = extras.bridge_arguments()
@@ -834,6 +873,9 @@ def main():
             now = pose['time']
             first_pose_time = now if first_pose_time is None else first_pose_time
             light = state['light']
+            if args.team_signal_course and (output/'signal_driver_failure.json').exists():
+                report['error']='2×5 신호 발생기 오류: signal_driver_failure.json 참조'
+                break
             if t_green is None and light.get('applied') == 'green':
                 t_green = now
                 report['green_observed_sim_s'] = now
@@ -1149,6 +1191,11 @@ def main():
                 contact_evidence=report['contact_evidence'])
         except Exception as error:
             report['evaluation'] = {'error': f'{type(error).__name__}: {error}'}
+        if args.team_signal_course:
+            try:
+                report['team_signal_evidence']=course.signal(output, report.get('signal_states',[]), trace)
+            except (OSError,ValueError,KeyError,IndexError,TypeError) as error:
+                report['team_signal_evidence']=dict(passed=False,error=str(error))
         ev.finalize_verdict(report, args.mode)
         if merge_profile is not None:
             try:
@@ -1176,7 +1223,7 @@ def main():
             report['harness_valid'] = report['harness_valid'] and result['harness_valid']
             report['run_valid'] = report['run_valid'] and result['harness_valid']
             report['behavior_gates_passed'] = report['behavior_gates_passed'] and result['behavior_gates_passed']
-            report['passed'] = report['run_valid'] and (report['behavior_gates_passed'] if args.mode in ('g1', 'r0plus', 'm3') else True)
+            report['passed'] = report['run_valid'] and (report['behavior_gates_passed'] if args.mode in ('g1', 'r0plus', 'm3', 'g1g2') else True)
             if args.mode == 'r0':
                 report['r0_meets_g1_gates'] = report['behavior_gates_passed']
         if runtime_lidar_profile:
@@ -1210,6 +1257,14 @@ def main():
                 report['m4_operation'] = dict(passed=False, error=f'{type(error).__name__}: {error}')
             report['m4_operation']['trace_sha256'] = sha256(output/'m4_operation_trace.json')
             report['m4_operation']['original_traffic_verdict_preserved'] = True
+        if handoff_arguments:
+            try:
+                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep)
+            except (OSError,KeyError,ValueError,StopIteration) as error:
+                evidence = {'passed':False,'error':repr(error)}
+            report['handoff_execution'] = evidence
+            for key in ('harness_valid','run_valid','passed'):
+                report[key] = bool(report.get(key)) and evidence['passed']
         if partial_arguments:
             evidence = partial_trial_evidence(args.partial_observation_policy, trace)
             evidence['original_traffic_passed'] = report['passed']

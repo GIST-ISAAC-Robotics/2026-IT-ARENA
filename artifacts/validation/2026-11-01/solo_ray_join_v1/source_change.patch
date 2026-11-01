@@ -1,0 +1,144 @@
+--- before/src/arena_autonomy/arena_autonomy/local_path.py
++++ src/arena_autonomy/arena_autonomy/local_path.py
+@@ -16,20 +16,59 @@
+ 
+ 
+-def local_path(points, side, offset=.425, horizon=1.8):
+-    """연결된 관측 벽의 호길이 매개곡선. 수직 벽/급커브도 y=f(x)로 강제하지 않는다."""
++def ray_continuous_gaps(points, gaps, limits, rays, horizon, tolerance=.03, near=6, span=.30, heading=20.):
++    """전방으로 멀어지는 옆 벽에서 광선 간격 때문에 생긴 단절만 고른다.
++
++    같은 회전에서 원시 광선 번호가 이어진 가까운 여섯 점의 직선에 다음 두 실제 점이
++    수직 3 cm 안으로 놓일 때만 잇는다. 벽 방향이 차체 전방에서 벗어나거나 결측/다른 면이
++    끼면 잇지 않는다. 점을 만들거나 옮기지 않으며 실제 벽의 연속을 인증하지 않는다.
++    """
++    joined = np.zeros(len(gaps), dtype=bool)
++    ranges = np.linalg.norm(points, axis=1)
++    for index in np.flatnonzero(gaps > limits):
++        first, stop = index+1-near, index+3
++        if first < 0 or stop > len(points) or ranges[index+1] > horizon:
++            continue
++        steps = np.diff(rays[first:stop])
++        if abs(steps[0]) != 1 or np.any(steps != steps[0]):
++            continue
++        base = points[first:index+1]
++        if np.linalg.norm(base[-1]-base[0]) < span:
++            continue
++        center = base.mean(axis=0)
++        tangent = np.linalg.svd(base-center, full_matrices=False)[2][0]
++        if tangent @ (base[-1]-base[0]) < 0:
++            tangent = -tangent
++        if tangent[0] <= 0 or abs(tangent[1]) > math.sin(math.radians(heading)):
++            continue
++        offsets = points[first:stop]-center
++        joined[index] = (np.max(np.abs(offsets @ [-tangent[1], tangent[0]])) <= tolerance
++                         and np.all(np.diff(offsets @ tangent) > 0))
++    return joined
++
++
++def local_path(points, side, offset=.425, horizon=1.8, rays=None):
++    """연결된 관측 벽의 호길이 매개곡선. 수직 벽/급커브도 y=f(x)로 강제하지 않는다.
++
++    rays는 points와 같은 순서의 원시 광선 번호다. 주지 않으면 거리 간격만으로 연결한다.
++    """
+     sign = 1 if side == "left" else -1
+     points = np.asarray(points, dtype=float)
+     if points.ndim != 2 or points.shape[1] != 2:
+         return None, {"reason": "wall_lost"}
+-    points = points[np.all(np.isfinite(points), axis=1)]
++    finite = np.all(np.isfinite(points), axis=1)
++    points = points[finite]
+     if len(points) < 12:
+         return None, {"reason": "wall_lost"}
+     # 보정이 끝난 현재 좌표의 방위 순서. 왼쪽은 감소, 오른쪽은 증가 방향이 전진이다.
+     angles = np.arctan2(points[:, 1], points[:, 0])
+-    points = points[np.argsort(-sign * angles)]
++    order = np.argsort(-sign * angles)
++    points = points[order]
+     gaps = np.linalg.norm(np.diff(points, axis=0), axis=1)
+     # 먼 점의 각도 간격은 넓지만, 떨어진 벽/차량 사이를 잇는 임의 선분은 만들지 않는다.
+     limits = .10 + .035 * np.minimum(np.linalg.norm(points[:-1], axis=1), np.linalg.norm(points[1:], axis=1))
+-    breaks = np.flatnonzero(gaps > limits)
++    broken = gaps > limits
++    if rays is not None:
++        broken &= ~ray_continuous_gaps(points, gaps, limits, np.asarray(rays)[finite][order], horizon)
++    breaks = np.flatnonzero(broken)
+     eligible = []
+     for wall in np.split(points, breaks + 1):
+--- before/src/arena_autonomy/arena_autonomy/local_follow.py
++++ src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -25,4 +25,5 @@
+     solo_route_only: bool = False  # 단독 프리랩 선택. 점유/관측 검사는 유지하고 측방 교통 선택기만 제외.
+     corridor_arc_agreement: bool = False  # 단독 선택형 회랑 시간 비교의 공통 호길이 보완.
++    ray_wall_continuity: bool = False  # 단독 선택형. 먼 옆 벽의 단절을 연속 광선 직선 근거로 보완.
+     partial_observation_policy: str = 'strict'
+     parallel_hold_trial: bool = False
+@@ -70,4 +71,7 @@
+                 (self.corridor_arc_agreement and not (self.solo_route_only and self.corridor_fallback_enabled))):
+             raise ValueError('corridor arc agreement requires solo route and corridor fallback')
++        if (type(self.ray_wall_continuity) is not bool or
++                (self.ray_wall_continuity and not (self.solo_route_only and self.blend_open_speed_by_length))):
++            raise ValueError('ray wall continuity requires the solo observed route speed profile')
+         if self.signed_motion_policy not in ('legacy_hold', 'forward_drive'):
+             raise ValueError('unknown signed motion policy')
+@@ -121,5 +125,5 @@
+             raise ValueError('low speed arc reacquire requires the solo observed route speed profile')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('corridor_arc_agreement', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
++               if k not in ('corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+@@ -533,5 +537,13 @@
+         cruise = cfg.open_route_speed_mps
+         horizon = max(1.8, .06 + cfg.standstill_gap_m + cruise*(age+.10) + cruise**2/4)
++        ray_index = None
++        if cfg.ray_wall_continuity and fresh:
++            # 경계 선택이 넘기는 부분집합도 같은 실제 점이므로 좌표로 원시 광선 번호를 찾는다.
++            ray_index = dict(zip(map(tuple, points.tolist()),
++                                 (r.source_index for r in scene.rays if r.status == 'return')))
+         def observed_path(cloud, wall_side):
++            if ray_index is not None:
++                return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
++                                  rays=[ray_index[tuple(p)] for p in cloud.tolist()])
+             if horizon == 1.8:
+                 return local_path(cloud, wall_side, cfg.wall_offset_m)
+--- before/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -107,4 +107,5 @@
+             solo_route_only=solo_route,
+             corridor_arc_agreement=bool(self.declare_parameter('g1_corridor_arc_agreement',False).value),
++            ray_wall_continuity=bool(self.declare_parameter('g1_ray_wall_continuity',False).value),
+             headway_s=solo_headway,
+             partial_observation_policy=partial_observation,
+--- before/src/arena_bringup/launch/simulation.launch.py
++++ src/arena_bringup/launch/simulation.launch.py
+@@ -77,4 +77,6 @@
+ SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"] = {
+     **SPEED_PROFILES["g1_open_10kmh_solo_gap05"], "g1_corridor_arc_agreement": True}
++SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_ray"] = {
++    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"], "g1_ray_wall_continuity": True}
+ 
+ 
+--- before/scripts/validate_basic_autonomy.py
++++ scripts/validate_basic_autonomy.py
+@@ -276,5 +276,5 @@
+                         help="느린 오프라인 실행의 실제 시간 한도. 센서 시각 제한과 무관.")
+     parser.add_argument("--stop-wall-timeout-s", type=float, default=60.)
+-    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "g1_open_10kmh_solo_gap05", "g1_open_10kmh_solo_gap05_arc", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
++    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "g1_open_10kmh_solo_gap05", "g1_open_10kmh_solo_gap05_arc", "g1_open_10kmh_solo_gap05_arc_ray", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
+     parser.add_argument("--lidar-rate-hz", type=float, default=10.0,
+                         help="Gazebo 이상화 라이다의 시험용 갱신률. C1 실물 회전수를 바꾸지 않습니다.")
+@@ -306,5 +306,5 @@
+     args = parser.parse_args()
+     if args.team_signal_prelap and not (args.g1_race_path and args.laps==1 and args.target_progress_m is None
+-            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc')
++            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray')
+             and args.actuation_stop=='software_stop'
+             and args.grid_slot==3 and args.video and args.disable_speed_bump):
+@@ -574,5 +574,5 @@
+                          'src/arena_bringup/launch/g1_follow.launch.py'):
+             report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
+-    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc'):
++    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray'):
+         rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
+         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()

@@ -43,6 +43,17 @@ SPEED_PROFILES = {
     "exploratory": {"max_speed_mps": 1.40, "min_speed_mps": .20, "acceleration_mps2": 1.0},
     # G1-b 비교 전용: exploratory와 같고 명령 상한만 G1 시험 상한 1.0 m/s로 맞춘다.
     "g1_compare_1mps": {"max_speed_mps": 1.0, "min_speed_mps": .20, "acceleration_mps2": 1.0},
+    # 같은 증속률·기본 G1. 현재 관측 경로에서만 상한을 다르게 비교한다.
+    **{name: {"max_speed_mps": cap, "g1_open_route_speed_mps": cap, "min_speed_mps": .20,
+              "acceleration_mps2": 1.0} for name, cap in (
+              ("g1_open_1p5",1.5), ("g1_open_2p0",2.0), ("g1_open_10kmh",10/3.6))},
+    **{name: {"max_speed_mps": cap, "g1_open_route_speed_mps": cap, "min_speed_mps": .20,
+              "g1_blend_open_speed_by_length": True, "acceleration_mps2": 1.0}
+       for name, cap in (("g1_open_2p0_approach",2.0), ("g1_open_10kmh_approach",10/3.6))},
+    "g1_open_2p0_turn": {"max_speed_mps": 2., "g1_open_route_speed_mps": 2., "min_speed_mps": .20,
+                         "g1_blend_open_speed_by_length": True, "g1_preview_turn_speed": True, "acceleration_mps2": 1.0},
+    "g1_open_10kmh_rise15": {"max_speed_mps": 10/3.6, "g1_open_route_speed_mps": 10/3.6, "min_speed_mps": .20,
+                             "g1_blend_open_speed_by_length": True, "acceleration_mps2": 1.5},
     "hardware_target": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 1.5},
     # 라이다 주기 비교용 목표 속도 상한입니다. 20 km/h 실측 도달을 보장하지 않습니다.
     # 전방 거리·곡률 감속이 남아 있으며 실제 모터 가속도나 안전 속도도 아닙니다.
@@ -51,6 +62,26 @@ SPEED_PROFILES = {
     # 단일 모터 3 m/s^2 제한은 그대로입니다. 고정 20 km/h 검사는 별도 LiDAR lab을 씁니다.
     "lidar_20kmh_straight": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 10.0},
 }
+
+
+SPEED_PROFILES["g1_open_10kmh_turn15"] = {
+    **SPEED_PROFILES["g1_open_10kmh_rise15"], "g1_preview_turn_speed": True}
+# 위 프로필에 낮은 측정 속도 재획득 선택만 더한 단독 시험. 교통 구성에는 연결하지 않는다.
+SPEED_PROFILES["g1_open_10kmh_turn15_arc"] = {
+    **SPEED_PROFILES["g1_open_10kmh_turn15"], "g1_low_speed_arc_reacquire": True}
+# 단독 프리랩의 측방 교통 선택만 제외. 관측/점유·독립 보호 설정은 그대로 유지한다.
+SPEED_PROFILES["g1_open_10kmh_solo"] = {
+    **SPEED_PROFILES["g1_open_10kmh_turn15_arc"], "g1_solo_route_only": True}
+SPEED_PROFILES["g1_open_10kmh_solo_gap05"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo"], "g1_solo_headway_s": .5}
+SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo_gap05"], "g1_corridor_arc_agreement": True}
+SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_ray"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"], "g1_ray_wall_continuity": True}
+SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"], "g1_preview_above_base_speed": True}
+SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview_bridge"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview"], "g1_boundary_bridge": True}
 
 
 def _float32_limit_not_above(limit):
@@ -161,6 +192,20 @@ def _drive_feedback(config, requested="configured"):
             "raw_test_topic": DRIVE_FEEDBACK_RAW_TEST_TOPICS[mode], "encoder_node": node, "mcu": mcu,
             "motion": {"motion_feedback_mode": mode, "motion_gear_ratio": ratio, "motion_wheel_radius_m": radius},
             "resolution": resolution}
+
+
+def virtual_command_limit(profile_name):
+    # 새 G1 고속 프로필만 가상 수신 범위를 확장한다. 기본/과거 설정은 2.5 m/s.
+    return max(2.5, SPEED_PROFILES[profile_name].get('g1_open_route_speed_mps', 0.))
+
+
+def _autonomy_executable(mode, reserve, *, guarded, actor, evidence, track):
+    if reserve == 'off':
+        return {'local_pursuit':'local_pursuit', 'lidar':'wall_follow', 'stereo':'stereo_wall_follow'}[mode]
+    if (reserve not in ('fixed','moving','closing','recent','low_motion','paced') or mode != 'local_pursuit' or not guarded
+            or not actor or not evidence or track != 'official'):
+        raise ValueError('G1/G2 comparison requires a guarded official track, actor and recorded trial')
+    return 'g1_g2_handoff_trial'
 
 
 def _as_bool(value: str) -> bool:
@@ -624,6 +669,9 @@ def _launch_setup(context):
         raise RuntimeError(f"autonomy_mode must be one of {AUTONOMY_MODES}")
     local_mode = autonomy_mode == "local_pursuit"
     guarded_actuation = LaunchConfiguration('actuation_mode').perform(context) == 'virtual_mcu'
+    # 이 두 수신 한도는 같은 명령 사슬에 있다. 새 고속 모의 실험에서만 함께
+    # 명시한다. 기존 프로필·실물 펌웨어·STOP·출력 유효 시간은 바뀌지 않는다.
+    virtual_limit = virtual_command_limit(LaunchConfiguration('speed_profile').perform(context))
     if guarded_actuation and not local_mode:
         raise RuntimeError('virtual_mcu는 독립 LiDAR 보호층이 있는 local_pursuit 시험 전용입니다.')
     motion_test = LaunchConfiguration('motion_test_profile').perform(context)
@@ -987,7 +1035,8 @@ def _launch_setup(context):
                     drivetrain["max_steering_angle_rad"]
                 ),
                 "use_sim_time": True,
-                **({"wall_timeout_s": sensor_wall_timeout} if guarded_actuation else {}),
+                **({"wall_timeout_s": sensor_wall_timeout, "applied_max_speed_mps": virtual_limit}
+                   if guarded_actuation else {}),
             }
         ],
     )
@@ -1049,6 +1098,7 @@ def _launch_setup(context):
             Node(package='arena_vehicle_interface', executable='virtual_mcu', output='screen', parameters=[{
                 'use_sim_time': True, 'wall_timeout_s': sensor_wall_timeout,
                 **feedback['mcu'],
+                'max_speed_mps': virtual_limit,
                 'max_steering_angle_rad': math.atan(float(drivetrain['wheelbase_m']) /
                     (float(drivetrain['wheelbase_m']) / math.tan(float(drivetrain['max_steering_angle_rad'])) +
                      float(drivetrain['track_width_m']) / 2)),
@@ -1178,7 +1228,13 @@ def _launch_setup(context):
         control_rate = float(LaunchConfiguration("autonomy_control_rate_hz").perform(context))
         if not math.isfinite(control_rate) or not 5 <= control_rate <= 200:
             raise ValueError("autonomy_control_rate_hz must be finite and within 5..200")
-        executable = "local_pursuit" if local_mode else "wall_follow" if autonomy_mode == "lidar" else "stereo_wall_follow"
+        reserve = LaunchConfiguration("evaluation_handoff_reserve").perform(context)
+        yield_progress = LaunchConfiguration("evaluation_handoff_yield_progress").perform(context) == "true"
+        rear_sweep = LaunchConfiguration("evaluation_handoff_rear_sweep").perform(context) == "true"
+        if (yield_progress or rear_sweep) and reserve == "off":
+            raise ValueError("observed yield progress requires an explicit handoff trial")
+        executable = _autonomy_executable(autonomy_mode,reserve,guarded=guarded_actuation,
+                                          actor=evaluation_actor,evidence=runtime_artifacts,track=track)
         controller_parameters = {
             "use_sim_time": True,
             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
@@ -1187,6 +1243,19 @@ def _launch_setup(context):
             "wheelbase_m": float(drivetrain["wheelbase_m"]),
             "max_steering_angle_rad": float(drivetrain["max_steering_angle_rad"]),
         }
+        if reserve != 'off':
+            controller_parameters.update(g1_g2_simulation_trial=True, g1_g2_entry_policy='corridor_local_v1',
+                g1_g2_corridor_policy='corridor_v2_signed_hold', g1_g2_preparation_policy='observed_entry_space_v1',
+                g1_g2_persistence_window='trim_before_compare_v1', g1_g2_follow_entry_space=True,
+                g1_g2_moving_follow_reserve=reserve in ('moving','closing','recent','low_motion','paced'),
+                g1_g2_closing_follow_reserve=reserve in ('closing','recent','low_motion','paced'),
+                g1_g2_recent_forward_reserve=reserve=='recent', g1_g2_low_motion_reserve=reserve in ('low_motion','paced'),
+                g1_g2_moving_pace_floor=reserve=='paced',
+                g1_g2_released_rear_sweep_trial=rear_sweep,
+                g1_g2_reacquire_policy='known_hold_v1',
+                g1_g2_preparation_hold='bounded_hold_v1', g1_g2_initial_reference='ready_directional_pair_v2',
+                g1_g2_motion_pause_policy='bounded_motion_pause_v1',
+                g1_g2_relative_yield_policy='observed_progress_yield_v3' if yield_progress else 'bounded_relative_yield_v2')
         if autonomy_mode in {"lidar", "local_pursuit"}:
             controller_parameters["lidar_x_m"] = float(lidar["xyz_m"][0])
             controller_parameters.update(
@@ -1330,6 +1399,12 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("depth_camera", default_value="true", description="깊이 센서와 점군을 켭니다. RGB·IMU는 유지합니다."),
             DeclareLaunchArgument("speed_bump", default_value="true", description="false는 실행 사본에서만 임시 방지턱 제거"),
             DeclareLaunchArgument("runtime_artifacts", default_value="", description="검증 실행 입력 보관 폴더"),
+            DeclareLaunchArgument("evaluation_handoff_rear_sweep", default_value="false", choices=["false", "true"],
+                                  description="평가 전용 통과 후 저속 후반부 이동 후보"),
+            DeclareLaunchArgument("evaluation_handoff_yield_progress", default_value="false", choices=["false", "true"],
+                                  description="현재 면이 전진할 때만 양보 예산을 갱신하는 시험 후보"),
+            DeclareLaunchArgument("evaluation_handoff_reserve", default_value="off", choices=["off","fixed","moving","closing","recent","low_motion","paced"],
+                                  description="상대차 평가 전용: G1/G2의 우회 준비 여유 비교"),
             DeclareLaunchArgument('evaluation_course_markers', default_value='visible',
                                  choices=['visible','blank_30','blank_all'], description='평가 전용 코스 마커 무늬 가림; 형상 불변'),
             DeclareLaunchArgument("evaluation_scheduled_apply", default_value="false", choices=["true", "false"],

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scope": "선택형 단독 프리랩의 추종 시간 간격 0.8→0.5초 비교. 제동거리·점유·독립 보호·STOP·물성 보존. 본 경기 기본 설정 불변.",
+  "parent_contract": "config/tests/solo_route_r1_sha256.json",
+  "parent_contract_sha256": "14afaf992bb1bcb78a82ed6c70ae58654ae2ac57f9300c4654a3b9a67e9d09c0",
+  "before_snapshot": "artifacts/validation/2026-11-01/solo_headway_v1/before.zip",
+  "before_snapshot_sha256": "d55bdd9a3e0d3674182d073cda4be8bd2fd757c9367d2d772ab2275b3fc9963a",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "62ea68c25f09ff2e8bd97a7c964eebbb1e4b1f8c494b4f397ed4ae776df5692d",
+      "after": "3ccadec92870626e5c06894653249958289d81dae8ca44e43195cc2e12492d40",
+      "reason": "단독 완주 판단에서 시간 간격 제한이 정상 경로의 21.36초를 지배했다. 속도 제한 기여를 분리하며 정지거리와 실측 없는 물성은 바꾸지 않는다."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "d64f6273fdaef01ddbd24d3b6b7bc5734a3223a502c985042f8e40b92f1e4685",
+      "after": "734c4c265913a246db95c4560cca2e245c1220eae789b42a7a8b8cbf9c8d2450",
+      "reason": "단독 완주 판단에서 시간 간격 제한이 정상 경로의 21.36초를 지배했다. 속도 제한 기여를 분리하며 정지거리와 실측 없는 물성은 바꾸지 않는다."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "e8e6770409a42e8fbde17ec70f4837cdbf2f5a55fd3f32671375584c091575da",
+      "after": "04db1b6d9ae50ad0230cf7b4c13bb92bbf97d725afb2e5e79d14a878ef465826",
+      "reason": "단독 완주 판단에서 시간 간격 제한이 정상 경로의 21.36초를 지배했다. 속도 제한 기여를 분리하며 정지거리와 실측 없는 물성은 바꾸지 않는다."
+    }
+  },
+  "new_dependencies": {}
+}

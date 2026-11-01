@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "scope": "단독 속도와 추종 지속성 비교; 경기 기본값이나 실물 승인 아님",
+  "parent_contract": "config/tests/signed_forward_r1_sha256.json",
+  "parent_contract_sha256": "7daee7be2709f6b17a16de10be19a1679535f9b28694b3928f7d801d9ecc022a",
+  "before_snapshot": "artifacts/validation/2026-11-01/race_continuity_v1/before.zip",
+  "before_snapshot_sha256": "6b80c5abbc189280c2d6ca69b7bc3ac0d11a51492119baae922a6b3ae70b4652",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "5e77aef273acea4a00170a17138b5b7dfe69ecfa72da0083ef844fb9813d8cd7",
+      "after": "a667f60299a54003d4efad8d35fd05d0c97287e9f3d3b65e41569eac891ccfb3",
+      "reason": "명시 단독 시험에서 현재 관측된 주 경로만 목표 상한과 실제 벽 탐색 거리를 확장한다."
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "e0220812b266139be266d463d2ffd0330db15144763dd63ad48b9d13161e972e",
+      "after": "d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f",
+      "reason": "명명한 시험 profile의 단독 속도 상한을 전달한다."
+    },
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": {
+      "before": "6020a29e846f6e1f87bb7cf3c6d799ae77db27ea1230ff3b32ada2ad1c1c6927",
+      "after": "b4755c0ce2c064cbbd3861093c5707b57dc91b002e8bd01558891a0fd7f99345",
+      "reason": "현재 진행 방향으로 이동하는 반환에만 우회 준비 감속의 일부를 복원한다."
+    },
+    "src/arena_autonomy/arena_autonomy/g1_g2_node.py": {
+      "before": "010bf15aa39210b6bc4ebceb1930786e46bca01ccc163ba737061cc6c77d364e",
+      "after": "267c3347ce9a5af77fcf58d9426ab6e71f546d7d58d07900ace37bcdc3b238d1",
+      "reason": "이전 ROS 기본값은 유지하고 이동 앞차 추종 비교를 명시 선택할 수 있게 한다."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "5dd54b1e5e924b101d92519da1c4fed351ffde8efd4eb5de24045b4419c05201",
+      "after": "eb535e9219516fe189d36bd2ef54b82f992a7631e9911326ce7484b7eff7e88d",
+      "reason": "감속비가 같은 고속 단독 시험용 1.5, 2, 10km/h 속도 설정을 선택적으로 제공한다."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "0edcc3e14cab8520654e232c7f2432a232f47854887bc7d0d204d3bda70186e4",
+      "after": "ed7a981a1e4946e06ac1b0505671a28e47c036b748ac9f0ca876c52ca6f9b72d",
+      "reason": "독립 보호·가상 MCU·결정 기록이 있는 단독 시험만 새 속도 설정을 허용한다."
+    }
+  },
+  "new_dependencies": {}
+}

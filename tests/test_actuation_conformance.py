@@ -6,7 +6,6 @@ import math
 from pathlib import Path
 
 import pytest
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('actuation_conformance', ROOT/'scripts/actuation_conformance.py')
@@ -42,14 +41,13 @@ def test_deterministic_json_roundtrip(cases):
         assert bench.compare_case(case, bench.replay(case)) is None
 
 
-def test_motor_baseline_matches_vehicle_yaml():
-    vehicle = yaml.safe_load((ROOT/'src/arena_description/config/vehicle.yaml').read_text(encoding='utf-8'))['vehicle']
-    drive = vehicle['drivetrain']
+def test_motor_porting_vectors_keep_their_historical_15_to_1_fixture():
+    # 10/2 포팅 벡터는 고정 입력이다. 현행 구매 설정은 test_drivetrain_model에서 검사한다.
     cfg = bench.motor_config()
     assert cfg.feedback_mode == 'drive_motor_shaft'
-    assert cfg.wheel_radius_m == drive['wheel_radius_m'] == .0325
-    assert cfg.gear_ratio == drive['motor']['gear_ratio'] == 15
-    assert cfg.ticks_per_rev == vehicle['sensors']['drive_feedback']['drive_motor_encoder']['counts_per_motor_revolution'] == 28
+    assert cfg.wheel_radius_m == .0325
+    assert cfg.gear_ratio == 15
+    assert cfg.ticks_per_rev == 28
 
 
 def test_speed_conversion_and_int64_preservation(cases):

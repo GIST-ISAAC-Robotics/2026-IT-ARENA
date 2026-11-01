@@ -3,6 +3,18 @@ import math
 import numpy as np
 import pytest
 from bypass_probe_sensors import ProbeSensors,SPEC
+from arena_vehicle_interface.drive_feedback import MotorEncoderSpec
+
+
+def test_new_gearing_is_explicit_and_old_default_replay_is_unchanged():
+    spec=MotorEncoderSpec(28,2.5*61/17,.0325)
+    sensor=ProbeSensors('motion',motor_spec=spec)
+    sensor.measure_motion(0.,0.,0.,0.)
+    measured,_,count=sensor.measure_motion(.02,.04,2.,0.)
+    assert count==round(.04/spec.mean_wheel_travel_m_per_count)
+    assert measured*.0325==pytest.approx(2.,abs=spec.speed_quantum_mps(.02)/2)
+    assert sensor.description()['gear_ratio']==spec.gear_ratio
+    assert ProbeSensors().description()['gear_ratio']==15.
 
 
 def test_single_motor_quantization_uses_gearing_and_past_interval():

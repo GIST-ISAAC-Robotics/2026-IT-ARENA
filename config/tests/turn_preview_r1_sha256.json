@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "scope": "코너의 확인된 경로에서만 양수 속도를 올리는 선택형 비교. 실차 승인 아님.",
+  "parent_contract": "config/tests/race_follow_closing_r1_sha256.json",
+  "parent_contract_sha256": "6615bd6b20556a43cac58beef6e2416dc64a475b578b0b101ab275988dd27b6b",
+  "before_snapshot": "artifacts/validation/2026-11-01/turn_preview_v1/before.zip",
+  "before_snapshot_sha256": "b78861a068d8970375b173fba8a94ebe912f389e65cfd2228371d4bdaab685d7",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "6518fe5db1d3733885c0ebf0726694039772c6dd96025c5176d962f077b3ee59",
+      "after": "3be894656c5d973e579ce3fb356fdb1e67369fbc1f99601e66626d3e58c28c15",
+      "reason": "현재 경로의 속도 시험을 선택할 때만 광선으로 다음 20 cm의 차체 점유를 확인한다."
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "e959987b8078600ea2fa6afd4e57d910f4234928fbb663079d4588f5589ac109",
+      "after": "e751be8ac9c9b6fbc7024db15d844e5e6913f25c662957d511068daf7529f58e",
+      "reason": "현재 경로의 속도 시험을 선택할 때만 광선으로 다음 20 cm의 차체 점유를 확인한다."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "290efd883295f16063a53a49b1cb59487747767cef34aecaf67989b99487ee5e",
+      "after": "28ed1546b1d0894e0e36dc15466e15a360523ef712929cd9d4f73464d2269579",
+      "reason": "현재 경로의 속도 시험을 선택할 때만 광선으로 다음 20 cm의 차체 점유를 확인한다."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "f08e05f15b5b535d14461c3f7637cee367ef61051713e8552995f7a3b8c95b69",
+      "after": "4a66e4882386e7ca8fb4f087e7cd6b475c85384e5359a6221cbc44f5be29ad60",
+      "reason": "현재 경로의 속도 시험을 선택할 때만 광선으로 다음 20 cm의 차체 점유를 확인한다."
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/turn_preview.py": "c0ec41075a75785820668bfbb6d591e569abeed36ee763c6e482d4ee4ab7f989"
+  }
+}

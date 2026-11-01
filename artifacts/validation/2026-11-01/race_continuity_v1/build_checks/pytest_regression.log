@@ -1,0 +1,1005 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local
+plugins: ament-pep257-0.17.5, ament-flake8-0.17.5, ament-copyright-0.17.5, ament-lint-0.17.5, ament-xmllint-0.17.5, launch-testing-ros-0.26.12, launch-testing-3.4.11, colcon-core-0.21.0, cov-4.1.0
+collecting ... collected 527 items
+
+tests/test_drivetrain_model.py::test_default_is_one_motor_force_drive_and_legacy_is_explicit PASSED [  0%]
+tests/test_drivetrain_model.py::test_mass_and_geometry_survive_sensor_rendering_toggle PASSED [  0%]
+tests/test_drivetrain_model.py::test_wheel_friction_axes_and_speed_allow_twenty_kmh_without_forcing_it PASSED [  0%]
+tests/test_drivetrain_model.py::test_launch_passes_selected_differential_and_rejects_bad_efficiency PASSED [  0%]
+tests/test_drivetrain_model.py::test_selected_scan_plane_stays_above_chassis_with_65mm_wheels PASSED [  0%]
+tests/test_drivetrain_model.py::test_selected_motor_gearing_and_wheel_reach_generated_model PASSED [  1%]
+tests/test_drivetrain_model.py::test_local_c1_scan_plane_stays_above_raised_chassis_top PASSED [  1%]
+tests/test_drivetrain_model.py::test_drive_feedback_resolution_for_motor_and_explicit_legacy PASSED [  1%]
+tests/test_drivetrain_model.py::test_launch_routes_one_feedback_contract_to_every_consumer PASSED [  1%]
+tests/test_drive_feedback.py::test_quote_61_17_ratio_has_coarser_counts_but_preserves_signed_travel PASSED [  1%]
+tests/test_drive_feedback.py::test_gear_ratio_is_applied_to_wheel_mean_resolution PASSED [  2%]
+tests/test_drive_feedback.py::test_documented_quantization_steps_are_reproduced PASSED [  2%]
+tests/test_drive_feedback.py::test_bidirectional_and_straight_motion_are_symmetric PASSED [  2%]
+tests/test_drive_feedback.py::test_differential_cases_with_same_mean_are_one_motor_observation[100.0-100.0] PASSED [  2%]
+tests/test_drive_feedback.py::test_differential_cases_with_same_mean_are_one_motor_observation[0.0-200.0] PASSED [  2%]
+tests/test_drive_feedback.py::test_differential_cases_with_same_mean_are_one_motor_observation[200.0-0.0] PASSED [  3%]
+tests/test_drive_feedback.py::test_differential_cases_with_same_mean_are_one_motor_observation[-50.0-250.0] PASSED [  3%]
+tests/test_drive_feedback.py::test_opposite_wheel_rotation_is_invisible_to_motor_shaft PASSED [  3%]
+tests/test_drive_feedback.py::test_low_speed_quantization_reports_zero_between_counts PASSED [  3%]
+tests/test_drive_feedback.py::test_position_round_trip_and_off_grid_rejection PASSED [  3%]
+tests/test_drive_feedback.py::test_extreme_finite_motor_position_is_a_validation_error_not_overflow[1e+308] PASSED [  3%]
+tests/test_drive_feedback.py::test_extreme_finite_motor_position_is_a_validation_error_not_overflow[-1e+308] PASSED [  4%]
+tests/test_drive_feedback.py::test_extreme_finite_motor_position_is_a_validation_error_not_overflow[2.0697198451648922e+18] PASSED [  4%]
+tests/test_drive_feedback.py::test_invalid_spec_rejected[kwargs0] PASSED [  4%]
+tests/test_drive_feedback.py::test_invalid_spec_rejected[kwargs1] PASSED [  4%]
+tests/test_drive_feedback.py::test_invalid_spec_rejected[kwargs2] PASSED [  4%]
+tests/test_drive_feedback.py::test_invalid_spec_rejected[kwargs3] PASSED [  5%]
+tests/test_drive_feedback.py::test_invalid_spec_rejected[kwargs4] PASSED [  5%]
+tests/test_drive_feedback.py::test_motor_message_contract_rejects_names_counts_and_nonfinite PASSED [  5%]
+tests/test_drive_feedback.py::test_legacy_pair_requires_both_names_and_never_reads_motor_channel PASSED [  5%]
+tests/test_drive_feedback.py::test_mode_names_are_explicit PASSED        [  5%]
+tests/test_bypass_probe_sensors.py::test_new_gearing_is_explicit_and_old_default_replay_is_unchanged PASSED [  6%]
+tests/test_bypass_probe_sensors.py::test_single_motor_quantization_uses_gearing_and_past_interval PASSED [  6%]
+tests/test_bypass_probe_sensors.py::test_range_noise_is_seeded_bounded_and_does_not_fill_invalid_returns PASSED [  6%]
+tests/test_bypass_probe_sensors.py::test_profiles_do_not_silently_add_other_sensor_errors PASSED [  6%]
+tests/test_bypass_probe_sensors.py::test_repeated_encoder_capture_time_is_not_rewritten PASSED [  6%]
+tests/test_actuation_conformance.py::test_all_cases_have_independent_checkpoints_and_replay PASSED [  7%]
+tests/test_actuation_conformance.py::test_deterministic_json_roundtrip PASSED [  7%]
+tests/test_actuation_conformance.py::test_motor_porting_vectors_keep_their_historical_15_to_1_fixture PASSED [  7%]
+tests/test_actuation_conformance.py::test_speed_conversion_and_int64_preservation PASSED [  7%]
+tests/test_actuation_conformance.py::test_fault_categories_are_not_collapsed[command_timeout_at_100ms-command_expired] PASSED [  7%]
+tests/test_actuation_conformance.py::test_fault_categories_are_not_collapsed[feedback_timeout_at_50ms-encoder_timeout] PASSED [  7%]
+tests/test_actuation_conformance.py::test_fault_categories_are_not_collapsed[control_gap_even_if_feedback_fresh-control_deadline_missed] PASSED [  8%]
+tests/test_actuation_conformance.py::test_fault_categories_are_not_collapsed[fresh_stuck_counts_fault_at_500ms-motor_feedback_no_progress] PASSED [  8%]
+tests/test_actuation_conformance.py::test_fault_categories_are_not_collapsed[clock_regression_latches_fault-clock_regressed] PASSED [  8%]
+tests/test_actuation_conformance.py::test_fault_categories_are_not_collapsed[legacy_feedback_rejected_in_motor_mode-feedback_mode_mismatch] PASSED [  8%]
+tests/test_actuation_conformance.py::test_zero_stop_and_clear_are_distinct PASSED [  8%]
+tests/test_actuation_conformance.py::test_observation_mismatch_is_rejected[drop] PASSED [  9%]
+tests/test_actuation_conformance.py::test_observation_mismatch_is_rejected[extra] PASSED [  9%]
+tests/test_actuation_conformance.py::test_observation_mismatch_is_rejected[rename] PASSED [  9%]
+tests/test_actuation_conformance.py::test_observation_mismatch_is_rejected[speed] PASSED [  9%]
+tests/test_actuation_conformance.py::test_observation_mismatch_is_rejected[boolean] PASSED [  9%]
+tests/test_actuation_conformance.py::test_observation_mismatch_is_rejected[clock_float] PASSED [ 10%]
+tests/test_actuation_conformance.py::test_numeric_comparison_rejects_nonfinite_or_wrong_type[True] PASSED [ 10%]
+tests/test_actuation_conformance.py::test_numeric_comparison_rejects_nonfinite_or_wrong_type[nan] PASSED [ 10%]
+tests/test_actuation_conformance.py::test_numeric_comparison_rejects_nonfinite_or_wrong_type[inf] PASSED [ 10%]
+tests/test_actuation_conformance.py::test_numeric_comparison_rejects_nonfinite_or_wrong_type[10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000] PASSED [ 10%]
+tests/test_actuation_conformance.py::test_numeric_comparison_rejects_nonfinite_or_wrong_type[0] PASSED [ 11%]
+tests/test_actuation_conformance.py::test_numeric_comparison_rejects_nonfinite_or_wrong_type[None] PASSED [ 11%]
+tests/test_actuation_conformance.py::test_float_tolerance_never_applies_to_integer_fields PASSED [ 11%]
+tests/test_actuation_conformance.py::test_wrong_wire_payload_rejected PASSED [ 11%]
+tests/test_motor_encoder_runtime_audit.py::test_runtime_matches_its_own_snapshot_and_rejects_wrong_model[15.0] PASSED [ 11%]
+tests/test_motor_encoder_runtime_audit.py::test_runtime_matches_its_own_snapshot_and_rejects_wrong_model[8.970588235294118] PASSED [ 11%]
+tests/test_bag_contract.py::test_manifest_inventory PASSED               [ 12%]
+tests/test_bag_contract.py::test_dds_metadata_accepts_mapping_and_attributes PASSED [ 12%]
+tests/test_bag_contract.py::test_reject_partial_and_loss[complete-False] PASSED [ 12%]
+tests/test_bag_contract.py::test_reject_partial_and_loss[schema-2] PASSED [ 12%]
+tests/test_bag_contract.py::test_reject_partial_and_loss[schema-3] PASSED [ 12%]
+tests/test_bag_contract.py::test_reject_partial_and_loss[drive_feedback_mode-drive_motor_shaft] PASSED [ 13%]
+tests/test_bag_contract.py::test_reject_partial_and_loss[queue_drops-value4] PASSED [ 13%]
+tests/test_bag_contract.py::test_reject_partial_and_loss[error-value5] PASSED [ 13%]
+tests/test_bag_contract.py::test_reject_partial_and_loss[clock_regressions-1] PASSED [ 13%]
+tests/test_bag_contract.py::test_corrupt_bytes_rejected PASSED           [ 13%]
+tests/test_bag_contract.py::test_path_escape_rejected PASSED             [ 14%]
+tests/test_bag_contract.py::test_missing_inventory_rejected[receipt.jsonl] PASSED [ 14%]
+tests/test_bag_contract.py::test_missing_inventory_rejected[parameters.json] PASSED [ 14%]
+tests/test_bag_contract.py::test_missing_inventory_rejected[bag/metadata.yaml] PASSED [ 14%]
+tests/test_bag_contract.py::test_missing_inventory_rejected[bag/data.mcap] PASSED [ 14%]
+tests/test_bag_contract.py::test_missing_sensor_rejected PASSED          [ 14%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/drive] PASSED [ 15%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/drive/safe] PASSED [ 15%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/autonomy/status] PASSED [ 15%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/safety/status] PASSED [ 15%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/actuation/status] PASSED [ 15%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/actuation/output_status] PASSED [ 16%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/diagnostics/timing] PASSED [ 16%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/cmd_vel] PASSED [ 16%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/odom] PASSED [ 16%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/clock] PASSED [ 16%]
+tests/test_bag_contract.py::test_commands_truth_and_clock_never_sensor_replayed[/ground_truth] PASSED [ 17%]
+tests/test_bag_contract.py::test_only_sensors_are_namespaced[/camera/color/image_raw] PASSED [ 17%]
+tests/test_bag_contract.py::test_only_sensors_are_namespaced[/camera/color/camera_info] PASSED [ 17%]
+tests/test_bag_contract.py::test_only_sensors_are_namespaced[/scan] PASSED [ 17%]
+tests/test_bag_contract.py::test_only_sensors_are_namespaced[/imu/data] PASSED [ 17%]
+tests/test_bag_contract.py::test_only_sensors_are_namespaced[/wheel_states] PASSED [ 18%]
+tests/test_bag_contract.py::test_topic_contract_not_extensible_through_manifest PASSED [ 18%]
+tests/test_bag_contract.py::test_digest_includes_stamp_length_and_order PASSED [ 18%]
+tests/test_bag_contract.py::test_quantiles_empty_singleton_and_order PASSED [ 18%]
+tests/test_bag_contract.py::test_eof_stop_requires_new_tail_commands PASSED [ 18%]
+tests/test_bag_contract.py::test_command_comparison_excludes_eof_and_prestart PASSED [ 18%]
+tests/test_bag_contract.py::test_motor_contract_has_single_feedback_topic_and_no_wheel_pair PASSED [ 19%]
+tests/test_bag_contract.py::test_schema2_motor_manifest_loads_with_declared_mode PASSED [ 19%]
+tests/test_bag_contract.py::test_schema_mode_rules PASSED                [ 19%]
+tests/test_bag_contract.py::test_old_recording_replays_with_recorded_legacy_geometry_not_current_yaml PASSED [ 19%]
+tests/test_bag_contract.py::test_motor_recording_requires_recorded_ratio_and_matching_mode PASSED [ 19%]
+tests/test_bag_contract.py::test_replay_and_record_scripts_do_not_read_current_vehicle_yaml PASSED [ 20%]
+tests/test_grid_departure_dynamics.py::test_same_time_receipt_precedes_control_without_float_order_accident PASSED [ 20%]
+tests/test_grid_departure_dynamics.py::test_plant_is_rear_axle_bicycle_and_time_cannot_reverse PASSED [ 20%]
+tests/test_grid_departure_dynamics.py::test_ray_uses_both_ego_and_peer_acquisition_positions PASSED [ 20%]
+tests/test_grid_departure_dynamics.py::test_fixed_ego_matches_previous_scan_generator_and_near_occlusion_stays_unknown PASSED [ 20%]
+tests/test_grid_departure_dynamics.py::test_single_motor_quantization_preserves_integrated_travel_to_half_count PASSED [ 21%]
+tests/test_grid_departure_dynamics.py::test_independent_protection_preserves_zero_and_rejects_unknown[False] PASSED [ 21%]
+tests/test_grid_departure_dynamics.py::test_independent_protection_preserves_zero_and_rejects_unknown[True] PASSED [ 21%]
+tests/test_grid_departure_impairment.py::test_invalid_states_and_original_input_are_preserved[-0.03] PASSED [ 21%]
+tests/test_grid_departure_impairment.py::test_invalid_states_and_original_input_are_preserved[0.0] PASSED [ 21%]
+tests/test_grid_departure_impairment.py::test_invalid_states_and_original_input_are_preserved[0.03] PASSED [ 22%]
+tests/test_grid_departure_impairment.py::test_invalid_bias_rejected[True] PASSED [ 22%]
+tests/test_grid_departure_impairment.py::test_invalid_bias_rejected[nan] PASSED [ 22%]
+tests/test_grid_departure_impairment.py::test_invalid_bias_rejected[inf] PASSED [ 22%]
+tests/test_grid_departure_impairment.py::test_invalid_bias_rejected[-inf] PASSED [ 22%]
+tests/test_grid_departure_impairment.py::test_extra_delivery_delay_changes_receipt_only PASSED [ 22%]
+tests/test_grid_departure_impairment.py::test_pause_acquisition_and_independent_audit_match_registered_motion[0.0-0.0] PASSED [ 23%]
+tests/test_grid_departure_impairment.py::test_pause_acquisition_and_independent_audit_match_registered_motion[0.5-0.0] PASSED [ 23%]
+tests/test_grid_departure_impairment.py::test_pause_acquisition_and_independent_audit_match_registered_motion[1.0-0.5] PASSED [ 23%]
+tests/test_grid_departure_impairment.py::test_pause_acquisition_and_independent_audit_match_registered_motion[1.8-1.3] PASSED [ 23%]
+tests/test_grid_departure_impairment.py::test_pause_acquisition_and_independent_audit_match_registered_motion[3.0-1.3] PASSED [ 23%]
+tests/test_grid_departure_impairment.py::test_pause_acquisition_and_independent_audit_match_registered_motion[3.8-1.3] PASSED [ 24%]
+tests/test_grid_departure_impairment.py::test_pause_acquisition_and_independent_audit_match_registered_motion[4.0-1.5] PASSED [ 24%]
+tests/test_grid_departure_impairment.py::test_pause_acquisition_and_independent_audit_match_registered_motion[6.0-3.5] PASSED [ 24%]
+tests/test_grid_departure_impairment.py::test_invalid_actor_profile_is_not_silently_changed[None-3.8] PASSED [ 24%]
+tests/test_grid_departure_impairment.py::test_invalid_actor_profile_is_not_silently_changed[1.8-None] PASSED [ 24%]
+tests/test_grid_departure_impairment.py::test_invalid_actor_profile_is_not_silently_changed[0.2-3.8] PASSED [ 25%]
+tests/test_grid_departure_impairment.py::test_invalid_actor_profile_is_not_silently_changed[3.8-1.8] PASSED [ 25%]
+tests/test_grid_departure_impairment.py::test_invalid_actor_profile_is_not_silently_changed[nan-3.8] PASSED [ 25%]
+tests/test_grid_departure_impairment.py::test_invalid_actor_profile_is_not_silently_changed[1.8-inf] PASSED [ 25%]
+tests/test_signed_forward_drive.py::test_finite_reverse_keeps_forward_path_and_signed_history[-0.001] PASSED [ 25%]
+tests/test_signed_forward_drive.py::test_finite_reverse_keeps_forward_path_and_signed_history[-0.08129882628142206] PASSED [ 25%]
+tests/test_signed_forward_drive.py::test_finite_reverse_keeps_forward_path_and_signed_history[-0.2] PASSED [ 26%]
+tests/test_signed_forward_drive.py::test_near_obstacle_still_holds_during_reverse_feedback PASSED [ 26%]
+tests/test_signed_forward_drive.py::test_nonfinite_is_not_mapped_to_planning_speed[nan] PASSED [ 26%]
+tests/test_signed_forward_drive.py::test_nonfinite_is_not_mapped_to_planning_speed[inf] PASSED [ 26%]
+tests/test_signed_forward_drive.py::test_nonfinite_is_not_mapped_to_planning_speed[-inf] PASSED [ 26%]
+tests/test_signed_forward_drive.py::test_legacy_recording_default_is_explicitly_preserved PASSED [ 27%]
+tests/test_signed_forward_drive.py::test_independent_guard_still_decides_from_current_path[clear] PASSED [ 27%]
+tests/test_signed_forward_drive.py::test_independent_guard_still_decides_from_current_path[obstacle] PASSED [ 27%]
+tests/test_signed_forward_drive.py::test_independent_guard_still_decides_from_current_path[zero] PASSED [ 27%]
+tests/test_signed_forward_drive.py::test_independent_guard_still_decides_from_current_path[stale] PASSED [ 27%]
+tests/test_signed_forward_drive.py::test_independent_guard_still_decides_from_current_path[legacy] PASSED [ 28%]
+tests/test_signed_forward_drive.py::test_recent_observation_guard_does_not_stop_only_because_feedback_is_negative PASSED [ 28%]
+tests/test_signed_forward_drive.py::test_g2_keeps_actual_signed_transport_and_matches_speed_bound_reference PASSED [ 28%]
+tests/test_signed_forward_drive.py::test_active_handoff_does_not_reset_on_negative_sign PASSED [ 28%]
+tests/test_signed_forward_drive.py::test_new_signed_policy_is_recorded_and_replayed PASSED [ 28%]
+tests/test_local_follow.py::test_scene_endpoints_match_existing_both_projection[0.0-0.0] PASSED [ 29%]
+tests/test_local_follow.py::test_scene_endpoints_match_existing_both_projection[1.0-0.0] PASSED [ 29%]
+tests/test_local_follow.py::test_scene_endpoints_match_existing_both_projection[1.0-0.8] PASSED [ 29%]
+tests/test_local_follow.py::test_scene_endpoints_match_existing_both_projection[0.2--1.0] PASSED [ 29%]
+tests/test_local_follow.py::test_unknown_ray_origin_and_direction_are_transported_without_return PASSED [ 29%]
+tests/test_local_follow.py::test_scene_refuses_unverified_or_missing_motion[unverified] PASSED [ 29%]
+tests/test_local_follow.py::test_scene_refuses_unverified_or_missing_motion[frame] PASSED [ 30%]
+tests/test_local_follow.py::test_scene_refuses_unverified_or_missing_motion[zero_step] PASSED [ 30%]
+tests/test_local_follow.py::test_scene_refuses_unverified_or_missing_motion[future] PASSED [ 30%]
+tests/test_local_follow.py::test_scene_refuses_unverified_or_missing_motion[stale] PASSED [ 30%]
+tests/test_local_follow.py::test_scene_refuses_unverified_or_missing_motion[gap] PASSED [ 30%]
+tests/test_local_follow.py::test_transport_translation_and_yaw_not_commanded_motion PASSED [ 31%]
+tests/test_local_follow.py::test_same_scan_cannot_confirm_or_refresh_boundary PASSED [ 31%]
+tests/test_local_follow.py::test_clean_corridor_cruises_and_all_occupied_points_remain PASSED [ 31%]
+tests/test_local_follow.py::test_short_nearby_side_vehicle_cannot_become_wall PASSED [ 31%]
+tests/test_local_follow.py::test_one_wall_only_cannot_initialize_new_path PASSED [ 31%]
+tests/test_local_follow.py::test_side_occlusion_memory_expires_and_recovers_without_using_car_as_wall[left] PASSED [ 32%]
+tests/test_local_follow.py::test_side_occlusion_memory_expires_and_recovers_without_using_car_as_wall[right] PASSED [ 32%]
+tests/test_local_follow.py::test_cold_start_occlusion_requires_fresh_bilateral_recovery PASSED [ 32%]
+tests/test_local_follow.py::test_stopped_front_object_hold_and_two_fresh_observations_to_resume PASSED [ 32%]
+tests/test_local_follow.py::test_occupancy_never_comes_from_boundary_memory PASSED [ 32%]
+tests/test_local_follow.py::test_unknown_front_holds_but_rear_unknown_does_not_cancel_cruise PASSED [ 33%]
+tests/test_local_follow.py::test_new_epoch_side_or_time_rewind_drops_previous_path[epoch] PASSED [ 33%]
+tests/test_local_follow.py::test_new_epoch_side_or_time_rewind_drops_previous_path[side] PASSED [ 33%]
+tests/test_local_follow.py::test_new_epoch_side_or_time_rewind_drops_previous_path[time_rewind] PASSED [ 33%]
+tests/test_local_follow.py::test_path_follower_matches_existing_pure_pursuit_on_straight_and_curve PASSED [ 33%]
+tests/test_local_follow.py::test_bad_configuration_rejected[memory_ttl_s-0.31] PASSED [ 33%]
+tests/test_local_follow.py::test_bad_configuration_rejected[max_speed_mps-3.0] PASSED [ 34%]
+tests/test_local_follow.py::test_bad_configuration_rejected[headway_s-0.0] PASSED [ 34%]
+tests/test_local_follow.py::test_bad_configuration_rejected[measurement_padding_m-nan] PASSED [ 34%]
+tests/test_local_follow.py::test_bad_configuration_rejected[confirmations-1] PASSED [ 34%]
+tests/test_local_follow.py::test_partial_scan_geometry_cannot_claim_a_complete_scene PASSED [ 34%]
+tests/test_local_follow.py::test_out_of_range_point_remains_unknown_not_free_space PASSED [ 35%]
+tests/test_local_follow.py::test_existing_node_command_is_unchanged_when_opt_in_is_off PASSED [ 35%]
+tests/test_local_follow.py::test_node_g1_input_failure_cannot_fall_back_to_r0 PASSED [ 35%]
+tests/test_local_follow.py::test_boundary_memory_does_not_turn_same_source_into_fresh_observation PASSED [ 35%]
+tests/test_local_follow.py::test_missing_motion_for_memory_is_hold_not_static_assumption PASSED [ 35%]
+tests/test_local_follow.py::test_saved_gazebo_short_occluders_use_current_wall_support_not_false_free_space PASSED [ 36%]
+tests/test_local_follow.py::test_boundary_support_cannot_fill_large_missing_wall_segment PASSED [ 36%]
+tests/test_local_follow.py::test_boundary_support_retains_observed_points_beyond_previous_path_end PASSED [ 36%]
+tests/test_local_follow.py::test_saved_corner_requires_bilateral_agreement_before_using_long_outer_wall PASSED [ 36%]
+tests/test_local_follow.py::test_long_opposite_wall_with_inconsistent_short_preferred_boundary_is_not_a_fallback PASSED [ 36%]
+tests/test_local_follow.py::test_single_negative_motor_count_keeps_current_boundary_and_occupancy PASSED [ 37%]
+tests/test_local_follow.py::test_continuous_signed_reverse_updates_observations_but_never_drives_forward PASSED [ 37%]
+tests/test_local_follow.py::test_reverse_recovery_requires_two_distinct_fresh_release_observations PASSED [ 37%]
+tests/test_local_follow.py::test_nonfinite_speed_remains_invalid_and_resets_boundary[nan] PASSED [ 37%]
+tests/test_local_follow.py::test_nonfinite_speed_remains_invalid_and_resets_boundary[inf] PASSED [ 37%]
+tests/test_local_follow.py::test_nonfinite_speed_remains_invalid_and_resets_boundary[-inf] PASSED [ 37%]
+tests/test_local_follow.py::test_reverse_does_not_preserve_path_across_invalid_time_or_epoch[epoch] PASSED [ 38%]
+tests/test_local_follow.py::test_reverse_does_not_preserve_path_across_invalid_time_or_epoch[reference_rewind] PASSED [ 38%]
+tests/test_local_follow.py::test_reverse_does_not_preserve_path_across_invalid_time_or_epoch[source_rewind] PASSED [ 38%]
+tests/test_local_follow.py::test_reverse_with_stale_scene_resets_and_does_not_refresh_source_time PASSED [ 38%]
+tests/test_local_follow.py::test_reverse_with_occlusion_can_only_use_unexpired_observed_boundary_memory PASSED [ 38%]
+tests/test_local_follow.py::test_signed_reverse_history_is_integrated_without_zero_clamping PASSED [ 39%]
+tests/test_local_follow.py::test_protrusion_filter_uses_median_offset_and_keeps_points_beyond_reference_ends PASSED [ 39%]
+tests/test_local_follow.py::test_thin_object_just_inside_wall_does_not_break_observed_boundary_memory[0.06-0.36] PASSED [ 39%]
+tests/test_local_follow.py::test_thin_object_just_inside_wall_does_not_break_observed_boundary_memory[0.07-0.3] PASSED [ 39%]
+tests/test_local_follow.py::test_thin_object_just_inside_wall_does_not_break_observed_boundary_memory[0.07-0.42] PASSED [ 39%]
+tests/test_local_follow.py::test_thin_object_just_inside_wall_does_not_break_observed_boundary_memory[0.075-0.36] PASSED [ 40%]
+tests/test_local_follow.py::test_cold_reacquisition_reselects_preferred_wall_from_long_opposite_wall[0.25] PASSED [ 40%]
+tests/test_local_follow.py::test_cold_reacquisition_reselects_preferred_wall_from_long_opposite_wall[0.3] PASSED [ 40%]
+tests/test_local_follow.py::test_cold_reacquisition_reselects_preferred_wall_from_long_opposite_wall[0.36] PASSED [ 40%]
+tests/test_local_follow.py::test_cold_reacquisition_reselects_preferred_wall_from_long_opposite_wall[0.42] PASSED [ 40%]
+tests/test_local_follow.py::test_cold_reacquisition_with_thin_object_inside_opposite_wall_is_symmetric PASSED [ 40%]
+tests/test_local_follow.py::test_long_object_shadow_is_not_bridged_into_a_boundary[0.15] PASSED [ 41%]
+tests/test_local_follow.py::test_long_object_shadow_is_not_bridged_into_a_boundary[0.3] PASSED [ 41%]
+tests/test_local_follow.py::test_mismatched_or_diverging_opposite_wall_cannot_reselect_preferred_wall[width_mismatch] PASSED [ 41%]
+tests/test_local_follow.py::test_mismatched_or_diverging_opposite_wall_cannot_reselect_preferred_wall[branch_0.3] PASSED [ 41%]
+tests/test_local_follow.py::test_mismatched_or_diverging_opposite_wall_cannot_reselect_preferred_wall[branch_0.5] PASSED [ 41%]
+tests/test_local_follow.py::test_bilateral_reference_that_disagrees_with_unexpired_memory_is_not_adopted PASSED [ 42%]
+tests/test_local_follow.py::test_bilateral_reference_support_needs_two_distinct_fresh_scans_and_resets_on_epoch PASSED [ 42%]
+tests/test_local_follow.py::test_reacquired_boundary_still_holds_for_signed_reverse_and_unobserved_front PASSED [ 42%]
+tests/test_local_follow.py::test_preserved_slow_lead_post_corner_keeps_boundary_instead_of_ttl_expiry PASSED [ 42%]
+tests/test_local_follow.py::test_preserved_post_behind_memory_path_start_uses_same_scan_opposite_wall_with_memory_agreement PASSED [ 42%]
+tests/test_local_follow.py::test_preserved_stationary_post_geometry_reacquires_with_bilateral_support PASSED [ 43%]
+tests/test_partial_observation.py::test_small_bounded_side_gap_allows_capped_progress_without_filling[indices0] PASSED [ 43%]
+tests/test_partial_observation.py::test_small_bounded_side_gap_allows_capped_progress_without_filling[indices1] PASSED [ 43%]
+tests/test_partial_observation.py::test_small_bounded_side_gap_allows_capped_progress_without_filling[indices2] PASSED [ 43%]
+tests/test_partial_observation.py::test_small_bounded_side_gap_allows_capped_progress_without_filling[indices3] PASSED [ 43%]
+tests/test_partial_observation.py::test_central_wide_and_distributed_failure_remain_stops[indices0] PASSED [ 44%]
+tests/test_partial_observation.py::test_central_wide_and_distributed_failure_remain_stops[indices1] PASSED [ 44%]
+tests/test_partial_observation.py::test_central_wide_and_distributed_failure_remain_stops[indices2] PASSED [ 44%]
+tests/test_partial_observation.py::test_central_wide_and_distributed_failure_remain_stops[indices3] PASSED [ 44%]
+tests/test_partial_observation.py::test_central_wide_and_distributed_failure_remain_stops[indices4] PASSED [ 44%]
+tests/test_partial_observation.py::test_close_return_at_gap_edge_blocks_even_though_other_edge_is_far PASSED [ 44%]
+tests/test_partial_observation.py::test_under_range_return_is_not_a_permitted_side_dropout[0.01] PASSED [ 45%]
+tests/test_partial_observation.py::test_under_range_return_is_not_a_permitted_side_dropout[0.0] PASSED [ 45%]
+tests/test_partial_observation.py::test_under_range_return_is_not_a_permitted_side_dropout[-1.0] PASSED [ 45%]
+tests/test_partial_observation.py::test_under_range_return_is_not_a_permitted_side_dropout[-inf] PASSED [ 45%]
+tests/test_partial_observation.py::test_known_obstacle_disappearance_does_not_expire_into_permission PASSED [ 45%]
+tests/test_partial_observation.py::test_side_wall_outside_stopping_sweep_is_not_a_disappeared_close_threat PASSED [ 46%]
+tests/test_partial_observation.py::test_outside_trial_speed_stops_without_allocating_a_long_sweep PASSED [ 46%]
+tests/test_partial_observation.py::test_no_previous_observation_is_not_free_space_and_stale_history_latches PASSED [ 46%]
+tests/test_partial_observation.py::test_independent_gate_caps_request_not_scan_and_preserves_zero_command PASSED [ 46%]
+tests/test_partial_observation.py::test_reverse_feedback_can_drive_forward_without_expiring_live_observations PASSED [ 46%]
+tests/test_partial_observation.py::test_latch_diagnostic_keeps_first_cause_until_confirmed_recovery PASSED [ 47%]
+tests/test_partial_observation.py::test_still_visible_point_is_not_treated_as_disappeared PASSED [ 47%]
+tests/test_partial_observation.py::test_same_scan_rechecks_old_unmatched_point_after_steering_changes PASSED [ 47%]
+tests/test_partial_observation.py::test_current_close_obstacle_still_brakes_when_reobserved_match_is_removed_from_loss_check[False] PASSED [ 47%]
+tests/test_partial_observation.py::test_current_close_obstacle_still_brakes_when_reobserved_match_is_removed_from_loss_check[True] PASSED [ 47%]
+tests/test_partial_observation.py::test_partial_policy_does_not_bypass_independent_faults[near_obstacle] PASSED [ 48%]
+tests/test_partial_observation.py::test_partial_policy_does_not_bypass_independent_faults[stale_command] PASSED [ 48%]
+tests/test_partial_observation.py::test_partial_policy_does_not_bypass_independent_faults[stale_scan] PASSED [ 48%]
+tests/test_partial_observation.py::test_partial_policy_does_not_bypass_independent_faults[transport] PASSED [ 48%]
+tests/test_partial_observation.py::test_partial_policy_does_not_bypass_independent_faults[missing_motion] PASSED [ 48%]
+tests/test_partial_observation.py::test_partial_policy_does_not_bypass_independent_faults[invalid_scan] PASSED [ 48%]
+tests/test_partial_observation.py::test_partial_policy_does_not_bypass_independent_faults[central_gap] PASSED [ 49%]
+tests/test_partial_observation.py::test_forward_candidate_keeps_narrow_unknown_but_limits_speed[inf-indices0] PASSED [ 49%]
+tests/test_partial_observation.py::test_forward_candidate_keeps_narrow_unknown_but_limits_speed[inf-indices1] PASSED [ 49%]
+tests/test_partial_observation.py::test_forward_candidate_keeps_narrow_unknown_but_limits_speed[inf-indices2] PASSED [ 49%]
+tests/test_partial_observation.py::test_forward_candidate_keeps_narrow_unknown_but_limits_speed[nan-indices0] PASSED [ 49%]
+tests/test_partial_observation.py::test_forward_candidate_keeps_narrow_unknown_but_limits_speed[nan-indices1] PASSED [ 50%]
+tests/test_partial_observation.py::test_forward_candidate_keeps_narrow_unknown_but_limits_speed[nan-indices2] PASSED [ 50%]
+tests/test_partial_observation.py::test_forward_candidate_keeps_narrow_unknown_but_limits_speed[13.0-indices0] PASSED [ 50%]
+tests/test_partial_observation.py::test_forward_candidate_keeps_narrow_unknown_but_limits_speed[13.0-indices1] PASSED [ 50%]
+tests/test_partial_observation.py::test_forward_candidate_keeps_narrow_unknown_but_limits_speed[13.0-indices2] PASSED [ 50%]
+tests/test_partial_observation.py::test_forward_gap_has_stricter_width_than_side_gap[3] PASSED [ 51%]
+tests/test_partial_observation.py::test_forward_gap_has_stricter_width_than_side_gap[4] PASSED [ 51%]
+tests/test_partial_observation.py::test_forward_gap_needs_distant_real_neighbors[0.22] PASSED [ 51%]
+tests/test_partial_observation.py::test_forward_gap_needs_distant_real_neighbors[0.5] PASSED [ 51%]
+tests/test_partial_observation.py::test_forward_gap_needs_distant_real_neighbors[0.999] PASSED [ 51%]
+tests/test_partial_observation.py::test_forward_hidden_known_object_remains_latched_after_it_disappears PASSED [ 51%]
+tests/test_partial_observation.py::test_refused_forward_width_keeps_fresh_observations_for_later_narrow_gap PASSED [ 52%]
+tests/test_partial_observation.py::test_wide_blind_interval_does_not_recover_from_one_narrow_gap PASSED [ 52%]
+tests/test_partial_observation.py::test_forward_candidate_preserves_independent_fault_stops[near_obstacle] PASSED [ 52%]
+tests/test_partial_observation.py::test_forward_candidate_preserves_independent_fault_stops[stale_command] PASSED [ 52%]
+tests/test_partial_observation.py::test_forward_candidate_preserves_independent_fault_stops[stale_scan] PASSED [ 52%]
+tests/test_partial_observation.py::test_forward_candidate_preserves_independent_fault_stops[missing_motion] PASSED [ 53%]
+tests/test_partial_observation.py::test_forward_candidate_preserves_independent_fault_stops[invalid_scan] PASSED [ 53%]
+tests/test_partial_observation.py::test_forward_candidate_caps_independent_output_and_preserves_zero PASSED [ 53%]
+tests/test_partial_observation.py::test_surface_match_compares_adjacent_observed_samples_not_only_sample_locations PASSED [ 53%]
+tests/test_partial_observation.py::test_surface_match_never_bridges_unknown_or_duplicate_ray_indices[ids0] PASSED [ 53%]
+tests/test_partial_observation.py::test_surface_match_never_bridges_unknown_or_duplicate_ray_indices[ids1] PASSED [ 54%]
+tests/test_partial_observation.py::test_surface_match_never_bridges_unknown_or_duplicate_ray_indices[ids2] PASSED [ 54%]
+tests/test_partial_observation.py::test_surface_match_requires_short_consistent_three_return_shape[points0] PASSED [ 54%]
+tests/test_partial_observation.py::test_surface_match_requires_short_consistent_three_return_shape[points1] PASSED [ 54%]
+tests/test_partial_observation.py::test_surface_match_requires_short_consistent_three_return_shape[points2] PASSED [ 54%]
+tests/test_partial_observation.py::test_surface_match_requires_short_consistent_three_return_shape[points3] PASSED [ 55%]
+tests/test_recent_observation_safety.py::test_independent_scoped_gate_caps_side_unknown_without_filling PASSED [ 55%]
+tests/test_recent_observation_safety.py::test_independent_faults_still_stop[front_unknown] PASSED [ 55%]
+tests/test_recent_observation_safety.py::test_independent_faults_still_stop[near_return] PASSED [ 55%]
+tests/test_recent_observation_safety.py::test_independent_faults_still_stop[stale_scan] PASSED [ 55%]
+tests/test_recent_observation_safety.py::test_independent_faults_still_stop[stale_command] PASSED [ 55%]
+tests/test_recent_observation_safety.py::test_independent_faults_still_stop[wall_timeout] PASSED [ 56%]
+tests/test_recent_observation_safety.py::test_independent_faults_still_stop[missing_feedback] PASSED [ 56%]
+tests/test_recent_observation_safety.py::test_independent_faults_still_stop[same_scan_expired] PASSED [ 56%]
+tests/test_recent_observation_safety.py::test_zero_command_cannot_be_revived_by_supported_scene PASSED [ 56%]
+tests/test_recent_observation_safety.py::test_clock_reversal_invalidates_cached_evidence PASSED [ 56%]
+tests/test_joint_missing_policy_probe.py::test_existing_essential_loss_and_recovery_contracts[test_known_obstacle_disappearance_does_not_expire_into_permission] PASSED [ 57%]
+tests/test_joint_missing_policy_probe.py::test_existing_essential_loss_and_recovery_contracts[test_close_return_at_gap_edge_blocks_even_though_other_edge_is_far] PASSED [ 57%]
+tests/test_joint_missing_policy_probe.py::test_existing_essential_loss_and_recovery_contracts[test_no_previous_observation_is_not_free_space_and_stale_history_latches] PASSED [ 57%]
+tests/test_joint_missing_policy_probe.py::test_existing_essential_loss_and_recovery_contracts[test_latch_diagnostic_keeps_first_cause_until_confirmed_recovery] PASSED [ 57%]
+tests/test_joint_missing_policy_probe.py::test_existing_essential_loss_and_recovery_contracts[test_still_visible_point_is_not_treated_as_disappeared] PASSED [ 57%]
+tests/test_joint_missing_policy_probe.py::test_existing_essential_loss_and_recovery_contracts[test_same_scan_rechecks_old_unmatched_point_after_steering_changes] PASSED [ 58%]
+tests/test_joint_missing_policy_probe.py::test_existing_essential_loss_and_recovery_contracts[test_forward_hidden_known_object_remains_latched_after_it_disappears] PASSED [ 58%]
+tests/test_joint_missing_policy_probe.py::test_existing_essential_loss_and_recovery_contracts[test_wide_blind_interval_does_not_recover_from_one_narrow_gap] PASSED [ 58%]
+tests/test_joint_missing_policy_probe.py::test_existing_essential_loss_and_recovery_contracts[test_independent_gate_caps_request_not_scan_and_preserves_zero_command] PASSED [ 58%]
+tests/test_joint_missing_policy_probe.py::test_existing_essential_loss_and_recovery_contracts[test_reverse_feedback_can_drive_forward_without_expiring_live_observations] PASSED [ 58%]
+tests/test_joint_missing_policy_probe.py::test_independent_faults_remain_stop[near_obstacle] PASSED [ 59%]
+tests/test_joint_missing_policy_probe.py::test_independent_faults_remain_stop[stale_command] PASSED [ 59%]
+tests/test_joint_missing_policy_probe.py::test_independent_faults_remain_stop[stale_scan] PASSED [ 59%]
+tests/test_joint_missing_policy_probe.py::test_independent_faults_remain_stop[transport] PASSED [ 59%]
+tests/test_joint_missing_policy_probe.py::test_independent_faults_remain_stop[missing_motion] PASSED [ 59%]
+tests/test_joint_missing_policy_probe.py::test_independent_faults_remain_stop[invalid_scan] PASSED [ 59%]
+tests/test_joint_missing_policy_probe.py::test_independent_faults_remain_stop[central_gap] PASSED [ 60%]
+tests/test_joint_missing_policy_probe.py::test_current_obstacle_brakes_after_reobservation[False] PASSED [ 60%]
+tests/test_joint_missing_policy_probe.py::test_current_obstacle_brakes_after_reobservation[True] PASSED [ 60%]
+tests/test_joint_missing_policy_probe.py::test_second_hidden_object_survives_far_moving_surface_exclusion PASSED [ 60%]
+tests/test_joint_missing_policy_probe.py::test_more_uncertainty_can_retain_the_same_previously_excluded_point PASSED [ 60%]
+tests/test_joint_missing_policy_probe.py::test_invalid_joint_geometry_keeps_original_latch PASSED [ 61%]
+tests/test_lidar_safety.py::test_clear_path_keeps_speed PASSED           [ 61%]
+tests/test_lidar_safety.py::test_delayed_old_scan_stops_even_with_fresh_transport_and_running_command PASSED [ 61%]
+tests/test_lidar_safety.py::test_faults_stop_independent_gate[no_scan] PASSED [ 61%]
+tests/test_lidar_safety.py::test_faults_stop_independent_gate[no_command] PASSED [ 61%]
+tests/test_lidar_safety.py::test_faults_stop_independent_gate[old_command] PASSED [ 62%]
+tests/test_lidar_safety.py::test_faults_stop_independent_gate[old_scan] PASSED [ 62%]
+tests/test_lidar_safety.py::test_faults_stop_independent_gate[nan_command] PASSED [ 62%]
+tests/test_lidar_safety.py::test_faults_stop_independent_gate[reverse] PASSED [ 62%]
+tests/test_lidar_safety.py::test_faults_stop_independent_gate[unknown_front] PASSED [ 62%]
+tests/test_lidar_safety.py::test_faults_stop_independent_gate[motion_gap] PASSED [ 62%]
+tests/test_lidar_safety.py::test_faults_stop_independent_gate[transport] PASSED [ 63%]
+tests/test_lidar_safety.py::test_obstacle_inside_footprint_stops PASSED  [ 63%]
+tests/test_lidar_safety.py::test_clock_rollback_clears_inputs_and_motion_history PASSED [ 63%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices0-0.0] PASSED [ 63%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices0--0.3] PASSED [ 63%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices0-0.3] PASSED [ 64%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices1-0.0] PASSED [ 64%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices1--0.3] PASSED [ 64%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices1-0.3] PASSED [ 64%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices2-0.0] PASSED [ 64%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices2--0.3] PASSED [ 65%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices2-0.3] PASSED [ 65%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices0-0.0] PASSED [ 65%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices0--0.3] PASSED [ 65%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices0-0.3] PASSED [ 65%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices1-0.0] PASSED [ 66%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices1--0.3] PASSED [ 66%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices1-0.3] PASSED [ 66%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices2-0.0] PASSED [ 66%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices2--0.3] PASSED [ 66%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices2-0.3] PASSED [ 66%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices0-0.0] PASSED [ 67%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices0--0.3] PASSED [ 67%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices0-0.3] PASSED [ 67%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices1-0.0] PASSED [ 67%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices1--0.3] PASSED [ 67%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices1-0.3] PASSED [ 68%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices2-0.0] PASSED [ 68%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices2--0.3] PASSED [ 68%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices2-0.3] PASSED [ 68%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices0-0.0] PASSED [ 68%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices0--0.3] PASSED [ 69%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices0-0.3] PASSED [ 69%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices1-0.0] PASSED [ 69%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices1--0.3] PASSED [ 69%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices1-0.3] PASSED [ 69%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices2-0.0] PASSED [ 70%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices2--0.3] PASSED [ 70%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices2-0.3] PASSED [ 70%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices0-0.0] PASSED [ 70%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices0--0.3] PASSED [ 70%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices0-0.3] PASSED [ 70%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices1-0.0] PASSED [ 71%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices1--0.3] PASSED [ 71%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices1-0.3] PASSED [ 71%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices2-0.0] PASSED [ 71%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices2--0.3] PASSED [ 71%]
+tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices2-0.3] PASSED [ 72%]
+tests/test_lidar_safety.py::test_projected_finite_count_boundary_remains_independent_of_front_observation[29] PASSED [ 72%]
+tests/test_lidar_safety.py::test_projected_finite_count_boundary_remains_independent_of_front_observation[30] PASSED [ 72%]
+tests/test_lidar_safety.py::test_projected_finite_count_boundary_remains_independent_of_front_observation[31] PASSED [ 72%]
+tests/test_lidar_safety.py::test_body_front_in_rotated_lidar_frame_is_not_ignored PASSED [ 72%]
+tests/test_bypass_handoff.py::test_sparse_preparation_uses_actual_returns_without_connecting_gaps PASSED [ 73%]
+tests/test_bypass_handoff.py::test_sparse_preparation_rejects_insufficient_or_wide_support[points0] PASSED [ 73%]
+tests/test_bypass_handoff.py::test_sparse_preparation_rejects_insufficient_or_wide_support[points1] PASSED [ 73%]
+tests/test_bypass_handoff.py::test_sparse_preparation_rejects_insufficient_or_wide_support[points2] PASSED [ 73%]
+tests/test_bypass_handoff.py::test_sparse_preparation_rejects_insufficient_or_wide_support[points3] PASSED [ 73%]
+tests/test_bypass_handoff.py::test_sparse_preparation_rejects_insufficient_or_wide_support[points4] PASSED [ 74%]
+tests/test_bypass_handoff.py::test_sparse_option_is_explicit_and_legacy_trace_keeps_original PASSED [ 74%]
+tests/test_bypass_handoff.py::test_sparse_reserve_uses_nearest_return_not_rear_posts PASSED [ 74%]
+tests/test_bypass_handoff.py::test_sparse_observation_still_requires_fresh_low_motion_window[0.0-True] PASSED [ 74%]
+tests/test_bypass_handoff.py::test_sparse_observation_still_requires_fresh_low_motion_window[0.25-False] PASSED [ 74%]
+tests/test_bypass_handoff.py::test_explicit_trial_and_options PASSED     [ 74%]
+tests/test_bypass_handoff.py::test_explicit_g1_prefix_configuration_is_preserved[False] PASSED [ 75%]
+tests/test_bypass_handoff.py::test_explicit_g1_prefix_configuration_is_preserved[True] PASSED [ 75%]
+tests/test_bypass_handoff.py::test_patch_motion_and_slow_target_limit[0.35-0.0-True-compare_then_trim_v0] PASSED [ 75%]
+tests/test_bypass_handoff.py::test_patch_motion_and_slow_target_limit[0.35-0.0-True-trim_before_compare_v1] PASSED [ 75%]
+tests/test_bypass_handoff.py::test_patch_motion_and_slow_target_limit[0.35-0.25-False-compare_then_trim_v0] PASSED [ 75%]
+tests/test_bypass_handoff.py::test_patch_motion_and_slow_target_limit[0.35-0.25-False-trim_before_compare_v1] PASSED [ 76%]
+tests/test_bypass_handoff.py::test_patch_motion_and_slow_target_limit[0.0-0.03-True-compare_then_trim_v0] PASSED [ 76%]
+tests/test_bypass_handoff.py::test_patch_motion_and_slow_target_limit[0.0-0.03-True-trim_before_compare_v1] PASSED [ 76%]
+tests/test_bypass_handoff.py::test_entry_gate_and_quantized_speed[0.16-False-BYPASS] PASSED [ 76%]
+tests/test_bypass_handoff.py::test_entry_gate_and_quantized_speed[0.0-False-FOLLOW] PASSED [ 76%]
+tests/test_bypass_handoff.py::test_entry_gate_and_quantized_speed[0.16-True-FOLLOW] PASSED [ 77%]
+tests/test_bypass_handoff.py::test_reacquire_requires_distinct_sources_and_keeps_side_history PASSED [ 77%]
+tests/test_bypass_handoff.py::test_faults_drop_active_bypass[epoch] PASSED [ 77%]
+tests/test_bypass_handoff.py::test_faults_drop_active_bypass[clock] PASSED [ 77%]
+tests/test_bypass_handoff.py::test_faults_drop_active_bypass[frame] PASSED [ 77%]
+tests/test_bypass_handoff.py::test_faults_drop_active_bypass[stale] PASSED [ 77%]
+tests/test_bypass_handoff.py::test_faults_drop_active_bypass[negative] PASSED [ 78%]
+tests/test_bypass_handoff.py::test_faults_drop_active_bypass[nan] PASSED [ 78%]
+tests/test_bypass_handoff.py::test_faults_drop_active_bypass[no_scan] PASSED [ 78%]
+tests/test_bypass_handoff.py::test_faults_drop_active_bypass[bad_dt] PASSED [ 78%]
+tests/test_bypass_handoff.py::test_follow_above_command_cap_preserves_measurement_but_cannot_enter_g2 PASSED [ 78%]
+tests/test_bypass_handoff.py::test_reverse_encoder_hold_preserves_g1_history_and_drops_bypass PASSED [ 79%]
+tests/test_bypass_handoff.py::test_ros_command_recording_matches_schema5_and_resets PASSED [ 79%]
+tests/test_bypass_handoff.py::test_compact_status_and_nondeterministic_cost_exclusion_are_bounded PASSED [ 79%]
+tests/test_bypass_handoff.py::test_default_launch_and_drive_boundary_unchanged PASSED [ 79%]
+tests/test_bypass_handoff.py::test_actual_front_patch_is_only_observed_returns PASSED [ 79%]
+tests/test_bypass_handoff.py::test_preparation_policy_options_and_old_schema5_mapping PASSED [ 80%]
+tests/test_bypass_handoff.py::test_legacy_policy_caps_first_patch_without_new_detail[False] PASSED [ 80%]
+tests/test_bypass_handoff.py::test_legacy_policy_caps_first_patch_without_new_detail[True] PASSED [ 80%]
+tests/test_bypass_handoff.py::test_stationary_edge_patch_prepares_after_one_displacement_check PASSED [ 80%]
+tests/test_bypass_handoff.py::test_moving_patch_motion_evidence_and_stop_expiry PASSED [ 80%]
+tests/test_bypass_handoff.py::test_large_patch_jump_is_new_patch_not_motion_evidence PASSED [ 81%]
+tests/test_bypass_handoff.py::test_preparation_requires_g1_arc_and_two_wall_reference PASSED [ 81%]
+tests/test_bypass_handoff.py::test_old_schema5_trace_without_policy_replays_legacy PASSED [ 81%]
+tests/test_bypass_handoff.py::test_node_preparation_parameter_default_and_explicit[parameters0-front_patch_v0] PASSED [ 81%]
+tests/test_bypass_handoff.py::test_node_preparation_parameter_default_and_explicit[parameters1-front_patch_v0] PASSED [ 81%]
+tests/test_bypass_handoff.py::test_node_preparation_parameter_default_and_explicit[parameters2-observed_entry_relevance_v1] PASSED [ 81%]
+tests/test_bypass_handoff.py::test_node_preparation_parameter_default_and_explicit[parameters3-observed_entry_space_v1] PASSED [ 82%]
+tests/test_bypass_handoff.py::test_node_rejects_unregistered_preparation_parameter[observed_entry_relevance] PASSED [ 82%]
+tests/test_bypass_handoff.py::test_node_rejects_unregistered_preparation_parameter[FRONT_PATCH_V0] PASSED [ 82%]
+tests/test_bypass_handoff.py::test_node_rejects_unregistered_preparation_parameter[] PASSED [ 82%]
+tests/test_bypass_handoff.py::test_node_rejects_unregistered_preparation_parameter[True] PASSED [ 82%]
+tests/test_bypass_handoff.py::test_node_rejects_unregistered_preparation_parameter[1] PASSED [ 83%]
+tests/test_bypass_handoff.py::test_node_rejects_unregistered_preparation_parameter[None] PASSED [ 83%]
+tests/test_bypass_handoff.py::test_padding_growth_zero_is_identical_and_growth_is_bounded PASSED [ 83%]
+tests/test_bypass_handoff.py::test_entry_space_holds_while_longest_transition_remains_consistent PASSED [ 83%]
+tests/test_bypass_handoff.py::test_entry_space_admits_only_execution_consistent_selection[usable0-FOLLOW] PASSED [ 83%]
+tests/test_bypass_handoff.py::test_entry_space_admits_only_execution_consistent_selection[usable1-BYPASS] PASSED [ 84%]
+tests/test_bypass_handoff.py::test_expired_initial_partial_face_does_not_reset_bounded_window[compare_then_trim_v0-False] PASSED [ 84%]
+tests/test_bypass_handoff.py::test_expired_initial_partial_face_does_not_reset_bounded_window[trim_before_compare_v1-True] PASSED [ 84%]
+tests/test_bypass_handoff.py::test_persistence_window_default_schema_and_explicit_node PASSED [ 84%]
+tests/test_bypass_handoff.py::test_follow_reserve_is_explicit_and_keeps_known_zero_command PASSED [ 84%]
+tests/test_bypass_handoff.py::test_follow_reserve_uses_observed_distance_not_actor_speed_or_static_identity PASSED [ 85%]
+tests/test_bypass_handoff.py::test_follow_reserve_does_not_create_missing_patch_or_cap_off_path PASSED [ 85%]
+tests/test_bypass_handoff.py::test_centered_handoff_accepts_valid_g1_hold_without_advancing[follow_gap_hold] PASSED [ 85%]
+tests/test_bypass_handoff.py::test_centered_handoff_accepts_valid_g1_hold_without_advancing[follow_release_wait] PASSED [ 85%]
+tests/test_bypass_handoff.py::test_hold_reacquire_does_not_promote_missing_path_or_legacy[follow_boundary_missing-path0-known_hold_v1] PASSED [ 85%]
+tests/test_bypass_handoff.py::test_hold_reacquire_does_not_promote_missing_path_or_legacy[follow_gap_hold-path1-known_hold_v1] PASSED [ 85%]
+tests/test_bypass_handoff.py::test_hold_reacquire_does_not_promote_missing_path_or_legacy[follow_gap_hold-path2-positive_command_v0] PASSED [ 86%]
+tests/test_bypass_handoff.py::test_node_explicit_follow_space_and_known_hold_options_are_recorded PASSED [ 86%]
+tests/test_bypass_handoff.py::test_node_rejects_unregistered_or_incomplete_follow_space_options[options0] PASSED [ 86%]
+tests/test_bypass_handoff.py::test_node_rejects_unregistered_or_incomplete_follow_space_options[options1] PASSED [ 86%]
+tests/test_bypass_handoff.py::test_node_rejects_unregistered_or_incomplete_follow_space_options[options2] PASSED [ 86%]
+tests/test_bypass_handoff.py::test_node_rejects_unregistered_or_incomplete_follow_space_options[options3] PASSED [ 87%]
+tests/test_bypass_signed_hold_trial.py::test_explicit_selection_preserves_old_classes PASSED [ 87%]
+tests/test_bypass_signed_hold_trial.py::test_negative_feedback_keeps_signed_transport_but_never_commands PASSED [ 87%]
+tests/test_bypass_signed_hold_trial.py::test_invalid_input_still_erases_geometry[nan-0.0-0.02] PASSED [ 87%]
+tests/test_bypass_signed_hold_trial.py::test_invalid_input_still_erases_geometry[False-0.0-0.02] PASSED [ 87%]
+tests/test_bypass_signed_hold_trial.py::test_invalid_input_still_erases_geometry[-1.1-0.0-0.02] PASSED [ 88%]
+tests/test_bypass_signed_hold_trial.py::test_invalid_input_still_erases_geometry[-0.1-nan-0.02] PASSED [ 88%]
+tests/test_bypass_signed_hold_trial.py::test_invalid_input_still_erases_geometry[-0.1-0.0--0.02] PASSED [ 88%]
+tests/test_bypass_signed_hold_trial.py::test_invalid_input_still_erases_geometry[-0.1-3.0-0.02] PASSED [ 88%]
+tests/test_bypass_signed_hold_trial.py::test_new_epoch_and_stale_source_still_reset PASSED [ 88%]
+tests/test_bypass_signed_hold_trial.py::test_missing_motion_cannot_retain_geometry PASSED [ 88%]
+tests/test_bypass_signed_hold_trial.py::test_same_scan_cannot_supply_forward_confirmations PASSED [ 89%]
+tests/test_bypass_signed_hold_trial.py::test_current_obstacle_or_wall_failure_cancels_recovery PASSED [ 89%]
+tests/test_bypass_motion_pause_connection.py::test_default_off_and_explicit_serialized_selection PASSED [ 89%]
+tests/test_bypass_motion_pause_connection.py::test_bad_policy_rejected[unknown] PASSED [ 89%]
+tests/test_bypass_motion_pause_connection.py::test_bad_policy_rejected[True] PASSED [ 89%]
+tests/test_bypass_motion_pause_connection.py::test_bad_policy_rejected[None] PASSED [ 90%]
+tests/test_bypass_motion_pause_connection.py::test_new_policy_cannot_enable_registered_legacy_entry PASSED [ 90%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[False-False-FOLLOW] PASSED [ 90%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[False-False-BYPASS] PASSED [ 90%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[False-False-REACQUIRE] PASSED [ 90%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[False-True-FOLLOW] PASSED [ 91%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[False-True-BYPASS] PASSED [ 91%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[False-True-REACQUIRE] PASSED [ 91%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[True-False-FOLLOW] PASSED [ 91%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[True-False-BYPASS] PASSED [ 91%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[True-False-REACQUIRE] PASSED [ 92%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[True-True-FOLLOW] PASSED [ 92%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[True-True-BYPASS] PASSED [ 92%]
+tests/test_bypass_motion_pause_connection.py::test_real_command_keeps_only_active_valid_signed_pause[True-True-REACQUIRE] PASSED [ 92%]
+tests/test_bypass_motion_pause_connection.py::test_candidate_ast_and_source_history_preserved FAILED [ 92%]
+tests/test_follow_trace.py::test_live_decision_stage_replay_and_reset_match PASSED [ 92%]
+tests/test_follow_trace.py::test_snapshot_owns_inputs_and_preserves_nonfinite PASSED [ 93%]
+tests/test_follow_trace.py::test_stored_history_not_double_converted PASSED [ 93%]
+tests/test_follow_trace.py::test_invalid_capture_is_not_replayed_as_pass[no_footer] PASSED [ 93%]
+tests/test_follow_trace.py::test_invalid_capture_is_not_replayed_as_pass[gap] PASSED [ 93%]
+tests/test_follow_trace.py::test_invalid_capture_is_not_replayed_as_pass[trailing] PASSED [ 93%]
+tests/test_follow_trace.py::test_invalid_capture_is_not_replayed_as_pass[dropped] PASSED [ 94%]
+tests/test_follow_trace.py::test_invalid_capture_is_not_replayed_as_pass[failed] PASSED [ 94%]
+tests/test_follow_trace.py::test_invalid_capture_is_not_replayed_as_pass[pending] PASSED [ 94%]
+tests/test_follow_trace.py::test_invalid_capture_is_not_replayed_as_pass[capture_errors] PASSED [ 94%]
+tests/test_follow_trace.py::test_modified_output_is_mismatch PASSED      [ 94%]
+tests/test_follow_trace.py::test_existing_file_not_overwritten PASSED    [ 95%]
+tests/test_follow_trace.py::test_invalid_history_rejected PASSED         [ 95%]
+tests/test_follow_trace.py::test_encoding_rejects_unsupported_object PASSED [ 95%]
+tests/test_source_provenance_r0_plus_b3.py::test_short_boundary_prefix_successor_preserves_before_and_current_bytes FAILED [ 95%]
+tests/test_source_provenance_r0_plus_b3.py::test_r0_plus_e3_successor_links_head_bytes_to_recorded_run_bytes PASSED [ 95%]
+tests/test_source_provenance_r0_plus_b3.py::test_r0_plus_e3_after_bytes_are_preserved_in_local_run_snapshot PASSED [ 96%]
+tests/test_source_provenance_r0_plus_b3.py::test_b3_successor_continues_r0_plus_and_preserves_b3_bytes FAILED [ 96%]
+tests/test_source_provenance_r0_plus_b3.py::test_local_signal_successor_preserves_failed_five_car_source FAILED [ 96%]
+tests/test_source_provenance_r0_plus_b3.py::test_m3_successor_records_current_bytes_without_rewriting_previous_contract FAILED [ 96%]
+tests/test_source_provenance_r0_plus_b3.py::test_command_selection_continues_m3_recorded_run_bytes FAILED [ 96%]
+tests/test_source_provenance_r0_plus_b3.py::test_baseline_release_continues_command_selection_run13_bytes FAILED [ 96%]
+tests/test_source_provenance_r0_plus_b3.py::test_release_gate_continues_preserved_rejected_release_bytes PASSED [ 97%]
+tests/test_source_provenance_r0_plus_b3.py::test_small_center_continues_release_gate_run19_bytes FAILED [ 97%]
+tests/test_source_provenance_r0_plus_b3.py::test_surface_commitment_continues_run32_source FAILED [ 97%]
+tests/test_source_provenance_r0_plus_b3.py::test_retained_threats_continues_run35_source PASSED [ 97%]
+tests/test_source_provenance_r0_plus_b3.py::test_sensor_stress_only_extends_evaluator_option_after_run55 PASSED [ 97%]
+tests/test_source_provenance_r0_plus_b3.py::test_m4_operation_successor_preserves_run59_and_changes_no_controller PASSED [ 98%]
+tests/test_source_provenance_r0_plus_b3.py::test_m4_clock_boundary_preserves_original_evaluator_bytes PASSED [ 98%]
+tests/test_source_provenance_r0_plus_b3.py::test_m4_new_race_only_extends_test_harness PASSED [ 98%]
+tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[10] PASSED [ 98%]
+tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[11] PASSED [ 98%]
+tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[12] PASSED [ 99%]
+tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[13] PASSED [ 99%]
+tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[14] PASSED [ 99%]
+tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[15] FAILED [ 99%]
+tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[16] PASSED [ 99%]
+tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[17] FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________ test_candidate_ast_and_source_history_preserved ________________
+
+    def test_candidate_ast_and_source_history_preserved():
+        root=Path(__file__).resolve().parents[1];name='config/tests/g2_motion_pause_r1_sha256.json'
+        c=json.loads((root/name).read_text(encoding='utf-8'));sha=lambda b:hashlib.sha256(b).hexdigest()
+        assert sha((root/c['parent_contract']).read_bytes())==c['parent_contract_sha256']
+        assert sha((root/c['before_snapshot']).read_bytes())==c['before_snapshot_sha256']
+        with zipfile.ZipFile(root/c['before_snapshot']) as archive:
+            for path,row in c['approved_changes'].items():
+                assert sha(archive.read(path))==row['before']!=row['after']
+>               assert m3_revision_digest(path,newer_than=name)==row['after']
+
+tests/test_bypass_motion_pause_connection.py:68: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/bypass_handoff.py'
+newer_than = 'config/tests/g2_motion_pause_r1_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'b4755c0ce2c0...91a0fd7f99345' == '6020a29e846f...da2ad1c1c6927'
+E             - 6020a29e846f6e1f87bb7cf3c6d799ae77db27ea1230ff3b32ada2ad1c1c6927
+E             + b4755c0ce2c064cbbd3861093c5707b57dc91b002e8bd01558891a0fd7f99345
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+___ test_short_boundary_prefix_successor_preserves_before_and_current_bytes ____
+
+    def test_short_boundary_prefix_successor_preserves_before_and_current_bytes():
+        name='config/tests/short_boundary_prefix_r0_sha256.json'
+        child=load(name)
+        assert child['parent_contract']=='config/tests/g1_course_evaluation_r0_sha256.json'
+        assert sha((ROOT/child['parent_contract']).read_bytes())==child['parent_contract_sha256']
+        snapshot=ROOT/child['before_snapshot']
+        assert sha(snapshot.read_bytes())==child['before_snapshot_sha256']
+        assert len(child['approved_changes'])==5
+        assert set(child['approved_evaluation_scripts'])=={'scripts/validate_g1_traffic.py'}
+        with zipfile.ZipFile(snapshot) as archive:
+            for group in GROUPS:
+                for path,row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(archive.read(path))==row['before']!=row['after']
+>                   assert m3_revision_digest(path, newer_than=name)==row['after']
+
+tests/test_source_provenance_r0_plus_b3.py:36: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_follow.py'
+newer_than = 'config/tests/short_boundary_prefix_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'a667f60299a5...69eac891ccfb3' == '5e77aef273ac...44fb9813d8cd7'
+E             - 5e77aef273acea4a00170a17138b5b7dfe69ecfa72da0083ef844fb9813d8cd7
+E             + a667f60299a54003d4efad8d35fd05d0c97287e9f3d3b65e41569eac891ccfb3
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+__________ test_b3_successor_continues_r0_plus_and_preserves_b3_bytes __________
+
+    def test_b3_successor_continues_r0_plus_and_preserves_b3_bytes():
+        contract, parent = load(B3), load(R0E3)
+        assert contract['parent_contract'] == R0E3
+        assert sha((ROOT/R0E3).read_bytes()) == contract['parent_contract_sha256']
+        assert '승인 아님' in contract['scope']
+        for group in GROUPS:
+            for path, row in contract[group].items():
+                assert row['reason'].strip() and row['before'] == parent[group][path]['after'] != row['after']
+>               assert b3_revision_digest(path) == row['after']
+
+tests/test_source_provenance_r0_plus_b3.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_source_provenance_r0_plus_b3.py:103: in b3_revision_digest
+    assert m3_revision_digest(path) == row['after']
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py', newer_than = None
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'd7568e4e39fe...cfbc57337b33f' == 'e0220812b266...b9d13161e972e'
+E             - e0220812b266139be266d463d2ffd0330db15144763dd63ad48b9d13161e972e
+E             + d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+_________ test_local_signal_successor_preserves_failed_five_car_source _________
+
+    def test_local_signal_successor_preserves_failed_five_car_source():
+        name = 'config/tests/local_start_signal_r0_sha256.json'
+        child = load(name)
+        assert child['parent_contract'] == 'config/tests/short_boundary_prefix_r0_sha256.json'
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        assert set(child['approved_evaluation_scripts']) == {'scripts/validate_g1_traffic.py', 'scripts/validate_pipeline_faults_ros.py'}
+        assert set(child['new_dependencies']) == {'src/arena_autonomy/arena_autonomy/race_start_local.py'}
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for group in GROUPS:
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(archive.read(path)) == row['before'] != row['after']
+>                   assert m3_revision_digest(path, newer_than=name) == row['after']
+
+tests/test_source_provenance_r0_plus_b3.py:152: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py'
+newer_than = 'config/tests/local_start_signal_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'd7568e4e39fe...cfbc57337b33f' == 'e0220812b266...b9d13161e972e'
+E             - e0220812b266139be266d463d2ffd0330db15144763dd63ad48b9d13161e972e
+E             + d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+_ test_m3_successor_records_current_bytes_without_rewriting_previous_contract __
+
+    def test_m3_successor_records_current_bytes_without_rewriting_previous_contract():
+        contract = load('config/tests/m3_execution_r0_sha256.json')
+        assert contract['changes'] == {**contract['approved_changes'], **contract['approved_evaluation_scripts']}
+        assert contract['parent_contract'] == B3
+        assert sha((ROOT/B3).read_bytes()) == contract['parent_contract_sha256']
+        snapshot = ROOT/contract['before_snapshot']
+        if snapshot.is_file():
+            assert sha(snapshot.read_bytes()) == contract['before_snapshot_sha256']
+            with tarfile.open(snapshot) as archive:
+                for path, row in contract['changes'].items():
+                    assert sha(archive.extractfile(path).read()) == row['before']
+        for path, row in contract['changes'].items():
+            assert row['reason'].strip()
+>           assert m3_revision_digest(path) == row['after'] != row['before']
+
+tests/test_source_provenance_r0_plus_b3.py:197: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py', newer_than = None
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'd7568e4e39fe...cfbc57337b33f' == 'e0220812b266...b9d13161e972e'
+E             - e0220812b266139be266d463d2ffd0330db15144763dd63ad48b9d13161e972e
+E             + d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+____________ test_command_selection_continues_m3_recorded_run_bytes ____________
+
+    def test_command_selection_continues_m3_recorded_run_bytes():
+        child = load('config/tests/m3_command_selection_r0_sha256.json')
+        parent = load(child['parent_contract'])
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        snapshot = ROOT/child['before_snapshot']
+        if snapshot.is_file():
+            assert sha(snapshot.read_bytes()) == child['before_snapshot_sha256']
+        for group in GROUPS:
+            for path,row in child[group].items():
+                expected = parent['changes'][path]['after'] if path in parent['changes'] else parent['dependencies'][path]
+>               assert m3_revision_digest(path) == row['before'] == expected
+
+tests/test_source_provenance_r0_plus_b3.py:212: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py', newer_than = None
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'd7568e4e39fe...cfbc57337b33f' == 'e0220812b266...b9d13161e972e'
+E             - e0220812b266139be266d463d2ffd0330db15144763dd63ad48b9d13161e972e
+E             + d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+________ test_baseline_release_continues_command_selection_run13_bytes _________
+
+    def test_baseline_release_continues_command_selection_run13_bytes():
+        child, parent = load(M3_SUCCESSORS[1]), load(M3_SUCCESSORS[0])
+        assert child['parent_contract'] == M3_SUCCESSORS[0] and '승인 아님' in child['scope']
+        assert sha((ROOT/M3_SUCCESSORS[0]).read_bytes()) == child['parent_contract_sha256']
+        snapshot = ROOT/child['before_snapshot']
+        if snapshot.is_file():
+            assert sha(snapshot.read_bytes()) == child['before_snapshot_sha256']
+        parent_rows = {**parent['approved_changes'], **parent['approved_evaluation_scripts']}
+        for group in GROUPS:
+            for path, row in child[group].items():
+                assert row['reason'].strip()
+>               assert row['before'] == parent_rows[path]['after'] == m3_revision_digest(path, newer_than=M3_SUCCESSORS[0])
+
+tests/test_source_provenance_r0_plus_b3.py:227: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py'
+newer_than = 'config/tests/m3_command_selection_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'd7568e4e39fe...cfbc57337b33f' == 'e0220812b266...b9d13161e972e'
+E             - e0220812b266139be266d463d2ffd0330db15144763dd63ad48b9d13161e972e
+E             + d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+_____________ test_small_center_continues_release_gate_run19_bytes _____________
+
+    def test_small_center_continues_release_gate_run19_bytes():
+        """run17/19/21/24 실행 사본 바이트에서 작은 중앙 보정 비교 옵션으로. 이전 계약·실행 사본은 수정하지 않는다."""
+        child, parent = load(M3_SUCCESSORS[3]), load(M3_SUCCESSORS[2])
+        assert child['parent_contract'] == M3_SUCCESSORS[2] and '승인 아님' in child['scope']
+        assert sha((ROOT/M3_SUCCESSORS[2]).read_bytes()) == child['parent_contract_sha256']
+        snapshot = ROOT/child['before_snapshot']
+        if snapshot.is_file():
+            assert sha(snapshot.read_bytes()) == child['before_snapshot_sha256']
+        parent_rows = {**parent['approved_changes'], **parent['approved_evaluation_scripts']}
+        for group in GROUPS:
+            for path, row in child[group].items():
+                assert row['reason'].strip()
+                if path in parent_rows:
+                    assert row['before'] == parent_rows[path]['after']
+>               assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[2]) == row['before']
+
+tests/test_source_provenance_r0_plus_b3.py:262: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py'
+newer_than = 'config/tests/m3_release_gate_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'd7568e4e39fe...cfbc57337b33f' == 'e0220812b266...b9d13161e972e'
+E             - e0220812b266139be266d463d2ffd0330db15144763dd63ad48b9d13161e972e
+E             + d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+________________ test_surface_commitment_continues_run32_source ________________
+
+    def test_surface_commitment_continues_run32_source():
+        child, parent = load(M3_SUCCESSORS[4]), load(M3_SUCCESSORS[3])
+        assert child['parent_contract'] == M3_SUCCESSORS[3]
+        assert sha((ROOT/M3_SUCCESSORS[3]).read_bytes()) == child['parent_contract_sha256']
+        parent_rows = {**parent['approved_changes'], **parent['approved_evaluation_scripts']}
+        for group in GROUPS:
+            for path, row in child[group].items():
+                assert row['before'] == parent_rows[path]['after'] and row['reason'].strip()
+>               assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[3]) == row['before']
+
+tests/test_source_provenance_r0_plus_b3.py:274: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py'
+newer_than = 'config/tests/m3_small_center_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'd7568e4e39fe...cfbc57337b33f' == 'e0220812b266...b9d13161e972e'
+E             - e0220812b266139be266d463d2ffd0330db15144763dd63ad48b9d13161e972e
+E             + d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+__ test_oct26_guarded_return_and_second_start_have_preserved_source_chain[15] __
+
+index = 15
+
+    @pytest.mark.parametrize('index', [10, 11, 12, 13, 14, 15, 16, 17])
+    def test_oct26_guarded_return_and_second_start_have_preserved_source_chain(index):
+        child = load(M3_SUCCESSORS[index])
+        assert child['parent_contract'] == M3_SUCCESSORS[index-1]
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for group in GROUPS:
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(archive.read(path)) == row['before'] != row['after']
+>                   assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+
+tests/test_source_provenance_r0_plus_b3.py:355: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_bringup/launch/simulation.launch.py'
+newer_than = 'config/tests/m2_count_fault_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'eb535e921951...484b7eff7e88d' == '5dd54b1e5e92...45b4419c05201'
+E             - 5dd54b1e5e924b101d92519da1c4fed351ffde8efd4eb5de24045b4419c05201
+E             + eb535e9219516fe189d36bd2ef54b82f992a7631e9911326ce7484b7eff7e88d
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+__ test_oct26_guarded_return_and_second_start_have_preserved_source_chain[17] __
+
+index = 17
+
+    @pytest.mark.parametrize('index', [10, 11, 12, 13, 14, 15, 16, 17])
+    def test_oct26_guarded_return_and_second_start_have_preserved_source_chain(index):
+        child = load(M3_SUCCESSORS[index])
+        assert child['parent_contract'] == M3_SUCCESSORS[index-1]
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for group in GROUPS:
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(archive.read(path)) == row['before'] != row['after']
+>                   assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+
+tests/test_source_provenance_r0_plus_b3.py:355: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py'
+newer_than = 'config/tests/m5_publication_r0_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'd7568e4e39fe...cfbc57337b33f' == 'e0220812b266...b9d13161e972e'
+E             - e0220812b266139be266d463d2ffd0330db15144763dd63ad48b9d13161e972e
+E             + d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f
+
+tests/test_source_provenance_r0_plus_b3.py:171: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_bypass_motion_pause_connection.py::test_candidate_ast_and_source_history_preserved
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_short_boundary_prefix_successor_preserves_before_and_current_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_b3_successor_continues_r0_plus_and_preserves_b3_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_local_signal_successor_preserves_failed_five_car_source
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_m3_successor_records_current_bytes_without_rewriting_previous_contract
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_command_selection_continues_m3_recorded_run_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_baseline_release_continues_command_selection_run13_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_small_center_continues_release_gate_run19_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_surface_commitment_continues_run32_source
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[15]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[17]
+======================= 11 failed, 516 passed in 22.32s ========================
+ACTUAL_EXIT_CODE=1

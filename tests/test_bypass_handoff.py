@@ -270,8 +270,23 @@ def test_compact_status_and_nondeterministic_cost_exclusion_are_bounded():
 
 
 def test_default_launch_and_drive_boundary_unchanged():
+    import importlib.util
     root=Path(__file__).resolve().parents[1]
-    assert all('g1_g2_handoff_trial' not in p.read_text() for p in (root/'src/arena_bringup/launch').glob('*.py'))
+    path=root/'src/arena_bringup/launch/simulation.launch.py'
+    spec=importlib.util.spec_from_file_location('handoff_launch_check',path)
+    launch=importlib.util.module_from_spec(spec);spec.loader.exec_module(launch)
+    from launch.actions import DeclareLaunchArgument
+    from launch.utilities import perform_substitutions
+    from launch import LaunchContext
+    arg=next(a for a in launch.generate_launch_description().entities
+             if isinstance(a,DeclareLaunchArgument) and a.name=='evaluation_handoff_reserve')
+    default=perform_substitutions(LaunchContext(),arg.default_value)
+    normal=dict(guarded=True,actor='test_actor.sdf',evidence='test_run',track='official')
+    assert default=='off' and launch._autonomy_executable('local_pursuit',default,**normal)=='local_pursuit'
+    assert launch._autonomy_executable('local_pursuit','closing',**normal)=='g1_g2_handoff_trial'
+    for override in ({'guarded':False},{'actor':None},{'evidence':''},{'track':'experimental'}):
+        with pytest.raises(ValueError):
+            launch._autonomy_executable('local_pursuit','closing',**{**normal,**override})
     assert G1G2Node.control is LocalPursuit.control
     assert G1G2Node.reset_follow is LocalPursuit.reset_follow
     assert G1G2Node.on_scan is LocalPursuit.on_scan

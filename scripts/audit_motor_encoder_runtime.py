@@ -16,7 +16,9 @@ def audit(folder):
     with zipfile.ZipFile(folder/'source_snapshot.zip') as bundle:
         raw = bundle.read('src/arena_description/config/vehicle.yaml')
         config = yaml.safe_load(raw)['vehicle']
-        source_matches = hashlib.sha256(raw).hexdigest() == report['source_sha256']['src/arena_description/config/vehicle.yaml']
+        # 교통 평가기(source_sha256)와 단독 평가기(input_sha256)의 실행 당시 설정.
+        hashes = report.get('source_sha256', report.get('input_sha256', {}))
+        source_matches = hashlib.sha256(raw).hexdigest() == hashes.get('src/arena_description/config/vehicle.yaml')
     encoder = config['sensors']['drive_feedback']
     spec = encoder['drive_motor_encoder']
     ratio = config['drivetrain']['motor']['gear_ratio']
@@ -28,7 +30,8 @@ def audit(folder):
         'snapshot_config_hash_matches': source_matches,
         'single_motor_mode': encoder['mode'] == 'drive_motor_shaft',
         'resolution_28': spec['counts_per_motor_revolution'] == 28,
-        'runtime_ratio_15': float(runtime.findtext('gear_ratio')) == ratio == 15.,
+        'runtime_ratio_matches_snapshot': math.isfinite(ratio) and ratio > 0
+            and math.isclose(float(runtime.findtext('gear_ratio')), ratio, rel_tol=1e-12),
         'runtime_radius_32_5_mm': float(runtime.findtext('wheel_radius')) == radius == .0325,
         'mcu_all_motor_mode': bool(states) and all(s['feedback_mode'] == 'drive_motor_shaft' for s in states),
         'mcu_no_left_right_encoder_values': bool(states) and all(s.get('left_ticks') is None and s.get('right_ticks') is None
@@ -39,7 +42,8 @@ def audit(folder):
     }
     return {'run': str(folder), 'passed': all(checks.values()), 'checks': checks,
             'report_sha256': hashlib.sha256((folder/'report.json').read_bytes()).hexdigest(),
-            'subscriptions': subscriptions, 'mcu_samples': len(states),
+            'subscriptions': subscriptions, 'subscription_evidence_present': all(subscriptions.values()),
+            'mcu_samples': len(states), 'gear_ratio': ratio,
             'counts_per_mean_wheel_revolution': spec['counts_per_motor_revolution']*ratio,
             'travel_mm_per_count': math.tau*radius*1000/(spec['counts_per_motor_revolution']*ratio),
             'limits': 'Gazebo inner motor PI uses ideal wheel-joint mean. Quantized single motor encoder feeds controller/deskew/virtual MCU; not full physical MCU speed-loop emulation.'}

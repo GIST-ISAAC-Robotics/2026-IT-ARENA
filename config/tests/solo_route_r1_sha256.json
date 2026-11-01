@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "scope": "선택형 단독 프리랩의 측방 교통 선택 제외. 기본 OFF·현재 점유/부분 관측/독립 보호/STOP 유지. 본 경기 미적용.",
+  "parent_contract": "config/tests/low_speed_arc_reacquire_r1_sha256.json",
+  "parent_contract_sha256": "9797925661e5762f4c8f6c72289d658cd75a3eda7f51b417e52e2f18f2f0c182",
+  "before_snapshot": "artifacts/validation/2026-11-01/solo_route_v1/before.zip",
+  "before_snapshot_sha256": "7f652a29d08223a55fc9551f00d90da5909fdfea66342e2b8a28f1e1380f3eb2",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "4a5bd8edd40ce1cffa6753cca63530b49b34a262fc62a69199c99fd3e91bf462",
+      "after": "fbb3b163ba8c48952b55020853a07e7ec0648db4ba9d472a554e10efd9db43f9",
+      "reason": "단독 마지막 코너에서 통과 이력의 교통 선택기가 먼저 0명령을 만든 저장 증거에 따라 단독 설정을 분리한다. 관측·점유 정책과 속도/물성은 유지한다."
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "cdd59ff0e1ac27225a9db12e2d7ee149051768026faae95352349d7f951f952a",
+      "after": "62ea68c25f09ff2e8bd97a7c964eebbb1e4b1f8c494b4f397ed4ae776df5692d",
+      "reason": "단독 마지막 코너에서 통과 이력의 교통 선택기가 먼저 0명령을 만든 저장 증거에 따라 단독 설정을 분리한다. 관측·점유 정책과 속도/물성은 유지한다."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "1d19ff41ce4bd2fa7c63d1ac8690b0a360164c06ba74acd2ad5340d2b4fa0a1c",
+      "after": "d64f6273fdaef01ddbd24d3b6b7bc5734a3223a502c985042f8e40b92f1e4685",
+      "reason": "단독 마지막 코너에서 통과 이력의 교통 선택기가 먼저 0명령을 만든 저장 증거에 따라 단독 설정을 분리한다. 관측·점유 정책과 속도/물성은 유지한다."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "7a17dd3664d5145d672c0c1c0e34ce558dc4f6dafe7812cb7af0462bf8824233",
+      "after": "e8e6770409a42e8fbde17ec70f4837cdbf2f5a55fd3f32671375584c091575da",
+      "reason": "단독 마지막 코너에서 통과 이력의 교통 선택기가 먼저 0명령을 만든 저장 증거에 따라 단독 설정을 분리한다. 관측·점유 정책과 속도/물성은 유지한다."
+    }
+  },
+  "new_dependencies": {}
+}

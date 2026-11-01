@@ -10,7 +10,7 @@ import numpy as np
 
 from arena_autonomy.corner_corridor import corridor_evidence, short_prefix_evidence, short_inner_prefix_evidence
 from arena_autonomy.lidar_motion import MotionUnavailable
-from arena_autonomy.local_follow import path_agrees, pursue_path
+from arena_autonomy.local_follow import path_agrees, path_agrees_arc, pursue_path
 from arena_autonomy.local_path import braking_speed, swept_limit
 from arena_autonomy.occupancy_timing import per_ray_padding
 from arena_autonomy.scene_motion import transport_points
@@ -146,17 +146,27 @@ class CorridorObserver:
             return result
         path = np.asarray(proposal['geometry']['path'])
         compatible, displacement, transport_error = False,None,None
+        comparison = None
         prior_age = None if self.path_source is None else now-self.path_source
         if self.path is not None and 0 <= prior_age < self.config.memory_ttl_s:
             try:
                 transported = transport_points(self.path,history,self.path_ref,now)
                 displacement = float(np.max(np.linalg.norm(transported-self.path,axis=1)))
-                compatible = (displacement <= self.config.memory_motion_limit_m and
-                              path_agrees(path,transported,self.config.boundary_agreement_m))
+                if displacement <= self.config.memory_motion_limit_m:
+                    compatible = path_agrees(path,transported,self.config.boundary_agreement_m)
+                    comparison = 'forward_x' if compatible else None
+                    if (not compatible and self.config.corridor_arc_agreement
+                            and path_agrees_arc(path,transported,self.config.boundary_agreement_m)):
+                        # 같은 가까운 경로를 호길이로 비교. U자 뒤쪽의 같은 x 좌표를
+                        # 공통 전방 구간으로 세지 않는다. 점유/TTL/확인 횟수는 그대로다.
+                        compatible = True
+                        comparison = 'common_arc'
             except (ValueError,MotionUnavailable) as error:
                 transport_error = str(error)
         result.update(previous_source_age_s=prior_age, previous_path_agrees=bool(compatible),
                       transport_displacement_m=displacement, transport_error=transport_error)
+        if self.config.corridor_arc_agreement:
+            result['path_agreement_method'] = comparison
         if not fresh and not compatible:
             self.clear_evidence()
             return {**result, 'reason':'reused_scan_path_unconfirmed'}

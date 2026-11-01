@@ -3,14 +3,18 @@ import math
 import numpy as np
 from arena_vehicle_interface.drive_feedback import MotorEncoderSpec
 
+# 과거 합성 결과의 재현 기본값. 새 구매 구성 시험은 motor_spec을 명시한다.
 SPEC=MotorEncoderSpec(28,15.,.0325)
 
 
 class ProbeSensors:
-    def __init__(self,profile='ideal',seed=17):
+    def __init__(self,profile='ideal',seed=17,*,motor_spec=None):
         if profile not in ('ideal','range','motion','combined'):
             raise ValueError('unknown registered probe sensor profile')
         self.profile=profile
+        if motor_spec is not None and not isinstance(motor_spec,MotorEncoderSpec):
+            raise TypeError('motor_spec must be MotorEncoderSpec')
+        self.motor_spec=SPEC if motor_spec is None else motor_spec
         self.range_enabled=profile in ('range','combined')
         self.motion_enabled=profile in ('motion','combined')
         self.range_rng=np.random.default_rng(seed)
@@ -27,17 +31,18 @@ class ProbeSensors:
 
     def measure_motion(self,now,travel,speed,steering):
         """생산자만 실제 이동을 카운트로 만든다. 제어기에는 평균 속도/gyro만 전달."""
-        count=round(travel/SPEC.mean_wheel_travel_m_per_count)
+        spec=self.motor_spec
+        count=round(travel/spec.mean_wheel_travel_m_per_count)
         if self.last_time is None:mean=0.
         else:
             if now<=self.last_time:raise ValueError('capture time must advance')
-            rate=SPEC.motor_rad_s_from_counts(count-self.last_count,now-self.last_time)
-            mean=SPEC.mean_wheel_rad_s(rate)
+            rate=spec.motor_rad_s_from_counts(count-self.last_count,now-self.last_time)
+            mean=spec.mean_wheel_rad_s(rate)
         self.last_time,self.last_count=now,count
         gyro=speed*math.tan(steering)/.135
         if self.motion_enabled:
             gyro+=math.radians(1.)+float(self.gyro_rng.normal(0.,.02))
-        return (mean if self.motion_enabled else speed/.0325),gyro,count
+        return (mean if self.motion_enabled else speed/spec.wheel_radius_m),gyro,count
 
     def description(self):
         return dict(profile=self.profile,
@@ -46,6 +51,7 @@ class ProbeSensors:
             gyro_bias_rad_s=math.radians(1.) if self.motion_enabled else 0.,
             gyro_gaussian_std_rad_s=.02 if self.motion_enabled else 0.,
             motor_count_quantization=self.motion_enabled,
-            counts_per_motor_revolution=28,gear_ratio=15.,wheel_radius_m=.0325,
+            counts_per_motor_revolution=self.motor_spec.counts_per_motor_revolution,
+            gear_ratio=self.motor_spec.gear_ratio,wheel_radius_m=self.motor_spec.wheel_radius_m,
             capture_interval_s=.02,measured_distribution=False,
             sensor_latency_transport_and_slip_verified=False)

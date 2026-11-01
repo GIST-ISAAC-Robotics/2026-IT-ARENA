@@ -20,12 +20,12 @@ inline ZeroSpeedMode ParseZeroSpeedMode(const std::string &name)
 }
 // 질량 없는 강체 기어의 축약 모델. 바퀴 관성/접촉은 Gazebo가 적분합니다.
 // 모터 회전자 반사 관성, 기어 유격, 전기/열/PWM/단락 제동 회로를 재현하는 모델은 아닙니다.
-// 실행값은 vehicle.yaml → SDF로 주입합니다. 아래 기본값은 2026-10-02 설정과 같게 둔
+// 실행값은 vehicle.yaml → SDF로 주입합니다. 아래 기본값은 2026-11-01 설정과 같게 둔
 // 대체값이며, 과거 독립 시험(반지름 0.025 m·8:1·2200 rad/s)의 값이 아닙니다.
 struct DriveParameters
 {
   double radius{0.0325};             // 65 mm 바깥지름, 유효 구름 반지름 미측정
-  double ratio{15.0};                // 팀 전달 초기 6:1 × 2.5:1, 조립 미확인
+  double ratio{8.970588235294118};    // 견적 61T/17T × 내부 2.5:1, 조립/피치 미확인
   double efficiency{1.0};
   double torqueLimit{0.060};          // 모터 축 N m 임시 상한. MB4266 정지 토크 외삽값 아님
   double brakeTorqueLimit{0.045};     // 임시 제동 상한. MD20A 단락 제동 모델 아님

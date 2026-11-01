@@ -87,7 +87,12 @@ def test_selected_motor_gearing_and_wheel_reach_generated_model():
     config = vehicle()
     launch = load_launch()
     drive, motor = config["drivetrain"], config["drivetrain"]["motor"]
-    assert (drive["wheel_radius_m"], drive["wheelbase_m"], motor["gear_ratio"]) == (.0325, .135, 15.)
+    assert (drive["wheel_radius_m"], drive["wheelbase_m"]) == (.0325, .135)
+    ratio = 2.5 * 61 / 17
+    assert motor["gear_ratio"] == pytest.approx(ratio)
+    gearing = motor['gearing_reference']
+    assert (gearing['internal_reduction'], gearing['spur_teeth'], gearing['pinion_teeth']) == (2.5, 61, 17)
+    assert (REPO / gearing['source']).is_file()
     assert motor["free_speed_rad_s"] == pytest.approx(18000 * 2 * 3.141592653589793 / 60)
     # 임시 토크 상한은 정격보다 낮고, 두 사양점 선형 외삽 정지 토크(약 1.25 N·m)로 올리지 않는다.
     spec = motor["specification_points_not_measured"]
@@ -98,7 +103,7 @@ def test_selected_motor_gearing_and_wheel_reach_generated_model():
     root = model(**launch._dynamics_mappings(config), wheelbase=str(drive["wheelbase_m"]),
                  wheel_radius=str(drive["wheel_radius_m"]))
     plugin = root.find("plugin[@name='arena::SingleMotorDrive']")
-    assert float(plugin.findtext("gear_ratio")) == 15.
+    assert float(plugin.findtext("gear_ratio")) == pytest.approx(ratio)
     assert float(plugin.findtext("wheel_radius")) == .0325
     assert float(plugin.findtext("wheelbase")) == .135
     assert float(plugin.findtext("motor_torque_limit")) == .060
@@ -108,9 +113,10 @@ def test_selected_motor_gearing_and_wheel_reach_generated_model():
             assert float(link.findtext("collision/geometry/cylinder/radius")) == .0325
     # xacro 기본값도 같은 값이어야 매핑 없는 모델 생성 검사가 옛 기하를 쓰지 않는다.
     default = model().find("plugin[@name='arena::SingleMotorDrive']")
-    assert float(default.findtext("gear_ratio")) == 15. and float(default.findtext("wheelbase")) == .135
+    assert float(default.findtext("gear_ratio")) == pytest.approx(ratio)
+    assert float(default.findtext("wheelbase")) == .135
     header = (REPO / "src/arena_gazebo/include/arena_gazebo/drivetrain.hpp").read_text(encoding="utf-8")
-    assert "radius{0.0325}" in header and "ratio{15.0}" in header and "freeSpeed{1884.9555921539}" in header
+    assert "radius{0.0325}" in header and "ratio{8.970588235294118}" in header and "freeSpeed{1884.9555921539}" in header
 
 
 def test_local_c1_scan_plane_stays_above_raised_chassis_top():
@@ -129,14 +135,16 @@ def test_drive_feedback_resolution_for_motor_and_explicit_legacy():
     motor = launch._drive_feedback(config)
     assert motor["mode"] == "drive_motor_shaft" and motor["topic"] == "/drive_motor/encoder"
     assert motor["encoder_node"]["counts_per_motor_revolution"] == 28
-    assert motor["encoder_node"]["gear_ratio"] == 15. and motor["encoder_node"]["wheel_radius_m"] == .0325
+    ratio = 2.5 * 61 / 17
+    assert motor["encoder_node"]["gear_ratio"] == pytest.approx(ratio)
+    assert motor["encoder_node"]["wheel_radius_m"] == .0325
     assert "ticks_per_revolution" not in motor["encoder_node"]
     assert motor["mcu"] == {"feedback_mode": "drive_motor_shaft", "wheel_radius_m": .0325,
-                            "ticks_per_revolution": 28, "gear_ratio": 15.}
-    assert motor["motion"] == {"motion_feedback_mode": "drive_motor_shaft", "motion_gear_ratio": 15.,
+                            "ticks_per_revolution": 28, "gear_ratio": ratio}
+    assert motor["motion"] == {"motion_feedback_mode": "drive_motor_shaft", "motion_gear_ratio": ratio,
                                "motion_wheel_radius_m": .0325}
-    assert motor["resolution"]["counts_per_mean_wheel_revolution"] == 420
-    assert motor["resolution"]["mean_wheel_travel_m_per_count"] * 1000 == pytest.approx(.4862, abs=1e-4)
+    assert motor["resolution"]["counts_per_mean_wheel_revolution"] == pytest.approx(251.1764705882353)
+    assert motor["resolution"]["mean_wheel_travel_m_per_count"] * 1000 == pytest.approx(.8130, abs=1e-4)
     legacy = launch._drive_feedback(config, "rear_wheel_pair_legacy")
     assert legacy["topic"] == "/wheel_states" and legacy["mcu"]["gear_ratio"] == 1.
     assert legacy["encoder_node"]["ticks_per_revolution"] == 2048

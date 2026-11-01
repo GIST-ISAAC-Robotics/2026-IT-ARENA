@@ -115,7 +115,7 @@ def test_independent_gate_caps_request_not_scan_and_preserves_zero_command():
     assert commands[-1].drive.speed==0.
 
 
-def test_reverse_feedback_stops_output_but_does_not_expire_live_observations():
+def test_reverse_feedback_can_drive_forward_without_expiring_live_observations():
     node,commands,statuses=candidate_node()
     # 0.4 s 역회전 값 동안에도 스캔과 엔코더/자이로 시각은 정상적으로 갱신된다.
     node.motion.history=history(v=-.01)
@@ -128,8 +128,9 @@ def test_reverse_feedback_stops_output_but_does_not_expire_live_observations():
             'nanoseconds':round(now*1e9),'to_msg':lambda _:node.command.header.stamp})()})()
         LidarSafety.control(node)
         report=json.loads(statuses[-1].data)
-        assert commands[-1].drive.speed==0.
-        assert report['reason']=='invalid_or_reverse_feedback'
+        assert commands[-1].drive.speed==.5
+        assert report['reason']=='clear'
+        assert report['partial_observation']['measured_speed_mps']==pytest.approx(-.01)
         assert report['partial_observation']['allowed']
         assert node.partial_policy.previous[1]==pytest.approx(now)
     node.motion.history=history(v=0.)
@@ -184,7 +185,7 @@ def test_current_close_obstacle_still_brakes_when_reobserved_match_is_removed_fr
 
 
 @pytest.mark.parametrize('fault',['near_obstacle','stale_command','stale_scan','transport',
-                                 'missing_motion','reverse_motion','invalid_scan','central_gap'])
+                                 'missing_motion','invalid_scan','central_gap'])
 def test_partial_policy_does_not_bypass_independent_faults(fault):
     node,commands,statuses=candidate_node()
     if fault=='near_obstacle':node.motion.project=lambda _:(np.tile([.1,0.],(60,1)),60)
@@ -192,7 +193,6 @@ def test_partial_policy_does_not_bypass_independent_faults(fault):
     if fault=='stale_scan':node.scan=sample(.1,[375])
     if fault=='transport':node.scan_wall-=4.
     if fault=='missing_motion':node.motion.history=history(end=.1)
-    if fault=='reverse_motion':node.motion.history=history(v=-.1)
     if fault=='invalid_scan':node.scan.angle_increment=0.
     if fault=='central_gap':node.scan.ranges[250]=math.nan
     LidarSafety.control(node)
@@ -252,7 +252,7 @@ def test_wide_blind_interval_does_not_recover_from_one_narrow_gap():
     assert result['reason']=='partial_history_expired' and not result['allowed']
 
 
-@pytest.mark.parametrize('fault',['near_obstacle','stale_command','stale_scan','missing_motion','reverse_motion','invalid_scan'])
+@pytest.mark.parametrize('fault',['near_obstacle','stale_command','stale_scan','missing_motion','invalid_scan'])
 def test_forward_candidate_preserves_independent_fault_stops(fault):
     node,commands,statuses=candidate_node(forward=True)
     node.scan=sample(.5,[250])
@@ -260,7 +260,6 @@ def test_forward_candidate_preserves_independent_fault_stops(fault):
     if fault=='stale_command':node.command.header.stamp.nanosec=0
     if fault=='stale_scan':node.scan=sample(.1,[250])
     if fault=='missing_motion':node.motion.history=history(end=.1)
-    if fault=='reverse_motion':node.motion.history=history(v=-.1)
     if fault=='invalid_scan':node.scan.angle_increment=0.
     LidarSafety.control(node)
     assert commands[-1].drive.speed==0.

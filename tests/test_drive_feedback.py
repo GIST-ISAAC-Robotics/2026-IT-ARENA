@@ -14,6 +14,19 @@ from arena_vehicle_interface.drive_feedback import (  # noqa: E402
 SPEC = MotorEncoderSpec(counts_per_motor_revolution=28, gear_ratio=15.0, wheel_radius_m=.0325)
 
 
+def test_quote_61_17_ratio_has_coarser_counts_but_preserves_signed_travel():
+    current = MotorEncoderSpec(28, 2.5 * 61 / 17, .0325)
+    assert current.counts_per_wheel_revolution == pytest.approx(251.1764705882353)
+    assert current.mean_wheel_travel_m_per_count * 1000 == pytest.approx(.8129882628142205)
+    assert current.speed_quantum_mps(.01) == pytest.approx(.08129882628142206)
+    for speed in (-2., 0., 2., 10/3.6):
+        interval = .02
+        motor_angle = speed * interval / current.wheel_radius_m * current.gear_ratio
+        count = current.counts_from_motor_angle(motor_angle)
+        wheel_rate = current.mean_wheel_rad_s(current.motor_rad_s_from_counts(count, interval))
+        assert wheel_rate * current.wheel_radius_m == pytest.approx(speed, abs=current.speed_quantum_mps(interval)/2)
+
+
 def counts_for_wheels(left_rad, right_rad, spec=SPEC):
     return spec.counts_from_motor_angle(motor_angle_from_wheels(left_rad, right_rad, spec.gear_ratio))
 

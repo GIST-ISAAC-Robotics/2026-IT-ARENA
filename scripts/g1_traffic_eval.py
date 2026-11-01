@@ -365,6 +365,7 @@ def controller_mode_summary(statuses):
     return {
         'behavior_rows': len(statuses),
         'g1_rows': sum(s.get('mode') == 'g1_follow' and s.get('passing_enabled') is False for s in statuses),
+        'g1g2_rows': sum(s.get('mode') == 'g1_g2_handoff_trial' and s.get('simulation_trial_only') is True for s in statuses),
         'r0plus_rows': sum(s.get('mode') == 'r0_plus_candidate' and s.get('passing_enabled') is False for s in statuses),
         'm3_rows': sum(s.get('mode') == 'm3_execution_trial' and s.get('passing_enabled') is False
                        and s.get('simulation_trial_only') is True for s in statuses),
@@ -502,7 +503,7 @@ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, co
 
     def stationary(row):
         held = row['ground_speed_mps'] < .01 and row['safe_speed_mps'] == 0
-        return held and (mode not in ('g1', 'r0plus', 'm3') or row['autonomy'].get('behavior') == 'HOLD')
+        return held and (mode not in ('g1', 'r0plus', 'm3', 'g1g2') or row['autonomy'].get('behavior') == 'HOLD')
     case_metrics, gates = {}, {}
     rules = acceptance.get(case['name'], {})
     behavior = case.get('behavior_kind', case['name'])
@@ -623,14 +624,15 @@ def finalize_verdict(report, mode):
     evaluation = report.get('evaluation', {})
     harness = evaluation.get('harness', {})
     controller = evaluation.get('controller_mode', {})
-    if mode not in ('g1', 'r0', 'r0plus', 'm3'):
+    if mode not in ('g1', 'r0', 'r0plus', 'm3', 'g1g2'):
         raise ValueError('unsupported controller mode')
     rows = controller.get('behavior_rows', 0)
     mode_matches = ((rows > 0 and controller.get('g1_rows') == rows) if mode == 'g1' else
+                    (rows > 0 and controller.get('g1g2_rows') == rows) if mode == 'g1g2' else
                     (rows > 0 and controller.get('r0plus_rows') == rows) if mode == 'r0plus' else
                     (rows > 0 and controller.get('m3_rows') == rows) if mode == 'm3' else
                     controller.get('g1_rows', 0) == 0 and controller.get('r0plus_rows', 0) == 0
-                    and controller.get('m3_rows', 0) == 0)
+                    and controller.get('m3_rows', 0) == 0 and controller.get('g1g2_rows', 0) == 0)
     integrity = {
         'no_runtime_error': 'error' not in report and 'error' not in evaluation,
         'evaluation_readers_valid': report.get('evaluation_readers', {}).get('valid') is True,
@@ -644,7 +646,8 @@ def finalize_verdict(report, mode):
         'sequential_acquisition': report.get('sequential_acquisition_verified') is True,
         'lidar_interface': report.get('lidar_nominal_interface_passed') is True,
         'source_unchanged': report.get('source_unchanged') is True,
-        'signal_sequence': {'red', 'yellow', 'green'}.issubset(report.get('signal_states', [])),
+        'signal_sequence': (report['team_signal_evidence'].get('passed') is True if 'team_signal_evidence' in report
+                            else {'red', 'yellow', 'green'}.issubset(report.get('signal_states', []))),
         'no_false_start': report.get('false_start') is False,
         'controller_mode_matches': mode_matches,
     }
@@ -666,7 +669,7 @@ def finalize_verdict(report, mode):
     report['gates'] = behavior
     report['run_valid'] = report['harness_valid'] and all(integrity.values()) and report.get('shutdown_clean') is True
     report['behavior_gates_passed'] = bool(behavior) and all(behavior.values()) and all(stop_checks.values())
-    if mode in ('g1', 'r0plus', 'm3'):
+    if mode in ('g1', 'r0plus', 'm3', 'g1g2'):
         report['passed'] = report['run_valid'] and report['behavior_gates_passed']
     else:
         # R0는 비교 기준이다. 실행 유효성만 통과 조건이며 G1 판정선 충족 여부는 따로 남긴다.

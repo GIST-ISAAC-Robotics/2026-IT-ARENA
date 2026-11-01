@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "scope": "명시 단독 회랑의 시간별 경로 확인에 기존 공통 호길이 비교를 보완. 현재 기하·점유·TTL·확인 횟수와 기본 교통 출력 유지.",
+  "parent_contract": "config/tests/released_fringe_budget_r1_sha256.json",
+  "parent_contract_sha256": "27f07cda0b5983d490ddd941b59f6125f45421289f9c8fbd43ad1a88f1b42f74",
+  "before_snapshot": "artifacts/validation/2026-11-01/solo_corridor_arc_v1/before.zip",
+  "before_snapshot_sha256": "cca12d5ef34a11fce530c5a488e4f859f3112393ce3f5fef713bb0becf2a0d8f",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "fbb3b163ba8c48952b55020853a07e7ec0648db4ba9d472a554e10efd9db43f9",
+      "after": "03060e0c49d60680e1f404dede1f464b9c19b9e796fec845affb771ea3d4aee2",
+      "reason": "고속 U자에서 더 긴 현재 경로의 먼 구간을 고정x창 공통구간으로 오인하여 확인을 잃는 실제 저장 입력에 대응. 기본OFF, 단독 recorded 프로필에만 연결."
+    },
+    "src/arena_autonomy/arena_autonomy/corridor_observer.py": {
+      "before": "42b9db9bba4035515d97180cdaf2cb63e871a130106d6bbb47ed289c0bcf9f60",
+      "after": "c533ba4a0cb31b53e9002f7500cc9e8f7636768308b0ff7a36dc6a761333629c",
+      "reason": "고속 U자에서 더 긴 현재 경로의 먼 구간을 고정x창 공통구간으로 오인하여 확인을 잃는 실제 저장 입력에 대응. 기본OFF, 단독 recorded 프로필에만 연결."
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "3ccadec92870626e5c06894653249958289d81dae8ca44e43195cc2e12492d40",
+      "after": "fe195b434cfe79ed2d29a1734027c45b1f2504e15ff4b203460090fb314154a4",
+      "reason": "고속 U자에서 더 긴 현재 경로의 먼 구간을 고정x창 공통구간으로 오인하여 확인을 잃는 실제 저장 입력에 대응. 기본OFF, 단독 recorded 프로필에만 연결."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "734c4c265913a246db95c4560cca2e245c1220eae789b42a7a8b8cbf9c8d2450",
+      "after": "5152196d3ab5d30bc862feba68c1694ce6847b3e7243779f12f22a8d30322ea6",
+      "reason": "고속 U자에서 더 긴 현재 경로의 먼 구간을 고정x창 공통구간으로 오인하여 확인을 잃는 실제 저장 입력에 대응. 기본OFF, 단독 recorded 프로필에만 연결."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "04db1b6d9ae50ad0230cf7b4c13bb92bbf97d725afb2e5e79d14a878ef465826",
+      "after": "f83ccc4a2337f6bc2834c0c13a6bdc3df76d8bc53bdb643c83fc44bd2ec0a884",
+      "reason": "고속 U자에서 더 긴 현재 경로의 먼 구간을 고정x창 공통구간으로 오인하여 확인을 잃는 실제 저장 입력에 대응. 기본OFF, 단독 recorded 프로필에만 연결."
+    }
+  },
+  "new_dependencies": {}
+}

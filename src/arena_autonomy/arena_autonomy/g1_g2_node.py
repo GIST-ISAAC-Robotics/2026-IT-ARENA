@@ -1,5 +1,6 @@
 """G1/G2 전환을 별도 실행 파일에서만 선택한다. 기존 launch의 기본값은 유지한다."""
 from pathlib import Path
+from dataclasses import replace
 
 from arena_autonomy.local_pursuit import LocalPursuit
 from arena_autonomy.bypass_entry_follow import BypassExecutionConfig, CORRIDOR_POLICIES
@@ -47,6 +48,11 @@ class G1G2Node(LocalPursuit):
         if type(entry_policy) is not str or type(corridor) is not str or corridor not in CORRIDOR_POLICIES:
             raise ValueError('typed G1/G2 entry and corridor policies required')
         reserve = self.declare_parameter('g1_g2_follow_entry_space',False).value
+        moving_reserve = self.declare_parameter('g1_g2_moving_follow_reserve',False).value
+        closing_reserve = self.declare_parameter('g1_g2_closing_follow_reserve',False).value
+        recent_reserve = self.declare_parameter('g1_g2_recent_forward_reserve',False).value
+        low_motion_reserve = self.declare_parameter('g1_g2_low_motion_reserve',False).value
+        moving_pace_floor = self.declare_parameter('g1_g2_moving_pace_floor',False).value
         reacquire = self.declare_parameter('g1_g2_reacquire_policy','positive_command_v0').value
         preparation_hold = self.declare_parameter('g1_g2_preparation_hold','off').value
         initial_reference = self.declare_parameter('g1_g2_initial_reference','off').value
@@ -58,8 +64,12 @@ class G1G2Node(LocalPursuit):
         if (not self.g1_enabled or self.follow is None or self.r0_plus_enabled or self.m3_execution_enabled
                 or not trace_path or not Path(trace_path).is_absolute()):
             raise ValueError('G1/G2 handoff requires G1 sensors, its own absolute trace and no competing controller')
-        self.follow = BypassHandoffFollow(self.follow.config,HandoffExecutionConfig(preparation_policy=policy,
-            persistence_window_policy=window,follow_entry_space_enabled=reserve,reacquire_policy=reacquire,
+        rear_sweep = self.declare_parameter('g1_g2_released_rear_sweep_trial',False).value
+        config = replace(self.follow.config,released_rear_sweep_trial=rear_sweep)
+        self.follow = BypassHandoffFollow(config,HandoffExecutionConfig(preparation_policy=policy,
+            persistence_window_policy=window,follow_entry_space_enabled=reserve,moving_follow_reserve=moving_reserve,
+            closing_follow_reserve=closing_reserve,recent_forward_reserve=recent_reserve,
+            low_motion_reserve=low_motion_reserve,moving_pace_floor=moving_pace_floor,reacquire_policy=reacquire,
             entry_policy=entry_policy,preparation_hold_policy=preparation_hold,initial_reference_policy=initial_reference,
             motion_pause_policy=motion_pause,
             relative_yield_policy=relative_yield,

@@ -20,11 +20,17 @@ from arena_autonomy.occupancy_timing import per_ray_padding
 
 @dataclass(frozen=True)
 class FollowConfig:
+    # 옛 판단 기록에 필드가 없으면 당시 대기를 재현. 새 ROS 실행은 forward_drive.
+    signed_motion_policy: str = 'legacy_hold'
+    solo_route_only: bool = False  # 단독 프리랩 선택. 점유/관측 검사는 유지하고 측방 교통 선택기만 제외.
+    corridor_arc_agreement: bool = False  # 단독 선택형 회랑 시간 비교의 공통 호길이 보완.
+    ray_wall_continuity: bool = False  # 단독 선택형. 먼 옆 벽의 단절을 연속 광선 직선 근거로 보완.
     partial_observation_policy: str = 'strict'
     parallel_hold_trial: bool = False
     pass_release_trial: bool = False
     guard_curve_trial: bool = False
     traffic_recovery_trial: bool = False
+    released_rear_sweep_trial: bool = False
     traffic_path_recovery_trial: bool = False
     rear_lane_keep_trial: bool = False
     rear_lane_keep_policy: str = 'timed'
@@ -39,6 +45,12 @@ class FollowConfig:
     wall_offset_m: float = .425
     max_steering_rad: float = .37
     max_speed_mps: float = 1.0
+    open_route_speed_mps: float = 0.  # 선택형 단독 속도 시험. 0이면 종전 경로/속도 그대로.
+    blend_open_speed_by_length: bool = False
+    preview_turn_speed: bool = False
+    preview_above_base_speed: bool = False  # 단독 선택형. 코너 예측을 통상 상한 위의 양수 목표에도 적용.
+    boundary_bridge: bool = False  # 단독 선택형. 점유가 아닌 경로 근거 전환 때문에 생긴 정지만 잇는다.
+    low_speed_arc_reacquire: bool = False  # 단독 시험 선택. 낮은 측정 속도의 양측 경로 재획득만.
     lateral_acceleration_mps2: float = 3.5
     memory_ttl_s: float = .30
     memory_motion_limit_m: float = .45
@@ -55,6 +67,16 @@ class FollowConfig:
     confirmations: int = 2
 
     def __post_init__(self):
+        if type(self.solo_route_only) is not bool:
+            raise ValueError('solo route mode must be boolean')
+        if (type(self.corridor_arc_agreement) is not bool or
+                (self.corridor_arc_agreement and not (self.solo_route_only and self.corridor_fallback_enabled))):
+            raise ValueError('corridor arc agreement requires solo route and corridor fallback')
+        if (type(self.ray_wall_continuity) is not bool or
+                (self.ray_wall_continuity and not (self.solo_route_only and self.blend_open_speed_by_length))):
+            raise ValueError('ray wall continuity requires the solo observed route speed profile')
+        if self.signed_motion_policy not in ('legacy_hold', 'forward_drive'):
+            raise ValueError('unknown signed motion policy')
         if (self.rear_lane_keep_policy not in ('timed', 'observed', 'observed_measured_v1', 'observed_fresh_v2') or
                 (self.rear_lane_keep_policy != 'timed' and not self.rear_lane_keep_trial)):
             raise ValueError('observed lane preference requires explicit rear lane keep trial')
@@ -71,6 +93,9 @@ class FollowConfig:
             raise ValueError('short boundary prefix requires corridor fallback, <=1 m/s and no recent observation')
         if type(self.pass_release_trial) is not bool or (self.pass_release_trial and not self.parallel_hold_trial):
             raise ValueError('pass release trial requires explicit parallel hold trial')
+        if (type(self.released_rear_sweep_trial) is not bool or
+                (self.released_rear_sweep_trial and not self.traffic_recovery_trial)):
+            raise ValueError('released rear sweep requires traffic recovery')
         if (type(self.traffic_recovery_trial) is not bool or
                 (self.traffic_recovery_trial and not self.guard_curve_trial)):
             raise ValueError('traffic recovery requires explicit guard curve trial')
@@ -89,8 +114,25 @@ class FollowConfig:
             raise ValueError('invalid boundary evidence mode')
         if self.occupancy_timing_mode not in ('oldest', 'per_ray_candidate'):
             raise ValueError('invalid occupancy timing mode')
+        cruise = self.open_route_speed_mps
+        if type(cruise) not in (float, int) or not math.isfinite(cruise) or not (cruise == 0 or self.max_speed_mps <= cruise <= 2.78):
+            raise ValueError('open route cap must be off or between base speed and 2.78 m/s')
+        if type(self.blend_open_speed_by_length) is not bool or (self.blend_open_speed_by_length and not cruise):
+            raise ValueError('route length blending requires an open speed profile')
+        if type(self.preview_turn_speed) is not bool or (self.preview_turn_speed and
+                (not self.blend_open_speed_by_length or self.occupancy_timing_mode != 'per_ray_candidate')):
+            raise ValueError('turn preview requires observed route speed and timed beam occupancy')
+        if (type(self.preview_above_base_speed) is not bool or
+                (self.preview_above_base_speed and not (self.solo_route_only and self.preview_turn_speed))):
+            raise ValueError('preview above base speed requires solo route and turn preview')
+        if (type(self.boundary_bridge) is not bool or
+                (self.boundary_bridge and not (self.solo_route_only and self.corridor_fallback_enabled))):
+            raise ValueError('boundary bridge requires solo route and corridor fallback')
+        if (type(self.low_speed_arc_reacquire) is not bool or
+                (self.low_speed_arc_reacquire and not self.blend_open_speed_by_length)):
+            raise ValueError('low speed arc reacquire requires the solo observed route speed profile')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+               if k not in ('corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
             raise ValueError('follow configuration must be finite and positive')
         if (type(self.corridor_fallback_enabled) is not bool or
                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
@@ -126,6 +168,33 @@ def path_agrees(candidate, reference, tolerance):
     distances = np.linalg.norm(paths[0][:, None, :]-paths[1][None, :, :], axis=2)
     return max(np.percentile(np.min(distances, axis=0), 80),
                np.percentile(np.min(distances, axis=1), 80)) <= tolerance
+
+
+def path_agrees_arc(candidate, reference, tolerance, lo=.05, hi=1.):
+    """차체 x 창이 비는 급커브에서 두 경로의 같은 호길이 구간을 같은 기준으로 비교한다.
+
+    path_agrees와 마찬가지로 공통 구간 0.25 m·각 5점을 요구하며 외삽하지 않는다.
+    벽 정체를 인증하지 않고, 공통 80%를 넘긴 뒤 갈라지는 먼 분기는 구별하지 못한다.
+    """
+    def ahead(path):
+        path = np.asarray(path, dtype=float)
+        path = path[int(np.argmin(np.linalg.norm(path, axis=1))):]
+        arc = np.r_[0., np.cumsum(np.linalg.norm(np.diff(path, axis=0), axis=1))]
+        keep = (arc >= lo) & (arc <= hi)
+        return path[keep], arc[keep]
+    (first, first_arc), (second, second_arc) = ahead(candidate), ahead(reference)
+    if len(first) < 5 or len(second) < 5:
+        return False
+    start, end = max(first_arc[0], second_arc[0]), min(first_arc[-1], second_arc[-1])
+    if end-start < .25:
+        return False
+    first = first[(first_arc >= start-1e-12) & (first_arc <= end+1e-12)]
+    second = second[(second_arc >= start-1e-12) & (second_arc <= end+1e-12)]
+    if len(first) < 5 or len(second) < 5:
+        return False
+    distances = np.linalg.norm(first[:, None, :]-second[None, :, :], axis=2)
+    return bool(max(np.percentile(np.min(distances, axis=0), 80),
+                    np.percentile(np.min(distances, axis=1), 80)) <= tolerance)
 
 
 def boundary_support(points, path, side, config):
@@ -179,7 +248,7 @@ def drop_protrusions(points, path, side, config):
     return points[outside | (np.abs(offset-np.median(offset[~outside])) <= config.measurement_padding_m)]
 
 
-def pursue_path(path, speed, config, age):
+def pursue_path(path, speed, config, age, *, speed_cap=None):
     """기존 후륜축 Pure Pursuit와 같은 계산. 보호층 공통 함수를 변경하지 않는다."""
     rear = np.asarray(path, dtype=float).copy()
     rear[:, 0] += config.wheelbase_m/2
@@ -200,9 +269,34 @@ def pursue_path(path, speed, config, age):
     curves = np.abs(dx[:, 0]*ddx[:, 1]-dx[:, 1]*ddx[:, 0])/np.maximum(1e-8, np.linalg.norm(dx, axis=1)**3)
     preview = np.sqrt(config.lateral_acceleration_mps2/np.maximum(.15, curves[nearest:]) +
                       4*np.maximum(0., arc[nearest:]-arc[nearest]-.2))
-    cap = min(config.max_speed_mps, braking_speed(remaining, age), float(np.min(preview)),
+    cap = min(config.max_speed_mps if speed_cap is None else speed_cap, braking_speed(remaining, age), float(np.min(preview)),
               math.sqrt(config.lateral_acceleration_mps2/max(.15, abs(curvature))))
     return cap, steering, remaining
+
+
+def forward_planning_speed(config, measured):
+    """전진 계획의 속력 상계. 원래 센서값·signed 이력/이송을 수정하지 않는다."""
+    if (config.signed_motion_policy == 'forward_drive' and
+            isinstance(measured, (int, float)) and not isinstance(measured, bool) and
+            math.isfinite(measured) and measured < 0.):
+        return abs(measured)
+    return measured
+
+
+def signed_feedback_detail(output, measured, planning):
+    """전진 기하의 속력과 원래 음수 측정을 구별한다. 후방 밀림 안전의 증명은 아니다."""
+    if not (isinstance(measured, (int, float)) and math.isfinite(measured)
+            and measured < 0. and planning >= 0.):
+        return output
+    speed, steering, detail = output
+    detail = dict(detail)
+    for key in ('normal', 'bypass'):
+        if isinstance(detail.get(key), dict) and 'measured_speed_mps' in detail[key]:
+            detail[key] = {**detail[key], 'measured_speed_mps': measured,
+                           'forward_planning_speed_mps': planning}
+    return speed, steering, {**detail, 'measured_speed_mps': measured, 'reverse_motion': True,
+        'forward_planning_speed_mps': planning, 'signed_motion_policy': 'forward_drive',
+        'signed_history_preserved': True, 'rear_rollback_safety_verified': False}
 
 
 class LocalFollow:
@@ -227,7 +321,7 @@ class LocalFollow:
             from arena_autonomy.corridor_observer import CorridorObserver
             self.corridor_observer = CorridorObserver(self.config)
         self.parallel_trial = None
-        if self.config.parallel_hold_trial:
+        if self.config.parallel_hold_trial and not self.config.solo_route_only:
             from arena_autonomy.parallel_lane_trial import ParallelLaneTrial
             if self.config.rear_lane_keep_policy == 'observed_measured_v1':
                 # 10/29 오프라인 v4와 같이 평행 후보도 측정속도를 자르지 않는 별도 시험본을 쓴다.
@@ -236,7 +330,7 @@ class LocalFollow:
                 from arena_autonomy.fresh_parallel_trial import FreshMemoryParallelTrial as ParallelLaneTrial
             self.parallel_trial = ParallelLaneTrial(self.config)
         self.pass_selector = None
-        if self.config.pass_release_trial:
+        if self.config.pass_release_trial and not self.config.solo_route_only:
             from arena_autonomy.pass_release_trial import PassReleaseSelector
             if self.config.traffic_path_recovery_trial:
                 from arena_autonomy.traffic_path_recovery_trial import SuspendedPassageSelector
@@ -276,6 +370,7 @@ class LocalFollow:
         self.epoch = self.side = None
         self.path_wall = None
         self.held = True
+        self.hold_reason = None
 
     def _discard_path(self):
         # 기존 파생 제어기의 reset() 동작은 보존한다. 새 관측 후보만 기억을 분리한다.
@@ -286,10 +381,17 @@ class LocalFollow:
 
     def _hold(self, reason, detail):
         self.held = True
+        self.hold_reason = reason
         self.release_count = 0
         return 0., 0., {**detail, 'reason': reason, 'behavior': 'HOLD'}
 
     def command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+        planning = forward_planning_speed(self.config, speed)
+        output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+                                        raw_scan=raw_scan)
+        return signed_feedback_detail(output, speed, planning)
+
+    def _forward_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
         output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
                                         raw_scan=raw_scan)
         if self.parallel_trial is not None:
@@ -383,9 +485,15 @@ class LocalFollow:
             metadata.update({key: proposal.get(key) for key in
                              ('role_selection','preferred_side','inner_side','outer_side',
                               'preferred_observed_path_agrees')})
+        if self.config.corridor_arc_agreement:
+            metadata['path_agreement_method'] = proposal.get('path_agreement_method')
         detail = {**baseline[2], 'corridor_candidate': metadata,
                   'corridor_selected': False, 'boundary_memory_from_corridor': False}
-        if not (baseline[0] == 0 and baseline[2]['reason'] == 'follow_boundary_unconfirmed' and proposal['positive']):
+        # 경로 근거 전환으로 걸린 재개 대기는 같은 스캔의 확인된 회랑이 잇는다. 점유·관측 정지는 잇지 않는다.
+        waiting = (self.config.boundary_bridge and baseline[2]['reason'] == 'follow_release_wait'
+                   and self.hold_reason == 'follow_boundary_unconfirmed')
+        if not (baseline[0] == 0 and proposal['positive'] and
+                (baseline[2]['reason'] == 'follow_boundary_unconfirmed' or waiting)):
             return baseline[0], baseline[1], detail
         # 기본 경계 기억에는 쓰지 않는다. 신호/고장 허가와 /drive 독립 보호는 상위에서 그대로 적용한다.
         points = scene.occupied_endpoints_xy_m
@@ -415,7 +523,9 @@ class LocalFollow:
                 or not 0 < control_dt <= .2):
             self._discard_path()
             return self._hold('follow_invalid_state', detail)
-        if (self.epoch != scene.source_epoch or self.side != side or
+        # 마커의 추종 벽 전환은 관측 경로의 무효가 아니다. 새 벽 후보를 다음 스캔에서 같은 기준으로 고른다.
+        side_changed = self.side != side and not (cfg.boundary_bridge and self.path is not None)
+        if (self.epoch != scene.source_epoch or side_changed or
                 (self.last_ref is not None and now < self.last_ref) or
                 (self.last_source is not None and scene.source_first_s is not None and
                  scene.source_first_s < self.last_source)):
@@ -439,15 +549,33 @@ class LocalFollow:
         fresh = self.last_source is None or scene.source_first_s > self.last_source
         self.last_source = scene.source_first_s
         age = now-scene.source_first_s
+        # 고속용도 관측 벽에서만 더 멀리 본다. 값은 탐색 길이이며 자유 공간이 아니다.
+        cruise = cfg.open_route_speed_mps
+        horizon = max(1.8, .06 + cfg.standstill_gap_m + cruise*(age+.10) + cruise**2/4)
+        ray_index = None
+        if cfg.ray_wall_continuity and fresh:
+            # 경계 선택이 넘기는 부분집합도 같은 실제 점이므로 좌표로 원시 광선 번호를 찾는다.
+            ray_index = dict(zip(map(tuple, points.tolist()),
+                                 (r.source_index for r in scene.rays if r.status == 'return')))
+        def observed_path(cloud, wall_side):
+            if ray_index is not None:
+                return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
+                                  rays=[ray_index[tuple(p)] for p in cloud.tolist()])
+            if horizon == 1.8:
+                return local_path(cloud, wall_side, cfg.wall_offset_m)
+            return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon)
         carried = None
         try:
             if self.path is not None and now-self.path_source < cfg.memory_ttl_s:
                 carried = transport_points(self.path, history, self.path_ref, now)
-                displacement = np.max(np.linalg.norm(carried-self.path, axis=1))
-                if displacement > cfg.memory_motion_limit_m:
+                moved = np.linalg.norm(carried-self.path, axis=1)
+                if cfg.boundary_bridge:
+                    # 기본 탐색 길이 밖 점의 회전 지렛대로 같은 운동을 큰 이동으로 세지 않는다.
+                    moved = moved[np.linalg.norm(self.path, axis=1) <= 1.8]
+                if len(moved) and np.max(moved) > cfg.memory_motion_limit_m:
                     carried = None
             if fresh:
-                candidate, info = local_path(points, side, cfg.wall_offset_m)
+                candidate, info = observed_path(points, side)
                 preferred, preferred_info = candidate, info
                 candidate_wall, corroborated = side, False
                 def sufficient(path, details):
@@ -458,13 +586,13 @@ class LocalFollow:
                     # 기준 경로와 일치하는 실제 반환만으로 wall_side 벽 후보를 다시 만든다.
                     # 그 후보 자체가 긴 경계·anchor 조건과 형상 일치를 모두 만족해야 한다.
                     selected = boundary_support(points, reference, wall_side, cfg)
-                    path, details = local_path(selected, wall_side, cfg.wall_offset_m)
+                    path, details = observed_path(selected, wall_side)
                     ok = sufficient(path, details) and path_agrees(path, reference, cfg.boundary_agreement_m)
                     dropped = 0
                     if not ok:
                         refined = drop_protrusions(selected, reference, wall_side, cfg)
                         if len(refined) < len(selected):
-                            path, details = local_path(refined, wall_side, cfg.wall_offset_m)
+                            path, details = observed_path(refined, wall_side)
                             ok = sufficient(path, details) and path_agrees(path, reference, cfg.boundary_agreement_m)
                             dropped = len(selected)-len(refined)
                     return path, details, ok, {'boundary_support_points': len(selected),
@@ -481,7 +609,7 @@ class LocalFollow:
 
                 def opposite_wall():
                     if not opposite_observed:
-                        opposite_observed.append(local_path(points, other_side, cfg.wall_offset_m))
+                        opposite_observed.append(observed_path(points, other_side))
                     return opposite_observed[0]
                 if not eligible and preferred is not None and abs(preferred_info['wall_distance_m']-cfg.wall_offset_m) <= cfg.boundary_anchor_error_m:
                     # 급커브 안쪽 벽은 짧아질 수 있다. 반대 벽만 보고 전환하지 않고,
@@ -514,6 +642,13 @@ class LocalFollow:
                     # 초기/만료 뒤 재획득에는 반대쪽의 독립된 긴 관측도 일치해야 한다.
                     opposite, other = opposite_wall()
                     eligible = sufficient(opposite, other) and path_agrees(candidate, opposite, cfg.boundary_agreement_m)
+                    if (not eligible and cfg.low_speed_arc_reacquire and abs(speed) <= .10
+                            and sufficient(opposite, other)
+                            and path_agrees_arc(candidate, opposite, cfg.boundary_agreement_m)):
+                        # 측정 평균 속도가 낮을 때만 쓴다. 단일 축이라 실제 정지를 증명하지 않으며
+                        # 이후 확인 횟수·점유·재개 여유·독립 보호는 기존 판정을 그대로 따른다.
+                        eligible = True
+                        detail['bilateral_reference'] = 'low_speed_arc'
                     if not eligible:
                         # 반대 벽 앞의 얇은 물체도 같은 실제 반환 선택으로만 제외한다.
                         _, _, eligible, support = supported(candidate, other_side)
@@ -571,6 +706,12 @@ class LocalFollow:
                             detail.update(boundary_selection='bilateral_observed_corner_distance',
                                           boundary_candidate_reason=info['reason'],
                                           boundary_candidate_ahead_m=info.get('boundary_observed_ahead_m'))
+                if (not eligible and cfg.boundary_bridge and carried is not None and preferred is not None
+                        and abs(preferred_info['wall_distance_m']-cfg.wall_offset_m) <= cfg.boundary_anchor_error_m
+                        and path_agrees(preferred, carried, cfg.boundary_agreement_m)):
+                    # 긴 경계 조건만 못 채운 현재 관측이 직전 경로와 겹친다. 더 짧은 현재 경로로 줄여 쓴다.
+                    candidate, info, eligible = preferred, preferred_info, True
+                    detail['boundary_selection'] = 'short_current_history_agreement'
                 if eligible:
                     confirmed = carried is not None
                     if not confirmed:
@@ -591,7 +732,20 @@ class LocalFollow:
                 self.path = None
                 return self._hold('follow_boundary_unconfirmed', detail)
             memory_age = now-self.path_source
-            cap, desired, remaining = pursue_path(carried, speed, cfg, max(age, memory_age))
+            open_route = bool(cruise and self.path_source == scene.source_first_s and
+                              self.path_wall == side and front and all(r.status == 'return' for r in front))
+            cap, desired, remaining = pursue_path(carried, speed, cfg, max(age, memory_age),
+                                                  speed_cap=cruise if open_route else None)
+            if cruise:
+                detail.update(open_route_speed_enabled=open_route, open_route_cap_mps=cruise,
+                              observed_search_horizon_m=horizon)
+            if open_route and cfg.blend_open_speed_by_length:
+                # 받은 경로의 길이가 줄면 통상 속도 위에 더한 부분만 걷는다.
+                # 현재 경로/제동/곡률 한도보다 빠르게 하거나 빈 공간을 가정하지 않는다.
+                share = float(np.clip((remaining - 1.10) / (1.70 - 1.10), 0., 1.))
+                length_cap = cfg.max_speed_mps + share * (cruise - cfg.max_speed_mps)
+                cap = min(cap, length_cap)
+                detail['observed_length_speed_cap_mps'] = length_cap
             # WallFollow의 3 rad/s 명령 변화율을 반영한 실제 이번 발행각도 평가한다.
             steering = float(np.clip(desired, previous_steering-3*control_dt, previous_steering+3*control_dt))
             margin = .025 + cfg.measurement_padding_m + cfg.object_motion_bound_mps*age
@@ -601,7 +755,7 @@ class LocalFollow:
                     occupancy_padding_min_m=float(np.min(margin)),
                     occupancy_padding_max_m=float(np.max(margin)),
                     occupancy_padding_points=len(margin))
-            clearance = min(swept_limit(points, angle, cfg.wheelbase_m, horizon=2.5, margin=margin,
+            clearance = min(swept_limit(points, angle, cfg.wheelbase_m, horizon=max(2.5,horizon) if open_route else 2.5, margin=margin,
                                          length=cfg.length_m, width=cfg.width_m)
                             for angle in (steering, previous_steering))
             available = max(0., clearance-cfg.standstill_gap_m)
@@ -618,6 +772,11 @@ class LocalFollow:
                 # 정상 측정 복귀 뒤에도 기존 서로 다른 두 fresh 관측을 요구한다.
                 return self._hold('follow_reverse_motion', detail)
             if clearance <= cfg.hold_clearance_m:
+                if cfg.low_speed_arc_reacquire and abs(speed) <= .10:
+                    # 속도 0을 유지한 채 조향만 경로 쪽으로 돌린다. 전진은 재개 여유와 독립 보호가 정한다.
+                    # 스캔 말미의 시간 여유 증가로 생긴 낮은 값이 새 스캔의 재개 계수를 지우지 않게 한다.
+                    self.held = True
+                    return 0., steering, {**detail, 'reason': 'follow_steer_in_place', 'behavior': 'HOLD'}
                 return self._hold('follow_gap_hold', detail)
             if self.held:
                 if clearance < cfg.resume_clearance_m:
@@ -627,6 +786,15 @@ class LocalFollow:
                 if self.release_count < cfg.confirmations:
                     return 0., steering, {**detail, 'reason': 'follow_release_wait', 'behavior': 'HOLD'}
                 self.held = False
+            if (cfg.preview_turn_speed and open_route and 0. < target
+                    and (target <= cfg.max_speed_mps or cfg.preview_above_base_speed)
+                    and target < cap and clearance >= cfg.resume_clearance_m):
+                from arena_autonomy.turn_preview import preview_speed
+                before = target
+                target, reason = preview_speed(scene, carried, cfg, speed, steering, previous_steering,
+                                              age, cap, target, clearance, remaining)
+                detail.update(turn_preview=reason, constant_arc_target_mps=before,
+                              target_speed_before_hold_mps=target)
             behavior = 'FOLLOW' if target < cap-1e-6 else 'CRUISE'
             return float(target), steering, {**detail, 'reason': 'local_follow', 'behavior': behavior}
         except MotionUnavailable as error:

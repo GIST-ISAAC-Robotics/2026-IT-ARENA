@@ -1,0 +1,108 @@
+--- a/src/arena_autonomy/arena_autonomy/local_follow.py
++++ b/src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -22,6 +22,7 @@
+ class FollowConfig:
+     # 옛 판단 기록에 필드가 없으면 당시 대기를 재현. 새 ROS 실행은 forward_drive.
+     signed_motion_policy: str = 'legacy_hold'
++    solo_route_only: bool = False  # 단독 프리랩 선택. 점유/관측 검사는 유지하고 측방 교통 선택기만 제외.
+     partial_observation_policy: str = 'strict'
+     parallel_hold_trial: bool = False
+     pass_release_trial: bool = False
+@@ -62,6 +63,8 @@
+     confirmations: int = 2
+ 
+     def __post_init__(self):
++        if type(self.solo_route_only) is not bool:
++            raise ValueError('solo route mode must be boolean')
+         if self.signed_motion_policy not in ('legacy_hold', 'forward_drive'):
+             raise ValueError('unknown signed motion policy')
+         if (self.rear_lane_keep_policy not in ('timed', 'observed', 'observed_measured_v1', 'observed_fresh_v2') or
+@@ -113,7 +116,7 @@
+                 (self.low_speed_arc_reacquire and not self.blend_open_speed_by_length)):
+             raise ValueError('low speed arc reacquire requires the solo observed route speed profile')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
++               if k not in ('solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
+@@ -302,7 +305,7 @@
+             from arena_autonomy.corridor_observer import CorridorObserver
+             self.corridor_observer = CorridorObserver(self.config)
+         self.parallel_trial = None
+-        if self.config.parallel_hold_trial:
++        if self.config.parallel_hold_trial and not self.config.solo_route_only:
+             from arena_autonomy.parallel_lane_trial import ParallelLaneTrial
+             if self.config.rear_lane_keep_policy == 'observed_measured_v1':
+                 # 10/29 오프라인 v4와 같이 평행 후보도 측정속도를 자르지 않는 별도 시험본을 쓴다.
+@@ -311,7 +314,7 @@
+                 from arena_autonomy.fresh_parallel_trial import FreshMemoryParallelTrial as ParallelLaneTrial
+             self.parallel_trial = ParallelLaneTrial(self.config)
+         self.pass_selector = None
+-        if self.config.pass_release_trial:
++        if self.config.pass_release_trial and not self.config.solo_route_only:
+             from arena_autonomy.pass_release_trial import PassReleaseSelector
+             if self.config.traffic_path_recovery_trial:
+                 from arena_autonomy.traffic_path_recovery_trial import SuspendedPassageSelector
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -55,6 +55,10 @@
+         recent_observation = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
+         partial_observation = str(self.declare_parameter('partial_observation_policy','strict').value)
+         signed_motion = str(self.declare_parameter('signed_motion_policy', 'forward_drive').value)
++        solo_route = bool(self.declare_parameter('g1_solo_route_only', False).value)
++        if solo_route and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled
++                or not self.get_parameter('use_sim_time').value or not trace_path):
++            raise ValueError('solo route requires recorded G1 simulation without R0+ or M3')
+         parallel_hold = bool(self.declare_parameter('g1_parallel_hold_trial', False).value)
+         pass_release = bool(self.declare_parameter('g1_pass_release_trial', False).value)
+         if pass_release and not parallel_hold:
+@@ -97,6 +101,7 @@
+             follow_type = R0Plus
+         self.follow = follow_type(FollowConfig(
+             signed_motion_policy=signed_motion,
++            solo_route_only=solo_route,
+             partial_observation_policy=partial_observation,
+             parallel_hold_trial=parallel_hold,
+             pass_release_trial=pass_release,
+--- a/src/arena_bringup/launch/simulation.launch.py
++++ b/src/arena_bringup/launch/simulation.launch.py
+@@ -69,6 +69,9 @@
+ # 위 프로필에 낮은 측정 속도 재획득 선택만 더한 단독 시험. 교통 구성에는 연결하지 않는다.
+ SPEED_PROFILES["g1_open_10kmh_turn15_arc"] = {
+     **SPEED_PROFILES["g1_open_10kmh_turn15"], "g1_low_speed_arc_reacquire": True}
++# 단독 프리랩의 측방 교통 선택만 제외. 관측/점유·독립 보호 설정은 그대로 유지한다.
++SPEED_PROFILES["g1_open_10kmh_solo"] = {
++    **SPEED_PROFILES["g1_open_10kmh_turn15_arc"], "g1_solo_route_only": True}
+ 
+ 
+ def _float32_limit_not_above(limit):
+--- a/scripts/validate_basic_autonomy.py
++++ b/scripts/validate_basic_autonomy.py
+@@ -275,7 +275,7 @@
+     parser.add_argument("--wall-timeout-s", type=float, default=None,
+                         help="느린 오프라인 실행의 실제 시간 한도. 센서 시각 제한과 무관.")
+     parser.add_argument("--stop-wall-timeout-s", type=float, default=60.)
+-    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
++    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
+     parser.add_argument("--lidar-rate-hz", type=float, default=10.0,
+                         help="Gazebo 이상화 라이다의 시험용 갱신률. C1 실물 회전수를 바꾸지 않습니다.")
+     parser.add_argument("--target-progress-m", type=float,
+@@ -305,7 +305,7 @@
+                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
+     args = parser.parse_args()
+     if args.team_signal_prelap and not (args.g1_race_path and args.laps==1 and args.target_progress_m is None
+-            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc')
++            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo')
+             and args.actuation_stop=='software_stop'
+             and args.grid_slot==3 and args.video and args.disable_speed_bump):
+         raise ValueError('2×5 신호 단독 시험 조건 불일치')
+@@ -573,7 +573,7 @@
+                          'scripts/g1_traffic_eval.py',
+                          'src/arena_bringup/launch/g1_follow.launch.py'):
+             report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
+-    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc'):
++    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo'):
+         rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
+         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+     recorder = recorder_log = None

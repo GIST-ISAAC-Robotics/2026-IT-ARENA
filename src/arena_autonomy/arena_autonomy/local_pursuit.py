@@ -54,6 +54,14 @@ class LocalPursuit(WallFollow):
             raise ValueError('short boundary prefix requires recorded G1 simulation without R0+ or M3')
         recent_observation = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
         partial_observation = str(self.declare_parameter('partial_observation_policy','strict').value)
+        signed_motion = str(self.declare_parameter('signed_motion_policy', 'forward_drive').value)
+        solo_route = bool(self.declare_parameter('g1_solo_route_only', False).value)
+        solo_headway = float(self.declare_parameter('g1_solo_headway_s', .8).value)
+        if not .5 <= solo_headway <= .8 or (solo_headway != .8 and not solo_route):
+            raise ValueError('changed headway requires solo route and a 0.5-0.8 s trial range')
+        if solo_route and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled
+                or not self.get_parameter('use_sim_time').value or not trace_path):
+            raise ValueError('solo route requires recorded G1 simulation without R0+ or M3')
         parallel_hold = bool(self.declare_parameter('g1_parallel_hold_trial', False).value)
         pass_release = bool(self.declare_parameter('g1_pass_release_trial', False).value)
         if pass_release and not parallel_hold:
@@ -95,6 +103,11 @@ class LocalPursuit(WallFollow):
             from arena_autonomy.r0_plus import R0Plus
             follow_type = R0Plus
         self.follow = follow_type(FollowConfig(
+            signed_motion_policy=signed_motion,
+            solo_route_only=solo_route,
+            corridor_arc_agreement=bool(self.declare_parameter('g1_corridor_arc_agreement',False).value),
+            ray_wall_continuity=bool(self.declare_parameter('g1_ray_wall_continuity',False).value),
+            headway_s=solo_headway,
             partial_observation_policy=partial_observation,
             parallel_hold_trial=parallel_hold,
             pass_release_trial=pass_release,
@@ -111,6 +124,12 @@ class LocalPursuit(WallFollow):
             wheelbase_m=float(self.settings['wheelbase_m']),
             max_steering_rad=float(self.settings['max_steering_angle_rad']),
             max_speed_mps=min(1., float(self.settings['max_speed_mps'])),
+            open_route_speed_mps=float(self.declare_parameter('g1_open_route_speed_mps',0.).value),
+            blend_open_speed_by_length=bool(self.declare_parameter('g1_blend_open_speed_by_length',False).value),
+            preview_turn_speed=bool(self.declare_parameter('g1_preview_turn_speed',False).value),
+            preview_above_base_speed=bool(self.declare_parameter('g1_preview_above_base_speed',False).value),
+            boundary_bridge=bool(self.declare_parameter('g1_boundary_bridge',False).value),
+            low_speed_arc_reacquire=bool(self.declare_parameter('g1_low_speed_arc_reacquire',False).value),
             lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),
             wall_offset_m=float(self.settings['target_wall_distance_m']))) if (self.g1_enabled or self.r0_plus_enabled) else None
         if self.m3_execution_enabled:

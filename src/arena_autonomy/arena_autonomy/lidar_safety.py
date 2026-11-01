@@ -35,6 +35,9 @@ class LidarSafety(Node):
             raise ValueError('rear_blind_half_angle_deg must be within 0..80')
         self.recent_observation_enabled = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
         self.partial_policy = None
+        self.signed_motion_policy = str(self.declare_parameter('signed_motion_policy', 'forward_drive').value)
+        if self.signed_motion_policy not in ('legacy_hold', 'forward_drive'):
+            raise ValueError('unknown signed motion policy')
         policy = str(self.declare_parameter('partial_observation_policy', 'strict').value)
         traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
         if traffic_recovery and policy != 'bounded_local_v4':
@@ -133,14 +136,16 @@ class LidarSafety(Node):
                 measured = float(values[-1])
                 if not math.isfinite(measured):
                     raise MotionUnavailable('invalid_or_reverse_feedback')
-                # 역회전 피드백은 출력을 막되, 새 스캔의 관측 기억까지 끊지 않는다.
-                # 제동 때 모터축 값이 왕복하면 실제 센서는 살아 있는데 기억만 만료될 수 있다.
-                # 운동 보정에는 원래 부호를 유지하고, 외곽 크기에만 속력 상계를 사용한다.
+                # 음수 측정은 정지 명령/입력 고장이 아니다. 현재 전방 경로를 독립
+                # 검사하며 양수 명령을 통과시킬 수 있다. signed 운동 이력은 보존하고
+                # 외곽 계산에만 속력 상계를 쓴다. 후방 밀림의 안전 보증은 아니다.
                 partial = partial_policy.evaluate(self.scan, points, self.motion.history, now, max(speed, abs(measured)),
                     output.drive.steering_angle, getattr(self,'previous_safe_steering',0.),
                     self.wheelbase,self.length,self.width)
-                if measured < 0:
+                if measured < 0 and getattr(self, 'signed_motion_policy', 'forward_drive') == 'legacy_hold':
                     raise MotionUnavailable('invalid_or_reverse_feedback')
+                partial = {**partial, 'measured_speed_mps': measured,
+                    'forward_planning_speed_mps': abs(measured), 'signed_history_preserved': True}
                 if not partial['allowed']:
                     raise MotionUnavailable(partial['reason'])
                 if partial['speed_cap_mps'] is not None:
@@ -163,7 +168,9 @@ class LidarSafety(Node):
                             raise MotionUnavailable('motion_stale')
                         motion = self.motion.history.config
                         # 계획기의 지지 결과/경로는 받지 않는다. 독립 입력으로 다시 계산한다.
-                        recent = sweep_support(sources,float(values[-1]),min(.2,speed),output.drive.steering_angle,
+                        measured = float(values[-1])
+                        planning = abs(measured) if getattr(self, 'signed_motion_policy', 'forward_drive') == 'forward_drive' else measured
+                        recent = sweep_support(sources,planning,min(.2,speed),output.drive.steering_angle,
                             self.previous_safe_steering,self.observation_config,
                             protected_sensor_pose=(motion.lidar_x_m,motion.lidar_y_m,motion.lidar_yaw_rad))
                         if not recent['supported']:

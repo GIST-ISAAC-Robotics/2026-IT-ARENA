@@ -1,0 +1,68 @@
+--- a/src/arena_autonomy/arena_autonomy/local_follow.py
++++ b/src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -45,4 +45,5 @@
+     blend_open_speed_by_length: bool = False
+     preview_turn_speed: bool = False
++    low_speed_arc_reacquire: bool = False  # 시험 선택. 낮은 측정 속도의 양측 경로 재획득만.
+     lateral_acceleration_mps2: float = 3.5
+     memory_ttl_s: float = .30
+@@ -106,5 +107,5 @@
+             raise ValueError('turn preview requires observed route speed and timed beam occupancy')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
++               if k not in ('signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+@@ -140,4 +141,30 @@
+         return False
+     distances = np.linalg.norm(paths[0][:, None, :]-paths[1][None, :, :], axis=2)
++    return max(np.percentile(np.min(distances, axis=0), 80),
++               np.percentile(np.min(distances, axis=1), 80)) <= tolerance
++
++
++def path_agrees_arc(candidate, reference, tolerance, lo=.05, hi=1.):
++    """차체 x 창이 비는 급커브에서 두 경로의 같은 호길이 구간을 같은 기준으로 비교한다.
++
++    path_agrees와 마찬가지로 공통 구간 0.25 m·각 5점을 요구하며 외삽하지 않는다.
++    """
++    def ahead(path):
++        path = np.asarray(path, dtype=float)
++        path = path[int(np.argmin(np.linalg.norm(path, axis=1))):]
++        arc = np.r_[0., np.cumsum(np.linalg.norm(np.diff(path, axis=0), axis=1))]
++        keep = (arc >= lo) & (arc <= hi)
++        return path[keep], arc[keep]
++    (first, first_arc), (second, second_arc) = ahead(candidate), ahead(reference)
++    if len(first) < 5 or len(second) < 5:
++        return False
++    start, end = max(first_arc[0], second_arc[0]), min(first_arc[-1], second_arc[-1])
++    if end-start < .25:
++        return False
++    first = first[(first_arc >= start-1e-12) & (first_arc <= end+1e-12)]
++    second = second[(second_arc >= start-1e-12) & (second_arc <= end+1e-12)]
++    if len(first) < 5 or len(second) < 5:
++        return False
++    distances = np.linalg.norm(first[:, None, :]-second[None, :, :], axis=2)
+     return max(np.percentile(np.min(distances, axis=0), 80),
+                np.percentile(np.min(distances, axis=1), 80)) <= tolerance
+@@ -568,4 +595,11 @@
+                     opposite, other = opposite_wall()
+                     eligible = sufficient(opposite, other) and path_agrees(candidate, opposite, cfg.boundary_agreement_m)
++                    if (not eligible and cfg.low_speed_arc_reacquire and abs(speed) <= .10
++                            and sufficient(opposite, other)
++                            and path_agrees_arc(candidate, opposite, cfg.boundary_agreement_m)):
++                        # 측정 평균 속도가 낮을 때만 쓴다. 단일 축이라 실제 정지를 증명하지 않으며
++                        # 이후 확인 횟수·점유·재개 여유·독립 보호는 기존 판정을 그대로 따른다.
++                        eligible = True
++                        detail['bilateral_reference'] = 'low_speed_arc'
+                     if not eligible:
+                         # 반대 벽 앞의 얇은 물체도 같은 실제 반환 선택으로만 제외한다.
+@@ -685,4 +719,9 @@
+                 return self._hold('follow_reverse_motion', detail)
+             if clearance <= cfg.hold_clearance_m:
++                if cfg.low_speed_arc_reacquire and abs(speed) <= .10:
++                    # 속도 0을 유지한 채 조향만 경로 쪽으로 돌린다. 전진은 재개 여유와 독립 보호가 정한다.
++                    # 스캔 말미의 시간 여유 증가로 생긴 낮은 값이 새 스캔의 재개 계수를 지우지 않게 한다.
++                    self.held = True
++                    return 0., steering, {**detail, 'reason': 'follow_steer_in_place', 'behavior': 'HOLD'}
+                 return self._hold('follow_gap_hold', detail)
+             if self.held:

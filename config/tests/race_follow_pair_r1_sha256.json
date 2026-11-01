@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "scope": "두 차량 시험의 구성·모드 계측; 경기 기본값 또는 실차 승인 아님",
+  "parent_contract": "config/tests/corner_approach_r1_sha256.json",
+  "parent_contract_sha256": "4e23ddcb8f9fb71d9f5e0607a30dc7482411dc3093cb7186d764b1999104e55e",
+  "before_snapshot": "artifacts/validation/2026-11-01/race_follow_pair_v1/before.zip",
+  "before_snapshot_sha256": "7e0b146880a1885af5f0498811d96a2cb31e046b1a2a6db86a00a2bda0d1e361",
+  "approved_changes": {
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "62e535d3fbae4680c595dad59d6fce8bcfd4699504884475a34e7ab681020223",
+      "after": "89e600e083ade2744bde6900aa6c1c65ce5d0db7013cb765ddbf26bb87729586",
+      "reason": "실제 G1/G2 노드로 동일 앞차의 정지·재개 각본에서 추종 감속을 비교한다. 기존 기본값은 유지한다."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_g1_traffic.py": {
+      "before": "2c63c190f510116bb86354a06feaa4835e92c0c8380c350e1ea9c15ebcefaa6a",
+      "after": "fc37da2e15d49c1bf1b871f267d2f6553c72c1bb783d2ac06a9a13d1f865386d",
+      "reason": "실제 G1/G2 노드로 동일 앞차의 정지·재개 각본에서 추종 감속을 비교한다. 기존 기본값은 유지한다."
+    },
+    "scripts/g1_traffic_eval.py": {
+      "before": "774ed2a1aa41f749ef2d71d0db516984e1f7b7b11d49893e85188f397265b34b",
+      "after": "b422b209afbb1d44f06ab0cdb9fb43439a63948437a779c344d5ca587f071606",
+      "reason": "실제 G1/G2 노드로 동일 앞차의 정지·재개 각본에서 추종 감속을 비교한다. 기존 기본값은 유지한다."
+    }
+  },
+  "new_dependencies": {
+    "scripts/g1_handoff_eval.py": "77b87628777d5062d92480ee39bc25fcd2c298dfe90cb626d5989f029ceeb06a"
+  }
+}

@@ -1,0 +1,117 @@
+--- before/src/arena_autonomy/arena_autonomy/local_follow.py
++++ src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -50,4 +50,5 @@
+     preview_turn_speed: bool = False
+     preview_above_base_speed: bool = False  # 단독 선택형. 코너 예측을 통상 상한 위의 양수 목표에도 적용.
++    boundary_bridge: bool = False  # 단독 선택형. 점유가 아닌 경로 근거 전환 때문에 생긴 정지만 잇는다.
+     low_speed_arc_reacquire: bool = False  # 단독 시험 선택. 낮은 측정 속도의 양측 경로 재획득만.
+     lateral_acceleration_mps2: float = 3.5
+@@ -125,9 +126,12 @@
+                 (self.preview_above_base_speed and not (self.solo_route_only and self.preview_turn_speed))):
+             raise ValueError('preview above base speed requires solo route and turn preview')
++        if (type(self.boundary_bridge) is not bool or
++                (self.boundary_bridge and not (self.solo_route_only and self.corridor_fallback_enabled))):
++            raise ValueError('boundary bridge requires solo route and corridor fallback')
+         if (type(self.low_speed_arc_reacquire) is not bool or
+                 (self.low_speed_arc_reacquire and not self.blend_open_speed_by_length)):
+             raise ValueError('low speed arc reacquire requires the solo observed route speed profile')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
++               if k not in ('corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+@@ -367,4 +371,5 @@
+         self.path_wall = None
+         self.held = True
++        self.hold_reason = None
+ 
+     def _discard_path(self):
+@@ -377,4 +382,5 @@
+     def _hold(self, reason, detail):
+         self.held = True
++        self.hold_reason = reason
+         self.release_count = 0
+         return 0., 0., {**detail, 'reason': reason, 'behavior': 'HOLD'}
+@@ -484,5 +490,9 @@
+         detail = {**baseline[2], 'corridor_candidate': metadata,
+                   'corridor_selected': False, 'boundary_memory_from_corridor': False}
+-        if not (baseline[0] == 0 and baseline[2]['reason'] == 'follow_boundary_unconfirmed' and proposal['positive']):
++        # 경로 근거 전환으로 걸린 재개 대기는 같은 스캔의 확인된 회랑이 잇는다. 점유·관측 정지는 잇지 않는다.
++        waiting = (self.config.boundary_bridge and baseline[2]['reason'] == 'follow_release_wait'
++                   and self.hold_reason == 'follow_boundary_unconfirmed')
++        if not (baseline[0] == 0 and proposal['positive'] and
++                (baseline[2]['reason'] == 'follow_boundary_unconfirmed' or waiting)):
+             return baseline[0], baseline[1], detail
+         # 기본 경계 기억에는 쓰지 않는다. 신호/고장 허가와 /drive 독립 보호는 상위에서 그대로 적용한다.
+@@ -514,5 +524,7 @@
+             self._discard_path()
+             return self._hold('follow_invalid_state', detail)
+-        if (self.epoch != scene.source_epoch or self.side != side or
++        # 마커의 추종 벽 전환은 관측 경로의 무효가 아니다. 새 벽 후보를 다음 스캔에서 같은 기준으로 고른다.
++        side_changed = self.side != side and not (cfg.boundary_bridge and self.path is not None)
++        if (self.epoch != scene.source_epoch or side_changed or
+                 (self.last_ref is not None and now < self.last_ref) or
+                 (self.last_source is not None and scene.source_first_s is not None and
+@@ -557,6 +569,9 @@
+             if self.path is not None and now-self.path_source < cfg.memory_ttl_s:
+                 carried = transport_points(self.path, history, self.path_ref, now)
+-                displacement = np.max(np.linalg.norm(carried-self.path, axis=1))
+-                if displacement > cfg.memory_motion_limit_m:
++                moved = np.linalg.norm(carried-self.path, axis=1)
++                if cfg.boundary_bridge:
++                    # 기본 탐색 길이 밖 점의 회전 지렛대로 같은 운동을 큰 이동으로 세지 않는다.
++                    moved = moved[np.linalg.norm(self.path, axis=1) <= 1.8]
++                if len(moved) and np.max(moved) > cfg.memory_motion_limit_m:
+                     carried = None
+             if fresh:
+@@ -692,4 +707,10 @@
+                                           boundary_candidate_reason=info['reason'],
+                                           boundary_candidate_ahead_m=info.get('boundary_observed_ahead_m'))
++                if (not eligible and cfg.boundary_bridge and carried is not None and preferred is not None
++                        and abs(preferred_info['wall_distance_m']-cfg.wall_offset_m) <= cfg.boundary_anchor_error_m
++                        and path_agrees(preferred, carried, cfg.boundary_agreement_m)):
++                    # 긴 경계 조건만 못 채운 현재 관측이 직전 경로와 겹친다. 더 짧은 현재 경로로 줄여 쓴다.
++                    candidate, info, eligible = preferred, preferred_info, True
++                    detail['boundary_selection'] = 'short_current_history_agreement'
+                 if eligible:
+                     confirmed = carried is not None
+--- before/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -129,4 +129,5 @@
+             preview_turn_speed=bool(self.declare_parameter('g1_preview_turn_speed',False).value),
+             preview_above_base_speed=bool(self.declare_parameter('g1_preview_above_base_speed',False).value),
++            boundary_bridge=bool(self.declare_parameter('g1_boundary_bridge',False).value),
+             low_speed_arc_reacquire=bool(self.declare_parameter('g1_low_speed_arc_reacquire',False).value),
+             lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),
+--- before/src/arena_bringup/launch/simulation.launch.py
++++ src/arena_bringup/launch/simulation.launch.py
+@@ -81,4 +81,6 @@
+ SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview"] = {
+     **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"], "g1_preview_above_base_speed": True}
++SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview_bridge"] = {
++    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview"], "g1_boundary_bridge": True}
+ 
+ 
+--- before/scripts/validate_basic_autonomy.py
++++ scripts/validate_basic_autonomy.py
+@@ -276,5 +276,5 @@
+                         help="느린 오프라인 실행의 실제 시간 한도. 센서 시각 제한과 무관.")
+     parser.add_argument("--stop-wall-timeout-s", type=float, default=60.)
+-    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "g1_open_10kmh_solo_gap05", "g1_open_10kmh_solo_gap05_arc", "g1_open_10kmh_solo_gap05_arc_ray", "g1_open_10kmh_solo_gap05_arc_preview", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
++    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "g1_open_10kmh_solo_gap05", "g1_open_10kmh_solo_gap05_arc", "g1_open_10kmh_solo_gap05_arc_ray", "g1_open_10kmh_solo_gap05_arc_preview", "g1_open_10kmh_solo_gap05_arc_preview_bridge", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
+     parser.add_argument("--lidar-rate-hz", type=float, default=10.0,
+                         help="Gazebo 이상화 라이다의 시험용 갱신률. C1 실물 회전수를 바꾸지 않습니다.")
+@@ -306,5 +306,5 @@
+     args = parser.parse_args()
+     if args.team_signal_prelap and not (args.g1_race_path and args.laps==1 and args.target_progress_m is None
+-            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview')
++            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge')
+             and args.actuation_stop=='software_stop'
+             and args.grid_slot==3 and args.video and args.disable_speed_bump):
+@@ -574,5 +574,5 @@
+                          'src/arena_bringup/launch/g1_follow.launch.py'):
+             report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
+-    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview'):
++    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge'):
+         rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
+         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()

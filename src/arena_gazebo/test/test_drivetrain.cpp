@@ -13,10 +13,17 @@ int main()
   arena::SingleMotor open(p);
   auto s = open.Step(1, 10, 30, .001);
   Require(std::abs(s.motorSpeed - p.ratio * 20) < 1e-12, "motor average constraint");
-  Require(p.ratio == 15.0 && p.radius == 0.0325, "defaults mirror current vehicle.yaml");
+  Require(std::abs(p.ratio - 2.5 * 61 / 17) < 1e-12 && p.radius == 0.0325, "defaults mirror current vehicle.yaml");
   Require(std::abs(s.leftTorque - s.rightTorque) < 1e-12, "open equal torque");
   Require(std::abs(s.lossPower) < 1e-10, "ideal power balance");
   Require(s.referenceSpeed <= .00301, "acceleration ramp");
+  // 유효한 역방향 측정에서도 전진 목표에 양의 토크를 낸다. 실제 접지 검증 아님.
+  arena::SingleMotor recovering(p);
+  auto recovery = recovering.Step(.35, -.0813/p.radius, -.0813/p.radius, .001);
+  Require(recovery.referenceSpeed > 0 && recovery.motorTorque > 0,
+          "forward request counters negative wheel feedback");
+  recovery = recovering.Step(0., -.0813/p.radius, -.0813/p.radius, .001);
+  Require(recovery.referenceSpeed == 0., "explicit zero never becomes forward target");
   for (int i = 0; i != 10000; ++i) s = open.Step(5.55556, 0, 0, .001);
   Require(std::abs(s.motorTorque) <= p.torqueLimit, "motor torque limit");
   s = open.Step(0, 100, 100, .001);

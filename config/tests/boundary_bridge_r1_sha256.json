@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "scope": "명시 단독 프로필의 경로 근거 전환 정지 보완. 점유·무반환·독립 보호·물성과 기본 교통 출력 유지.",
+  "parent_contract": "config/tests/turn_preview_gate_r1_sha256.json",
+  "parent_contract_sha256": "08e9d9808a6bbf85c0ca46b785ab8c34592e1aecbd89189bf97b250ae143b8dc",
+  "before_snapshot": "artifacts/validation/2026-11-01/solo_corner_handoff_v1/before.zip",
+  "before_snapshot_sha256": "dff8c37e5714fb6b9d8dea41f9014eeca8c5afec0d53eb936e3fbd3fc8c773c2",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "5c4f6f8075c623b7720000e136886765398fcfa6dc96bb5cc018d196dbc80b2d",
+      "after": "860a9d2ee2d0664422a7d6a612489dc5593cd56193220865817eb75fd005b3c3",
+      "reason": "코너 끝에서 점유가 아닌 경로 근거 전환으로 생긴 0명령을 잇는 선택. 벽 전환 경로 유지, 긴 경로 지렛대 제외, 짧은 현재 관측, 회랑 재개 대기 연결. 기본 OFF, 단독 프로필에만 연결."
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "a2dc88958880c8a3c591a9ec471b96f813d8a4c06e3b98ae081011c83c24b547",
+      "after": "5818a2f3a086fd0bb1fd728d17b1b4a281c2f7fb29a1e3f39711e00d7fb15231",
+      "reason": "코너 끝에서 점유가 아닌 경로 근거 전환으로 생긴 0명령을 잇는 선택. 벽 전환 경로 유지, 긴 경로 지렛대 제외, 짧은 현재 관측, 회랑 재개 대기 연결. 기본 OFF, 단독 프로필에만 연결."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "3441dc15d4e92f5801bcee2d241b261237bc19caa7c3c16c1b9f61a6563266c4",
+      "after": "497e740b24b2ae3745d8926ecd5b9d438f649a5a4870db2f92d342a986a77ff6",
+      "reason": "코너 끝에서 점유가 아닌 경로 근거 전환으로 생긴 0명령을 잇는 선택. 벽 전환 경로 유지, 긴 경로 지렛대 제외, 짧은 현재 관측, 회랑 재개 대기 연결. 기본 OFF, 단독 프로필에만 연결."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "d39d90cb146b394967b2c97a831c2f92f5435052159181e2be8b13b4eeb4c10b",
+      "after": "5c6255f0742364ffc2a0c536a1b0554c8672ccd14b0fc163f83375509bc3798c",
+      "reason": "코너 끝에서 점유가 아닌 경로 근거 전환으로 생긴 0명령을 잇는 선택. 벽 전환 경로 유지, 긴 경로 지렛대 제외, 짧은 현재 관측, 회랑 재개 대기 연결. 기본 OFF, 단독 프로필에만 연결."
+    }
+  },
+  "new_dependencies": {}
+}

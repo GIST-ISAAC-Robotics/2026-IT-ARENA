@@ -1,0 +1,145 @@
+{
+  "run": "artifacts\\validation\\2026-11-01\\fast_lead_course_v1\\run1",
+  "valid": true,
+  "source_unchanged": true,
+  "clean": true,
+  "raw_failed_gates": [
+    "hold",
+    "final_gap",
+    "sampled_gap",
+    "swept_gap",
+    "ego_stays_behind"
+  ],
+  "stop": {
+    "model_stop_stable": true,
+    "dense_pose_stop_evidence": true,
+    "explicit_mcu_stop": true,
+    "no_mcu_latch_before_stop": true,
+    "no_deadline_diagnostic": true,
+    "no_wall_collision": true
+  },
+  "progress": {
+    "at_window_end_m": 51.31240999999945,
+    "projection_jumps": 0,
+    "ego_stays_behind_actor": false,
+    "sampled_gap_at_window_end_m": 4.262923541393928
+  },
+  "gap": {
+    "ego_samples": 38699,
+    "min_sampled_gap_m": 0.11550899954358554,
+    "sampled_overlap_samples": 0,
+    "sampled_missing_actor_samples": 0,
+    "sampled_finite_complete": true,
+    "min_swept_lower_bound_m": 0.11549006782555277,
+    "swept_nonpositive_intervals": 0,
+    "swept_missing_actor_intervals": 0,
+    "max_ego_sample_interval_s": 0.0030000000000001137,
+    "actor_contact_messages_with_ego": 0,
+    "first_contact_sim_s": null,
+    "scope": "sampled gap + conservative swept lower bound between pose samples; event-only contact evidence is separate"
+  },
+  "states": {
+    "FOLLOW": 3330,
+    "BYPASS": 540,
+    "REACQUIRE": 20
+  },
+  "transitions": [
+    {
+      "t": 0.2030000000000003,
+      "state": "FOLLOW"
+    },
+    {
+      "t": 4.883000000000001,
+      "state": "BYPASS"
+    },
+    {
+      "t": 15.683000000000002,
+      "state": "REACQUIRE"
+    },
+    {
+      "t": 16.083,
+      "state": "FOLLOW"
+    }
+  ],
+  "phase_events": [
+    {
+      "t": 4.9030000000000005,
+      "phase": "entry"
+    },
+    {
+      "t": 11.783,
+      "phase": "rejoin"
+    },
+    {
+      "t": 15.683000000000002,
+      "phase": "centered"
+    }
+  ],
+  "renewals": [
+    {
+      "t": 9.783,
+      "renewals": 1,
+      "total_yield_s": 0.5180000000000007,
+      "mark_m": 0.05144491875734318
+    },
+    {
+      "t": 10.083,
+      "renewals": 2,
+      "total_yield_s": 0.8180000000000014,
+      "mark_m": 0.15822879643881926
+    },
+    {
+      "t": 10.383000000000001,
+      "renewals": 3,
+      "total_yield_s": 1.118000000000002,
+      "mark_m": 0.2590386763666487
+    },
+    {
+      "t": 10.683000000000002,
+      "renewals": 4,
+      "total_yield_s": 1.4180000000000028,
+      "mark_m": 0.39771236773358665
+    },
+    {
+      "t": 10.883000000000001,
+      "renewals": 5,
+      "total_yield_s": 1.618000000000002,
+      "mark_m": 0.5030661028621306
+    },
+    {
+      "t": 11.283,
+      "renewals": 6,
+      "total_yield_s": 2.0180000000000007,
+      "mark_m": 0.6327901635766148
+    },
+    {
+      "t": 11.683000000000002,
+      "renewals": 7,
+      "total_yield_s": 2.418000000000003,
+      "mark_m": 0.7665840105757653
+    }
+  ],
+  "source_audit": {
+    "src/arena_autonomy/arena_autonomy/bypass_yield_progress.py": {
+      "snapshot_matches_report": true,
+      "snapshot_matches_current": true
+    },
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": {
+      "snapshot_matches_report": true,
+      "snapshot_matches_current": true
+    },
+    "scripts/validate_g1_traffic.py": {
+      "snapshot_matches_report": true,
+      "snapshot_matches_current": true
+    },
+    "scripts/g1_handoff_eval.py": {
+      "snapshot_matches_report": true,
+      "snapshot_matches_current": true
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "snapshot_matches_report": true,
+      "snapshot_matches_current": true
+    }
+  },
+  "scope": "실행 안 상대차 자세는 평가 전용. 15초 종료 밖 복귀/정체를 추정하지 않음."
+}

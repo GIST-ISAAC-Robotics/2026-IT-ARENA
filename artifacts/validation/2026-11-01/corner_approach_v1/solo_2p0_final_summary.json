@@ -1,0 +1,214 @@
+{
+  "profile": "g1_open_2p0_approach",
+  "passed": true,
+  "command_arguments": [
+    "python3",
+    "-B",
+    "scripts/validate_basic_autonomy.py",
+    "--autonomy-mode",
+    "local_pursuit",
+    "--g1-follow",
+    "--g1-boundary-evidence",
+    "corner_distance_candidate",
+    "--g1-occupancy-timing",
+    "per_ray_candidate",
+    "--record-follow-decisions",
+    "--g1-corridor-fallback",
+    "--g1-race-path",
+    "--partial-observation-policy",
+    "bounded_local_v4",
+    "--speed-profile",
+    "g1_open_2p0_approach",
+    "--disable-speed-bump",
+    "--lidar-rate-hz",
+    "10",
+    "--lidar-acquisition",
+    "sequential",
+    "--lidar-compensation",
+    "both",
+    "--actuation-mode",
+    "virtual_mcu",
+    "--control-rate-hz",
+    "50",
+    "--render-backend",
+    "wsl_nvidia",
+    "--shutdown-mode",
+    "service",
+    "--grid-slot",
+    "3",
+    "--laps",
+    "1",
+    "--max-sim-seconds",
+    "110",
+    "--wall-timeout-s",
+    "1200",
+    "--stop-wall-timeout-s",
+    "90",
+    "--output",
+    "C:/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-01/corner_approach_v1/solo_2p0"
+  ],
+  "pre_run_manifest": "artifacts/validation/2026-11-01/corner_approach_v1/solo_2p0_pre_manifest.json",
+  "input_hash_count": 114,
+  "post_run_source_hash_differences": [],
+  "report_source_unchanged": true,
+  "reference_differences_from_corrected_2p0": [
+    {
+      "path": "scripts/validate_basic_autonomy.py",
+      "corrected_2p0_sha256": "49341cd4450792ee809e5f3b6336398781fab4e8602008ef68d399bb0812bb25",
+      "current_sha256": "a7c065543512a1b36849f80d10bcde32be25f45dd9ba85974767fc1dbd37a7db"
+    },
+    {
+      "path": "src/arena_autonomy/arena_autonomy/local_follow.py",
+      "corrected_2p0_sha256": "a667f60299a54003d4efad8d35fd05d0c97287e9f3d3b65e41569eac891ccfb3",
+      "current_sha256": "6518fe5db1d3733885c0ebf0726694039772c6dd96025c5176d962f077b3ee59"
+    },
+    {
+      "path": "src/arena_autonomy/arena_autonomy/local_pursuit.py",
+      "corrected_2p0_sha256": "d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f",
+      "current_sha256": "e959987b8078600ea2fa6afd4e57d910f4234928fbb663079d4588f5589ac109"
+    },
+    {
+      "path": "src/arena_bringup/launch/simulation.launch.py",
+      "corrected_2p0_sha256": "f76b1bf68896e283f2a95eb27692503ad37ab50bcc8274e236e2375adca55a3e",
+      "current_sha256": "62e535d3fbae4680c595dad59d6fce8bcfd4699504884475a34e7ab681020223"
+    }
+  ],
+  "gear_ratio": 8.970588235294118,
+  "race_path_options": {
+    "g1_race_path": true,
+    "short_boundary_prefix_enabled": true,
+    "parallel_hold_trial": true,
+    "pass_release_trial": true,
+    "guard_curve_trial": true,
+    "traffic_recovery_trial": true,
+    "traffic_path_recovery_trial": true
+  },
+  "run": {
+    "progress_m": 48.75269000000003,
+    "target_progress_m": 48.6329,
+    "completed_laps": 1,
+    "lap_length_m": 46.6329,
+    "collision_samples": 0,
+    "truth_velocity_sample_count": 570,
+    "peak_truth_ground_speed": {
+      "trajectory_line": 557,
+      "sim_time_s": 56.236,
+      "truth_longitudinal_mps": 2.06078334707,
+      "truth_lateral_mps": 0.00037429154569,
+      "ground_speed_mps": 2.0607833810605114
+    },
+    "metrics_peak_ground_mps": 2.0607833810605114,
+    "best_one_second_mean_mps": 2.027484038190316,
+    "stop_stable": true,
+    "stop_wait_sim_s": 1.3909999999999982,
+    "stop_displacement_m": 0.7711358041939897,
+    "stop_collision_samples": 0,
+    "dense_pose_stop_evidence": {
+      "complete": true,
+      "passed": true,
+      "reason": "covered",
+      "required_first_s": 58.455,
+      "required_last_s": 58.955,
+      "covered_first_s": 58.454,
+      "covered_last_s": 58.955,
+      "segment_count": 235,
+      "maximum_gap_s": 0.0030000000000001137,
+      "maximum_allowed_gap_s": 0.05,
+      "maximum_speed_mps": 0.004696358244063006
+    },
+    "actuation_stop_ack": true,
+    "final_mcu": {
+      "v": 1,
+      "boot": "a5b3c1dfe4c6476ca7c3a65e477e3520",
+      "generation": 2,
+      "state": "ESTOP_LATCHED",
+      "reason": "software_stop",
+      "owner": null,
+      "accepted_seq": -1,
+      "target_speed_mps": 0.0,
+      "steering_rad": -0.000718205061275512,
+      "left_wheel_mps": null,
+      "right_wheel_mps": null,
+      "mean_wheel_mps": 0.0,
+      "feedback_mode": "drive_motor_shaft",
+      "stationary_scope": "mean_wheel_only_opposite_rotation_unobservable",
+      "feedback_valid": true,
+      "feedback_seq": 5895,
+      "left_ticks": null,
+      "right_ticks": null,
+      "motor_counts": 59034,
+      "feedback_capture_us": 58943000,
+      "deadline_us": null,
+      "estop_held": false,
+      "now_us": 58950000,
+      "output_ready": true,
+      "stationary_ready": true
+    },
+    "gazebo_stop_service": {
+      "method": "server_control",
+      "partition": "arena_autonomy_test_1041",
+      "verified": true,
+      "server_processes_before": [
+        1068
+      ],
+      "return_code": 0,
+      "stdout": "data: true\n\n",
+      "stderr": "",
+      "acknowledged": true,
+      "remaining_server_pids": [],
+      "elapsed_s": 1.237266767000051
+    },
+    "shutdown_clean": true,
+    "process_exit_codes": [
+      0,
+      0
+    ],
+    "process_errors": []
+  },
+  "surface_audit": {
+    "samples": 28491,
+    "body_outside_samples": 0,
+    "footprint_outside_samples": 0,
+    "wall_wheel_samples": 0,
+    "max_off_wheels_full": 0,
+    "penalty_events_full": 0
+  },
+  "motor_audit": {
+    "run": "artifacts/validation/2026-11-01/corner_approach_v1/solo_2p0",
+    "passed": true,
+    "checks": {
+      "snapshot_config_hash_matches": true,
+      "single_motor_mode": true,
+      "resolution_28": true,
+      "runtime_ratio_matches_snapshot": true,
+      "runtime_radius_32_5_mm": true,
+      "mcu_all_motor_mode": true,
+      "mcu_no_left_right_encoder_values": true,
+      "motor_counts_present": true,
+      "controllers_subscribe_motor_not_wheel_pair": true
+    },
+    "report_sha256": "a6e9da5105b739397b7ef79edeb86fb5fb9149bd7d1f420aa35bb1a92956e50a",
+    "subscriptions": {
+      "autonomy_subscriptions": [
+        "/camera/color/image_raw",
+        "/clock",
+        "/drive_motor/encoder",
+        "/imu/data",
+        "/scan"
+      ],
+      "safety_subscriptions": [
+        "/clock",
+        "/drive",
+        "/drive_motor/encoder",
+        "/imu/data",
+        "/scan"
+      ]
+    },
+    "subscription_evidence_present": true,
+    "mcu_samples": 14620,
+    "gear_ratio": 8.970588235294118,
+    "counts_per_mean_wheel_revolution": 251.1764705882353,
+    "travel_mm_per_count": 0.8129882628142205,
+    "limits": "Gazebo inner motor PI uses ideal wheel-joint mean. Quantized single motor encoder feeds controller/deskew/virtual MCU; not full physical MCU speed-loop emulation."
+  }
+}

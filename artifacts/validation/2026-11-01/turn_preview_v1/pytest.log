@@ -1,0 +1,42 @@
+........................................................................ [ 29%]
+........................................................................ [ 59%]
+................................................F....................... [ 89%]
+.............F...........                                                [100%]
+=================================== FAILURES ===================================
+__ test_oct26_guarded_return_and_second_start_have_preserved_source_chain[18] __
+
+index = 18
+
+    @pytest.mark.parametrize('index', range(10,len(M3_SUCCESSORS)))
+    def test_oct26_guarded_return_and_second_start_have_preserved_source_chain(index):
+        child = load(M3_SUCCESSORS[index])
+        assert child['parent_contract'] == M3_SUCCESSORS[index-1]
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for group in GROUPS:
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(archive.read(path)) == row['before'] != row['after']
+                    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+>       for path, digest in child['new_dependencies'].items():
+E       KeyError: 'new_dependencies'
+
+tests/test_source_provenance_r0_plus_b3.py:356: KeyError
+__ test_oct26_guarded_return_and_second_start_have_preserved_source_chain[55] __
+
+index = 55
+
+    @pytest.mark.parametrize('index', range(10,len(M3_SUCCESSORS)))
+    def test_oct26_guarded_return_and_second_start_have_preserved_source_chain(index):
+        child = load(M3_SUCCESSORS[index])
+>       assert child['parent_contract'] == M3_SUCCESSORS[index-1]
+E       AssertionError: assert 'config/tests...1_sha256.json' == 'config/tests...2_sha256.json'
+E         - config/tests/g2_relative_yield_r2_sha256.json
+E         + config/tests/rotation_reobservation_r1_sha256.json
+
+tests/test_source_provenance_r0_plus_b3.py:347: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[18]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_oct26_guarded_return_and_second_start_have_preserved_source_chain[55]
+2 failed, 239 passed in 60.19s (0:01:00)

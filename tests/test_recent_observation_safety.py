@@ -47,7 +47,7 @@ def test_independent_scoped_gate_caps_side_unknown_without_filling():
 
 
 @pytest.mark.parametrize('fault', ['front_unknown','near_return','stale_scan','stale_command','wall_timeout',
-                                   'negative_feedback','missing_feedback','same_scan_expired'])
+                                   'missing_feedback','same_scan_expired'])
 def test_independent_faults_still_stop(fault):
     node,commands,statuses = candidate_node()
     if fault=='front_unknown':node.scan.ranges[250]=float('inf')
@@ -55,7 +55,6 @@ def test_independent_faults_still_stop(fault):
     if fault=='stale_scan':node.scan=scan(.2,[2.]*500)
     if fault=='stale_command':node.command.header.stamp.nanosec=0
     if fault=='wall_timeout':node.scan_wall=time.monotonic()-4.
-    if fault=='negative_feedback':node.motion.history=history(v=-.1)
     if fault=='missing_feedback':node.motion.history=history(end=.2)
     if fault=='same_scan_expired':
         LidarSafety.control(node)

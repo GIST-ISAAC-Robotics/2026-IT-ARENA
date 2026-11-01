@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "scope": "관측 경로 길이 기반 직선 속도 전환 시험; 경기 기본값이나 실차 승인 아님",
+  "parent_contract": "config/tests/race_selector_speed_r1_sha256.json",
+  "parent_contract_sha256": "ddccc17cd4e8d5518ef89a21a6ad05fe2e713830665d9aff63548268f7b58c13",
+  "before_snapshot": "artifacts/validation/2026-11-01/corner_approach_v1/before.zip",
+  "before_snapshot_sha256": "d1d566f8293c05c5b7a9c35b0d9c13e96c15d76742f44227ac60b3a4f81cc106",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "a667f60299a54003d4efad8d35fd05d0c97287e9f3d3b65e41569eac891ccfb3",
+      "after": "6518fe5db1d3733885c0ebf0726694039772c6dd96025c5176d962f077b3ee59",
+      "reason": "새 속도 시험 프로필에서만 현재 본선 관측 길이에 따라 추가 속도를 조정한다."
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "d7568e4e39fe6151a2774c82cc37eeb90a23b4ea9ef3e905e44cfbc57337b33f",
+      "after": "e959987b8078600ea2fa6afd4e57d910f4234928fbb663079d4588f5589ac109",
+      "reason": "새 속도 시험 프로필에서만 현재 본선 관측 길이에 따라 추가 속도를 조정한다."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "f76b1bf68896e283f2a95eb27692503ad37ab50bcc8274e236e2375adca55a3e",
+      "after": "62e535d3fbae4680c595dad59d6fce8bcfd4699504884475a34e7ab681020223",
+      "reason": "새 속도 시험 프로필에서만 현재 본선 관측 길이에 따라 추가 속도를 조정한다."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "49341cd4450792ee809e5f3b6336398781fab4e8602008ef68d399bb0812bb25",
+      "after": "a7c065543512a1b36849f80d10bcde32be25f45dd9ba85974767fc1dbd37a7db",
+      "reason": "새 속도 시험 프로필에서만 현재 본선 관측 길이에 따라 추가 속도를 조정한다."
+    }
+  },
+  "new_dependencies": {}
+}

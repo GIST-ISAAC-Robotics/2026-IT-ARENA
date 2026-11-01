@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scope": "경기 경로 단독 속도 비교와 가상 수신 범위; 실차 승인 아님",
+  "parent_contract": "config/tests/race_continuity_r1_sha256.json",
+  "parent_contract_sha256": "f94c6871d44a89a0b594a7cde29330946f0acc69a9cda1d0e741d6a7f9e7d7d9",
+  "before_snapshot": "artifacts/validation/2026-11-01/race_continuity_v1/before_course_profile.zip",
+  "before_snapshot_sha256": "ac2b9ee0054bf1aa4f63f4826085449580841dcacf9f628751b569279a5c9f85",
+  "approved_changes": {
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "eb535e9219516fe189d36bd2ef54b82f992a7631e9911326ce7484b7eff7e88d",
+      "after": "f76b1bf68896e283f2a95eb27692503ad37ab50bcc8274e236e2375adca55a3e",
+      "reason": "가상 구동 수신 한도를 선택 프로필의 최대 요구에 맞춘다. 기존 기본 설정을 유지한다."
+    },
+    "src/arena_vehicle_interface/arena_vehicle_interface/actuation_ros.py": {
+      "before": "ae01245f18b2abeff2b1120d0ae11c64d04f707085e813949d90b58e884025b9",
+      "after": "f1ec37b90a30a785068b2f67a7a8800ebf132137d8e56bd0cc761115e714a861",
+      "reason": "가상 구동 수신 한도를 선택 프로필의 최대 요구에 맞춘다. 기존 기본 설정을 유지한다."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "ed7a981a1e4946e06ac1b0505671a28e47c036b748ac9f0ca876c52ca6f9b72d",
+      "after": "49341cd4450792ee809e5f3b6336398781fab4e8602008ef68d399bb0812bb25",
+      "reason": "기존 완주 경로를 단독 속도 시험에서 명시적으로 고른다."
+    }
+  },
+  "new_dependencies": {}
+}

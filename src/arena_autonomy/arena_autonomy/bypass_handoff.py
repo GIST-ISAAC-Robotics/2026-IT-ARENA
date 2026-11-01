@@ -40,6 +40,14 @@ class HandoffExecutionConfig:
     preparation_policy: str = 'front_patch_v0'
     persistence_window_policy: str = 'compare_then_trim_v0'
     follow_entry_space_enabled: bool = False
+    # 이전 기록에는 없는 필드: 재생 시 당시의 고정 우회 여유를 유지한다.
+    moving_follow_reserve: bool = False
+    closing_follow_reserve: bool = False
+    recent_forward_reserve: bool = False
+    # 연속 세 스캔의 낮은 이동이 쌓이기 전이나 이동 근거가 남은 동안 고정 우회 여유를 걸지 않는다.
+    low_motion_reserve: bool = False
+    # 전진율을 못 얻은 조각은 G1 전체가 아니라 물체 이동 가정만큼만 풀어 우회 공간을 남긴다.
+    moving_pace_floor: bool = False
     reacquire_policy: str = 'positive_command_v0'
     front_patch_policy: str = 'contiguous_three_v0'
     entry_policy: str = 'registered_v0'
@@ -61,6 +69,17 @@ class HandoffExecutionConfig:
             raise ValueError('boolean follow entry space option required')
         if self.reacquire_policy not in ('positive_command_v0','known_hold_v1'):
             raise ValueError('registered reacquire policy required')
+        if type(self.moving_follow_reserve) is not bool or (self.moving_follow_reserve and not self.follow_entry_space_enabled):
+            raise ValueError('moving follow reserve requires follow entry space')
+        if type(self.closing_follow_reserve) is not bool or (self.closing_follow_reserve and not self.moving_follow_reserve):
+            raise ValueError('closing follow reserve requires moving follow evidence')
+        if type(self.recent_forward_reserve) is not bool or (self.recent_forward_reserve and not self.closing_follow_reserve):
+            raise ValueError('recent forward reserve requires closing follow evidence')
+        if type(self.low_motion_reserve) is not bool or (self.low_motion_reserve and (
+                not self.closing_follow_reserve or self.recent_forward_reserve)):
+            raise ValueError('low motion reserve requires closing follow evidence without recent forward')
+        if type(self.moving_pace_floor) is not bool or (self.moving_pace_floor and not self.low_motion_reserve):
+            raise ValueError('moving pace floor requires low motion reserve')
         if self.follow_entry_space_enabled and (self.preparation_policy != 'observed_entry_space_v1'
                 or self.persistence_window_policy != 'trim_before_compare_v1'):
             raise ValueError('follow entry space requires explicit space and bounded window policies')
@@ -78,7 +97,7 @@ class HandoffExecutionConfig:
             raise ValueError('registered motion pause policy required')
         if self.motion_pause_policy != 'off' and self.entry_policy != 'corridor_local_v1':
             raise ValueError('motion pause requires explicit signed corridor handoff')
-        if self.relative_yield_policy not in ('off', 'bounded_relative_yield_v1', 'bounded_relative_yield_v2'):
+        if self.relative_yield_policy not in ('off', 'bounded_relative_yield_v1', 'bounded_relative_yield_v2', 'observed_progress_yield_v3'):
             raise ValueError('registered relative yield policy required')
         if self.relative_yield_policy != 'off' and (
                 self.entry_policy != 'corridor_local_v1'
@@ -171,11 +190,18 @@ class BlockingPersistence:
         self.config = config or HandoffExecutionConfig()
         self.motion_bound = (FollowConfig().object_motion_bound_mps if object_motion_bound_mps is None
                              else object_motion_bound_mps)
+        self.recent = None
+        if self.config.recent_forward_reserve:
+            from arena_autonomy.front_patch_motion import RecentForward
+            self.recent = RecentForward(self.config.maximum_patch_displacement_m,self.motion_bound)
         self.reset()
 
     def reset(self):
         self.rows = []; self.key = None; self.last_ref = None
+        if self.recent is not None:
+            self.recent.reset()
         self.motion_rate_mps = None
+        self.forward_rate_mps = 0.
         self.result = dict(ready=False, observed=False, fresh=False, reason='waiting')
 
     def motion_evidence(self):
@@ -204,11 +230,14 @@ class BlockingPersistence:
             return dict(self.result, fresh=False)
         self.key = key
         patch, reason = front_patch(scene, self.config.front_patch_policy)
+        if self.recent is not None:
+            self.recent.observe(source,now,np.median(patch,axis=0) if patch is not None else None,history)
         if patch is None:
             self.rows = []; self.motion_rate_mps = None
             self.result = dict(ready=False, observed=False, fresh=True, reason=reason)
             return self.result
         deviations = []
+        deltas = []
         if self.config.persistence_window_policy == 'trim_before_compare_v1':
             # 다음 조각을 비교하기 전에 창 밖의 오래된 시작 표본을 제거한다.
             # 두 번째 표본부터도 지정 창 전체를 덮을 때만 제거하므로, 짧은 관측을
@@ -220,8 +249,9 @@ class BlockingPersistence:
                 projected = transport_points(old['patch'], history, old['time'], now)
             except ValueError:
                 self.rows = []; deviations = []; self.motion_rate_mps = None; break
-            deviations.append(float(np.linalg.norm(np.median(patch, axis=0)
-                                                   - np.median(projected, axis=0))))
+            delta = np.median(patch, axis=0) - np.median(projected, axis=0)
+            deltas.append(delta)
+            deviations.append(float(np.linalg.norm(delta)))
         if deviations and max(deviations) > self.config.maximum_patch_displacement_m:
             bound = self.config.maximum_patch_displacement_m
             interval = source-self.rows[-1]['source']
@@ -229,6 +259,12 @@ class BlockingPersistence:
             span = source-self.rows[worst]['source']
             associated = interval > 0 and deviations[-1] <= bound+self.motion_bound*interval
             self.motion_rate_mps = deviations[worst]/span if associated and span > 0 else None
+            # 거리 변화의 크기만 쓰면 마주 오는 물체나 옆에서 들어오는 차도 전진으로
+            # 오인한다. 서로 다른 3스캔 이상에서 전방으로 벗어난 성분만 인정한다.
+            dx, dy = deltas[worst]
+            self.forward_rate_mps = (min(self.motion_bound, dx/span)
+                if self.motion_rate_mps is not None and len(self.rows)-worst >= 2
+                and dx > max(bound, abs(dy)) else 0.)
             self.rows = []
         self.rows.append(dict(source=source, time=now, patch=patch.copy()))
         # 판정 창을 처음부터 다시 누적하지 않고 최소 0.8초의 연속 관측을 유지한다.
@@ -297,6 +333,9 @@ class BypassHandoffFollow:
         elif self.execution.relative_yield_policy == 'bounded_relative_yield_v2':
             from arena_autonomy.bypass_relative_yield_pause import MotionPauseRelativeYieldCommand
             self._relative_yield = MotionPauseRelativeYieldCommand()
+        elif self.execution.relative_yield_policy == 'observed_progress_yield_v3':
+            from arena_autonomy.bypass_yield_progress import ProgressRelativeYieldCommand
+            self._relative_yield = ProgressRelativeYieldCommand()
 
     def _straight_reference(self,scene,config=None):
         config=self.config if config is None else config
@@ -346,6 +385,9 @@ class BypassHandoffFollow:
         if len(self.monitor.rows) < 2:
             # 한 스캔은 이동/정지 어느 쪽의 비교 근거도 없다.
             return dict(result, reason='single_scan_patch')
+        if self.execution.low_motion_reserve and len(self.monitor.rows) < 3:
+            # 두 스캔의 6 cm는 0.6 m/s 이하일 뿐이다. 세 스캔(0.3 m/s 이하)이 쌓인 뒤 준비한다.
+            return dict(result, reason='short_low_motion_history')
         latest = self.monitor.rows[-1]
         try:
             patch = transport_points(latest['patch'], history, latest['time'], scene.t_ref_s)
@@ -370,6 +412,13 @@ class BypassHandoffFollow:
 
     def _follow_entry_space(self, scene, normal, previous, target):
         target, detail = self._follow_entry_space_current(scene, normal, previous, target)
+        if (self.execution.recent_forward_reserve and detail['reason']=='observed_entry_distance_reserve'
+                and self.monitor.motion_evidence() and self.monitor.recent.rate>0
+                and detail.get('before_mps',0)>0):
+            pace=detail['cap_mps']+self.monitor.recent.rate
+            target=min(detail['before_mps'],pace)
+            detail=dict(detail,applied=pace<detail['before_mps'],reason='recent_advancing_patch',
+                cap_mps=pace,recent_forward_floor_mps=self.monitor.recent.rate)
         if self._preparation_hold is not None:
             return self._preparation_hold.limit(self, scene, self._preparation_history, target, detail)
         return target, detail
@@ -405,6 +454,30 @@ class BypassHandoffFollow:
         distance = float(front_x)+cfg.wheelbase_m/2
         reserve = max(self.bypass.guide.entry.transitions_m)
         cap = max(0.,(distance-reserve)/self.execution.observation_window_s)
+        pace = self.monitor.forward_rate_mps if self.execution.moving_follow_reserve else 0.
+        closing = self.execution.closing_follow_reserve and pace > 0.
+        if self.execution.moving_follow_reserve and self.monitor.motion_evidence() and (closing or pace > cap):
+            # G1의 경로/점유/제동 판정은 상한이다. 미래 우회를 위한 추가 제한만
+            # 실제 전방 조각의 이동률까지 풀고, 정지·측방·불연속 반환에는 적용하지 않는다.
+            # 움직이는 물체와 같은 속도만 내면 벌어진 간격은 줄지 않는다.
+            # 선택형 비교에서는 관측된 전진율과 기존 우회 여유보다 먼 거리의 접근분을 더한다.
+            if closing:
+                pace += cap
+            return min(target, pace), dict(result, applied=pace<target,
+                reason='advancing_patch_close' if closing else 'advancing_patch_follow',
+                before_mps=target, cap_mps=pace, fixed_reserve_cap_mps=cap,
+                reserve_m=reserve, rear_axle_to_patch_m=distance)
+        if self.execution.low_motion_reserve and (self.monitor.motion_evidence() or len(self.monitor.rows) < 3):
+            # 고정 여유는 멈췄을 수 있는 조각의 미래 우회용이다. 전진율을 못 얻은 빠른 조각은
+            # 전진율 0으로 취급하지 않고, 간격·감속·직접 충돌 판단을 G1 추종에 그대로 맡긴다.
+            waiting = dict(result, reason='reserve_waits_low_motion', fixed_reserve_cap_mps=cap,
+                reserve_m=reserve, rear_axle_to_patch_m=distance)
+            if not self.execution.moving_pace_floor:
+                return target, waiting
+            # 앞차 속도를 모를 때 0으로 두지 않고 G1의 물체 이동 가정을 쓴다. 정확한 속도 측정이 아니며
+            # 앞차가 그보다 빠르면 간격이 벌어질 뿐이다. 이 거리는 앞차 급정지 뒤의 우회 공간이다.
+            paced = cap+self.monitor.motion_bound
+            return min(target,paced), dict(waiting, applied=paced<target, before_mps=target, cap_mps=paced)
         return min(target,cap), dict(result, applied=cap<target, reason='observed_entry_distance_reserve',
             rear_axle_to_patch_m=distance, reserve_m=reserve, approach_window_s=self.execution.observation_window_s,
             cap_mps=cap, before_mps=target)
@@ -434,10 +507,14 @@ class BypassHandoffFollow:
             self.bypass.reset()
 
     def command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
+        from arena_autonomy.local_follow import forward_planning_speed, signed_feedback_detail
+        planning = forward_planning_speed(self.config, speed)
         if self._relative_yield is not None:
-            return self._relative_yield.command(self, scene, speed,
-                lambda: self._prepared_command(scene, history, speed, side, previous, dt, raw_scan=raw_scan))
-        return self._prepared_command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
+            output = self._relative_yield.command(self, scene, planning,
+                lambda: self._prepared_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan))
+        else:
+            output = self._prepared_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
+        return signed_feedback_detail(output, speed, planning)
 
     def _prepared_command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
         if self._preparation_hold is None:
@@ -503,7 +580,9 @@ class BypassHandoffFollow:
                 longest = max(self.bypass.guide.entry.transitions_m)
                 # 가장 완만한 진입이 아직 가능하면 더 다가가지 않는다. 이미 없으면 기다려도
                 # 공간이 돌아오지 않으므로 G1을 따른다(아래 진입 검사는 그대로).
-                if any(t == longest for _, t in usable):
+                # 낮은 이동 후보에서는 위 고정 여유가 1.20 m 앞에서 멈춘다. 측면 관측은 계속 쌓되
+                # 별도 0 대기를 겹치지 않는다.
+                if any(t == longest for _, t in usable) and not self.execution.low_motion_reserve:
                     target = 0.
                     detail['entry_space']['hold'] = True
                 else:

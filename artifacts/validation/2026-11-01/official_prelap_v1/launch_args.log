@@ -1,0 +1,193 @@
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'lidar_compensation':
+        One of: ['none', 'deskew', 'shift', 'both']
+        (default: 'none')
+
+    'actuation_mode':
+        가상 MCU 계약 시험. 새 모드는 명시적 ARM 필요. Valid choices are: ['legacy', 'virtual_mcu']
+        (default: 'legacy')
+
+    'timing_probe':
+        One of: ['true', 'false']
+        (default: 'false')
+
+    'drive_feedback_mode':
+        configured=vehicle_config 모터축 1채널. rear_wheel_pair_legacy는 이전 2개 계약 명시 비교. Valid choices are: ['configured', 'drive_motor_shaft', 'rear_wheel_pair_legacy']
+        (default: 'configured')
+
+    'autonomy_control_rate_hz':
+        자율주행 제어 주기; 센서 주기와 독립
+        (default: '20.0')
+
+    'sensor_wall_timeout_s':
+        오프라인 감시 벽시계 한도. 센서의 시뮬레이션 시각 제한은 유지
+        (default: '3.0')
+
+    'track':
+        official: v2026.10.24 colors, 45/20 cm unchanged gantry markers; experimental: legacy 45/25 cm test; original: preserved 35/12 cm. Valid choices are: ['official', 'original', 'experimental']
+        (default: 'official')
+
+    'vehicle_config':
+        Vehicle parameter YAML file.
+        (default: '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_description/share/arena_description/config/vehicle.yaml')
+
+    'd435i_profile':
+        D435i stream profile. configured follows active_stream_profile in vehicle_config. Valid choices are: ['configured', 'high_speed_async', 'synchronized_60', 'low_load_30']
+        (default: 'configured')
+
+    'tof_profile':
+        ToF zone/rate profile. configured follows active_profile in vehicle_config. Valid choices are: ['configured', 'low_latency_4x4_60', 'tracking_8x8_15']
+        (default: 'configured')
+
+    'lidar_rate_hz':
+        configured 또는 시험용 0.5~100 Hz. C1 하드웨어 사양을 바꾸는 설정이 아닙니다.
+        (default: 'configured')
+
+    'grid_slot':
+        Starting grid slot index (0-5).
+        (default: '0')
+
+    'headless':
+        Run the Gazebo server without its GUI.
+        (default: 'false')
+
+    'lidar_acquisition':
+        순간 스캔 또는 물리 프레임 누적 회전 스캔. Valid choices are: ['snapshot', 'snapshot_matched', 'sequential']
+        (default: 'snapshot')
+
+    'render_backend':
+        auto: WSL GPU 연결 시 D3D12 선택, system: 기존 환경, software: CPU 비교. Valid choices are: ['auto', 'system', 'wsl_nvidia', 'software']
+        (default: 'system')
+
+    'collision_detector':
+        DART 충돌 검출만 선택하는 비교 옵션. 기본 물성/형상 유지. Valid choices are: ['configured', 'ode', 'bullet', 'fcl']
+        (default: 'configured')
+
+    'scene_broadcaster':
+        false는 GUI·정답 pose 발행이 필요 없는 headless 검사 전용
+        (default: 'true')
+
+    'gazebo_sigterm_timeout':
+        종료 진단용 SIGINT 대기 초. 기본 ROS launch와 같은 5초
+        (default: '5')
+
+    'lidar_source_rate_hz':
+        순차 취득의 내부 광선 계산 주기; C1 회전 주기 아님. Valid choices are: ['500', '1000']
+        (default: '500')
+
+    'autonomy':
+        RGB 출발 신호 + 선택한 센서의 본선 벽 추종
+        (default: 'false')
+
+    'autonomy_mode':
+        lidar: C1+ToF6, stereo: 전방 D435i 깊이+측면 ToF4 개인 비교안. Valid choices are: ['lidar', 'stereo', 'local_pursuit']
+        (default: 'lidar')
+
+    'render_sensors':
+        동역학 전용 시험에서 광학 센서만 끕니다. 링크·질량은 유지합니다.
+        (default: 'true')
+
+    'world_override':
+        시험 전용 SDF. 원본/실험 트랙 파일은 덮어쓰지 않습니다.
+        (default: '')
+
+    'test_spawn_x':
+        no description given
+        (default: '0')
+
+    'test_spawn_y':
+        no description given
+        (default: '0')
+
+    'test_spawn_yaw':
+        no description given
+        (default: '0')
+
+    'drive_mode':
+        One of: ['configured', 'single_motor', 'legacy_velocity']
+        (default: 'configured')
+
+    'differential_profile':
+        One of: ['configured', 'ideal_open', 'lossy_open', 'viscous_lsd']
+        (default: 'configured')
+
+    'tof_safety':
+        /drive를 ToF 안전층에서 제한하여 /drive/safe로 전달
+        (default: 'true')
+
+    'speed_profile':
+        명령 속도 상한이며 실제 속도/완주 보증이 아닙니다. ToF 안전층이 추가 제한합니다. Valid choices are: ['local_fast', 'cautious', 'brisk', 'exploratory', 'g1_compare_1mps', 'g1_open_1p5', 'g1_open_2p0', 'g1_open_10kmh', 'g1_open_2p0_approach', 'g1_open_10kmh_approach', 'hardware_target', 'lidar_rate_stress', 'lidar_20kmh_straight']
+        (default: 'cautious')
+
+    'depth_camera':
+        깊이 센서와 점군을 켭니다. RGB·IMU는 유지합니다.
+        (default: 'true')
+
+    'speed_bump':
+        false는 실행 사본에서만 임시 방지턱 제거
+        (default: 'true')
+
+    'runtime_artifacts':
+        검증 실행 입력 보관 폴더
+        (default: '')
+
+    'evaluation_handoff_reserve':
+        상대차 평가 전용: G1/G2의 우회 준비 여유 비교. Valid choices are: ['off', 'fixed', 'moving']
+        (default: 'off')
+
+    'evaluation_course_markers':
+        평가 전용 코스 마커 무늬 가림; 형상 불변. Valid choices are: ['visible', 'blank_30', 'blank_all']
+        (default: 'visible')
+
+    'evaluation_scheduled_apply':
+        Evaluation-only paired command deadline/ack; native default unchanged. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'evaluation_startup':
+        평가 전용 초기 차량 포함·paused 시작. 별도 평가기가 준비 확인 후 재생해야 함. Valid choices are: ['service', 'embedded_paused']
+        (default: 'service')
+
+    'evaluation_zero_speed_mode':
+        평가 전용 0속도 구동 특성 대조. 실물 제동 모드 아님. Valid choices are: ('legacy', 'reset_integral', 'no_lag', 'passive_damping')
+        (default: 'legacy')
+
+    'evaluation_physics_step':
+        평가 전용 물리 step 민감도. 빈 값은 월드 기본 1 ms; 증거 경로 필요. Valid choices are: ['', '0.0005', '0.00025']
+        (default: '')
+
+    'evaluation_command_trace':
+        평가 전용 플러그인 명령 수신/적용 전환 이벤트. 제어 입력 아님; 증거 경로 필요. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'evaluation_actor_sdf':
+        평가 전용 정적 actor SDF 조각. official local_pursuit 실행 사본에만 삽입
+        (default: '')
+
+    'evaluation_wheel_contacts':
+        실행 사본의 평가 전용 바퀴 접촉 계측. 제어 입력 아님. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'lidar_test_profile':
+        시험용 거리오차/지연 JSON; 빈 값은 기존 동작
+        (default: '')
+
+    'motion_test_profile':
+        시험용 IMU/엔코더 오류 JSON; 기본 비활성
+        (default: '')
+
+    'batch_static_visuals':
+        정적 상자 표시만 동일 꼭짓점/재질의 메시로 묶음; 충돌체 불변
+        (default: 'false')
+
+    'chase_camera':
+        영상 검증 전용 차량 추적 3인칭 카메라
+        (default: 'false')
+
+    'traffic_light':
+        빨강-노랑-초록 출발 신호와 수동 제어
+        (default: 'false')
+
+    'red_duration_s':
+        영상 준비 이후 빨간 신호 유지 시간
+        (default: '8.0')

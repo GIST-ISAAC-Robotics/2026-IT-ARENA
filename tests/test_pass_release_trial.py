@@ -49,6 +49,20 @@ def test_never_seen_solo_does_not_wait_for_impossible_pass(setup):
     assert call(1.)[0]==1. and ctl.mode=='SOLO'
 
 
+@pytest.mark.parametrize('base,open_route,parallel,expected',
+                         [(1.05, True, 0., 1.05), (2.01, True, 0., 0.),
+                          (1.05, False, 0., 0.), (1.05, True, 1.05, 0.)])
+def test_open_route_limit_applies_only_to_observed_main_path(setup, base, open_route, parallel, expected):
+    from dataclasses import replace
+    selector = ps.PassReleaseSelector(replace(config(), open_route_speed_mps=2.))
+    scene = SimpleNamespace(source_first_s=.9, t_ref_s=1., source_epoch=0)
+    v, a, detail = output(base)
+    result = selector.select(scene, (v, a, dict(detail, open_route_speed_enabled=open_route)),
+                             output(parallel), .49, .02, .02)
+    assert result[0] == expected
+    assert (result[2].get('selector_reason') == 'invalid_motion_or_output') == (expected == 0.)
+
+
 def test_two_distinct_clear_scans_after_forward_observation_allow_release(setup):
     ctl,state,call=setup;state['view']=view(True,.25)
     assert call(1.)[0]==.2

@@ -1,0 +1,36 @@
+--- before/src/arena_autonomy/arena_autonomy/local_path.py
++++ after/src/arena_autonomy/arena_autonomy/local_path.py
+@@ -170,17 +170,25 @@
+     """정곡률 예측 차체와 점군의 첫 간섭까지 후륜축 이동 거리를 계산한다."""
+     points = np.asarray(points, dtype=float)
+     curvature = math.tan(steering) / wheelbase
+-    for distance in np.arange(0., horizon + .001, .04):
+-        yaw = curvature * distance
++    distances = np.arange(0., horizon + .001, .04)
++    # 같은 4 cm 표본을 여덟 개씩 묶는다. libm 삼각함수와 연산 순서를 유지하여
++    # 경계의 포함 판정·첫 간섭·4 cm 차감이 기존 순차 계산과 같도록 한다.
++    for start in range(0, len(distances), 8):
++        steps = distances[start:start+8]
++        yaw = curvature * steps
++        c = np.asarray([math.cos(value) for value in yaw])[:, None]
++        s = np.asarray([math.sin(value) for value in yaw])[:, None]
+         if abs(curvature) < 1e-5:
+-            rx, ry = distance - wheelbase / 2, 0.
++            rx, ry = steps[:, None] - wheelbase / 2, 0.
+         else:
+-            rx, ry = math.sin(yaw) / curvature - wheelbase / 2, (1 - math.cos(yaw)) / curvature
++            rx, ry = s / curvature - wheelbase / 2, (1 - c) / curvature
+         dx, dy = points[:, 0] - rx, points[:, 1] - ry
+-        local_x = math.cos(yaw) * dx + math.sin(yaw) * dy - wheelbase / 2
+-        local_y = -math.sin(yaw) * dx + math.cos(yaw) * dy
+-        if np.any((np.abs(local_x) <= length/2 + margin) & (np.abs(local_y) <= width/2 + margin)):
+-            return max(0., float(distance) - .04)  # 이산 검사 간격을 안전 여유로 차감
++        local_x = c * dx + s * dy - wheelbase / 2
++        local_y = -s * dx + c * dy
++        hit = np.any((np.abs(local_x) <= length/2 + margin) & (np.abs(local_y) <= width/2 + margin), axis=1)
++        indices = np.flatnonzero(hit)
++        if len(indices):
++            return max(0., float(steps[indices[0]]) - .04)  # 이산 검사 간격을 안전 여유로 차감
+     return horizon
+ 
+ 

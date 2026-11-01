@@ -192,9 +192,10 @@ def simulate(slot, other_slots, segments, road, vehicle, sensor, *, rounded, fau
     wheelbase = drivetrain['wheelbase_m']
     # 이 시험의 등록값과 현행 설정이 다르면 자동으로 대체하지 않는다.
     assert feedback['counts_per_motor_revolution'] == 28 and drivetrain['wheel_radius_m'] == .0325
-    assert drivetrain['motor']['gear_ratio'] == 15. and feedback['sample_rate_hz'] == 100.
+    assert feedback['sample_rate_hz'] == 100.
     assert sensor['rate_hz'] == 10. and lidar['samples_per_scan'] == 500
-    spec = MotorEncoderSpec(28, 15., .0325)
+    # 감속비는 입력 vehicle 설정을 사용한다. 이전 실행 재현에는 당시 설정을 전달한다.
+    spec = MotorEncoderSpec(28, drivetrain['motor']['gear_ratio'], .0325)
     plant = IdealPlant(slot, wheelbase)
     histories = [motion_history(wheelbase, sensor) for _ in range(2)]
     cfg = FollowConfig(wheelbase_m=wheelbase, occupancy_timing_mode='per_ray_candidate',
@@ -317,6 +318,8 @@ def simulate(slot, other_slots, segments, road, vehicle, sensor, *, rounded, fau
         peer_stop_s=peer_stop_s,peer_resume_s=peer_resume_s,
         defer_center_on_straight=defer_center_on_straight,
         first_motion_s=started, calls=len(calls),
+        motor_encoder_spec=dict(counts_per_motor_revolution=spec.counts_per_motor_revolution,
+            gear_ratio=spec.gear_ratio,wheel_radius_m=spec.wheel_radius_m),
         controller_cost_p95_ms=float(np.percentile([c['controller_cost_ms'] for c in calls],95)),
         controller_cost_max_ms=max(c['controller_cost_ms'] for c in calls),
         event_contract='integer_ns_deliveries_before_control',

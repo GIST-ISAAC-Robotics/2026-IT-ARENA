@@ -1,0 +1,92 @@
+{
+  "scope": "같은 코너의 기존 궤적/명령/센서 속도 대조. 정답은 평가 전용이며 속도 차이의 물리 원인을 확정하지 않는다.",
+  "script_sha256": "711a00c93fe44de848653224db7fdf36bf87accafe0d70960bab939699747a43",
+  "cases": [
+    {
+      "run": "solo_route_v1",
+      "input_sha256": {
+        "trace.json": "a0491e5445ee926ad416a808f93d8bdd50283884314beb3bdbef3ce233d068e8",
+        "follow_decisions.jsonl": "ebce4813cc944014251b504ed98aa2838989e73bc88621e2b8f0cdd607e9d1dc"
+      },
+      "matched_rows": 97,
+      "first_zero": null,
+      "largest_body_minus_measured_while_moving": {
+        "t_s": 22.819,
+        "decision_time_offset_s": 0.0010000000000012221,
+        "progress_m": 19.177400000000045,
+        "body_truth_mps": 0.566778777814,
+        "body_time_offset_s": -0.009000000000000341,
+        "controller_measured_mps": 0.24389647884426613,
+        "body_minus_measured_mps": 0.32288229896973386,
+        "target_mps": 0.4000000000000001,
+        "steering_rad": -0.15734581015196206,
+        "reason": "local_follow",
+        "safety": "clear",
+        "boundary_age_s": 0.11799999999999855,
+        "boundary_from_memory": false,
+        "path_wall": "right",
+        "wall_fallback": true,
+        "path_ahead_m": 1.8456759808705925,
+        "swept_clearance_m": 0.48000000000000004,
+        "corridor_reason": "confirmed_shadow_candidate_only"
+      },
+      "reason_counts": {
+        "local_follow": 97
+      },
+      "sensor_timing_limit": "차체 표본 시각과 제어 판단 reference 시각을 최대 40 ms 이내 대응. 실제 센서 capture 시각과 같다고 가정하지 않음."
+    },
+    {
+      "run": "solo_headway_v1",
+      "input_sha256": {
+        "trace.json": "3a299ce44b48e355b6013799c62ca82d97f2a20f0a6559e7bc6f1c157219f574",
+        "follow_decisions.jsonl": "1d4e0187b1e31ca517128b82e34fac0aca30694b23579f69ddcf4427a9480c86"
+      },
+      "matched_rows": 201,
+      "first_zero": {
+        "t_s": 22.347,
+        "decision_time_offset_s": -0.0070000000000014495,
+        "progress_m": 19.637350000000026,
+        "body_truth_mps": 1.14639858345,
+        "body_time_offset_s": -0.01600000000000179,
+        "controller_measured_mps": 0.8942870890956426,
+        "body_minus_measured_mps": 0.2521114943543573,
+        "target_mps": 0.0,
+        "steering_rad": 0.0,
+        "reason": "follow_boundary_unconfirmed",
+        "safety": "clear",
+        "boundary_age_s": null,
+        "boundary_from_memory": null,
+        "path_wall": null,
+        "wall_fallback": null,
+        "path_ahead_m": null,
+        "swept_clearance_m": null,
+        "corridor_reason": "distinct_geometry_confirmation_wait"
+      },
+      "largest_body_minus_measured_while_moving": {
+        "t_s": 22.117,
+        "decision_time_offset_s": 0.0030000000000001137,
+        "progress_m": 19.337380000000024,
+        "body_truth_mps": 1.45904977416,
+        "body_time_offset_s": -0.015000000000000568,
+        "controller_measured_mps": 0.6503906102513763,
+        "body_minus_measured_mps": 0.8086591639086236,
+        "target_mps": 0.72,
+        "steering_rad": -0.13290485645903377,
+        "reason": "local_follow",
+        "safety": "clear",
+        "boundary_age_s": 0.1180000000000021,
+        "boundary_from_memory": false,
+        "path_wall": "right",
+        "wall_fallback": true,
+        "path_ahead_m": 1.9108469419990943,
+        "swept_clearance_m": 0.52,
+        "corridor_reason": "confirmed_shadow_candidate_only"
+      },
+      "reason_counts": {
+        "local_follow": 48,
+        "follow_boundary_unconfirmed": 153
+      },
+      "sensor_timing_limit": "차체 표본 시각과 제어 판단 reference 시각을 최대 40 ms 이내 대응. 실제 센서 capture 시각과 같다고 가정하지 않음."
+    }
+  ]
+}

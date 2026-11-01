@@ -29,7 +29,7 @@ FILES = [
 
 
 def motor_config():
-    """10/2 팀 선택치 명시. legacy 기본값을 묵시적으로 가져오지 않는다."""
+    """10/2의 고정 포팅 벡터(15:1). 현행 구매 설정이 아닌 과거 입출력 재현용."""
     return ContractConfig(feedback_mode=MODE_MOTOR, ticks_per_rev=28,
                           gear_ratio=15., wheel_radius_m=.0325)
 
