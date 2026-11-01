@@ -1,6 +1,6 @@
 # 문서 안내
 
-작업 시작점은 [현재 현황](PROJECT_CONTEXT.md)입니다. 최신 공식 변경은 [11/2 회의·모델 검토](reports/OFFICIAL_UPDATE_2026_11_02.md), 주행 목표는 [11/1 중간 점검](reports/MIDPROJECT_REVIEW_2026_11_01.md)·[ADR 0028](decisions/0028-speed-continuity-and-final-gearing.md), 작업 순환은 [현행 개발 계획](DEVELOPMENT_PLAN.md), 기구팀 전달은 [하드웨어 요구사항](HARDWARE_AND_RULE_QUESTIONS.md)에 모읍니다. [모니터·세이브포인트 재개·사건 기록](autonomy/RACE_MONITOR_AND_RECOVERY_PLAN_2026_11_02.md)은 설계 단계입니다.
+작업 시작점은 [현재 현황](PROJECT_CONTEXT.md)입니다. 최신 공식 변경은 [11/2 회의·모델 검토](reports/OFFICIAL_UPDATE_2026_11_02.md), 주행 목표는 [11/1 중간 점검](reports/MIDPROJECT_REVIEW_2026_11_01.md)·[ADR 0028](decisions/0028-speed-continuity-and-final-gearing.md), 기능 완성도에 따른 우선순위는 [현행 개발 계획](DEVELOPMENT_PLAN.md), 기구팀 전달은 [하드웨어 요구사항](HARDWARE_AND_RULE_QUESTIONS.md)에 모읍니다. [모니터·세이브포인트 재개·사건 기록](autonomy/RACE_MONITOR_AND_RECOVERY_PLAN_2026_11_02.md)은 설계 단계입니다.
 
 **현재 기준·계획 → 필요한 기술 근거 → 과거 이력** 순서로 읽습니다. 날짜가 있는 보고서의 “현재/다음/승인 대기”는 당시 상태이며, 후속 사용자 결정을 덮어쓰는 지시가 아닙니다. 시험 본문·실패 판정·원시 산출물은 보존합니다. 이 색인은 시험 수치를 반복하지 않습니다.
 
