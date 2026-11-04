@@ -48,6 +48,13 @@ class LidarSafety(Node):
             raise ValueError('traffic recovery safety requires explicit v4 policy')
         if policy not in ('strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4'):
             raise ValueError('unknown partial observation policy')
+        # 계획기와 같은 구조 각도·같은 정책을 독립 입력으로 계산한다. 기본 off.
+        from arena_autonomy.known_structure import validate as validate_structure
+        structure_policy = str(self.declare_parameter('known_structure_policy', 'off').value)
+        validate_structure(structure_policy, str(self.get_parameter('lidar_blind_sectors_json').value)
+                           if structure_policy != 'off' else '')
+        if structure_policy != 'off' and policy != 'bounded_local_v4':
+            raise ValueError('known structure policy requires bounded_local_v4')
         if policy != 'strict':
             if self.recent_observation_enabled or self.motion.mode != 'both' or not self.motion.verified:
                 raise ValueError('bounded observation policy requires verified both motion and no recent candidate')
@@ -55,6 +62,10 @@ class LidarSafety(Node):
             if traffic_recovery:
                 from arena_autonomy.traffic_recovery_trial import RecoveryPolicy
                 PartialObservationPolicy = RecoveryPolicy
+            if structure_policy != 'off':
+                from arena_autonomy.known_structure import structure_policy as with_structure
+                PartialObservationPolicy = with_structure(PartialObservationPolicy,
+                    str(self.get_parameter('lidar_blind_sectors_json').value))
             self.partial_policy = PartialObservationPolicy(allow_narrow_forward=policy in ('bounded_local_v2','bounded_local_v3','bounded_local_v4'),
                                                           surface_translation_enabled=policy in ('bounded_local_v3','bounded_local_v4'),
                                                           lateral_metric_enabled=policy=='bounded_local_v4')
@@ -169,6 +180,9 @@ class LidarSafety(Node):
                     raise MotionUnavailable(partial['reason'])
                 if partial['speed_cap_mps'] is not None:
                     speed = min(speed, partial['speed_cap_mps'])
+                if partial.get('reason') == 'structure_shadow_limited' and speed <= .001:
+                    # 구조 그림자/숨은 기억 앞 제동 제한이 0. 상태 사유만 구별한다.
+                    raise MotionUnavailable('structure_shadow_limited')
             if candidate:
                 from arena_autonomy.observation_support import needs_recent_support, sweep_support, side_missing_candidate
                 from arena_autonomy.scene_motion import motion_scene

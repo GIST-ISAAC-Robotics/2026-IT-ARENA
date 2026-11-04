@@ -61,7 +61,9 @@ def generate_launch_description():
                               description='선택형 M3 위협 부재 확인/복귀 중 평행 직진 먼저 검사; 기본 비활성'),
         SetParameter(name='g1_m3_defer_center_on_straight', value=LaunchConfiguration('g1_m3_defer_center_on_straight')),
         DeclareLaunchArgument('g1_trace_path', default_value='', description='선택형 판단 단계 JSONL 기록; 기본 꺼짐'),
+        DeclareLaunchArgument('pilot_marker_z', default_value='', description='파일럿 전용 ID49 판 중심 높이 덮어쓰기'),
         SetParameter(name='g1_trace_path', value=LaunchConfiguration('g1_trace_path')),
         SetParameter(name='g1_follow_enabled', value=True),
-        IncludeLaunchDescription(PythonLaunchDescriptionSource(str(launch_file))),
+        IncludeLaunchDescription(PythonLaunchDescriptionSource(str(launch_file)),
+                                 launch_arguments={'pilot_marker_z': LaunchConfiguration('pilot_marker_z')}.items()),
     ])])

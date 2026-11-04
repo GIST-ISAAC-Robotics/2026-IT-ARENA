@@ -432,6 +432,8 @@ def main():
                         help='선택형 G1/M3 시험용 IMU/단일 모터축 오차·지연. 기본 무주입')
     parser.add_argument('--local-sensor-config', default=None,
                         help='시험 전용 local_pursuit 센서/장착 YAML. 기본은 패키지 b0183_c1.yaml')
+    parser.add_argument('--pilot-marker-z', type=float, default=None,
+                        help='선택형 G1 자차 후면 ID49 판 중심 높이(0.115..0.30 m). 기본은 vehicle.yaml 그대로')
     parser.add_argument('--record-braking-diagnostics', action='store_true',
                         help='평가 전용 바퀴/차체/토크 시계열 보존; 제어 및 판정은 변경하지 않음')
     parser.add_argument('--record-wheel-contacts', action='store_true',
@@ -463,6 +465,10 @@ def main():
     parser.add_argument('--race-operation-test', nargs='?', const='same_race', choices=('same_race', 'new_race', 'new_race_restart'),
                         help='격리 Gazebo 전용 B3 운영자 명령 순서; 실제 운영 자동 해제 아님')
     args = parser.parse_args()
+    # 단독 검사기 --pilot-marker-z와 같은 범위·전달. 지정하지 않으면 기존 launch 인자 그대로.
+    if args.pilot_marker_z is not None and (args.mode not in ('g1', 'm3', 'g1g2')
+                                            or not 0.115 <= args.pilot_marker_z <= 0.30):
+        parser.error('--pilot-marker-z is a G1 board center height override (0.115..0.30 m)')
     if args.partial_observation_policy != 'strict' and (
             args.mode != 'g1' or not args.record_follow_decisions or args.race_operation_test):
         parser.error('partial observation trial requires recorded G1 without a race-operation trial')
@@ -624,6 +630,11 @@ def main():
               'actor_sdf_sha256': sha256(actor_path), 'route_check': route,
               'straight_section': route if route['kind'] == 'straight' else None,
               'actor_visible_section': actor_cfg['visible_section'], 'started_wall_monotonic': time.monotonic()}
+    if args.local_sensor_config is not None:
+        sensor_path = Path(args.local_sensor_config).resolve(strict=True)
+        report['local_sensor_config'] = {'path': str(sensor_path), 'sha256': sha256(sensor_path)}
+    if args.pilot_marker_z is not None:
+        report['pilot_marker_z_m'] = round(args.pilot_marker_z, 3)
     if args.actor_overlay:
         report['actor_overlay'] = {'path': str(args.actor_overlay.resolve().relative_to(REPO)),
             'sha256': sha256(args.actor_overlay), 'scope': case['additional_actor_scope'], 'routes': additional_routes}
@@ -843,6 +854,8 @@ def main():
         extra += drivetrain_evaluation_arguments(args.zero_speed_mode, args.physics_step)
         if args.local_sensor_config is not None:
             extra.append('local_sensor_config:='+str(Path(args.local_sensor_config).resolve(strict=True)))
+        if args.pilot_marker_z is not None:
+            extra.append(f'pilot_marker_z:={args.pilot_marker_z:.3f}')
         processes.append(start_demo_process(
             log, launch['speed_profile'], launch['lidar_rate_hz'], True, launch['red_duration_s'],
             launch['autonomy_mode'], args.team_signal_course, launch['lidar_acquisition'], launch['lidar_compensation'],

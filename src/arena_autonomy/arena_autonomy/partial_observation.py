@@ -109,6 +109,11 @@ class PartialObservationPolicy:
                 (self.previous is not None and now < self.previous[1])):
             self.reset()
             return {**report, 'reason':'partial_time_reset'}
+        # 선택형 structure_aware_v1만 설정한다. 양옆이 반환인 알려진 구조 광선을 일반
+        # 결측에서 뺄 뿐 거리/자유 공간을 만들지 않는다. 기본(None)은 기존과 같다.
+        excused = getattr(self, 'structure_excused', None)
+        if excused is not None and audit.reason == 'front_unobserved':
+            audit = self._excused_audit(scan, yaw, audit, excused)
         fresh = source != self.last_source
         if audit.reason == 'ok':
             if fresh:
@@ -140,7 +145,10 @@ class PartialObservationPolicy:
         if np.any(values[front] < scan.range_min):
             return {**report, 'reason':'invalid_near_return'}
         valid = np.isfinite(values) & (values >= scan.range_min) & (values <= scan.range_max)
-        ids = np.flatnonzero(~valid[front])
+        missing = ~valid[front]
+        if excused is not None:
+            missing &= ~np.asarray(excused, dtype=bool)[front]
+        ids = np.flatnonzero(missing)
         if not len(ids):
             return {**report, 'reason':'angular_metadata_hole'}
         runs = np.split(ids, np.flatnonzero(np.diff(ids)>1)+1)
@@ -314,6 +322,24 @@ class PartialObservationPolicy:
                 reason='known_obstacle_latched' if self.latched else
                        'bounded_lateral_metric_missing' if metric_gap else
                        'bounded_forward_missing' if central else 'bounded_side_missing')
+
+    @staticmethod
+    def _excused_audit(scan, yaw, audit, excused):
+        """설명된 구조 광선만 결측이고 각도 메타데이터가 온전하면 ok. 아니면 원래 판정."""
+        values = np.asarray(scan.ranges, dtype=float)
+        excused = np.asarray(excused, dtype=bool)
+        if excused.shape != values.shape:
+            return audit
+        metadata = audit_front_observation(np.full(len(values), scan.range_min), scan.angle_min,
+            scan.angle_increment, scan.range_min, scan.range_max, yaw)
+        if metadata.reason != 'ok':
+            return audit
+        angles = (scan.angle_min + np.arange(len(values))*float(scan.angle_increment) + yaw + math.pi) % math.tau - math.pi
+        front = np.abs(angles) <= math.radians(100) + 1e-6
+        valid = np.isfinite(values) & (values >= scan.range_min) & (values <= scan.range_max)
+        if np.any(front & ~valid & ~excused) or np.any(values[front] < scan.range_min):
+            return audit
+        return type(audit)('ok', audit.forward_samples, 0)
 
     def _latch(self,reason,now):
         if not self.latched:

@@ -1,0 +1,33 @@
+arena-autonomy /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_autonomy/arena_autonomy.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy
+arena-vehicle-interface /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_vehicle_interface/arena_vehicle_interface.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_vehicle_interface
+installed packages and child process entry points resolved: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/turn_preview.py
+F......F................................................................ [ 90%]
+........                                                                 [100%]
+=================================== FAILURES ===================================
+_______ test_structure_stays_unknown_but_is_not_a_generic_front_failure ________
+
+    def test_structure_stays_unknown_but_is_not_a_generic_front_failure():
+        raw=masked(); original=np.asarray(raw.ranges).copy()
+        result=policy().evaluate(raw, [], history(), .6, 2.4)
+>       assert result['allowed'] and result['speed_cap_mps'] is None
+E       assert (True and 0.0 is None)
+
+tests/test_known_structure_policy.py:30: AssertionError
+_______ test_visible_near_obstacle_still_brakes_in_the_independent_layer _______
+
+    def test_visible_near_obstacle_still_brakes_in_the_independent_layer():
+        node,commands,statuses=candidate_node(forward=True)
+        node.partial_policy=policy();node.scan=masked();node.command.drive.speed=2.
+        node.motion.project=lambda raw:(np.tile([[.14,0.]],(60,1)),60)
+        LidarSafety.control(node)
+        assert commands[-1].drive.speed==0.
+>       assert json.loads(statuses[-1].data)['reason']=='lidar_braking'
+E       AssertionError: assert 'structure_shadow_limited' == 'lidar_braking'
+E         - lidar_braking
+E         + structure_shadow_limited
+
+tests/test_known_structure_policy.py:72: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_known_structure_policy.py::test_structure_stays_unknown_but_is_not_a_generic_front_failure
+FAILED tests/test_known_structure_policy.py::test_visible_near_obstacle_still_brakes_in_the_independent_layer
+2 failed, 78 passed in 1.51s

@@ -637,7 +637,7 @@ def _b0183_model(model_xml, profile):
     return ET.tostring(root, encoding="unicode")
 
 
-MOUNT_TRIAL_KEYS = ("scan_plane_posts", "chassis_visual_top_m", "known_structure_mask", "known_structure_margin_deg")
+MOUNT_TRIAL_KEYS = ("scan_plane_posts", "scan_plane_wires", "chassis_visual_top_m", "known_structure_mask", "known_structure_margin_deg")
 
 
 def _mount_trial(model_xml, profile, wheel_radius, body_height, marker_xyz, marker_size, marker_enabled):
@@ -655,8 +655,8 @@ def _mount_trial(model_xml, profile, wheel_radius, body_height, marker_xyz, mark
     if any(len(post) != 3 or not all(math.isfinite(v) for v in post) or post[2] <= 0 for post in posts):
         raise ValueError("scan_plane_posts는 [x, y, 지름] m 목록이어야 합니다.")
     policy = lidar.get("known_structure_mask", "none")
-    if policy not in ("none", "unknown"):
-        raise ValueError("known_structure_mask must be none or unknown")
+    if policy not in ("none", "unknown", "structure_aware"):
+        raise ValueError("known_structure_mask must be none, unknown or structure_aware")
     margin = float(lidar.get("known_structure_margin_deg", 0.5))
     if not 0 <= margin <= 5:
         raise ValueError("known_structure_margin_deg must be within 0..5")
@@ -682,9 +682,21 @@ def _mount_trial(model_xml, profile, wheel_radius, body_height, marker_xyz, mark
         material = ET.SubElement(visual, "material")
         ET.SubElement(material, "ambient").text = "0.6 0.6 0.6 1"
         ET.SubElement(material, "diffuse").text = "0.7 0.7 0.7 1"
+    wires = [tuple(float(v) for v in wire) for wire in lidar.get("scan_plane_wires", [])]
+    if any(len(wire) != 3 or not all(math.isfinite(v) for v in wire) or wire[2] <= 0 for wire in wires):
+        raise ValueError("scan_plane_wires는 [x, y, 합성 지름] m 목록이어야 합니다.")
+    for index, (x, y, diameter) in enumerate(wires):
+        visual = ET.SubElement(chassis, "visual", name=f"c1_mount_wire_{index}")
+        ET.SubElement(visual, "pose").text = f"{x} {y} {sz - chassis_z} 0 0 0"
+        cylinder = ET.SubElement(ET.SubElement(visual, "geometry"), "cylinder")
+        ET.SubElement(cylinder, "radius").text = str(diameter / 2)
+        ET.SubElement(cylinder, "length").text = "0.06"
+        material = ET.SubElement(visual, "material")
+        ET.SubElement(material, "ambient").text = "0.3 0.3 0.3 1"
+        ET.SubElement(material, "diffuse").text = "0.3 0.3 0.3 1"
     sectors = []
-    if policy == "unknown":
-        for x, y, diameter in posts:
+    if policy in ("unknown", "structure_aware"):
+        for x, y, diameter in [*posts, *wires]:
             distance = math.hypot(x - sx, y - sy)
             if distance <= diameter / 2:
                 raise ValueError("post overlaps the sensor axis")
@@ -725,6 +737,12 @@ def _launch_setup(context):
     drivetrain = config["drivetrain"]
     rear_marker = config["identification_marker"]
     rear_marker_xyz = [float(value) for value in rear_marker["xyz_m"]]
+    pilot_marker_z = LaunchConfiguration("pilot_marker_z").perform(context)
+    if pilot_marker_z:
+        value = float(pilot_marker_z)
+        if not math.isfinite(value) or value < .115:
+            raise ValueError("pilot_marker_z must place the bottom of the 50 mm board above the 75 mm scan plane")
+        rear_marker_xyz[2] = value
     rear_marker_rpy = [float(value) for value in rear_marker["rpy_rad"]]
     if (
         rear_marker["dictionary"] != "DICT_4X4_50"
@@ -1315,6 +1333,8 @@ def _launch_setup(context):
             "vehicle_width_m": float(config['footprint']['width_m']),
             "rear_blind_half_angle_deg": float(profile['lidar']['masked_rear_half_angle_deg']),
             **({"lidar_blind_sectors_json": blind_sectors_json} if blind_sectors_json else {}),
+            **({"known_structure_policy": "structure_aware_v1"}
+               if profile['lidar'].get('known_structure_mask') == 'structure_aware' else {}),
         }], output="screen"))
     if autonomy:
         speed_profile = SPEED_PROFILES[LaunchConfiguration("speed_profile").perform(context)]
@@ -1388,6 +1408,8 @@ def _launch_setup(context):
                 controller_parameters['rear_blind_half_angle_deg'] = float(profile['lidar']['masked_rear_half_angle_deg'])
                 if blind_sectors_json:
                     controller_parameters['lidar_blind_sectors_json'] = blind_sectors_json
+                if profile['lidar'].get('known_structure_mask') == 'structure_aware':
+                    controller_parameters['known_structure_policy'] = 'structure_aware_v1'
                 # 안쪽 조향 바퀴 0.45 rad 제한을 후륜축 자전거 등가각으로 환산.
                 controller_parameters["max_steering_angle_rad"] = equivalent_steering
         else:
@@ -1457,6 +1479,8 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument("local_sensor_config", default_value="",
                                   description="local_pursuit 센서/장착 YAML. 빈 값은 기존 b0183_c1.yaml 유지"),
+            DeclareLaunchArgument("pilot_marker_z", default_value="",
+                                  description="파일럿 전용 ID49 판 중심 높이 덮어쓰기; 빈 값은 기본 설정"),
             DeclareLaunchArgument(
                 "d435i_profile",
                 default_value="configured",

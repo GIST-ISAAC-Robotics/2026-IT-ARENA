@@ -12,7 +12,7 @@ def generate_launch_description():
                 "chase_camera": "false", "render_backend": "system", "collision_detector": "configured",
                 "sensor_wall_timeout_s": "3.0", "batch_static_visuals": "true",
                 "lidar_test_profile": "", "motion_test_profile": "", "local_sensor_config": "", "actuation_mode": "legacy",
-                "timing_probe": "false"}
+                "timing_probe": "false", "pilot_marker_z": ""}
     demo = Path(get_package_share_directory("arena_bringup"))/"launch/demo.launch.py"
     return LaunchDescription([
         DeclareLaunchArgument('g1_parallel_hold_trial', default_value='false', choices=['true', 'false']),

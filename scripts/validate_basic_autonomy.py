@@ -289,6 +289,7 @@ def main():
     parser.add_argument("--autonomy-mode", choices=("lidar", "stereo", "local_pursuit"), default="lidar",
                         help="lidar=C1+ToF6, stereo=전방 D435i 깊이+측면 ToF4")
     parser.add_argument('--g1-follow', action='store_true', help='G1-a 선택형 추종기. 이 검사에서는 단독 회귀만 평가')
+    parser.add_argument('--pilot-marker-z', type=float, default=None, help='파일럿 전용 후면 ID49 판 높이 덮어쓰기')
     parser.add_argument('--g1-boundary-evidence', choices=('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'), default='connected')
     parser.add_argument('--g1-occupancy-timing', choices=('oldest', 'per_ray_candidate'), default='oldest')
     parser.add_argument('--record-follow-decisions', action='store_true')
@@ -314,6 +315,10 @@ def main():
     extra_arguments = g1_solo_arguments(args.g1_follow, args.g1_boundary_evidence,
         args.g1_occupancy_timing, args.record_follow_decisions, args.output.resolve(), args.g1_corridor_fallback,
         args.g1_recent_observation)
+    if args.pilot_marker_z is not None:
+        if not args.g1_follow or not (0.115 <= args.pilot_marker_z <= 0.30):
+            raise ValueError('--pilot-marker-z is a G1 pilot-only board center height (0.115..0.30 m)')
+        extra_arguments.append(f'pilot_marker_z:={args.pilot_marker_z:.3f}')
     if args.g1_race_path:
         if not (args.g1_follow and args.g1_corridor_fallback and args.record_follow_decisions
                 and args.partial_observation_policy == 'bounded_local_v4' and not args.g1_recent_observation

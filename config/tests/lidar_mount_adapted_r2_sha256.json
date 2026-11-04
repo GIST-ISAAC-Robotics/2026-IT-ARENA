@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "scope": "C/JR 동일 광축 구조 적응 선택 시험. 기본 채택·실차 승인 아님.",
+  "parent_contract": "config/tests/lidar_mount_trial_r1_sha256.json",
+  "parent_contract_sha256": "f0805bd24dcc3689ddd8c2e634afad55f24bd209cfaac19fbc2c79acb1733c95",
+  "before_snapshot": "artifacts/validation/2026-11-04/lidar_mount_adapted_v2/runtime_before.zip",
+  "before_snapshot_sha256": "9a996683458337f3da94d5f7f1444a4b0b2af4e41ba85e3afa1bf105361c6261",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/partial_observation.py": {
+      "before": "30b10995d8e38f2be27fddb57c68ee586535936deda2375f10049544a56fc428",
+      "after": "8d859d0da981a557205b11e4b71f08acafd91c01f3fe9637d38787993368967a",
+      "reason": "알려진 구조와 예기치 않은 결측 구분. 기본 경로 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "a83cdcc4a8a52ed9173a3b9b9e0fa4d0a5736cd77082b899a5cc784a679600cf",
+      "after": "03e88514bc8f8efc94da5eea6e350efda263a95a5c3433474d94643bc0963329",
+      "reason": "선택형 구조 그림자/숨은 반환 기억의 독립 평가"
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "4569fb9f67855446d884385f0225f92d19d9eb01cd10d7dd2b17c5aa8d074abd",
+      "after": "f87e5a83cb29750e12699173a9c3aa546134a36688ec7289b940a3ab7e58ecd8",
+      "reason": "구조 정책 노드 파라미터, 기본 off"
+    },
+    "src/arena_autonomy/arena_autonomy/lidar_safety.py": {
+      "before": "6672bb70ed41a906569c0d3b58d702c8691ea74e31e22b86126875fb91258c05",
+      "after": "e3986fdf67bef76c3bd92f3b434c92819646358c52a5e9a38415151b8c0e8ad9",
+      "reason": "독립 보호층에서 같은 구조 정책 자체 계산"
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "1da94496908b3f78fa4cf1b059feee3086b24c12cbee8c1e6d607c8fa0e656f0",
+      "after": "1eabbe2006c6947eb07ac9f041ae5c697df7f7da8723432b9bef509e7dde31e9",
+      "reason": "structure_aware 프로필에서만 두 노드에 명시 선택 전달"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/known_structure.py": "4cae459b495d10794550ba43555ba0041e7fce6088e5dc611973c3ff71d3beab"
+  }
+}

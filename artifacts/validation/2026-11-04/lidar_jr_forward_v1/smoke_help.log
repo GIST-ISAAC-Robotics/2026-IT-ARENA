@@ -1,0 +1,98 @@
+usage: validate_basic_autonomy.py [-h] [--actuation-mode {legacy,virtual_mcu}]
+                                  [--record-inputs]
+                                  [--record-max-raw-gib RECORD_MAX_RAW_GIB]
+                                  [--record-max-wall-seconds RECORD_MAX_WALL_SECONDS]
+                                  [--actuation-stop {software_stop,host_exit,safety_exit}]
+                                  [--laps LAPS] [--grid-slot {0,1,2,3,4,5}]
+                                  [--lidar-test-profile LIDAR_TEST_PROFILE]
+                                  [--local-sensor-config LOCAL_SENSOR_CONFIG]
+                                  [--motion-test-profile MOTION_TEST_PROFILE]
+                                  [--shutdown-mode {sigint,service}]
+                                  [--lidar-acquisition {snapshot,sequential}]
+                                  [--lidar-compensation {none,deskew,shift,both}]
+                                  [--control-rate-hz CONTROL_RATE_HZ]
+                                  [--render-backend {system,software,wsl_nvidia}]
+                                  [--sensor-wall-timeout-s SENSOR_WALL_TIMEOUT_S]
+                                  [--max-sim-seconds MAX_SIM_SECONDS]
+                                  [--wall-timeout-s WALL_TIMEOUT_S]
+                                  [--stop-wall-timeout-s STOP_WALL_TIMEOUT_S]
+                                  [--speed-profile {cautious,brisk,exploratory,g1_compare_1mps,g1_open_1p5,g1_open_2p0,g1_open_10kmh,g1_open_2p0_approach,g1_open_10kmh_approach,g1_open_2p0_turn,g1_open_10kmh_rise15,g1_open_10kmh_turn15,g1_open_10kmh_turn15_arc,g1_open_10kmh_solo,g1_open_10kmh_solo_gap05,g1_open_10kmh_solo_gap05_arc,g1_open_10kmh_solo_gap05_arc_ray,g1_open_10kmh_solo_gap05_arc_preview,g1_open_10kmh_solo_gap05_arc_preview_bridge,g1_open_10kmh_solo_gap05_arc_preview_bridge_ray,hardware_target,lidar_rate_stress,lidar_20kmh_straight,local_fast}]
+                                  [--lidar-rate-hz LIDAR_RATE_HZ]
+                                  [--target-progress-m TARGET_PROGRESS_M]
+                                  [--disable-tof-safety]
+                                  [--red-duration-s RED_DURATION_S]
+                                  [--autonomy-mode {lidar,stereo,local_pursuit}]
+                                  [--g1-follow]
+                                  [--pilot-marker-z PILOT_MARKER_Z]
+                                  [--g1-boundary-evidence {connected,fragmented_candidate,corner_anchor_candidate,corner_distance_candidate}]
+                                  [--g1-occupancy-timing {oldest,per_ray_candidate}]
+                                  [--record-follow-decisions]
+                                  [--g1-corridor-fallback] [--g1-race-path]
+                                  [--g1-recent-observation]
+                                  [--partial-observation-policy {strict,bounded_side_v1,bounded_local_v2,bounded_local_v3,bounded_local_v4}]
+                                  [--course-marker-visibility {visible,blank_30,blank_all}]
+                                  [--video] [--disable-speed-bump]
+                                  [--team-signal-prelap]
+                                  [--collision-detector {configured,ode,bullet,fcl}]
+                                  [--output OUTPUT]
+
+공식 자료 기반 official 월드의 독립 Gazebo 실행에서 신호 출발·본선 연속 주행을 검증합니다. 정답 위치·중심선은 이 검사기의
+판정에만 사용하며 자율주행 노드에 전달하지 않습니다.
+
+options:
+  -h, --help            show this help message and exit
+  --actuation-mode {legacy,virtual_mcu}
+  --record-inputs       A2 MCAP 원시 센서/비교 출력 기록 및 선택형 콜백 계측
+  --record-max-raw-gib RECORD_MAX_RAW_GIB
+                        기록 비압축 누적 바이트 한도. 센서율/차량 보호 기준과 무관
+  --record-max-wall-seconds RECORD_MAX_WALL_SECONDS
+                        기록기 실제 시간 한도. 검사기 wall timeout과 별도
+  --actuation-stop {software_stop,host_exit,safety_exit}
+                        virtual_mcu 시험 마지막 정지 방식; legacy에는 적용 안 함
+  --laps LAPS
+  --grid-slot {0,1,2,3,4,5}
+  --lidar-test-profile LIDAR_TEST_PROFILE
+                        합성 거리오차/지연 JSON; 기본은 비활성
+  --local-sensor-config LOCAL_SENSOR_CONFIG
+                        시험 전용 local_pursuit 센서/장착 YAML. 기본은 패키지 b0183_c1.yaml
+  --motion-test-profile MOTION_TEST_PROFILE
+                        시험용 IMU/엔코더 오류 JSON
+  --shutdown-mode {sigint,service}
+                        service는 격리된 Gazebo 정상 종료 확인 후 ROS launch를 종료합니다.
+  --lidar-acquisition {snapshot,sequential}
+  --lidar-compensation {none,deskew,shift,both}
+  --control-rate-hz CONTROL_RATE_HZ
+  --render-backend {system,software,wsl_nvidia}
+  --sensor-wall-timeout-s SENSOR_WALL_TIMEOUT_S
+  --max-sim-seconds MAX_SIM_SECONDS
+  --wall-timeout-s WALL_TIMEOUT_S
+                        느린 오프라인 실행의 실제 시간 한도. 센서 시각 제한과 무관.
+  --stop-wall-timeout-s STOP_WALL_TIMEOUT_S
+  --speed-profile {cautious,brisk,exploratory,g1_compare_1mps,g1_open_1p5,g1_open_2p0,g1_open_10kmh,g1_open_2p0_approach,g1_open_10kmh_approach,g1_open_2p0_turn,g1_open_10kmh_rise15,g1_open_10kmh_turn15,g1_open_10kmh_turn15_arc,g1_open_10kmh_solo,g1_open_10kmh_solo_gap05,g1_open_10kmh_solo_gap05_arc,g1_open_10kmh_solo_gap05_arc_ray,g1_open_10kmh_solo_gap05_arc_preview,g1_open_10kmh_solo_gap05_arc_preview_bridge,g1_open_10kmh_solo_gap05_arc_preview_bridge_ray,hardware_target,lidar_rate_stress,lidar_20kmh_straight,local_fast}
+  --lidar-rate-hz LIDAR_RATE_HZ
+                        Gazebo 이상화 라이다의 시험용 갱신률. C1 실물 회전수를 바꾸지 않습니다.
+  --target-progress-m TARGET_PROGRESS_M
+                        한 바퀴 대신 지정 거리까지만 검사합니다. 20 km/h 직선 스트레스 등에 사용합니다.
+  --disable-tof-safety  라이다 조향 주기만 분리해 볼 때 ToF 속도 제한을 끕니다. 안전 검증이 아닙니다.
+  --red-duration-s RED_DURATION_S
+                        검사 시작 전 빨간 신호 유지 시간. 기본 데모와 같은 8초입니다.
+  --autonomy-mode {lidar,stereo,local_pursuit}
+                        lidar=C1+ToF6, stereo=전방 D435i 깊이+측면 ToF4
+  --g1-follow           G1-a 선택형 추종기. 이 검사에서는 단독 회귀만 평가
+  --pilot-marker-z PILOT_MARKER_Z
+                        파일럿 전용 후면 ID49 판 높이 덮어쓰기
+  --g1-boundary-evidence {connected,fragmented_candidate,corner_anchor_candidate,corner_distance_candidate}
+  --g1-occupancy-timing {oldest,per_ray_candidate}
+  --record-follow-decisions
+  --g1-corridor-fallback
+                        별도 승인된 회랑 후보를 단독 시험에서만 명시 선택
+  --g1-race-path        10/31 경기 구성의 관측 경로 복구를 단독 속도 시험에 사용
+  --g1-recent-observation
+                        선택형 측방 관측 보완; 후방 사각/실시간 마감 보증 아님
+  --partial-observation-policy {strict,bounded_side_v1,bounded_local_v2,bounded_local_v3,bounded_local_v4}
+  --course-marker-visibility {visible,blank_30,blank_all}
+  --video               제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.
+  --disable-speed-bump
+  --team-signal-prelap  제작측 2×5 신호·ID45 팀 배치의 등록 단독 1랩 영상
+  --collision-detector {configured,ode,bullet,fcl}
+  --output OUTPUT       official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.

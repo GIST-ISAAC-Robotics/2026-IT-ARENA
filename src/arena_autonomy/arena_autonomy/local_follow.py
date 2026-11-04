@@ -26,6 +26,9 @@ class FollowConfig:
     corridor_arc_agreement: bool = False  # 단독 선택형 회랑 시간 비교의 공통 호길이 보완.
     ray_wall_continuity: bool = False  # 단독 선택형. 먼 옆 벽의 단절을 연속 광선 직선 근거로 보완.
     partial_observation_policy: str = 'strict'
+    # 센서 프로필의 알려진 구조 가림 선택(v4 필요). off는 기존 부분 관측 그대로.
+    known_structure_policy: str = 'off'
+    known_structure_sectors_json: str = ''
     parallel_hold_trial: bool = False
     current_lane_preference_trial: bool = False  # 정지 측방 반환 뒤 현재 관측 직선의 차선 선호.
     current_lane_headroom_mps: float = 0.  # 선택 시험에서 실제 설정의 엔코더 1카운트 속도.
@@ -130,6 +133,10 @@ class FollowConfig:
             raise ValueError('unsupported G1 partial observation policy')
         if self.partial_observation_policy != 'strict' and (self.recent_observation_enabled or self.max_speed_mps>1.):
             raise ValueError('G1 partial observation requires <=1 m/s and no recent observation candidate')
+        from arena_autonomy.known_structure import validate as validate_structure
+        validate_structure(self.known_structure_policy, self.known_structure_sectors_json)
+        if self.known_structure_policy != 'off' and self.partial_observation_policy != 'bounded_local_v4':
+            raise ValueError('known structure policy requires bounded_local_v4')
         if self.boundary_evidence_mode not in ('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'):
             raise ValueError('invalid boundary evidence mode')
         if self.occupancy_timing_mode not in ('oldest', 'per_ray_candidate'):
@@ -154,7 +161,7 @@ class FollowConfig:
         if type(self.standing_wall_reacquire) is not bool:
             raise ValueError('standing wall reacquire must be bool')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+               if k not in ('known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
             raise ValueError('follow configuration must be finite and positive')
         if (type(self.corridor_fallback_enabled) is not bool or
                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
@@ -330,6 +337,11 @@ class LocalFollow:
             if self.config.traffic_recovery_trial:
                 from arena_autonomy.traffic_recovery_trial import RecoveryPolicy
                 PartialObservationPolicy = RecoveryPolicy
+            if self.config.known_structure_policy != 'off':
+                # 독립 보호층과 같은 구조 각도·같은 정책 클래스를 각자 입력으로 계산한다.
+                from arena_autonomy.known_structure import structure_policy
+                PartialObservationPolicy = structure_policy(PartialObservationPolicy,
+                                                            self.config.known_structure_sectors_json)
             self.partial_policy = PartialObservationPolicy(allow_narrow_forward=True,
                 surface_translation_enabled=self.config.partial_observation_policy in ('bounded_local_v3','bounded_local_v4'),
                 lateral_metric_enabled=self.config.partial_observation_policy=='bounded_local_v4')
@@ -484,13 +496,18 @@ class LocalFollow:
         angles=(raw_scan.angle_min+np.arange(len(values))*raw_scan.angle_increment+
                 history.config.lidar_yaw_rad+math.pi)%math.tau-math.pi
         covered=set(np.flatnonzero((~valid)&(np.abs(angles)<=math.radians(100)+1e-6)))
-        missing=[r for r in scene.rays if r.status!='return' and
+        # 설명된 구조 광선은 구조 정책이 운동 보정 방향으로 따로 판정했다. 기본은 빈 집합.
+        explained=getattr(self.partial_policy,'structure_excused_indices',frozenset())
+        missing=[r for r in scene.rays if r.status!='return' and r.source_index not in explained and
                  abs(math.atan2(r.direction_xy[1],r.direction_xy[0]))<=math.radians(100)]
         if any(r.source_index not in covered for r in missing):
             return self._hold('follow_partial_transformed_gap_uncovered',detail)
         if not observation['allowed'] or speed<0:
             return self._hold('follow_'+('reverse_motion' if speed<0 else observation['reason']),detail)
         cap=observation['speed_cap_mps']
+        if cap is not None and cap<=.001<output[0] and 'known_structure' in observation:
+            # 구조 그림자/숨은 기억의 제동 제한으로 0이 된 명령. 경로 기억·대기 상태는 바꾸지 않는다.
+            return 0.,output[1],{**detail,'reason':'follow_structure_shadow_stop','underlying_reason':detail.get('reason')}
         return (output[0] if cap is None else min(output[0],cap)),output[1],detail
 
     def _path_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, allow_partial=False):
@@ -764,13 +781,20 @@ class LocalFollow:
             memory_age = now-self.path_source
             # 단독 선택에서는 양측 근거로 이미 승인한 현재 반대 벽 경로도 쓴다.
             # 관측이 없는 경로/기억만 남은 경로/교통 모드의 속도 범위는 넓히지 않는다.
+            # 구조 적응 경로에서는 전방 전 광선 반환을 증속의 선결 조건으로 삼지 않는다.
+            # 아직 후보일 뿐이며 _partial_command가 이 후보 속도·조향으로 그림자/기억/
+            # 예상 밖 결측을 검사한 후에만 발행한다. 독립 보호층도 같은 검사를 수행한다.
+            structure_candidate = bool(allow_partial and cfg.known_structure_policy == 'structure_aware_v1')
+            front_ready = bool(front and all(r.status == 'return' for r in front))
             open_route = bool(cruise and self.path_source == scene.source_first_s and
-                              (self.path_wall == side or cfg.solo_route_only) and front and all(r.status == 'return' for r in front))
+                              (self.path_wall == side or cfg.solo_route_only) and
+                              (front_ready or structure_candidate))
             cap, desired, remaining = pursue_path(carried, speed, cfg, max(age, memory_age),
                                                   speed_cap=cruise if open_route else None)
             if cruise:
                 detail.update(open_route_speed_enabled=open_route, open_route_cap_mps=cruise,
-                              observed_search_horizon_m=horizon)
+                              observed_search_horizon_m=horizon,
+                              open_route_requires_structure_check=bool(open_route and not front_ready))
             if open_route and cfg.blend_open_speed_by_length:
                 # 받은 경로의 길이가 줄면 통상 속도 위에 더한 부분만 걷는다.
                 # 현재 경로/제동/곡률 한도보다 빠르게 하거나 빈 공간을 가정하지 않는다.

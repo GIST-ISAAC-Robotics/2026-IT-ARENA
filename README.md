@@ -17,10 +17,12 @@ source /opt/ros/jazzy/setup.bash
 bash scripts/doctor.sh
 colcon build --symlink-install --base-paths src
 source install/setup.bash
-ros2 launch arena_bringup local_pursuit.launch.py
+python3 scripts/run_current_solo.py outputs/jr_solo_01
 ```
 
-새 주행 모드는 깊이/ToF를 쓰지 않고 방지턱을 실행 사본에서 임시 해제합니다. 현재 기본 `local_fast`의 명령 상한은 9 km/h이며 선택형 다중 차량 후보에는 더 낮은 제한이 있습니다. 10/27 사용자 목표 상한인 약 15 km/h와 구분하며, 목표 정책은 [현재 결정](docs/decisions/0027-completion-first-policy-and-placement.md)을 참조합니다. 실차 성능 검증은 별도입니다. 구동 연결 기본값은 `legacy`이고 `actuation_mode:=virtual_mcu`는 선택형 PC 검증 경로입니다. [주행 설명](docs/autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md) · [구동 계약/ROS 연결](docs/hardware/ACTUATION_ROS_2026_09_22.md)
+최종 CAD 전 **신규 시뮬 개발의 임시 차량은 JR60P20**입니다([ADR 0029](docs/decisions/0029-temporary-jr60p20-vehicle.md)). 위 명령은 [JR60P20 센서 설정](src/arena_description/config/b0183_c1_jr60p20_sim.yaml)(뒤 지주 바깥 배선 예약 외곽 포함)과 높인 뒤 마커, 구조 가림 처리, 기존 단독 속도 프로필·가상 MCU로 1랩을 실행합니다. 이 배선 예약 구성의 주행 성능은 아직 측정하지 않았습니다. 매 실행에 새로운 결과 경로를 지정합니다. `--print-args`는 실행 없이 조합을 확인하고 `--previous-jr50`은 이전 JR50을 재현합니다. 교통 실행 인자는 [채택 보고서](artifacts/validation/2026-11-04/lidar_jr60_adoption_v1/README.md#4-앞으로의-실행-인자)에 있습니다.
+
+기존 범용 예제는 `ros2 launch arena_bringup local_pursuit.launch.py`입니다. 이 예제의 기본 `local_fast` 명령 상한은 9 km/h이며 구동 연결은 `legacy`입니다. 기존 비교 재현과 새 단독 시뮬의 설정을 구분합니다. [속도 목표](docs/decisions/0028-speed-continuity-and-final-gearing.md) · [주행 설명](docs/autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md) · [구동 계약/ROS 연결](docs/hardware/ACTUATION_ROS_2026_09_22.md)
 
 `headless:=true`는 GUI만 끕니다. WSL GPU 비교에는 `render_backend:=wsl_nvidia`를 명시하고 실제 렌더러·정상 종료를 확인합니다. 기본 렌더러는 `system`입니다. [설정·문제 해결](docs/simulation/GPU_RENDERING.md)
 

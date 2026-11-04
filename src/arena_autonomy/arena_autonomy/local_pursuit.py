@@ -33,6 +33,9 @@ class LocalPursuit(WallFollow):
         from arena_autonomy.local_scene import blind_parameter
         self.rear_blind_half_angle = blind_parameter(self.rear_blind_half_angle,
             str(self.declare_parameter('lidar_blind_sectors_json', '').value))
+        # 시험 전용 알려진 구조 가림 정책. 기본 off이면 FollowConfig 기본값과 같다.
+        structure_policy = str(self.declare_parameter('known_structure_policy', 'off').value)
+        structure_sectors = str(self.get_parameter('lidar_blind_sectors_json').value) if structure_policy != 'off' else ''
         if self.motion is None:
             raise ValueError("local_pursuit는 엔코더/IMU 운동 보정이 필요합니다.")
         self.g1_enabled = bool(self.declare_parameter('g1_follow_enabled', False).value)
@@ -101,6 +104,8 @@ class LocalPursuit(WallFollow):
             raise ValueError('partial observation is not yet integrated with R0+ or M3')
         if self.g1_enabled and partial_observation not in ('strict','bounded_local_v2','bounded_local_v3','bounded_local_v4'):
             raise ValueError('G1 partial observation supports bounded_local_v2/v3/v4')
+        if structure_policy != 'off' and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled):
+            raise ValueError('known structure policy requires G1 without R0+ or M3')
         if self.m3_execution_enabled and (occupancy_mode != 'per_ray_candidate' or recent_observation):
             raise ValueError('M3 execution trial requires per-ray occupancy and no recent observation')
         if recent_observation and not self.g1_enabled:
@@ -124,6 +129,8 @@ class LocalPursuit(WallFollow):
             ray_wall_continuity=bool(self.declare_parameter('g1_ray_wall_continuity',False).value),
             headway_s=solo_headway,
             partial_observation_policy=partial_observation,
+            known_structure_policy=structure_policy,
+            known_structure_sectors_json=structure_sectors,
             parallel_hold_trial=parallel_hold,
             pass_release_trial=pass_release,
             guard_curve_trial=guard_curve,

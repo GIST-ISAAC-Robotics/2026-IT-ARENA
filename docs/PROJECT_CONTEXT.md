@@ -1,6 +1,6 @@
 # 현재 현황과 다음 작업
 
-갱신: **2026-11-03, 기둥 없는 코스의 300초 교통 주행 종료·5랩 미달, 단독 증속은 격리 검증까지만 완료**. 실행 월드는 v2026.11.01 팀 파생본이다. 과거 월드의 주행 실적을 현행 구성의 성적으로 옮기지 않는다.
+갱신: **2026-11-04, 최종 CAD 전 임시 차량은 JR60P20(뒤 지주 바깥 배선 예약 포함)으로 선정. 신규 단독·교통 시뮬 기준이며 이 구성의 주행 성능은 미측정**. 실행 월드는 v2026.11.01 팀 파생본이다. 과거 월드의 주행 실적을 현행 구성의 성적으로 옮기지 않는다.
 
 목표는 **빠른 완주·꾸준한 속도·불필요한 급정거 최소화**, 직선 최고 2 m/s급에서 **10 km/h**로 개선하는 것이다. **필수 기능을 각각 대회에 쓸 수준까지 완성하고, 전체가 그 수준을 갖추면 다시 성능을 높인다.** 단독 속도·다중 차량·운영·실물 준비의 완성도와 경기 영향으로 우선순위를 정하며 고정 시간·분야 순서로 교대하지 않는다. [현행 계획](DEVELOPMENT_PLAN.md)·[사용자 결정 ADR 0028](decisions/0028-speed-continuity-and-final-gearing.md)·[직전 상세 현황 원문](archive/2026-11-02-plan/PROJECT_CONTEXT.before.md)을 구분해 읽는다.
 
@@ -9,7 +9,7 @@
 | 영역 | 적용 상태 |
 |---|---|
 | 차체·구동 | 20×15 cm 목표, MB4266-24180 브러시 DC 하나+MD20A+기계식 차동, PGE-213 **모터축 단일 28카운트**, 65 mm 바퀴. **실행 공칭비 8.9706:1**, 이전 15:1 증거 보존. 축거·윤거 135 mm, 바퀴 폭 12 mm, 약 2 kg·무현가 강체·접지는 임시값. [구매 근거](../assets/hardware/procurement/2026-11-01/README.md) |
-| 센서·제어 | B0183 RGB·C1 순차 10 Hz·LSM6DSOX·모터축 운동 보정, 관측 벽 기반 지역 Pure Pursuit. C1 95 mm 높이·후방 60° 마스크·카메라 위치는 임시값. [C1·지주·PDB 적층 비교](../artifacts/validation/2026-11-03/lidar_mount_study_v1/README.md)의 저상·전진안은 기구팀 목업 후보, 실행 구성 미적용. [11/4 주행 비교](../artifacts/validation/2026-11-04/lidar_mount_performance_v1/README.md): 지주·뒤 마커 각도를 unknown으로 둔 opt-in JR은 R과 비슷한 랩으로 완주(33.853 s 대 R 34.253 s, 각 1회, 같은 빌드 반복 없음, 이득/비열등 미확정). 앞 지주가 센서 앞인 C는 현행 전방 ±100° 관측 계약에서 출발하지 못했다(정책 재설계 시 가능성·비용 미측정). 지주 반환을 그대로 처리하면 둘 다 출발 실패. 앞 지주–센서 x 40 mm(|y|62·Ø7)는 작동한 잠정 참고값이고 30 mm 변형은 1회 악화. VND018 ESP32-S3·버스 서보. /drive → 독립 LiDAR 보호층 → /drive/safe, 정답 위치·상대차 상태는 평가 전용 |
+| 센서·제어 | B0183 RGB·C1 순차 10 Hz·LSM6DSOX·모터축 운동 보정, 관측 벽 기반 지역 Pure Pursuit. 신규 단독·교통 시뮬은 [JR60P20](decisions/0029-temporary-jr60p20-vehicle.md): C1 x=+60 mm·광축 75 mm, 앞 지주 x=+20 mm, 뒤 지주 바깥 Ø20 mm 배선 예약 외곽 2개(실제 U채널 CAD 아님, 질량·충돌 불변), 뒤 중앙 개방, ID49 중심 140 mm. [채택 기하·실행 인자](../artifacts/validation/2026-11-04/lidar_jr60_adoption_v1/README.md). 이전 JR50과 센서·앞 지주의 [전진 후보 비교](../artifacts/validation/2026-11-04/lidar_jr_forward_v1/README.md)는 재현용. 범용 재현 launch의 95 mm/후방 60°는 별도이고 카메라 위치도 임시다. [JR·C 실장/배선 검토](../artifacts/validation/2026-11-04/lidar_packaging_v3/README.md): 구형 하부를 그대로 두면 75 mm 광축에서 몸체가 간섭. 부품 재배치·102 mm 광축은 제한한 정적/조향 표본에서 가능했지만 실제 기어 연결·지주 브리지·강도·실물 시야 미검증. [초기 주행](../artifacts/validation/2026-11-04/lidar_mount_performance_v1/README.md)과 [C용 구조 적응 정책](../artifacts/validation/2026-11-04/lidar_mount_adapted_v2/README.md)은 별도 시험 구성이다. VND018 ESP32-S3·버스 서보. /drive → 독립 LiDAR 보호층 → /drive/safe, 정답 위치·상대차 상태는 평가 전용 |
 | 공식 원본 | **v2026.11.01** ZIP을 입력으로 사용. main 17178293029d446fa603f3229556dd865bbddd38 기준 규정. 방지턱 제거·검정 그리드·2×5 신호·ID45 왼쪽/ID0 오른쪽. [원본/차이/한계](reports/OFFICIAL_UPDATE_2026_11_02.md) |
 | 실제 실행 월드 | **v2026.11.01 기반 팀 파생본**. 사용자 확인에 따라 코스 안 `tl_post` 시각·충돌만 제거했다. 신호 패널/가로대·광원 기하·마커·그리드 유지, 광원 재질 소등 시작과 팀 결승 표시는 기존 파생이다. [기하 대조·선두 주행](../artifacts/validation/2026-11-03/post_free_facility_v1/README.md)·[프로필](../config/tracks/official_v2026.11.01.yaml). 후방 ID49와 공식 원본 보존 |
 | 환경·성능 | WSL2 Jazzy/Harmonic, Jetson Humble. 기본 G1 상한 1 m/s, 고속은 명시 선택 시험 프로필. 오래된 Jetson 기록 재생과 최신 통합 후보의 처리 여유를 구별한다 |
@@ -19,6 +19,8 @@
 
 | 근거 | 확인한 결과 | 한계 |
 |---|---|---|
+| [11/4 JR 전진 후보](../artifacts/validation/2026-11-04/lidar_jr_forward_v1/README.md) | JR60(앞 지주 +10) 33.325 s·2.453 m/s, JR60P20(앞 지주 +20) 33.225 s·2.433 m/s로 각각 완주. 충돌·노면 이탈 표본 0, STOP/정상 종료. | 각 1회로 JR50보다 빠르다는 근거 없음. 두 기록 모두 Ø2 mm 합성 배선 모델이며 이후 채택한 Ø20 배선 예약 JR60P20의 성능이 아님. 후방 추월·실장 높이 미검증 |
+| [11/4 C 증속 조건을 고친 JR·C 6회](../artifacts/validation/2026-11-04/lidar_mount_speed_v4/README.md) | ±100° 전 광선 반환을 증속 전제에서 제거한 동일 제어기. JR50 2/2 완주(32.73·33.43 s), C50 1/2(35.25 s·15.88 m 정체), C30·C65 각 0/1(16.06·43.69 m 정체). C도 차체 최고 2.36~2.43 m/s. 이전 C 49~51 s는 수정 전 기록이다. | 광축 75 mm·얇은 배선·단독·충돌 표본 0. C는 코너 경계 경로를 잃으면 재출발 실패. 실장 높이/하네스·다중 차량 미검증. 임시 센서는 JR 선정. C의 경계 재획득 문제는 다른 배치로 전이된 실패로 간주하지 않음 |
 | [11/3 기둥 없는 교통 5랩 목표](../artifacts/validation/2026-11-03/post_free_race_distance_v1/README.md) | **300초에 229.545 m, 5랩까지 3.619 m 미달.** 183 m 부근 10.573초 정체. 접촉 이벤트 0·최대 두 바퀴 노면 이탈·명시 STOP/정상 종료 | 앞차·옆차의 각본 추적 및 평가 요약 간격도 실패. 동일 시험 반복 전 정체 입력과 실행기 지연을 분리. 독립 5대 경기 아님 |
 | [11/3 기둥 없는 선정 고속 구성](../artifacts/validation/2026-11-03/solo_post_free_v1/README.md) | **34.763초·최고 2.394 m/s(8.62 km/h)**, 거리 기준 한 랩 46.633 m 통과·정지 전 총 진행 48.653 m. 접촉/노면 이탈0·STOP/정상 종료 | 단독1회·후열grid3/수평 카메라. 0명령0.44초·10km/h 미달은 남음. 선두 상향/모든 교통/실차 증명 아님 |
 | [11/2 현재 반대 벽 고속 후보](../artifacts/validation/2026-11-02/solo_alternative_speed_v1/README.md) | **34.451초·최고 2.398 m/s(8.63 km/h)**. 같은 월드 35.606초보다 1.155초 단축, 접촉/노면 이탈 표본 0·STOP/정상 종료 | 단독 1회·명시 선택 구성. 후반 코너 0명령 0.14→0.46초로 증가. 10 km/h·전체 본선·실차 미검증 |
@@ -54,7 +56,9 @@
 - **이번 결과:** [현재 차선 유지 후보](../artifacts/validation/2026-11-03/rear_lane_continuity_v1/README.md)는 기본 OFF다. 관련 223회귀·2패키지 빌드 뒤 [같은 각본 v3](../artifacts/validation/2026-11-03/right_reapproach_v3/README.md)에서 최소 84.97mm·접촉/겹침 0·2.880m·STOP/정상 종료로 별도 목표를 통과했다. 0명령 표본 0.98→0.48초, 최고 1.593→0.985m/s다. 원시 옛 150mm/뒤 유지 실패는 별도 보존한다.
 - **합류와 경기 거리:** [우회 중 앞차 재출발](../artifacts/validation/2026-11-03/merge_lane_preference_v1/README.md)은 재출발 뒤 3.0초 복귀·최종 FOLLOW·15.902m·최고 1.569m/s·접촉 0이었다. 새 선호 적용은 0회로, 켠 상태에서의 공존만 확인했다. 원시 HOLD/도로 안 실패는 보존한다. [기둥 없는 300초 경기 거리](../artifacts/validation/2026-11-03/post_free_race_distance_v1/PLAN.md)를 이전 두 상대 각본·판정 그대로 1회 등록해 실제 진행과 장기 정체를 확인한다. 단독 고속·교통·선두 상향 카메라 실적은 한 설정의 성적으로 합치지 않는다.
 
-센서·물성·독립 보호·STOP를 유지했다. 커밋·푸시·Jetson·전원 변경·주최 측 게시는 하지 않았다.
+- **차량 기준(11/4 사용자 선택):** 신규 개발은 단독 `python3 scripts/run_current_solo.py <새 경로>`, 교통은 `validate_g1_traffic.py`에 `--local-sensor-config <저장소>/src/arena_description/config/b0183_c1_jr60p20_sim.yaml --pilot-marker-z 0.140`을 함께 지정한다([정확한 인자](../artifacts/validation/2026-11-04/lidar_jr60_adoption_v1/README.md#4-앞으로의-실행-인자)). 이 결정 시점에는 사용자 지시로 새 성능 시험 없이 모델·설정·연결만 정적으로 검증했다. 하드웨어가 구조·안정성 이유로 거절하면 C65 또는 앞 지주 추가 전진을 나중에 시험한다.
+
+차량 배치 변경과 별개로 구동 물성·독립 보호·STOP 경계를 유지한다. Jetson·전원 변경·주최 측 게시는 이번 범위가 아니며, 팀 저장소 게시 상태는 Git 기록을 따른다.
 
 다음 개발 재개는 [분야별 완성 기준](DEVELOPMENT_PLAN.md#다음-작업과-분야별-완성-기준)을 따른다.
 
