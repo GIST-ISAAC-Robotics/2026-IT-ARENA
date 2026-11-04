@@ -52,11 +52,11 @@ def test_bundle_hash_supports_python310(tmp_path, monkeypatch):
     assert bundle.digest(path) == hashlib.sha256(b'private trace').hexdigest()
 
 
-def tiny_archive(tmp_path, name='artifacts/trace.jsonl', duplicate=False):
+def tiny_archive(tmp_path, name='artifacts/trace.jsonl', duplicate=False, header_data=None):
     import io
     import json
     import tarfile
-    content = json.dumps({'kind': 'header', 'data': {'scope': 'g1_decision_stage_only'}}).encode()+b'\n'
+    content = json.dumps({'kind': 'header', 'data': header_data or {'scope': 'g1_decision_stage_only'}}).encode()+b'\n'
     path = tmp_path/'bundle.tar.gz'
     with tarfile.open(path, 'w:gz') as tar:
         for _ in range(2 if duplicate else 1):
@@ -78,6 +78,16 @@ def test_bundle_verification_does_not_extract_or_authorize_remote(tmp_path):
     assert not (tmp_path/'artifacts').exists()
     manifest['files']['artifacts/trace.jsonl']['sha256'] = '0'*64
     assert not verify(path, manifest)['passed']
+
+
+@pytest.mark.parametrize('schema,mode,expected', [(5,'g1_g2_handoff_trial',True),
+    (4,'g1_g2_handoff_trial',False),(5,'g1_follow',False)])
+def test_bundle_handoff_scope_requires_correct_schema_and_controller(tmp_path,schema,mode,expected):
+    from verify_follow_profile_bundle import verify
+    path,manifest=tiny_archive(tmp_path,header_data=dict(schema=schema,
+        scope='g1_g2_handoff_decision_stage_only',controller_mode=mode))
+    result=verify(path,manifest)
+    assert result['passed']==expected and not result['remote_execution_verified']
 
 
 @pytest.mark.parametrize('name,duplicate', [('../outside.jsonl', False), ('/root/absolute', False),

@@ -142,10 +142,11 @@ class VisionPipeline:
         self.last_received = float('-inf')
         self.last_accepted = float('-inf')
         self.fault = None
-        self.stats = {key: 0 for key in ('received', 'throttled', 'out_of_order', 'replaced',
+        self.stats = {key: 0 for key in ('received', 'throttled', 'out_of_order', 'replaced', 'before_boundary',
                      'submitted', 'completed', 'accepted', 'rejected_epoch', 'rejected_stale', 'resets')}
         self.last_result = None
         self.processing = dict(count=0, total_ms=0., maximum_ms=0., over_20ms=0)
+        self.input_floor_s = float('-inf')
 
     def reset(self):
         self.epoch += 1
@@ -153,14 +154,31 @@ class VisionPipeline:
         self.signal = make_start_signal(self.signal_mode)
         self.ids = []
         self.last_submitted = self.last_received = self.last_accepted = float('-inf')
+        self.input_floor_s = float('-inf')
         self.last_result = None
         self.stats['resets'] += 1
         # 진행 중인 공유 버퍼를 재사용하지 않으며 고장을 자동으로 해제하지 않는다.
+
+    def begin_input_boundary(self, boundary_s):
+        """같은 경기의 입력 경계. 세대를 올려 진행 중 결과를 버리고 경계 전 취득 영상을 막는다.
+
+        출발 판정 상태는 경기 사실이므로 유지한다. 수신 시각이 아니라 영상의 취득 시각으로 거른다.
+        """
+        self.epoch += 1
+        self.pending = None
+        self.ids = []
+        self.last_submitted = self.last_received = self.last_accepted = float('-inf')
+        self.input_floor_s = boundary_s
+        self.last_result = None
+        self.stats['resets'] += 1
 
     def offer(self, message, wall_now=None):
         wall_now = time.monotonic() if wall_now is None else wall_now
         self.stats['received'] += 1
         stamp = message.header.stamp.sec+message.header.stamp.nanosec*1e-9
+        if stamp < self.input_floor_s:
+            self.stats['before_boundary'] += 1
+            return
         if stamp <= self.last_received:
             self.stats['out_of_order'] += 1
             return

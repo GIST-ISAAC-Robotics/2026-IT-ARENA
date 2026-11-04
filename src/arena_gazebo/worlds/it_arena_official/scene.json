@@ -1,5 +1,5 @@
 {
-  "course_name": "IT ARENA official release v2026.10.24 team-test runtime",
+  "course_name": "IT ARENA official release v2026.11.01 team-test runtime",
   "hall": {
     "width_m": 11.0,
     "height_m": 14.5,
@@ -3536,7 +3536,7 @@
       "y": 6.4665,
       "yaw_rad": 1.5694
     },
-    "note": "공식 출발/결승 기준. 신호등·ArUco ID0·체커라인이 모두 이 지점에 정렬됨."
+    "note": "공식 출발/결승 기준. 신호등과 ArUco ID0·45는 이 지점이 아니라 traffic_light.s_m에 있음 (2026-11-01)."
   },
   "alt_routes": {},
   "branches": [
@@ -4223,12 +4223,12 @@
     ],
     "paint": {
       "representation": "official_filled_slots",
-      "source": "official v2026.10.24 world.sdf grid_slot_0..5 visuals",
+      "source": "official v2026.11.01 world.sdf grid_slot_0..5 visuals",
       "length_m": 0.25,
       "width_m": 0.17,
       "paint_center_height_m": 0.0037,
       "paint_thickness_m": 0.001,
-      "material": "white",
+      "material": "black",
       "collision": false,
       "numbering": "none"
     }
@@ -4246,80 +4246,20 @@
     "bump_length_m": 0.05,
     "bump_height_m": 0.01,
     "spacing_m": 0.6,
-    "count": 1,
-    "bumps": [
-      {
-        "x": 9.9561,
-        "y": 9.6665,
-        "yaw_rad": 1.5738,
-        "s_m": 3.2
-      }
-    ],
-    "profile": "raised_cosine",
-    "height_reference": "road_top",
-    "longitudinal_axis": "local_x_along_route",
-    "collision": "20 inclined box strips; top endpoints match visual profile samples",
-    "published_visual": {
-      "parts": [
-        {
-          "source": "assets/track/official/v2026.10.24/upstream/parts/speed_bump/speed_bump_225mm_h10_1_of_2.stl",
-          "sha256": "cbdb4e19942d02683fcd27fdfa95b9f0ec03d1cd1e55ba9b1976d0d6772a61db",
-          "bounds_mm": [
-            0.0,
-            0.0,
-            0.0,
-            50.0,
-            231.0,
-            10.0
-          ],
-          "translation_m": [
-            -0.025,
-            -0.225,
-            0
-          ],
-          "scale": 0.001
-        },
-        {
-          "source": "assets/track/official/v2026.10.24/upstream/parts/speed_bump/speed_bump_225mm_h10_2_of_2.stl",
-          "sha256": "4863f2861d87eb75f13e1e8a04dda42f92452c8b06c0e1a87c6317e71e001467",
-          "bounds_mm": [
-            0.0,
-            0.0,
-            0.0,
-            50.0,
-            225.0,
-            10.0
-          ],
-          "translation_m": [
-            -0.025,
-            0.0,
-            0
-          ],
-          "scale": 0.001
-        }
-      ],
-      "rgba": [
-        0.9,
-        0.6,
-        0.1,
-        1
-      ],
-      "assembly_size_m": [
-        0.05,
-        0.45,
-        0.01
-      ],
-      "collision": "existing 20-strip cosine approximation; joints, compliance and adhesive not simulated",
-      "status": "published 50mm model; proposed 100/150mm lengths are unconfirmed"
-    }
+    "count": 0,
+    "note": "2026-11-01 3차 회의에서 과속방지턱 제거 확정 -- 대회 트랙에는 없음",
+    "bumps": []
   },
   "traffic_light": {
     "pose": {
-      "x": 9.964199874923034,
-      "y": 7.066497059957523,
-      "yaw_rad": 1.5737961677963757
+      "x": 9.9636,
+      "y": 6.1048,
+      "yaw_rad": 1.5647
     },
-    "gantry_height_m": 0.42,
+    "s_m": 46.271,
+    "lamp_center_height_m": 0.419,
+    "face_tilt_to_floor_deg": 60.0,
+    "note": "선두 그리드 칸 앞선에서 0.30 m 앞, 도로를 가로지르는 바에 매달림 (Pinocchio #3 2026-10-28)",
     "lamps": [
       "red",
       "red",
@@ -4327,34 +4267,63 @@
       "red",
       "green"
     ],
-    "initial_state": "red",
-    "state_control": "static_initial_state_only",
-    "lamp_center_height_m": 0.3,
-    "lamp_radius_m": 0.026,
-    "lamp_poses": {
-      "red": {
-        "x": 9.859308341486676,
-        "y": 7.0301822391075,
-        "z": 0.3,
-        "facing_yaw_rad": -1.5677964857934177
+    "initial_state": "off",
+    "state_control": "team_sim_material_service_official_links",
+    "lamp_channels": [
+      {
+        "name": "lamp_red_1_top",
+        "column": 0,
+        "row": 0
       },
-      "yellow": {
-        "x": 9.964307869037114,
-        "y": 7.03049722194023,
-        "z": 0.3,
-        "facing_yaw_rad": -1.5677964857934177
+      {
+        "name": "lamp_red_1_bottom",
+        "column": 0,
+        "row": 1
       },
-      "green": {
-        "x": 10.069307396587552,
-        "y": 7.03081220477296,
-        "z": 0.3,
-        "facing_yaw_rad": -1.5677964857934177
+      {
+        "name": "lamp_red_2_top",
+        "column": 1,
+        "row": 0
+      },
+      {
+        "name": "lamp_red_2_bottom",
+        "column": 1,
+        "row": 1
+      },
+      {
+        "name": "lamp_red_3_top",
+        "column": 2,
+        "row": 0
+      },
+      {
+        "name": "lamp_red_3_bottom",
+        "column": 2,
+        "row": 1
+      },
+      {
+        "name": "lamp_red_4_top",
+        "column": 3,
+        "row": 0
+      },
+      {
+        "name": "lamp_red_4_bottom",
+        "column": 3,
+        "row": 1
+      },
+      {
+        "name": "lamp_green_top",
+        "column": 4,
+        "row": 0
+      },
+      {
+        "name": "lamp_green_bottom",
+        "column": 4,
+        "row": 1
       }
-    },
-    "beam_axis": "local_y_across_route",
+    ],
     "udp_visual_controller_connected": false,
-    "ground_post_enabled": false,
-    "provisional_route_offset_m": 0.6
+    "track_post_removed": true,
+    "track_post_basis": "user_confirmed_absent_2026_11_02"
   },
   "aruco_markers": {
     "dictionary": "DICT_4X4_50",
@@ -4366,15 +4335,15 @@
       {
         "id": 0,
         "real": true,
-        "role": "start_finish",
+        "role": "traffic_light_right",
         "pose": {
-          "x": 9.966,
-          "y": 6.4665,
+          "x": 10.1085,
+          "y": 6.0864,
           "z": 0.35,
-          "yaw_rad": -1.5722
+          "yaw_rad": -1.5768
         },
         "normal_note": "yaw points along the marker's outward-facing normal (the direction the face looks)",
-        "s_m": 0.0,
+        "s_m": 46.271,
         "note": ""
       },
       {
@@ -4394,15 +4363,15 @@
       {
         "id": 45,
         "real": true,
-        "role": "grid_entry",
+        "role": "traffic_light_left",
         "pose": {
-          "x": 9.9613,
-          "y": 5.7798,
+          "x": 9.8185,
+          "y": 6.0881,
           "z": 0.35,
-          "yaw_rad": -1.5779
+          "yaw_rad": -1.5768
         },
         "normal_note": "yaw points along the marker's outward-facing normal (the direction the face looks)",
-        "s_m": 45.946,
+        "s_m": 46.271,
         "note": ""
       },
       {
@@ -4505,24 +4474,13 @@
     "paint_center_height_m": 0.0038
   },
   "facility_inspection": {
-    "status": "official_v2026.10.24_colors_markers_published_bump_visual_provisional_light_finish",
+    "status": "official_v2026.11.01_2x5_signal_black_grid_no_bump_team_lamp_control_finish_no_track_post",
     "config": {
-      "status": "official_v2026.10.24_colors_markers_published_bump_visual_provisional_light_finish",
-      "speed_bump": {
-        "profile": "raised_cosine",
-        "length_m": 0.05,
-        "height_m": 0.01,
-        "subdivisions": 20,
-        "lateral_stripes": 10,
-        "published_visual": "official_two_piece_225mm_h10"
-      },
+      "status": "official_v2026.11.01_2x5_signal_black_grid_no_bump_team_lamp_control_finish_no_track_post",
       "traffic_light": {
-        "route_offset_m": 0.6,
-        "gantry_height_m": 0.42,
-        "lamp_center_height_m": 0.3,
-        "lamp_radius_m": 0.026,
-        "initial_state": "red",
-        "ground_post_enabled": false
+        "representation": "official_2x5",
+        "initial_state": "off",
+        "remove_track_post": true
       },
       "markers": {
         "representation": "official_pbr_texture",
@@ -4532,17 +4490,6 @@
         "black_square_size_m": 0.07,
         "quiet_zone_m": 0.015,
         "bottom_height_m": 0.35
-      },
-      "gantry_supports": {
-        "enabled": false,
-        "post_offset_m": 0.3,
-        "post_width_m": 0.02,
-        "beam_height_m": 0.52,
-        "beam_width_m": 0.022,
-        "hanger_width_m": 0.01,
-        "omit_right_post_ids": [
-          30
-        ]
       },
       "starting_grid": {
         "representation": "official_filled_slots",
@@ -4563,149 +4510,53 @@
         "x": 9.8638,
         "y": 4.6804,
         "yaw_rad": 1.5637,
-        "expected_signal": "red"
+        "expected_signal": "off"
       },
       {
         "name": "signal_grid_1",
         "x": 9.8672,
         "y": 5.1804,
         "yaw_rad": 1.5637,
-        "expected_signal": "red"
+        "expected_signal": "off"
       },
       {
         "name": "signal_grid_2",
         "x": 9.8707,
         "y": 5.6804,
         "yaw_rad": 1.5639,
-        "expected_signal": "red"
+        "expected_signal": "off"
       },
       {
         "name": "signal_grid_3",
         "x": 10.0425,
         "y": 4.4792,
         "yaw_rad": 1.5639,
-        "expected_signal": "red"
+        "expected_signal": "off"
       },
       {
         "name": "signal_grid_4",
         "x": 10.0459,
         "y": 4.9792,
         "yaw_rad": 1.5639,
-        "expected_signal": "red"
+        "expected_signal": "off"
       },
       {
         "name": "signal_grid_5",
         "x": 10.0493,
         "y": 5.4792,
         "yaw_rad": 1.5639,
-        "expected_signal": "red"
-      },
-      {
-        "name": "marker_0_150cm",
-        "x": 9.955809881159361,
-        "y": 4.966535144920238,
-        "yaw_rad": 1.5632381623397875,
-        "expected_marker_id": 0,
-        "approach_distance_m": 1.5
-      },
-      {
-        "name": "marker_0_100cm",
-        "x": 9.959209787148191,
-        "y": 5.466523393523828,
-        "yaw_rad": 1.5632359414811563,
-        "expected_marker_id": 0,
-        "approach_distance_m": 1.0
-      },
-      {
-        "name": "marker_0_75cm",
-        "x": 9.960932304219165,
-        "y": 5.716517369860647,
-        "yaw_rad": 1.564796398793332,
-        "expected_marker_id": 0,
-        "approach_distance_m": 0.75
-      },
-      {
-        "name": "marker_20_150cm",
-        "x": 7.5938006806313005,
-        "y": 10.617429842174689,
-        "yaw_rad": -1.5667963481280356,
-        "expected_marker_id": 20,
-        "approach_distance_m": 1.5
-      },
-      {
-        "name": "marker_20_100cm",
-        "x": 7.59590066267988,
-        "y": 10.117434330030108,
-        "yaw_rad": -1.5667963481280371,
-        "expected_marker_id": 20,
-        "approach_distance_m": 1.0
-      },
-      {
-        "name": "marker_20_75cm",
-        "x": 7.597000652728665,
-        "y": 9.86743681783373,
-        "yaw_rad": -1.5667963481280276,
-        "expected_marker_id": 20,
-        "approach_distance_m": 0.75
-      },
-      {
-        "name": "marker_45_150cm",
-        "x": 9.951123785762547,
-        "y": 4.279813136980216,
-        "yaw_rad": 1.5636957792847082,
-        "expected_marker_id": 45,
-        "approach_distance_m": 1.5
-      },
-      {
-        "name": "marker_45_100cm",
-        "x": 9.954523677513503,
-        "y": 4.779801385062181,
-        "yaw_rad": 1.5636963669393436,
-        "expected_marker_id": 45,
-        "approach_distance_m": 1.0
-      },
-      {
-        "name": "marker_45_75cm",
-        "x": 9.956217837067296,
-        "y": 5.029795543618808,
-        "yaw_rad": 1.563696661110153,
-        "expected_marker_id": 45,
-        "approach_distance_m": 0.75
-      },
-      {
-        "name": "marker_30_150cm",
-        "x": 2.3993044757242963,
-        "y": 3.902107512361042,
-        "yaw_rad": -1.6963667085043557,
-        "expected_marker_id": 30,
-        "approach_distance_m": 1.5
-      },
-      {
-        "name": "marker_30_100cm",
-        "x": 2.32243969710687,
-        "y": 3.4080952367395376,
-        "yaw_rad": -1.7407769342747301,
-        "expected_marker_id": 30,
-        "approach_distance_m": 1.0
-      },
-      {
-        "name": "marker_30_75cm",
-        "x": 2.2803719342948168,
-        "y": 3.1616607652560313,
-        "yaw_rad": -1.7345569031953922,
-        "expected_marker_id": 30,
-        "approach_distance_m": 0.75
+        "expected_signal": "off"
       }
     ],
     "test_ground_truth_only": true
   },
   "official_source": {
     "repository": "https://github.com/MOSW626/istech-it-arena",
-    "commit": "d8107de6ccff14ae17db7fb08732b55fed82b5b4",
-    "release": "v2026.10.24",
-    "asset": "it_arena_track_v2026.10.24.zip",
-    "size_bytes": 812042,
-    "sha256": "16b2f078609abea45ac3f351215df6576ced02bc6c40e933998ab91578de8a79",
+    "commit": "2e3e65b1e6202b31d111c3fe50aa43c6634a5f6a",
+    "release": "v2026.11.01",
+    "asset": "it_arena_track_v2026.11.01.zip",
+    "size_bytes": 790959,
+    "sha256": "ef50e0f125eb4b8cba3cfa736188a24038b7a8c99a4de6b6a782fac5dd2e5cf5",
     "members": 23
   },
   "runtime_corrections": {
@@ -4713,7 +4564,8 @@
       "main and shortcut centerlines",
       "road/grass/wall geometry",
       "branch openings",
-      "starting slot poses and filled white visuals",
+      "starting slot poses and filled black visuals",
+      "2x5 signal post, beam, panel and lamp poses/geometry",
       "complete course ArUco SDF links, poses, materials, PNGs and scene metadata"
     ],
     "marker_placement": {
@@ -4722,19 +4574,19 @@
         {
           "id": 0,
           "official_scene_pose": {
-            "x": 9.966,
-            "y": 6.4665,
+            "x": 10.1085,
+            "y": 6.0864,
             "z": 0.35,
-            "yaw_rad": -1.5722
+            "yaw_rad": -1.5768
           },
           "official_sdf_board_center_pose": {
-            "x": 9.966,
-            "y": 6.4665,
+            "x": 10.1085,
+            "y": 6.0864,
             "z": 0.4,
-            "yaw_rad": -1.57218
+            "yaw_rad": -1.57685
           },
           "official_input_verified_before_runtime_change": true,
-          "runtime_representation": "unchanged official v2026.10.24 gantry PNG/PBR plate",
+          "runtime_representation": "unchanged official v2026.11.01 gantry PNG/PBR plate",
           "placement_changed": false
         },
         {
@@ -4752,7 +4604,7 @@
             "yaw_rad": 1.57578
           },
           "official_input_verified_before_runtime_change": true,
-          "runtime_representation": "unchanged official v2026.10.24 gantry PNG/PBR plate",
+          "runtime_representation": "unchanged official v2026.11.01 gantry PNG/PBR plate",
           "placement_changed": false
         },
         {
@@ -4770,36 +4622,33 @@
             "yaw_rad": 1.72074
           },
           "official_input_verified_before_runtime_change": true,
-          "runtime_representation": "unchanged official v2026.10.24 gantry PNG/PBR plate",
+          "runtime_representation": "unchanged official v2026.11.01 gantry PNG/PBR plate",
           "placement_changed": false
         },
         {
           "id": 45,
           "official_scene_pose": {
-            "x": 9.9613,
-            "y": 5.7798,
+            "x": 9.8185,
+            "y": 6.0881,
             "z": 0.35,
-            "yaw_rad": -1.5779
+            "yaw_rad": -1.5768
           },
           "official_sdf_board_center_pose": {
-            "x": 9.9613,
-            "y": 5.7798,
+            "x": 9.8185,
+            "y": 6.0881,
             "z": 0.4,
-            "yaw_rad": -1.5779
+            "yaw_rad": -1.57685
           },
           "official_input_verified_before_runtime_change": true,
-          "runtime_representation": "unchanged official v2026.10.24 gantry PNG/PBR plate",
+          "runtime_representation": "unchanged official v2026.11.01 gantry PNG/PBR plate",
           "placement_changed": false
         }
       ]
     },
     "provisional_facilities": [
-      "camera-visible low traffic-light body and deterministic simulator sequence",
-      "published 50 mm x 10 mm orange STL visual; 20-strip collision approximation; length revision unresolved",
-      "checker finish paint at the official s=0 start/finish pose",
-      "no added marker supports pending real construction photos; official marker links unchanged",
-      "provisional traffic-light ground post omitted; lamp and overhead assembly unchanged"
+      "lamp links start dark; team simulator material sequence replaces the static always-on official emissive",
+      "checker finish paint at the official s=0 start/finish pose"
     ],
-    "friction": "official wall collisions retain mu=mu2=0.8; road, grass and bump have no injected coefficient"
+    "friction": "official wall collisions retain mu=mu2=0.8; road and grass have no injected coefficient"
   }
 }

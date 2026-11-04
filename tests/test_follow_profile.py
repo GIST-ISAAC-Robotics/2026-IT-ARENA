@@ -7,6 +7,47 @@ from profile_follow_trace import profile, profile_source, read_events, digest
 from test_follow_trace import make_trace
 
 
+def make_handoff_trace(tmp_path):
+    import json
+    from arena_autonomy.follow_trace import FollowTrace, replay_call, freeze
+    from test_bypass_handoff import context, subject
+    control=subject(); path=tmp_path/'handoff.jsonl'
+    _,history,_=context()
+    trace=FollowTrace(path,history.config,control.config,
+        mode='g1_g2_handoff_trial',execution_config=control.execution)
+    steering=0.
+    for now in (.5,.6,.7,.8,.9,1.,1.1,1.2,1.3,1.4,1.5,1.6):
+        scan,history,scene=context(now)
+        output=control.command(scene,history,0.,'left',steering,.02,raw_scan=scan)
+        trace.record_call(scan,history,now,0,0.,'left',steering,.02,True,30.,output)
+        steering=output[1]
+    control.reset();trace.emit('reset',{'reason':'test_reset'})
+    scan,history,_=context(1.7);scan.header.frame_id='bad'
+    # 실제 재생과 같은 projection 실패 경로를 계측에서도 보존해야 한다.
+    trace.record_call(scan,history,1.7,0,0.,'left',steering,.02,True,30.,
+        (0.,0.,dict(reason='follow_input_stop',behavior='HOLD',input_error='scan_frame_mismatch',mode='g1_g2_handoff_trial')))
+    trace.close()
+    return [json.loads(line) for line in path.read_text().splitlines()]
+
+
+def test_handoff_cost_includes_real_transition_and_projection_error(tmp_path):
+    events=make_handoff_trace(tmp_path)
+    result=profile(events,repeats=1,warmups=0)
+    assert result['passed'] and result['baseline_matched']==13 and result['timed_calls']==13
+    assert result['controller_scope']=='g1_g2_handoff_decision_stage_only'
+    assert 'bypass_handoff_command' in result['timing_includes']
+    assert 'handoff_bypass' in result['groups'] and 'handoff_follow' in result['groups']
+    assert any(r['failed_stage']=='projection' for r in result['rows'])
+    assert not result['online_deadline_verified']
+
+
+def test_handoff_changed_decision_is_not_benchmarked(tmp_path):
+    events=make_handoff_trace(tmp_path)
+    next(e for e in events if e['kind']=='call')['data']['output'][0]+=.1
+    with pytest.raises(ValueError,match='outputs'):
+        profile(events,repeats=1,warmups=0)
+
+
 def test_profile_preserves_all_outputs_including_error_reset(tmp_path):
     _, events = make_trace(tmp_path)
     result = profile(events, repeats=2, warmups=1)

@@ -647,6 +647,7 @@ def finalize_verdict(report, mode):
         'lidar_interface': report.get('lidar_nominal_interface_passed') is True,
         'source_unchanged': report.get('source_unchanged') is True,
         'signal_sequence': (report['team_signal_evidence'].get('passed') is True if 'team_signal_evidence' in report
+                            else report['official_signal_evidence'].get('passed') is True if 'official_signal_evidence' in report
                             else {'red', 'yellow', 'green'}.issubset(report.get('signal_states', []))),
         'no_false_start': report.get('false_start') is False,
         'controller_mode_matches': mode_matches,

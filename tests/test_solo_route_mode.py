@@ -29,7 +29,7 @@ def test_registered_profile_changes_only_solo_selection():
     profiles = launch_module().SPEED_PROFILES
     assert profiles['g1_open_10kmh_solo'] == {
         **profiles['g1_open_10kmh_turn15_arc'], 'g1_solo_route_only': True}
-    assert [name for name, p in profiles.items() if p.get('g1_solo_route_only')] == ['g1_open_10kmh_solo', 'g1_open_10kmh_solo_gap05', 'g1_open_10kmh_solo_gap05_arc', 'g1_open_10kmh_solo_gap05_arc_ray', 'g1_open_10kmh_solo_gap05_arc_preview', 'g1_open_10kmh_solo_gap05_arc_preview_bridge']
+    assert [name for name, p in profiles.items() if p.get('g1_solo_route_only')] == ['g1_open_10kmh_solo', 'g1_open_10kmh_solo_gap05', 'g1_open_10kmh_solo_gap05_arc', 'g1_open_10kmh_solo_gap05_arc_ray', 'g1_open_10kmh_solo_gap05_arc_preview', 'g1_open_10kmh_solo_gap05_arc_preview_bridge', 'g1_open_10kmh_solo_gap05_arc_preview_bridge_ray']
 
 
 @pytest.mark.parametrize('headway', [.8, .5])

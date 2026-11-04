@@ -108,13 +108,48 @@ class LocalScene:
         return tuple(ray.hit_xy_m for ray in self.rays if ray.status == 'return')
 
 
+def blind_spec(value):
+    """후방 반각(실수) 또는 시험 전용 {'rear_half_angle_deg', 'sectors_deg': [[중심, 반폭], ...]}.
+
+    sectors_deg는 장착 구조처럼 위치를 아는 차체 고정 가림이다. 해당 광선은
+    반환이 있어도 masked로 바꾸고 자유 공간으로 채우지 않는다. 실수 입력은 기존과 같다.
+    """
+    if not isinstance(value, dict):
+        return _finite(value, 'rear_half_angle_deg'), ()
+    if set(value) - {'rear_half_angle_deg', 'sectors_deg'}:
+        raise ValueError('unknown blind spec key')
+    rear = _finite(value.get('rear_half_angle_deg', 0.), 'rear_half_angle_deg')
+    sectors = []
+    for sector in value.get('sectors_deg', ()):
+        if len(sector) != 2:
+            raise ValueError('blind sector needs center and half width')
+        center, half = (_finite(v, 'sectors_deg') for v in sector)
+        if not 0 < half < 90:
+            raise ValueError('invalid blind sector width')
+        sectors.append((center, half))
+    return rear, tuple(sectors)
+
+
+def blind_parameter(rear_half_angle_deg, sectors_json=''):
+    """노드 파라미터 → 마스크 값. 빈 문자열이면 기존 실수 그대로 돌려준다."""
+    if not sectors_json:
+        return rear_half_angle_deg
+    import json
+    value = {'rear_half_angle_deg': rear_half_angle_deg, 'sectors_deg': json.loads(sectors_json)}
+    blind_spec(value)
+    return value
+
+
 def rear_masked(angle_rad, rear_half_angle_deg=30.):
     angle = math.remainder(_finite(angle_rad, 'angle_rad'), math.tau)
-    half = _finite(rear_half_angle_deg, 'rear_half_angle_deg')
+    half, sectors = blind_spec(rear_half_angle_deg)
     if not 0 <= half < 180:
         raise ValueError('invalid rear mask angle')
     # 센서 축 기준. ±150° 경계의 표본은 현행 mask_scan과 같이 관측한다.
-    return abs(angle) > math.radians(180 - half) + 1e-12
+    if abs(angle) > math.radians(180 - half) + 1e-12:
+        return True
+    return any(abs(math.remainder(angle - math.radians(center), math.tau)) <= math.radians(width) + 1e-12
+               for center, width in sectors)
 
 
 def scene_from_scan(ranges, *, angle_min, angle_increment, range_min, range_max,

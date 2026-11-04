@@ -109,7 +109,7 @@ def test_default_is_off_and_requires_solo_route_profile():
 def test_registered_profile_adds_one_key_and_traffic_stays_unconnected():
     profiles = launch_module().SPEED_PROFILES
     assert profiles['g1_open_10kmh_turn15_arc'] == {**profiles['g1_open_10kmh_turn15'], 'g1_low_speed_arc_reacquire': True}
-    assert [k for k, v in profiles.items() if 'g1_low_speed_arc_reacquire' in v] == ['g1_open_10kmh_turn15_arc', 'g1_open_10kmh_solo', 'g1_open_10kmh_solo_gap05', 'g1_open_10kmh_solo_gap05_arc', 'g1_open_10kmh_solo_gap05_arc_ray', 'g1_open_10kmh_solo_gap05_arc_preview', 'g1_open_10kmh_solo_gap05_arc_preview_bridge']
+    assert [k for k, v in profiles.items() if 'g1_low_speed_arc_reacquire' in v] == ['g1_open_10kmh_turn15_arc', 'g1_open_10kmh_solo', 'g1_open_10kmh_solo_gap05', 'g1_open_10kmh_solo_gap05_arc', 'g1_open_10kmh_solo_gap05_arc_ray', 'g1_open_10kmh_solo_gap05_arc_preview', 'g1_open_10kmh_solo_gap05_arc_preview_bridge', 'g1_open_10kmh_solo_gap05_arc_preview_bridge_ray']
     for name in ('validate_g1_traffic.py', 'g1_handoff_eval.py', 'g1_traffic_eval.py'):
         text = (ROOT/'scripts'/name).read_text(encoding='utf-8')
         assert 'turn15_arc' not in text and 'low_speed_arc' not in text

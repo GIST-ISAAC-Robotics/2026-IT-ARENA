@@ -1,0 +1,99 @@
+..........................................................F............. [ 16%]
+........................................................................ [ 33%]
+..............................................................F......... [ 50%]
+........................................................................ [ 67%]
+........................................................................ [ 84%]
+...............................................F..................       [100%]
+=================================== FAILURES ===================================
+______ test_runtime_detector_preserves_original_and_collision_properties _______
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_runtime_detector_preserve0')
+
+    def test_runtime_detector_preserves_original_and_collision_properties(tmp_path):
+        source = ROOT / "src/arena_gazebo/worlds/it_arena_official/world.sdf"
+        before = source.read_bytes()
+        output = tmp_path / "world.sdf"
+        launch._runtime_world_overrides(source, output, "bullet", False)
+        original = ET.fromstring(before).find("world")
+        changed = ET.parse(output).getroot().find("world")
+        assert source.read_bytes() == before
+        assert changed.findtext("physics/max_step_size") == original.findtext("physics/max_step_size")
+        assert changed.findtext("physics/real_time_factor") == original.findtext("physics/real_time_factor")
+        assert changed.findtext("physics/dart/collision_detector") == "bullet"
+        assert not changed.findall("plugin[@name='gz::sim::systems::SceneBroadcaster']")
+        for old, new in zip(original.findall(".//link"), changed.findall(".//link")):
+            assert old.attrib == new.attrib
+            assert old.findtext("pose") == new.findtext("pose")
+        old_collisions = original.findall(".//collision")
+        new_collisions = changed.findall(".//collision")
+        # 10/7 기본 파생본: 임시 마커 지지 27개와 신호등 바닥 기둥/발판 2개 제거.
+>       assert len(old_collisions) == len(new_collisions) == 3730
+E       AssertionError: assert 3710 == 3730
+E        +  where 3710 = len([<Element 'collision' at 0x7024d4461350>, <Element 'collision' at 0x7024d4462b60>, <Element 'collision' at 0x7024d4463... 'collision' at 0x7024d44634c0>, <Element 'collision' at 0x7024d4463970>, <Element 'collision' at 0x7024d4463e20>, ...])
+
+tests/test_runtime_world_options.py:30: AssertionError
+_______________ test_contract_records_evaluation_script_changes ________________
+
+    def test_contract_records_evaluation_script_changes():
+        contract = json.loads((ROOT/'config/tests/physics_step_r0_sha256.json').read_text())
+        scripts = contract['approved_evaluation_scripts']
+        assert set(scripts) == {'scripts/probe_braking_contact.py', 'scripts/validate_g1_traffic.py'}
+        # 직전 1 ms 실행이 기록한 실행 소스 해시가 변경 전 값이다.
+        previous = json.loads((PREVIOUS_RUN/'report.json').read_text())['source_sha256']
+        # 10/8 격자 발행 후속 계약이 probe의 다음 변경을 등록한다. 이 계약은 소급 수정하지 않는다.
+        chain, parent = [], 'config/tests/physics_step_r0_sha256.json'
+        for name in ('scheduled_command_r0_sha256.json', 'scheduled_command_r1_sha256.json', 'scheduled_command_r2_sha256.json',
+                     'scheduled_command_r3_sha256.json', 'scheduled_command_r4_sha256.json', 'scheduled_command_r5_sha256.json',
+                     'scheduled_command_r6_sha256.json', 'scheduled_command_r7_sha256.json',
+                     'follow_trace_r0_sha256.json', 'fragmented_boundary_r0_sha256.json', 'dense_stop_evidence_r0_sha256.json',
+                     'lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json',
+                     'r0_plus_e3_r0_sha256.json', 'b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json', 'partial_observation_r0_sha256.json', 'profile_bundle_selector_r0_sha256.json', 'g1_course_evaluation_r0_sha256.json', 'short_boundary_prefix_r0_sha256.json', 'local_start_signal_r0_sha256.json', 'traffic_recovery_trial_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'small_alignment_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'g2_handoff_manifest_r1_sha256.json', 'rear_lane_keep_r1_sha256.json', 'observed_lane_preference_r1_sha256.json', 'measured_lane_preference_r1_sha256.json', 'fresh_confirmation_r2_sha256.json'):
+            successor = json.loads((ROOT/'config/tests'/name).read_text())
+            assert successor['parent_contract'] == parent
+            if name in ('follow_trace_r0_sha256.json', 'fragmented_boundary_r0_sha256.json', 'dense_stop_evidence_r0_sha256.json',
+                        'lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json',
+                     'r0_plus_e3_r0_sha256.json', 'b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json', 'partial_observation_r0_sha256.json', 'profile_bundle_selector_r0_sha256.json', 'g1_course_evaluation_r0_sha256.json', 'short_boundary_prefix_r0_sha256.json', 'local_start_signal_r0_sha256.json', 'traffic_recovery_trial_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'small_alignment_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'g2_handoff_manifest_r1_sha256.json', 'rear_lane_keep_r1_sha256.json', 'observed_lane_preference_r1_sha256.json', 'measured_lane_preference_r1_sha256.json', 'fresh_confirmation_r2_sha256.json'):
+                assert hashlib.sha256((ROOT/parent).read_bytes()).hexdigest() == successor['parent_contract_sha256']
+            chain.append(successor)
+            parent = 'config/tests/'+name
+        for path, change in scripts.items():
+            assert change['before'] == previous[path]
+            latest = change
+            for successor in chain:
+                later = successor['approved_evaluation_scripts'].get(path)
+                if later:
+                    assert later['before'] == latest['after']
+                    latest = later
+>           assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest() == latest['after']
+E           AssertionError: assert 'f93f523fa961...7644aacd1bb02' == '61917b447bfb...832853d32b994'
+E             - 61917b447bfb1e9984e2e796f37235abf9e0cd9b89897b31243832853d32b994
+E             + f93f523fa961cedadf01c7de3150e759fb54aabbd03a84f624e7644aacd1bb02
+
+tests/test_physics_step_option.py:167: AssertionError
+________ test_runtime_manifest_covers_static_local_imports_transitively ________
+
+    def test_runtime_manifest_covers_static_local_imports_transitively():
+        # 모듈을 추가할 때 실행 경로에 import되지만 보존 목록에는 없는 파일을 방지한다.
+        # 동적 import 문자열/외부 라이브러리 전체의 재현성 검사는 아니다.
+        import ast
+        manifest = {f'{package}.{name}' for package, names in validation.MODULES.items() for name in names}
+        for module in manifest:
+            package, name = module.split('.')
+            tree = ast.parse((ROOT/'src'/package/package/f'{name}.py').read_text(encoding='utf-8'))
+            imports = []
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    imports.append(node.module)
+                elif isinstance(node, ast.Import):
+                    imports.extend(alias.name for alias in node.names)
+            required = {name for name in imports if name.startswith(('arena_autonomy.', 'arena_vehicle_interface.'))}
+>           assert required <= manifest, (module, sorted(required-manifest))
+E           AssertionError: ('arena_autonomy.local_follow', ['arena_autonomy.turn_preview'])
+E           assert {'arena_autonomy.boundary_evidence', 'arena_autonomy.corner_distance', 'arena_autonomy.corner_evidence', 'arena_autonomy.corridor_observer', 'arena_autonomy.fresh_parallel_trial', 'arena_autonomy.lidar_motion', ...} <= {'arena_autonomy.anchor_clearance_trial', 'arena_autonomy.boundary_evidence', 'arena_autonomy.bypass_entry_follow', 'arena_autonomy.bypass_entry_trial', 'arena_autonomy.bypass_handoff', 'arena_autonomy.bypass_wall_fit', ...}
+
+tests/test_official_start_ros_fixture.py:30: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_runtime_world_options.py::test_runtime_detector_preserves_original_and_collision_properties
+FAILED tests/test_physics_step_option.py::test_contract_records_evaluation_script_changes
+FAILED tests/test_official_start_ros_fixture.py::test_runtime_manifest_covers_static_local_imports_transitively
+3 failed, 423 passed in 34.25s

@@ -82,6 +82,9 @@ SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview"] = {
     **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"], "g1_preview_above_base_speed": True}
 SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview_bridge"] = {
     **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview"], "g1_boundary_bridge": True}
+# 기존 먼 벽 연결을 현재 단독 구성과 비교하는 명시 후보. 가속률·기본 구성은 유지한다.
+SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview_bridge_ray"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview_bridge"], "g1_ray_wall_continuity": True}
 
 
 def _float32_limit_not_above(limit):
@@ -634,6 +637,82 @@ def _b0183_model(model_xml, profile):
     return ET.tostring(root, encoding="unicode")
 
 
+MOUNT_TRIAL_KEYS = ("scan_plane_posts", "chassis_visual_top_m", "known_structure_mask", "known_structure_margin_deg")
+
+
+def _mount_trial(model_xml, profile, wheel_radius, body_height, marker_xyz, marker_size, marker_enabled):
+    """시험 전용 C1 장착 구조. 키가 없으면 모델과 마스크를 바꾸지 않는다.
+
+    지주는 표시 형상(광선 자기반환)만 추가하고 질량·충돌체는 바꾸지 않는다.
+    chassis_visual_top_m은 단순 차체 표시 상자가 낮춘 스캔면을 덮지 않게 위면만 낮춘다.
+    known_structure_mask='unknown'이면 지주·뒤 마커 각도를 계산해 반환해도 unknown으로 둔다.
+    """
+    lidar = profile["lidar"]
+    if not any(key in lidar for key in MOUNT_TRIAL_KEYS):
+        return model_xml, ""
+    sx, sy, sz = (float(v) for v in lidar["xyz_m"])
+    posts = [tuple(float(v) for v in post) for post in lidar.get("scan_plane_posts", [])]
+    if any(len(post) != 3 or not all(math.isfinite(v) for v in post) or post[2] <= 0 for post in posts):
+        raise ValueError("scan_plane_posts는 [x, y, 지름] m 목록이어야 합니다.")
+    policy = lidar.get("known_structure_mask", "none")
+    if policy not in ("none", "unknown"):
+        raise ValueError("known_structure_mask must be none or unknown")
+    margin = float(lidar.get("known_structure_margin_deg", 0.5))
+    if not 0 <= margin <= 5:
+        raise ValueError("known_structure_margin_deg must be within 0..5")
+    root = ET.fromstring(model_xml)
+    chassis = root.find("model/link[@name='chassis']")
+    chassis_z = wheel_radius + body_height / 2
+    top = lidar.get("chassis_visual_top_m")
+    if top is not None:
+        top = float(top)
+        if not wheel_radius < top < wheel_radius + body_height:
+            raise ValueError("chassis_visual_top_m must be inside the body box")
+        box = chassis.find("visual[@name='visual']")
+        size = box.find("geometry/box/size")
+        x, y, _ = size.text.split()
+        size.text = f"{x} {y} {top - wheel_radius}"
+        ET.SubElement(box, "pose").text = f"0 0 {(wheel_radius + top) / 2 - chassis_z} 0 0 0"
+    for index, (x, y, diameter) in enumerate(posts):
+        visual = ET.SubElement(chassis, "visual", name=f"c1_mount_post_{index}")
+        ET.SubElement(visual, "pose").text = f"{x} {y} {sz - chassis_z} 0 0 0"
+        cylinder = ET.SubElement(ET.SubElement(visual, "geometry"), "cylinder")
+        ET.SubElement(cylinder, "radius").text = str(diameter / 2)
+        ET.SubElement(cylinder, "length").text = "0.06"
+        material = ET.SubElement(visual, "material")
+        ET.SubElement(material, "ambient").text = "0.6 0.6 0.6 1"
+        ET.SubElement(material, "diffuse").text = "0.7 0.7 0.7 1"
+    sectors = []
+    if policy == "unknown":
+        for x, y, diameter in posts:
+            distance = math.hypot(x - sx, y - sy)
+            if distance <= diameter / 2:
+                raise ValueError("post overlaps the sensor axis")
+            sectors.append([math.degrees(math.atan2(y - sy, x - sx)),
+                            math.degrees(math.asin(diameter / 2 / distance)) + margin])
+        mx, my, mz = marker_xyz
+        if marker_enabled and abs(mz - sz) <= marker_size / 2:
+            first = math.atan2(my + marker_size / 2 - sy, mx - sx)
+            second = math.atan2(my - marker_size / 2 - sy, mx - sx)
+            spread = abs(math.remainder(first - second, math.tau)) / 2
+            center = math.remainder(second + math.remainder(first - second, math.tau) / 2, math.tau)
+            sectors.append([math.degrees(center), math.degrees(spread) + margin])
+    return ET.tostring(root, encoding="unicode"), (json.dumps(sectors) if sectors else "")
+
+
+def _local_sensor_profile(description_share, override, local_mode):
+    """local 구성의 센서/장착 YAML을 명시 선택한다. 기본 구매/가정 파일은 보존한다."""
+    if not local_mode:
+        if override:
+            raise ValueError('local_sensor_config requires local_pursuit mode')
+        return None
+    path = Path(override).expanduser() if override else description_share / 'config/b0183_c1.yaml'
+    profile = yaml.safe_load(path.read_text(encoding='utf-8'))
+    if not isinstance(profile, dict) or any(not isinstance(profile.get(key), dict) for key in ('camera', 'lidar', 'imu')):
+        raise ValueError('local_sensor_config requires camera, lidar and imu mappings')
+    return profile
+
+
 def _launch_setup(context):
     bringup_share = Path(get_package_share_directory("arena_bringup"))
     description_share = Path(get_package_share_directory("arena_description"))
@@ -680,9 +759,9 @@ def _launch_setup(context):
     test_profile = LaunchConfiguration('lidar_test_profile').perform(context)
     if test_profile and LaunchConfiguration('lidar_acquisition').perform(context) != 'sequential':
         raise RuntimeError('LiDAR 오차/지연 시험은 sequential 취득에서만 허용합니다.')
-    profile = None
+    profile = _local_sensor_profile(description_share,
+        LaunchConfiguration("local_sensor_config").perform(context), local_mode)
     if local_mode:
-        profile = yaml.safe_load((description_share / "config/b0183_c1.yaml").read_text())
         camera = profile["camera"]
         d435i["xyz_m"], d435i["rpy_rad"] = camera["xyz_m"], camera["rpy_rad"]
         d435i["color"].update({key: camera[key] for key in ("width_px", "height_px", "horizontal_fov_deg")})
@@ -833,8 +912,12 @@ def _launch_setup(context):
             "chase_camera_enabled": str(_as_bool(LaunchConfiguration("chase_camera").perform(context))).lower(),
         },
     ).toxml()
+    blind_sectors_json = ""
     if local_mode:
         model_xml = _b0183_model(model_xml, profile)
+        model_xml, blind_sectors_json = _mount_trial(model_xml, profile, float(drivetrain["wheel_radius_m"]),
+            float(body["height_m"]), rear_marker_xyz, float(rear_marker["printed_board_size_m"]),
+            bool(rear_marker["enabled"]))
     runtime_artifacts = LaunchConfiguration("runtime_artifacts").perform(context)
     model_xml = _evaluation_zero_speed_mode(model_xml,
         LaunchConfiguration("evaluation_zero_speed_mode").perform(context), runtime_artifacts)
@@ -854,6 +937,11 @@ def _launch_setup(context):
         evidence = Path(runtime_artifacts).resolve()
         evidence.mkdir(parents=True, exist_ok=True)
         (evidence / "runtime_vehicle.sdf").write_text(model_xml, encoding="utf-8")
+        if profile is not None:
+            (evidence / "runtime_local_sensors.yaml").write_text(
+                yaml.safe_dump(profile, allow_unicode=True, sort_keys=False), encoding="utf-8")
+        if blind_sectors_json:
+            (evidence / "lidar_blind_sectors.json").write_text(blind_sectors_json + "\n", encoding="utf-8")
 
     track = LaunchConfiguration("track").perform(context)
     if track not in TRACK_DIRECTORIES:
@@ -1193,6 +1281,8 @@ def _launch_setup(context):
         raise RuntimeError("시험 월드/광학 센서 비활성화는 본선 자율주행·신호등과 함께 쓰지 않습니다.")
     if (autonomy or traffic) and track not in {"official", "experimental"}:
         raise RuntimeError("신호등·본선 벽 추종 데모는 official/experimental 지도에서만 지원합니다.")
+    if traffic and track != "official":
+        raise RuntimeError("신호 제어기는 공식 2×5 광원 링크가 있는 official 월드 전용입니다.")
     if autonomy and autonomy_mode in {"lidar", "local_pursuit"} and not lidar_enabled:
         raise RuntimeError("LiDAR 벽 추종에는 lidar_2d.enabled=true가 필요합니다.")
     if autonomy and autonomy_mode == "stereo" and not depth_enabled:
@@ -1201,7 +1291,9 @@ def _launch_setup(context):
         actions.append(Node(package="arena_gazebo", executable="traffic_light_controller.py",
                             parameters=[{"use_sim_time": True,
                                          "red_duration_s": float(LaunchConfiguration("red_duration_s").perform(context)),
-                                         "yellow_duration_s": 2.0}], output="screen"))
+                                         "require_armed": guarded_actuation,
+                                         "audit_path": str(evidence/"signal_sequence.jsonl") if runtime_artifacts else ""}],
+                            output="screen"))
     if local_mode:
         if not lidar_enabled or not feedback["enabled"]:
             raise RuntimeError("새 보호층은 C1과 구동 엔코더가 필요합니다.")
@@ -1222,6 +1314,7 @@ def _launch_setup(context):
             "vehicle_length_m": float(config['footprint']['length_m']),
             "vehicle_width_m": float(config['footprint']['width_m']),
             "rear_blind_half_angle_deg": float(profile['lidar']['masked_rear_half_angle_deg']),
+            **({"lidar_blind_sectors_json": blind_sectors_json} if blind_sectors_json else {}),
         }], output="screen"))
     if autonomy:
         speed_profile = SPEED_PROFILES[LaunchConfiguration("speed_profile").perform(context)]
@@ -1231,6 +1324,14 @@ def _launch_setup(context):
         reserve = LaunchConfiguration("evaluation_handoff_reserve").perform(context)
         yield_progress = LaunchConfiguration("evaluation_handoff_yield_progress").perform(context) == "true"
         rear_sweep = LaunchConfiguration("evaluation_handoff_rear_sweep").perform(context) == "true"
+        observed_motion = LaunchConfiguration("evaluation_handoff_observed_motion").perform(context) == "true"
+        side_departure = LaunchConfiguration("evaluation_side_departure_trial").perform(context) == "true"
+        current_lane = LaunchConfiguration("evaluation_current_lane_preference_trial").perform(context) == "true"
+        if current_lane and (not side_departure or not observed_motion or reserve == "off"
+                             or feedback["mode"] != "drive_motor_shaft"):
+            raise ValueError("current lane preference requires explicit side departure, observed motion and motor feedback")
+        if side_departure and reserve == "off":
+            raise ValueError("side departure requires an explicit handoff trial")
         if (yield_progress or rear_sweep) and reserve == "off":
             raise ValueError("observed yield progress requires an explicit handoff trial")
         executable = _autonomy_executable(autonomy_mode,reserve,guarded=guarded_actuation,
@@ -1243,6 +1344,9 @@ def _launch_setup(context):
             "wheelbase_m": float(drivetrain["wheelbase_m"]),
             "max_steering_angle_rad": float(drivetrain["max_steering_angle_rad"]),
         }
+        if local_mode and track == "official":
+            # 공식 월드에는 임시 3등이 없다. 출발은 2×5 RGB 판독만 사용한다.
+            controller_parameters["start_signal_mode"] = "official_4red_local_candidate"
         if reserve != 'off':
             controller_parameters.update(g1_g2_simulation_trial=True, g1_g2_entry_policy='corridor_local_v1',
                 g1_g2_corridor_policy='corridor_v2_signed_hold', g1_g2_preparation_policy='observed_entry_space_v1',
@@ -1252,7 +1356,12 @@ def _launch_setup(context):
                 g1_g2_recent_forward_reserve=reserve=='recent', g1_g2_low_motion_reserve=reserve in ('low_motion','paced'),
                 g1_g2_moving_pace_floor=reserve=='paced',
                 g1_g2_released_rear_sweep_trial=rear_sweep,
-                g1_g2_reacquire_policy='known_hold_v1',
+                g1_g2_observed_motion_gates=observed_motion,
+                g1_g2_side_departure_trial=side_departure,
+                g1_g2_current_lane_preference_trial=current_lane,
+                g1_g2_current_lane_headroom_mps=(feedback["resolution"]["mean_wheel_travel_m_per_count"]
+                    * feedback["encoder_node"]["sample_rate_hz"] if current_lane else 0.),
+                g1_g2_reacquire_policy='observed_rejoin_v2' if observed_motion else 'known_hold_v1',
                 g1_g2_preparation_hold='bounded_hold_v1', g1_g2_initial_reference='ready_directional_pair_v2',
                 g1_g2_motion_pause_policy='bounded_motion_pause_v1',
                 g1_g2_relative_yield_policy='observed_progress_yield_v3' if yield_progress else 'bounded_relative_yield_v2')
@@ -1277,6 +1386,8 @@ def _launch_setup(context):
                 controller_parameters['motion_imu_roll_rad'] = 0.
                 controller_parameters['motion_imu_pitch_rad'] = 0.
                 controller_parameters['rear_blind_half_angle_deg'] = float(profile['lidar']['masked_rear_half_angle_deg'])
+                if blind_sectors_json:
+                    controller_parameters['lidar_blind_sectors_json'] = blind_sectors_json
                 # 안쪽 조향 바퀴 0.45 rad 제한을 후륜축 자전거 등가각으로 환산.
                 controller_parameters["max_steering_angle_rad"] = equivalent_steering
         else:
@@ -1344,6 +1455,8 @@ def generate_launch_description() -> LaunchDescription:
                 default_value=str(description_share / "config" / "vehicle.yaml"),
                 description="Vehicle parameter YAML file.",
             ),
+            DeclareLaunchArgument("local_sensor_config", default_value="",
+                                  description="local_pursuit 센서/장착 YAML. 빈 값은 기존 b0183_c1.yaml 유지"),
             DeclareLaunchArgument(
                 "d435i_profile",
                 default_value="configured",
@@ -1401,6 +1514,12 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("runtime_artifacts", default_value="", description="검증 실행 입력 보관 폴더"),
             DeclareLaunchArgument("evaluation_handoff_rear_sweep", default_value="false", choices=["false", "true"],
                                   description="평가 전용 통과 후 저속 후반부 이동 후보"),
+            DeclareLaunchArgument("evaluation_current_lane_preference_trial", default_value="false", choices=["false", "true"],
+                                  description="정지 측방 반환 뒤 현재 관측 직선의 차선 유지 선호 시험"),
+            DeclareLaunchArgument("evaluation_side_departure_trial", default_value="false", choices=["false", "true"],
+                                  description="측방 시차 겹침에서 비접근 저속 출발 시험 후보"),
+            DeclareLaunchArgument("evaluation_handoff_observed_motion", default_value="false", choices=["false", "true"],
+                                  description="세계 고정 측방 반환과 전진 시작 조각을 구별하는 시험 후보"),
             DeclareLaunchArgument("evaluation_handoff_yield_progress", default_value="false", choices=["false", "true"],
                                   description="현재 면이 전진할 때만 양보 예산을 갱신하는 시험 후보"),
             DeclareLaunchArgument("evaluation_handoff_reserve", default_value="off", choices=["off","fixed","moving","closing","recent","low_motion","paced"],
@@ -1425,7 +1544,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("motion_test_profile", default_value="", description="시험용 IMU/엔코더 오류 JSON; 기본 비활성"),
             DeclareLaunchArgument("batch_static_visuals", default_value="false", description="정적 상자 표시만 동일 꼭짓점/재질의 메시로 묶음; 충돌체 불변"),
             DeclareLaunchArgument("chase_camera", default_value="false", description="영상 검증 전용 차량 추적 3인칭 카메라"),
-            DeclareLaunchArgument("traffic_light", default_value="false", description="빨강-노랑-초록 출발 신호와 수동 제어"),
+            DeclareLaunchArgument("traffic_light", default_value="false", description="공식 2×5 광원 점등 순서와 수동 제어"),
             DeclareLaunchArgument("red_duration_s", default_value="8.0", description="영상 준비 이후 빨간 신호 유지 시간"),
             OpaqueFunction(function=_launch_setup),
         ]

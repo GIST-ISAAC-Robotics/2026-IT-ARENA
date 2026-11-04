@@ -33,6 +33,10 @@ class LidarSafety(Node):
             raise ValueError('LiDAR safety geometry and timeouts must be finite and positive')
         if not 0 <= self.rear_blind_half_angle <= 80:
             raise ValueError('rear_blind_half_angle_deg must be within 0..80')
+        # 시험 전용 장착 구조 각도(JSON). 기본 ''이면 기존 후방 반각 실수 그대로.
+        from arena_autonomy.local_scene import blind_parameter
+        self.rear_blind_half_angle = blind_parameter(self.rear_blind_half_angle,
+            str(self.declare_parameter('lidar_blind_sectors_json', '').value))
         self.recent_observation_enabled = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
         self.partial_policy = None
         self.signed_motion_policy = str(self.declare_parameter('signed_motion_policy', 'forward_drive').value)
@@ -71,13 +75,27 @@ class LidarSafety(Node):
         self.scan = self.command = None
         self.scan_wall = self.command_wall = 0.
         self.last_clock = None
+        self.input_floor_s = -math.inf
+        # 경기 운영 후보에서만 연결한다. 관측 기억을 지우기만 하므로 이 신호로 허가가 늘어나지 않는다.
+        if str(self.declare_parameter('race_control_mode', 'legacy').value) == 'b3_candidate':
+            self.create_subscription(String, '/race/input_boundary', self.on_input_boundary, 10)
         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive/safe", 10)
         self.status = self.create_publisher(String, "/safety/status", 10)
         self.create_subscription(LaserScan, "/scan", self.timing.wrap('scan', self.on_scan), qos_profile_sensor_data)
         self.create_subscription(AckermannDriveStamped, "/drive", self.timing.wrap('command', self.on_command), 10)
         self.create_timer(.02, self.timing.wrap('control', self.control))
 
+    def on_input_boundary(self, msg):
+        boundary = float(json.loads(msg.data)['boundary_s'])
+        self.input_floor_s = boundary
+        self.scan = None
+        self.motion.begin_input_boundary(boundary)
+        if getattr(self, 'partial_policy', None) is not None:
+            self.partial_policy.reset()
+
     def on_scan(self, msg):
+        if seconds(msg.header.stamp) < self.input_floor_s:
+            return
         if self.scan is None or seconds(msg.header.stamp) >= seconds(self.scan.header.stamp):
             self.scan, self.scan_wall = mask_scan(msg, self.rear_blind_half_angle), time.monotonic()
 
@@ -89,6 +107,7 @@ class LidarSafety(Node):
         now = self.get_clock().now().nanoseconds * 1e-9
         if self.last_clock is not None and now < self.last_clock:
             self.scan = self.command = None
+            self.input_floor_s = -math.inf
             self.motion.history.reset()
             if getattr(self, 'partial_policy', None) is not None:
                 self.partial_policy.reset()

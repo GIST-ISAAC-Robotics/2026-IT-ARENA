@@ -23,13 +23,16 @@ class MergeProfile:
     final_offset_m: float
     wheelbase_m: float = .135
     max_steering_rad: float = .37
+    # 0.15 m는 도로 안 시작. 더 크면 잔디에서 시작해 도로로 들어오는 명시 장면이다.
+    maximum_initial_offset_m: float = .15
 
     def __post_init__(self):
         values = (self.start_distance_m, self.transition_m, self.final_offset_m,
-                  self.wheelbase_m, self.max_steering_rad)
+                  self.wheelbase_m, self.max_steering_rad, self.maximum_initial_offset_m)
         if (not all(_finite_number(v) for v in values)
                 or self.start_distance_m < 0 or min(self.transition_m, self.wheelbase_m, self.max_steering_rad) <= 0
-                or self.max_steering_rad >= math.pi/2 or abs(self.final_offset_m) > .15):
+                or self.max_steering_rad >= math.pi/2 or abs(self.final_offset_m) > .15
+                or not .15 <= self.maximum_initial_offset_m <= .35):
             raise ValueError('invalid merge profile')
 
 
@@ -39,8 +42,8 @@ def merge_profile_for_case(case):
         if 'merge_profile' in case:
             raise ValueError('merge profile requires explicit merge_straight route')
         return None
-    if case.get('additional_actors') or case.get('behavior_kind', case.get('name')) != 'stop_restart':
-        raise ValueError('merge trial supports one stop_restart primary actor')
+    if case.get('additional_actors') or case.get('behavior_kind', case.get('name')) not in ('stop_restart', 'slow_lead'):
+        raise ValueError('merge trial supports one stop_restart or following primary actor')
     try:
         profile = MergeProfile(**case['merge_profile'])
     except (TypeError, KeyError) as error:
@@ -54,7 +57,7 @@ def merge_profile_for_case(case):
 def merge_geometry(distance, initial_offset, profile):
     """후륜 y(x), 기울기·곡률과 등가 조향. 경로 양 끝에서 1·2차 도함수가 0인 quintic 전이."""
     if (not isinstance(profile, MergeProfile) or any(not _finite_number(v)
-            for v in (distance, initial_offset)) or distance < 0 or abs(initial_offset) > .15):
+            for v in (distance, initial_offset)) or distance < 0 or abs(initial_offset) > profile.maximum_initial_offset_m):
         raise ValueError('invalid merge coordinate')
     u = np.clip((distance-profile.start_distance_m)/profile.transition_m, 0., 1.)
     delta = profile.final_offset_m-initial_offset
@@ -92,6 +95,11 @@ def scheduled_merge_pose(centerline, start_s, schedule, elapsed, initial_offset,
     return merge_pose(centerline.pose(start_s), ev.actor_travel_m(schedule, elapsed), initial_offset, profile)
 
 
+def merge_surface(road, profile):
+    """잔디 시작 장면은 기존 측방 경로와 같은 도로+20 cm 잔디 폭 안이어야 한다."""
+    return road.buffer(.20) if profile.maximum_initial_offset_m > .15 else road
+
+
 def validate_merge_route(config, centerline, case, start_s, road, obstacles, straight_check):
     """도로·벽은 5 mm 표본, 등가 조향은 해석 상한으로 사전 검사한다. 연속 충돌 증명은 아니다."""
     from shapely.strtree import STRtree
@@ -110,15 +118,16 @@ def validate_merge_route(config, centerline, case, start_s, road, obstacles, str
     if travel < profile.start_distance_m+profile.transition_m:
         raise ValueError('merge is not completed in registered schedule')
     origin = centerline.pose(start_s)
+    allowed = merge_surface(road, profile)
     actor = config['actor']; tree = STRtree(obstacles)
     distances = np.linspace(0., travel, max(1, math.ceil(travel/.005))+1)
     minimum_edge = math.inf
     for distance in distances:
         footprint = rectangle(*merge_pose(origin, float(distance), initial, profile), actor['length_m'], actor['width_m'])
-        if (footprint.difference(road).area > 1e-6 or
+        if (footprint.difference(allowed).area > 1e-6 or
                 any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))):
             raise ValueError(f'merge footprint leaves road or touches wall at travel={distance:.5f}')
-        minimum_edge = min(minimum_edge, footprint.distance(road.boundary))
+        minimum_edge = min(minimum_edge, footprint.distance(allowed.boundary))
     return {'kind': 'merge_straight', **straight, 'sample_count': len(distances),
             'maximum_sample_step_m': .005, 'minimum_sampled_road_edge_m': minimum_edge,
             'continuous_steering_bound_rad': bound, 'max_steering_rad': profile.max_steering_rad,
@@ -148,6 +157,7 @@ def audit_merge_motion(config, case, centerline, start_s, green_s, actor, road, 
     c, s = math.cos(heading), math.sin(heading)
     offsets, moving_errors, static_errors = [], [], []
     outside = wall = 0
+    allowed = merge_surface(road, profile)
     tree = STRtree(obstacles)
     for t, x, y, yaw in rows:
         elapsed = t-green_s
@@ -158,7 +168,7 @@ def audit_merge_motion(config, case, centerline, start_s, green_s, actor, road, 
         (moving_errors if recent > 0 else static_errors).append(error)
         offsets.append(-(x-ox)*s+(y-oy)*c)
         body = rectangle(x, y, yaw, config['actor']['length_m'], config['actor']['width_m'])
-        outside += body.difference(road).area > 1e-6
+        outside += body.difference(allowed).area > 1e-6
         wall += any(body.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(body))
     checks = {
         'pose_coverage': coverage['valid'],
@@ -166,7 +176,9 @@ def audit_merge_motion(config, case, centerline, start_s, green_s, actor, road, 
         'lateral_motion_observed': abs(offsets[-1]-offsets[0]) >= rules['minimum_lateral_change_m'],
         'finishes_at_registered_offset': abs(offsets[-1]-profile.final_offset_m) <= rules['final_offset_error_max_m'],
         'moving_heading_matches': bool(moving_errors) and max(moving_errors) <= rules['moving_heading_error_max_rad'],
-        'static_heading_matches': bool(static_errors) and max(static_errors) <= rules['static_heading_error_max_rad'],
+        'static_heading_matches': (max(static_errors) <= rules['static_heading_error_max_rad'] if static_errors
+                                   else all(row['speed_mps'] > 0 for row in case['schedule'])),
+        # 잔디 시작 장면에서는 도로가 아니라 merge_surface(도로+20 cm 잔디 폭) 안을 뜻한다.
         'actor_stays_onroad': outside == 0,
         'actor_avoids_walls': wall == 0,
     }
@@ -175,4 +187,5 @@ def audit_merge_motion(config, case, centerline, start_s, green_s, actor, road, 
             'max_moving_heading_error_rad': max(moving_errors, default=None),
             'max_static_heading_error_rad': max(static_errors, default=None),
             'actor_outside_road_samples': int(outside), 'actor_wall_overlap_samples': int(wall),
+            'actor_surface': 'road_plus_20cm_grass' if profile.maximum_initial_offset_m > .15 else 'road',
             'scope': 'evaluation actor partial lateral merge; sampled geometry, not full lane change or vehicle dynamics'}

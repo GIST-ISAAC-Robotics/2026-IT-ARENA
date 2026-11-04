@@ -64,6 +64,7 @@ from arena_autonomy.lateral_intent import (LateralIntentConfig, ObservationGrid,
 from arena_autonomy.m3_observed_follow import command_arc
 from arena_autonomy.observation_support import depth_support
 from arena_autonomy.rear_fringe_trial import bounded_rear_fringe
+from arena_autonomy.static_side_return import StaticSideTracker
 from arena_autonomy.parallel_lane_trial import lateral_excursion
 
 NORMAL_BASELINE = ('local_follow', 'follow_gap_hold', 'follow_release_wait', 'local_follow_corridor_candidate')
@@ -264,11 +265,14 @@ class PassReleaseSelector:
         self.follow_config = follow_config
         self.config = config or SelectorConfig()
         self.lat = lateral_config(follow_config)
+        self.static_side = ({name: StaticSideTracker() for name, _ in SIDES}
+                            if follow_config.static_side_release_trial else None)
         self.reset()
 
     def reset(self):
         """명시 세션 재시작 전용. 센서 중단(reset 이벤트)에는 invalidate를 쓴다."""
         self.sides = {name: self._side() for name, _ in SIDES}
+        self._reset_static_side()
         self.epoch = self.last_source = self.last_ref = None
         self.guard_anchor, self.last_choice = {}, None
 
@@ -276,8 +280,21 @@ class PassReleaseSelector:
     def _side():
         return {'seen': False, 'present': False, 'clear': 0, 'passed': False, 'vanish': None, 'last_present': None}
 
+    def _reset_static_side(self):
+        for tracker in (self.static_side or {}).values():
+            tracker.reset()
+
+    def _world_fixed(self, name, now, now_side, evidence):
+        """자차 이동량만큼 물러나는 측방 반환은 측방 위협에서 뺀다. 경로 점유 검사는 그대로다."""
+        if self.static_side is None or not self.static_side[name].observe(now, now_side['frontmost_ds_m']):
+            return False
+        self.sides[name].update(self._side())
+        evidence[name]['world_fixed_return'] = True
+        return True
+
     def invalidate(self, reason):
         """시간 연결을 잃었다. 위협을 본 적이 있으면 양쪽을 unknown으로 두고 새 통과 증거를 요구한다."""
+        self._reset_static_side()
         if any(s['seen'] for s in self.sides.values()):
             for side in self.sides.values():
                 side.update(seen=True, present=False, clear=0, passed=False, vanish='unknown', last_present=None)
@@ -326,7 +343,15 @@ class PassReleaseSelector:
                             and 0 < b_speed <= partial_cap <= .5)
         # 관측 정책은 이미 이 G1 조향/직전 조향과 더 큰 속도의 제동 구간을 검사했다.
         # 그 승인을 평행 이동한 경로에 복사하지 않고 같은 G1 경로만 아래 GUARD 검사에 넣는다.
-        if p_speed > 0 or not (trigger in GUARD_GEOMETRY_REASONS or continuing or partial_baseline):
+        # 평행 이동한 후보만 막힌 경우에도 현재 관측의 원래 경로는 별개다.
+        # 명시 재획득의 낮은 측정속도에서 시작하며, 같은 GUARD 검사를 통과한
+        # 연속 진행만 잇는다. 위협 쪽 접근·점유·미관측/후방 검사는 아래 그대로다.
+        current_gap_recovery = (trigger == 'parallel_hold_unchanged_gap_hold'
+            and self.follow_config.standing_wall_reacquire
+            and (abs(speed) <= .10 or self.last_choice == 'guard_baseline')
+            and b_detail.get('boundary_from_memory') is False
+            and b_detail.get('path_source_s') == scene.source_first_s)
+        if p_speed > 0 or not (trigger in GUARD_GEOMETRY_REASONS or continuing or partial_baseline or current_gap_recovery):
             return None
         if b_detail.get('reason') not in GUARD_BASELINE_REASONS or not b_speed > 0 or speed < 0:
             return None
@@ -434,6 +459,8 @@ class PassReleaseSelector:
         if not 0 <= age < self.config.max_scene_age_s:
             return self._hold(previous, detail, self.invalidate('scene_age_out_of_range'))
         fresh = self.last_source is None or source > self.last_source
+        for tracker in (self.static_side or {}).values():
+            tracker.advance(speed, dt)
         self.epoch, self.last_source, self.last_ref = scene.source_epoch, source, now
         b_speed, b_steer, b_detail = baseline
         view = threat_view(scene, b_detail.get('path_points'), self.lat)
@@ -442,6 +469,8 @@ class PassReleaseSelector:
             for name, sign in SIDES:
                 side, now_side = self.sides[name], view[name]
                 evidence[name] = dict(now_side)
+                if self._world_fixed(name, now, now_side, evidence):
+                    continue
                 if now_side['present']:
                     side.update(seen=True, present=True, clear=0, passed=False,
                                 last_present={'t': now, 'rearmost_ds_m': now_side['rearmost_ds_m'],
@@ -507,6 +536,13 @@ class PassReleaseSelector:
             return chosen[0], chosen[1], {**chosen[2], **detail, 'selector_reason': 'baseline_not_normal',
                                           'selector_choice': 'baseline' if mode == 'SOLO' else 'parallel'}
         if mode == 'SOLO':
+            departure = (parallel[2].get('parallel_hold_trial') or {}).get('side_departure') or {}
+            if (c.side_departure_trial and b_speed <= 0 < parallel[0]
+                    and parallel[2].get('parallel_hold_selected') is True and departure.get('applied') is True):
+                # 정지한 측방 물체로 분류해도 중앙 경로가 열렸다는 뜻은 아니다.
+                # 현재 관측/두 fresh/비접근 검사를 끝낸 평행 출력을 계속 사용한다.
+                return parallel[0], parallel[1], {**parallel[2], **detail, 'selector_choice': 'parallel',
+                    'selector_reason': 'side_departure_keeps_verified_parallel'}
             return b_speed, b_steer, {**b_detail, **detail, 'selector_choice': 'baseline',
                                       'selector_reason': 'no_side_threat_seen'}
         if mode == 'GUARD':

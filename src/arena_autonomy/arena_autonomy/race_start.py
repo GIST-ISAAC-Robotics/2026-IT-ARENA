@@ -89,6 +89,24 @@ def _red_bank(blobs):
                 vertical=vertical, pairs=len(columns[0]))
 
 
+def bank_window(bank):
+    """빨강 네 열과 초록 예상 열을 포함하는 픽셀 창. 부품 좌표를 받지 않는다."""
+    left = bank['cx']-1.5*bank['pitch']
+    slope = (bank['gy']-bank['cy'])/(bank['gx']-bank['cx'])
+    left_y = bank['cy']+slope*(left-bank['cx'])
+    margin = 1.3*bank['diameter']
+    return (left-margin, min(left_y, bank['gy'])-bank['vertical']-margin,
+            bank['gx']+margin, max(left_y, bank['gy'])+bank['vertical']+margin)
+
+
+def _lamps_inside(bank, shape):
+    """예상 초록 광원 원판 전체가 실제 영상 안인지 본다. 잘린 광원은 판독하지 않는다."""
+    radius = bank['diameter']/2
+    rows = (-bank['vertical'], bank['vertical']) if bank['pairs'] == 2 else (0.,)
+    return (radius <= bank['gx'] < shape[1]-radius and
+            all(radius <= bank['gy']+row < shape[0]-radius for row in rows))
+
+
 def _known_red_subset(blobs, bank):
     """확인한 배열의 남은 광원만 허용한다. 가림/순차 소등을 출발로 해석하지 않는다."""
     if not blobs or len(blobs) >= 4*bank['pairs']:
@@ -113,6 +131,10 @@ def _known_red_subset(blobs, bank):
 
 
 class OfficialStartSignal:
+    # 수평 장착에서 광원이 놓이는 영상 상단. 영상 전체가 배열 하나로 설명되거나
+    # 이미 확인한 배열이 그 아래에 있을 때만 범위를 넓힌다.
+    SIGNAL_ROWS = .58
+
     def __init__(self, config=None):
         self.config = config or StartConfig()
         self.reset()
@@ -131,6 +153,20 @@ class OfficialStartSignal:
 
     def _red_observation(self, mask):
         return _components(mask)
+
+    def _red_in_signal_region(self, red):
+        rows = int(red.shape[0]*self.SIGNAL_ROWS)
+        if self.bank is not None:
+            rows = max(rows, math.ceil(bank_window(self.bank)[3]))
+        else:
+            # 전체 빨강이 온전한 배열 하나일 때만 상단 밖 위치를 인정한다.
+            # 일부 조각을 골라 배열을 만들지 않으며 그 외에는 기존 상단 판독과 같다.
+            blobs, unclassified = self._red_observation(red)
+            if not unclassified and _red_bank(blobs) is not None:
+                return blobs, False
+        red = red.copy()
+        red[rows:] = 0
+        return self._red_observation(red)
 
     def update(self, rgb, stamp_s):
         if isinstance(stamp_s, bool) or not isinstance(stamp_s, (float, int)) or not math.isfinite(stamp_s) or stamp_s < 0:
@@ -155,9 +191,7 @@ class OfficialStartSignal:
             self.observed = 'invalid_image'
             return False
         hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
-        red = red_signal_mask(hsv)
-        red[int(rgb.shape[0]*.58):] = 0
-        blobs, unclassified_red = self._red_observation(red)
+        blobs, unclassified_red = self._red_in_signal_region(red_signal_mask(hsv))
         if unclassified_red:
             # 연결되거나 찌그러져 광원 형상 검사에서 탈락한 빨강도 소등은 아니다.
             self._forget_pattern()
@@ -197,8 +231,8 @@ class OfficialStartSignal:
         half_x = bank['diameter']*.85
         half_y = bank['diameter']*.85+bank['vertical']
         # 예측 광원이 화면에 전부 들어오지 않으면 부분 영상으로 확정하지 않는다.
-        if not (0 <= bank['gx']-half_x and bank['gx']+half_x < rgb.shape[1] and
-                0 <= bank['gy']-half_y and bank['gy']+half_y < rgb.shape[0]*.58):
+        # 탐색 여유는 영상 끝에서 잘려도 되지만 광원 원판 자체는 모두 보여야 한다.
+        if not _lamps_inside(bank, rgb.shape):
             self.green_frames = 0
             self.observed = 'green_roi_outside'
             return False

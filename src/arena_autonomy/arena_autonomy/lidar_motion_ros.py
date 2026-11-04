@@ -79,6 +79,7 @@ class MotionInput:
         self.last_meta = {}
         self.gyro_rejections = {}
         self.last_gyro_rejection = None
+        self.input_floor_s = -math.inf
         # 독립 비교의 none도 같은 입력 부하를 받는다. 일반 none에서는 생성하지 않아도 된다.
         # 계측 이름 'wheels'는 기존 분석 호환용 구동 피드백 콜백 이름이다.
         wrap = node.timing.wrap if hasattr(node, 'timing') else lambda _, callback: callback
@@ -92,8 +93,15 @@ class MotionInput:
         if self.last_clock is not None and now < self.last_clock - 1e-9:
             self.history.reset()
             self.counts["resets"] += 1
+            self.input_floor_s = -math.inf
         self.last_clock = now
         return now
+
+    def begin_input_boundary(self, boundary_s):
+        """이력을 비우고 경계 전 취득 표본을 막는다. 운반 중 누적 이동을 새 위치에 잇지 않는다."""
+        self.history.reset()
+        self.counts["resets"] += 1
+        self.input_floor_s = boundary_s
 
     def capture(self, kind, stamp, values, accepted):
         accepted = bool(accepted)  # ROS covariance의 numpy.bool_도 JSON bool로 기록
@@ -111,7 +119,7 @@ class MotionInput:
             # 이름/개수 불일치는 거절한다. 비유한 값은 Series가 거절하고 기록에 남긴다.
             self.counts["rejected"] += 1
             return
-        accepted = stamp <= now + .1 and self.history.add_wheels(stamp, *values)
+        accepted = self.input_floor_s <= stamp <= now + .1 and self.history.add_wheels(stamp, *values)
         self.capture("wheels", stamp, values, accepted)
 
     def on_drive_motor(self, msg):
@@ -128,7 +136,7 @@ class MotionInput:
         # 아직 속도 기준이 없다는 뜻이며 Series가 거절·기록한다.
         speed_mps = mean_wheel * self.history.config.wheel_radius_m * self.history.config.wheel_scale
         accepted = (math.isfinite(position) and math.isfinite(speed_mps)
-                    and abs(speed_mps) <= self.max_motor_feedback_mps and stamp <= now + .1
+                    and abs(speed_mps) <= self.max_motor_feedback_mps and self.input_floor_s <= stamp <= now + .1
                     and self.history.add_mean_wheel(stamp, mean_wheel))
         self.capture("drive_motor", stamp, [motor_rad_s, mean_wheel], accepted)
 
@@ -148,6 +156,8 @@ class MotionInput:
             reason = "gyro_range_or_saturation"
         elif stamp > now + .1:
             reason = "gyro_future"
+        elif stamp < self.input_floor_s:
+            reason = "gyro_before_boundary"
         elif (self.history.gyro.times and stamp > self.history.gyro.times[-1]
               and abs((yaw - self.history.config.gyro_bias_rad_s) - self.history.gyro.values[-1]) >
               self.gyro_step_slack + self.gyro_slew_limit * (stamp - self.history.gyro.times[-1])):

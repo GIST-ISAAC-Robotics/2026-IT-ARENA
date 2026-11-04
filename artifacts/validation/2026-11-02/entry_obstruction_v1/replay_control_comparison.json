@@ -1,0 +1,99 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "path": "official_traffic_v1/p1",
+      "calls": 1059,
+      "full_match": true,
+      "first_detail_difference": null,
+      "new_diagnostic_calls": 1
+    },
+    {
+      "path": "official_traffic_v1/r1",
+      "calls": 1222,
+      "full_match": true,
+      "first_detail_difference": null,
+      "new_diagnostic_calls": 1
+    },
+    {
+      "path": "official_race_distance_v1/run1",
+      "control_matched_before_divergence": 234,
+      "first_detail_difference": {
+        "call": 200,
+        "reference_s": 11.620000000000001
+      },
+      "divergence_s": 12.32,
+      "expected": {
+        "speed": 0.35,
+        "steering": 0.03959496532311711,
+        "mode": "BYPASS"
+      },
+      "actual": {
+        "speed": 1.5,
+        "steering": -0.01971503512542674,
+        "mode": "FOLLOW"
+      },
+      "admission": {
+        "reason": "entry_command_candidates_available",
+        "padding_growth_s": 0.09999999999999964,
+        "scan_interval_s": 0.09999999999999964,
+        "since_first_receipt_s": 0.0,
+        "consistent": [],
+        "candidates": [
+          {
+            "offset_m": 0.0,
+            "transition_m": 0.9,
+            "eligible": true,
+            "reason": "observed_entry_command_candidate",
+            "preview_point_gap_m": 0.015257619561145075,
+            "preview_return_progress_m": 1.5405453345946096,
+            "target_speed_mps": 0.35,
+            "motion_region": {
+              "distance_m": 0.11392500000000011,
+              "queries": 796,
+              "unobserved": 0,
+              "masked_left": 39,
+              "masked_right": 0,
+              "masked_tail_extent_m": 6.572643642696607e-05,
+              "masked_front_samples": 0,
+              "current_boundary_assumption_applied_to_support": true
+            }
+          },
+          {
+            "offset_m": 0.27,
+            "transition_m": 0.9,
+            "eligible": true,
+            "reason": "observed_entry_command_candidate",
+            "preview_point_gap_m": -0.20681161381941626,
+            "preview_return_progress_m": 0.5727668551697908,
+            "target_speed_mps": 0.35,
+            "motion_region": {
+              "distance_m": 0.11392500000000011,
+              "queries": 784,
+              "unobserved": 0,
+              "masked_left": 19,
+              "masked_right": 4,
+              "masked_tail_extent_m": 7.702724897071245e-05,
+              "masked_front_samples": 0,
+              "current_boundary_assumption_applied_to_support": true
+            },
+            "entry_path_conflict": {
+              "rejected": true,
+              "reason": "current_return_inside_bypass_path",
+              "body_gap_m": -0.06851161317017966,
+              "overlap_tolerance_m": 0.03,
+              "free_space_verified": false
+            }
+          }
+        ],
+        "free_space_assumed": false,
+        "full_bypass_verified": false,
+        "policy": "same_corridor_local_until_observed_next_scan",
+        "next_scan_arrival_guaranteed": false,
+        "admitted": false
+      },
+      "full_match": false
+    }
+  ],
+  "scope": "실패 입력은 최초 명령/모드 차이까지만. 이전 진입 후보 진단 차이는 별도로 기록. 이후 실제 주행 결과는 새 폐루프 시험 필요."
+}

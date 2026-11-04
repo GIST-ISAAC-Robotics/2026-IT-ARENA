@@ -37,7 +37,9 @@ ros2 launch arena_bringup demo.launch.py autonomy_mode:=lidar
 ros2 launch arena_bringup demo.launch.py autonomy_mode:=stereo
 ```
 
-차량의 첫 RGB 영상이 준비되면 빨강 8초 → 노랑 2초 → 초록 유지 순서로 바뀝니다. 시간은 **시뮬레이션 시간**입니다. 컴퓨터 부하에 따라 실제 대기 시간은 더 길어집니다. 이는 시험용 순서이며, 실제 대회는 랜덤한 시각 신호를 인식하여 출발하고 무선 출발 신호는 없습니다. 차량은 이 시간표를 읽지 않고 RGB 영상에서 빨강을 먼저 확인한 뒤 초록을 연속 세 번 확인해야 출발합니다.
+> **11/2 후속:** 공식 월드 신호는 2×5로 바뀌었고 아래 `lidar`/`stereo` 데모의 임시 3등 검출기는 새 월드 출발이 미검증입니다. 현행 경로는 `local_pursuit`입니다. [실행 연결 기록](../../artifacts/validation/2026-11-02/official_facility_v1/README.md).
+
+차량의 첫 RGB 영상이 준비되면 시험 초록 1초 → 소등 1초 → 빨강 1·2·3열 각 1초 → 빨강 4열 `red_duration_s` → 초록 유지 순서로 바뀝니다. 시간은 **시뮬레이션 시간**입니다. 컴퓨터 부하에 따라 실제 대기 시간은 더 길어집니다. 이는 시험용 순서이며, 실제 대회는 랜덤한 시각 신호를 인식하여 출발하고 무선 출발 신호는 없습니다. 차량은 이 시간표를 읽지 않고 RGB 영상에서 빨강을 먼저 확인한 뒤 초록을 연속 세 번 확인해야 출발합니다.
 
 - `headless:=true`: GUI 없이 실행합니다.
 - `red_duration_s:=20`: 첫 빨간 신호 대기를 늘립니다.
@@ -73,7 +75,7 @@ ros2 service call /autonomy/enable std_srvs/srv/SetBool '{data: false}'
 
 ```bash
 ros2 service call /sim/traffic_light/set_red std_srvs/srv/Trigger '{}'
-ros2 service call /sim/traffic_light/set_yellow std_srvs/srv/Trigger '{}'
+ros2 service call /sim/traffic_light/set_off std_srvs/srv/Trigger '{}'
 ros2 service call /sim/traffic_light/set_green std_srvs/srv/Trigger '{}'
 ros2 service call /sim/traffic_light/reset std_srvs/srv/Trigger '{}'
 ```

@@ -17,7 +17,11 @@ def test_directional_contract_preserves_v1():
         name='src/arena_autonomy/arena_autonomy/bypass_initial_reference.py'
         def body(source,cls):
             return ast.dump(next(n for n in ast.parse(source).body if isinstance(n,ast.ClassDef) and n.name==cls))
-        current=(root/name).read_text(encoding='utf-8')
+        # 10/31의 클래스 대조는 그 뒤 계산 공유 변경 전 보존본에 대해 수행한다.
+        later=json.loads((root/'config/tests/same_call_reference_r1_sha256.json').read_text(encoding='utf-8'))
+        with zipfile.ZipFile(root/later['before_snapshot']) as preserved:
+            current=preserved.read(name).decode('utf-8')
+        assert sha(current.encode('utf-8'))==m3_revision_digest(name,newer_than='config/tests/g2_directional_reference_r1_sha256.json')
         assert body(z.read(name),'CurrentPairReference')==body(current,'CurrentPairReference')
     candidate=root/'artifacts/validation/2026-10-31/g2_directional_reference_v1/candidate.py'
     assert body(candidate.read_text(encoding='utf-8'),'DirectionalPairReference')==body(current,'DirectionalPairReference')

@@ -1,0 +1,36 @@
+.....FF................................................................. [ 23%]
+........................................................................ [ 46%]
+........................................................................ [ 69%]
+........................................................................ [ 93%]
+.....................                                                    [100%]
+=================================== FAILURES ===================================
+____ test_previous_steering_toward_either_side_blocks_progress[-0.16--0.03] ____
+
+side = -0.16, angle = -0.03
+
+    @pytest.mark.parametrize('side,angle', [(-.16, -.03), (.16, .03)])
+    def test_previous_steering_toward_either_side_blocks_progress(side, angle):
+        s = scene(side=side)
+        clearance, info = limited_clearance(s.occupied_endpoints_xy_m, (0., angle), .105,
+                                            0., .1, .02, cfg())
+>       assert clearance == 0 and info['reason'] == 'approaches_observed_side'
+E       assert (0.4 == 0)
+
+tests/test_parallel_side_departure.py:48: AssertionError
+_____ test_previous_steering_toward_either_side_blocks_progress[0.16-0.03] _____
+
+side = 0.16, angle = 0.03
+
+    @pytest.mark.parametrize('side,angle', [(-.16, -.03), (.16, .03)])
+    def test_previous_steering_toward_either_side_blocks_progress(side, angle):
+        s = scene(side=side)
+        clearance, info = limited_clearance(s.occupied_endpoints_xy_m, (0., angle), .105,
+                                            0., .1, .02, cfg())
+>       assert clearance == 0 and info['reason'] == 'approaches_observed_side'
+E       assert (0.4 == 0)
+
+tests/test_parallel_side_departure.py:48: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_parallel_side_departure.py::test_previous_steering_toward_either_side_blocks_progress[-0.16--0.03]
+FAILED tests/test_parallel_side_departure.py::test_previous_steering_toward_either_side_blocks_progress[0.16-0.03]
+2 failed, 307 passed in 64.50s (0:01:04)

@@ -1,0 +1,16 @@
+<style>.boardrow{display:grid;grid-template-columns:1.08fr 1fr;gap:18px;align-items:stretch}.bluebox{background:#f3f7f7;border:1px solid #c9d8d7;border-radius:10px;padding:12px 14px}.boardfig{width:100%;display:block}.band{background:#e4f0ea;padding:12px 16px;border-left:4px solid #00847c;margin-top:15px}.stackcap{font-size:14px;color:#445e66;margin:5px 0}.grid .stackcard svg{height:160px}.edgehint{color:#51696b;font-size:13px}.boardrow h3{font-size:17px}@media(max-width:710px){.boardrow{grid-template-columns:1fr}}</style>
+<section id="jplate"><div class="kicker">IT ARENA　/　하드웨어팀 전달　·　도면 01</div><h1>J안: 라이다를 앞으로, 보강은 뒤로</h1>
+<p class="lede">첫 줄은 같은 후방 구조에서 센서만 이동합니다. 둘째 줄은 실제 지주·부품이 광학창과 같은 높이에 남을 때의 차이입니다.</p>
+<div class="legend"><span><i class="key" style="background:#006e70;border-radius:50%"></i>센서 회전축</span><span><i class="key" style="background:#485f67"></i>창 높이의 구조</span><span><i class="key" style="background:#efad86"></i>가려지는 방향</span><span>↑ 차량 앞　·　외곽 200 × 150 mm</span></div><div id="jcards" class="grid"></div>
+<div class="band"><b>목업 추천: +50 mm 전진 / 네 지주 / 위·아래에서 후방 보강.</b> +60 mm는 동일 뒤판의 가림을 조금 더 줄이지만 앞범퍼와 센서 몸체 사이의 여유도 10 mm 줄입니다.</div><p class="foot">주황은 가려지는 방향이고 검출률이 아닙니다. JP는 얇은 PCB 단독이 아닌, 커넥터·전장품 등이 창 높이에서 연속폭을 차지하는 경우입니다.</p></section>
+<section id="packplate"><div class="kicker">IT ARENA　/　하드웨어팀 전달　·　도면 02</div><h1>낮은 C1과 PDB 두 장을 같이 넣는 법</h1><p class="lede">상판 = C1 위에서 부품을 받치는 <b>첫 번째 선반</b>. 라이다 층 전체를 깊은 빈 상자로 남길 필요는 없습니다. 빛이 지나는 높이를 비웁니다.</p>
+<div class="boardrow" style="margin-top:14px"><div class="bluebox"><h3>위에서 · PDB는 장변을 앞뒤로</h3><div id="boardplan"></div><p class="stackcap">J01·M01은 <b>서로 다른 높이</b>에 한 장씩 겹칩니다. 100 mm 폭이면 차체 한쪽에 명목 25 mm가 남습니다. 반대로 놓으면 5 mm입니다. 실제로는 지주·플러그가 이 공간을 씁니다. 아래층에는 바퀴가 들어갈 홈을 내고 뒤 지주를 바퀴 안쪽에 둡니다.</p></div>
+<div class="bluebox"><h3>옆에서 · 광축 75 mm를 예로</h3><div id="boardside"></div><p class="stackcap">설치면 45.2 / C1 꼭대기 86.5 / 첫 선반 밑면 95.2 mm는 <b>층간 유효 50 mm 가정의 예시</b>입니다. 두 보드의 상하 순서·부품 높이·플러그 인출 공간은 실물 치수로 정합니다.</p></div></div>
+<div class="band"><b>높이 후보:</b> Ø65 mm 타이어라면 광축 60 mm는 자기 바퀴를 자르고, 75 mm는 수평·직립 상태에서 타이어 꼭대기보다 10 mm 높습니다. 기존 95 mm와 함께 목업에서 비교하세요. 조향 부품·범퍼·낮은 상대차도 별도 확인해야 합니다.</div>
+<p class="foot">보드 두 장의 공식 평면 치수는 각각 100 × 140 mm입니다. 측면도에서 보드/부품의 높이와 상부 간격은 설명용이며 검차·조립 승인 도면이 아닙니다.</p></section>
+<script>
+addEventListener('DOMContentLoaded',()=>{
+  const notes={J0:'후방판만 남긴 기존 비교군',J50:'앞범퍼까지 몸체 여유 22.2 mm',J60:'몸체 여유 12.2 mm · 정면 근거리 10 mm',JS:'뒤판만의 각도에 지주 그림자가 추가',JP:'뒤에서 100 mm 들어온 140 mm 폭 단면',JR:'앞줄 (10, ±62), 뒷줄 (−80, ±52) mm'};
+  for(const l of data.stack.layouts)ele('jcards').insertAdjacentHTML('beforeend','<article class="card stackcard '+(l.id==='JR'?'rec':'')+'"><div class="cardhead"><span class="tag">'+l.id+'</span><h3>'+l.name+'</h3></div><div class="cap">'+l.note+'</div>'+diagram(l,true)+'<div class="stat">전체 사각 <b>'+fmt(l.total_deg)+'°</b></div><div class="edgehint">'+notes[l.id]+'</div></article>');
+});
+</script>

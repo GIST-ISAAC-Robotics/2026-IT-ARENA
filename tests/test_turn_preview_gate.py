@@ -44,7 +44,7 @@ def test_profile_adds_only_this_option_and_leaves_ray_candidate_out():
     new = profiles['g1_open_10kmh_solo_gap05_arc_preview']
     assert new == {**profiles['g1_open_10kmh_solo_gap05_arc'], 'g1_preview_above_base_speed': True}
     assert 'g1_ray_wall_continuity' not in new
-    assert [k for k, v in profiles.items() if 'g1_preview_above_base_speed' in v] == ['g1_open_10kmh_solo_gap05_arc_preview', 'g1_open_10kmh_solo_gap05_arc_preview_bridge']
+    assert [k for k, v in profiles.items() if 'g1_preview_above_base_speed' in v] == ['g1_open_10kmh_solo_gap05_arc_preview', 'g1_open_10kmh_solo_gap05_arc_preview_bridge', 'g1_open_10kmh_solo_gap05_arc_preview_bridge_ray']
 
 
 def test_target_above_base_is_reevaluated_only_with_the_option(monkeypatch):

@@ -4,7 +4,7 @@
 from dataclasses import replace
 import math
 import numpy as np
-from arena_autonomy.bypass_entry_trial import _compare_entries, current_outer_wall_padding
+from arena_autonomy.bypass_entry_trial import _compare_entries, current_outer_wall_padding, preview_point_gap
 from arena_autonomy.bypass_signed_hold_trial import SignedHoldGuide
 from arena_autonomy.bypass_corridor_trial import wall_frame, boundary_face, connected_wall_returns
 from arena_autonomy.lidar_motion import MotionUnavailable
@@ -19,6 +19,24 @@ def local_admission(row,cap):
     return (row.get('eligible') is True and bool(row.get('offset_m'))
         and isinstance(target,(int,float)) and not isinstance(target,bool)
         and math.isfinite(target) and target+1e-12>=cap)
+
+
+def entry_path_conflict(row, scene, config):
+    """현재 보이는 물체를 깊게 관통하는 우회 후보만 진입 전에 제외한다.
+
+    미래 이동 여유가 아닌 차체 자체와 현재 반환의 겹침을 본다. 측정 여유
+    이내의 얕은 겹침은 이 선택 기준으로 제외하지 않는다. 기존 명령/정지
+    검사는 그대로이며, 이 결과는 경로의 자유 공간이나 완주 보장이 아니다.
+    """
+    path = np.asarray(row.get('path_points', []), dtype=float)
+    points = np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1, 2)
+    if path.ndim != 2 or path.shape[1] != 2 or len(path) < 2 or not np.isfinite(path).all():
+        return dict(rejected=True, reason='entry_path_unavailable', body_gap_m=None)
+    gap = preview_point_gap(path, points, np.zeros(len(points)), config) if len(points) else None
+    rejected = gap is not None and gap < -config.measurement_padding_m
+    return dict(rejected=rejected, reason='current_return_inside_bypass_path' if rejected
+                else 'no_deep_current_path_conflict', body_gap_m=gap,
+                overlap_tolerance_m=config.measurement_padding_m, free_space_verified=False)
 
 class ForecastGuide(SignedHoldGuide):
     def evaluate(self,scene,history,speed,previous,dt):
@@ -115,6 +133,7 @@ def configure_guide(owner,guide_type=None):
         stationary_outer_boundary=old.stationary_outer_boundary,wall_reanchor=old.wall_reanchor,
         tracked_wall_fit=old.tracked_wall_fit,rejoin_enabled=old.rejoin_enabled,
         corridor_policy=old.corridor_policy)
+    owner.bypass.guide.steerable_transition=old.steerable_transition
 
 def discard_path_only(owner):
     # 운행 허가·경로·초기벽 확인은 삭제한다. 같은 시각축의 면 관측만 보관한다.
@@ -146,11 +165,21 @@ def execution_entries(owner,scene,speed,previous,dt):
         reference_provider=getattr(guide,'reference_provider',None))
     # 재관측을 수반하는 지역 진행이다. 전체 전이의 자유 공간을 선언하지 않는다.
     # 미래 여유로 실제 상한 명령과 정지 영역까지 성립하는 후보만 받는다.
-    usable=sorted((r['offset_m'],r['transition_m']) for r in result['candidates']
-        if local_admission(r,owner.bypass.guide.entry.speed_cap_mps))
+    usable=[]
+    for r in result['candidates']:
+        if not local_admission(r,owner.bypass.guide.entry.speed_cap_mps):
+            continue
+        if owner.execution.entry_motion_gate:
+            r['entry_path_conflict']=entry_path_conflict(r,scene,owner.config)
+            if r['entry_path_conflict']['rejected']:
+                continue
+        usable.append((r['offset_m'],r['transition_m']))
+    usable.sort()
     return usable,dict(reason=result['reason'],padding_growth_s=growth,scan_interval_s=interval,
         since_first_receipt_s=elapsed,consistent=[list(u) for u in usable],
-        candidates=[{k:r.get(k) for k in ('offset_m','transition_m','eligible','reason','preview_point_gap_m',
-            'preview_return_progress_m','target_speed_mps','motion_region')} for r in result['candidates']],
+        candidates=[dict({k:r.get(k) for k in ('offset_m','transition_m','eligible','reason','preview_point_gap_m',
+            'preview_return_progress_m','target_speed_mps','motion_region')},
+            **({'entry_path_conflict':r['entry_path_conflict']} if 'entry_path_conflict' in r else {}))
+            for r in result['candidates']],
         free_space_assumed=False,full_bypass_verified=False,
         policy='same_corridor_local_until_observed_next_scan',next_scan_arrival_guaranteed=False)

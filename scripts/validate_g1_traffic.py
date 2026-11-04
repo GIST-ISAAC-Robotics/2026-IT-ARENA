@@ -87,7 +87,7 @@ SOURCE_FILES = [
         'vision_process', 'lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'follow_trace',
         'partial_observation', 'partial_surface_alignment', 'parallel_lane_trial', 'pass_release_trial',
         'traffic_recovery_trial', 'traffic_path_recovery_trial', 'corridor_roles',
-        'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial', 'released_rear_sweep', 'rear_lane_keep_trial', 'observed_lane_preference_trial', 'observed_parallel_speed_trial', 'measured_lane_preference_trial', 'measured_parallel_speed_trial', 'measured_parallel_trial', 'fresh_parallel_trial', 'fresh_parallel_speed_trial',
+        'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial', 'released_rear_sweep', 'rear_lane_keep_trial', 'observed_lane_preference_trial', 'observed_parallel_speed_trial', 'measured_lane_preference_trial', 'measured_parallel_speed_trial', 'measured_parallel_trial', 'fresh_parallel_trial', 'fresh_parallel_speed_trial', 'current_lane_preference',
         'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'continuous_prefix', 'occupancy_timing', 'race_start', 'race_start_local',
         'observation_support', 'scan_topology', 'observation_lateral', 'linear_observation', 'race_session', 'race_permission')],
     *[f'src/arena_vehicle_interface/arena_vehicle_interface/{name}.py' for name in (
@@ -259,6 +259,9 @@ def primary_pose_at(config, centerline, s0, case, elapsed):
 
 def actor_sdf(config, pose):
     actor = config['actor']
+    outline = actor.get('visual_outline', 'box')
+    if outline not in ('box', 'recessed_sides'):
+        raise ValueError('unknown evaluation actor visual outline')
     x, y, yaw = pose
     z = actor['bottom_m']+actor['height_m']/2
     size = f"{actor['length_m']} {actor['width_m']} {actor['height_m']}"
@@ -270,11 +273,25 @@ def actor_sdf(config, pose):
     link = ET.SubElement(model, 'link', name='body')
     collision = ET.SubElement(link, 'collision', name='collision')
     ET.SubElement(ET.SubElement(ET.SubElement(collision, 'geometry'), 'box'), 'size').text = size
-    visual = ET.SubElement(link, 'visual', name='visual')
-    ET.SubElement(ET.SubElement(ET.SubElement(visual, 'geometry'), 'box'), 'size').text = size
-    material = ET.SubElement(visual, 'material')
-    for tag in ('ambient', 'diffuse'):
-        ET.SubElement(material, tag).text = '.55 .08 .08 1'
+    # 감지 윤곽만 달리한다. 접촉·간격 평가는 기존 외접 상자로 보수적으로 유지한다.
+    visuals = [('visual', None, size)]
+    if outline == 'recessed_sides':
+        length, width, height = (float(actor[k]) for k in ('length_m', 'width_m', 'height_m'))
+        if not all(math.isfinite(v) and v > 0 for v in (length, width, height)):
+            raise ValueError('recessed actor requires finite positive dimensions')
+        visuals = [
+            ('visual_center', '0 0 0 0 0 0', f'{length*.8} {width*2/3} {height}'),
+            ('visual_front', f'{length*.45} 0 0 0 0 0', f'{length*.1} {width} {height}'),
+            ('visual_rear', f'{-length*.45} 0 0 0 0 0', f'{length*.1} {width} {height}'),
+        ]
+    for name, local_pose, visual_size in visuals:
+        visual = ET.SubElement(link, 'visual', name=name)
+        if local_pose is not None:
+            ET.SubElement(visual, 'pose').text = local_pose
+        ET.SubElement(ET.SubElement(ET.SubElement(visual, 'geometry'), 'box'), 'size').text = visual_size
+        material = ET.SubElement(visual, 'material')
+        for tag in ('ambient', 'diffuse'):
+            ET.SubElement(material, tag).text = '.55 .08 .08 1'
     sensor = ET.SubElement(link, 'sensor', name='eval_contact', type='contact')
     ET.SubElement(sensor, 'always_on').text = 'true'
     ET.SubElement(sensor, 'update_rate').text = '200'
@@ -379,11 +396,17 @@ def main():
     parser.add_argument('--case', required=True)
     parser.add_argument('--team-signal-course', action='store_true',
                         help='11/1 등록된 155초 앞차·옆차와 2×5 픽셀 출발을 사용한다.')
+    parser.add_argument('--official-signal-course', action='store_true',
+                        help='공식 v2026.11.01 실행 월드와 2×5 점등을 쓰는 선정 교통 시험. 11/1 fixture 경로와 별개다.')
     parser.add_argument('--seed', type=int, choices=(0, 1, 2), required=True)
     parser.add_argument('--mode', choices=('g1', 'r0', 'r0plus', 'm3', 'g1g2'), required=True)
     parser.add_argument('--handoff-reserve', choices=('fixed','moving','closing','recent','low_motion','paced'),
                         help='G1/G2 앞차 비교: 고정 여유, 이동 속도 추종, 또는 이동 속도와 남은 거리로 접근.')
     parser.add_argument('--handoff-rear-sweep', action='store_true', help='통과 후 저속 후반부 이동 시험')
+    parser.add_argument('--current-lane-preference-trial', action='store_true', help='정지 측방 반환 뒤 현재 관측 직선의 차선 유지 선호')
+    parser.add_argument('--side-departure-trial', action='store_true', help='완전 관측 직선의 측방 시차 겹침에서 비접근 저속 출발 후보')
+    parser.add_argument('--handoff-observed-motion', action='store_true',
+                        help='세계 고정 측방 반환과 전진 시작 조각을 구별하는 선택형 후보. 공식 교통 경로 전용.')
     parser.add_argument('--handoff-yield-progress', action='store_true',
                         help='현재 면의 전진 근거로 우회 양보 예산을 갱신하는 선택형 비교')
     parser.add_argument('--m3-command-fallback', action='store_true',
@@ -407,6 +430,8 @@ def main():
                         help='선택형 G1/M3 시험용 거리오차/추가 지연. 기본 무주입, 취득 시각 유지')
     parser.add_argument('--motion-test-profile', type=Path,
                         help='선택형 G1/M3 시험용 IMU/단일 모터축 오차·지연. 기본 무주입')
+    parser.add_argument('--local-sensor-config', default=None,
+                        help='시험 전용 local_pursuit 센서/장착 YAML. 기본은 패키지 b0183_c1.yaml')
     parser.add_argument('--record-braking-diagnostics', action='store_true',
                         help='평가 전용 바퀴/차체/토크 시계열 보존; 제어 및 판정은 변경하지 않음')
     parser.add_argument('--record-wheel-contacts', action='store_true',
@@ -490,11 +515,16 @@ def main():
         args.actor_overlay.resolve().relative_to(REPO)
     case = overlay_case(case_named(config, args.case), args.actor_overlay)
     merge_profile = merge_profile_for_case(case)
-    if merge_profile is not None and (args.mode != 'g1' or args.race_operation_test or args.lidar_test_profile or motion_profile):
+    if (args.handoff_observed_motion or args.side_departure_trial or args.current_lane_preference_trial) and not args.official_signal_course:
+        raise ValueError('관측 이동 후보는 공식 교통 경로에서만 선택한다')
+    if args.team_signal_course and args.official_signal_course:
+        raise ValueError('11/1 fixture와 공식 월드 교통 경로는 함께 선택할 수 없다')
+    if merge_profile is not None and (args.mode != ('g1g2' if args.official_signal_course else 'g1') or args.race_operation_test
+                                      or args.lidar_test_profile or motion_profile):
         raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
     specs = actor_specs(config, case)
     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
-    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep)
+    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial)
     facility_sources = {}
     world_dir = DEMO_WORLD
     if args.team_signal_course:
@@ -502,7 +532,11 @@ def main():
         from prelap_signal_eval import FIXTURE
         facility_sources = course.inputs(args, config, case)
         world_dir = FIXTURE
-    if handoff_arguments and ((not args.team_signal_course and (args.case not in ('stop_restart','slow_lead') or args.actor_overlay))
+    elif args.official_signal_course:
+        import official_traffic_course as official
+        facility_sources = official.inputs(args, config, case)
+    selected_course = args.team_signal_course or args.official_signal_course
+    if handoff_arguments and ((not selected_course and (args.case not in ('stop_restart','slow_lead') or args.actor_overlay))
             or args.seed != 0 or
             args.race_operation_test or lidar_profile or motion_profile or args.partial_observation_policy != 'strict'
             or args.zero_speed_mode != 'legacy' or args.physics_step
@@ -510,7 +544,7 @@ def main():
             or args.pass_release_trial or args.traffic_recovery_trial or args.guard_curve_trial
             or args.traffic_path_recovery_trial or args.boundary_evidence != 'connected' or args.occupancy_timing != 'oldest'):
         raise ValueError('registered G1/G2 traffic comparison uses its fixed configuration, seed 0 and no overlays')
-    if handoff_arguments and not args.team_signal_course:
+    if handoff_arguments and not selected_course:
         reference=load_config(CONFIG)
         if (case != case_named(reference,args.case) or actor_cfg != reference['actor']
                 or acceptance != reference['acceptance'] or config['seeds']['0'] != reference['seeds']['0']):
@@ -807,6 +841,8 @@ def main():
         if args.record_wheel_contacts:
             extra.append('evaluation_wheel_contacts:=true')
         extra += drivetrain_evaluation_arguments(args.zero_speed_mode, args.physics_step)
+        if args.local_sensor_config is not None:
+            extra.append('local_sensor_config:='+str(Path(args.local_sensor_config).resolve(strict=True)))
         processes.append(start_demo_process(
             log, launch['speed_profile'], launch['lidar_rate_hz'], True, launch['red_duration_s'],
             launch['autonomy_mode'], args.team_signal_course, launch['lidar_acquisition'], launch['lidar_compensation'],
@@ -1196,6 +1232,12 @@ def main():
                 report['team_signal_evidence']=course.signal(output, report.get('signal_states',[]), trace)
             except (OSError,ValueError,KeyError,IndexError,TypeError) as error:
                 report['team_signal_evidence']=dict(passed=False,error=str(error))
+        else:
+            try:
+                import official_traffic_course as official
+                report['official_signal_evidence']=official.signal(output, report.get('signal_states',[]), trace, scene)
+            except (OSError,ValueError,KeyError,IndexError,TypeError) as error:
+                report['official_signal_evidence']=dict(passed=False,error=str(error))
         ev.finalize_verdict(report, args.mode)
         if merge_profile is not None:
             try:
@@ -1259,7 +1301,7 @@ def main():
             report['m4_operation']['original_traffic_verdict_preserved'] = True
         if handoff_arguments:
             try:
-                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep)
+                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial)
             except (OSError,KeyError,ValueError,StopIteration) as error:
                 evidence = {'passed':False,'error':repr(error)}
             report['handoff_execution'] = evidence

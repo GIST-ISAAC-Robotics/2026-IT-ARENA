@@ -108,7 +108,7 @@ def test_reference_provider_requires_current_ready_state(monkeypatch,ready,obser
     original=(None,dict(reason='straight_entry_only'))
     proposed=((0.,0.,-.15,1.5),dict(reason='current_tracked_pair_candidate'))
     monkeypatch.setattr(c,'straight_reference',lambda *_:original)
-    monkeypatch.setattr(helper.memory,'resolve',lambda *_:proposed)
+    monkeypatch.setattr(helper.memory,'resolve',lambda *_,**kwargs:proposed)
     helper.update(scene,config,None)
     monitor=NS(result=dict(ready=ready,observed=observed),motion_evidence=lambda:moving)
     expected=proposed if ready and observed and not moving else original
@@ -117,6 +117,23 @@ def test_reference_provider_requires_current_ready_state(monkeypatch,ready,obser
     assert helper.reference(scene,object(),monitor)==original
     helper.clear()
     assert helper.reference(scene,config,monitor)==original
+
+
+@pytest.mark.parametrize('directional',[False,True])
+def test_original_fit_is_shared_within_call_but_recomputed_next_call(monkeypatch,directional):
+    from unittest.mock import Mock
+    from test_bypass_handoff import context
+    original=c.straight_reference
+    observed=Mock(wraps=original)
+    monkeypatch.setattr(c,'straight_reference',observed)
+    helper=c.ReadyInitialReference(directional_coverage=directional)
+    config=handoff_baseline()
+    for index,now in enumerate((.5,.52,.6),1):
+        _,history,scene=context(now)
+        helper.update(scene,config,history)
+        assert observed.call_count==index
+        assert helper.original==original(scene,config)
+        assert helper.scene is scene and helper.config is config
 
 
 @pytest.mark.parametrize('speed,raw_valid',[(None,True),(float('nan'),True),(0.,False),(-.05,True)])

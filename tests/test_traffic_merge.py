@@ -132,3 +132,12 @@ def test_route_checks_whole_rotated_body_and_rejects_wall_or_tight_steering():
     case['merge_profile'] = {**vars(P), 'transition_m': .2}
     with pytest.raises(ValueError, match='steering'):
         validate_merge_route(config, Straight(), case, .3, box(-1., -.225, 3., .225), [], straight)
+
+
+def test_side_start_surface_is_named_in_the_audit():
+    from traffic_merge import merge_surface
+    from shapely.geometry import box
+    road = box(0., -.225, 3., .225)
+    plain, side = MergeProfile(.5, .8, 0.), MergeProfile(0., .9, 0., maximum_initial_offset_m=.32)
+    assert merge_surface(road, plain) is road
+    assert merge_surface(road, side).contains(box(1., -.4, 1.2, -.3))

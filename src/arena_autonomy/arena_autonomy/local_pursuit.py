@@ -1,10 +1,11 @@
 """B0183 신호/분기 인식 + C1 지역 경로 추종. 기존 벽 추종과 선택 가능."""
 import json
+import math
 import time
 
 from arena_autonomy.local_path import mask_scan, pursuit_command
 from arena_autonomy.core import marker_ids
-from arena_autonomy.wall_follow import WallFollow
+from arena_autonomy.wall_follow import WallFollow, stamp_seconds
 from arena_autonomy.vision_process import VisionPipeline, VisionProcess
 from arena_vehicle_interface.node_lifecycle import run_node
 from arena_autonomy.local_follow import FollowConfig, LocalFollow
@@ -12,12 +13,26 @@ from arena_autonomy.scene_motion import motion_scene
 from arena_autonomy.lidar_motion import MotionUnavailable
 
 
+# 경로는 맞지만 실제 앞차·점유 때문에 멈춘 판단. 경로 계획/독립 보호가 처리할 상황이므로 재개를 막지 않는다.
+ROUTE_HOLDS = ('follow_gap_hold',)
+
+
 class LocalPursuit(WallFollow):
+    # 같은 경기 재개의 입력 경계. 수신 시각이 아니라 원천 취득 시각으로 비교한다.
+    input_floor_s = -math.inf
+    resume_route = None
+    side_marker = None
+    scans_before_boundary = 0
+
     def __init__(self):
         super().__init__("local_pursuit")
         self.rear_blind_half_angle = float(self.declare_parameter('rear_blind_half_angle_deg', 30.).value)
         if not 0 <= self.rear_blind_half_angle <= 80:
             raise ValueError('rear_blind_half_angle_deg must be within 0..80')
+        # 시험 전용 장착 구조 각도(JSON). 기본 ''이면 기존 후방 반각 실수 그대로.
+        from arena_autonomy.local_scene import blind_parameter
+        self.rear_blind_half_angle = blind_parameter(self.rear_blind_half_angle,
+            str(self.declare_parameter('lidar_blind_sectors_json', '').value))
         if self.motion is None:
             raise ValueError("local_pursuit는 엔코더/IMU 운동 보정이 필요합니다.")
         self.g1_enabled = bool(self.declare_parameter('g1_follow_enabled', False).value)
@@ -130,6 +145,7 @@ class LocalPursuit(WallFollow):
             preview_above_base_speed=bool(self.declare_parameter('g1_preview_above_base_speed',False).value),
             boundary_bridge=bool(self.declare_parameter('g1_boundary_bridge',False).value),
             low_speed_arc_reacquire=bool(self.declare_parameter('g1_low_speed_arc_reacquire',False).value),
+            standing_wall_reacquire=bool(self.declare_parameter('g1_standing_wall_reacquire',False).value),
             lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),
             wall_offset_m=float(self.settings['target_wall_distance_m']))) if (self.g1_enabled or self.r0_plus_enabled) else None
         if self.m3_execution_enabled:
@@ -163,10 +179,13 @@ class LocalPursuit(WallFollow):
             from std_msgs.msg import String
             from arena_autonomy.race_session import McuObserver, RaceSupervisor
             self.race = RaceSupervisor(self.vision_pipeline, image_max_age_s=self.settings['image_timeout_s'],
-                mcu=McuObserver(wall_timeout_s=self.settings['sensor_wall_timeout_s']), now_s=self.now_s())
+                mcu=McuObserver(wall_timeout_s=self.settings['sensor_wall_timeout_s']), now_s=self.now_s(),
+                resume_wall_timeout_s=3*self.settings['sensor_wall_timeout_s'])
             self.race_result_publisher = self.create_publisher(String, '/race/command_result', 10)
             self.create_subscription(String, '/actuation/status', self.on_mcu_status, 10)
             self.create_subscription(String, '/race/command', self.on_race_command, 10)
+            self.create_subscription(String, '/race/operator_link', self.on_operator_link, 10)
+            self.input_boundary_publisher = self.create_publisher(String, '/race/input_boundary', 10)
             self.get_logger().info('B3 race supervisor candidate: session='+self.race.session)
         self.follow_trace = self.create_follow_trace(trace_path)
 
@@ -211,8 +230,27 @@ class LocalPursuit(WallFollow):
             self.reset_follow(reason)
         self.signal = self.vision_pipeline.signal
         self.ids = []
+        self.input_floor_s = -math.inf
+        self.resume_route = None
         self.stop()
         return result
+
+    def begin_input_boundary(self, boundary_s, reason):
+        """같은 경기 입력 경계. 경기/출발 사실과 논리적 기준 벽은 두고 기하·운동·영상 이력만 버린다.
+
+        영상 세대는 RaceSupervisor가 같은 호출에서 올린다. 경계 전 취득 입력은 늦게 도착해도 쓰지 않는다.
+        """
+        from std_msgs.msg import String
+        self.input_floor_s = boundary_s
+        self.scan, self.scan_wall_time = None, 0.
+        self.rgb_stamp, self.image_wall_time = None, 0.
+        self.ids = []
+        self.resume_route = None
+        self.motion.begin_input_boundary(boundary_s)
+        if getattr(self, 'follow', None) is not None:
+            self.reset_follow(reason)
+        self.stop()
+        self.input_boundary_publisher.publish(String(data=json.dumps(dict(boundary_s=boundary_s, reason=reason))))
 
     def on_enable(self, request, response):
         if getattr(self, 'race', None) is None:
@@ -241,16 +279,52 @@ class LocalPursuit(WallFollow):
         except ValueError:
             payload = None
         previous = self.race.permission.race_epoch
-        result = self.race.handle_command(payload, self.now_s())
+        result = self.race.handle_command(payload, self.now_s(), time.monotonic())
         if result['accepted'] and self.race.permission.race_epoch != previous:
             # handle_command가 경기/영상 세대를 바꿨다. 계획기 기억과 신호 참조도 같은 콜백에서 정리한다.
             self.race_reset(lambda: None, 'new_race')
         elif result['accepted'] and result['op'] == 'stop':
             self.stop()
+        elif result['accepted'] and result['op'] in ('recovery_reset', 'resume_start', 'restore_race'):
+            if result['op'] == 'restore_race':
+                self.side, self.side_marker = result['side'], None
+            self.begin_input_boundary(result['boundary_s'], result['op'])
         self.race_result_publisher.publish(String(data=json.dumps(result, ensure_ascii=False, allow_nan=False)))
+
+    def on_operator_link(self, message):
+        self.race.operator_link(message.data, time.monotonic())
+
+    def resume_inputs(self, now):
+        """START 경계 뒤 원천 시각의 입력만 준비 완료로 센다. 영상은 처리까지 끝난 프레임만 인정한다."""
+        boundary = self.race.resume['boundary_s']
+        history = self.motion.history
+        return dict(scan=self.scan is not None and boundary <= stamp_seconds(self.scan.header.stamp)
+                         and now-stamp_seconds(self.scan.header.stamp) < self.settings['scan_timeout_s'],
+                    rgb=self.rgb_stamp is not None and self.rgb_stamp >= boundary,
+                    gyro=bool(len(history.gyro.times)) and history.gyro.times[-1] >= boundary,
+                    encoder=bool(len(history.wheels.times)) and history.wheels.times[-1] >= boundary)
+
+    def input_snapshot(self, now):
+        """표시용 입력 나이. 판정에 쓰지 않으며 값이 없으면 None으로 남긴다."""
+        history = self.motion.history
+        scan_stamp = None if self.scan is None else stamp_seconds(self.scan.header.stamp)
+        gyro = history.gyro.times[-1] if len(history.gyro.times) else None
+        encoder = history.wheels.times[-1] if len(history.wheels.times) else None
+        ages = dict(scan=scan_stamp, rgb=self.rgb_stamp, gyro=gyro, encoder=encoder)
+        return dict(age_s={key: None if value is None else now-value for key, value in ages.items()},
+                    floor_s=None if math.isinf(self.input_floor_s) else self.input_floor_s,
+                    side_marker=self.side_marker, route=self.resume_route,
+                    before_boundary=dict(scan=self.scans_before_boundary,
+                                         rgb=self.vision_pipeline.stats['before_boundary']),
+                    gyro_rejected=self.motion.last_gyro_rejection)
 
     def motion_gate(self, status):
         """B3 선택형에서만 호출된다. 허가는 /drive 요청 상한이며 독립 보호층·MCU가 따로 거절한다."""
+        resume = getattr(self.race, 'resume', None)
+        if resume is not None:
+            status['state'] = 'RESUME_PREPARING'
+            # 경로만 계산한다. command()가 이 구간의 출력을 0으로 고정한다.
+            return not resume['missing']
         decision = self.race.decide(sensors_ready=True, now_s=status['sim_time_s'], wall_s=time.monotonic())
         if not decision['allowed']:
             status['state'] = {'wait_visual_start': 'WAIT_GREEN',
@@ -276,6 +350,13 @@ class LocalPursuit(WallFollow):
                 self.race.poll_faults(self.now_s())
                 if result is not None and not self.vision_pipeline.fault:
                     self.race.observe_vision(result, self.vision_pipeline.epoch, self.now_s())
+                if self.race.resume is not None:
+                    now, phase = self.now_s(), self.race.resume['phase']
+                    self.race.advance_resume(now, time.monotonic(), inputs=self.resume_inputs(now),
+                        route=None if self.resume_route is None or
+                        now-self.resume_route['stamp_s'] >= self.settings['scan_timeout_s'] else self.resume_route)
+                    if self.race.resume is None or self.race.resume['phase'] != phase:
+                        self.last_status_time = -math.inf  # 어댑터가 MCU 단계를 기다리지 않게 바로 알린다.
             if self.vision_pipeline.fault:
                 self.rgb_stamp = None
             elif result is not None:
@@ -283,10 +364,12 @@ class LocalPursuit(WallFollow):
                 self.ids = list(self.vision_pipeline.ids)
                 self.rgb_stamp = result['stamp']
                 self.image_wall_time = result['received']
-                if 30 in self.ids:
-                    self.side = 'right'
-                elif any(marker in self.ids for marker in (0, 20, 45)):
-                    self.side = 'left'
+                if getattr(self, 'race', None) is None or self.race.markers_apply():
+                    if 30 in self.ids:
+                        self.side, self.side_marker = 'right', 30
+                    elif any(marker in self.ids for marker in (0, 20, 45)):
+                        self.side = 'left'
+                        self.side_marker = next(marker for marker in (0, 20, 45) if marker in self.ids)
         result = super().control()
         if getattr(self, 'follow', None) is not None and self.last_status in (
                 'WAIT_GREEN', 'DISABLED', 'SENSOR_STOP', 'MOTION_STOP', 'SCAN_INVALID',
@@ -309,6 +392,9 @@ class LocalPursuit(WallFollow):
         return super().destroy_node()
 
     def on_scan(self, message):
+        if stamp_seconds(message.header.stamp) < self.input_floor_s:
+            self.scans_before_boundary += 1
+            return
         super().on_scan(mask_scan(message, self.rear_blind_half_angle))
 
     def detect_markers(self, rgb):
@@ -335,13 +421,31 @@ class LocalPursuit(WallFollow):
                     self.motion.last_meta.get('reference_stamp_s'), self.motion.counts['resets'],
                     speed, self.side, self.last_steering, 1/self.settings['control_rate_hz'],
                     self.motion.verified, self.rear_blind_half_angle, output)
-            return output
-        return pursuit_command(points, self.side, speed,
+            return self.prepared_output(output)
+        return self.prepared_output(pursuit_command(points, self.side, speed,
                                self.settings["wheelbase_m"], self.settings["max_steering_angle_rad"],
                                self.settings["max_speed_mps"],
                                self.settings["lateral_acceleration_limit_mps2"],
                                self.settings["target_wall_distance_m"],
-                               self.motion.last_meta.get('oldest_observation_age_s', .2))
+                               self.motion.last_meta.get('oldest_observation_age_s', .2)))
+
+    def prepared_output(self, output):
+        """START 준비 중에는 계획 결과로 경로 성립만 확인하고 출력은 0으로 둔다."""
+        if getattr(self, 'race', None) is None or self.race.resume is None:
+            return output
+        speed, steering, detail = output
+        reason = detail.get('reason')
+        route_detail = detail
+        # G1/G2 FOLLOW는 원래 경로 판단을 normal에 보존한다. 앞차 대기를
+        # 경로 상실로 오인하지 않되 BYPASS/REACQUIRE의 과거 normal은 쓰지 않는다.
+        if reason == 'handoff_follow' and detail.get('handoff_state') == 'FOLLOW':
+            route_detail = detail.get('normal') or {}
+        route_reason = route_detail.get('reason')
+        self.resume_route = dict(ready=bool(speed > 0 or route_reason in ROUTE_HOLDS), reason=reason,
+                                 route_reason=route_reason,
+                                 planned_speed_mps=float(speed), preferred_wall=self.side,
+                                 path_wall=route_detail.get('path_wall'), stamp_s=self.now_s())
+        return 0., steering, {**detail, 'reason': 'resume_preparing', 'underlying_reason': reason}
 
 
 def main(args=None):

@@ -1,0 +1,46 @@
+..........F.....................F....................................... [ 67%]
+...................................                                      [100%]
+=================================== FAILURES ===================================
+_________ test_official_signal_structure_is_kept_without_team_supports _________
+
+    def test_official_signal_structure_is_kept_without_team_supports():
+        scene = json.loads((DESTINATION / "scene.json").read_text(encoding="utf-8"))
+        model = ET.parse(DESTINATION / "world.sdf").find("./world/model[@name='it_arena_track_static']")
+        for name in ('tl_post', 'tl_beam', 'tl_panel'):
+>           assert model.find(f"link[@name='{name}']") is not None
+E           assert None is not None
+E            +  where None = <built-in method find of xml.etree.ElementTree.Element object at 0x7986f8b3f240>("link[@name='tl_post']")
+E            +    where <built-in method find of xml.etree.ElementTree.Element object at 0x7986f8b3f240> = <Element 'model' at 0x7986f8b3f240>.find
+
+tests/test_official_track.py:144: AssertionError
+______ test_runtime_detector_preserves_original_and_collision_properties _______
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_runtime_detector_preserve0')
+
+    def test_runtime_detector_preserves_original_and_collision_properties(tmp_path):
+        source = ROOT / "src/arena_gazebo/worlds/it_arena_official/world.sdf"
+        before = source.read_bytes()
+        output = tmp_path / "world.sdf"
+        launch._runtime_world_overrides(source, output, "bullet", False)
+        original = ET.fromstring(before).find("world")
+        changed = ET.parse(output).getroot().find("world")
+        assert source.read_bytes() == before
+        assert changed.findtext("physics/max_step_size") == original.findtext("physics/max_step_size")
+        assert changed.findtext("physics/real_time_factor") == original.findtext("physics/real_time_factor")
+        assert changed.findtext("physics/dart/collision_detector") == "bullet"
+        assert not changed.findall("plugin[@name='gz::sim::systems::SceneBroadcaster']")
+        for old, new in zip(original.findall(".//link"), changed.findall(".//link")):
+            assert old.attrib == new.attrib
+            assert old.findtext("pose") == new.findtext("pose")
+        old_collisions = original.findall(".//collision")
+        new_collisions = changed.findall(".//collision")
+        # v2026.11.01: 방지턱 20구간 제거, 공식 tl_post·tl_beam·tl_panel 각 1개.
+>       assert len(old_collisions) == len(new_collisions) == 3710
+E       AssertionError: assert 3709 == 3710
+E        +  where 3709 = len([<Element 'collision' at 0x7986f25ed800>, <Element 'collision' at 0x7986f25ef010>, <Element 'collision' at 0x7986f25ef... 'collision' at 0x7986f25ef970>, <Element 'collision' at 0x7986f25efe20>, <Element 'collision' at 0x7986f25dc310>, ...])
+
+tests/test_runtime_world_options.py:30: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_official_track.py::test_official_signal_structure_is_kept_without_team_supports
+FAILED tests/test_runtime_world_options.py::test_runtime_detector_preserves_original_and_collision_properties
+2 failed, 105 passed in 63.52s (0:01:03)

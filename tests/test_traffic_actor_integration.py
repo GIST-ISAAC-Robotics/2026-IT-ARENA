@@ -11,6 +11,9 @@ sys.path[:0] = [str(ROOT/'scripts'), str(ROOT/'src/arena_autonomy'), str(ROOT/'s
 import traffic_actors as ta
 import validate_g1_traffic as runner
 
+# 왼쪽 잔디 actor 등록 장면은 공식 tl_post가 생기기 전 월드 기준이다. 새 월드는 경로 검사가 거부한다.
+PRE_POST_WORLD = ROOT/'artifacts/validation/2026-11-01/signal_marker_offset_v1/fixture/world.sdf'
+
 
 def test_actual_sdf_composition_and_offroad_route_is_labeled():
     config = runner.load_config()
@@ -18,7 +21,7 @@ def test_actual_sdf_composition_and_offroad_route_is_labeled():
     specs = ta.actor_specs(config, case)
     line, scene = runner.load_centerline()
     starts, routes = ta.check_additional_routes(config, case, specs, scene, 0, line,
-        runner.road_polygon(runner.DEMO_WORLD/'world.sdf'), runner.obstacle_polygons(runner.DEMO_WORLD/'world.sdf'),
+        runner.road_polygon(PRE_POST_WORLD), runner.obstacle_polygons(PRE_POST_WORLD),
         runner.actor_start_s, runner.check_route, runner.actor_pose_at)
     assert routes['sampled_actor_pair_min_gap_m'] > .15
     assert routes['actors']['eval_e3_side']['kind'] == 'side_grass_straight'

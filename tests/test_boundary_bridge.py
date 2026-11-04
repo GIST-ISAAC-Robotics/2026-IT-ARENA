@@ -48,18 +48,26 @@ def test_profile_adds_only_this_option():
     new = profiles['g1_open_10kmh_solo_gap05_arc_preview_bridge']
     assert new == {**profiles['g1_open_10kmh_solo_gap05_arc_preview'], 'g1_boundary_bridge': True}
     assert 'g1_ray_wall_continuity' not in new
-    assert [k for k, v in profiles.items() if 'g1_boundary_bridge' in v] == ['g1_open_10kmh_solo_gap05_arc_preview_bridge']
+    assert profiles['g1_open_10kmh_solo_gap05_arc_preview_bridge_ray'] == {**new, 'g1_ray_wall_continuity': True}
+    assert [k for k, v in profiles.items() if 'g1_boundary_bridge' in v] == ['g1_open_10kmh_solo_gap05_arc_preview_bridge', 'g1_open_10kmh_solo_gap05_arc_preview_bridge_ray']
 
 
-def test_wall_side_change_keeps_the_observed_path_without_raising_its_cap():
+def test_wall_side_change_retains_current_path_speed_but_not_memory_cruise():
     off, on = controllers()
     h = history()
     settle(off, h), settle(on, h)
-    # 같은 스캔 중에 마커가 바뀐 경우. 새 후보가 없어 직전 경로를 통상 상한으로 잇는다.
+    # 같은 관측 스캔 중 마커가 바뀌어도 현재 경로는 유효하다. 11/2 반대 벽 단독 허가는 이 경로에도 적용된다.
     assert off.command(scene(.84, source=.8-.1), h, 1., 'right')[2]['reason'] == 'follow_boundary_unconfirmed'
     speed, _, detail = on.command(scene(.84, source=.8-.1), h, 1., 'right')
-    assert speed > 0 and detail['path_wall'] == 'left' and detail['open_route_speed_enabled'] is False
-    assert speed <= on.config.max_speed_mps
+    assert speed > 0 and detail['path_wall'] == 'left' and detail['open_route_speed_enabled'] is True
+    assert detail['boundary_from_memory'] is False and speed <= on.config.open_route_speed_mps
+    # 반대로 현재 스캔에서 승인하지 못한 이전 경로만 있으면 통상 속도 상한이다.
+    _, memory = controllers()
+    settle(memory, h)
+    memory.path_source = .65
+    v, _, d = memory.command(scene(.84, source=.8-.1), h, 1., 'right')
+    assert d['boundary_from_memory'] is True and d['open_route_speed_enabled'] is False
+    assert 0 < v <= memory.config.max_speed_mps
     # 새 벽은 다음 스캔에서 같은 기준으로 고른다. 직전 경로가 없으면 기존처럼 초기 확인을 거친다.
     assert on.command(scene(.9), h, 1., 'right')[2]['path_wall'] == 'right'
     fresh = LocalFollow(FollowConfig(**CONFIG, boundary_bridge=True))

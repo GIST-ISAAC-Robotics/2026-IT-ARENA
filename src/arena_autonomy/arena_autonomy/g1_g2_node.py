@@ -17,6 +17,12 @@ def status_detail(detail):
     if isinstance(detail.get('normal'),dict):
         result['normal'] = {key:detail['normal'][key] for key in
             ('reason','behavior','selector_mode','selector_choice','selector_reason') if key in detail['normal']}
+    departure = ((detail.get('normal') or {}).get('parallel_hold_trial') or {}).get('side_departure')
+    if isinstance(departure, dict):
+        result['normal']['side_departure'] = departure
+    lane = (detail.get('normal') or {}).get('current_lane_preference')
+    if isinstance(lane, dict):
+        result['normal']['current_lane_preference'] = lane
     if isinstance(detail.get('bypass'),dict):
         result['bypass'] = g2_status(detail['bypass'])
     if isinstance(detail.get('persistence'),dict):
@@ -65,15 +71,22 @@ class G1G2Node(LocalPursuit):
                 or not trace_path or not Path(trace_path).is_absolute()):
             raise ValueError('G1/G2 handoff requires G1 sensors, its own absolute trace and no competing controller')
         rear_sweep = self.declare_parameter('g1_g2_released_rear_sweep_trial',False).value
-        config = replace(self.follow.config,released_rear_sweep_trial=rear_sweep)
+        observed_motion = self.declare_parameter('g1_g2_observed_motion_gates',False).value
+        side_departure = self.declare_parameter('g1_g2_side_departure_trial',False).value
+        current_lane = self.declare_parameter('g1_g2_current_lane_preference_trial',False).value
+        lane_headroom = self.declare_parameter('g1_g2_current_lane_headroom_mps',0.).value
+        config = replace(self.follow.config,current_lane_preference_trial=current_lane,
+                         current_lane_headroom_mps=lane_headroom,released_rear_sweep_trial=rear_sweep,static_side_release_trial=observed_motion,
+                         side_departure_trial=side_departure)
         self.follow = BypassHandoffFollow(config,HandoffExecutionConfig(preparation_policy=policy,
             persistence_window_policy=window,follow_entry_space_enabled=reserve,moving_follow_reserve=moving_reserve,
             closing_follow_reserve=closing_reserve,recent_forward_reserve=recent_reserve,
             low_motion_reserve=low_motion_reserve,moving_pace_floor=moving_pace_floor,reacquire_policy=reacquire,
             entry_policy=entry_policy,preparation_hold_policy=preparation_hold,initial_reference_policy=initial_reference,
             motion_pause_policy=motion_pause,
-            relative_yield_policy=relative_yield,
-            bypass=BypassExecutionConfig(corridor_policy=corridor)),
+            relative_yield_policy=relative_yield,entry_motion_gate=observed_motion,
+            observed_forward_pace=observed_motion and moving_pace_floor,
+            bypass=BypassExecutionConfig(corridor_policy=corridor,steerable_transition=observed_motion)),
             allow_simulation_trial=True)
         trace = FollowTrace(trace_path,self.motion.history.config,self.follow.config,
             mode='g1_g2_handoff_trial',execution_config=self.follow.execution)

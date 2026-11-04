@@ -1,6 +1,7 @@
 # 경기 모니터·세이브포인트 재개·사건 기록 계획
 
-**상태: 설계만 작성, 아직 구현하지 않음.** 11/1 최종 회의와 사용자 요청을 반영한다. [공식 확인 범위](../reports/OFFICIAL_UPDATE_2026_11_02.md), [전체 우선순위·기능 완성 기준](../DEVELOPMENT_PLAN.md), [현재 사용 가능한 B3 CLI](RACE_OPERATOR_RUNBOOK.md)를 함께 본다. 아래 버튼·화면을 기존 도구에서 이미 쓸 수 있다는 뜻이 아니다.
+> **11/3 조작 구분:** 일반 제자리 STOP 뒤에는 START 한 번으로 재개 준비한다. 재배치·상태 초기화용 RESET은 유지한다. START 자체의 새 입력 경계/경로/MCU 재ARM 확인과 최초 시각 출발은 그대로다. [후속 구현·검사](../../artifacts/validation/2026-11-03/ordinary_resume_v1/PLAN.md). 일반 자동 시험에 브라우저는 필요 없다.
+**상태: 첫 구현 연결, 시뮬 대표 흐름 통과([결과](../../artifacts/validation/2026-11-02/official_ops_v1/README.md)). 기본 OFF 후보이며 공용망·실물 미검증.** 11/1 최종 회의와 사용자 요청을 반영한다. [공식 확인 범위](../reports/OFFICIAL_UPDATE_2026_11_02.md), [전체 우선순위·기능 완성 기준](../DEVELOPMENT_PLAN.md), [현재 사용 가능한 B3 CLI](RACE_OPERATOR_RUNBOOK.md)를 함께 본다. 아래 표는 설계 기준이다. 실제 구현 범위는 결과 문서를 따른다.
 
 ## 1. 필요한 만큼만 만든다
 

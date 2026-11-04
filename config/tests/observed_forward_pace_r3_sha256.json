@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "scope": "observed_forward_pace explicit trial; no default enable or gate change",
+  "parent_contract": "config/tests/observed_rejoin_r2_sha256.json",
+  "parent_contract_sha256": "3f13d36fbe134461a37c47c04d53f4a8046fc114934e5b05d58a6762779763af",
+  "before_snapshot": "artifacts/validation/2026-11-02/official_forward_pace_v3/before.zip",
+  "before_snapshot_sha256": "f0bee96646243cb2a1c081be7c74fff3b0e66b1f3907cdd9734db59d37a2e38e",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": {
+      "before": "9aad4ff89fa390dddca5bee025c250be74b8c5a8653ba3073034202b0b84b805",
+      "after": "86f16d12dc0cc046dee34357a6e4b0b995ecfb215a393447d3b5e6ecced7509d",
+      "reason": "정지 관측과 분리한 최근 전진율로 추가 추종 상한 계산; 기존 정책 출력과 보호·거리 기준 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/front_patch_motion.py": {
+      "before": "3ed884276528c1a73a22c1899937636254146025436e876044ab127bc0058ae9",
+      "after": "0735e39fa944bbfd6db6cb3dc91aab28424da2479bfc5cf2f1ddd22e1c23a86e",
+      "reason": "정지 관측과 분리한 최근 전진율로 추가 추종 상한 계산; 기존 정책 출력과 보호·거리 기준 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/g1_g2_node.py": {
+      "before": "bff68bc0992c4d4c2e5ebffdfbc3fdc2957f3ab17e3ad99eb0a511ac013eea8f",
+      "after": "ea91160aa1380ead052dbb8c65a523e4270943d6bc7f8766ef22a284096b3e62",
+      "reason": "정지 관측과 분리한 최근 전진율로 추가 추종 상한 계산; 기존 정책 출력과 보호·거리 기준 유지"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/g1_handoff_eval.py": {
+      "before": "54835358026a2bc626c1d3e0db97c451a36d606b5768f8d6fddb954475309232",
+      "after": "d50f71bfb1b27c47e3d5eacccb19e795c49cc9886cc7c3da01c389bf052ac20b",
+      "reason": "정지 관측과 분리한 최근 전진율로 추가 추종 상한 계산; 기존 정책 출력과 보호·거리 기준 유지"
+    }
+  },
+  "new_dependencies": {}
+}

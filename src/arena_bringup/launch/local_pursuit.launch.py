@@ -11,7 +11,7 @@ def generate_launch_description():
     defaults = {"headless": "false", "speed_profile": "local_fast", "speed_bump": "false",
                 "chase_camera": "false", "render_backend": "system", "collision_detector": "configured",
                 "sensor_wall_timeout_s": "3.0", "batch_static_visuals": "true",
-                "lidar_test_profile": "", "motion_test_profile": "", "actuation_mode": "legacy",
+                "lidar_test_profile": "", "motion_test_profile": "", "local_sensor_config": "", "actuation_mode": "legacy",
                 "timing_probe": "false"}
     demo = Path(get_package_share_directory("arena_bringup"))/"launch/demo.launch.py"
     return LaunchDescription([

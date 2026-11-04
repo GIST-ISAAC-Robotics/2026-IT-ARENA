@@ -42,7 +42,11 @@ def verify(archive, manifest):
             if member.name.startswith('artifacts/') and member.name.endswith('.jsonl'):
                 with bundle.extractfile(member) as stream:
                     header = json.loads(stream.readline(65537))
-                if header.get('kind') != 'header' or header.get('data', {}).get('scope') != 'g1_decision_stage_only':
+                data = header.get('data', {})
+                supported = data.get('scope') == 'g1_decision_stage_only' or (
+                    data.get('schema') == 5 and data.get('scope') == 'g1_g2_handoff_decision_stage_only'
+                    and data.get('controller_mode') == 'g1_g2_handoff_trial')
+                if header.get('kind') != 'header' or not supported:
                     problems.append(dict(file=member.name, reason='not_decision_trace'))
                 trace_headers.append(member.name)
     missing = sorted(set(expected)-seen)

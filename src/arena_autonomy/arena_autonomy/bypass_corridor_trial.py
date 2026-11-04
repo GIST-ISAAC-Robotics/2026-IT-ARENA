@@ -214,6 +214,8 @@ class PlannedIntent(EntryIntent):
 
 
 class CorridorGuide(EntryGuide):
+    steerable_transition = False
+
     def __init__(self, config=None, entry=None, *, corridor_policy=None, **kwargs):
         self.corridor_policy = corridor_policy or REGISTERED_POLICIES['corridor_v1']
         super().__init__(config, entry, **kwargs)
@@ -321,7 +323,7 @@ class CorridorGuide(EntryGuide):
             fitting = [t for t in self.registered_entry.transitions_m if t <= limit]
             rows[side] = dict(side=side, age_s=age, inner_normal_m=face['normal_m'], low_m=low, high_m=high,
                 blocker_along_m=blocker_along, transition_limit_m=limit,
-                transition_m=max(fitting) if fitting else min(self.registered_entry.transitions_m),
+                transition_m=self._transition(fitting, min(maximum, abs(want))),
                 width_m=high-low, want_offset_m=want, offset_m=sign*min(maximum, abs(want)), surface=face['method'])
         blocked = straight_blocked(rows, self.config)
         return dict(rows=rows, blocked=blocked, chosen=choose_side(rows) if blocked else None,
@@ -334,6 +336,17 @@ class CorridorGuide(EntryGuide):
         else:
             result = super().evaluate(scene, history, speed, previous, dt)
         return {**result, 'corridor':dict(self.corridor_use), 'corridor_plan':self.plan_detail}
+
+    def _transition(self, fitting, offset):
+        """거리에 맞는 전이가 조향 한계를 넘으면 그보다 긴 등록 전이를 후보로 둔다. 허가가 아니다."""
+        transitions = self.registered_entry.transitions_m
+        chosen = max(fitting) if fitting else min(transitions)
+        if not self.steerable_transition:
+            return chosen
+        # 5차 전이의 |y''| 최대값은 편이×(10/√3)/전이²이고 실제 곡률은 그 이하다. 이 상한에 5% 여유를 둔다.
+        limit = .95*math.tan(self.config.max_steering_rad)/self.config.wheelbase_m
+        steerable = [t for t in transitions if t >= chosen and offset*(10/math.sqrt(3))/(t*t) <= limit]
+        return steerable[0] if steerable else chosen
 
     def _first_selection(self, scene, history, speed, previous, dt):
         plan = self._plan(scene)

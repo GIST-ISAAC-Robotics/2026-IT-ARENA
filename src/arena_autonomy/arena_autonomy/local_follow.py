@@ -27,10 +27,14 @@ class FollowConfig:
     ray_wall_continuity: bool = False  # 단독 선택형. 먼 옆 벽의 단절을 연속 광선 직선 근거로 보완.
     partial_observation_policy: str = 'strict'
     parallel_hold_trial: bool = False
+    current_lane_preference_trial: bool = False  # 정지 측방 반환 뒤 현재 관측 직선의 차선 선호.
+    current_lane_headroom_mps: float = 0.  # 선택 시험에서 실제 설정의 엔코더 1카운트 속도.
+    side_departure_trial: bool = False  # 완전 관측 직선의 측방 시차 겹침에서 비접근 저속 진행.
     pass_release_trial: bool = False
     guard_curve_trial: bool = False
     traffic_recovery_trial: bool = False
     released_rear_sweep_trial: bool = False
+    static_side_release_trial: bool = False
     traffic_path_recovery_trial: bool = False
     rear_lane_keep_trial: bool = False
     rear_lane_keep_policy: str = 'timed'
@@ -51,6 +55,7 @@ class FollowConfig:
     preview_above_base_speed: bool = False  # 단독 선택형. 코너 예측을 통상 상한 위의 양수 목표에도 적용.
     boundary_bridge: bool = False  # 단독 선택형. 점유가 아닌 경로 근거 전환 때문에 생긴 정지만 잇는다.
     low_speed_arc_reacquire: bool = False  # 단독 시험 선택. 낮은 측정 속도의 양측 경로 재획득만.
+    standing_wall_reacquire: bool = False  # 재개 후보. 기억 없는 낮은 속도에서 선호 벽의 긴 현재 관측으로 재획득.
     lateral_acceleration_mps2: float = 3.5
     memory_ttl_s: float = .30
     memory_motion_limit_m: float = .45
@@ -67,6 +72,9 @@ class FollowConfig:
     confirmations: int = 2
 
     def __post_init__(self):
+        if (type(self.side_departure_trial) is not bool or
+                (self.side_departure_trial and (not self.pass_release_trial or self.solo_route_only))):
+            raise ValueError('side departure requires traffic pass release trial')
         if type(self.solo_route_only) is not bool:
             raise ValueError('solo route mode must be boolean')
         if (type(self.corridor_arc_agreement) is not bool or
@@ -96,6 +104,18 @@ class FollowConfig:
         if (type(self.released_rear_sweep_trial) is not bool or
                 (self.released_rear_sweep_trial and not self.traffic_recovery_trial)):
             raise ValueError('released rear sweep requires traffic recovery')
+        if (type(self.current_lane_preference_trial) is not bool or
+                (self.current_lane_preference_trial and (not self.traffic_path_recovery_trial
+                 or not self.static_side_release_trial or not self.side_departure_trial
+                 or self.rear_lane_keep_trial or self.solo_route_only))):
+            raise ValueError('current lane preference requires the explicit side departure/path recovery profile')
+        if (isinstance(self.current_lane_headroom_mps, bool) or not math.isfinite(self.current_lane_headroom_mps)
+                or not 0 <= self.current_lane_headroom_mps < self.max_speed_mps
+                or (self.current_lane_preference_trial and self.current_lane_headroom_mps <= 0)):
+            raise ValueError('current lane preference requires a positive configured speed quantum')
+        if (type(self.static_side_release_trial) is not bool or
+                (self.static_side_release_trial and not self.pass_release_trial)):
+            raise ValueError('static side release requires pass release trial')
         if (type(self.traffic_recovery_trial) is not bool or
                 (self.traffic_recovery_trial and not self.guard_curve_trial)):
             raise ValueError('traffic recovery requires explicit guard curve trial')
@@ -131,8 +151,10 @@ class FollowConfig:
         if (type(self.low_speed_arc_reacquire) is not bool or
                 (self.low_speed_arc_reacquire and not self.blend_open_speed_by_length)):
             raise ValueError('low speed arc reacquire requires the solo observed route speed profile')
+        if type(self.standing_wall_reacquire) is not bool:
+            raise ValueError('standing wall reacquire must be bool')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+               if k not in ('current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
             raise ValueError('follow configuration must be finite and positive')
         if (type(self.corridor_fallback_enabled) is not bool or
                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
@@ -344,6 +366,9 @@ class LocalFollow:
                     elif self.config.rear_lane_keep_policy in ('observed_measured_v1', 'observed_fresh_v2'):
                         from arena_autonomy.measured_lane_preference_trial import StraightLanePreferenceSelector
                         PassReleaseSelector = StraightLanePreferenceSelector
+            if self.config.current_lane_preference_trial:
+                from arena_autonomy.current_lane_preference import CurrentLaneSelector
+                PassReleaseSelector = CurrentLaneSelector
             self.pass_selector = PassReleaseSelector(self.config)
         self.reset()
 
@@ -656,6 +681,11 @@ class LocalFollow:
                             detail.update(bilateral_reference='opposite_support',
                                           opposite_support_points=support['boundary_support_points'],
                                           opposite_protrusions_removed=support['boundary_protrusions_removed'])
+                    if not eligible and cfg.standing_wall_reacquire and abs(speed) <= .10 and sufficient(candidate, info):
+                        # 재개 직후 합류부처럼 반대쪽이 열리면 양측 일치가 영영 풀리지 않는다. 선호 벽의 긴 현재
+                        # 관측만 쓰며 확인 횟수·점유·재개 여유·독립 보호는 그대로 둔다. 빈 공간을 경로로 만들지 않는다.
+                        eligible = True
+                        detail['bilateral_reference'] = 'standing_preferred_wall'
                 if not eligible and cfg.boundary_evidence_mode in ('fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'):
                     # 긴 반대 벽은 그대로 관측되어야 한다. 선호 벽의 각 실제 조각이
                     # 그 형상을 지지해야 하며 가림 간격은 길이/자유 공간 증거가 아니다.
@@ -732,8 +762,10 @@ class LocalFollow:
                 self.path = None
                 return self._hold('follow_boundary_unconfirmed', detail)
             memory_age = now-self.path_source
+            # 단독 선택에서는 양측 근거로 이미 승인한 현재 반대 벽 경로도 쓴다.
+            # 관측이 없는 경로/기억만 남은 경로/교통 모드의 속도 범위는 넓히지 않는다.
             open_route = bool(cruise and self.path_source == scene.source_first_s and
-                              self.path_wall == side and front and all(r.status == 'return' for r in front))
+                              (self.path_wall == side or cfg.solo_route_only) and front and all(r.status == 'return' for r in front))
             cap, desired, remaining = pursue_path(carried, speed, cfg, max(age, memory_age),
                                                   speed_cap=cruise if open_route else None)
             if cruise:
@@ -772,7 +804,8 @@ class LocalFollow:
                 # 정상 측정 복귀 뒤에도 기존 서로 다른 두 fresh 관측을 요구한다.
                 return self._hold('follow_reverse_motion', detail)
             if clearance <= cfg.hold_clearance_m:
-                if cfg.low_speed_arc_reacquire and abs(speed) <= .10:
+                if (cfg.low_speed_arc_reacquire or
+                    (cfg.standing_wall_reacquire and self.path_source == scene.source_first_s)) and abs(speed) <= .10:
                     # 속도 0을 유지한 채 조향만 경로 쪽으로 돌린다. 전진은 재개 여유와 독립 보호가 정한다.
                     # 스캔 말미의 시간 여유 증가로 생긴 낮은 값이 새 스캔의 재개 계수를 지우지 않게 한다.
                     self.held = True

@@ -16,8 +16,8 @@ class CurrentPairReference:
     def clear(self):
         self.anchors={};self.key=None;self.last_ref=None
 
-    def resolve(self,scene,config,history):
-        original,detail=straight_reference(scene,config)
+    def resolve(self,scene,config,history,*,original_result=None):
+        original,detail=straight_reference(scene,config) if original_result is None else original_result
         now,source=scene.t_ref_s,scene.source_first_s
         if not source_valid(scene) or source is None or not 0<=now-source<.30:
             self.clear();return original,detail
@@ -56,8 +56,9 @@ class CurrentPairReference:
 
 
 class DirectionalPairReference(CurrentPairReference):
-    def resolve(self, scene, config, history):
-        reference, detail = super().resolve(scene, config, history)
+    def resolve(self, scene, config, history, *, original_result=None):
+        reference, detail = (super().resolve(scene, config, history) if original_result is None else
+                            super().resolve(scene, config, history, original_result=original_result))
         if (reference is not None or detail.get('reason') != 'reference_does_not_cover_entry'
                 or detail.get('all_returns_remain_occupied') is not True):
             return reference, detail
@@ -100,8 +101,10 @@ class ReadyInitialReference:
 
     def update(self,scene,config,history):
         self.scene,self.config=scene,config
-        self.proposed=self.memory.resolve(scene,config,history)
         self.original=straight_reference(scene,config)
+        # 동일 호출의 같은 장면·설정에 대한 원래 벽 적합을 한 번만 계산한다.
+        # 다음 호출에는 항상 다시 적합하며 관측 시각/확인/기억 갱신은 생략하지 않는다.
+        self.proposed=self.memory.resolve(scene,config,history,original_result=self.original)
 
     def reference(self,scene,config,monitor):
         # 다른 시각/설정의 호출에는 캐시를 넘기지 않는다.

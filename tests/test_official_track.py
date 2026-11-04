@@ -1,4 +1,4 @@
-"""공식 v2026.10.24 입력·보정 범위·실행 월드 회귀 검사. 옛 보존본은 별도 대조."""
+"""공식 v2026.11.01 입력·보정 범위·실행 월드 회귀 검사. 옛 보존본은 별도 대조."""
 
 import json
 import math
@@ -16,10 +16,13 @@ from build_official_track import (  # noqa: E402
     ARCHIVE, DESTINATION, EXPECTED_ARCHIVE_SHA256, check, sha256,
 )
 import build_official_track as official_builder  # noqa: E402
+from official_2x5_facilities import lamp_channels, verify_official_signal  # noqa: E402
+
+PREVIOUS_PROFILE = REPO / 'config/tracks/official_v2026.10.24.yaml'
 
 
 def test_pinned_official_release_is_preserved():
-    assert ARCHIVE.stat().st_size == 812_042
+    assert ARCHIVE.stat().st_size == 790_959
     assert sha256(ARCHIVE) == EXPECTED_ARCHIVE_SHA256
     with ZipFile(ARCHIVE) as archive:
         assert sum(not item.is_dir() for item in archive.infolist()) == 23
@@ -33,6 +36,8 @@ def test_official_runtime_hash_manifest_is_current():
 def test_previous_release_archive_remains_verifiable():
     previous = REPO / 'assets/track/official/v2026.09.14/it_arena_track_v2026.09.14.zip'
     assert official_builder.verify_archive(previous)['size_bytes'] == 805_607
+    previous = REPO / 'assets/track/official/v2026.10.24/it_arena_track_v2026.10.24.zip'
+    assert official_builder.verify_archive(previous)['size_bytes'] == 812_042
 
 
 def test_published_colors_survive_runtime_conversion():
@@ -54,24 +59,17 @@ def test_published_colors_survive_runtime_conversion():
             assert converted.findtext('material/diffuse') == visual.findtext('material/diffuse')
 
 
-def test_published_bump_mesh_identity_and_metric_assembly():
+def test_official_bump_removal_has_no_runtime_geometry():
     model = ET.parse(DESTINATION / 'world.sdf').find("./world/model[@name='it_arena_track_static']")
-    bump = model.find("link[@name='safety_bump_0']")
-    assert len(bump.findall('visual')) == 2
-    assert len(bump.findall('collision')) == 20
-    for i, (name, expected, _, y) in enumerate(official_builder.PUBLISHED_BUMP_PARTS, 1):
-        visual = bump.find(f"visual[@name='published_piece_{i}']")
-        assert sha256(DESTINATION / 'meshes' / name) == expected
-        assert visual.findtext('geometry/mesh/scale') == '0.001 0.001 0.001'
-        assert [float(x) for x in visual.findtext('pose').split()] == [-.025, y, 0, 0, 0, 0]
-        assert visual.findtext('material/diffuse') == '0.9 0.6 0.1 1'
+    assert not [link for link in model.findall('link') if 'bump' in link.attrib['name']]
+    assert not (DESTINATION / 'meshes').exists()
     scene = json.loads((DESTINATION / 'scene.json').read_text(encoding='utf-8'))
-    assert scene['speed_bumps']['published_visual']['assembly_size_m'] == [.05, .45, .01]
+    assert scene['speed_bumps']['count'] == 0 and scene['speed_bumps']['bumps'] == []
 
 
 def test_published_mesh_cannot_silently_be_stretched_to_proposed_length(tmp_path):
     import yaml
-    profile = yaml.safe_load(official_builder.PROFILE.read_text(encoding='utf-8'))
+    profile = yaml.safe_load(PREVIOUS_PROFILE.read_text(encoding='utf-8'))
     profile['facilities']['speed_bump']['length_m'] = .15
     with pytest.raises(ValueError, match='혼용'):
         official_builder.apply_published_bump_visual(tmp_path, profile)
@@ -93,7 +91,7 @@ def test_official_geometry_and_classification_are_explicit():
     assert scene["track"]["lap_length_m"] == 46.6329
     assert provenance["official_values"]["vehicle_envelope_m"] == {"length": .2, "width": .15}
     assert provenance["runtime_corrections"]["facilities"]["status"] == (
-        "official_v2026.10.24_colors_markers_published_bump_visual_provisional_light_finish"
+        "official_v2026.11.01_2x5_signal_black_grid_no_bump_team_lamp_control_finish_no_track_post"
     )
     verification = scene["verification"]
     assert verification["surface_coverage_ok"] is True
@@ -139,16 +137,66 @@ def test_marker_preservation_guard_rejects_yaw_change(tmp_path):
         official_builder.verify_preserved_markers(raw, DESTINATION / "world.sdf")
 
 
-def test_default_has_no_assumed_ground_posts_or_marker_supports():
+def test_official_signal_structure_is_kept_without_team_supports():
     scene = json.loads((DESTINATION / "scene.json").read_text(encoding="utf-8"))
     model = ET.parse(DESTINATION / "world.sdf").find("./world/model[@name='it_arena_track_static']")
     assert model.find("link[@name='tl_post']") is None
-    supports = [link for link in model.findall("link") if link.attrib['name'].startswith('team_gantry_support_')]
-    assert not supports
+    for name in ('tl_beam', 'tl_panel'):
+        assert model.find(f"link[@name='{name}']") is not None
+    assert not [link for link in model.findall("link") if link.attrib['name'].startswith('team_gantry_support_')]
     assert 'team_gantry_supports' not in scene
-    assert scene['traffic_light']['ground_post_enabled'] is False
-    assert model.find("link[@name='tl_beam']") is not None
-    assert all(model.find(f"link[@name='lamp_{color}']") is not None for color in ('red', 'yellow', 'green'))
+    for stale in ('lamp_red', 'lamp_yellow', 'lamp_green', 'lamp_red_1', 'lamp_red_4', 'safety_bump_0'):
+        assert model.find(f"link[@name='{stale}']") is None
+
+
+def test_lamp_links_keep_official_geometry_and_start_dark(tmp_path):
+    with ZipFile(ARCHIVE) as archive:
+        archive.extractall(tmp_path)
+    raw = tmp_path / 'output_final/world.sdf'
+    verify_official_signal(raw, DESTINATION / 'world.sdf', remove_track_post=True)
+    source = ET.parse(raw).find("./world/model[@name='it_arena_track_static']")
+    model = ET.parse(DESTINATION / 'world.sdf').find("./world/model[@name='it_arena_track_static']")
+    channels = lamp_channels()
+    assert len(channels) == 10
+    for channel in channels:
+        path = f"link[@name='{channel['name']}']/visual[@name='{channel['name']}_vis']/material/emissive"
+        assert source.findtext(path) == channel['lit_rgba']
+        assert model.findtext(path) == '0 0 0 1'
+    scene = json.loads((DESTINATION / 'scene.json').read_text(encoding='utf-8'))
+    assert scene['traffic_light']['lamp_channels'] == [
+        {key: item[key] for key in ('name', 'column', 'row')} for item in channels]
+    assert 'udp_port' not in scene['traffic_light']
+    assert scene['traffic_light']['udp_visual_controller_connected'] is False
+
+
+def test_signal_guard_rejects_moved_lamp_or_panel(tmp_path):
+    with ZipFile(ARCHIVE) as archive:
+        archive.extractall(tmp_path)
+    raw = tmp_path / 'output_final/world.sdf'
+    for name in ('tl_panel', 'lamp_green_top'):
+        tree = ET.parse(raw)
+        link = tree.find(f"./world/model[@name='it_arena_track_static']/link[@name='{name}']")
+        pose = link.find('pose')
+        original = pose.text
+        values = pose.text.split()
+        values[2] = str(float(values[2]) + .01)
+        pose.text = ' '.join(values)
+        moved = tmp_path / 'moved.sdf'
+        tree.write(moved)
+        with pytest.raises(ValueError, match=name):
+            verify_official_signal(raw, moved)
+        pose.text = original
+
+
+def test_id45_uses_official_left_pose_not_the_old_right_shift():
+    scene = json.loads((DESTINATION / 'scene.json').read_text(encoding='utf-8'))
+    markers = {marker['id']: marker for marker in scene['aruco_markers']['markers']}
+    assert markers[45]['role'] == 'traffic_light_left' and markers[0]['role'] == 'traffic_light_right'
+    light = scene['traffic_light']['pose']
+    left = (-math.sin(light['yaw_rad']), math.cos(light['yaw_rad']))
+    offset = [(markers[i]['pose']['x']-light['x'])*left[0]+(markers[i]['pose']['y']-light['y'])*left[1] for i in (45, 0)]
+    assert offset[0] == pytest.approx(.145, abs=.005) and offset[1] == pytest.approx(-.145, abs=.005)
+    assert markers[45]['s_m'] == markers[0]['s_m'] == scene['traffic_light']['s_m']
 
 
 def test_legacy_profile_can_still_generate_pillar_stress_geometry():
@@ -156,7 +204,7 @@ def test_legacy_profile_can_still_generate_pillar_stress_geometry():
     import yaml
     from experimental_facilities import add_gantry_supports, add_traffic_light
 
-    config = yaml.safe_load(official_builder.PROFILE.read_text(encoding='utf-8'))['facilities']
+    config = yaml.safe_load(PREVIOUS_PROFILE.read_text(encoding='utf-8'))['facilities']
     legacy = copy.deepcopy(config)
     legacy['traffic_light'].pop('ground_post_enabled')
     legacy['gantry_supports']['enabled'] = True
@@ -185,8 +233,6 @@ def test_only_official_walls_carry_track_friction_coefficients():
     assert len(specified) == 694
     assert all(name.startswith("walls_") and math.isclose(float(mu), .8) and math.isclose(float(mu2), .8)
                for name, mu, mu2 in specified)
-    bump = model.find("link[@name='safety_bump_0']")
-    assert bump is not None and not bump.findall("collision/surface/friction")
 
 
 def test_official_filled_starting_grid_visuals_are_preserved_without_provisional_numbers():
@@ -202,12 +248,12 @@ def test_official_filled_starting_grid_visuals_are_preserved_without_provisional
     paint = scene["starting_grid"]["paint"]
     assert paint == {
         "representation": "official_filled_slots",
-        "source": "official v2026.10.24 world.sdf grid_slot_0..5 visuals",
+        "source": "official v2026.11.01 world.sdf grid_slot_0..5 visuals",
         "length_m": .25,
         "width_m": .17,
         "paint_center_height_m": .0037,
         "paint_thickness_m": .001,
-        "material": "white",
+        "material": "black",
         "collision": False,
         "numbering": "none",
     }
@@ -225,6 +271,7 @@ def test_official_filled_starting_grid_visuals_are_preserved_without_provisional
         assert runtime_visual.findtext("geometry/box/size") == raw_visual.findtext("geometry/box/size")
         assert runtime_visual.findtext("material/ambient") == raw_visual.findtext("material/ambient")
         assert runtime_visual.findtext("material/diffuse") == raw_visual.findtext("material/diffuse")
+        assert raw_visual.findtext("material/diffuse") == "0.05 0.05 0.05 1"
         assert merged.find(f"collision[@name='grid_slot_{index}__grid_slot_{index}_col']") is None
 
 
@@ -232,19 +279,33 @@ def test_runtime_facility_metadata_matches_geometry_and_selected_start_line():
     scene = json.loads((DESTINATION / "scene.json").read_text(encoding="utf-8"))
     design = json.loads((DESTINATION / "design.json").read_text(encoding="utf-8"))
     model = ET.parse(DESTINATION / "world.sdf").find("./world/model[@name='it_arena_track_static']")
-    beam = model.find("link[@name='tl_beam']/visual[@name='cross_track_beam']")
-    beam_z = float(beam.findtext("pose").split()[2])
-    assert scene["traffic_light"]["gantry_height_m"] == beam_z == .42
-    assert scene["traffic_light"]["lamp_center_height_m"] == .30
-    assert scene["traffic_light"]["provisional_route_offset_m"] == .60
+    panel = [float(value) for value in model.findtext("link[@name='tl_panel']/pose").split()]
+    assert panel[2] == scene["traffic_light"]["lamp_center_height_m"] == .419
+    assert scene["traffic_light"]["face_tilt_to_floor_deg"] == 60
     start = scene["start_finish"]
+    assert scene["traffic_light"]["s_m"] == pytest.approx(46.271)
     assert math.hypot(scene["traffic_light"]["pose"]["x"] - start["pose"]["x"],
-                      scene["traffic_light"]["pose"]["y"] - start["pose"]["y"]) > .59
-    assert scene["speed_bumps"]["bump_length_m"] == .05
-    assert scene["speed_bumps"]["bump_height_m"] == .01
-    assert len(model.findall("link[@name='safety_bump_0']/collision")) == 20
+                      scene["traffic_light"]["pose"]["y"] - start["pose"]["y"]) > .35
     assert scene["finish_line"]["s_m"] == design["features"]["start_line"]["s"]
     assert scene["start_finish"]["s_m"] == 0
-    marker_zero = next(marker for marker in scene["aruco_markers"]["markers"] if marker["id"] == 0)
-    assert marker_zero["s_m"] == 0
-    assert math.isclose(scene["finish_line"]["s_m"], marker_zero["s_m"])
+    assert next(marker for marker in scene["aruco_markers"]["markers"] if marker["id"] == 0)["s_m"] == pytest.approx(46.271)
+
+
+def test_user_confirmed_post_removal_preserves_other_signal_geometry(tmp_path):
+    with ZipFile(ARCHIVE) as archive:
+        archive.extractall(tmp_path)
+    raw = tmp_path / 'output_final/world.sdf'
+    runtime = DESTINATION / 'world.sdf'
+    source = ET.parse(raw).find("./world/model[@name='it_arena_track_static']")
+    model = ET.parse(runtime).find("./world/model[@name='it_arena_track_static']")
+    assert source.find("link[@name='tl_post']/collision[@name='tl_post_col']") is not None
+    assert model.find("link[@name='tl_post']") is None
+    assert not any('tl_post' in e.get('name', '') for e in model.iter())
+    verify_official_signal(raw, runtime, remove_track_post=True)
+    with pytest.raises(ValueError, match='tl_post'):
+        verify_official_signal(raw, runtime)  # Removal must be explicit, not silently accepted.
+    with pytest.raises(ValueError, match='tl_post'):
+        verify_official_signal(raw, raw, remove_track_post=True)
+    scene = json.loads((DESTINATION / 'scene.json').read_text(encoding='utf-8'))
+    assert scene['traffic_light']['track_post_removed'] is True
+    assert scene['traffic_light']['track_post_basis'] == 'user_confirmed_absent_2026_11_02'

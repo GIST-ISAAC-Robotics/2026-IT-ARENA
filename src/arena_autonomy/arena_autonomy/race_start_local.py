@@ -5,17 +5,7 @@ RGB에서 얻은 배열만 사용한다. 실제 가림·빨강 전체 이력 누
 """
 import cv2
 
-from arena_autonomy.race_start import OfficialStartSignal, _red_bank
-
-
-def bank_window(bank):
-    """빨강 네 열과 초록 예상 열을 포함하는 픽셀 창. 부품 좌표를 받지 않는다."""
-    left = bank['cx']-1.5*bank['pitch']
-    slope = (bank['gy']-bank['cy'])/(bank['gx']-bank['cx'])
-    left_y = bank['cy']+slope*(left-bank['cx'])
-    margin = 1.3*bank['diameter']
-    return (left-margin, min(left_y, bank['gy'])-bank['vertical']-margin,
-            bank['gx']+margin, max(left_y, bank['gy'])+bank['vertical']+margin)
+from arena_autonomy.race_start import OfficialStartSignal, _red_bank, bank_window
 
 
 def intersects(rect, window):

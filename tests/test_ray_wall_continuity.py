@@ -161,7 +161,8 @@ def test_profile_adds_only_this_option_and_traffic_stays_unconnected():
     profiles = launch_module().SPEED_PROFILES
     assert profiles['g1_open_10kmh_solo_gap05_arc_ray'] == {
         **profiles['g1_open_10kmh_solo_gap05_arc'], 'g1_ray_wall_continuity': True}
-    assert [k for k, v in profiles.items() if 'g1_ray_wall_continuity' in v] == ['g1_open_10kmh_solo_gap05_arc_ray']
+    assert profiles['g1_open_10kmh_solo_gap05_arc_preview_bridge_ray'] == {**profiles['g1_open_10kmh_solo_gap05_arc_preview_bridge'], 'g1_ray_wall_continuity': True}
+    assert [k for k, v in profiles.items() if 'g1_ray_wall_continuity' in v] == ['g1_open_10kmh_solo_gap05_arc_ray', 'g1_open_10kmh_solo_gap05_arc_preview_bridge_ray']
 
 
 def long_corridor():

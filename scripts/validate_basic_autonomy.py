@@ -263,6 +263,8 @@ def main():
     parser.add_argument("--laps", type=int, default=2)
     parser.add_argument("--grid-slot", type=int, choices=range(6), default=0)
     parser.add_argument('--lidar-test-profile', default='', help='합성 거리오차/지연 JSON; 기본은 비활성')
+    parser.add_argument('--local-sensor-config', default=None,
+                        help='시험 전용 local_pursuit 센서/장착 YAML. 기본은 패키지 b0183_c1.yaml')
     parser.add_argument('--motion-test-profile', default='', help='시험용 IMU/엔코더 오류 JSON')
     parser.add_argument("--shutdown-mode", choices=("sigint", "service"), default="sigint",
                         help="service는 격리된 Gazebo 정상 종료 확인 후 ROS launch를 종료합니다.")
@@ -275,7 +277,7 @@ def main():
     parser.add_argument("--wall-timeout-s", type=float, default=None,
                         help="느린 오프라인 실행의 실제 시간 한도. 센서 시각 제한과 무관.")
     parser.add_argument("--stop-wall-timeout-s", type=float, default=60.)
-    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "g1_open_10kmh_solo_gap05", "g1_open_10kmh_solo_gap05_arc", "g1_open_10kmh_solo_gap05_arc_ray", "g1_open_10kmh_solo_gap05_arc_preview", "g1_open_10kmh_solo_gap05_arc_preview_bridge", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
+    parser.add_argument("--speed-profile", choices=("cautious", "brisk", "exploratory", "g1_compare_1mps", "g1_open_1p5", "g1_open_2p0", "g1_open_10kmh", "g1_open_2p0_approach", "g1_open_10kmh_approach", "g1_open_2p0_turn", "g1_open_10kmh_rise15", "g1_open_10kmh_turn15", "g1_open_10kmh_turn15_arc", "g1_open_10kmh_solo", "g1_open_10kmh_solo_gap05", "g1_open_10kmh_solo_gap05_arc", "g1_open_10kmh_solo_gap05_arc_ray", "g1_open_10kmh_solo_gap05_arc_preview", "g1_open_10kmh_solo_gap05_arc_preview_bridge", "g1_open_10kmh_solo_gap05_arc_preview_bridge_ray", "hardware_target", "lidar_rate_stress", "lidar_20kmh_straight", "local_fast"), default="cautious")
     parser.add_argument("--lidar-rate-hz", type=float, default=10.0,
                         help="Gazebo 이상화 라이다의 시험용 갱신률. C1 실물 회전수를 바꾸지 않습니다.")
     parser.add_argument("--target-progress-m", type=float,
@@ -305,7 +307,7 @@ def main():
                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
     args = parser.parse_args()
     if args.team_signal_prelap and not (args.g1_race_path and args.laps==1 and args.target_progress_m is None
-            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge')
+            and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge','g1_open_10kmh_solo_gap05_arc_preview_bridge_ray')
             and args.actuation_stop=='software_stop'
             and args.grid_slot==3 and args.video and args.disable_speed_bump):
         raise ValueError('2×5 신호 단독 시험 조건 불일치')
@@ -320,6 +322,10 @@ def main():
         extra_arguments += [key+':=true' for key in ('g1_short_boundary_prefix_enabled',
             'g1_parallel_hold_trial', 'g1_pass_release_trial', 'g1_guard_curve_trial',
             'g1_traffic_recovery_trial', 'g1_traffic_path_recovery_trial')]
+    if args.local_sensor_config is not None:
+        if args.autonomy_mode != 'local_pursuit':
+            raise ValueError('local sensor config requires local_pursuit')
+        extra_arguments.append('local_sensor_config:='+str(Path(args.local_sensor_config).resolve(strict=True)))
     if args.course_marker_visibility != 'visible':
         if args.autonomy_mode != 'local_pursuit' or args.g1_follow:
             raise ValueError('course marker visual trial currently requires baseline local_pursuit')
@@ -476,6 +482,7 @@ def main():
         world=FIXTURE
         facility_sources=fixture_inputs()
     else:
+        from prelap_signal_eval import sequence_evidence
         world=DEMO_WORLD
     route = np.genfromtxt(world / "centerline.csv", delimiter=",", names=True)
     xy = np.column_stack((route["x_m"], route["y_m"]))
@@ -573,7 +580,7 @@ def main():
                          'scripts/g1_traffic_eval.py',
                          'src/arena_bringup/launch/g1_follow.launch.py'):
             report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
-    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge'):
+    if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge','g1_open_10kmh_solo_gap05_arc_preview_bridge_ray'):
         rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
     recorder = recorder_log = None
@@ -992,7 +999,9 @@ def main():
             report['team_signal_evidence']=sequence_evidence(output,signal_states,trace)
             signal_evidence=report['team_signal_evidence']['passed']
         else:
-            signal_evidence={"red", "yellow", "green"}.issubset(signal_states)
+            report['official_signal_evidence']=sequence_evidence(output,signal_states,trace,
+                                                                 scene['traffic_light']['lamp_channels'])
+            signal_evidence=report['official_signal_evidence']['passed']
         report["passed"] = (not false_start and collision_samples == 0 and report['stop_collision_samples'] == 0 and report["stop_stable"] and
                             report["sensor_only_inputs"] and safety_evidence and source_interface_passed and
                             signal_evidence and route_evidence)

@@ -186,6 +186,7 @@ class WallFollow(Node):
             status['vision'] = self.vision_pipeline.snapshot()
         if getattr(self, 'race', None) is not None:
             status['race'] = self.race.snapshot(now, time.monotonic())
+            status['inputs'] = self.input_snapshot(now)
         if now - self.last_status_time > .2 or status["state"] != self.last_status:
             payload = self.timing.call('status_json', json.dumps, status, ensure_ascii=False, allow_nan=False)
             self.timing.call('status_publish', self.status_publisher.publish, String(data=payload))

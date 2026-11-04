@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "scope": "출발 판독 영역을 관측 배열 기준으로 교정하고 launch 줄바꿈을 복원한다. 시험 초록·소등·배열·시간 조건과 차량 장착은 유지한다.",
+  "parent_contract": "config/tests/official_facility_r1_sha256.json",
+  "parent_contract_sha256": "5dc365985048f0031c0e4763ea57a9c0d86955c6909aeb043157a160b44fd1cd",
+  "before_snapshot": "artifacts/validation/2026-11-02/official_start_roi_v1/before.zip",
+  "before_snapshot_sha256": "1dc7933ef8428b1c9168e06948fd563900710971041d3b3a2e4fd2e48978af7c",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/race_start.py": {
+      "before": "fdc66e007ec3680d9dd8e2b338e10ea14b41c6a13a63c6b3ee9f59dc5d92b1b4",
+      "after": "a535cd0a76777c322d659f8ea89eca5b8c64842722bfd1242c61f61f71935e02",
+      "reason": "고정 상단 58%와 초록 탐색 사각형 전체 포함 조건을 관측 배열 기준으로 교체. 전체 빨강이 온전한 배열 하나일 때만 상단 밖을 인정하고 잘린 광원은 판독하지 않는다."
+    },
+    "src/arena_autonomy/arena_autonomy/race_start_local.py": {
+      "before": "b1c3b8e5e7d9925f990cc8b464816c1bea6d3d15a822696db858ccfba68920cd",
+      "after": "580675f536e52f02e4630bfe8d02f3c86e824a4685c6ed4e7b7fadcc8e98aefa",
+      "reason": "bank_window를 기반 검출기로 이동. 판단 내용 변경 없음."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "95b2964ecdf9c4991d2a6d49e678e639cb1de9d97be699c1a01e66927ea8f195",
+      "after": "f78006d7a90c6a6ed410936aae2e13d9d78f40640ddabc04f205a3270be96753",
+      "reason": "저장소 줄바꿈(CRLF) 복원. 내용 변경 없음. run1 실행 바이트는 before.zip과 run1 기록에 보존."
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {}
+}

@@ -1,0 +1,767 @@
+[INFO] [launch]: All log files can be found below /home/jinhyeong/.ros/log/2026-11-02-20-14-39-760486-DESKTOP-KA11CHH-723
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [launch.user]: Collision detector: configured; SceneBroadcaster: True
+[INFO] [launch.user]: Gazebo rendering request: wsl_nvidia; driver=d3d12; D3D12 lifetime guard=True. Verify actual GL_RENDERER in Ogre2 log.
+[INFO] [launch.user]: Drive: single_motor; differential: configured; safety=LiDAR enabled=True. Motor/tire properties are provisional.
+[INFO] [launch.user]: Drive feedback: drive_motor_shaft on /drive_motor/encoder; resolution={'counts_per_motor_revolution': 28, 'counts_per_mean_wheel_revolution': 251.1764705882353, 'mean_wheel_travel_m_per_count': 0.0008129882628142205}; rate/latency provisional. Single motor-shaft channel: mean wheel motion only; left/right difference, slip, backlash and opposite rotation unobservable; yaw from IMU.
+[INFO] [launch.user]: Track: official; main width: 0.45 m; shortcut widths: [0.2, 0.2] m. Official v2026.10.24 colors and complete gantry markers are preserved; signal and checker finish are provisional; bump uses published STL visuals with approximate collision.
+[INFO] [launch.user]: Rear identification marker: enabled=True; DICT_4X4_50 ID 49; board=0.05 m (team registered; mount provisional).
+[INFO] [launch.user]: Camera: B0183 + independent LSM6DSOX 208 Hz; RGB 1280x720 @ 60.0 Hz; depth 848x480 @ 60.0 Hz (enabled=False).
+[INFO] [launch.user]: Sensor mode: local_pursuit; ToF layout=none (mount provisional); speed_bump=False; batch_visuals=True; comparison ballast=0.062 kg.
+[INFO] [launch.user]: ToF ring: enabled=False; profile=tracking_8x8_15; 8x8 @ 15.0 Hz; modules=[].
+[INFO] [launch.user]: 2D LiDAR: enabled=True; 10 Hz, 500 samples/scan. acquisition=sequential; source=500 Hz; capture quantization <=2.1 ms; raw scan uncorrected, controller compensation=both.
+[INFO] [launch.user]: A1-2 virtual MCU: explicit /actuation/arm required; no automatic restart. MCU feedback=drive_motor_shaft (motor-shaft stationary check is mean-only). Gazebo inner motor PI still uses ideal joint velocities.
+[INFO] [gz-1]: process started with pid [748]
+[INFO] [parameter_bridge-2]: process started with pid [749]
+[INFO] [parameter_bridge-3]: process started with pid [750]
+[INFO] [guarded_sim_actuator-4]: process started with pid [751]
+[INFO] [actuation_host-5]: process started with pid [753]
+[INFO] [virtual_mcu-6]: process started with pid [754]
+[INFO] [rotating_lidar-7]: process started with pid [755]
+[INFO] [parameter_bridge-8]: process started with pid [756]
+[INFO] [static_transform_publisher-9]: process started with pid [757]
+[INFO] [traffic_light_controller.py-10]: process started with pid [758]
+[INFO] [lidar_safety-11]: process started with pid [759]
+[INFO] [local_pursuit-12]: process started with pid [760]
+[INFO] [sim_wheel_encoder-13]: process started with pid [761]
+[INFO] [1793618081.067039766] [race_ops]: 경기 운영 어댑터: 127.0.0.1:18765 차량 eval_car
+[static_transform_publisher-9] [INFO] [1793618081.103942487] [lidar_transform]: Spinning until stopped - publishing transform
+[static_transform_publisher-9] translation: ('0.060000', '0.000000', '0.095000')
+[static_transform_publisher-9] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-9] from 'base_link' to 'laser_frame'
+[parameter_bridge-8] [INFO] [1793618081.129956420] [lidar_bridge]: Creating GZ->ROS Bridge: [/sim/lidar_instantaneous (gz.msgs.LaserScan) -> /sim/lidar_instantaneous (sensor_msgs/msg/LaserScan)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.154439636] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.157948553] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/arena_car/cmd_vel (gz.msgs.Twist) -> /model/arena_car/cmd_vel (geometry_msgs/msg/Twist)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.161140240] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/arena_car/cmd_vel (geometry_msgs/msg/Twist) -> /model/arena_car/cmd_vel (gz.msgs.Twist)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.161990747] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/arena_car/steer_angle (std_msgs/msg/Float64) -> /model/arena_car/steer_angle (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.162712003] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/arena_car/drivetrain (gz.msgs.StringMsg) -> /model/arena_car/drivetrain (std_msgs/msg/String)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.163263111] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/arena_car/odometry (gz.msgs.Odometry) -> /model/arena_car/odometry (nav_msgs/msg/Odometry)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.169178760] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/arena_car/odometry (nav_msgs/msg/Odometry) -> /model/arena_car/odometry (gz.msgs.Odometry)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.169884898] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/arena_car/tf (gz.msgs.Pose_V) -> /model/arena_car/tf (tf2_msgs/msg/TFMessage)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.177344307] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/arena_car/tf (tf2_msgs/msg/TFMessage) -> /model/arena_car/tf (gz.msgs.Pose_V)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.178024998] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/arena_car/joint_state (gz.msgs.Model) -> /model/arena_car/joint_state (sensor_msgs/msg/JointState)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1793618081.180313537] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/arena_car/joint_state (sensor_msgs/msg/JointState) -> /model/arena_car/joint_state (gz.msgs.Model)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1793618082.155391258] [d435i_sensor_bridge]: Creating GZ->ROS Bridge: [/camera/color/image_raw (gz.msgs.Image) -> /camera/color/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1793618082.163948165] [d435i_sensor_bridge]: Creating GZ->ROS Bridge: [/camera/color/camera_info (gz.msgs.CameraInfo) -> /camera/color/camera_info (sensor_msgs/msg/CameraInfo)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1793618082.165539625] [d435i_sensor_bridge]: Creating GZ->ROS Bridge: [/imu/data (gz.msgs.IMU) -> /imu/data (sensor_msgs/msg/Imu)] (Lazy 0)
+[sim_wheel_encoder-13] [INFO] [1793618082.602936569] [sim_wheel_encoder]: Simulated drive motor encoder ready (single channel; left/right difference unobservable): 28 counts/motor rev x 8.97059:1 = 251.176 counts/mean wheel rev, 0.8130 mm/count, 100 Hz, 2 ms latency (provisional)
+[INFO] [create-14]: process started with pid [958]
+[gz-1] [1;32m[Msg] [0m[1;32mGazebo Sim Server v[0m[1;32m8.11.0[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mLoading SDF world file[[0m[1;32m/tmp/arena_world_oq3w_j9m/world.sdf[0m[1;32m].[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing entity system service on [[0m[1;32m/[0m[1;32mentity/system/add[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mCreate[0m[1;32m service on [[0m[1;32m/world/it_arena_track/create_multiple[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mCreate[0m[1;32m service on [[0m[1;32m/world/it_arena_track/create_multiple/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mRemove[0m[1;32m service on [[0m[1;32m/world/it_arena_track/remove[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mRemove[0m[1;32m service on [[0m[1;32m/world/it_arena_track/remove/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPose[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_pose[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPose[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_pose/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPose[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_pose_vector[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPose[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_pose_vector/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mLight configuration[0m[1;32m service on [[0m[1;32m/world/it_arena_track/light_config[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mLight configuration[0m[1;32m service on [[0m[1;32m/world/it_arena_track/light_config/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPhysics[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_physics[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPhysics[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_physics/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mSphericalCoordinates[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_spherical_coordinates[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mSphericalCoordinates[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_spherical_coordinates/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mEnable collision[0m[1;32m service on [[0m[1;32m/world/it_arena_track/enable_collision[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mEnable collision[0m[1;32m service on [[0m[1;32m/world/it_arena_track/enable_collision/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mDisable collision[0m[1;32m service on [[0m[1;32m/world/it_arena_track/disable_collision[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mDisable collision[0m[1;32m service on [[0m[1;32m/world/it_arena_track/disable_collision/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mMaterial[0m[1;32m service on [[0m[1;32m/world/it_arena_track/visual_config[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mMaterial[0m[1;32m service on [[0m[1;32m/world/it_arena_track/visual_config/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mMaterial[0m[1;32m service on [[0m[1;32m/world/it_arena_track/wheel_slip[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mMaterial[0m[1;32m service on [[0m[1;32m/world/it_arena_track/wheel_slip/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mLoaded level [[0m[1;32mdefault[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing world controls on [[0m[1;32m/world/it_arena_track[0m[1;32m/control], [[0m[1;32m/world/it_arena_track[0m[1;32m/control/state] and [[0m[1;32m/world/it_arena_track[0m[1;32m/playback/control][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing GUI information on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mgui/info[0m[1;32m][0m[1;32m[0m
+[create-14] [INFO] [1793618083.318635000] [ros_gz_sim]: Entity creation successful.
+[INFO] [create-14]: process has finished cleanly [pid 958]
+[local_pursuit-12] [INFO] [1793618083.544926246] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=both; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+[parameter_bridge-2] [INFO] [1793618085.003957987] [ros_gz_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[parameter_bridge-2] [INFO] [1793618085.004188808] [ros_gz_bridge]: Passing message from ROS geometry_msgs/msg/Twist to Gazebo gz.msgs.Twist (showing msg only once per type)
+[local_pursuit-12] [INFO] [1793618085.469534454] [local_pursuit]: B3 race supervisor candidate: session=a1416c186363485da5ccd052f8911b81
+[gz-1] [1;33m[Wrn] [OBJLoader.cc:202] [0m[1;33mMissing material for shape[[0m[1;33m] [0m[1;33min OBJ file[[0m[1;33m/tmp/arena_world_oq3w_j9m/batched_track_surface_0.obj[0m[1;33m][0m[1;33m[0m
+[gz-1] [1;33m[Wrn] [OBJLoader.cc:202] [0m[1;33mMissing material for shape[[0m[1;33m] [0m[1;33min OBJ file[[0m[1;33m/tmp/arena_world_oq3w_j9m/batched_grass_0.obj[0m[1;33m][0m[1;33m[0m
+[gz-1] [1;33m[Wrn] [OBJLoader.cc:202] [0m[1;33mMissing material for shape[[0m[1;33m] [0m[1;33min OBJ file[[0m[1;33m/tmp/arena_world_oq3w_j9m/batched_walls_0.obj[0m[1;33m][0m[1;33m[0m
+[gz-1] [1;33m[Wrn] [Ogre2Camera.cc:423] [0m[1;33mOgre2Camera::SetVisibilityMask: Mask bits [0m[1;33mc0000000[0m[1;33m are set but will be ignored as they conflict with the [0m[1;33mreserved bits used internally by the ogre2 backend.[0m[1;33m[0m
+[local_pursuit-12] [INFO] [1793618086.672568987] [local_pursuit]: t=0.020000 SENSOR_STOP / left 벽 / unknown
+[local_pursuit-12] [INFO] [1793618087.745120534] [local_pursuit]: t=0.120000 RACE_LATCHED / left 벽 / waiting_red4
+[local_pursuit-12] [INFO] [1793618127.686559535] [local_pursuit]: t=3.740000 WAIT_GREEN / left 벽 / waiting_red4
+[traffic_light_controller.py-10] [INFO] [1793618128.655684855] [traffic_light_controller]: 실제 신호 광원: green_probe
+[traffic_light_controller.py-10] [INFO] [1793618139.887532211] [traffic_light_controller]: 실제 신호 광원: off
+[traffic_light_controller.py-10] [INFO] [1793618151.716786381] [traffic_light_controller]: 실제 신호 광원: red1
+[traffic_light_controller.py-10] [INFO] [1793618163.366670916] [traffic_light_controller]: 실제 신호 광원: red2
+[traffic_light_controller.py-10] [INFO] [1793618175.209263256] [traffic_light_controller]: 실제 신호 광원: red3
+[traffic_light_controller.py-10] [INFO] [1793618187.028230653] [traffic_light_controller]: 실제 신호 광원: red4
+[traffic_light_controller.py-10] [INFO] [1793618205.667016515] [traffic_light_controller]: 실제 신호 광원: green
+[local_pursuit-12] [INFO] [1793618208.933614510] [local_pursuit]: t=11.040000 FOLLOW_BOUNDARY_UNCONFIRMED / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618209.826621369] [local_pursuit]: t=11.120000 FOLLOW_STEER_IN_PLACE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618210.068828118] [local_pursuit]: t=11.140000 FOLLOW_RELEASE_WAIT / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618212.103163294] [local_pursuit]: t=11.320000 RUNNING / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618216.631763213] [local_pursuit]: t=11.720000 PARALLEL_HOLD_LATERAL_MOTION_NOT_SMALL / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618218.295443774] [local_pursuit]: t=11.880000 PARALLEL_HOLD_RELEASE_WAIT / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618219.109019183] [local_pursuit]: t=11.960000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618219.306287825] [local_pursuit]: t=11.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618219.740359502] [local_pursuit]: t=12.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618220.352671904] [local_pursuit]: t=12.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618220.805128529] [local_pursuit]: t=12.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618221.482099930] [local_pursuit]: t=12.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618221.922791692] [local_pursuit]: t=12.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618222.598000023] [local_pursuit]: t=12.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618223.044308160] [local_pursuit]: t=12.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618223.698327861] [local_pursuit]: t=12.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618224.166518866] [local_pursuit]: t=12.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618224.819760972] [local_pursuit]: t=12.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618225.283101626] [local_pursuit]: t=12.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618225.956702934] [local_pursuit]: t=12.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618226.406342812] [local_pursuit]: t=12.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618227.092437103] [local_pursuit]: t=12.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618227.521206091] [local_pursuit]: t=12.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618228.199833812] [local_pursuit]: t=12.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618228.694304537] [local_pursuit]: t=12.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618229.337419062] [local_pursuit]: t=12.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618229.804905655] [local_pursuit]: t=12.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618230.481674495] [local_pursuit]: t=12.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618230.924402998] [local_pursuit]: t=13.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618231.600879043] [local_pursuit]: t=13.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618232.044534449] [local_pursuit]: t=13.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618232.719552463] [local_pursuit]: t=13.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618233.194416241] [local_pursuit]: t=13.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618233.838400248] [local_pursuit]: t=13.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618234.306247093] [local_pursuit]: t=13.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618234.985062313] [local_pursuit]: t=13.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618235.428112179] [local_pursuit]: t=13.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618236.109785222] [local_pursuit]: t=13.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618236.561950240] [local_pursuit]: t=13.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618237.239106303] [local_pursuit]: t=13.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618237.707522359] [local_pursuit]: t=13.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618238.359613806] [local_pursuit]: t=13.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618238.823429207] [local_pursuit]: t=13.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618239.499646516] [local_pursuit]: t=13.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618239.942918699] [local_pursuit]: t=13.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618240.631604283] [local_pursuit]: t=13.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618241.065736418] [local_pursuit]: t=13.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618241.743550966] [local_pursuit]: t=13.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618242.230673276] [local_pursuit]: t=14.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618242.879220459] [local_pursuit]: t=14.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618243.339221418] [local_pursuit]: t=14.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618244.024268072] [local_pursuit]: t=14.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618244.495510759] [local_pursuit]: t=14.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618245.194206633] [local_pursuit]: t=14.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618245.642338854] [local_pursuit]: t=14.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618246.325259169] [local_pursuit]: t=14.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618246.812851087] [local_pursuit]: t=14.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618247.417352243] [local_pursuit]: t=14.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618247.865875782] [local_pursuit]: t=14.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618248.483314773] [local_pursuit]: t=14.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618248.909959264] [local_pursuit]: t=14.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618249.530684998] [local_pursuit]: t=14.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618249.959941996] [local_pursuit]: t=14.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618250.595778077] [local_pursuit]: t=14.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618251.046807112] [local_pursuit]: t=14.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618251.688909457] [local_pursuit]: t=14.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618252.147506165] [local_pursuit]: t=14.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618252.836383895] [local_pursuit]: t=14.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618253.285567938] [local_pursuit]: t=15.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618253.954376989] [local_pursuit]: t=15.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618254.404507108] [local_pursuit]: t=15.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618255.075219260] [local_pursuit]: t=15.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618255.544382386] [local_pursuit]: t=15.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618256.220216878] [local_pursuit]: t=15.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618256.696009496] [local_pursuit]: t=15.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618257.433238374] [local_pursuit]: t=15.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618257.932369855] [local_pursuit]: t=15.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618258.648782378] [local_pursuit]: t=15.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618259.097968455] [local_pursuit]: t=15.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618259.779613219] [local_pursuit]: t=15.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618260.253773741] [local_pursuit]: t=15.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618260.929064688] [local_pursuit]: t=15.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618261.398155441] [local_pursuit]: t=15.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618262.107060695] [local_pursuit]: t=15.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618262.554851229] [local_pursuit]: t=15.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618263.259360467] [local_pursuit]: t=15.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618263.710187609] [local_pursuit]: t=15.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618264.408978319] [local_pursuit]: t=15.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618264.895760378] [local_pursuit]: t=16.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618265.588402692] [local_pursuit]: t=16.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618266.064661446] [local_pursuit]: t=16.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618266.766358004] [local_pursuit]: t=16.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618267.217814094] [local_pursuit]: t=16.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618267.931805806] [local_pursuit]: t=16.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618268.389150225] [local_pursuit]: t=16.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618269.089045941] [local_pursuit]: t=16.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618269.570500051] [local_pursuit]: t=16.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618270.248678612] [local_pursuit]: t=16.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618270.731939723] [local_pursuit]: t=16.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618271.430758037] [local_pursuit]: t=16.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618271.887182859] [local_pursuit]: t=16.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618272.586067146] [local_pursuit]: t=16.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618273.032343932] [local_pursuit]: t=16.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618273.723424435] [local_pursuit]: t=16.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618274.198782780] [local_pursuit]: t=16.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618274.878840143] [local_pursuit]: t=16.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618275.364519220] [local_pursuit]: t=16.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618276.122739125] [local_pursuit]: t=16.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618276.580475725] [local_pursuit]: t=17.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618277.252946580] [local_pursuit]: t=17.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618277.669630286] [local_pursuit]: t=17.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618278.336472884] [local_pursuit]: t=17.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618278.806411515] [local_pursuit]: t=17.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618279.456149379] [local_pursuit]: t=17.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618279.906094389] [local_pursuit]: t=17.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618280.597756690] [local_pursuit]: t=17.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618281.049028937] [local_pursuit]: t=17.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618281.715005949] [local_pursuit]: t=17.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618282.167808771] [local_pursuit]: t=17.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618282.840059319] [local_pursuit]: t=17.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618283.304922889] [local_pursuit]: t=17.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618283.954747708] [local_pursuit]: t=17.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618284.424526750] [local_pursuit]: t=17.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618285.098650634] [local_pursuit]: t=17.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618285.544148385] [local_pursuit]: t=17.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618286.220964393] [local_pursuit]: t=17.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618286.662798056] [local_pursuit]: t=17.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618287.331731752] [local_pursuit]: t=17.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618287.812374424] [local_pursuit]: t=18.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618288.454274122] [local_pursuit]: t=18.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618288.922090207] [local_pursuit]: t=18.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618289.604950947] [local_pursuit]: t=18.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618290.044983433] [local_pursuit]: t=18.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618290.715993982] [local_pursuit]: t=18.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618291.168932136] [local_pursuit]: t=18.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618291.902476910] [local_pursuit]: t=18.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618292.366851615] [local_pursuit]: t=18.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618293.018548214] [local_pursuit]: t=18.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618293.493779077] [local_pursuit]: t=18.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618294.153884829] [local_pursuit]: t=18.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618294.604995095] [local_pursuit]: t=18.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618295.281899857] [local_pursuit]: t=18.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618295.742373421] [local_pursuit]: t=18.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618296.396987574] [local_pursuit]: t=18.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618296.869375975] [local_pursuit]: t=18.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618297.535808191] [local_pursuit]: t=18.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618298.010675064] [local_pursuit]: t=18.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618298.682496433] [local_pursuit]: t=18.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618299.126092688] [local_pursuit]: t=19.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618299.798458006] [local_pursuit]: t=19.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618300.246499618] [local_pursuit]: t=19.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618300.913696615] [local_pursuit]: t=19.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618301.389078195] [local_pursuit]: t=19.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618302.071098673] [local_pursuit]: t=19.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618302.550038486] [local_pursuit]: t=19.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618303.218654321] [local_pursuit]: t=19.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618303.662794066] [local_pursuit]: t=19.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618304.337588571] [local_pursuit]: t=19.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618304.786951211] [local_pursuit]: t=19.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618305.479728323] [local_pursuit]: t=19.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618305.978448736] [local_pursuit]: t=19.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618306.623166718] [local_pursuit]: t=19.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618307.059187061] [local_pursuit]: t=19.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618307.696249093] [local_pursuit]: t=19.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618308.093436725] [local_pursuit]: t=19.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618308.723316599] [local_pursuit]: t=19.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618309.131745976] [local_pursuit]: t=19.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618309.774536009] [local_pursuit]: t=19.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618310.211879441] [local_pursuit]: t=20.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618310.840123121] [local_pursuit]: t=20.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618311.300328544] [local_pursuit]: t=20.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618311.979063630] [local_pursuit]: t=20.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618312.434750747] [local_pursuit]: t=20.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618313.115495112] [local_pursuit]: t=20.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618313.569855223] [local_pursuit]: t=20.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618314.242144060] [local_pursuit]: t=20.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618314.703767434] [local_pursuit]: t=20.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618315.370806254] [local_pursuit]: t=20.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618315.868326045] [local_pursuit]: t=20.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618316.546114545] [local_pursuit]: t=20.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618316.984226399] [local_pursuit]: t=20.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618317.661835098] [local_pursuit]: t=20.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618318.130775006] [local_pursuit]: t=20.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618318.783277288] [local_pursuit]: t=20.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618319.248160478] [local_pursuit]: t=20.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618319.859053986] [local_pursuit]: t=20.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618320.318554214] [local_pursuit]: t=20.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618320.940740517] [local_pursuit]: t=20.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618321.369869952] [local_pursuit]: t=21.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618321.980722104] [local_pursuit]: t=21.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618322.408901406] [local_pursuit]: t=21.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618323.053953307] [local_pursuit]: t=21.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618323.511450148] [local_pursuit]: t=21.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618324.155783027] [local_pursuit]: t=21.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618324.630023553] [local_pursuit]: t=21.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618325.315800389] [local_pursuit]: t=21.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618325.763800173] [local_pursuit]: t=21.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618326.456005159] [local_pursuit]: t=21.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618326.904581003] [local_pursuit]: t=21.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618327.611556050] [local_pursuit]: t=21.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618328.086885679] [local_pursuit]: t=21.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618328.757828426] [local_pursuit]: t=21.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618329.233600673] [local_pursuit]: t=21.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618329.902659004] [local_pursuit]: t=21.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618330.348738665] [local_pursuit]: t=21.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618331.016325726] [local_pursuit]: t=21.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618331.462982701] [local_pursuit]: t=21.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618332.169364140] [local_pursuit]: t=21.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618332.647369502] [local_pursuit]: t=22.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618333.296479669] [local_pursuit]: t=22.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618333.763682994] [local_pursuit]: t=22.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618334.436029572] [local_pursuit]: t=22.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618334.892453231] [local_pursuit]: t=22.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618335.557991595] [local_pursuit]: t=22.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618336.071360075] [local_pursuit]: t=22.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618336.735517204] [local_pursuit]: t=22.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618337.175156192] [local_pursuit]: t=22.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618337.797311149] [local_pursuit]: t=22.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618338.239387256] [local_pursuit]: t=22.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618338.917049735] [local_pursuit]: t=22.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618339.362053314] [local_pursuit]: t=22.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618340.038868161] [local_pursuit]: t=22.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618340.484864923] [local_pursuit]: t=22.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618341.156331769] [local_pursuit]: t=22.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618341.625773973] [local_pursuit]: t=22.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618342.278502924] [local_pursuit]: t=22.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618342.747873694] [local_pursuit]: t=22.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618343.427896798] [local_pursuit]: t=22.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618343.863340077] [local_pursuit]: t=23.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618344.548741027] [local_pursuit]: t=23.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618344.987859635] [local_pursuit]: t=23.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618345.660638317] [local_pursuit]: t=23.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618346.126759706] [local_pursuit]: t=23.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618346.776566215] [local_pursuit]: t=23.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618347.241910010] [local_pursuit]: t=23.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618347.917541880] [local_pursuit]: t=23.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618348.371600903] [local_pursuit]: t=23.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618349.038535779] [local_pursuit]: t=23.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618349.465075563] [local_pursuit]: t=23.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618350.136528325] [local_pursuit]: t=23.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618350.611436005] [local_pursuit]: t=23.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618351.260007000] [local_pursuit]: t=23.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618351.725854799] [local_pursuit]: t=23.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618352.401467637] [local_pursuit]: t=23.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618352.846241110] [local_pursuit]: t=23.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618353.519249957] [local_pursuit]: t=23.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618353.965672917] [local_pursuit]: t=23.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618354.637793176] [local_pursuit]: t=23.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618355.124188289] [local_pursuit]: t=24.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618355.757414646] [local_pursuit]: t=24.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618356.228696218] [local_pursuit]: t=24.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618356.895750494] [local_pursuit]: t=24.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618357.344996713] [local_pursuit]: t=24.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618358.020972110] [local_pursuit]: t=24.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618358.466135786] [local_pursuit]: t=24.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618359.140678645] [local_pursuit]: t=24.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618359.612910162] [local_pursuit]: t=24.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618360.257090688] [local_pursuit]: t=24.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618360.727852292] [local_pursuit]: t=24.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618361.404979939] [local_pursuit]: t=24.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618361.853585749] [local_pursuit]: t=24.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618362.539123571] [local_pursuit]: t=24.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618363.004329697] [local_pursuit]: t=24.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618363.680472407] [local_pursuit]: t=24.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618364.150821542] [local_pursuit]: t=24.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618364.797882652] [local_pursuit]: t=24.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618365.265075707] [local_pursuit]: t=24.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618366.011858065] [local_pursuit]: t=24.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618366.452376112] [local_pursuit]: t=25.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618367.108559397] [local_pursuit]: t=25.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618367.526189622] [local_pursuit]: t=25.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618368.181781848] [local_pursuit]: t=25.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618368.663145968] [local_pursuit]: t=25.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618369.297734727] [local_pursuit]: t=25.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618369.763238721] [local_pursuit]: t=25.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618370.440869328] [local_pursuit]: t=25.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618370.882686358] [local_pursuit]: t=25.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618371.556035901] [local_pursuit]: t=25.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618372.000417358] [local_pursuit]: t=25.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618372.676916686] [local_pursuit]: t=25.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618373.147568095] [local_pursuit]: t=25.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618373.800581315] [local_pursuit]: t=25.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618374.274800363] [local_pursuit]: t=25.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618374.940586328] [local_pursuit]: t=25.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618375.384964758] [local_pursuit]: t=25.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618376.059400601] [local_pursuit]: t=25.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618376.505093644] [local_pursuit]: t=25.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618377.181544356] [local_pursuit]: t=25.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618377.644702582] [local_pursuit]: t=26.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618378.299871871] [local_pursuit]: t=26.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618378.770029989] [local_pursuit]: t=26.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618379.493418671] [local_pursuit]: t=26.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618379.939641172] [local_pursuit]: t=26.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618380.636298622] [local_pursuit]: t=26.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618381.069974992] [local_pursuit]: t=26.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618381.711507414] [local_pursuit]: t=26.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618382.169773540] [local_pursuit]: t=26.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618382.815331846] [local_pursuit]: t=26.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618383.281027934] [local_pursuit]: t=26.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618383.982429459] [local_pursuit]: t=26.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618384.424344813] [local_pursuit]: t=26.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618385.094581035] [local_pursuit]: t=26.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618385.540760422] [local_pursuit]: t=26.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618386.218578853] [local_pursuit]: t=26.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618386.691194532] [local_pursuit]: t=26.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618387.354668164] [local_pursuit]: t=26.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618387.832356259] [local_pursuit]: t=26.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618388.502576481] [local_pursuit]: t=26.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618388.947535341] [local_pursuit]: t=27.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618389.616745558] [local_pursuit]: t=27.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618390.064084340] [local_pursuit]: t=27.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618390.737727373] [local_pursuit]: t=27.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618391.206890973] [local_pursuit]: t=27.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618391.872096368] [local_pursuit]: t=27.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618392.356785562] [local_pursuit]: t=27.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618393.039486030] [local_pursuit]: t=27.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618393.485439618] [local_pursuit]: t=27.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618394.158403038] [local_pursuit]: t=27.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618394.602000472] [local_pursuit]: t=27.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618395.276520569] [local_pursuit]: t=27.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618395.766396677] [local_pursuit]: t=27.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618396.466705112] [local_pursuit]: t=27.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618396.913487690] [local_pursuit]: t=27.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618397.555316107] [local_pursuit]: t=27.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618397.963643455] [local_pursuit]: t=27.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618398.635469770] [local_pursuit]: t=27.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618399.068383196] [local_pursuit]: t=27.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618399.737100409] [local_pursuit]: t=27.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618400.210648094] [local_pursuit]: t=28.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618400.870436013] [local_pursuit]: t=28.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618401.329320377] [local_pursuit]: t=28.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618401.998381992] [local_pursuit]: t=28.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618402.448855490] [local_pursuit]: t=28.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618403.120553113] [local_pursuit]: t=28.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618403.565828511] [local_pursuit]: t=28.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618404.248801024] [local_pursuit]: t=28.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618404.711695070] [local_pursuit]: t=28.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618405.355940286] [local_pursuit]: t=28.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618405.830523759] [local_pursuit]: t=28.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618406.522067101] [local_pursuit]: t=28.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618406.962812382] [local_pursuit]: t=28.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618407.635701082] [local_pursuit]: t=28.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618408.087604718] [local_pursuit]: t=28.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618408.754666836] [local_pursuit]: t=28.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618409.208888999] [local_pursuit]: t=28.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618409.861899906] [local_pursuit]: t=28.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618410.326975567] [local_pursuit]: t=28.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618411.000886960] [local_pursuit]: t=28.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618411.436902689] [local_pursuit]: t=29.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618412.099438186] [local_pursuit]: t=29.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618412.544610784] [local_pursuit]: t=29.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618413.216906928] [local_pursuit]: t=29.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618413.690046563] [local_pursuit]: t=29.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618414.337360645] [local_pursuit]: t=29.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618414.807349463] [local_pursuit]: t=29.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618415.479031512] [local_pursuit]: t=29.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618415.926517456] [local_pursuit]: t=29.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618416.600968212] [local_pursuit]: t=29.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618417.045958488] [local_pursuit]: t=29.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618417.717885454] [local_pursuit]: t=29.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618418.188564557] [local_pursuit]: t=29.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618418.838745494] [local_pursuit]: t=29.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618419.306377532] [local_pursuit]: t=29.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618419.983395930] [local_pursuit]: t=29.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618420.431431327] [local_pursuit]: t=29.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618421.097844857] [local_pursuit]: t=29.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618421.548074058] [local_pursuit]: t=29.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618422.258988829] [local_pursuit]: t=29.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618422.726761579] [local_pursuit]: t=30.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618423.399385468] [local_pursuit]: t=30.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618423.872112565] [local_pursuit]: t=30.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618424.558238371] [local_pursuit]: t=30.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618425.009863099] [local_pursuit]: t=30.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618425.675096948] [local_pursuit]: t=30.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618426.161969222] [local_pursuit]: t=30.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618426.829847337] [local_pursuit]: t=30.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618427.268005264] [local_pursuit]: t=30.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618427.882991057] [local_pursuit]: t=30.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618428.306103559] [local_pursuit]: t=30.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618428.938953779] [local_pursuit]: t=30.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618429.333770506] [local_pursuit]: t=30.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618429.960426620] [local_pursuit]: t=30.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618430.366469618] [local_pursuit]: t=30.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618431.040290854] [local_pursuit]: t=30.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618431.506835614] [local_pursuit]: t=30.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618432.166612445] [local_pursuit]: t=30.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618432.623133829] [local_pursuit]: t=30.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618433.303789423] [local_pursuit]: t=30.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618433.804114742] [local_pursuit]: t=31.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618434.481639921] [local_pursuit]: t=31.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618434.950682775] [local_pursuit]: t=31.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618435.638000618] [local_pursuit]: t=31.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618436.132263785] [local_pursuit]: t=31.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618436.785149271] [local_pursuit]: t=31.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618437.263136899] [local_pursuit]: t=31.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618437.960448081] [local_pursuit]: t=31.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618438.422895427] [local_pursuit]: t=31.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618439.116637168] [local_pursuit]: t=31.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618439.571604310] [local_pursuit]: t=31.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618440.262640643] [local_pursuit]: t=31.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618440.738256427] [local_pursuit]: t=31.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618441.365499249] [local_pursuit]: t=31.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618441.831588594] [local_pursuit]: t=31.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618442.479336384] [local_pursuit]: t=31.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618442.919621233] [local_pursuit]: t=31.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618443.537460796] [local_pursuit]: t=31.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618443.960365748] [local_pursuit]: t=31.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618444.629545817] [local_pursuit]: t=31.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618445.099667549] [local_pursuit]: t=32.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618445.713302557] [local_pursuit]: t=32.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618446.188041284] [local_pursuit]: t=32.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618446.861362801] [local_pursuit]: t=32.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618447.304727843] [local_pursuit]: t=32.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618447.978674397] [local_pursuit]: t=32.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618448.424886543] [local_pursuit]: t=32.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618449.097239164] [local_pursuit]: t=32.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618449.571714821] [local_pursuit]: t=32.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618450.218342086] [local_pursuit]: t=32.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618450.689777800] [local_pursuit]: t=32.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618451.362208536] [local_pursuit]: t=32.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618451.817459049] [local_pursuit]: t=32.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618452.526311690] [local_pursuit]: t=32.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618452.964022070] [local_pursuit]: t=32.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618453.650521610] [local_pursuit]: t=32.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618454.108982393] [local_pursuit]: t=32.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618454.771112017] [local_pursuit]: t=32.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618455.257788013] [local_pursuit]: t=32.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618455.958642770] [local_pursuit]: t=32.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618456.393163823] [local_pursuit]: t=33.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618457.047278462] [local_pursuit]: t=33.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618457.454975153] [local_pursuit]: t=33.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618458.088610427] [local_pursuit]: t=33.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618458.515274442] [local_pursuit]: t=33.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618459.129512928] [local_pursuit]: t=33.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618459.545904113] [local_pursuit]: t=33.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618460.192270074] [local_pursuit]: t=33.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618460.602759506] [local_pursuit]: t=33.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618461.273874950] [local_pursuit]: t=33.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618461.694636301] [local_pursuit]: t=33.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618462.384861086] [local_pursuit]: t=33.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618462.850952016] [local_pursuit]: t=33.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618463.501528609] [local_pursuit]: t=33.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618463.979988874] [local_pursuit]: t=33.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618464.645599383] [local_pursuit]: t=33.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618465.092756862] [local_pursuit]: t=33.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618465.759234599] [local_pursuit]: t=33.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618466.208797766] [local_pursuit]: t=33.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618466.883104754] [local_pursuit]: t=33.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618467.350501603] [local_pursuit]: t=34.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618468.004098061] [local_pursuit]: t=34.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618468.463513821] [local_pursuit]: t=34.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618469.144754432] [local_pursuit]: t=34.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618469.590928697] [local_pursuit]: t=34.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618470.269253131] [local_pursuit]: t=34.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618470.723992800] [local_pursuit]: t=34.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618471.400555570] [local_pursuit]: t=34.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618471.873170752] [local_pursuit]: t=34.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618472.523010789] [local_pursuit]: t=34.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618472.990547257] [local_pursuit]: t=34.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618473.663212586] [local_pursuit]: t=34.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618474.128430469] [local_pursuit]: t=34.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618474.802668990] [local_pursuit]: t=34.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618475.244818419] [local_pursuit]: t=34.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618475.919275356] [local_pursuit]: t=34.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618476.385640406] [local_pursuit]: t=34.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618477.026729414] [local_pursuit]: t=34.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618477.485455979] [local_pursuit]: t=34.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618478.166866012] [local_pursuit]: t=34.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618478.616385886] [local_pursuit]: t=35.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618479.298023088] [local_pursuit]: t=35.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618479.731135001] [local_pursuit]: t=35.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618480.402948494] [local_pursuit]: t=35.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618480.887515927] [local_pursuit]: t=35.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618481.540225960] [local_pursuit]: t=35.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618482.033696069] [local_pursuit]: t=35.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618482.720227508] [local_pursuit]: t=35.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618483.160794772] [local_pursuit]: t=35.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618483.824277711] [local_pursuit]: t=35.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618484.266889291] [local_pursuit]: t=35.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618484.942264710] [local_pursuit]: t=35.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618485.409456920] [local_pursuit]: t=35.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618486.077984192] [local_pursuit]: t=35.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618486.543537453] [local_pursuit]: t=35.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618487.181758751] [local_pursuit]: t=35.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618487.613722794] [local_pursuit]: t=35.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618488.226900095] [local_pursuit]: t=35.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618488.655379455] [local_pursuit]: t=35.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618489.280033894] [local_pursuit]: t=35.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618489.720207672] [local_pursuit]: t=36.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618490.340810956] [local_pursuit]: t=36.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618490.785161464] [local_pursuit]: t=36.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618491.457826186] [local_pursuit]: t=36.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618491.908439322] [local_pursuit]: t=36.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618492.578662377] [local_pursuit]: t=36.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618493.024648647] [local_pursuit]: t=36.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618493.699934161] [local_pursuit]: t=36.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618494.170578266] [local_pursuit]: t=36.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618494.820863005] [local_pursuit]: t=36.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618495.287928809] [local_pursuit]: t=36.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618495.957596815] [local_pursuit]: t=36.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618496.405079511] [local_pursuit]: t=36.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618497.078483720] [local_pursuit]: t=36.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618497.529105238] [local_pursuit]: t=36.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618498.198592162] [local_pursuit]: t=36.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618498.675777257] [local_pursuit]: t=36.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618499.316127212] [local_pursuit]: t=36.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618499.801260669] [local_pursuit]: t=36.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618500.454347033] [local_pursuit]: t=36.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618500.861819486] [local_pursuit]: t=37.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618501.514143085] [local_pursuit]: t=37.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618501.936000043] [local_pursuit]: t=37.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618502.611227384] [local_pursuit]: t=37.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618503.053938556] [local_pursuit]: t=37.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618503.689508108] [local_pursuit]: t=37.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618504.129507607] [local_pursuit]: t=37.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618504.782571787] [local_pursuit]: t=37.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618505.216188806] [local_pursuit]: t=37.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618505.907449733] [local_pursuit]: t=37.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618506.343209233] [local_pursuit]: t=37.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618507.023972287] [local_pursuit]: t=37.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618507.515459645] [local_pursuit]: t=37.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618508.161613728] [local_pursuit]: t=37.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618508.629506093] [local_pursuit]: t=37.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618509.305455170] [local_pursuit]: t=37.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618509.752254201] [local_pursuit]: t=37.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618510.424382296] [local_pursuit]: t=37.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618510.873899078] [local_pursuit]: t=37.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618511.544194352] [local_pursuit]: t=37.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618512.070915227] [local_pursuit]: t=38.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618512.757196763] [local_pursuit]: t=38.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618513.240303771] [local_pursuit]: t=38.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618513.928133953] [local_pursuit]: t=38.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618514.386646171] [local_pursuit]: t=38.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618515.074844179] [local_pursuit]: t=38.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618515.521515065] [local_pursuit]: t=38.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618516.220785240] [local_pursuit]: t=38.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618516.687612591] [local_pursuit]: t=38.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618517.304534466] [local_pursuit]: t=38.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618517.748271069] [local_pursuit]: t=38.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618518.361172664] [local_pursuit]: t=38.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618518.779009390] [local_pursuit]: t=38.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618519.399210142] [local_pursuit]: t=38.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618519.825370299] [local_pursuit]: t=38.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618520.467679329] [local_pursuit]: t=38.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618520.942953484] [local_pursuit]: t=38.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618521.602099101] [local_pursuit]: t=38.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618522.074776151] [local_pursuit]: t=38.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618522.763612293] [local_pursuit]: t=38.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618523.208868247] [local_pursuit]: t=39.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618523.877896913] [local_pursuit]: t=39.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618524.326677729] [local_pursuit]: t=39.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618524.999182230] [local_pursuit]: t=39.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618525.473094336] [local_pursuit]: t=39.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618526.122076418] [local_pursuit]: t=39.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618526.590896262] [local_pursuit]: t=39.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618527.266149437] [local_pursuit]: t=39.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618527.706915518] [local_pursuit]: t=39.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618528.381884765] [local_pursuit]: t=39.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618528.830345785] [local_pursuit]: t=39.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618529.518804373] [local_pursuit]: t=39.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618529.990659178] [local_pursuit]: t=39.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618530.673476079] [local_pursuit]: t=39.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618531.127887573] [local_pursuit]: t=39.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618531.802476720] [local_pursuit]: t=39.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618532.258752414] [local_pursuit]: t=39.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618532.916142044] [local_pursuit]: t=39.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618533.363505085] [local_pursuit]: t=39.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618534.039087425] [local_pursuit]: t=39.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618534.508889170] [local_pursuit]: t=40.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618535.155882370] [local_pursuit]: t=40.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618535.630608200] [local_pursuit]: t=40.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618536.304338573] [local_pursuit]: t=40.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618536.758203175] [local_pursuit]: t=40.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618537.462618999] [local_pursuit]: t=40.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618537.905361275] [local_pursuit]: t=40.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618538.577723383] [local_pursuit]: t=40.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618539.055853438] [local_pursuit]: t=40.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618539.696900158] [local_pursuit]: t=40.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618540.168086784] [local_pursuit]: t=40.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618540.843839410] [local_pursuit]: t=40.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618541.289308355] [local_pursuit]: t=40.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618541.987829208] [local_pursuit]: t=40.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618542.435373797] [local_pursuit]: t=40.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618543.115791307] [local_pursuit]: t=40.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618543.578203561] [local_pursuit]: t=40.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618544.240405760] [local_pursuit]: t=40.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618544.724836612] [local_pursuit]: t=40.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618545.407469828] [local_pursuit]: t=40.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618545.878011982] [local_pursuit]: t=41.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618546.545760256] [local_pursuit]: t=41.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618546.979093379] [local_pursuit]: t=41.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618547.605494762] [local_pursuit]: t=41.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618548.035323932] [local_pursuit]: t=41.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618548.659228103] [local_pursuit]: t=41.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618549.096479846] [local_pursuit]: t=41.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618549.744648387] [local_pursuit]: t=41.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618550.157591986] [local_pursuit]: t=41.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618550.799482943] [local_pursuit]: t=41.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618551.230027739] [local_pursuit]: t=41.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618551.904135826] [local_pursuit]: t=41.580000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618552.365870594] [local_pursuit]: t=41.620000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618553.025081671] [local_pursuit]: t=41.680000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618553.492660415] [local_pursuit]: t=41.720000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618554.160928874] [local_pursuit]: t=41.780000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618554.639792576] [local_pursuit]: t=41.820000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618555.324276054] [local_pursuit]: t=41.880000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618555.772343608] [local_pursuit]: t=41.920000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618556.444761060] [local_pursuit]: t=41.980000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618556.926935742] [local_pursuit]: t=42.020000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618557.575884308] [local_pursuit]: t=42.080000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618558.052527897] [local_pursuit]: t=42.120000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618558.726526845] [local_pursuit]: t=42.180000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618559.169063493] [local_pursuit]: t=42.220000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618559.843193772] [local_pursuit]: t=42.280000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618560.282312343] [local_pursuit]: t=42.320000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618560.963177998] [local_pursuit]: t=42.380000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618561.429981560] [local_pursuit]: t=42.420000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618562.092071916] [local_pursuit]: t=42.480000 PARALLEL_HOLD_BASELINE_UNAVAILABLE / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618562.545595871] [local_pursuit]: t=42.520000 PARALLEL_HOLD_UNCHANGED_GAP_HOLD / left 벽 / green_confirmed
+[local_pursuit-12] [INFO] [1793618563.019810914] [local_pursuit]: t=42.560000 RACE_LATCHED / left 벽 / green_confirmed
+[gz-1] [1;32m[Msg] [0m[1;32mWorld [[0m[1;32mit_arena_track[0m[1;32m] initialized with [[0m[1;32mdefault_physics[0m[1;32m] physics profile.[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing world SDF generation service on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mgenerate_world_sdf[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing world names on [[0m[1;32m/gazebo/worlds[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mResource path add service on [[0m[1;32m/gazebo/resource_paths/add[0m[1;32m].[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mResource path get service on [[0m[1;32m/gazebo/resource_paths/get[0m[1;32m].[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mResource path resolve service on [[0m[1;32m/gazebo/resource_paths/resolve[0m[1;32m].[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mResource paths published on [[0m[1;32m/gazebo/resource_paths[0m[1;32m].[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServer control service on [[0m[1;32m/server_control[0m[1;32m].[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mFound no publishers on /stats, adding root stats topic[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mFound no publishers on /clock, adding root clock topic[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32m단일 모터 토크 구동: 좌우 뒷바퀴 + 기계식 차동, 속도 강제 지정 없음[0m
+[gz-1] [1;32m[Msg] [0m[1;32mLoading plugin [[0m[1;32mgz-rendering-ogre2[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing scene information on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mscene/info[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing graph information on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mscene/graph[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing full state on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mstate[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing full state (async) on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mstate_async[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPublishing scene information on [[0m[1;32m/world/it_arena_track/scene/info[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPublishing entity deletions on [[0m[1;32m/world/it_arena_track/scene/deletion[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPublishing state changes on [[0m[1;32m/world/it_arena_track/state[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPublishing pose messages on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mpose/info[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPublishing dynamic pose messages on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mdynamic_pose/info[0m[1;32m][0m[1;32m[0m
+[INFO] [gz-1]: process has finished cleanly [pid 748]
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[INFO] [sim_wheel_encoder-13]: sending signal 'SIGINT' to process[sim_wheel_encoder-13]
+[INFO] [local_pursuit-12]: sending signal 'SIGINT' to process[local_pursuit-12]
+[INFO] [lidar_safety-11]: sending signal 'SIGINT' to process[lidar_safety-11]
+[INFO] [traffic_light_controller.py-10]: sending signal 'SIGINT' to process[traffic_light_controller.py-10]
+[INFO] [static_transform_publisher-9]: sending signal 'SIGINT' to process[static_transform_publisher-9]
+[INFO] [parameter_bridge-8]: sending signal 'SIGINT' to process[parameter_bridge-8]
+[INFO] [rotating_lidar-7]: sending signal 'SIGINT' to process[rotating_lidar-7]
+[INFO] [virtual_mcu-6]: sending signal 'SIGINT' to process[virtual_mcu-6]
+[INFO] [actuation_host-5]: sending signal 'SIGINT' to process[actuation_host-5]
+[INFO] [guarded_sim_actuator-4]: sending signal 'SIGINT' to process[guarded_sim_actuator-4]
+[INFO] [parameter_bridge-3]: sending signal 'SIGINT' to process[parameter_bridge-3]
+[INFO] [parameter_bridge-2]: sending signal 'SIGINT' to process[parameter_bridge-2]
+[static_transform_publisher-9] [INFO] [1793618565.102863781] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-8] [INFO] [1793618565.103925553] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-3] [INFO] [1793618565.110112268] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-2] [INFO] [1793618565.111176122] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [parameter_bridge-8]: process has finished cleanly [pid 756]
+[INFO] [static_transform_publisher-9]: process has finished cleanly [pid 757]
+[INFO] [parameter_bridge-3]: process has finished cleanly [pid 750]
+[INFO] [parameter_bridge-2]: process has finished cleanly [pid 749]
+[INFO] [virtual_mcu-6]: process has finished cleanly [pid 754]
+[INFO] [guarded_sim_actuator-4]: process has finished cleanly [pid 751]
+[INFO] [actuation_host-5]: process has finished cleanly [pid 753]
+[INFO] [rotating_lidar-7]: process has finished cleanly [pid 755]
+[INFO] [traffic_light_controller.py-10]: process has finished cleanly [pid 758]
+[INFO] [sim_wheel_encoder-13]: process has finished cleanly [pid 761]
+[INFO] [lidar_safety-11]: process has finished cleanly [pid 759]
+[INFO] [local_pursuit-12]: process has finished cleanly [pid 760]

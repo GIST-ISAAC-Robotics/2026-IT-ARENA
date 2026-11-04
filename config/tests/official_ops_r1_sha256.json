@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "scope": "C 경기 운영 최소 흐름(11/2). 기본 OFF 후보이며 실차·공용망 검증 아님.",
+  "parent_contract": "config/tests/official_traffic_eval_r2_sha256.json",
+  "parent_contract_sha256": "070988ef503e36e2ea2de5727efb7ba047f35263d4501d3b8eac29e0d417ee58",
+  "before_snapshot": "artifacts/validation/2026-11-02/official_ops_v1/before.zip",
+  "before_snapshot_sha256": "b694fd587a7487e5435073c2ffc77557ba13d95c149511b22d4afc5b55c2a2af",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/race_session.py": {
+      "before": "9f2914cdbade9265d0d39b4712fbfb4da2dd339b37f097d3dac9c814e4962a1f",
+      "after": "5481f4551a88e43e1e6fcec69ab41af2a43a985cd863b9ee67f13bef24d2303b",
+      "reason": "같은 경기 recovery_reset/resume_start/cancel_start/restore_race와 START 준비 상태. 기본 legacy 경로 불변."
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "5818a2f3a086fd0bb1fd728d17b1b4a281c2f7fb29a1e3f39711e00d7fb15231",
+      "after": "f1fd0f7fc4944c8ec228a4bf45829dd9eb78e0eeef08cd84b61e84ba5ee28d48",
+      "reason": "B3 후보의 입력 경계, 정지 그림자 경로 확인, 마커 동결, 재획득 옵션 전달. 기본 legacy 경로 불변."
+    },
+    "src/arena_autonomy/arena_autonomy/wall_follow.py": {
+      "before": "f5a744a6967763dffa9640caed3bd2bc7753ba33b7a9815e4222a8697f7ab622",
+      "after": "83204c35c487dc902fb65ec5ec6ef5c7ec5cba6486e0f2b399101a041d717c52",
+      "reason": "B3 후보 상태에 입력 나이 표시 추가."
+    },
+    "src/arena_autonomy/arena_autonomy/vision_process.py": {
+      "before": "6a627f8e3862aebba1592034deeb2950b2ddfcfa0fe1b23292550b49b031c50c",
+      "after": "a15f8d4002dce6796e26297e9677740de6fc9fc153314ce8307c472a251a6ce7",
+      "reason": "같은 경기 입력 경계. 경계 전 취득 영상 폐기, 출발 판정 유지."
+    },
+    "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py": {
+      "before": "50e85380bcfd48a87b79b9103a9b454840ed0789ef8ec4dee1a9c99a5bb80aa9",
+      "after": "aa57663f3ebc9ba937af0a0bfde180c4095028164d7022fc6757c70202fa4e02",
+      "reason": "입력 경계에서 운동 이력 초기화와 경계 전 표본 거절."
+    },
+    "src/arena_autonomy/arena_autonomy/lidar_safety.py": {
+      "before": "24493d13d4858627083128df8908cfb28613409edf8b24b4408fc3612a98c371",
+      "after": "ddd5705bd01d2d864a78581fdb7fcdf3df52f83bdadbd372fb707426a64fc4fd",
+      "reason": "B3 후보에서 입력 경계 수신 시 관측 기억만 초기화. 허가를 늘리지 않음."
+    },
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "45ac5b10bc2b0bcf447fe531b0a9cd07f8b9ba87936a5c744f66f5ca64c1d0dc",
+      "after": "67982991e2566e06d439df41c0b01bdc927b0914267f9734a03573d9e428c3fb",
+      "reason": "기본 OFF standing_wall_reacquire. 기억 없는 낮은 속도의 선호 벽 재획득."
+    },
+    "src/arena_autonomy/setup.py": {
+      "before": "a3379ca32b648e18d25f83f8c69487166d4d4349b784f0d8f071fec6af466e97",
+      "after": "f6216dcedd254ae6645f129101d7f27ab469dd7d20aa6947d7ebf66b7474e634",
+      "reason": "race_ops 실행 파일 등록."
+    },
+    "src/arena_bringup/launch/g1_follow.launch.py": {
+      "before": "bc12ab27ed0898a20e02b61ca15d00caff12b16e5864d05cf51dc9255fd03fa4",
+      "after": "801e6b3e8de63306ac8c87ca2e8dfb9ea208d38ef0f0432588413793b065cb3d",
+      "reason": "기본 OFF g1_standing_wall_reacquire 전달."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/race_operator.py": {
+      "before": "e43eb19a2dca61693904467f2a40064d6e5c1f35cf88b429f6c9dcb4b7a6e5c4",
+      "after": "a8495e96628587d6cae87a0229458da7b5717866bc378b0131c056f5e6ec740f",
+      "reason": "CLI에 recovery-reset/resume-start 추가. 기존 명령 판정 불변."
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/race_ops_core.py": "1d54869ba6fffa6f2f897df4d0a6d194e4d6001127ddb8c6319f5285a5158437",
+    "src/arena_autonomy/arena_autonomy/race_ops_export.py": "cec71a92355853765d3a0a619cc70dcec0051548f42fcdfbc50da501825c984c",
+    "src/arena_autonomy/arena_autonomy/race_ops_node.py": "428962934fa25fb015355a1146772ee5ccbcc24d02f0f2c5de250301f3230ded",
+    "src/arena_autonomy/arena_autonomy/race_ops_page.py": "5791cd35f531bb041e4cc9cb8c8b70871a327effdc762af8530de873af9e6d87"
+  }
+}

@@ -1,0 +1,37 @@
+arena-autonomy /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy/lib/python3.12/site-packages/arena_autonomy-0.1.0-py3.12.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy
+arena-vehicle-interface /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_vehicle_interface/arena_vehicle_interface.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_vehicle_interface
+installed packages and child process entry points resolved: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/turn_preview.py
+......................F...........F..................................... [ 63%]
+.........................................                                [100%]
+=================================== FAILURES ===================================
+____ test_wall_side_change_keeps_the_observed_path_without_raising_its_cap _____
+
+    def test_wall_side_change_keeps_the_observed_path_without_raising_its_cap():
+        off, on = controllers()
+        h = history()
+        settle(off, h), settle(on, h)
+        # 같은 스캔 중에 마커가 바뀐 경우. 새 후보가 없어 직전 경로를 통상 상한으로 잇는다.
+        assert off.command(scene(.84, source=.8-.1), h, 1., 'right')[2]['reason'] == 'follow_boundary_unconfirmed'
+        speed, _, detail = on.command(scene(.84, source=.8-.1), h, 1., 'right')
+>       assert speed > 0 and detail['path_wall'] == 'left' and detail['open_route_speed_enabled'] is False
+E       AssertionError: assert (2.3868748540128886 > 0 and 'left' == 'left'
+E           left and True is False)
+
+tests/test_boundary_bridge.py:62: AssertionError
+_______ test_profile_adds_only_this_option_and_leaves_ray_candidate_out ________
+
+    def test_profile_adds_only_this_option_and_leaves_ray_candidate_out():
+        profiles = launch_module().SPEED_PROFILES
+        new = profiles['g1_open_10kmh_solo_gap05_arc_preview']
+        assert new == {**profiles['g1_open_10kmh_solo_gap05_arc'], 'g1_preview_above_base_speed': True}
+        assert 'g1_ray_wall_continuity' not in new
+>       assert [k for k, v in profiles.items() if 'g1_preview_above_base_speed' in v] == ['g1_open_10kmh_solo_gap05_arc_preview', 'g1_open_10kmh_solo_gap05_arc_preview_bridge']
+E       AssertionError: assert ['g1_open_10k...w_bridge_ray'] == ['g1_open_10k...eview_bridge']
+E         Left contains one more item: 'g1_open_10kmh_solo_gap05_arc_preview_bridge_ray'
+E         Use -v to get more diff
+
+tests/test_turn_preview_gate.py:47: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_boundary_bridge.py::test_wall_side_change_keeps_the_observed_path_without_raising_its_cap
+FAILED tests/test_turn_preview_gate.py::test_profile_adds_only_this_option_and_leaves_ray_candidate_out
+2 failed, 111 passed in 54.72s

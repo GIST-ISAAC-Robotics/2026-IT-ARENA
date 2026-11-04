@@ -255,6 +255,7 @@ def test_existing_node_command_is_unchanged_when_opt_in_is_off():
     from arena_autonomy.local_pursuit import LocalPursuit
     h = history()
     node = SimpleNamespace(follow=None, motion=SimpleNamespace(history=h, last_meta={}), side='left',
+        prepared_output=lambda output: output,
         settings={'wheelbase_m': .135, 'max_steering_angle_rad': .37, 'max_speed_mps': 2.5,
                   'lateral_acceleration_limit_mps2': 3.5, 'target_wall_distance_m': .425})
     points = np.asarray(scene(.5).occupied_endpoints_xy_m)
@@ -267,6 +268,7 @@ def test_node_g1_input_failure_cannot_fall_back_to_r0():
     from arena_autonomy.local_pursuit import LocalPursuit
     h = history()
     node = SimpleNamespace(follow=LocalFollow(), scan=scan(), last_steering=0., side='left',
+        prepared_output=lambda output: output,
         motion=SimpleNamespace(history=h, last_meta={'reference_stamp_s': .7}, counts={'resets': 0}, verified=False),
         settings={'control_rate_hz': 50.}, rear_blind_half_angle=30.)
     speed, _, info = LocalPursuit.command(node, np.asarray(scene(.7).occupied_endpoints_xy_m))

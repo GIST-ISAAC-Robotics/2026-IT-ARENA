@@ -7,10 +7,16 @@ import numpy as np
 
 def mask_scan(scan, rear_half_angle_deg=30.):
     """후방 60도는 장착 미확정 사각으로 취급. 빈 공간으로 채우지 않는다."""
+    from arena_autonomy.local_scene import blind_spec
+    rear, sectors = blind_spec(rear_half_angle_deg)
     result = copy.deepcopy(scan)
     angles = scan.angle_min + np.arange(len(scan.ranges)) * scan.angle_increment
     ranges = np.asarray(scan.ranges, dtype=float).copy()
-    ranges[np.abs(angles) > math.radians(180 - rear_half_angle_deg)] = np.nan
+    ranges[np.abs(angles) > math.radians(180 - rear)] = np.nan
+    # 시험 전용 장착 구조 각도. 거리 반환이 있어도 unknown으로 둔다.
+    for center, width in sectors:
+        offset = np.remainder(angles - math.radians(center) + math.pi, math.tau) - math.pi
+        ranges[np.abs(offset) <= math.radians(width) + 1e-12] = np.nan
     result.ranges = ranges.tolist()
     return result
 

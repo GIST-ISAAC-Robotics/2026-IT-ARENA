@@ -15,6 +15,8 @@ class BypassExecutionConfig:
     wide_entry: bool = True
     prefer_earlier_transition: bool = False
     corridor_policy: str = 'off'
+    # 앞차 가까이 멈춘 뒤에도 조향 한계 안의 등록 전이를 후보로 고른다. 점유 검사는 그대로다.
+    steerable_transition: bool = False
 
     def __post_init__(self):
         if any(type(value) is not bool for key,value in vars(self).items() if key!='corridor_policy'):
@@ -49,6 +51,8 @@ class BypassEntryFollow:
             stationary_outer_boundary=self.execution.stationary_outer_boundary,
             wall_reanchor=self.execution.wall_reanchor,tracked_wall_fit=self.execution.tracked_wall_fit,
             rejoin_enabled=self.execution.rejoin_enabled,**options)
+        if self.execution.steerable_transition:
+            self.guide.steerable_transition=True
 
     def reset(self):
         self.guide.reset()

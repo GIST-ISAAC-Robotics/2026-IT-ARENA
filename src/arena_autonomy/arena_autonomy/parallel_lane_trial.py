@@ -1,7 +1,8 @@
 """직선의 현재 횡위치 유지 비교. 기본 OFF이며 코스 주행/후방 안전 인증이 아니다.
 
 관측 경로의 기울기는 유지하고 현재 후륜축을 지나도록 평행 이동한다.
-모든 현재 점유와 기존 시차 팽창·간격을 유지한다. 커브/결측/입력 실패 시
+모든 현재 점유를 유지한다. 명시 side_departure_trial만 측방 시차 겹침을 별도로
+검사하고 고정 측정 여유·비접근 궤적을 요구한다. 커브/결측/입력 실패 시
 기존 중앙 복귀로 우회하지 않고 대기한다. 상대 차량 정답은 사용하지 않는다.
 """
 import math
@@ -103,6 +104,11 @@ def proposal(scene, baseline, speed, previous, dt, config):
     clearance = min(swept_limit(points, angle, config.wheelbase_m, horizon=2.5, margin=padding,
                                length=config.length_m, width=config.width_m)
                     for angle in (steering, previous))
+    if config.side_departure_trial and clearance <= 1e-9:
+        from arena_autonomy.parallel_side_departure import limited_clearance
+        clearance, departure = limited_clearance(points, (steering, previous), padding,
+                                                  speed, age, dt, config)
+        result['side_departure'] = departure
     available = max(0., clearance-config.standstill_gap_m)
     target = min(target, braking_speed(available, age), available/config.headway_s)
     result.update(clearance_m=clearance, target_speed_mps=target,

@@ -40,11 +40,11 @@ def fixture_inputs():
     return {p.relative_to(ROOT).as_posix():digest(p) for p in inputs}
 
 
-def sequence_evidence(folder, labels, trace):
+def sequence_evidence(folder, labels, trace, channels=None):
     """녹색 단독 시험점등은 출발 신호가 아니다. 실제 10등의 적용 회신과 차의 첫 허가를 비교."""
     path = Path(folder)/'signal_sequence.jsonl'
     rows = [r for line in path.read_text().splitlines() if (r := json.loads(line)).get('stage')]
-    lamps = {v['name']:v['column'] for v in json.loads(MANIFEST.read_text())['lamps']}
+    lamps = {v['name']:v['column'] for v in (channels or json.loads(MANIFEST.read_text())['lamps'])}
     order = [r['stage'] for r in rows]
     receipts_ok = order == list(STAGES)
     for r in rows:

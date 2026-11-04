@@ -10,6 +10,19 @@ from test_g1_traffic_eval import synthetic_run
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT/'config/tests/g1_side_occlusion_v1.json'
+PRE_POST_WORLD = ROOT/'artifacts/validation/2026-11-01/signal_marker_offset_v1/fixture/world.sdf'
+
+
+def test_official_post_rejects_only_the_left_side_scene_on_the_new_world():
+    config = harness.load_config(CONFIG)
+    line, scene = harness.load_centerline()
+    road = harness.road_polygon(harness.DEMO_WORLD/'world.sdf')
+    walls = harness.obstacle_polygons(harness.DEMO_WORLD/'world.sdf')
+    right = harness.case_named(config, 'side_right')
+    harness.check_route(config, line, right, harness.actor_start_s(config, scene, 0, right), road, walls)
+    left = harness.case_named(config, 'side_left')
+    with pytest.raises(ValueError, match='not wholly off-road'):
+        harness.check_route(config, line, left, harness.actor_start_s(config, scene, 0, left), road, walls)
 
 
 @pytest.mark.parametrize('side', ['left', 'right'])
@@ -18,8 +31,9 @@ def test_side_route_is_wholly_offroad_and_inside_walls(side):
     line, scene = harness.load_centerline()
     case = harness.case_named(config, 'side_'+side)
     start = harness.actor_start_s(config, scene, 0, case)
-    road = harness.road_polygon(harness.DEMO_WORLD/'world.sdf')
-    walls = harness.obstacle_polygons(harness.DEMO_WORLD/'world.sdf')
+    # 등록 장면의 기준은 공식 기둥이 없던 시험 월드다. 새 월드 판정은 아래 시험이 본다.
+    road = harness.road_polygon(PRE_POST_WORLD)
+    walls = harness.obstacle_polygons(PRE_POST_WORLD)
     result = harness.check_route(config, line, case, start, road, walls)
     assert result['actor_offroad_samples'] > 120
     center = line.pose(start)

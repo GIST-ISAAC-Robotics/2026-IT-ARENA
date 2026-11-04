@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "scope": "정지 측방 반환 뒤 현재 관측 직선 차선 선호 시험. 기본 채택/실차 승인 아님.",
+  "parent_contract": "config/tests/side_departure_selector_r3_sha256.json",
+  "parent_contract_sha256": "c0981906e2380ed59403a37f2ebc03d388522dbd0f0774fc0921bb7822aa2661",
+  "before_snapshot": "artifacts/validation/2026-11-03/rear_lane_continuity_v1/runtime_before.zip",
+  "before_snapshot_sha256": "87e2189e1b4342bc6264f90dc92ec3760f6d5a45346b50d9de5b1cda4600a30c",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "80514a7e1f5c9d57ee232f6c0bd88753e288ceccfbd184af5445e731a0ed79f9",
+      "after": "a83cdcc4a8a52ed9173a3b9b9e0fa4d0a5736cd77082b899a5cc784a679600cf",
+      "reason": "선택형 현재 차선 유지 후보의 명시 활성화/설정/기록 연결. 기본 OFF와 원래 출력 경로 유지."
+    },
+    "src/arena_autonomy/arena_autonomy/g1_g2_node.py": {
+      "before": "f7a2d2e02323041a1eff8117c15d3730cde9d54d209898fdef1217c71de0e445",
+      "after": "b98a486a315afc384e218936b1a355d263c3fefd32765c2d0826ad6ee60cce42",
+      "reason": "선택형 현재 차선 유지 후보의 명시 활성화/설정/기록 연결. 기본 OFF와 원래 출력 경로 유지."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "3644b6ef771997b6414c4d0d46308907bd52dbdfd9e161839136d8459439b454",
+      "after": "d4b1d9e4e90004faaaa770701f1bbb3b0bad2d4020a348d4198beeafa5dc0172",
+      "reason": "선택형 현재 차선 유지 후보의 명시 활성화/설정/기록 연결. 기본 OFF와 원래 출력 경로 유지."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/g1_handoff_eval.py": {
+      "before": "256f2ee0a246774115dc917c7ce6ec6f484416fe14dd6b77e33fa5154016ee72",
+      "after": "a42076c403a15aa79a38424d8af29c71d88d6808cb63f617db7a53aaab6ad328",
+      "reason": "선택형 현재 차선 유지 후보의 명시 활성화/설정/기록 연결. 기본 OFF와 원래 출력 경로 유지."
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "5fa46de6f6ed3b0fb47f631dc154222d807053e1898c656d162440a046979b6e",
+      "after": "fb0b249301d7213c7988b020f4e16354901a203f892d20aa2c1a56323f1fb79b",
+      "reason": "선택형 현재 차선 유지 후보의 명시 활성화/설정/기록 연결. 기본 OFF와 원래 출력 경로 유지."
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/current_lane_preference.py": "e320696af3ee9b6a21c4ffc0ac9bb66a2630abcaecb08a9211fb43cb2f0e6b45"
+  }
+}

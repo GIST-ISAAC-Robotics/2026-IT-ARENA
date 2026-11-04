@@ -48,7 +48,8 @@ def race_status(payload):
             or type(race.get('started')) is not bool or type(race.get('rearm_required')) is not bool):
         raise ValueError('valid B3 status required; legacy is not supported')
     return {key: race.get(key) for key in (
-        'mode', 'session', 'race_epoch', 'intervention', 'latch', 'started', 'visual_start_fact',
+        'mode', 'session', 'race_id', 'race_epoch', 'intervention', 'latch', 'started', 'start_source',
+        'recovery_ready', 'resume', 'last_resume', 'visual_start_fact',
         'policy_allowed_if_sensors_ready', 'policy_reason', 'actuator_reason', 'rearm_required',
         'mcu_stop_observed_during_intervention', 'mcu')}
 
@@ -58,7 +59,7 @@ def build_command(op, *, session=None, race_epoch=None, intervention=None,
     request = uuid.uuid4().hex if request is None else request
     if not token(request):
         raise ValueError('invalid request')
-    if op not in ('stop', 'new_race', 'acknowledge'):
+    if op not in ('stop', 'new_race', 'acknowledge', 'recovery_reset', 'resume_start'):
         raise ValueError('unsupported operation')
     result = dict(v=1, request=request, op=op)
     if op == 'stop':
@@ -71,6 +72,10 @@ def build_command(op, *, session=None, race_epoch=None, intervention=None,
     if op == 'new_race':
         if intervention is not None or hazards_cleared or operator_reviewed:
             raise ValueError('new_race does not take acknowledgement flags')
+    elif op in ('recovery_reset', 'resume_start'):
+        if not natural(intervention) or hazards_cleared or operator_reviewed:
+            raise ValueError('explicit intervention required; acknowledgement flags are not used')
+        result.update(intervention=intervention)
     else:
         if not natural(intervention) or hazards_cleared is not True or operator_reviewed is not True:
             raise ValueError('explicit intervention, hazards-cleared and operator-reviewed required')
@@ -84,7 +89,7 @@ def preflight(command, status):
         return
     if any(command[key] != status[key] for key in ('session', 'race_epoch')):
         raise ValueError('stale session/race token; read status and review again')
-    if command['op'] == 'acknowledge':
+    if command['op'] in ('acknowledge', 'recovery_reset', 'resume_start'):
         if command['intervention'] != status['intervention'] or status['latch'] is None:
             raise ValueError('stale intervention or no latch; read status and review again')
 
@@ -105,6 +110,10 @@ def matching_result(command, result):
     elif op == 'new_race':
         valid = (result['session'] == command['session'] and result['race_epoch'] == command['race_epoch']+1
                  and result.get('latch') == 'new_race')
+    elif op in ('recovery_reset', 'resume_start'):
+        # 수락은 입력 경계 생성까지다. 정지를 유지하므로 래치가 남아 있어야 한다.
+        valid = (result['session'] == command['session'] and result['race_epoch'] == command['race_epoch']
+                 and result['intervention'] == command['intervention'] and result.get('latch') is not None)
     else:
         valid = (result['session'] == command['session'] and result['race_epoch'] == command['race_epoch']
                  and result['intervention'] == command['intervention'] and result.get('latch') is None)
@@ -219,7 +228,7 @@ def exchange(op, command=None, *, timeout_s=5.):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('status', 'stop', 'new-race', 'acknowledge'))
+    parser.add_argument('operation', choices=('status', 'stop', 'new-race', 'acknowledge', 'recovery-reset', 'resume-start'))
     parser.add_argument('--session')
     parser.add_argument('--race-epoch', type=int)
     parser.add_argument('--intervention', type=int)

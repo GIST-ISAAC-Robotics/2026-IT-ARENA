@@ -13,7 +13,7 @@ import zipfile
 
 import numpy as np
 
-from arena_autonomy.follow_trace import comparable_decision, equal_output, freeze, replay_events, restore_call
+from arena_autonomy.follow_trace import comparable_decision, controller_mode, equal_output, freeze, replay_events, restore_call
 from arena_autonomy.lidar_motion import MotionConfig, MotionUnavailable
 from arena_autonomy.local_follow import FollowConfig, LocalFollow
 from arena_autonomy.scene_motion import motion_scene
@@ -26,7 +26,7 @@ SNAPSHOT_MODULES = {'arena_autonomy': ('boundary_evidence',
                     'corner_evidence',
                     'corridor_observer', 'continuous_prefix', 'bypass_corridor_trial', 'bypass_handoff_corridor_trial', 'bypass_initial_reference', 'bypass_motion_pause_trial', 'bypass_preparation_hold', 'bypass_relative_yield', 'bypass_relative_yield_pause', 'bypass_signed_hold_trial',
                     'follow_trace',
-                    'bypass_yield_progress', 'front_patch_motion', 'released_rear_sweep', 'turn_preview',
+                    'bypass_yield_progress', 'front_patch_motion', 'released_rear_sweep', 'static_side_return', 'turn_preview',
                     'lateral_intent',
                     'lidar_motion',
                     'lidar_observation',
@@ -95,7 +95,7 @@ def timed_call(follow, inputs, motion, clock=time.perf_counter_ns, gc_observer=N
         failed_stage = stage
         follow.reset()
         output = 0., 0., {'reason': 'follow_input_stop', 'behavior': 'HOLD',
-                         'input_error': str(error), 'mode': 'g1_follow'}
+                         'input_error': str(error), 'mode': controller_mode(follow)}
     end = clock()
     cpu_end = time.thread_time_ns()
     # freeze/출력 비교·JSON 파싱은 아래 total 측정 밖이다. restore는 포함한다.
@@ -134,8 +134,9 @@ def _profile(event_source, repeats, warmups, clock, observation):
         raise ValueError('bounded repeats/warmups required')
     # 실행 전 footer/순서/손실과 전체 출력 일치를 검증한다. 잘못된 기록의 빠른 실행은 성과가 아니다.
     baseline = replay_events(event_source())
-    if baseline['scope'] != 'g1_decision_stage_only':
-        raise ValueError('G1 profiler does not profile R0+ traces')
+    trace_scope = baseline['scope']
+    if trace_scope not in ('g1_decision_stage_only', 'g1_g2_handoff_decision_stage_only'):
+        raise ValueError('profiler supports G1 and G1/G2 handoff traces only')
     if not baseline['passed']:
         raise ValueError('recorded outputs do not match current source')
     matched = baseline['matched']
@@ -144,7 +145,12 @@ def _profile(event_source, repeats, warmups, clock, observation):
     for cycle in range(warmups+repeats):
         iterator = iter(event_source())
         header = next(iterator)['data']
-        follow = LocalFollow(FollowConfig(**header['follow_config']))
+        if trace_scope == 'g1_g2_handoff_decision_stage_only':
+            from arena_autonomy.bypass_handoff import BypassHandoffFollow, HandoffExecutionConfig
+            follow = BypassHandoffFollow(FollowConfig(**header['follow_config']),
+                HandoffExecutionConfig.from_mapping(header['execution_config']), allow_simulation_trial=True)
+        else:
+            follow = LocalFollow(FollowConfig(**header['follow_config']))
         motion = MotionConfig(**header['motion_config'])
         previous_source = None
         for event in iterator:
@@ -160,15 +166,19 @@ def _profile(event_source, repeats, warmups, clock, observation):
                 new_scan = source != previous_source
                 previous_source = source
                 if cycle >= warmups:
+                    detail = output[2]
+                    normal = detail.get('normal', {}) if trace_scope == 'g1_g2_handoff_decision_stage_only' else detail
                     records.append(dict(repeat=cycle-warmups, seq=event['seq'],
                                         new_source_stamp=new_scan,
-                                        reason=output[2]['reason'],
-                                        selection=output[2].get('boundary_selection'), **costs))
+                                        reason=detail['reason'], handoff_state=detail.get('handoff_state'),
+                                        selection=normal.get('boundary_selection'), **costs))
     groups = defaultdict(list)
     for row in records:
         groups['all'].append(row)
         groups['new_scan' if row['new_source_stamp'] else 'reused_scan'].append(row)
         groups['gc_observed' if row['gc_collections'] else 'no_gc_observed'].append(row)
+        if row.get('handoff_state'):
+            groups['handoff_'+row['handoff_state'].lower()].append(row)
         if row['selection'] == 'bilateral_observed_fragments':
             groups['fragment_candidate_selected'].append(row)
         if row['selection'] == 'bilateral_observed_corner_anchor':
@@ -181,7 +191,9 @@ def _profile(event_source, repeats, warmups, clock, observation):
                 timed_calls=len(records), output_mismatches=mismatches, groups=stats, rows=records,
                 scope='decision_stage_offline_replay_cost_not_ros_deadline_or_closed_loop',
                 latency_limit_ms_reference_only=20., online_deadline_verified=False,
-                timing_includes=['captured_history_restore', 'motion_scene_projection', 'local_follow_command'],
+                controller_scope=trace_scope,
+                timing_includes=['captured_history_restore', 'motion_scene_projection',
+                    'bypass_handoff_command' if trace_scope == 'g1_g2_handoff_decision_stage_only' else 'local_follow_command'],
                 timing_excludes=['file_read', 'json_parse', 'output_compare', 'ros_dds_callbacks',
                                  'vision', 'safety_node', 'actuator', 'real_sensor_arrival_and_clock_mapping'],
                 clock_note='wall includes scheduling; thread_time excludes waiting and other worker threads; serialized warm-cache replay',

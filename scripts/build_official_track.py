@@ -3,8 +3,8 @@
 
 노면·잔디·벽·중심선·분기·그리드 슬롯은 릴리스를 따릅니다. 코스 ArUco의
 SDF 링크 전체·위치·방향·텍스처와 scene 메타데이터를 보존합니다.
-신호등은 팀 임시 표현을 유지합니다. 방지턱은 공개 STL 시각과
-20구간 충돌 근사를 구분하며, 미확정 길이 완화안은 적용하지 않습니다.
+v2026.11.01은 공식 2×5 신호 구조물·광원 기하를 보존하고 광원 재질만 소등으로
+시작합니다. 이전 릴리스 프로필의 팀 임시 신호·방지턱 표현은 재현용으로 남습니다.
 보존 ZIP은 절대 수정하지 않습니다.
 """
 
@@ -29,19 +29,23 @@ import yaml
 from build_experimental_track import inspect_geometry
 from build_runtime_world import build_runtime_world
 from experimental_facilities import configure, replace_facilities, update_scene
+from official_2x5_facilities import (
+    configure_official_2x5, install_official_2x5, update_official_2x5_scene, verify_official_signal,
+)
 
 
 REPO = Path(__file__).resolve().parents[1]
-ARCHIVE = REPO / "assets/track/official/v2026.10.24/it_arena_track_v2026.10.24.zip"
-PROFILE = REPO / "config/tracks/official_v2026.10.24.yaml"
+ARCHIVE = REPO / "assets/track/official/v2026.11.01/it_arena_track_v2026.11.01.zip"
+PROFILE = REPO / "config/tracks/official_v2026.11.01.yaml"
 DESTINATION = REPO / "src/arena_gazebo/worlds/it_arena_official"
 VEHICLE = REPO / "src/arena_description/config/vehicle.yaml"
-EXPECTED_ARCHIVE_SHA256 = "16b2f078609abea45ac3f351215df6576ced02bc6c40e933998ab91578de8a79"
-EXPECTED_ARCHIVE_SIZE = 812_042
+EXPECTED_ARCHIVE_SHA256 = "ef50e0f125eb4b8cba3cfa736188a24038b7a8c99a4de6b6a782fac5dd2e5cf5"
+EXPECTED_ARCHIVE_SIZE = 790_959
 EXPECTED_MEMBER_COUNT = 23
 RELEASES = {
     'v2026.09.14': ('a4ff2ea0ab99c217803fff799189d7e24794f1944faf21db56215517c4c5d814',805_607),
-    'v2026.10.24': (EXPECTED_ARCHIVE_SHA256,EXPECTED_ARCHIVE_SIZE),
+    'v2026.10.24': ('16b2f078609abea45ac3f351215df6576ced02bc6c40e933998ab91578de8a79',812_042),
+    'v2026.11.01': (EXPECTED_ARCHIVE_SHA256,EXPECTED_ARCHIVE_SIZE),
 }
 
 
@@ -175,7 +179,7 @@ PUBLISHED_BUMP_ROOT = REPO/'assets/track/official/v2026.10.24/upstream/parts/spe
 
 
 def published_bump_inputs(profile):
-    mode=profile['facilities']['speed_bump'].get('published_visual')
+    mode=profile['facilities'].get('speed_bump',{}).get('published_visual')
     if mode is None:return {}
     if mode!='official_two_piece_225mm_h10':raise ValueError('지원하지 않는 공개 방지턱 모델입니다.')
     return {'published_bump/'+name:sha256(PUBLISHED_BUMP_ROOT/name) for name,_,_,_ in PUBLISHED_BUMP_PARTS}
@@ -220,6 +224,16 @@ def apply_published_bump_visual(raw,profile):
         status='published 50mm model; proposed 100/150mm lengths are unconfirmed')
 
 
+def official_2x5_profile(profile) -> bool:
+    return profile["facilities"]["traffic_light"].get("representation") == "official_2x5"
+
+
+def official_signal_inputs(profile) -> dict:
+    if not official_2x5_profile(profile):
+        return {}
+    return {"official_signal_builder": sha256(REPO / "scripts/official_2x5_facilities.py")}
+
+
 def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict, dict]:
     profile = yaml.safe_load(profile_path.read_text(encoding="utf-8"))
     archive_path=profile_archive(profile)
@@ -240,7 +254,9 @@ def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict
     if float(result["meta"]["track_w"]) != .45 or [float(item["width_m"]) for item in result["branches"]] != [.20, .20]:
         raise ValueError("공식 본선 45 cm·지름길 20 cm 조건을 만족하지 않습니다.")
     marker_placements = verify_official_markers(raw / "world.sdf", source_scene,release)
-    facility_config = configure(result, profile, generator)
+    official_signal = official_2x5_profile(profile)
+    facility_config = (configure_official_2x5(result, profile) if official_signal
+                       else configure(result, profile, generator))
     start_finish = source_scene.get("start_finish")
     if not start_finish or not math.isclose(float(start_finish["s_m"]), 0.0, abs_tol=1e-9):
         raise ValueError("공식 출발/결승 기준 s=0이 scene.json에 없습니다.")
@@ -248,11 +264,19 @@ def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict
         raise ValueError("공식 design_final.json의 출발/결승 기준이 s=0이 아닙니다.")
     if not math.isclose(float(source_scene["starting_grid"]["longitudinal_stagger_m"]), .20, abs_tol=1e-9):
         raise ValueError("공식 그리드 엇갈림 메타데이터가 실제 적용값 0.20 m가 아닙니다.")
-    replace_facilities(raw / "world.sdf", result, generator)
+    if official_signal:
+        install_official_2x5(raw / "world.sdf", result, generator)
+        verify_official_signal(source / "output_final/world.sdf", raw / "world.sdf",
+                               remove_track_post=facility_config["traffic_light"].get("remove_track_post", False))
+    else:
+        replace_facilities(raw / "world.sdf", result, generator)
     published_bump=apply_published_bump_visual(raw,profile)
     verify_preserved_markers(source / "output_final/world.sdf", raw / "world.sdf")
     scene = copy.deepcopy(source_scene)
-    update_scene(scene, result, generator)
+    if official_signal:
+        update_official_2x5_scene(scene, result)
+    else:
+        update_scene(scene, result, generator)
     if scene["aruco_markers"] != source_scene["aruco_markers"]:
         raise ValueError("공식 마커 scene 메타데이터가 변경되었습니다.")
     scene["starting_grid"]["paint"]["source"] = f"official {release} world.sdf grid_slot_0..5 visuals"
@@ -266,14 +290,19 @@ def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict
     scene["runtime_corrections"] = {
         "official_geometry_unchanged": [
             "main and shortcut centerlines", "road/grass/wall geometry", "branch openings",
-            "starting slot poses and filled white visuals",
+            ("starting slot poses and filled black visuals" if official_signal
+             else "starting slot poses and filled white visuals"),
+            *(["2x5 signal post, beam, panel and lamp poses/geometry"] if official_signal else []),
             "complete course ArUco SDF links, poses, materials, PNGs and scene metadata",
         ],
         "marker_placement": {
             "status": "official_gantry_unchanged",
             "placements": marker_placements,
         },
-        "provisional_facilities": [
+        "provisional_facilities": ([
+            "lamp links start dark; team simulator material sequence replaces the static always-on official emissive",
+            "checker finish paint at the official s=0 start/finish pose",
+        ] if official_signal else [
             "camera-visible low traffic-light body and deterministic simulator sequence",
             ("published 50 mm x 10 mm orange STL visual; 20-strip collision approximation; length revision unresolved"
              if published_bump else "legacy provisional 5 cm raised-cosine striped speed bump"),
@@ -284,8 +313,10 @@ def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict
             ("provisional traffic-light ground post retained for legacy stress comparison"
              if facility_config["traffic_light"].get("ground_post_enabled", True)
              else "provisional traffic-light ground post omitted; lamp and overhead assembly unchanged"),
-        ],
-        "friction": "official wall collisions retain mu=mu2=0.8; road, grass and bump have no injected coefficient",
+        ]),
+        "friction": ("official wall collisions retain mu=mu2=0.8; road and grass have no injected coefficient"
+                     if official_signal else
+                     "official wall collisions retain mu=mu2=0.8; road, grass and bump have no injected coefficient"),
     }
     write_json(raw / "scene.json", scene)
     shutil.copy2(source / "design_final.json", raw / "design.json")
@@ -324,8 +355,14 @@ def build(profile_path: Path = PROFILE, destination: Path = DESTINATION) -> dict
         if not body_geometry["static_footprint_checks_pass"] or not steered_geometry["static_footprint_checks_pass"]:
             print(json.dumps({"body": body_geometry, "steered": steered_geometry}, ensure_ascii=False, indent=2))
             raise ValueError("공식 실행본의 차량 정적 통과 검사가 실패했습니다.")
+        if official_2x5_profile(profile):
+            # 이전 릴리스의 방지턱 메시를 실행 묶음에 남기지 않습니다. 원본은 Git·보존 ZIP에 있습니다.
+            shutil.rmtree(destination / "meshes", ignore_errors=True)
         runtime = build_runtime_world(raw, destination)
         verify_preserved_markers(raw / "world.sdf", destination / "world.sdf")
+        if official_2x5_profile(profile):
+            verify_official_signal(raw / "world.sdf", destination / "world.sdf",
+                                   remove_track_post=prepared["facility_config"]["traffic_light"].get("remove_track_post", False))
         if inspect_geometry(destination / "world.sdf", result, body) != body_geometry:
             raise ValueError("실행 월드 병합 전후의 충돌 형상이 다릅니다.")
         shutil.copy2(raw / "design.json", destination / "design.json")
@@ -354,7 +391,8 @@ def build(profile_path: Path = PROFILE, destination: Path = DESTINATION) -> dict
         "friction_scope": {
             "preserved_official_wall_mu": .8,
             "road": "unspecified_engine_default", "grass": "unspecified_engine_default",
-            "speed_bump": "unspecified_engine_default", "vehicle_tire": "separate_provisional_vehicle_model",
+            **({} if official_2x5_profile(profile) else {"speed_bump": "unspecified_engine_default"}),
+            "vehicle_tire": "separate_provisional_vehicle_model",
         },
         "geometry_checks": {"body_20x15_cm": body_geometry, "steered_envelope": steered_geometry},
         "runtime_conversion": runtime,
@@ -364,6 +402,7 @@ def build(profile_path: Path = PROFILE, destination: Path = DESTINATION) -> dict
             "geometry_inspector": sha256(REPO / "scripts/build_experimental_track.py"),
             "runtime_builder": sha256(REPO / "scripts/build_runtime_world.py"),
             "facility_builder": sha256(REPO / "scripts/experimental_facilities.py"),
+            **official_signal_inputs(profile),
             **published_bump_inputs(profile),
         },
     }
@@ -388,6 +427,7 @@ def check(destination: Path = DESTINATION, profile_path: Path = PROFILE) -> dict
         "geometry_inspector": sha256(REPO / "scripts/build_experimental_track.py"),
         "runtime_builder": sha256(REPO / "scripts/build_runtime_world.py"),
         "facility_builder": sha256(REPO / "scripts/experimental_facilities.py"),
+        **official_signal_inputs(profile),
         **published_bump_inputs(profile),
     }
     if saved["input_sha256"] != expected_inputs:
