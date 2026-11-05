@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "scope": "이동 앞차 추종 속도 톱니 보완 선택 시험. 기본 동작·기록 재생 불변, 추월 기능 아님, 실차 승인 아님",
+  "parent_contract": "config/tests/lidar_mount_structure_gate_r7_sha256.json",
+  "parent_contract_sha256": "2ddb2fc6fca057fa4e8d0b21eec32590ae2f244ba599bc37534900432a27b82b",
+  "before_snapshot": "artifacts/validation/2026-11-05/moving_follow_continuity_v1/continuity_before.zip",
+  "before_snapshot_sha256": "97cf233aebba8acf4ee41b052e6466671076a2ed831b3e0b443fc8a266712a7b",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": {
+      "before": "86f16d12dc0cc046dee34357a6e4b0b995ecfb215a393447d3b5e6ecced7509d",
+      "after": "57757cb8aa5595e88642287778913dc95c900aebab55944564850f9493378bfc",
+      "reason": "선택 필드 continuous_forward_pace(기본 OFF, observed_forward_pace 필요). 고정 우회 여유만 남는 분기에서 이번 새 스캔의 ObservedForwardPace 전진율이 양수일 때만 그 값을 여유 상한에 더한다. G1 출력이 상한, 정지·감속·측방·튐에서는 0"
+    },
+    "src/arena_autonomy/arena_autonomy/g1_g2_node.py": {
+      "before": "b98a486a315afc384e218936b1a355d263c3fefd32765c2d0826ad6ee60cce42",
+      "after": "dbead7c978be814ce2eff8915af8938819d53e95310884722816c05a45554264",
+      "reason": "g1_g2_continuous_forward_pace 파라미터(기본 false) 전달"
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "103987bbb71aa021c081f38698c0a9c28da81e4687d3b5be0f5ac1ad5e473cb5",
+      "after": "51ff1c0ffea11b1a4654c44aa61144d551425d2995356ecc42a7ca148f37e61c",
+      "reason": "evaluation_handoff_continuous_pace 인자(기본 false). paced 예약+관측 이동에서만 허용해 노드에 전달"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/g1_handoff_eval.py": {
+      "before": "a42076c403a15aa79a38424d8af29c71d88d6808cb63f617db7a53aaab6ad328",
+      "after": "25f99ad42fddcf095137447b8cc299768b529dafb235374b6c422b60c2ba3a17",
+      "reason": "continuous_pace 선택 인자 전달과 헤더 확인 항목. 미지정 시 기존 인자와 같음"
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "d3dad2c8e2fff9ff35a8f4297a9abf10a961933c389e5038ce7dd08434898607",
+      "after": "ba109807945505996412000d275aa1191b1bb2743de472e381a6721f394bcb07",
+      "reason": "--handoff-continuous-pace 선택 인자(기본 꺼짐) 전달"
+    }
+  },
+  "new_dependencies": {}
+}

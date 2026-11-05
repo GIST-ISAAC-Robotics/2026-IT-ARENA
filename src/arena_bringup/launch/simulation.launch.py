@@ -1345,6 +1345,12 @@ def _launch_setup(context):
         yield_progress = LaunchConfiguration("evaluation_handoff_yield_progress").perform(context) == "true"
         rear_sweep = LaunchConfiguration("evaluation_handoff_rear_sweep").perform(context) == "true"
         observed_motion = LaunchConfiguration("evaluation_handoff_observed_motion").perform(context) == "true"
+        continuous_pace = LaunchConfiguration("evaluation_handoff_continuous_pace").perform(context) == "true"
+        moving_pass = LaunchConfiguration("evaluation_moving_pass_trial").perform(context) == "true"
+        if moving_pass and not continuous_pace:
+            raise ValueError("moving pass requires continuous forward pace")
+        if continuous_pace and (reserve != "paced" or not observed_motion):
+            raise ValueError("continuous forward pace requires paced reserve and observed motion")
         side_departure = LaunchConfiguration("evaluation_side_departure_trial").perform(context) == "true"
         current_lane = LaunchConfiguration("evaluation_current_lane_preference_trial").perform(context) == "true"
         if current_lane and (not side_departure or not observed_motion or reserve == "off"
@@ -1377,6 +1383,8 @@ def _launch_setup(context):
                 g1_g2_moving_pace_floor=reserve=='paced',
                 g1_g2_released_rear_sweep_trial=rear_sweep,
                 g1_g2_observed_motion_gates=observed_motion,
+                g1_g2_continuous_forward_pace=continuous_pace,
+                g1_g2_moving_pass_trial=moving_pass,
                 g1_g2_side_departure_trial=side_departure,
                 g1_g2_current_lane_preference_trial=current_lane,
                 g1_g2_current_lane_headroom_mps=(feedback["resolution"]["mean_wheel_travel_m_per_count"]
@@ -1544,6 +1552,10 @@ def generate_launch_description() -> LaunchDescription:
                                   description="측방 시차 겹침에서 비접근 저속 출발 시험 후보"),
             DeclareLaunchArgument("evaluation_handoff_observed_motion", default_value="false", choices=["false", "true"],
                                   description="세계 고정 측방 반환과 전진 시작 조각을 구별하는 시험 후보"),
+            DeclareLaunchArgument("evaluation_handoff_continuous_pace", default_value="false", choices=["false", "true"],
+                                  description="paced+관측 이동 후보에서 연속 전진율로 고정 우회 여유만 보완하는 시험 후보"),
+            DeclareLaunchArgument("evaluation_moving_pass_trial", default_value="false", choices=["false", "true"],
+                                  description="현재 관측으로 진입·후방 확인·복귀하는 직선 저속 이동차 추월 시험"),
             DeclareLaunchArgument("evaluation_handoff_yield_progress", default_value="false", choices=["false", "true"],
                                   description="현재 면이 전진할 때만 양보 예산을 갱신하는 시험 후보"),
             DeclareLaunchArgument("evaluation_handoff_reserve", default_value="off", choices=["off","fixed","moving","closing","recent","low_motion","paced"],

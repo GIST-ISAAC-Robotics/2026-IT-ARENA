@@ -1,0 +1,625 @@
+diff --git a/scripts/g1_handoff_eval.py b/scripts/g1_handoff_eval.py
+index 7acf9244..c78d4ec4 100644
+--- a/scripts/g1_handoff_eval.py
++++ b/scripts/g1_handoff_eval.py
+@@ -2,9 +2,9 @@
+ import json
+ 
+ 
+-def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False):
++def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False):
+     if mode != 'g1g2':
+-        if reserve is not None or progress or rear_sweep or observed_motion or side_departure or current_lane:
++        if reserve is not None or progress or rear_sweep or observed_motion or side_departure or current_lane or continuous_pace or moving_pass:
+             raise ValueError('reserve comparison is only defined for the G1/G2 trial')
+         return []
+     if (reserve not in ('fixed', 'moving','closing','recent','low_motion','paced') or not recorded or
+@@ -15,11 +15,17 @@ def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sw
+         raise ValueError('G1/G2 pair requires an explicit reserve, recorded 1.5 m/s lap profile and sequential C1')
+     if current_lane and not (side_departure and observed_motion):
+         raise ValueError('current lane preference requires side departure and observed motion')
++    if continuous_pace and not (reserve == 'paced' and observed_motion):
++        raise ValueError('continuous forward pace requires paced reserve and observed motion')
++    if moving_pass and not continuous_pace:
++        raise ValueError('moving pass requires continuous forward pace')
+     extra = ['evaluation_handoff_yield_progress:=true'] if progress else []
+     if rear_sweep:extra.append('evaluation_handoff_rear_sweep:=true')
+     if observed_motion:extra.append('evaluation_handoff_observed_motion:=true')
+     if side_departure:extra.append('evaluation_side_departure_trial:=true')
+     if current_lane:extra.append('evaluation_current_lane_preference_trial:=true')
++    if continuous_pace:extra.append('evaluation_handoff_continuous_pace:=true')
++    if moving_pass:extra.append('evaluation_moving_pass_trial:=true')
+     return extra + [f'evaluation_handoff_reserve:={reserve}',
+             'g1_boundary_evidence_mode:=corner_distance_candidate', 'g1_occupancy_timing_mode:=per_ray_candidate',
+             'partial_observation_policy:=bounded_local_v4', 'g1_corridor_fallback_enabled:=true',
+@@ -27,7 +33,7 @@ def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sw
+             'g1_guard_curve_trial:=true', 'g1_traffic_recovery_trial:=true', 'g1_traffic_path_recovery_trial:=true']
+ 
+ 
+-def inspect_header(path, reserve, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False):
++def inspect_header(path, reserve, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False):
+     with path.open(encoding='utf-8') as stream:
+         first = json.loads(next(stream))
+     header = first['data']; f = header['follow_config']; e = header['execution_config']
+@@ -44,6 +50,8 @@ def inspect_header(path, reserve, *, progress=False, rear_sweep=False, observed_
+         lane_headroom=(not current_lane or 0 < f.get('current_lane_headroom_mps',0.) < f.get('max_speed_mps',0.)),
+         entry_motion=e.get('entry_motion_gate',False) is observed_motion,
+         observed_forward_pace=e.get('observed_forward_pace',False) is (observed_motion and reserve=='paced'),
++        continuous_pace=e.get('continuous_forward_pace',False) is continuous_pace,
++        moving_pass=e.get('moving_pass_trial',False) is moving_pass,
+         observed_rejoin=(e.get('reacquire_policy') == 'observed_rejoin_v2') is observed_motion,
+         motor_policy=f.get('signed_motion_policy')=='forward_drive', entry=e.get('follow_entry_space_enabled') is True,
+         reserve=e.get('moving_follow_reserve') is (reserve in ('moving','closing','recent','low_motion','paced')),
+diff --git a/scripts/run_current_solo.py b/scripts/run_current_solo.py
+index 15eb9edb..ca63e932 100644
+--- a/scripts/run_current_solo.py
++++ b/scripts/run_current_solo.py
+@@ -19,6 +19,8 @@ def main():
+     parser.add_argument("output", type=Path, help="새 결과 디렉터리")
+     parser.add_argument("--print-args", action="store_true", help="실행 없이 최종 인자 출력")
+     parser.add_argument("--previous-jr50", action="store_true", help="이전 JR50 프리셋 재현(신규 개발 기준 아님)")
++    parser.add_argument("--straight-budget", action="store_true",
++                        help="기본 OFF 단독 직선 속도 후보(현재 양쪽 벽 관측 길이로만 증속) 선택")
+     opts = parser.parse_args()
+     sensor = PREVIOUS_SENSOR if opts.previous_jr50 else SENSOR
+     args = [
+@@ -34,6 +36,8 @@ def main():
+         "--local-sensor-config", str(sensor.resolve(strict=True)), "--output", str(opts.output.resolve()),
+         "--pilot-marker-z", MARKER_Z,
+     ]
++    if opts.straight_budget:
++        args.append("--g1-solo-straight-budget")
+     if opts.print_args:
+         print(json.dumps(args))
+         return 0
+diff --git a/scripts/validate_basic_autonomy.py b/scripts/validate_basic_autonomy.py
+index e53b83fd..269f6100 100644
+--- a/scripts/validate_basic_autonomy.py
++++ b/scripts/validate_basic_autonomy.py
+@@ -301,6 +301,8 @@ def main():
+     parser.add_argument("--video", action="store_true",
+                         help="제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.")
+     parser.add_argument("--disable-speed-bump", action="store_true")
++    parser.add_argument('--g1-solo-straight-budget', action='store_true',
++                        help='선정 단독 구성에서 현재 두 옆벽의 직선 관측 길이로만 증속하는 선택 시험')
+     parser.add_argument('--team-signal-prelap',action='store_true',
+                         help='제작측 2×5 신호·ID45 팀 배치의 등록 단독 1랩 영상')
+     parser.add_argument("--collision-detector", choices=("configured", "ode", "bullet", "fcl"), default="configured")
+@@ -327,6 +329,12 @@ def main():
+         extra_arguments += [key+':=true' for key in ('g1_short_boundary_prefix_enabled',
+             'g1_parallel_hold_trial', 'g1_pass_release_trial', 'g1_guard_curve_trial',
+             'g1_traffic_recovery_trial', 'g1_traffic_path_recovery_trial')]
++    if args.g1_solo_straight_budget:
++        if not (args.g1_race_path and args.speed_profile == 'g1_open_10kmh_solo_gap05_arc_preview_bridge'
++                and args.g1_boundary_evidence == 'corner_distance_candidate'
++                and args.g1_occupancy_timing == 'per_ray_candidate'):
++            raise ValueError('straight speed budget requires the recorded solo bridge profile and per-ray occupancy')
++        extra_arguments.append('g1_solo_straight_budget_trial:=true')
+     if args.local_sensor_config is not None:
+         if args.autonomy_mode != 'local_pursuit':
+             raise ValueError('local sensor config requires local_pursuit')
+@@ -588,6 +596,9 @@ def main():
+     if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge','g1_open_10kmh_solo_gap05_arc_preview_bridge_ray'):
+         rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
+         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
++    if args.g1_solo_straight_budget:
++        rel='src/arena_autonomy/arena_autonomy/solo_straight_budget.py'
++        report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+     recorder = recorder_log = None
+     if args.record_inputs:
+         for rel in ('scripts/record_sensor_bag.py', 'scripts/recording_guard.py',
+diff --git a/scripts/validate_g1_traffic.py b/scripts/validate_g1_traffic.py
+index 3e179b36..611e1efc 100644
+--- a/scripts/validate_g1_traffic.py
++++ b/scripts/validate_g1_traffic.py
+@@ -409,6 +409,10 @@ def main():
+                         help='세계 고정 측방 반환과 전진 시작 조각을 구별하는 선택형 후보. 공식 교통 경로 전용.')
+     parser.add_argument('--handoff-yield-progress', action='store_true',
+                         help='현재 면의 전진 근거로 우회 양보 예산을 갱신하는 선택형 비교')
++    parser.add_argument('--handoff-continuous-pace', action='store_true',
++                        help='paced+관측 이동 후보에서 연속 전진율로 고정 우회 여유만 보완하는 선택형 비교(기본 꺼짐)')
++    parser.add_argument('--moving-pass-trial', action='store_true',
++                        help='연속 전진 관측·후방 복귀 확인을 사용하는 저속 이동차 추월(기본 꺼짐)')
+     parser.add_argument('--m3-command-fallback', action='store_true',
+                         help='M3 실제 발행 검사까지 포함한 경로 후보 선택 비교; 기본 비활성')
+     parser.add_argument('--m3-release-to-baseline', action='store_true',
+@@ -530,7 +534,7 @@ def main():
+         raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
+     specs = actor_specs(config, case)
+     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
+-    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial)
++    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial)
+     facility_sources = {}
+     world_dir = DEMO_WORLD
+     if args.team_signal_course:
+@@ -1314,7 +1318,7 @@ def main():
+             report['m4_operation']['original_traffic_verdict_preserved'] = True
+         if handoff_arguments:
+             try:
+-                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial)
++                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial)
+             except (OSError,KeyError,ValueError,StopIteration) as error:
+                 evidence = {'passed':False,'error':repr(error)}
+             report['handoff_execution'] = evidence
+diff --git a/src/arena_autonomy/arena_autonomy/bypass_entry_trial.py b/src/arena_autonomy/arena_autonomy/bypass_entry_trial.py
+index 1879b4ab..7a4fe541 100644
+--- a/src/arena_autonomy/arena_autonomy/bypass_entry_trial.py
++++ b/src/arena_autonomy/arena_autonomy/bypass_entry_trial.py
+@@ -466,6 +466,14 @@ class EntryGuide:
+         provider=straight_reference if self.reference_provider is None else self.reference_provider
+         return provider(scene,self.config)
+ 
++    def _outer_wall_fit(self,scene,remembered_wall):
++        if self.tracked_wall_fit:
++            return tracked_straight_wall(scene,self.config,self.side,remembered_wall)
++        return observed_straight_wall(scene,self.config,self.side)
++
++    def _wall_covers_guide(self,fit,wall):
++        return fit[2]<=-self.config.wheelbase_m/2 and fit[3]>=.30
++
+     def _confirm_initial_boundaries(self,scene,history,fresh):
+         reference,evidence=self._straight_reference(scene)
+         if reference is None:
+@@ -527,6 +535,11 @@ class EntryGuide:
+             rear_unobserved=int(np.sum(~supported[~front])),
+             behind_vehicle_not_certified=True,actual_motion_still_requires_current_support=True)
+ 
++    def _confirm_rejoin(self,band,fresh):
++        if not band['supported']:self.rejoin_confirmations=0
++        elif fresh:self.rejoin_confirmations+=1
++        return self.rejoin_confirmations>=2
++
+     def evaluate(self, scene, history, speed, previous_steering, dt):
+         now, source = scene.t_ref_s, scene.source_first_s
+         invalid = (not source_valid(scene) or not all(isinstance(v,(int,float)) and
+@@ -573,8 +586,7 @@ class EntryGuide:
+             return self._hold('entry_guide_motion_unavailable',error=str(error))
+         # 이송은 원점을 갱신할 뿐 새 관측 시각/허가를 만들지 않는다.
+         self.path,self.wall_line,self.reference_s=path,remembered_wall,now
+-        fit,wall=(tracked_straight_wall(scene,self.config,self.side,remembered_wall) if self.tracked_wall_fit
+-                  else observed_straight_wall(scene,self.config,self.side))
++        fit,wall=self._outer_wall_fit(scene,remembered_wall)
+         if fit is None:
+             self.wall_confirmations=0
+             return self._hold('entry_guide_current_outer_wall_unavailable',reference=wall)
+@@ -591,7 +603,7 @@ class EntryGuide:
+             return self._hold('entry_guide_current_wall_disagrees',disagreement_m=disagreement)
+         if fresh:
+             self.wall_confirmations=self.wall_confirmations+1 if disagreement<=.015 else 0
+-        if lower > -self.config.wheelbase_m/2 or upper < .30:
++        if not self._wall_covers_guide(fit,wall):
+             return self._hold('entry_guide_current_wall_too_short')
+         correction=dict(applied=False,reason='disabled_or_reused_scan')
+         if self.wall_reanchor and fresh:
+@@ -605,9 +617,7 @@ class EntryGuide:
+             aligned=abs(math.atan(slope))<=.08
+             if self.phase=='entry' and aligned and abs(offset_now-abs(self.offset))<=.03:
+                 rejoin=self._rejoin_band(scene,fit)
+-                if not rejoin['supported']:self.rejoin_confirmations=0
+-                elif fresh:self.rejoin_confirmations+=1
+-                if self.rejoin_confirmations>=2:
++                if self._confirm_rejoin(rejoin,fresh):
+                     proposed=entry_path(fit,0.,self.config,self.entry,self.entry.transitions_m[-1])
+                     if proposed[-1,0]-proposed[0,0]>=self.entry.transitions_m[-1]:
+                         path=proposed
+diff --git a/src/arena_autonomy/arena_autonomy/bypass_handoff.py b/src/arena_autonomy/arena_autonomy/bypass_handoff.py
+index 9b8df621..e5a745ff 100644
+--- a/src/arena_autonomy/arena_autonomy/bypass_handoff.py
++++ b/src/arena_autonomy/arena_autonomy/bypass_handoff.py
+@@ -52,6 +52,10 @@ class HandoffExecutionConfig:
+     moving_pace_floor: bool = False
+     # 최근 전진 관측으로 가정 속도 이상의 추종을 허용한다. 정지차 우회 여유는 유지한다.
+     observed_forward_pace: bool = False
++    # 이전 기록에는 없는 선택 필드(기본 OFF). 낮은 이동 누적 초기화와 별개인 연속 전진율이
++    # 이번 새 스캔에서 양수일 때만 고정 우회 여유 상한에 그 전진율을 더한다.
++    continuous_forward_pace: bool = False
++    moving_pass_trial: bool = False
+     reacquire_policy: str = 'positive_command_v0'
+     front_patch_policy: str = 'contiguous_three_v0'
+     entry_policy: str = 'registered_v0'
+@@ -88,6 +92,11 @@ class HandoffExecutionConfig:
+             raise ValueError('moving pace floor requires low motion reserve')
+         if type(self.observed_forward_pace) is not bool or (self.observed_forward_pace and not self.moving_pace_floor):
+             raise ValueError('observed forward pace requires moving pace floor')
++        if type(self.continuous_forward_pace) is not bool or (self.continuous_forward_pace and not self.observed_forward_pace):
++            raise ValueError('continuous forward pace requires observed forward pace')
++        if type(self.moving_pass_trial) is not bool or (self.moving_pass_trial and (
++                not self.continuous_forward_pace or self.entry_policy != 'corridor_local_v1')):
++            raise ValueError('moving pass requires continuous forward pace and corridor trial')
+         if self.follow_entry_space_enabled and (self.preparation_policy != 'observed_entry_space_v1'
+                 or self.persistence_window_policy != 'trim_before_compare_v1'):
+             raise ValueError('follow entry space requires explicit space and bounded window policies')
+@@ -330,6 +339,10 @@ class BypassHandoffFollow:
+         self.monitor = BlockingPersistence(self.execution, self.config.object_motion_bound_mps, self.config.open_route_speed_mps)
+         self.mode = 'FOLLOW'; self.last_key = None; self.last_ref = None
+         self.reacquire = 0
++        self.moving_pass = None
++        if self.execution.moving_pass_trial:
++            from arena_autonomy.moving_pass import MovingPassAdapter
++            self.moving_pass = MovingPassAdapter(self)
+ 
+         self._preparation_hold = None
+         self._preparation_history = None
+@@ -524,6 +537,17 @@ class BypassHandoffFollow:
+                 waiting.update(observed_forward_pace_mps=credit, assumed_pace_mps=self.monitor.motion_bound,
+                                pace_samples=len(observed.rows))
+             return min(target,paced), dict(waiting, applied=paced<target, before_mps=target, cap_mps=paced)
++        observed = self.monitor.forward_pace
++        if (self.execution.continuous_forward_pace and observed is not None and observed.rate > 0.
++                and observed.rows and observed.rows[-1][0] == scene.source_first_s):
++            # 고정 여유는 멈춘 조각의 미래 우회용이다. 이번 새 스캔까지 연속 전진한 조각에는
++            # 보수적 전진율(끝점 6 cm 차감, 마지막 간격 전진율 이하)만큼만 더 푼다. 정지·감속·
++            # 측방·튐·중복 시각에서는 그 값이 0이 되어 아래 고정 여유로 돌아간다. G1 출력이 상한이다.
++            paced = cap+observed.rate
++            return min(target,paced), dict(result, applied=paced<target, reason='continuous_forward_pace',
++                rear_axle_to_patch_m=distance, reserve_m=reserve, fixed_reserve_cap_mps=cap,
++                observed_forward_pace_mps=observed.rate, pace_samples=len(observed.rows),
++                cap_mps=paced, before_mps=target)
+         return min(target,cap), dict(result, applied=cap<target, reason='observed_entry_distance_reserve',
+             rear_axle_to_patch_m=distance, reserve_m=reserve, approach_window_s=self.execution.observation_window_s,
+             cap_mps=cap, before_mps=target)
+@@ -536,6 +560,8 @@ class BypassHandoffFollow:
+ 
+     def reset(self):
+         self.normal.reset(); self.bypass.reset(); self.monitor.reset()
++        if self.moving_pass is not None:
++            self.moving_pass.reset()
+         self.mode = 'FOLLOW'; self.last_key = None; self.last_ref = None; self.reacquire = 0
+         self._preparation_history = None
+         if self._preparation_hold is not None:
+@@ -555,12 +581,19 @@ class BypassHandoffFollow:
+     def command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
+         from arena_autonomy.local_follow import forward_planning_speed, signed_feedback_detail
+         planning = forward_planning_speed(self.config, speed)
++        if self.moving_pass is not None:
++            output = self.moving_pass.command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
++        else:
++            output = self._base_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
++        return signed_feedback_detail(output, speed, planning)
++
++    def _base_command(self, scene, history, planning, side, previous, dt, *, raw_scan=None):
+         if self._relative_yield is not None:
+             output = self._relative_yield.command(self, scene, planning,
+                 lambda: self._prepared_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan))
+         else:
+             output = self._prepared_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
+-        return signed_feedback_detail(output, speed, planning)
++        return output
+ 
+     def _prepared_command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
+         if self._preparation_hold is None:
+diff --git a/src/arena_autonomy/arena_autonomy/g1_g2_node.py b/src/arena_autonomy/arena_autonomy/g1_g2_node.py
+index 3b237444..257dfa79 100644
+--- a/src/arena_autonomy/arena_autonomy/g1_g2_node.py
++++ b/src/arena_autonomy/arena_autonomy/g1_g2_node.py
+@@ -27,6 +27,12 @@ def status_detail(detail):
+         result['bypass'] = g2_status(detail['bypass'])
+     if isinstance(detail.get('persistence'),dict):
+         result['persistence'] = detail['persistence']
++    moving = detail.get('moving_pass')
++    if isinstance(moving,dict):
++        result['moving_pass'] = {key:moving[key] for key in
++            ('ready','reason','completed','phase','target','admission') if key in moving}
++        if isinstance(moving.get('entry'),dict):
++            result['moving_pass']['entry_reason'] = moving['entry'].get('reason')
+     if isinstance(detail.get('preparation'),dict):
+         result['preparation'] = {key:detail['preparation'][key] for key in
+             ('policy','applied','reason') if key in detail['preparation']}
+@@ -72,6 +78,10 @@ class G1G2Node(LocalPursuit):
+             raise ValueError('G1/G2 handoff requires G1 sensors, its own absolute trace and no competing controller')
+         rear_sweep = self.declare_parameter('g1_g2_released_rear_sweep_trial',False).value
+         observed_motion = self.declare_parameter('g1_g2_observed_motion_gates',False).value
++        continuous_pace = self.declare_parameter('g1_g2_continuous_forward_pace',False).value
++        moving_pass = self.declare_parameter('g1_g2_moving_pass_trial',False).value
++        if type(continuous_pace) is not bool:
++            raise ValueError('typed G1/G2 continuous forward pace option required')
+         side_departure = self.declare_parameter('g1_g2_side_departure_trial',False).value
+         current_lane = self.declare_parameter('g1_g2_current_lane_preference_trial',False).value
+         lane_headroom = self.declare_parameter('g1_g2_current_lane_headroom_mps',0.).value
+@@ -86,6 +96,8 @@ class G1G2Node(LocalPursuit):
+             motion_pause_policy=motion_pause,
+             relative_yield_policy=relative_yield,entry_motion_gate=observed_motion,
+             observed_forward_pace=observed_motion and moving_pace_floor,
++            continuous_forward_pace=continuous_pace,
++            moving_pass_trial=moving_pass,
+             bypass=BypassExecutionConfig(corridor_policy=corridor,steerable_transition=observed_motion)),
+             allow_simulation_trial=True)
+         trace = FollowTrace(trace_path,self.motion.history.config,self.follow.config,
+diff --git a/src/arena_autonomy/arena_autonomy/local_follow.py b/src/arena_autonomy/arena_autonomy/local_follow.py
+index cedc416e..35286cbd 100644
+--- a/src/arena_autonomy/arena_autonomy/local_follow.py
++++ b/src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -25,6 +25,7 @@ class FollowConfig:
+     solo_route_only: bool = False  # 단독 프리랩 선택. 점유/관측 검사는 유지하고 측방 교통 선택기만 제외.
+     corridor_arc_agreement: bool = False  # 단독 선택형 회랑 시간 비교의 공통 호길이 보완.
+     ray_wall_continuity: bool = False  # 단독 선택형. 먼 옆 벽의 단절을 연속 광선 직선 근거로 보완.
++    solo_straight_budget_trial: bool = False  # 현재 양쪽 직선 벽을 속도 근거로만 쓴다.
+     partial_observation_policy: str = 'strict'
+     # 센서 프로필의 알려진 구조 가림 선택(v4 필요). off는 기존 부분 관측 그대로.
+     known_structure_policy: str = 'off'
+@@ -75,6 +76,13 @@ class FollowConfig:
+     confirmations: int = 2
+ 
+     def __post_init__(self):
++        if (type(self.solo_straight_budget_trial) is not bool or
++                (self.solo_straight_budget_trial and not (
++                    self.solo_route_only and self.blend_open_speed_by_length and self.boundary_bridge
++                    and self.preview_above_base_speed and not self.ray_wall_continuity
++                    and self.occupancy_timing_mode == 'per_ray_candidate'
++                    and self.partial_observation_policy == 'bounded_local_v4'))):
++            raise ValueError('straight speed budget requires the selected solo observed route configuration')
+         if (type(self.side_departure_trial) is not bool or
+                 (self.side_departure_trial and (not self.pass_release_trial or self.solo_route_only))):
+             raise ValueError('side departure requires traffic pass release trial')
+@@ -161,7 +169,7 @@ class FollowConfig:
+         if type(self.standing_wall_reacquire) is not bool:
+             raise ValueError('standing wall reacquire must be bool')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
++               if k not in ('solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
+@@ -277,7 +285,7 @@ def drop_protrusions(points, path, side, config):
+     return points[outside | (np.abs(offset-np.median(offset[~outside])) <= config.measurement_padding_m)]
+ 
+ 
+-def pursue_path(path, speed, config, age, *, speed_cap=None):
++def pursue_path(path, speed, config, age, *, speed_cap=None, shape_diagnostic=None):
+     """기존 후륜축 Pure Pursuit와 같은 계산. 보호층 공통 함수를 변경하지 않는다."""
+     rear = np.asarray(path, dtype=float).copy()
+     rear[:, 0] += config.wheelbase_m/2
+@@ -298,8 +306,10 @@ def pursue_path(path, speed, config, age, *, speed_cap=None):
+     curves = np.abs(dx[:, 0]*ddx[:, 1]-dx[:, 1]*ddx[:, 0])/np.maximum(1e-8, np.linalg.norm(dx, axis=1)**3)
+     preview = np.sqrt(config.lateral_acceleration_mps2/np.maximum(.15, curves[nearest:]) +
+                       4*np.maximum(0., arc[nearest:]-arc[nearest]-.2))
+-    cap = min(config.max_speed_mps if speed_cap is None else speed_cap, braking_speed(remaining, age), float(np.min(preview)),
+-              math.sqrt(config.lateral_acceleration_mps2/max(.15, abs(curvature))))
++    shape_cap = min(float(np.min(preview)), math.sqrt(config.lateral_acceleration_mps2/max(.15, abs(curvature))))
++    if shape_diagnostic is not None:
++        shape_diagnostic['original_curve_speed_cap_mps'] = shape_cap
++    cap = min(config.max_speed_mps if speed_cap is None else speed_cap, braking_speed(remaining, age), shape_cap)
+     return cap, steering, remaining
+ 
+ 
+@@ -426,6 +436,11 @@ class LocalFollow:
+         planning = forward_planning_speed(self.config, speed)
+         output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+                                         raw_scan=raw_scan)
++        if self.config.solo_straight_budget_trial:
++            from arena_autonomy.solo_straight_budget import evaluate
++            new_speed, reason = evaluate(output, scene, previous_steering, speed, self.config)
++            output = new_speed, output[1], {**output[2], 'solo_straight_budget': reason,
++                                             'original_speed_mps': output[0]}
+         return signed_feedback_detail(output, speed, planning)
+ 
+     def _forward_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+@@ -486,7 +501,17 @@ class LocalFollow:
+             self.partial_policy.reset()
+             self.partial_epoch=scene.source_epoch
+         # 여기서는 경로 후보만 만든다. 아래 관측 판정 전에 속도를 외부로 반환하지 않는다.
+-        output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
++        # 구조 정책: 이번 스캔에서 양옆이 반환인 구조 광선(evaluate와 같은 순수 classify).
++        # 증속 후보 전제에서만 이 광선을 빼며, 정책 상태는 바꾸지 않는다.
++        explained_now=None
++        if self.config.known_structure_policy!='off':
++            from arena_autonomy.known_structure import classify
++            explained_now=frozenset(np.flatnonzero(classify(raw_scan,self.partial_policy.structure_sectors)[1]).tolist())
++        self.structure_explained_now=explained_now
++        try:
++            output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
++        finally:
++            self.structure_explained_now=None
+         cfg=self.config
+         observation=self.partial_policy.evaluate(raw_scan,scene.occupied_endpoints_xy_m,history,
+             scene.t_ref_s,max(output[0],abs(speed)),output[1],previous_steering,
+@@ -781,16 +806,21 @@ class LocalFollow:
+             memory_age = now-self.path_source
+             # 단독 선택에서는 양측 근거로 이미 승인한 현재 반대 벽 경로도 쓴다.
+             # 관측이 없는 경로/기억만 남은 경로/교통 모드의 속도 범위는 넓히지 않는다.
+-            # 구조 적응 경로에서는 전방 전 광선 반환을 증속의 선결 조건으로 삼지 않는다.
+-            # 아직 후보일 뿐이며 _partial_command가 이 후보 속도·조향으로 그림자/기억/
+-            # 예상 밖 결측을 검사한 후에만 발행한다. 독립 보호층도 같은 검사를 수행한다.
+-            structure_candidate = bool(allow_partial and cfg.known_structure_policy == 'structure_aware_v1')
++            # 구조 적응 경로에서는 이번 스캔의 설명된 구조 광선만 증속 전제에서 뺀다.
++            # 그 밖의 결측이 있으면 기본 목표만 내어 v4 예산·감속 판단을 받는다(1.2 m/s
++            # 초과 후보가 결측 판정을 정지로 바꾸지 않게). 아직 후보일 뿐이며 _partial_command가
++            # 그림자/기억/예상 밖 결측을 검사한 후에만 발행한다. 독립 보호층도 같은 검사를 수행한다.
++            explained = getattr(self, 'structure_explained_now', None)
++            structure_candidate = bool(allow_partial and cfg.known_structure_policy == 'structure_aware_v1' and
++                                       explained is not None and front and
++                                       all(r.status == 'return' or r.source_index in explained for r in front))
+             front_ready = bool(front and all(r.status == 'return' for r in front))
+             open_route = bool(cruise and self.path_source == scene.source_first_s and
+                               (self.path_wall == side or cfg.solo_route_only) and
+                               (front_ready or structure_candidate))
+             cap, desired, remaining = pursue_path(carried, speed, cfg, max(age, memory_age),
+-                                                  speed_cap=cruise if open_route else None)
++                                                  speed_cap=cruise if open_route else None,
++                                                  **({'shape_diagnostic': detail} if cfg.solo_straight_budget_trial and open_route else {}))
+             if cruise:
+                 detail.update(open_route_speed_enabled=open_route, open_route_cap_mps=cruise,
+                               observed_search_horizon_m=horizon,
+diff --git a/src/arena_autonomy/arena_autonomy/local_pursuit.py b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+index a2da84a7..9552eb0c 100644
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -127,6 +127,7 @@ class LocalPursuit(WallFollow):
+             solo_route_only=solo_route,
+             corridor_arc_agreement=bool(self.declare_parameter('g1_corridor_arc_agreement',False).value),
+             ray_wall_continuity=bool(self.declare_parameter('g1_ray_wall_continuity',False).value),
++            solo_straight_budget_trial=bool(self.declare_parameter('g1_solo_straight_budget_trial',False).value),
+             headway_s=solo_headway,
+             partial_observation_policy=partial_observation,
+             known_structure_policy=structure_policy,
+diff --git a/src/arena_bringup/launch/g1_follow.launch.py b/src/arena_bringup/launch/g1_follow.launch.py
+index 6c0e60c7..d4c980d2 100644
+--- a/src/arena_bringup/launch/g1_follow.launch.py
++++ b/src/arena_bringup/launch/g1_follow.launch.py
+@@ -18,6 +18,9 @@ def generate_launch_description():
+         DeclareLaunchArgument('race_control_mode', default_value='legacy', choices=['legacy', 'b3_candidate'],
+                               description='명시 선택형 경기 운영; 기본 legacy 유지'),
+         SetParameter(name='race_control_mode', value=LaunchConfiguration('race_control_mode')),
++        DeclareLaunchArgument('g1_solo_straight_budget_trial', default_value='false', choices=['true', 'false'],
++                              description='단독 직선 시험: 양쪽 벽을 현재 조향의 속도 거리 근거로만 사용'),
++        SetParameter(name='g1_solo_straight_budget_trial', value=LaunchConfiguration('g1_solo_straight_budget_trial')),
+         DeclareLaunchArgument('g1_standing_wall_reacquire', default_value='false', choices=['true', 'false'],
+                               description='재개 후보: 기억 없는 낮은 속도에서 선호 벽의 긴 현재 관측으로 재획득; 기본 비활성'),
+         SetParameter(name='g1_standing_wall_reacquire', value=LaunchConfiguration('g1_standing_wall_reacquire')),
+diff --git a/src/arena_bringup/launch/simulation.launch.py b/src/arena_bringup/launch/simulation.launch.py
+index 4384008f..7b2c66af 100644
+--- a/src/arena_bringup/launch/simulation.launch.py
++++ b/src/arena_bringup/launch/simulation.launch.py
+@@ -1345,6 +1345,12 @@ def _launch_setup(context):
+         yield_progress = LaunchConfiguration("evaluation_handoff_yield_progress").perform(context) == "true"
+         rear_sweep = LaunchConfiguration("evaluation_handoff_rear_sweep").perform(context) == "true"
+         observed_motion = LaunchConfiguration("evaluation_handoff_observed_motion").perform(context) == "true"
++        continuous_pace = LaunchConfiguration("evaluation_handoff_continuous_pace").perform(context) == "true"
++        moving_pass = LaunchConfiguration("evaluation_moving_pass_trial").perform(context) == "true"
++        if moving_pass and not continuous_pace:
++            raise ValueError("moving pass requires continuous forward pace")
++        if continuous_pace and (reserve != "paced" or not observed_motion):
++            raise ValueError("continuous forward pace requires paced reserve and observed motion")
+         side_departure = LaunchConfiguration("evaluation_side_departure_trial").perform(context) == "true"
+         current_lane = LaunchConfiguration("evaluation_current_lane_preference_trial").perform(context) == "true"
+         if current_lane and (not side_departure or not observed_motion or reserve == "off"
+@@ -1377,6 +1383,8 @@ def _launch_setup(context):
+                 g1_g2_moving_pace_floor=reserve=='paced',
+                 g1_g2_released_rear_sweep_trial=rear_sweep,
+                 g1_g2_observed_motion_gates=observed_motion,
++                g1_g2_continuous_forward_pace=continuous_pace,
++                g1_g2_moving_pass_trial=moving_pass,
+                 g1_g2_side_departure_trial=side_departure,
+                 g1_g2_current_lane_preference_trial=current_lane,
+                 g1_g2_current_lane_headroom_mps=(feedback["resolution"]["mean_wheel_travel_m_per_count"]
+@@ -1544,6 +1552,10 @@ def generate_launch_description() -> LaunchDescription:
+                                   description="측방 시차 겹침에서 비접근 저속 출발 시험 후보"),
+             DeclareLaunchArgument("evaluation_handoff_observed_motion", default_value="false", choices=["false", "true"],
+                                   description="세계 고정 측방 반환과 전진 시작 조각을 구별하는 시험 후보"),
++            DeclareLaunchArgument("evaluation_handoff_continuous_pace", default_value="false", choices=["false", "true"],
++                                  description="paced+관측 이동 후보에서 연속 전진율로 고정 우회 여유만 보완하는 시험 후보"),
++            DeclareLaunchArgument("evaluation_moving_pass_trial", default_value="false", choices=["false", "true"],
++                                  description="현재 관측으로 진입·후방 확인·복귀하는 직선 저속 이동차 추월 시험"),
+             DeclareLaunchArgument("evaluation_handoff_yield_progress", default_value="false", choices=["false", "true"],
+                                   description="현재 면이 전진할 때만 양보 예산을 갱신하는 시험 후보"),
+             DeclareLaunchArgument("evaluation_handoff_reserve", default_value="off", choices=["off","fixed","moving","closing","recent","low_motion","paced"],
+diff --git a/tests/test_source_provenance_r0_plus_b3.py b/tests/test_source_provenance_r0_plus_b3.py
+index 8b117b59..380939b3 100644
+--- a/tests/test_source_provenance_r0_plus_b3.py
++++ b/tests/test_source_provenance_r0_plus_b3.py
+@@ -136,7 +136,37 @@ M3_SUCCESSORS = ('config/tests/m3_command_selection_r0_sha256.json', 'config/tes
+                  'config/tests/local_start_signal_r0_sha256.json', 'config/tests/traffic_recovery_trial_r0_sha256.json', 'config/tests/traffic_recovery_release_fringe_r1_sha256.json', 'config/tests/traffic_path_recovery_r0_sha256.json', 'config/tests/traffic_anchor_set_r1_sha256.json', 'config/tests/traffic_speed_recheck_r1_sha256.json', 'config/tests/traffic_positive_clearance_r1_sha256.json', 'config/tests/traffic_positive_bundle_r1_sha256.json', 'config/tests/traffic_side_scope_r1_sha256.json', 'config/tests/traffic_manifest_r1_sha256.json', 'config/tests/short_prefix_origin_r1_sha256.json', 'config/tests/rotation_reobservation_r1_sha256.json', 'config/tests/actor_tail_capture_r1_sha256.json', 'config/tests/small_alignment_r1_sha256.json', 'config/tests/rolling_clearance_r1_sha256.json', 'config/tests/fresh_scan_wait_r1_sha256.json', 'config/tests/g2_handoff_manifest_r1_sha256.json', 'config/tests/rear_lane_keep_r1_sha256.json', 'config/tests/observed_lane_preference_r1_sha256.json', 'config/tests/measured_lane_preference_r1_sha256.json', 'config/tests/fresh_confirmation_r2_sha256.json', 'config/tests/g2_corridor_r1_sha256.json', 'config/tests/g2_signed_hold_r1_sha256.json', 'config/tests/g2_handoff_corridor_r1_sha256.json', 'config/tests/g2_preparation_hold_r1_sha256.json', 'config/tests/g2_initial_reference_r1_sha256.json', 'config/tests/g2_initial_reference_r2_sha256.json', 'config/tests/g1_same_scan_history_r1_sha256.json', 'config/tests/g2_directional_reference_r1_sha256.json', 'config/tests/g1_forward_same_path_r1_sha256.json', 'config/tests/g2_motion_pause_r1_sha256.json', 'config/tests/g2_relative_yield_r1_sha256.json', 'config/tests/g2_relative_yield_r2_sha256.json', 'config/tests/continuous_prefix_r1_sha256.json', 'config/tests/signed_forward_r1_sha256.json', 'config/tests/race_continuity_r1_sha256.json', 'config/tests/race_course_profile_r1_sha256.json', 'config/tests/race_selector_speed_r1_sha256.json', 'config/tests/corner_approach_r1_sha256.json', 'config/tests/race_follow_pair_r1_sha256.json', 'config/tests/race_follow_slow_r1_sha256.json', 'config/tests/prelap_signal_r1_sha256.json', 'config/tests/race_follow_closing_r1_sha256.json', 'config/tests/turn_preview_r1_sha256.json', 'config/tests/team_signal_course_r1_sha256.json', 'config/tests/race_acceleration_r1_sha256.json', 'config/tests/rolling_lead_r1_sha256.json', 'config/tests/qualifying_profile_r1_sha256.json', 'config/tests/recent_forward_r1_sha256.json', 'config/tests/follow_continuity_r1_sha256.json', 'config/tests/yield_progress_r1_sha256.json', 'config/tests/released_rear_sweep_r1_sha256.json',
+                  'config/tests/low_speed_arc_reacquire_r1_sha256.json', 'config/tests/solo_route_r1_sha256.json', 'config/tests/solo_headway_r1_sha256.json', 'config/tests/sweep_batch_r1_sha256.json', 'config/tests/follow_bundle_refresh_r1_sha256.json', 'config/tests/released_fringe_budget_r1_sha256.json', 'config/tests/solo_corridor_arc_r1_sha256.json', 'config/tests/ray_wall_continuity_r1_sha256.json', 'config/tests/turn_preview_gate_r1_sha256.json', 'config/tests/boundary_bridge_r1_sha256.json',
+                  'config/tests/official_facility_r1_sha256.json', 'config/tests/official_start_region_r1_sha256.json',
+-                 'config/tests/official_forward_r1_sha256.json', 'config/tests/observed_rejoin_r2_sha256.json', 'config/tests/observed_forward_pace_r3_sha256.json', 'config/tests/official_traffic_r1_sha256.json', 'config/tests/official_traffic_eval_r2_sha256.json', 'config/tests/official_ops_r1_sha256.json', 'config/tests/official_ops_cleanup_r2_sha256.json', 'config/tests/official_ops_traffic_r3_sha256.json', 'config/tests/official_ops_browser_r4_sha256.json', 'config/tests/official_ops_route_r5_sha256.json', 'config/tests/solo_alternative_r1_sha256.json', 'config/tests/handoff_profile_r1_sha256.json', 'config/tests/same_call_reference_r1_sha256.json', 'config/tests/entry_obstruction_r1_sha256.json', 'config/tests/solo_ray_combination_r1_sha256.json', 'config/tests/local_sensor_mount_r1_sha256.json', 'config/tests/standing_steering_r1_sha256.json', 'config/tests/observed_gap_recovery_r1_sha256.json', 'config/tests/post_free_facility_r1_sha256.json', 'config/tests/ordinary_resume_r1_sha256.json', 'config/tests/actor_outline_r1_sha256.json', 'config/tests/traffic_rear_grid_r1_sha256.json', 'config/tests/side_departure_r1_sha256.json', 'config/tests/side_departure_rear_r2_sha256.json', 'config/tests/side_departure_selector_r3_sha256.json', 'config/tests/current_lane_preference_r1_sha256.json', 'config/tests/lidar_mount_trial_r1_sha256.json', 'config/tests/lidar_mount_adapted_r2_sha256.json', 'config/tests/lidar_mount_pilot_r3_sha256.json', 'config/tests/lidar_mount_speed_r4_sha256.json', 'config/tests/lidar_mount_launch_record_r5_sha256.json', 'config/tests/lidar_mount_traffic_marker_r6_sha256.json')
++                 'config/tests/official_forward_r1_sha256.json', 'config/tests/observed_rejoin_r2_sha256.json', 'config/tests/observed_forward_pace_r3_sha256.json', 'config/tests/official_traffic_r1_sha256.json', 'config/tests/official_traffic_eval_r2_sha256.json', 'config/tests/official_ops_r1_sha256.json', 'config/tests/official_ops_cleanup_r2_sha256.json', 'config/tests/official_ops_traffic_r3_sha256.json', 'config/tests/official_ops_browser_r4_sha256.json', 'config/tests/official_ops_route_r5_sha256.json', 'config/tests/solo_alternative_r1_sha256.json', 'config/tests/handoff_profile_r1_sha256.json', 'config/tests/same_call_reference_r1_sha256.json', 'config/tests/entry_obstruction_r1_sha256.json', 'config/tests/solo_ray_combination_r1_sha256.json', 'config/tests/local_sensor_mount_r1_sha256.json', 'config/tests/standing_steering_r1_sha256.json', 'config/tests/observed_gap_recovery_r1_sha256.json', 'config/tests/post_free_facility_r1_sha256.json', 'config/tests/ordinary_resume_r1_sha256.json', 'config/tests/actor_outline_r1_sha256.json', 'config/tests/traffic_rear_grid_r1_sha256.json', 'config/tests/side_departure_r1_sha256.json', 'config/tests/side_departure_rear_r2_sha256.json', 'config/tests/side_departure_selector_r3_sha256.json', 'config/tests/current_lane_preference_r1_sha256.json', 'config/tests/lidar_mount_trial_r1_sha256.json', 'config/tests/lidar_mount_adapted_r2_sha256.json', 'config/tests/lidar_mount_pilot_r3_sha256.json', 'config/tests/lidar_mount_speed_r4_sha256.json', 'config/tests/lidar_mount_launch_record_r5_sha256.json', 'config/tests/lidar_mount_traffic_marker_r6_sha256.json', 'config/tests/lidar_mount_structure_gate_r7_sha256.json', 'config/tests/continuous_forward_pace_r8_sha256.json', 'config/tests/moving_pass_r9_sha256.json')
++
++
++M3_SUCCESSORS += ('config/tests/moving_pass_witness_r10_sha256.json','config/tests/moving_pass_width_r11_sha256.json',
++                  'config/tests/moving_pass_rejoin_r12_sha256.json',
++                  'config/tests/moving_pass_withdrawal_r13_sha256.json',
++                  'config/tests/moving_pass_yield_r14_sha256.json')
++# 11/5 단독 직선 속도 후보 재적용(기본 OFF). 일반 후속 계약 검사가 r14 다음으로 확인한다.
++M3_SUCCESSORS += ('config/tests/solo_straight_budget_r15_sha256.json',)
++
++
++def test_moving_pass_revisions_link_registered_sources_and_before_bytes():
++    previous='config/tests/continuous_forward_pace_r8_sha256.json'
++    for name in ('config/tests/moving_pass_r9_sha256.json','config/tests/moving_pass_witness_r10_sha256.json',
++                 'config/tests/moving_pass_width_r11_sha256.json','config/tests/moving_pass_rejoin_r12_sha256.json',
++                 'config/tests/moving_pass_withdrawal_r13_sha256.json',
++                 'config/tests/moving_pass_yield_r14_sha256.json'):
++        child=load(name)
++        assert child['parent_contract']==previous
++        assert sha((ROOT/previous).read_bytes())==child['parent_contract_sha256']
++        before=ROOT/child['before_snapshot'];after=ROOT/child['after_registration']
++        assert sha(before.read_bytes())==child['before_snapshot_sha256']
++        assert sha(after.read_bytes())==child['after_registration_sha256']
++        sources=load(child['after_registration'])['sources']
++        with zipfile.ZipFile(before) as archive:
++            for p,row in {**child['approved_changes'],**child['approved_evaluation_scripts']}.items():
++                assert sha(archive.read(p))==row['before']!=row['after']==sources[p]
++                assert m3_revision_digest(p,newer_than=name)==row['after']
++            for p,h in child['new_dependencies'].items():
++                assert h==sources[p]==m3_revision_digest(p,newer_than=name)
++        previous=name
+ 
+ 
+ def test_local_signal_successor_preserves_failed_five_car_source():
+diff --git a/tests/test_structure_route_speed.py b/tests/test_structure_route_speed.py
+index 96346b52..ee182f9c 100644
+--- a/tests/test_structure_route_speed.py
++++ b/tests/test_structure_route_speed.py
+@@ -28,14 +28,16 @@ def corridor(first,s=.05,fault=None):
+                               .425/np.maximum(abs(np.sin(angles)),1e-8)).tolist())
+     raw=mask_scan(raw,{'rear_half_angle_deg':0.,'sectors_deg':sectors(s)})
+     if fault=='missing':raw.ranges[250]=float('nan')
++    if fault=='side_missing':raw.ranges[361]=float('nan')  # 약 80°, 구조 각도 밖 일반 결측
++    if fault=='flank_missing':raw.ranges[344]=float('nan')  # +64° 앞 지주 각도의 바깥 옆 광선
+     if fault=='near':
+         for i in range(242,259): raw.ranges[i]=.16
+     return raw
+ 
+-def command(ctl,h,first,s=.05,fault=None):
++def command(ctl,h,first,s=.05,fault=None,speed=1.):
+     raw=corridor(first,s,fault); before=np.asarray(raw.ranges).copy()
+     local=motion_scene(raw,h,first+.1,timing_verified=True,rear_half_angle_deg=0.)
+-    out=ctl.command(local,h,1.,'left',raw_scan=raw)
++    out=ctl.command(local,h,speed,'left',raw_scan=raw)
+     np.testing.assert_array_equal(before,raw.ranges)
+     return out,local
+ 
+@@ -50,13 +52,50 @@ def test_full_controller_can_exceed_base_speed_with_c_pillars(s):
+     assert meta['partial_observation']['known_structure']['unknown_filled'] is False
+     assert any(r.status!='return' and r.hit_xy_m is None for r in local.rays)
+ 
+-@pytest.mark.parametrize('fault',['missing','near'])
+-def test_new_cruise_candidate_is_not_final_permission(fault):
++def test_new_cruise_candidate_is_not_final_permission():
+     ctl,h=trial()
+     for first in [.3,.4,.5,.6,.7]: command(ctl,h,first)
+-    out,_=command(ctl,h,.8,fault=fault)
++    out,_=command(ctl,h,.8,fault='near')
+     assert out[0]==0.,out[2]
+ 
++@pytest.mark.parametrize('fault,reason',[('missing','bounded_forward_missing'),('side_missing','bounded_side_missing')])
++def test_ordinary_missing_keeps_base_target_and_v4_cap_instead_of_stopping(fault,reason):
++    # r7: 일반 결측이 있으면 1.2 m/s 초과 증속 후보를 내지 않는다. 기존 기본 목표가
++    # v4 예산 판정을 받아 0보다 큰 기존 상한으로 이어진다(거리 합성·자유 공간 가정 없음).
++    ctl,h=trial()
++    for first in [.3,.4,.5,.6,.7]: command(ctl,h,first)
++    (v,_,meta),_=command(ctl,h,.8,fault=fault)
++    po=meta['partial_observation']
++    assert not meta['open_route_speed_enabled'] and po['reason']==reason,meta
++    assert 0.<v<=po['speed_cap_mps']<=1.2 and po['unknown_filled'] is False
++
++def test_measured_speed_above_v4_range_keeps_existing_limit():
++    # 측정 속도 자체가 1.2 m/s를 넘으면 기존 v4 제한(불허→정지)이 그대로 남는다. r7은 이를 바꾸지 않는다.
++    ctl,h=trial()
++    for first in [.3,.4,.5,.6,.7]: command(ctl,h,first)
++    (v,_,meta),_=command(ctl,h,.8,fault='missing',speed=1.3)
++    assert v==0. and meta['partial_observation']['reason']=='partial_speed_outside_trial',meta
++
++def test_structure_with_missing_flank_is_not_excused_and_not_a_speed_up_premise():
++    ctl,h=trial()
++    for first in [.3,.4,.5,.6,.7]: command(ctl,h,first)
++    (v,_,meta),local=command(ctl,h,.8,fault='flank_missing')
++    po=meta['partial_observation']
++    assert not meta['open_route_speed_enabled'] and po['reason']!='fully_observed',meta
++    pillar=set(range(335,344))
++    assert pillar & {r.source_index for r in local.rays if r.status!='return'}==pillar
++    assert not pillar & ctl.partial_policy.structure_excused_indices
++    assert any(abs(c-64.18)<.1 for c in po['known_structure']['unexplained_sector_deg'])
++    assert v<=1.
++
++def test_speed_up_premise_does_not_evaluate_the_policy_twice():
++    ctl,h=trial(); calls=[]
++    original=ctl.partial_policy.evaluate
++    ctl.partial_policy.evaluate=lambda *a,**k: calls.append(1) or original(*a,**k)
++    for first in [.3,.4,.5,.6,.7,.8]:
++        command(ctl,h,first,fault='missing' if first==.8 else None)
++    assert len(calls)==6 and ctl.structure_explained_now is None
++
+ def test_no_structure_policy_preserves_the_original_front_contract():
+     ctl,h=trial(policy=False)
+     for first in [.3,.4,.5,.6,.7]:out,_=command(ctl,h,first)

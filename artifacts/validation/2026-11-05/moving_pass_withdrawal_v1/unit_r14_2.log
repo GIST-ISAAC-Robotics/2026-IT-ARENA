@@ -1,0 +1,26 @@
+arena-autonomy /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_autonomy/arena_autonomy.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy
+arena-vehicle-interface /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_vehicle_interface/arena_vehicle_interface.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_vehicle_interface
+installed packages and child process entry points resolved: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/turn_preview.py
+.......................F................................................ [ 42%]
+........................................................................ [ 85%]
+.........................                                                [100%]
+=================================== FAILURES ===================================
+________ test_changing_visible_side_does_not_become_speed_loss_evidence ________
+
+    def test_changing_visible_side_does_not_become_speed_loss_evidence():
+        track=tracker();h=history()
+        for i in range(7):
+            s=scene(.50+.1*i)
+            track.current=np.array([[.01+.058*i,-.20],[.02+.058*i,-.19]])
+            track.source=s.source_first_s;track.detail['observed']=True
+            track._observe_speed(s,h)
+        assert track.speed_upper>.50
+>       assert track.rear_bound(s)<0. and track.lost_advantage_scans==0
+E       AssertionError: assert (0.002999999999999975 < 0.0)
+E        +  where 0.002999999999999975 = <bound method MovingTargetTrack.rear_bound of <arena_autonomy.moving_pass.MovingTargetTrack object at 0x74d9dd303530>>(LocalScene(t_ref_s=1.1, source_first_s=1.0, source_last_s=1.0998, source_frame_id='laser_frame', source_epoch=0, rays=...e', source_epoch=0, source_index=499, direction_xy=(-0.9999210442038161, 0.012566039883351948))), frame_id='base_link'))
+E        +    where <bound method MovingTargetTrack.rear_bound of <arena_autonomy.moving_pass.MovingTargetTrack object at 0x74d9dd303530>> = <arena_autonomy.moving_pass.MovingTargetTrack object at 0x74d9dd303530>.rear_bound
+
+tests/test_moving_pass.py:245: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_moving_pass.py::test_changing_visible_side_does_not_become_speed_loss_evidence
+1 failed, 168 passed in 8.06s

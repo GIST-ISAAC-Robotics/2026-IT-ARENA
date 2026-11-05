@@ -25,6 +25,7 @@ class FollowConfig:
     solo_route_only: bool = False  # 단독 프리랩 선택. 점유/관측 검사는 유지하고 측방 교통 선택기만 제외.
     corridor_arc_agreement: bool = False  # 단독 선택형 회랑 시간 비교의 공통 호길이 보완.
     ray_wall_continuity: bool = False  # 단독 선택형. 먼 옆 벽의 단절을 연속 광선 직선 근거로 보완.
+    solo_straight_budget_trial: bool = False  # 현재 양쪽 직선 벽을 속도 근거로만 쓴다.
     partial_observation_policy: str = 'strict'
     # 센서 프로필의 알려진 구조 가림 선택(v4 필요). off는 기존 부분 관측 그대로.
     known_structure_policy: str = 'off'
@@ -75,6 +76,13 @@ class FollowConfig:
     confirmations: int = 2
 
     def __post_init__(self):
+        if (type(self.solo_straight_budget_trial) is not bool or
+                (self.solo_straight_budget_trial and not (
+                    self.solo_route_only and self.blend_open_speed_by_length and self.boundary_bridge
+                    and self.preview_above_base_speed and not self.ray_wall_continuity
+                    and self.occupancy_timing_mode == 'per_ray_candidate'
+                    and self.partial_observation_policy == 'bounded_local_v4'))):
+            raise ValueError('straight speed budget requires the selected solo observed route configuration')
         if (type(self.side_departure_trial) is not bool or
                 (self.side_departure_trial and (not self.pass_release_trial or self.solo_route_only))):
             raise ValueError('side departure requires traffic pass release trial')
@@ -161,7 +169,7 @@ class FollowConfig:
         if type(self.standing_wall_reacquire) is not bool:
             raise ValueError('standing wall reacquire must be bool')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+               if k not in ('solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
             raise ValueError('follow configuration must be finite and positive')
         if (type(self.corridor_fallback_enabled) is not bool or
                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
@@ -277,7 +285,7 @@ def drop_protrusions(points, path, side, config):
     return points[outside | (np.abs(offset-np.median(offset[~outside])) <= config.measurement_padding_m)]
 
 
-def pursue_path(path, speed, config, age, *, speed_cap=None):
+def pursue_path(path, speed, config, age, *, speed_cap=None, shape_diagnostic=None):
     """기존 후륜축 Pure Pursuit와 같은 계산. 보호층 공통 함수를 변경하지 않는다."""
     rear = np.asarray(path, dtype=float).copy()
     rear[:, 0] += config.wheelbase_m/2
@@ -298,8 +306,10 @@ def pursue_path(path, speed, config, age, *, speed_cap=None):
     curves = np.abs(dx[:, 0]*ddx[:, 1]-dx[:, 1]*ddx[:, 0])/np.maximum(1e-8, np.linalg.norm(dx, axis=1)**3)
     preview = np.sqrt(config.lateral_acceleration_mps2/np.maximum(.15, curves[nearest:]) +
                       4*np.maximum(0., arc[nearest:]-arc[nearest]-.2))
-    cap = min(config.max_speed_mps if speed_cap is None else speed_cap, braking_speed(remaining, age), float(np.min(preview)),
-              math.sqrt(config.lateral_acceleration_mps2/max(.15, abs(curvature))))
+    shape_cap = min(float(np.min(preview)), math.sqrt(config.lateral_acceleration_mps2/max(.15, abs(curvature))))
+    if shape_diagnostic is not None:
+        shape_diagnostic['original_curve_speed_cap_mps'] = shape_cap
+    cap = min(config.max_speed_mps if speed_cap is None else speed_cap, braking_speed(remaining, age), shape_cap)
     return cap, steering, remaining
 
 
@@ -426,6 +436,11 @@ class LocalFollow:
         planning = forward_planning_speed(self.config, speed)
         output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
                                         raw_scan=raw_scan)
+        if self.config.solo_straight_budget_trial:
+            from arena_autonomy.solo_straight_budget import evaluate
+            new_speed, reason = evaluate(output, scene, previous_steering, speed, self.config)
+            output = new_speed, output[1], {**output[2], 'solo_straight_budget': reason,
+                                             'original_speed_mps': output[0]}
         return signed_feedback_detail(output, speed, planning)
 
     def _forward_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
@@ -486,7 +501,17 @@ class LocalFollow:
             self.partial_policy.reset()
             self.partial_epoch=scene.source_epoch
         # 여기서는 경로 후보만 만든다. 아래 관측 판정 전에 속도를 외부로 반환하지 않는다.
-        output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+        # 구조 정책: 이번 스캔에서 양옆이 반환인 구조 광선(evaluate와 같은 순수 classify).
+        # 증속 후보 전제에서만 이 광선을 빼며, 정책 상태는 바꾸지 않는다.
+        explained_now=None
+        if self.config.known_structure_policy!='off':
+            from arena_autonomy.known_structure import classify
+            explained_now=frozenset(np.flatnonzero(classify(raw_scan,self.partial_policy.structure_sectors)[1]).tolist())
+        self.structure_explained_now=explained_now
+        try:
+            output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+        finally:
+            self.structure_explained_now=None
         cfg=self.config
         observation=self.partial_policy.evaluate(raw_scan,scene.occupied_endpoints_xy_m,history,
             scene.t_ref_s,max(output[0],abs(speed)),output[1],previous_steering,
@@ -781,16 +806,21 @@ class LocalFollow:
             memory_age = now-self.path_source
             # 단독 선택에서는 양측 근거로 이미 승인한 현재 반대 벽 경로도 쓴다.
             # 관측이 없는 경로/기억만 남은 경로/교통 모드의 속도 범위는 넓히지 않는다.
-            # 구조 적응 경로에서는 전방 전 광선 반환을 증속의 선결 조건으로 삼지 않는다.
-            # 아직 후보일 뿐이며 _partial_command가 이 후보 속도·조향으로 그림자/기억/
-            # 예상 밖 결측을 검사한 후에만 발행한다. 독립 보호층도 같은 검사를 수행한다.
-            structure_candidate = bool(allow_partial and cfg.known_structure_policy == 'structure_aware_v1')
+            # 구조 적응 경로에서는 이번 스캔의 설명된 구조 광선만 증속 전제에서 뺀다.
+            # 그 밖의 결측이 있으면 기본 목표만 내어 v4 예산·감속 판단을 받는다(1.2 m/s
+            # 초과 후보가 결측 판정을 정지로 바꾸지 않게). 아직 후보일 뿐이며 _partial_command가
+            # 그림자/기억/예상 밖 결측을 검사한 후에만 발행한다. 독립 보호층도 같은 검사를 수행한다.
+            explained = getattr(self, 'structure_explained_now', None)
+            structure_candidate = bool(allow_partial and cfg.known_structure_policy == 'structure_aware_v1' and
+                                       explained is not None and front and
+                                       all(r.status == 'return' or r.source_index in explained for r in front))
             front_ready = bool(front and all(r.status == 'return' for r in front))
             open_route = bool(cruise and self.path_source == scene.source_first_s and
                               (self.path_wall == side or cfg.solo_route_only) and
                               (front_ready or structure_candidate))
             cap, desired, remaining = pursue_path(carried, speed, cfg, max(age, memory_age),
-                                                  speed_cap=cruise if open_route else None)
+                                                  speed_cap=cruise if open_route else None,
+                                                  **({'shape_diagnostic': detail} if cfg.solo_straight_budget_trial and open_route else {}))
             if cruise:
                 detail.update(open_route_speed_enabled=open_route, open_route_cap_mps=cruise,
                               observed_search_horizon_m=horizon,

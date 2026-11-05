@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "scope": "직선 저속 이동차 추월 첫 후보. 기본 OFF, 실차/고속/기본 운용 승인 아님.",
+  "parent_contract": "config/tests/continuous_forward_pace_r8_sha256.json",
+  "parent_contract_sha256": "93155116714e57c81958a91485b83aa4bc2e6131f5b20c167eb0cc8fc9664b23",
+  "before_snapshot": "artifacts/validation/2026-11-05/moving_pass_v1/before.zip",
+  "before_snapshot_sha256": "cdc02c1481c190a749313a7ee67528a23ed64c37db2ea4b43b8058eeff233cf1",
+  "after_registration": "artifacts/validation/2026-11-05/moving_pass_v1/closed_loop_v2/registered.json",
+  "after_registration_sha256": "fd971e5e068a5090bdbd165db4c09947f0c9bd802b16a6376f0a8e717da2568c",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": {
+      "before": "57757cb8aa5595e88642287778913dc95c900aebab55944564850f9493378bfc",
+      "after": "e9fd3273baef35258a9c08a0273d8718b17d4ab2b67ccb55905bd5bb952b7a55",
+      "reason": "기존 추종/양보 명령을 유지하고 기본 OFF 추월 선택기를 연결한다."
+    },
+    "src/arena_autonomy/arena_autonomy/g1_g2_node.py": {
+      "before": "dbead7c978be814ce2eff8915af8938819d53e95310884722816c05a45554264",
+      "after": "77cca83ca418cd8e405493120bb6237a5dbd9f6f4a7ebaa6cd14b76cd1b858c1",
+      "reason": "선택형 추월 파라미터와 간결한 상태 보고를 추가한다."
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "51ff1c0ffea11b1a4654c44aa61144d551425d2995356ecc42a7ca148f37e61c",
+      "after": "56c96af463e4be7ae0013f5bf4c25d2a85aaff471c09f02492fee495df33293e",
+      "reason": "명시 시뮬레이션 선택·연속 전진율 의존성을 전달한다."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/g1_handoff_eval.py": {
+      "before": "25f99ad42fddcf095137447b8cc299768b529dafb235374b6c422b60c2ba3a17",
+      "after": "ffd18181ef9dab9d1cd0f6e98a426c1988d5ddad406e284e59227deefd9ac48b",
+      "reason": "선택 실행 인자 및 실제 기록 머리말을 검사한다."
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "ba109807945505996412000d275aa1191b1bb2743de472e381a6721f394bcb07",
+      "after": "76606fbe7ac4d23b2c59574f1d597527995d9cc5f23105f5ccf5480006476174",
+      "reason": "추월 선택 CLI를 기존 주행/사후 검사에 전달한다."
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/moving_pass.py": "06ad9b0624d0e60b84e7c93ef73c9fa6f22517b57c4286cf2b2766e91730f741"
+  }
+}

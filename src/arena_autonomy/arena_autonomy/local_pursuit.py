@@ -127,6 +127,7 @@ class LocalPursuit(WallFollow):
             solo_route_only=solo_route,
             corridor_arc_agreement=bool(self.declare_parameter('g1_corridor_arc_agreement',False).value),
             ray_wall_continuity=bool(self.declare_parameter('g1_ray_wall_continuity',False).value),
+            solo_straight_budget_trial=bool(self.declare_parameter('g1_solo_straight_budget_trial',False).value),
             headway_s=solo_headway,
             partial_observation_policy=partial_observation,
             known_structure_policy=structure_policy,

@@ -1,0 +1,111 @@
+arena-autonomy /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_autonomy/arena_autonomy.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy
+arena-vehicle-interface /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_vehicle_interface/arena_vehicle_interface.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_vehicle_interface
+installed packages and child process entry points resolved: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/turn_preview.py
+.FF..................................................................... [ 35%]
+........................................................................ [ 70%]
+............................................................             [100%]
+=================================== FAILURES ===================================
+______________________ test_explicit_activation_and_reset ______________________
+
+    def test_explicit_activation_and_reset():
+        assert not HandoffExecutionConfig().moving_pass_trial
+>       assert not HandoffExecutionConfig.from_mapping({}).moving_pass_trial
+
+tests/test_moving_pass.py:60: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'arena_autonomy.bypass_handoff.HandoffExecutionConfig'>
+values = {}
+
+    @classmethod
+    def from_mapping(cls, values):
+        values = dict(values)
+>       values['bypass'] = BypassExecutionConfig(**values['bypass'])
+E       KeyError: 'bypass'
+
+src/arena_autonomy/arena_autonomy/bypass_handoff.py:145: KeyError
+_____________ test_active_candidate_cannot_bypass_bad_input_reset ______________
+
+    def test_active_candidate_cannot_bypass_bad_input_reset():
+>       ctrl=moving_controller(); ctrl.moving_pass.active=True
+
+tests/test_moving_pass.py:69: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_moving_pass.py:52: in moving_controller
+    execution=replace(base.execution,moving_follow_reserve=True,closing_follow_reserve=True,
+/usr/lib/python3.12/dataclasses.py:1581: in replace
+    return obj.__class__(**changes)
+<string>:29: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = HandoffExecutionConfig(bypass=BypassExecutionConfig(stationary_outer_boundary=True, wall_reanchor=True, tracked_wall_f...'off', initial_reference_policy='off', motion_pause_policy='off', relative_yield_policy='off', entry_motion_gate=False)
+
+    def __post_init__(self):
+        if not isinstance(self.bypass, BypassExecutionConfig):
+            raise ValueError('typed bypass execution configuration required')
+        if self.preparation_policy not in PREPARATION_POLICIES:
+            raise ValueError('registered preparation policy required')
+        if self.persistence_window_policy not in PERSISTENCE_WINDOWS:
+            raise ValueError('registered persistence window policy required')
+        if self.front_patch_policy not in FRONT_PATCH_POLICIES:
+            raise ValueError('registered front patch policy required')
+        if type(self.follow_entry_space_enabled) is not bool:
+            raise ValueError('boolean follow entry space option required')
+        if self.reacquire_policy not in ('positive_command_v0','known_hold_v1','observed_rejoin_v2'):
+            raise ValueError('registered reacquire policy required')
+        if type(self.moving_follow_reserve) is not bool or (self.moving_follow_reserve and not self.follow_entry_space_enabled):
+            raise ValueError('moving follow reserve requires follow entry space')
+        if type(self.closing_follow_reserve) is not bool or (self.closing_follow_reserve and not self.moving_follow_reserve):
+            raise ValueError('closing follow reserve requires moving follow evidence')
+        if type(self.recent_forward_reserve) is not bool or (self.recent_forward_reserve and not self.closing_follow_reserve):
+            raise ValueError('recent forward reserve requires closing follow evidence')
+        if type(self.low_motion_reserve) is not bool or (self.low_motion_reserve and (
+                not self.closing_follow_reserve or self.recent_forward_reserve)):
+            raise ValueError('low motion reserve requires closing follow evidence without recent forward')
+        if type(self.moving_pace_floor) is not bool or (self.moving_pace_floor and not self.low_motion_reserve):
+            raise ValueError('moving pace floor requires low motion reserve')
+        if type(self.observed_forward_pace) is not bool or (self.observed_forward_pace and not self.moving_pace_floor):
+            raise ValueError('observed forward pace requires moving pace floor')
+        if type(self.continuous_forward_pace) is not bool or (self.continuous_forward_pace and not self.observed_forward_pace):
+            raise ValueError('continuous forward pace requires observed forward pace')
+        if type(self.moving_pass_trial) is not bool or (self.moving_pass_trial and (
+                not self.continuous_forward_pace or self.entry_policy != 'corridor_local_v1')):
+            raise ValueError('moving pass requires continuous forward pace and corridor trial')
+        if self.follow_entry_space_enabled and (self.preparation_policy != 'observed_entry_space_v1'
+                or self.persistence_window_policy != 'trim_before_compare_v1'):
+            raise ValueError('follow entry space requires explicit space and bounded window policies')
+        if self.entry_policy not in ('registered_v0','corridor_local_v1'):
+            raise ValueError('registered handoff entry policy required')
+        if self.preparation_hold_policy not in ('off', 'bounded_hold_v1'):
+            raise ValueError('registered preparation hold policy required')
+        if self.preparation_hold_policy != 'off' and self.entry_policy != 'corridor_local_v1':
+            raise ValueError('preparation hold requires explicit corridor handoff')
+        if self.initial_reference_policy not in ('off','ready_current_pair_v1','ready_directional_pair_v2'):
+            raise ValueError('registered initial reference policy required')
+        if self.initial_reference_policy != 'off' and self.entry_policy != 'corridor_local_v1':
+            raise ValueError('initial reference requires explicit corridor handoff')
+        if self.motion_pause_policy not in ('off','bounded_motion_pause_v1'):
+            raise ValueError('registered motion pause policy required')
+        if self.motion_pause_policy != 'off' and self.entry_policy != 'corridor_local_v1':
+            raise ValueError('motion pause requires explicit signed corridor handoff')
+        if self.relative_yield_policy not in ('off', 'bounded_relative_yield_v1', 'bounded_relative_yield_v2', 'observed_progress_yield_v3'):
+            raise ValueError('registered relative yield policy required')
+        if self.relative_yield_policy != 'off' and (
+                self.entry_policy != 'corridor_local_v1'
+                or self.motion_pause_policy != 'bounded_motion_pause_v1'):
+            raise ValueError('relative yield requires explicit corridor and bounded motion pause')
+        if self.entry_policy == 'corridor_local_v1' and (
+                self.bypass.corridor_policy != 'corridor_v2_signed_hold'
+                or self.preparation_policy != 'observed_entry_space_v1'
+                or self.persistence_window_policy != 'trim_before_compare_v1'
+                or self.follow_entry_space_enabled is not True
+                or self.reacquire_policy not in ('known_hold_v1','observed_rejoin_v2')):
+>           raise ValueError('corridor handoff requires explicit signed, space, bounded window and known hold policies')
+E           ValueError: corridor handoff requires explicit signed, space, bounded window and known hold policies
+
+src/arena_autonomy/arena_autonomy/bypass_handoff.py:129: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_moving_pass.py::test_explicit_activation_and_reset - KeyErr...
+FAILED tests/test_moving_pass.py::test_active_candidate_cannot_bypass_bad_input_reset
+2 failed, 202 passed in 9.07s

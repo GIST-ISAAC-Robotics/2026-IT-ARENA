@@ -301,6 +301,8 @@ def main():
     parser.add_argument("--video", action="store_true",
                         help="제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.")
     parser.add_argument("--disable-speed-bump", action="store_true")
+    parser.add_argument('--g1-solo-straight-budget', action='store_true',
+                        help='선정 단독 구성에서 현재 두 옆벽의 직선 관측 길이로만 증속하는 선택 시험')
     parser.add_argument('--team-signal-prelap',action='store_true',
                         help='제작측 2×5 신호·ID45 팀 배치의 등록 단독 1랩 영상')
     parser.add_argument("--collision-detector", choices=("configured", "ode", "bullet", "fcl"), default="configured")
@@ -327,6 +329,12 @@ def main():
         extra_arguments += [key+':=true' for key in ('g1_short_boundary_prefix_enabled',
             'g1_parallel_hold_trial', 'g1_pass_release_trial', 'g1_guard_curve_trial',
             'g1_traffic_recovery_trial', 'g1_traffic_path_recovery_trial')]
+    if args.g1_solo_straight_budget:
+        if not (args.g1_race_path and args.speed_profile == 'g1_open_10kmh_solo_gap05_arc_preview_bridge'
+                and args.g1_boundary_evidence == 'corner_distance_candidate'
+                and args.g1_occupancy_timing == 'per_ray_candidate'):
+            raise ValueError('straight speed budget requires the recorded solo bridge profile and per-ray occupancy')
+        extra_arguments.append('g1_solo_straight_budget_trial:=true')
     if args.local_sensor_config is not None:
         if args.autonomy_mode != 'local_pursuit':
             raise ValueError('local sensor config requires local_pursuit')
@@ -587,6 +595,9 @@ def main():
             report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
     if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge','g1_open_10kmh_solo_gap05_arc_preview_bridge_ray'):
         rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
+        report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+    if args.g1_solo_straight_budget:
+        rel='src/arena_autonomy/arena_autonomy/solo_straight_budget.py'
         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
     recorder = recorder_log = None
     if args.record_inputs:

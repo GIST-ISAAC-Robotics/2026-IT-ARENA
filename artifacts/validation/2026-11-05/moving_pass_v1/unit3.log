@@ -1,0 +1,63 @@
+arena-autonomy /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_autonomy/arena_autonomy.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy
+arena-vehicle-interface /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_vehicle_interface/arena_vehicle_interface.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_vehicle_interface
+installed packages and child process entry points resolved: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/turn_preview.py
+.FF..................................................................... [ 35%]
+........................................................................ [ 70%]
+............................................................             [100%]
+=================================== FAILURES ===================================
+______________________ test_explicit_activation_and_reset ______________________
+
+    def test_explicit_activation_and_reset():
+        assert not HandoffExecutionConfig().moving_pass_trial
+        assert not HandoffExecutionConfig.from_mapping({'bypass':{}}).moving_pass_trial
+        with pytest.raises(ValueError,match='moving pass'):
+            HandoffExecutionConfig(moving_pass_trial=True)
+>       ctrl=moving_controller(); ctrl.moving_pass.active=True
+
+tests/test_moving_pass.py:64: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_moving_pass.py:56: in moving_controller
+    return BypassHandoffFollow(base.config,execution,allow_simulation_trial=True)
+src/arena_autonomy/arena_autonomy/bypass_handoff.py:339: in __init__
+    self.monitor = BlockingPersistence(self.execution, self.config.object_motion_bound_mps, self.config.open_route_speed_mps)
+src/arena_autonomy/arena_autonomy/bypass_handoff.py:213: in __init__
+    self.forward_pace = ObservedForwardPace(self.config.maximum_patch_displacement_m, forward_pace_limit_mps)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.front_patch_motion.ObservedForwardPace object at 0x770bb4ef0a70>
+bound = 0.06, speed_limit = 0.0
+
+    def __init__(self, bound=.06, speed_limit=1.5):
+        if not np.isfinite(bound) or bound <= 0 or not np.isfinite(speed_limit) or speed_limit <= 0:
+>           raise ValueError('finite positive observed pace bounds required')
+E           ValueError: finite positive observed pace bounds required
+
+src/arena_autonomy/arena_autonomy/front_patch_motion.py:46: ValueError
+_____________ test_active_candidate_cannot_bypass_bad_input_reset ______________
+
+    def test_active_candidate_cannot_bypass_bad_input_reset():
+>       ctrl=moving_controller(); ctrl.moving_pass.active=True
+
+tests/test_moving_pass.py:70: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_moving_pass.py:56: in moving_controller
+    return BypassHandoffFollow(base.config,execution,allow_simulation_trial=True)
+src/arena_autonomy/arena_autonomy/bypass_handoff.py:339: in __init__
+    self.monitor = BlockingPersistence(self.execution, self.config.object_motion_bound_mps, self.config.open_route_speed_mps)
+src/arena_autonomy/arena_autonomy/bypass_handoff.py:213: in __init__
+    self.forward_pace = ObservedForwardPace(self.config.maximum_patch_displacement_m, forward_pace_limit_mps)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.front_patch_motion.ObservedForwardPace object at 0x770bb4ef13a0>
+bound = 0.06, speed_limit = 0.0
+
+    def __init__(self, bound=.06, speed_limit=1.5):
+        if not np.isfinite(bound) or bound <= 0 or not np.isfinite(speed_limit) or speed_limit <= 0:
+>           raise ValueError('finite positive observed pace bounds required')
+E           ValueError: finite positive observed pace bounds required
+
+src/arena_autonomy/arena_autonomy/front_patch_motion.py:46: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_moving_pass.py::test_explicit_activation_and_reset - ValueE...
+FAILED tests/test_moving_pass.py::test_active_candidate_cannot_bypass_bad_input_reset
+2 failed, 202 passed in 9.10s

@@ -466,6 +466,14 @@ class EntryGuide:
         provider=straight_reference if self.reference_provider is None else self.reference_provider
         return provider(scene,self.config)
 
+    def _outer_wall_fit(self,scene,remembered_wall):
+        if self.tracked_wall_fit:
+            return tracked_straight_wall(scene,self.config,self.side,remembered_wall)
+        return observed_straight_wall(scene,self.config,self.side)
+
+    def _wall_covers_guide(self,fit,wall):
+        return fit[2]<=-self.config.wheelbase_m/2 and fit[3]>=.30
+
     def _confirm_initial_boundaries(self,scene,history,fresh):
         reference,evidence=self._straight_reference(scene)
         if reference is None:
@@ -527,6 +535,11 @@ class EntryGuide:
             rear_unobserved=int(np.sum(~supported[~front])),
             behind_vehicle_not_certified=True,actual_motion_still_requires_current_support=True)
 
+    def _confirm_rejoin(self,band,fresh):
+        if not band['supported']:self.rejoin_confirmations=0
+        elif fresh:self.rejoin_confirmations+=1
+        return self.rejoin_confirmations>=2
+
     def evaluate(self, scene, history, speed, previous_steering, dt):
         now, source = scene.t_ref_s, scene.source_first_s
         invalid = (not source_valid(scene) or not all(isinstance(v,(int,float)) and
@@ -573,8 +586,7 @@ class EntryGuide:
             return self._hold('entry_guide_motion_unavailable',error=str(error))
         # 이송은 원점을 갱신할 뿐 새 관측 시각/허가를 만들지 않는다.
         self.path,self.wall_line,self.reference_s=path,remembered_wall,now
-        fit,wall=(tracked_straight_wall(scene,self.config,self.side,remembered_wall) if self.tracked_wall_fit
-                  else observed_straight_wall(scene,self.config,self.side))
+        fit,wall=self._outer_wall_fit(scene,remembered_wall)
         if fit is None:
             self.wall_confirmations=0
             return self._hold('entry_guide_current_outer_wall_unavailable',reference=wall)
@@ -591,7 +603,7 @@ class EntryGuide:
             return self._hold('entry_guide_current_wall_disagrees',disagreement_m=disagreement)
         if fresh:
             self.wall_confirmations=self.wall_confirmations+1 if disagreement<=.015 else 0
-        if lower > -self.config.wheelbase_m/2 or upper < .30:
+        if not self._wall_covers_guide(fit,wall):
             return self._hold('entry_guide_current_wall_too_short')
         correction=dict(applied=False,reason='disabled_or_reused_scan')
         if self.wall_reanchor and fresh:
@@ -605,9 +617,7 @@ class EntryGuide:
             aligned=abs(math.atan(slope))<=.08
             if self.phase=='entry' and aligned and abs(offset_now-abs(self.offset))<=.03:
                 rejoin=self._rejoin_band(scene,fit)
-                if not rejoin['supported']:self.rejoin_confirmations=0
-                elif fresh:self.rejoin_confirmations+=1
-                if self.rejoin_confirmations>=2:
+                if self._confirm_rejoin(rejoin,fresh):
                     proposed=entry_path(fit,0.,self.config,self.entry,self.entry.transitions_m[-1])
                     if proposed[-1,0]-proposed[0,0]>=self.entry.transitions_m[-1]:
                         path=proposed

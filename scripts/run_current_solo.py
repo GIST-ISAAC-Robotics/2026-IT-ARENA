@@ -19,6 +19,8 @@ def main():
     parser.add_argument("output", type=Path, help="새 결과 디렉터리")
     parser.add_argument("--print-args", action="store_true", help="실행 없이 최종 인자 출력")
     parser.add_argument("--previous-jr50", action="store_true", help="이전 JR50 프리셋 재현(신규 개발 기준 아님)")
+    parser.add_argument("--straight-budget", action="store_true",
+                        help="기본 OFF 단독 직선 속도 후보(현재 양쪽 벽 관측 길이로만 증속) 선택")
     opts = parser.parse_args()
     sensor = PREVIOUS_SENSOR if opts.previous_jr50 else SENSOR
     args = [
@@ -34,6 +36,8 @@ def main():
         "--local-sensor-config", str(sensor.resolve(strict=True)), "--output", str(opts.output.resolve()),
         "--pilot-marker-z", MARKER_Z,
     ]
+    if opts.straight_budget:
+        args.append("--g1-solo-straight-budget")
     if opts.print_args:
         print(json.dumps(args))
         return 0

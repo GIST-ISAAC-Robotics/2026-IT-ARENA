@@ -409,6 +409,10 @@ def main():
                         help='세계 고정 측방 반환과 전진 시작 조각을 구별하는 선택형 후보. 공식 교통 경로 전용.')
     parser.add_argument('--handoff-yield-progress', action='store_true',
                         help='현재 면의 전진 근거로 우회 양보 예산을 갱신하는 선택형 비교')
+    parser.add_argument('--handoff-continuous-pace', action='store_true',
+                        help='paced+관측 이동 후보에서 연속 전진율로 고정 우회 여유만 보완하는 선택형 비교(기본 꺼짐)')
+    parser.add_argument('--moving-pass-trial', action='store_true',
+                        help='연속 전진 관측·후방 복귀 확인을 사용하는 저속 이동차 추월(기본 꺼짐)')
     parser.add_argument('--m3-command-fallback', action='store_true',
                         help='M3 실제 발행 검사까지 포함한 경로 후보 선택 비교; 기본 비활성')
     parser.add_argument('--m3-release-to-baseline', action='store_true',
@@ -530,7 +534,7 @@ def main():
         raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
     specs = actor_specs(config, case)
     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
-    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial)
+    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial)
     facility_sources = {}
     world_dir = DEMO_WORLD
     if args.team_signal_course:
@@ -1314,7 +1318,7 @@ def main():
             report['m4_operation']['original_traffic_verdict_preserved'] = True
         if handoff_arguments:
             try:
-                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial)
+                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial)
             except (OSError,KeyError,ValueError,StopIteration) as error:
                 evidence = {'passed':False,'error':repr(error)}
             report['handoff_execution'] = evidence

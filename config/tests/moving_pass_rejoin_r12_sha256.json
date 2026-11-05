@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "scope": "직선의 저속 이동차 추월 복귀 단계에 한정. 기본 운용·실물 승인 아님.",
+  "parent_contract": "config/tests/moving_pass_width_r11_sha256.json",
+  "parent_contract_sha256": "20ea2b8cd91abbe5a08218160c2db6b8f08467415caa8c58e9b90e7647c2a8b5",
+  "before_snapshot": "artifacts/validation/2026-11-05/moving_pass_v1/rejoin_before.zip",
+  "before_snapshot_sha256": "b5e31b8de0248f75ceb1de3e2d8231ee41925809233b6bf2f466ba41ead2b0d2",
+  "after_registration": "artifacts/validation/2026-11-05/moving_pass_v1/closed_loop_side_pass_2/registered.json",
+  "after_registration_sha256": "6d79d1918a0a0b4b577e5f2b047bb508623af4da6575abd6798287c12f185f7e",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/bypass_entry_trial.py": {
+      "before": "b3ce33126b518bc6d124a52155cd5681d8825cbdaaf1401bfd9549e4d4cde58d",
+      "after": "41f37fbe74db5aa2fb47ec9cfc572eb782551589c55bc4aaed357d89216be87c",
+      "reason": "기존 후륜축부터 30 cm 앞까지의 벽 범위 검사를 메서드로 분리. 기본 동작 동일."
+    },
+    "src/arena_autonomy/arena_autonomy/moving_pass.py": {
+      "before": "f459c860e8e622d05fe7a6d863aeaf92960028a3d137c447283372123e642071",
+      "after": "c8b65981e48044b897fb7590d8c0052a40c32df230f10249d66868d7bd895d0b",
+      "reason": "이미 복귀 중이며 상대가 현재 후방에서 충분히 떨어졌을 때 차체 중심부터 전방까지 관측된 긴 벽을 사용. 실제 범위 밖의 경로·점유 완화 없음."
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {}
+}

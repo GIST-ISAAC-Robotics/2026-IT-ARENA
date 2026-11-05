@@ -27,6 +27,12 @@ def status_detail(detail):
         result['bypass'] = g2_status(detail['bypass'])
     if isinstance(detail.get('persistence'),dict):
         result['persistence'] = detail['persistence']
+    moving = detail.get('moving_pass')
+    if isinstance(moving,dict):
+        result['moving_pass'] = {key:moving[key] for key in
+            ('ready','reason','completed','phase','target','admission') if key in moving}
+        if isinstance(moving.get('entry'),dict):
+            result['moving_pass']['entry_reason'] = moving['entry'].get('reason')
     if isinstance(detail.get('preparation'),dict):
         result['preparation'] = {key:detail['preparation'][key] for key in
             ('policy','applied','reason') if key in detail['preparation']}
@@ -72,6 +78,10 @@ class G1G2Node(LocalPursuit):
             raise ValueError('G1/G2 handoff requires G1 sensors, its own absolute trace and no competing controller')
         rear_sweep = self.declare_parameter('g1_g2_released_rear_sweep_trial',False).value
         observed_motion = self.declare_parameter('g1_g2_observed_motion_gates',False).value
+        continuous_pace = self.declare_parameter('g1_g2_continuous_forward_pace',False).value
+        moving_pass = self.declare_parameter('g1_g2_moving_pass_trial',False).value
+        if type(continuous_pace) is not bool:
+            raise ValueError('typed G1/G2 continuous forward pace option required')
         side_departure = self.declare_parameter('g1_g2_side_departure_trial',False).value
         current_lane = self.declare_parameter('g1_g2_current_lane_preference_trial',False).value
         lane_headroom = self.declare_parameter('g1_g2_current_lane_headroom_mps',0.).value
@@ -86,6 +96,8 @@ class G1G2Node(LocalPursuit):
             motion_pause_policy=motion_pause,
             relative_yield_policy=relative_yield,entry_motion_gate=observed_motion,
             observed_forward_pace=observed_motion and moving_pace_floor,
+            continuous_forward_pace=continuous_pace,
+            moving_pass_trial=moving_pass,
             bypass=BypassExecutionConfig(corridor_policy=corridor,steerable_transition=observed_motion)),
             allow_simulation_trial=True)
         trace = FollowTrace(trace_path,self.motion.history.config,self.follow.config,

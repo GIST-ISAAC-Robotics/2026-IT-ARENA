@@ -1,0 +1,72 @@
+--- a/src/arena_autonomy/arena_autonomy/local_follow.py
++++ b/src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -57,6 +57,7 @@
+     preview_turn_speed: bool = False
+     preview_above_base_speed: bool = False  # 단독 선택형. 코너 예측을 통상 상한 위의 양수 목표에도 적용.
+     boundary_bridge: bool = False  # 단독 선택형. 점유가 아닌 경로 근거 전환 때문에 생긴 정지만 잇는다.
++    bridge_release_continuity: bool = False  # 단독 후보. 회랑 다리 직후 기본 경로의 재개 확인만 남은 호출을 0으로 끊지 않는다.
+     low_speed_arc_reacquire: bool = False  # 단독 시험 선택. 낮은 측정 속도의 양측 경로 재획득만.
+     standing_wall_reacquire: bool = False  # 재개 후보. 기억 없는 낮은 속도에서 선호 벽의 긴 현재 관측으로 재획득.
+     lateral_acceleration_mps2: float = 3.5
+@@ -155,13 +156,16 @@
+         if (type(self.boundary_bridge) is not bool or
+                 (self.boundary_bridge and not (self.solo_route_only and self.corridor_fallback_enabled))):
+             raise ValueError('boundary bridge requires solo route and corridor fallback')
++        if (type(self.bridge_release_continuity) is not bool or
++                (self.bridge_release_continuity and not self.boundary_bridge)):
++            raise ValueError('bridge release continuity requires boundary bridge')
+         if (type(self.low_speed_arc_reacquire) is not bool or
+                 (self.low_speed_arc_reacquire and not self.blend_open_speed_by_length)):
+             raise ValueError('low speed arc reacquire requires the solo observed route speed profile')
+         if type(self.standing_wall_reacquire) is not bool:
+             raise ValueError('standing wall reacquire must be bool')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
++               if k not in ('known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'bridge_release_continuity', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
+@@ -408,6 +412,7 @@
+         self.path_wall = None
+         self.held = True
+         self.hold_reason = None
++        self.bridged_last = False
+ 
+     def _discard_path(self):
+         # 기존 파생 제어기의 reset() 동작은 보존한다. 새 관측 후보만 기억을 분리한다.
+@@ -546,6 +551,17 @@
+                    and self.hold_reason == 'follow_boundary_unconfirmed')
+         if not (baseline[0] == 0 and proposal['positive'] and
+                 (baseline[2]['reason'] == 'follow_boundary_unconfirmed' or waiting)):
++            bridged, self.bridged_last = self.bridged_last, False
++            if (self.config.bridge_release_continuity and waiting and bridged and self.release_count >= 1
++                    and baseline[2].get('swept_clearance_m', 0.) >= self.config.resume_clearance_m
++                    and baseline[2].get('target_speed_before_hold_mps', 0.) > 0.):
++                # 회랑 다리로 주행하던 중 다리 후보가 기본 경로의 재개 확인보다 먼저 꺼진 호출. 이미 수락한
++                # 기본 경로의 목표(곡률·제동·점유 반영)를 낸다. 관측·점유 정지 뒤 대기는 잇지 않으며
++                # 부분 관측 상한·독립 보호층은 그대로 뒤에서 적용된다.
++                self.bridged_last = True
++                return (float(baseline[2]['target_speed_before_hold_mps']), baseline[1],
++                        {**detail, 'reason': 'local_follow_bridge_release', 'behavior': 'FOLLOW',
++                         'underlying_reason': 'follow_release_wait'})
+             return baseline[0], baseline[1], detail
+         # 기본 경계 기억에는 쓰지 않는다. 신호/고장 허가와 /drive 독립 보호는 상위에서 그대로 적용한다.
+         points = scene.occupied_endpoints_xy_m
+@@ -562,6 +578,7 @@
+                       target_speed_before_hold_mps=proposal['proposed_speed_mps'])
+         if cfg_short and proposal.get('short_prefix'):
+             detail['boundary_selection'] = 'current_short_observed_prefix_candidate'
++        self.bridged_last = proposal['proposed_speed_mps'] > 0.
+         return proposal['proposed_speed_mps'], proposal['steering_rad'], detail
+ 
+     def _baseline_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, allow_partial=False):
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -151,6 +151,7 @@
+             preview_turn_speed=bool(self.declare_parameter('g1_preview_turn_speed',False).value),
+             preview_above_base_speed=bool(self.declare_parameter('g1_preview_above_base_speed',False).value),
+             boundary_bridge=bool(self.declare_parameter('g1_boundary_bridge',False).value),
++            bridge_release_continuity=bool(self.declare_parameter('g1_bridge_release_continuity',False).value),
+             low_speed_arc_reacquire=bool(self.declare_parameter('g1_low_speed_arc_reacquire',False).value),
+             standing_wall_reacquire=bool(self.declare_parameter('g1_standing_wall_reacquire',False).value),
+             lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),

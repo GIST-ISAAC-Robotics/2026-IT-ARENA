@@ -1,0 +1,61 @@
+arena-autonomy /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_autonomy/arena_autonomy.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy
+arena-vehicle-interface /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_vehicle_interface/arena_vehicle_interface.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_vehicle_interface
+installed packages and child process entry points resolved: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/turn_preview.py
+........................................................................ [ 10%]
+........................................................................ [ 21%]
+..................................F..................................... [ 32%]
+........................................................................ [ 43%]
+........................................................................ [ 54%]
+.......................F................................................ [ 65%]
+........................................................................ [ 76%]
+........................................................................ [ 87%]
+........................................................................ [ 98%]
+.......                                                                  [100%]
+=================================== FAILURES ===================================
+__ test_snapshot_covers_transitive_internal_imports_including_per_ray_timing ___
+
+    def test_snapshot_covers_transitive_internal_imports_including_per_ray_timing():
+        import ast
+        from profile_follow_trace import ROOT, SNAPSHOT_MODULES
+        manifest = {f'{package}.{name}' for package, names in SNAPSHOT_MODULES.items() for name in names}
+        assert 'arena_autonomy.occupancy_timing' in manifest
+        for module in manifest:
+            package, name = module.split('.')
+            tree = ast.parse((ROOT/'src'/package/package/f'{name}.py').read_text(encoding='utf-8'))
+            imports = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module]
+            imports += [alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names]
+            required = {name for name in imports if name.startswith(('arena_autonomy.', 'arena_vehicle_interface.'))}
+>           assert required <= manifest, (module, sorted(required-manifest))
+E           AssertionError: ('arena_autonomy.local_follow', ['arena_autonomy.current_lane_preference', 'arena_autonomy.known_structure', 'arena_autonomy.solo_straight_budget'])
+E           assert {'arena_autonomy.boundary_evidence', 'arena_autonomy.corner_distance', 'arena_autonomy.corner_evidence', 'arena_autonomy.corridor_observer', 'arena_autonomy.current_lane_preference', 'arena_autonomy.fresh_parallel_trial', ...} <= {'arena_autonomy.anchor_clearance_trial', 'arena_autonomy.boundary_evidence', 'arena_autonomy.bypass_corridor_trial', 'arena_autonomy.bypass_entry_follow', 'arena_autonomy.bypass_entry_trial', 'arena_autonomy.bypass_handoff', ...}
+
+tests/test_follow_profile.py:126: AssertionError
+_ test_measured_lane_preference_contract_preserves_previous_bytes_and_offline_origin _
+
+    def test_measured_lane_preference_contract_preserves_previous_bytes_and_offline_origin():
+        sha = lambda data: hashlib.sha256(data).hexdigest()
+        child = json.loads((ROOT/NAME).read_text(encoding='utf-8'))
+        assert child['parent_contract'] == 'config/tests/observed_lane_preference_r1_sha256.json'
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        snapshot = ROOT/child['before_snapshot']
+        assert sha(snapshot.read_bytes()) == child['before_snapshot_sha256']
+        assert list(child['approved_changes']) == ['src/arena_autonomy/arena_autonomy/local_follow.py']
+        assert len(child['approved_evaluation_scripts']) == 4
+        with zipfile.ZipFile(snapshot) as previous:
+            for group in ('approved_changes', 'approved_evaluation_scripts'):
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(previous.read(path)) == row['before'] != row['after']
+                    assert m3_revision_digest(path, newer_than=NAME) == row['after']
+            # local_pursuit.py는 정책 문자열을 그대로 전달하므로 이번 연결에서 바뀌지 않았다.
+            path = 'src/arena_autonomy/arena_autonomy/local_pursuit.py'
+>           assert sha(previous.read(path)) == sha((ROOT/path).read_bytes())
+E           AssertionError: assert 'e60cb3551dc6...32591269352d3' == '2e3fe7640206...7bd7b56c7cc8f'
+E             - 2e3fe76402064bc8e50cae39766823abfb6f8984de886554cfe7bd7b56c7cc8f
+E             + e60cb3551dc6724370f830a242ff82bfc3b86f94187ecce655832591269352d3
+
+tests/test_measured_lane_preference_provenance.py:30: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_follow_profile.py::test_snapshot_covers_transitive_internal_imports_including_per_ray_timing
+FAILED tests/test_measured_lane_preference_provenance.py::test_measured_lane_preference_contract_preserves_previous_bytes_and_offline_origin
+2 failed, 653 passed in 168.62s (0:02:48)

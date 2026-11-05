@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "scope": "JR60P20 구조 적응 경로의 증속 후보 전제 수정. 선택형 structure_aware_v1에서만 동작 변경, off·기본 경로 불변. 주행 결과·실차 승인 아님",
+  "parent_contract": "config/tests/lidar_mount_traffic_marker_r6_sha256.json",
+  "parent_contract_sha256": "ba146ca480236f19ba7be9a2f655c6db7ceb5538f72dc95dcd561556a1d0c389",
+  "before_snapshot": "artifacts/validation/2026-11-05/lidar_structure_review_v1/structure_gate_before.zip",
+  "before_snapshot_sha256": "71a55231c87b2878dab7809d00aad2145415bae2e9beabfe0a10bfec2ad7788a",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "6c43b4700184e26d155307b02efe38e7202e3ca0d182b986b2c9c3418c10af53",
+      "after": "a5ec6d2fbc3272f56c57ec65719251e2ae6d39ae3d6ce97f0d70cf2702a103bd",
+      "reason": "이번 스캔의 설명된 구조 광선만 ±100° 전방 증속 전제에서 제외. 일반 결측이 있으면 1.2 m/s 초과 후보를 내지 않고 기본 목표가 v4 예산·감속 판단을 받는다(후보 속도로 인한 불허→정지 방지). 같은 순수 classify를 쓰며 정책 evaluate는 1회"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {}
+}

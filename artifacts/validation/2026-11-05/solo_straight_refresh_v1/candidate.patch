@@ -1,0 +1,410 @@
+--- a/src/arena_autonomy/arena_autonomy/local_follow.py
++++ b/src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -25,6 +25,7 @@
+     solo_route_only: bool = False  # 단독 프리랩 선택. 점유/관측 검사는 유지하고 측방 교통 선택기만 제외.
+     corridor_arc_agreement: bool = False  # 단독 선택형 회랑 시간 비교의 공통 호길이 보완.
+     ray_wall_continuity: bool = False  # 단독 선택형. 먼 옆 벽의 단절을 연속 광선 직선 근거로 보완.
++    solo_straight_budget_trial: bool = False  # 현재 양쪽 직선 벽을 속도 근거로만 쓴다.
+     partial_observation_policy: str = 'strict'
+     # 센서 프로필의 알려진 구조 가림 선택(v4 필요). off는 기존 부분 관측 그대로.
+     known_structure_policy: str = 'off'
+@@ -75,6 +76,13 @@
+     confirmations: int = 2
+ 
+     def __post_init__(self):
++        if (type(self.solo_straight_budget_trial) is not bool or
++                (self.solo_straight_budget_trial and not (
++                    self.solo_route_only and self.blend_open_speed_by_length and self.boundary_bridge
++                    and self.preview_above_base_speed and not self.ray_wall_continuity
++                    and self.occupancy_timing_mode == 'per_ray_candidate'
++                    and self.partial_observation_policy == 'bounded_local_v4'))):
++            raise ValueError('straight speed budget requires the selected solo observed route configuration')
+         if (type(self.side_departure_trial) is not bool or
+                 (self.side_departure_trial and (not self.pass_release_trial or self.solo_route_only))):
+             raise ValueError('side departure requires traffic pass release trial')
+@@ -161,7 +169,7 @@
+         if type(self.standing_wall_reacquire) is not bool:
+             raise ValueError('standing wall reacquire must be bool')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
++               if k not in ('solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
+@@ -277,7 +285,7 @@
+     return points[outside | (np.abs(offset-np.median(offset[~outside])) <= config.measurement_padding_m)]
+ 
+ 
+-def pursue_path(path, speed, config, age, *, speed_cap=None):
++def pursue_path(path, speed, config, age, *, speed_cap=None, shape_diagnostic=None):
+     """기존 후륜축 Pure Pursuit와 같은 계산. 보호층 공통 함수를 변경하지 않는다."""
+     rear = np.asarray(path, dtype=float).copy()
+     rear[:, 0] += config.wheelbase_m/2
+@@ -298,8 +306,10 @@
+     curves = np.abs(dx[:, 0]*ddx[:, 1]-dx[:, 1]*ddx[:, 0])/np.maximum(1e-8, np.linalg.norm(dx, axis=1)**3)
+     preview = np.sqrt(config.lateral_acceleration_mps2/np.maximum(.15, curves[nearest:]) +
+                       4*np.maximum(0., arc[nearest:]-arc[nearest]-.2))
+-    cap = min(config.max_speed_mps if speed_cap is None else speed_cap, braking_speed(remaining, age), float(np.min(preview)),
+-              math.sqrt(config.lateral_acceleration_mps2/max(.15, abs(curvature))))
++    shape_cap = min(float(np.min(preview)), math.sqrt(config.lateral_acceleration_mps2/max(.15, abs(curvature))))
++    if shape_diagnostic is not None:
++        shape_diagnostic['original_curve_speed_cap_mps'] = shape_cap
++    cap = min(config.max_speed_mps if speed_cap is None else speed_cap, braking_speed(remaining, age), shape_cap)
+     return cap, steering, remaining
+ 
+ 
+@@ -426,6 +436,11 @@
+         planning = forward_planning_speed(self.config, speed)
+         output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+                                         raw_scan=raw_scan)
++        if self.config.solo_straight_budget_trial:
++            from arena_autonomy.solo_straight_budget import evaluate
++            new_speed, reason = evaluate(output, scene, previous_steering, speed, self.config)
++            output = new_speed, output[1], {**output[2], 'solo_straight_budget': reason,
++                                             'original_speed_mps': output[0]}
+         return signed_feedback_detail(output, speed, planning)
+ 
+     def _forward_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+@@ -804,7 +819,8 @@
+                               (self.path_wall == side or cfg.solo_route_only) and
+                               (front_ready or structure_candidate))
+             cap, desired, remaining = pursue_path(carried, speed, cfg, max(age, memory_age),
+-                                                  speed_cap=cruise if open_route else None)
++                                                  speed_cap=cruise if open_route else None,
++                                                  **({'shape_diagnostic': detail} if cfg.solo_straight_budget_trial and open_route else {}))
+             if cruise:
+                 detail.update(open_route_speed_enabled=open_route, open_route_cap_mps=cruise,
+                               observed_search_horizon_m=horizon,
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -127,6 +127,7 @@
+             solo_route_only=solo_route,
+             corridor_arc_agreement=bool(self.declare_parameter('g1_corridor_arc_agreement',False).value),
+             ray_wall_continuity=bool(self.declare_parameter('g1_ray_wall_continuity',False).value),
++            solo_straight_budget_trial=bool(self.declare_parameter('g1_solo_straight_budget_trial',False).value),
+             headway_s=solo_headway,
+             partial_observation_policy=partial_observation,
+             known_structure_policy=structure_policy,
+--- a/src/arena_bringup/launch/g1_follow.launch.py
++++ b/src/arena_bringup/launch/g1_follow.launch.py
+@@ -18,6 +18,9 @@
+         DeclareLaunchArgument('race_control_mode', default_value='legacy', choices=['legacy', 'b3_candidate'],
+                               description='명시 선택형 경기 운영; 기본 legacy 유지'),
+         SetParameter(name='race_control_mode', value=LaunchConfiguration('race_control_mode')),
++        DeclareLaunchArgument('g1_solo_straight_budget_trial', default_value='false', choices=['true', 'false'],
++                              description='단독 직선 시험: 양쪽 벽을 현재 조향의 속도 거리 근거로만 사용'),
++        SetParameter(name='g1_solo_straight_budget_trial', value=LaunchConfiguration('g1_solo_straight_budget_trial')),
+         DeclareLaunchArgument('g1_standing_wall_reacquire', default_value='false', choices=['true', 'false'],
+                               description='재개 후보: 기억 없는 낮은 속도에서 선호 벽의 긴 현재 관측으로 재획득; 기본 비활성'),
+         SetParameter(name='g1_standing_wall_reacquire', value=LaunchConfiguration('g1_standing_wall_reacquire')),
+--- a/scripts/validate_basic_autonomy.py
++++ b/scripts/validate_basic_autonomy.py
+@@ -301,6 +301,8 @@
+     parser.add_argument("--video", action="store_true",
+                         help="제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.")
+     parser.add_argument("--disable-speed-bump", action="store_true")
++    parser.add_argument('--g1-solo-straight-budget', action='store_true',
++                        help='선정 단독 구성에서 현재 두 옆벽의 직선 관측 길이로만 증속하는 선택 시험')
+     parser.add_argument('--team-signal-prelap',action='store_true',
+                         help='제작측 2×5 신호·ID45 팀 배치의 등록 단독 1랩 영상')
+     parser.add_argument("--collision-detector", choices=("configured", "ode", "bullet", "fcl"), default="configured")
+@@ -327,6 +329,12 @@
+         extra_arguments += [key+':=true' for key in ('g1_short_boundary_prefix_enabled',
+             'g1_parallel_hold_trial', 'g1_pass_release_trial', 'g1_guard_curve_trial',
+             'g1_traffic_recovery_trial', 'g1_traffic_path_recovery_trial')]
++    if args.g1_solo_straight_budget:
++        if not (args.g1_race_path and args.speed_profile == 'g1_open_10kmh_solo_gap05_arc_preview_bridge'
++                and args.g1_boundary_evidence == 'corner_distance_candidate'
++                and args.g1_occupancy_timing == 'per_ray_candidate'):
++            raise ValueError('straight speed budget requires the recorded solo bridge profile and per-ray occupancy')
++        extra_arguments.append('g1_solo_straight_budget_trial:=true')
+     if args.local_sensor_config is not None:
+         if args.autonomy_mode != 'local_pursuit':
+             raise ValueError('local sensor config requires local_pursuit')
+@@ -587,6 +595,9 @@
+             report['input_sha256'][relative] = hashlib.sha256((REPO/relative).read_bytes()).hexdigest()
+     if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge','g1_open_10kmh_solo_gap05_arc_preview_bridge_ray'):
+         rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
++        report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
++    if args.g1_solo_straight_budget:
++        rel='src/arena_autonomy/arena_autonomy/solo_straight_budget.py'
+         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+     recorder = recorder_log = None
+     if args.record_inputs:
+--- a/scripts/run_current_solo.py
++++ b/scripts/run_current_solo.py
+@@ -19,6 +19,8 @@
+     parser.add_argument("output", type=Path, help="새 결과 디렉터리")
+     parser.add_argument("--print-args", action="store_true", help="실행 없이 최종 인자 출력")
+     parser.add_argument("--previous-jr50", action="store_true", help="이전 JR50 프리셋 재현(신규 개발 기준 아님)")
++    parser.add_argument("--straight-budget", action="store_true",
++                        help="기본 OFF 단독 직선 속도 후보(현재 양쪽 벽 관측 길이로만 증속) 선택")
+     opts = parser.parse_args()
+     sensor = PREVIOUS_SENSOR if opts.previous_jr50 else SENSOR
+     args = [
+@@ -34,6 +36,8 @@
+         "--local-sensor-config", str(sensor.resolve(strict=True)), "--output", str(opts.output.resolve()),
+         "--pilot-marker-z", MARKER_Z,
+     ]
++    if opts.straight_budget:
++        args.append("--g1-solo-straight-budget")
+     if opts.print_args:
+         print(json.dumps(args))
+         return 0
+--- a/tests/test_source_provenance_r0_plus_b3.py
++++ b/tests/test_source_provenance_r0_plus_b3.py
+@@ -142,6 +142,8 @@
+ M3_SUCCESSORS += ('config/tests/moving_pass_witness_r10_sha256.json','config/tests/moving_pass_width_r11_sha256.json',
+                   'config/tests/moving_pass_rejoin_r12_sha256.json',
+                   'config/tests/moving_pass_withdrawal_r13_sha256.json')
++# 11/5 단독 직선 속도 후보 재적용(기본 OFF). 일반 후속 계약 검사가 r13 다음으로 확인한다.
++M3_SUCCESSORS += ('config/tests/solo_straight_budget_r14_sha256.json',)
+ 
+ 
+ def test_moving_pass_revisions_link_registered_sources_and_before_bytes():
+--- /dev/null
++++ b/src/arena_autonomy/arena_autonomy/solo_straight_budget.py
+@@ -0,0 +1,112 @@
++"""선정 단독 경로의 조향과 원래 곡률 한도를 유지하는 선택형 직선 속도 계산."""
++import math
++
++import numpy as np
++
++from arena_autonomy.local_path import braking_speed
++from arena_autonomy.observation_support import source_valid
++from arena_autonomy.turn_preview import check_rays
++
++
++def wall_run(xy, indices, sign, cfg):
++    """차체 가까이서 시작하는 같은 각도 순서의 실제 옆면만. 끊긴 뒤의 먼 면을 합치지 않는다."""
++    x, y = xy[:, 0], sign * xy[:, 1]
++    near = (x >= 0.) & (x <= .35) & (np.abs(y-cfg.wall_offset_m) <= cfg.boundary_anchor_error_m)
++    if near.sum() < 3:
++        return None
++    side_y = float(np.median(y[near]))
++    valid = np.flatnonzero((x >= -.05) & (np.abs(y-side_y) <= cfg.measurement_padding_m))
++    if not len(valid):
++        return None
++    cuts = np.flatnonzero(np.abs(np.diff(indices[valid])) != 1) + 1
++    found = []
++    for group in np.split(valid, cuts):
++        # 최소 하나의 근거리부터 어디까지 실제로 연속 관측했는지 찾는다.
++        vals = x[group]
++        if len(vals) < 3 or np.min(vals) > .35 or np.count_nonzero(near[group]) < 3:
++            continue
++        if vals[0] > vals[-1]:
++            vals = vals[::-1]
++        if np.any(np.maximum.accumulate(vals)-vals > cfg.measurement_padding_m):
++            continue
++        found.append((float(vals[-1]), float(np.min(y[group]))))
++    return max(found) if found else None
++
++
++def eligible(output, previous, measured, cfg):
++    v, steer, d = output
++    # 단독의 완전 관측·현재 경로에서만 증속한다. 기존 정지/교통 판단은 유지한다.
++    return bool(cfg.solo_route_only and cfg.blend_open_speed_by_length and not cfg.ray_wall_continuity
++                and cfg.open_route_speed_mps > 0 and v > cfg.max_speed_mps and measured >= 0
++                and math.isfinite(previous) and math.isfinite(steer) and d.get('reason')=='local_follow'
++                and d.get('open_route_speed_enabled') and d.get('boundary_from_memory') is False
++                and not d.get('corridor_selected') and not d.get('boundary_memory_from_corridor')
++                and d.get('partial_observation',{}).get('reason')=='fully_observed')
++
++
++def evaluate(output, scene, previous, measured, cfg):
++    v, steer, d = output
++    if not eligible(output,previous,measured,cfg):
++        return v, 'original_state'
++    path = np.asarray(d['path_points'])
++    fwd = path[path[:,0] >= 0]
++    if len(fwd)<3 or np.max(abs(fwd[:,1]))>cfg.measurement_padding_m:
++        return v,'existing_path_curved'
++    age = scene.t_ref_s - scene.source_first_s
++    if not 0 <= age < .30 or d.get('path_source_s')!=scene.source_first_s:
++        return v,'source'
++    if any(r.status!='return' and abs(math.atan2(r.direction_xy[1],r.direction_xy[0]))<=math.radians(100)
++           for r in scene.rays):
++        return v,'partial'
++    ordered = [r for r in scene.rays if r.status=='return']
++    xy = np.asarray([r.hit_xy_m for r in ordered])
++    index = np.asarray([r.source_index for r in ordered])
++    if len(index)<30 or np.any(np.diff(index)<=0) or not np.isfinite(xy).all():
++        return v,'points'
++    both = [wall_run(xy,index,s,cfg) for s in (1,-1)]
++    if any(w is None for w in both):
++        return v,'two_sides_not_continuous'
++    # 보수적인 차체 전단·거리 오차 차감. 길이는 조향점으로 변환하지 않는다.
++    span = min(d['observed_search_horizon_m'], min(w[0] for w in both)
++               - math.hypot(cfg.length_m,cfg.width_m)/2 - cfg.measurement_padding_m)
++    if span <= d['observed_path_ahead_m']:
++        return v,'no_longer_budget'
++    # 두 값은 원래 Pure Pursuit가 같은 경로에서 이미 계산했다.
++    cap, remaining = d.get('original_curve_speed_cap_mps'), d['observed_path_ahead_m']
++    if cap is None or not math.isfinite(cap):
++        return v,'no_original_curve_budget'
++    available = max(0.,d['swept_clearance_m']-cfg.standstill_gap_m)
++    fixed = min(cap,cfg.open_route_speed_mps,braking_speed(available,age),available/cfg.headway_s)
++    def target(distance):
++        share=np.clip((distance-1.10)/.60,0.,1.)
++        return min(fixed,braking_speed(distance,age),
++                   cfg.max_speed_mps+float(share)*(cfg.open_route_speed_mps-cfg.max_speed_mps))
++    if not math.isclose(target(remaining),v,abs_tol=1e-8):
++        return v,'different_original_limit'
++    new = target(span)
++    if new <= v+1e-8:
++        return v,'other_speed_limit'
++    # 제동에 필요한 거리 동안, 현재/직전 조향 원호 둘 모두 차체 폭을 포함해 양 벽 안에 있어야 한다.
++    stop = .06+(age+.10)*max(measured,new) + max(measured,new)**2/4
++    if stop>span+1e-8:
++        return v,'already_faster_than_budget'
++    k=max(abs(math.tan(a)) for a in (steer,previous))/cfg.wheelbase_m
++    lateral=cfg.width_m/2+k*stop*((cfg.wheelbase_m+cfg.length_m)/2+stop/2)
++    margin=.025+cfg.measurement_padding_m+cfg.object_motion_bound_mps*age
++    if lateral+margin >= min(w[1] for w in both):
++        return v,'arc_leaves_observed_sides'
++    # 두 옆면은 속도 검색 길이의 근거일 뿐이다. 전방 표적 뒤 가려진 경로는 허가하지 않는다.
++    if not source_valid(scene):
++        return v,'invalid_scan'
++    samples=np.r_[np.arange(.03,stop,.03),stop]
++    held=max(measured,new)*(age+.10)
++    for a in (steer,) if steer==previous else (steer,previous):
++        curvature=math.tan(a)/cfg.wheelbase_m
++        theta=curvature*samples
++        # sinc 표현은 직진과 거의 직진인 각에서도 소거 오차가 없다.
++        x=samples*np.sinc(theta/np.pi)+cfg.wheelbase_m/2*(np.cos(theta)-1)
++        y=samples*np.sinc(theta/(2*np.pi))*np.sin(theta/2)+cfg.wheelbase_m/2*np.sin(theta)
++        status=check_rays(scene,np.column_stack((x,y,theta,samples)),vars(cfg),held)
++        if status!='observed_turn_clear':
++            return v,status
++    return new,'straight_budget'
+--- /dev/null
++++ b/tests/test_solo_straight_budget.py
+@@ -0,0 +1,85 @@
++"""두 벽과 실제 전방 시야가 서로 대신될 수 없는지 보는 제한 반례."""
++import math
++from dataclasses import replace
++
++import numpy as np
++import pytest
++
++from arena_autonomy.local_follow import FollowConfig, pursue_path
++from arena_autonomy.local_scene import scene_from_scan
++from arena_autonomy.solo_straight_budget import evaluate as estimate
++from test_ray_wall_continuity import cast, RIGHT, ROOM, WALL, ORIGIN
++
++CFG=FollowConfig(solo_route_only=True,blend_open_speed_by_length=True,open_route_speed_mps=10/3.6,
++                 standstill_gap_m=.05,headway_s=.5,preview_turn_speed=True,preview_above_base_speed=True,
++                 boundary_bridge=True,corridor_fallback_enabled=True,partial_observation_policy='bounded_local_v4',
++                 occupancy_timing_mode='per_ray_candidate',boundary_evidence_mode='corner_distance_candidate',
++                 solo_straight_budget_trial=True)
++PATH=np.column_stack((np.linspace(-.08,1.75,36),np.zeros(36)))
++
++
++def fixture(segments=None):
++    points,ids=cast([WALL,RIGHT,*ROOM] if segments is None else segments)
++    ranges=np.full(500,np.nan); ranges[ids]=np.linalg.norm(points-ORIGIN,axis=1)
++    scene=scene_from_scan(ranges.tolist(),angle_min=-math.pi,angle_increment=math.tau/500,
++                          range_min=.05,range_max=12.,acquired_at_s=(.5+np.arange(500)*.0002).tolist(),t_ref_s=.65)
++    speed,ahead=1.7,PATH.tolist()
++    shape={}
++    cap,angle,remaining=pursue_path(PATH,speed,CFG,.15,speed_cap=CFG.open_route_speed_mps,shape_diagnostic=shape)
++    detail=dict(**shape,reason='local_follow',open_route_speed_enabled=True,boundary_from_memory=False,
++                partial_observation={'reason':'fully_observed'},path_points=ahead,path_source_s=.5,
++                observed_search_horizon_m=2.977,observed_path_ahead_m=remaining,swept_clearance_m=2.977)
++    return (cap,angle,detail),scene
++
++
++def test_straight_corridor_lifts_only_speed():
++    out,scene=fixture()
++    speed,why=estimate(out,scene,0.,1.7,CFG)
++    assert why=='straight_budget' and out[0]<speed<=CFG.open_route_speed_mps
++    assert out[1]==0 and np.array_equal(out[2]['path_points'],PATH)
++
++
++def test_missing_forward_ray_or_hit_never_uses_clear_sidewalls():
++    out,s=fixture();rays=list(s.rays)
++    rays[250]=replace(rays[250],status='unknown',hit_xy_m=None)
++    assert estimate(out,replace(s,rays=tuple(rays)),0.,1.7,CFG)==(out[0],'partial')
++    out,s=fixture([WALL,RIGHT,*ROOM,(1.85,-.06,1.85,.06)])
++    # 낙관적인 과거 점유 거리 값을 넣어도 현재 반환 검사가 독립적으로 거부한다.
++    assert estimate(out,s,0.,1.7,CFG)==(out[0],'observed_hit_remains')
++
++
++def test_recess_then_aligned_far_wall_never_bridges_lateral_discontinuity():
++    walls=[(-1.,.4,1.3,.4),(2.,.4,5.,.4), RIGHT,*ROOM]
++    out,scene=fixture(walls)
++    assert estimate(out,scene,0.,1.7,CFG)==(out[0],'no_longer_budget')
++
++
++def test_previous_actual_steer_must_fit_both_sides_not_just_forward_centerline():
++    out,scene=fixture()
++    assert estimate(out,scene,.14,1.7,CFG)==(out[0],'arc_leaves_observed_sides')
++
++
++@pytest.mark.parametrize('edit',[{'boundary_from_memory':True},{'corridor_selected':True},
++    {'partial_observation':{'reason':'bounded_local'}},{'reason':'follow_release_wait'}])
++def test_limited_or_recovery_output_is_not_lifted(edit):
++    out,scene=fixture();v,angle,d=out
++    assert estimate((v,angle,{**d,**edit}),scene,0.,1.7,CFG)==(v,'original_state')
++
++
++def test_stored_path_turning_into_curve_is_not_eligible():
++    out,scene=fixture();v,angle,d=out
++    curve=PATH.copy();curve[-5:,1]=np.linspace(0,.16,5)
++    assert estimate((v,angle,{**d,'path_points':curve}),scene,0.,1.7,CFG)==(v,'existing_path_curved')
++
++
++def test_default_off_and_incompatible_modes_rejected():
++    assert not FollowConfig().solo_straight_budget_trial
++    for override in ({'solo_route_only':False},{'ray_wall_continuity':True},
++                     {'partial_observation_policy':'strict'},{'solo_straight_budget_trial':1}):
++        with pytest.raises(ValueError):
++            replace(CFG,**override)
++
++
++def test_signed_negative_motor_sample_retains_normal_recovery_speed_only():
++    out,scene=fixture()
++    assert estimate(out,scene,0.,-.1,CFG)==(out[0],'original_state')
+--- /dev/null
++++ b/config/tests/solo_straight_budget_r14_sha256.json
+@@ -0,0 +1,40 @@
++{
++  "schema_version": 1,
++  "scope": "단독 직선 속도 후보(기본 OFF) 재적용. 11/3 외부 녹화 카메라 변경 제외. 기본 채택·실차 승인 아님.",
++  "parent_contract": "config/tests/moving_pass_withdrawal_r13_sha256.json",
++  "parent_contract_sha256": "90205c728a69439f34395b9b8ecdf23b1cd2fa15b7ad00639216676a77a881dc",
++  "before_snapshot": "artifacts/validation/2026-11-05/solo_straight_refresh_v1/before_r14.zip",
++  "before_snapshot_sha256": "6985632538c22413bd26294d932e643e99cd59c6d9a1c94a51b27f60ce17d5d8",
++  "approved_changes": {
++    "src/arena_autonomy/arena_autonomy/local_follow.py": {
++      "before": "a5ec6d2fbc3272f56c57ec65719251e2ae6d39ae3d6ce97f0d70cf2702a103bd",
++      "after": "5f0c196c09986d4b7bc920d0aaca41d3ae80d2d1f6630f4666aca397db4fa06d",
++      "reason": "기본 OFF 단독 직선 속도 후보(11/3 solo_straight_budget 재적용). 조향·HOLD·보호·가속률 불변, 근거 부족 시 원래 목표."
++    },
++    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
++      "before": "f87e5a83cb29750e12699173a9c3aa546134a36688ec7289b940a3ab7e58ecd8",
++      "after": "2e3fe76402064bc8e50cae39766823abfb6f8984de886554cfe7bd7b56c7cc8f",
++      "reason": "기본 OFF 단독 직선 속도 후보(11/3 solo_straight_budget 재적용). 조향·HOLD·보호·가속률 불변, 근거 부족 시 원래 목표."
++    },
++    "src/arena_bringup/launch/g1_follow.launch.py": {
++      "before": "6c93ff4419096d8e19f634cec441021ecbcadff32fa8b6c33a899f05a662de0c",
++      "after": "c67314798e29a091a96f724586ceab0d6843166643f391063aae654c9c7b39f3",
++      "reason": "기본 OFF 단독 직선 속도 후보(11/3 solo_straight_budget 재적용). 조향·HOLD·보호·가속률 불변, 근거 부족 시 원래 목표."
++    }
++  },
++  "approved_evaluation_scripts": {
++    "scripts/validate_basic_autonomy.py": {
++      "before": "ea1d8b66b0d6e0710ca03f84b1d4b5c3ac9199f36e0feba3ca8df3795ad7faf2",
++      "after": "0e5bd1e637f98d0689c90f2778bd69bc618600b3c20bd8ed1b21fd2cb7c20281",
++      "reason": "기본 OFF 단독 직선 속도 후보(11/3 solo_straight_budget 재적용). 조향·HOLD·보호·가속률 불변, 근거 부족 시 원래 목표."
++    },
++    "scripts/run_current_solo.py": {
++      "before": "63eecddce8c1bd55b797da41cd68c0b114315f789c9af17948522fde69f6b608",
++      "after": "a2444fb5fac7ddcb1451cefb93de3fa5e2251983165d03e3c9e2c1ab92c5535c",
++      "reason": "기본 OFF 단독 직선 속도 후보(11/3 solo_straight_budget 재적용). 조향·HOLD·보호·가속률 불변, 근거 부족 시 원래 목표."
++    }
++  },
++  "new_dependencies": {
++    "src/arena_autonomy/arena_autonomy/solo_straight_budget.py": "961b12c9fdefe6044e819a01a0abeb0d46609d96bfc1e2e23465cd776d440917"
++  }
++}

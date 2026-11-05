@@ -52,6 +52,10 @@ class HandoffExecutionConfig:
     moving_pace_floor: bool = False
     # 최근 전진 관측으로 가정 속도 이상의 추종을 허용한다. 정지차 우회 여유는 유지한다.
     observed_forward_pace: bool = False
+    # 이전 기록에는 없는 선택 필드(기본 OFF). 낮은 이동 누적 초기화와 별개인 연속 전진율이
+    # 이번 새 스캔에서 양수일 때만 고정 우회 여유 상한에 그 전진율을 더한다.
+    continuous_forward_pace: bool = False
+    moving_pass_trial: bool = False
     reacquire_policy: str = 'positive_command_v0'
     front_patch_policy: str = 'contiguous_three_v0'
     entry_policy: str = 'registered_v0'
@@ -88,6 +92,11 @@ class HandoffExecutionConfig:
             raise ValueError('moving pace floor requires low motion reserve')
         if type(self.observed_forward_pace) is not bool or (self.observed_forward_pace and not self.moving_pace_floor):
             raise ValueError('observed forward pace requires moving pace floor')
+        if type(self.continuous_forward_pace) is not bool or (self.continuous_forward_pace and not self.observed_forward_pace):
+            raise ValueError('continuous forward pace requires observed forward pace')
+        if type(self.moving_pass_trial) is not bool or (self.moving_pass_trial and (
+                not self.continuous_forward_pace or self.entry_policy != 'corridor_local_v1')):
+            raise ValueError('moving pass requires continuous forward pace and corridor trial')
         if self.follow_entry_space_enabled and (self.preparation_policy != 'observed_entry_space_v1'
                 or self.persistence_window_policy != 'trim_before_compare_v1'):
             raise ValueError('follow entry space requires explicit space and bounded window policies')
@@ -330,6 +339,10 @@ class BypassHandoffFollow:
         self.monitor = BlockingPersistence(self.execution, self.config.object_motion_bound_mps, self.config.open_route_speed_mps)
         self.mode = 'FOLLOW'; self.last_key = None; self.last_ref = None
         self.reacquire = 0
+        self.moving_pass = None
+        if self.execution.moving_pass_trial:
+            from arena_autonomy.moving_pass import MovingPassAdapter
+            self.moving_pass = MovingPassAdapter(self)
 
         self._preparation_hold = None
         self._preparation_history = None
@@ -524,6 +537,17 @@ class BypassHandoffFollow:
                 waiting.update(observed_forward_pace_mps=credit, assumed_pace_mps=self.monitor.motion_bound,
                                pace_samples=len(observed.rows))
             return min(target,paced), dict(waiting, applied=paced<target, before_mps=target, cap_mps=paced)
+        observed = self.monitor.forward_pace
+        if (self.execution.continuous_forward_pace and observed is not None and observed.rate > 0.
+                and observed.rows and observed.rows[-1][0] == scene.source_first_s):
+            # 고정 여유는 멈춘 조각의 미래 우회용이다. 이번 새 스캔까지 연속 전진한 조각에는
+            # 보수적 전진율(끝점 6 cm 차감, 마지막 간격 전진율 이하)만큼만 더 푼다. 정지·감속·
+            # 측방·튐·중복 시각에서는 그 값이 0이 되어 아래 고정 여유로 돌아간다. G1 출력이 상한이다.
+            paced = cap+observed.rate
+            return min(target,paced), dict(result, applied=paced<target, reason='continuous_forward_pace',
+                rear_axle_to_patch_m=distance, reserve_m=reserve, fixed_reserve_cap_mps=cap,
+                observed_forward_pace_mps=observed.rate, pace_samples=len(observed.rows),
+                cap_mps=paced, before_mps=target)
         return min(target,cap), dict(result, applied=cap<target, reason='observed_entry_distance_reserve',
             rear_axle_to_patch_m=distance, reserve_m=reserve, approach_window_s=self.execution.observation_window_s,
             cap_mps=cap, before_mps=target)
@@ -536,6 +560,8 @@ class BypassHandoffFollow:
 
     def reset(self):
         self.normal.reset(); self.bypass.reset(); self.monitor.reset()
+        if self.moving_pass is not None:
+            self.moving_pass.reset()
         self.mode = 'FOLLOW'; self.last_key = None; self.last_ref = None; self.reacquire = 0
         self._preparation_history = None
         if self._preparation_hold is not None:
@@ -555,12 +581,19 @@ class BypassHandoffFollow:
     def command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
         from arena_autonomy.local_follow import forward_planning_speed, signed_feedback_detail
         planning = forward_planning_speed(self.config, speed)
+        if self.moving_pass is not None:
+            output = self.moving_pass.command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
+        else:
+            output = self._base_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
+        return signed_feedback_detail(output, speed, planning)
+
+    def _base_command(self, scene, history, planning, side, previous, dt, *, raw_scan=None):
         if self._relative_yield is not None:
             output = self._relative_yield.command(self, scene, planning,
                 lambda: self._prepared_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan))
         else:
             output = self._prepared_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
-        return signed_feedback_detail(output, speed, planning)
+        return output
 
     def _prepared_command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
         if self._preparation_hold is None:
