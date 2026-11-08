@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "scope": "Jetson follow-profile 묶음·계측 소스 스냅샷의 내부 의존성을 정적 import 폐포로 수집. 주행 제어기·보호층·기본값·물성 변경 없음.",
+  "parent_contract": "config/tests/current_corner_support_r41_sha256.json",
+  "parent_contract_sha256": "1c1274bd5081dec7920448bec19ef56f72bb2b2b8f2cfc1be0adbd39d1d04c12",
+  "before_snapshot": "artifacts/validation/2026-11-08/jetson_bundle_refresh_v1/before.zip",
+  "before_snapshot_sha256": "20dc57841bfa2a1d9b7de698d40699872f1175774ee95c6fd55132e5670ed7f8",
+  "approved_changes": {},
+  "approved_evaluation_scripts": {
+    "scripts/prepare_jetson_bundle.py": {
+      "before": "7f3f55c5543dd36c572c5483843aa271de7d58792a00089f5b616b493386ea89",
+      "after": "cd2e0ea7f52bf6ff94090020f70e240c574dc65437c2320e1f931f9ae8ba1310",
+      "reason": "follow-profile bundle collects explicit entry points by static import closure"
+    },
+    "scripts/profile_follow_trace.py": {
+      "before": "a917b659eb09cfd2d9f6374a7fa7ff71b9e897ca3a8a176ceb255c154f40bcdd",
+      "after": "ddc6b2ec1ac1d20ef1a2a2c9bac5d52d46c931fabf910a6e627d2e42180f34bb",
+      "reason": "source snapshot module list derived from static import closure"
+    },
+    "scripts/verify_follow_profile_bundle.py": {
+      "before": "dfe220f6193631b30b70363bb6d122e496ca4f72e821d92a4b3ab69b357690f3",
+      "after": "953ba44ba55bd81d657b26460793e6db8456ccff11756501388248aad49e82ac",
+      "reason": "verifier recloses imports from archive members only"
+    }
+  },
+  "new_dependencies": {
+    "scripts/python_dependency_closure.py": "38f6011394178e11765320ebe013407b6d8242d427a9f7a6306082a145066da8"
+  }
+}

@@ -39,10 +39,17 @@ def entry_path_conflict(row, scene, config):
                 overlap_tolerance_m=config.measurement_padding_m, free_space_verified=False)
 
 class ForecastGuide(SignedHoldGuide):
+    def reset(self):
+        super().reset()
+        self.rear_face_motion={}
+        if self.rear_wall_witness_enabled:
+            from arena_autonomy.rear_face_motion import RearFaceMotion
+            self.rear_face_motion={side:RearFaceMotion(self.corridor_policy) for side in ('left','right')}
+
     def evaluate(self,scene,history,speed,previous,dt):
         original_entry,original_registered=self.entry,self.registered_entry
         primary=super().evaluate(scene,history,speed,previous,dt)
-        if (self.path is None or primary.get('reason')!='no_entry_command_candidate'
+        if (self.path is None or primary.get('preview_alignment') or primary.get('reason')!='no_entry_command_candidate'
                 or primary.get('selected') is not None or speed<0):
             return primary
         # 이미 관측해 기억하는 경로에서만 저속 명령을 새로 계산한다.
@@ -57,7 +64,7 @@ class ForecastGuide(SignedHoldGuide):
                 alternative=super().evaluate(scene,history,speed,previous,dt)
                 selected=alternative.get('selected')
                 attempts.append(dict(cap_mps=cap,reason=alternative['reason'],selected=selected is not None))
-                if selected is not None:
+                if selected is not None or alternative.get('preview_alignment'):
                     return dict(alternative,slow_command_trial=dict(applied=True,
                         primary_reason=primary['reason'],attempts=attempts,measurement_unchanged=True))
                 if self.path is None:break
@@ -123,7 +130,12 @@ class ForecastGuide(SignedHoldGuide):
         use['maximum_inner_padding_m'] = float(np.max(padding[supported])) if supported.any() else None
         use['padding_never_increased'] = bool(np.all(padding <= before+1e-12))
         self.corridor_use[side] = use
-        return padding, dict(evidence, corridor=use)
+        detail=dict(evidence,corridor=use)
+        if self.rear_wall_witness_enabled:
+            padding,rear=self.rear_face_motion[side].apply(scene,config,side,wall,self.raw_scan,
+                self.witness_sectors,self.motion_history,padding,growth_s,active=self.path is not None)
+            detail['rear_face_motion']=rear
+        return padding,detail
 
 
 def configure_guide(owner,guide_type=None):
@@ -132,6 +144,7 @@ def configure_guide(owner,guide_type=None):
     owner.bypass.guide=guide_type(owner.config,old.registered_entry,
         stationary_outer_boundary=old.stationary_outer_boundary,wall_reanchor=old.wall_reanchor,
         tracked_wall_fit=old.tracked_wall_fit,rejoin_enabled=old.rejoin_enabled,
+        rear_wall_witness=old.rear_wall_witness_enabled,
         corridor_policy=old.corridor_policy)
     owner.bypass.guide.steerable_transition=old.steerable_transition
 

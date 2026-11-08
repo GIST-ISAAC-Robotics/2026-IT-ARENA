@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "scope": "P22 단독 선택형 입구-출구-본선 복귀. 기본 본선과 r49 입구 실행 보존.",
+  "parent_contract": "config/tests/p22_entry_wiring_r49_sha256.json",
+  "parent_contract_sha256": "a0a0dd2aeab53cbeb4db730ca110e2fb3b1f0373fce5af3fbdef0bf586acf437",
+  "before_snapshot": "artifacts/validation/2026-11-09/p22_route_connected_v1/before.zip",
+  "before_snapshot_sha256": "f538d87ab0781724305c122ef893bef665499c9d4402a9e668b29c3560686cff",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/p22_trial.py": {
+      "before": "d9202dfd7b91740cf83656378083f31f85bc4483d6ecef5426ee52799af0c9de",
+      "after": "b7f9c58b718a835e4d16b6c034731db31b6c26e8f7e32d3fd1bf0282cb78c5b5",
+      "reason": "Add separately selected sensor-only P22 exit and main-road reacquisition"
+    },
+    "src/arena_autonomy/arena_autonomy/p22_entry_trial_node.py": {
+      "before": "1fa00144154944088832d3ba8404ea3e83cfeee9aae9617d98fa23af616cd1a3",
+      "after": "e0af7b7a5153b455f02b2cdd70f87a4770c13ae296c769ab5b519500243e059d",
+      "reason": "Add separately selected sensor-only P22 exit and main-road reacquisition"
+    },
+    "src/arena_autonomy/arena_autonomy/follow_trace.py": {
+      "before": "41dd21a9bcc9426686fee24d1d472dc5b57cf6174a8c1a455febd862c6686edb",
+      "after": "c00fd5f98ec8f31b5d0f78d2f79c5d77aacaffe1ad5f685bfdea1e5df5ae6bf4",
+      "reason": "Add separately selected sensor-only P22 exit and main-road reacquisition"
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "06b6e9373011165f8273e6920e454e7d1cebaf8107553437e2c0bdc9a7512419",
+      "after": "9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e",
+      "reason": "Add separately selected sensor-only P22 exit and main-road reacquisition"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "9893c6920f60d59acb3b88138940b41502a128084304b91908c7a6fb25fe99b7",
+      "after": "a687f9d4ba26af899882c0527d6ed5e2a9521d9595d136b98846a776aa05f301",
+      "reason": "Add separately selected sensor-only P22 exit and main-road reacquisition"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/p22_exit_path.py": "9a6bac64d3b097668adc2fa32ba77c27220215aaf30b5526c6c44afc6132d33d",
+    "src/arena_autonomy/arena_autonomy/p22_route_trial.py": "7673f9fdf16a8a34cfdff0b09f10c533e0559eed8dddb64fa7641e5231deb4dd"
+  }
+}

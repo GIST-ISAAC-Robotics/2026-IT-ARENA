@@ -1,0 +1,26 @@
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/xml/etree/ElementTree.py", line 743, in _get_writer
+    write = file_or_filename.write
+            ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'numpy.ndarray' object has no attribute 'write'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/track_migration_v1/live_signal_render.py", line 232, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/track_migration_v1/live_signal_render.py", line 137, in main
+    views = build_fixture(fixture)
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/track_migration_v1/live_signal_render.py", line 86, in build_fixture
+    ET.ElementTree(root).write(target, encoding='utf-8', xml_declaration=True)
+  File "/usr/lib/python3.12/xml/etree/ElementTree.py", line 717, in write
+    with _get_writer(file_or_filename, encoding) as (write, declared_encoding):
+  File "/usr/lib/python3.12/contextlib.py", line 137, in __enter__
+    return next(self.gen)
+           ^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/xml/etree/ElementTree.py", line 748, in _get_writer
+    with open(file_or_filename, "w", encoding=encoding,
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: expected str, bytes or os.PathLike object, not ndarray

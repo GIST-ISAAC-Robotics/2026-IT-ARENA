@@ -163,6 +163,7 @@ def test_launch_exposes_official_and_legacy_profiles():
         "official": "it_arena_official",
         "original": "it_arena_track",
         "experimental": "it_arena_experimental",
+        "official_v2026_11_06": "it_arena_official_v2026_11_06",
     }
     arguments = {argument.name: argument for argument in launch.generate_launch_description().get_launch_arguments()}
     assert arguments["track"].default_value[0].text == "official"

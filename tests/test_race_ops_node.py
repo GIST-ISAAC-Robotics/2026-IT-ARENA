@@ -73,3 +73,67 @@ def test_no_drive_publishers_exist(ops):
     assert {'/race/command', '/race/operator_link'} <= published
     assert not published & {'/drive', '/drive/safe', '/actuation/tx', '/sim/cmd_vel'}
     assert isinstance(topics, set)
+
+
+def link_fixture():
+    """ROS 메시지 형식은 실제 것을 쓰되, 경과 시간과 송신 도착 순서는 직접 정한다."""
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    view = dict(session='s', race_epoch=1, intervention=2, race_id='race')
+    entry = dict(client='desk', op='resume_start', request='start-2', view=view)
+    race = dict(view, resume=None, last_resume=None)
+    job = dict(entry=entry, session='s', client='desk', status_deadline=13.)
+    n = SimpleNamespace(start=job, rearm=None, last_link=0., race=lambda: race,
+                        core=Mock(), link_publisher=Mock(), publish=Mock(), rearm_step=Mock())
+    n.core.client_fresh.return_value = True
+    return n, race
+
+
+def test_operator_link_covers_ack_until_first_status_without_rearming():
+    n, race = link_fixture()
+    for wall in (10., 10.02, 10.21, 10.42, 10.63, 10.84, 11.05):
+        RaceOps.tick_start(n, wall)
+    beats = n.link_publisher.publish.call_args_list
+    assert len(beats) == 6 and all(call.args[0].data == 'start-2' for call in beats)
+    n.rearm_step.assert_not_called()
+    race['resume'] = dict(request='start-2', phase='inputs')
+    RaceOps.tick_start(n, 11.26)
+    n.rearm_step.assert_not_called()
+    race['resume']['phase'] = 'mcu'
+    RaceOps.tick_start(n, 11.47)
+    n.rearm_step.assert_called_once()
+
+
+@pytest.mark.parametrize('case', ['old_epoch', 'changed_intervention', 'other_pending',
+                                  'completed', 'status_deadline', 'client_gone'])
+def test_accepted_start_cannot_keep_an_unrelated_or_expired_job_alive(case):
+    n, race = link_fixture()
+    if case == 'old_epoch': race['race_epoch'] += 1
+    if case == 'changed_intervention': race['intervention'] += 1
+    if case == 'other_pending': race['resume'] = dict(request='other', phase='mcu')
+    if case == 'completed': race['last_resume'] = dict(request='start-2', outcome='permitted', reason='race_permitted')
+    if case == 'client_gone': n.core.client_fresh.return_value = False
+    RaceOps.tick_start(n, 13. if case == 'status_deadline' else 10.)
+    n.link_publisher.publish.assert_not_called()
+    n.rearm_step.assert_not_called()
+    if case == 'client_gone':
+        assert n.publish.call_args.args[0]['start_request'] == 'start-2' and n.start is None
+    if case == 'status_deadline':
+        assert n.start is None and n.core.mark.call_args.kwargs['stage'] == 'unknown_after_send'
+    if case == 'completed':
+        assert n.start is None and n.core.mark.call_args.kwargs['stage'] == 'permitted'
+
+
+@pytest.mark.parametrize('change', [{}, {'op': 'stop'}, {'race_epoch': 0},
+                                    {'intervention': 3}, {'session': 'old'}])
+def test_first_operator_link_requires_bound_policy_ack(change):
+    from std_msgs.msg import String
+    n, race = link_fixture()
+    entry = n.start['entry']
+    n.core.result.return_value = entry
+    n.result_timeout_s, n.start = 3., None
+    ack = dict(op='resume_start', reason='preparing_not_motion_permission', accepted=True,
+               request='start-2', session=race['session'], race_epoch=1, intervention=2)
+    RaceOps.on_result(n, String(data=json.dumps({**ack, **change})))
+    assert (n.start is not None) == (not change)
+    n.rearm_step.assert_not_called()

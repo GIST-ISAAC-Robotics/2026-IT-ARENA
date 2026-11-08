@@ -309,7 +309,8 @@ class StartSignal:
         return self.started
 
 
-def marker_ids(rgb, min_distance_rate=None):
+def marker_observations(rgb, min_distance_rate=None):
+    """한 번의 검출에서 ID와 영상 꼭짓점을 함께 반환한다. 지도/정답 입력 없음."""
     dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
     parameters = None
@@ -320,13 +321,18 @@ def marker_ids(rgb, min_distance_rate=None):
         parameters.minMarkerDistanceRate = min_distance_rate
     if hasattr(cv2.aruco, "ArucoDetector"):
         detector = cv2.aruco.ArucoDetector(dictionary) if parameters is None else cv2.aruco.ArucoDetector(dictionary, parameters)
-        _, ids, _ = detector.detectMarkers(gray)
+        corners, ids, _ = detector.detectMarkers(gray)
     else:
         if parameters is None:
-            _, ids, _ = cv2.aruco.detectMarkers(gray, dictionary)
+            corners, ids, _ = cv2.aruco.detectMarkers(gray, dictionary)
         else:
-            _, ids, _ = cv2.aruco.detectMarkers(gray, dictionary, parameters=parameters)
-    return [] if ids is None else [int(value) for value in ids.flatten()]
+            corners, ids, _ = cv2.aruco.detectMarkers(gray, dictionary, parameters=parameters)
+    return [] if ids is None else [(int(identity), corner.reshape(4, 2))
+                                   for identity, corner in zip(ids.flatten(), corners)]
+
+
+def marker_ids(rgb, min_distance_rate=None):
+    return [identity for identity, _ in marker_observations(rgb, min_distance_rate)]
 
 
 @dataclass

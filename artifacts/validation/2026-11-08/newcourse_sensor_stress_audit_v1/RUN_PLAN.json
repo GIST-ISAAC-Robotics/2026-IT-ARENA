@@ -1,0 +1,56 @@
+{
+  "schema": "newcourse_sensor_stress_plan_v1",
+  "status": "blocked_until_cli_change_and_source_unfreeze",
+  "baseline_reference": {
+    "registered": "artifacts/validation/2026-11-08/traffic_faster_reacquire_live_v1/two_actor_course_lap/registered.json",
+    "report": "artifacts/validation/2026-11-08/traffic_faster_reacquire_live_v1/two_actor_course_lap/run1/report.json",
+    "assess": "artifacts/validation/2026-11-08/traffic_faster_reacquire_live_v1/assess.py",
+    "raw_exit": "HARNESS_EXIT=1 (final gap 1.246 m > 1.2 m), ASSESSMENT_EXIT=0",
+    "sources_changed_since_registration": 12,
+    "rerun_baseline_required": true
+  },
+  "single_argument_change": {
+    "add": ["--lidar-test-profile", "config/tests/lidar_uniform30_delay50_jitter20.json"],
+    "profile": {"mode": "uniform", "amplitude_m": 0.03, "delay_s": 0.05, "jitter_s": 0.02, "seed": 23},
+    "all_other_args": "identical to baseline registered.json args (mode g1g2, case two_actor_course_lap, seed 0)"
+  },
+  "required_code_change": {
+    "file": "scripts/validate_g1_traffic.py",
+    "edits": [
+      {"line": 532, "from": "args.mode not in ('g1', 'm3')", "to": "args.mode not in ('g1', 'm3', 'g1g2')"},
+      {"line": 587, "from": "lidar_profile", "to": "(lidar_profile and not args.official_signal_course)"}
+    ],
+    "unchanged": ["motion profile exclusion", "seed 0", "10 Hz sequential check (line 609)", "protection/gap/STOP limits"],
+    "provenance": "new before/after sha256 contract like config/tests/traffic_standing_reacquire_r27_sha256.json",
+    "targeted_tests": [
+      "tests/test_m3_lidar_stress_cli.py (extend: g1g2 reach past line 591; g1g2 without official course rejected; g1g2+motion rejected; unrecorded g1g2 rejected)",
+      "tests/test_g1_lidar_stress.py",
+      "tests/test_m4_operation_cli.py",
+      "tests/test_g1_handoff_eval.py",
+      "tests/test_official_multi_actor_course.py"
+    ]
+  },
+  "evidence": {
+    "no_injection_A": ["report.lidar_test_profile is null", "acquisition.json rows lack 'impairment'"],
+    "valid_injection_B": [
+      "report.integrity.lidar_stress_verified == true",
+      "report.lidar_stress_evidence.checks all true (6)",
+      "0.03 <= minimum_added_delay_s <= maximum_added_delay_s <= 0.07",
+      "0 < last_statistics.max_abs_error_m <= 0.03",
+      "lidar_stress_evidence.runtime_profile_unchanged == true"
+    ],
+    "missing_detection": [
+      "acquisition_records == received_scans",
+      "unmatched_received_indices, invalid_received_indices, source_errors empty",
+      "supplementary: every follow_decisions call scan stamp in acquisition first_ray_stamp_s",
+      "supplementary: follow_decisions footer dropped == 0",
+      "supplementary (expectation, not gate): decision scan age shifts ~+0.03..0.07 s vs A"
+    ],
+    "baseline_A_scan_age_s_from_r27": {"min": 0.118, "p50": 0.158, "p95": 0.198, "max": 0.198, "calls": 3047, "unique_scans": 610, "not_in_acquisition": 0}
+  },
+  "verdicts": {
+    "raw": "harness passed preserved as-is (expected false like r27)",
+    "supplementary": "r27 assess.py 12 gates applied identically to A and B; valid includes run_valid (injection integrity)"
+  },
+  "not_verified": ["measured C1 noise", "USB transport latency", "Jetson timing", "independent 5-car race", "lidar_safety per-scan processing", "replay equivalence of r27 under current source"]
+}

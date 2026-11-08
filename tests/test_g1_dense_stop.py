@@ -8,6 +8,8 @@ import pytest
 
 import g1_traffic_eval as ev
 from test_g1_traffic_eval import verdict_base
+from provenance_chain_helpers import expected_parent
+from test_source_provenance_r0_plus_b3 import B3, CHAIN, M3_SUCCESSORS, R0E3
 
 
 def poses(speed=0.):
@@ -70,14 +72,15 @@ def test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract()
     contract = json.loads((root/'config/tests/dense_stop_evidence_r0_sha256.json').read_text())
     assert hashlib.sha256((root/contract['parent_contract']).read_bytes()).hexdigest() == contract['parent_contract_sha256']
     successors, parent = [], 'config/tests/dense_stop_evidence_r0_sha256.json'
-    for next_name in ('lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json',
-                      # 10/24 후속 출처 기록. 이전 계약은 그대로 두고 연결만 추가한다.
-                      'r0_plus_e3_r0_sha256.json', 'b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json', 'partial_observation_r0_sha256.json', 'profile_bundle_selector_r0_sha256.json', 'g1_course_evaluation_r0_sha256.json', 'short_boundary_prefix_r0_sha256.json', 'local_start_signal_r0_sha256.json', 'traffic_recovery_trial_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'small_alignment_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'g2_handoff_manifest_r1_sha256.json', 'rear_lane_keep_r1_sha256.json', 'observed_lane_preference_r1_sha256.json', 'measured_lane_preference_r1_sha256.json', 'fresh_confirmation_r2_sha256.json'):
-        successor = json.loads((root/'config/tests'/next_name).read_text())
+    # 후속 계약 순서는 소스 출처 검사의 공통 목록(M3_SUCCESSORS)을 그대로 따른다. 이전 계약은 그대로 두고 연결만 추가한다.
+    for name in (*('config/tests/'+n for n in CHAIN[1:]), R0E3, B3, 'config/tests/m3_execution_r0_sha256.json', *M3_SUCCESSORS):
+        successor = json.loads((root/name).read_text())
+        # 직전 계약에 잇는다. 실제 기록된 분기만 helper의 정확한 이름쌍을 따른다.
+        parent = expected_parent(name, parent)
         assert successor['parent_contract'] == parent
         assert hashlib.sha256((root/parent).read_bytes()).hexdigest() == successor['parent_contract_sha256']
         successors.append(successor)
-        parent = 'config/tests/'+next_name
+        parent = name
     for name, entry in contract['approved_evaluation_scripts'].items():
         for successor in successors:
             later = successor['approved_evaluation_scripts'].get(name)

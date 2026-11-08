@@ -32,6 +32,9 @@ from g1_traffic_eval import stop_pose_evidence
 REPO = Path(__file__).resolve().parents[1]
 DEMO_TRACK = "official"
 DEMO_WORLD = REPO / "src/arena_gazebo/worlds/it_arena_official"
+# 명시 선택 시 launch track:=과 평가 월드(중심선·scene·충돌 다각형)를 같은 경로로 맞춥니다. 기본은 DEMO_TRACK.
+TRACK_WORLDS = {DEMO_TRACK: DEMO_WORLD,
+                "official_v2026_11_06": REPO / "src/arena_gazebo/worlds/it_arena_official_v2026_11_06"}
 
 
 def imu_sample(message):
@@ -293,6 +296,8 @@ def main():
     parser.add_argument('--g1-boundary-evidence', choices=('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'), default='connected')
     parser.add_argument('--g1-occupancy-timing', choices=('oldest', 'per_ray_candidate'), default='oldest')
     parser.add_argument('--record-follow-decisions', action='store_true')
+    parser.add_argument('--p22-entry-trial', action='store_true', help='별도 P22 입구 시험. 본선 랩 성적으로 판정하지 않음')
+    parser.add_argument('--p22-route-trial', action='store_true', help='입구 시험에 출구·본선 복귀 추가. 단독 전용')
     parser.add_argument('--g1-corridor-fallback', action='store_true', help='별도 승인된 회랑 후보를 단독 시험에서만 명시 선택')
     parser.add_argument('--g1-race-path', action='store_true', help='10/31 경기 구성의 관측 경로 복구를 단독 속도 시험에 사용')
     parser.add_argument('--g1-recent-observation', action='store_true', help='선택형 측방 관측 보완; 후방 사각/실시간 마감 보증 아님')
@@ -303,12 +308,21 @@ def main():
     parser.add_argument("--disable-speed-bump", action="store_true")
     parser.add_argument('--g1-solo-straight-budget', action='store_true',
                         help='선정 단독 구성에서 현재 두 옆벽의 직선 관측 길이로만 증속하는 선택 시험')
+    parser.add_argument('--g1-solo-corner-approach', action='store_true', help='기본 OFF 단독 직각 접근 감속 후보')
+    parser.add_argument('--g1-oblique-gap', action='store_true', help='기본 OFF 단독 v4 사선 공백 저속 시험')
+    parser.add_argument('--g1-piecewise-wall', action='store_true', help='관측 벽 두 직선+원호 선택 시험')
+    parser.add_argument('--g1-standing-wall-reacquire', action='store_true',
+                        help='기존 저속 선호 벽 재획득 후보. 현재 관측/점유/STOP 검사는 유지')
     parser.add_argument('--team-signal-prelap',action='store_true',
                         help='제작측 2×5 신호·ID45 팀 배치의 등록 단독 1랩 영상')
     parser.add_argument("--collision-detector", choices=("configured", "ode", "bullet", "fcl"), default="configured")
     parser.add_argument("--output", type=Path, default=REPO / "artifacts/tests/basic_autonomy_official",
                         help="official 검사 출력 폴더. 이전 실험 트랙 기록과 분리합니다.")
+    parser.add_argument("--track", choices=tuple(TRACK_WORLDS), default=DEMO_TRACK,
+                        help="공식 2×5 신호 팀 파생 월드. 기본은 기존 v2026.11.01 파생본")
     args = parser.parse_args()
+    if args.track != DEMO_TRACK and args.team_signal_prelap:
+        raise ValueError('--team-signal-prelap은 v2026.11.01 등록 fixture 전용입니다.')
     if args.team_signal_prelap and not (args.g1_race_path and args.laps==1 and args.target_progress_m is None
             and args.speed_profile in ('g1_open_2p0_approach','g1_open_2p0_turn','g1_open_10kmh_rise15','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge','g1_open_10kmh_solo_gap05_arc_preview_bridge_ray')
             and args.actuation_stop=='software_stop'
@@ -317,6 +331,33 @@ def main():
     extra_arguments = g1_solo_arguments(args.g1_follow, args.g1_boundary_evidence,
         args.g1_occupancy_timing, args.record_follow_decisions, args.output.resolve(), args.g1_corridor_fallback,
         args.g1_recent_observation)
+    if args.track != DEMO_TRACK:
+        extra_arguments.append('track:='+args.track)
+    if args.p22_route_trial:
+        if not args.p22_entry_trial:
+            raise ValueError('P22 route requires --p22-entry-trial')
+        extra_arguments.append('p22_route_trial:=true')
+    if args.p22_entry_trial:
+        if not (args.track == 'official_v2026_11_06' and args.g1_follow and args.record_follow_decisions
+                and args.actuation_mode == 'virtual_mcu' and args.actuation_stop == 'software_stop'):
+            raise ValueError('P22 entry requires recorded guarded v11.06 solo with explicit STOP')
+        extra_arguments.append('p22_entry_trial:=true')
+    if args.g1_solo_corner_approach:
+        if not args.g1_solo_straight_budget: raise ValueError('corner approach requires recorded solo straight budget')
+        extra_arguments.append('g1_solo_corner_approach_trial:=true')
+    if args.g1_oblique_gap:
+        if not (args.g1_follow and args.record_follow_decisions and args.g1_race_path
+                and args.partial_observation_policy == 'bounded_local_v4'):
+            raise ValueError('oblique gap trial requires recorded solo G1 v4')
+        extra_arguments.append('g1_oblique_gap_trial:=true')
+    if args.g1_piecewise_wall:
+        if not (args.g1_follow and args.record_follow_decisions):
+            raise ValueError('piecewise wall trial requires recorded G1')
+        extra_arguments.append('g1_piecewise_wall_trial:=true')
+    if args.g1_standing_wall_reacquire:
+        if not (args.g1_follow and args.record_follow_decisions):
+            raise ValueError('standing wall reacquire requires recorded G1')
+        extra_arguments.append('g1_standing_wall_reacquire:=true')
     if args.pilot_marker_z is not None:
         if not args.g1_follow or not (0.115 <= args.pilot_marker_z <= 0.30):
             raise ValueError('--pilot-marker-z is a G1 pilot-only board center height (0.115..0.30 m)')
@@ -496,7 +537,7 @@ def main():
         facility_sources=fixture_inputs()
     else:
         from prelap_signal_eval import sequence_evidence
-        world=DEMO_WORLD
+        world=TRACK_WORLDS[args.track]
     route = np.genfromtxt(world / "centerline.csv", delimiter=",", names=True)
     xy = np.column_stack((route["x_m"], route["y_m"]))
     scene = json.loads((world / "scene.json").read_text())
@@ -506,7 +547,7 @@ def main():
     full_lap_validation = target_progress >= lap_length
     obstacles = obstacle_polygons(world / "world.sdf")
     tree = STRtree(obstacles)
-    report = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "passed": False, "track": DEMO_TRACK,
+    report = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "passed": False, "track": args.track,
               "requested_laps": args.laps, "target_progress_m": target_progress,
               "full_lap_validation": full_lap_validation, "lap_length_m": lap_length,
               "speed_profile": args.speed_profile, "requested_lidar_rate_hz": args.lidar_rate_hz,
@@ -575,7 +616,9 @@ def main():
     if args.g1_follow:
         report['g1_requested'] = dict(boundary=args.g1_boundary_evidence, occupancy=args.g1_occupancy_timing,
                                       record_follow_decisions=args.record_follow_decisions,
-                                      corridor_fallback=args.g1_corridor_fallback, recent_observation=args.g1_recent_observation)
+                                      corridor_fallback=args.g1_corridor_fallback, recent_observation=args.g1_recent_observation,
+                                      standing_wall_reacquire=args.g1_standing_wall_reacquire,
+                                      oblique_gap_trial=args.g1_oblique_gap)
         for relative in ('src/arena_autonomy/arena_autonomy/local_follow.py',
                          'src/arena_autonomy/arena_autonomy/scene_motion.py',
                          'src/arena_autonomy/arena_autonomy/local_scene.py',
@@ -596,9 +639,22 @@ def main():
     if args.speed_profile in ('g1_open_2p0_turn','g1_open_10kmh_turn15','g1_open_10kmh_turn15_arc','g1_open_10kmh_solo','g1_open_10kmh_solo_gap05','g1_open_10kmh_solo_gap05_arc','g1_open_10kmh_solo_gap05_arc_ray','g1_open_10kmh_solo_gap05_arc_preview','g1_open_10kmh_solo_gap05_arc_preview_bridge','g1_open_10kmh_solo_gap05_arc_preview_bridge_ray'):
         rel='src/arena_autonomy/arena_autonomy/turn_preview.py'
         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+    if args.g1_solo_corner_approach:
+        rel='src/arena_autonomy/arena_autonomy/solo_corner_approach.py'
+        report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
     if args.g1_solo_straight_budget:
         rel='src/arena_autonomy/arena_autonomy/solo_straight_budget.py'
         report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+    if args.g1_piecewise_wall:
+        rel='src/arena_autonomy/arena_autonomy/piecewise_wall.py'
+        report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
+    if args.p22_entry_trial:
+        report['trial_scope']=('P22 limited solo entry-exit; main-lap verdict is not this trial acceptance'
+                               if args.p22_route_trial else 'P22 limited entry only; main-lap verdict is not this trial acceptance')
+        for name in ('p22_observation','p22_intent','p22_path','p22_trial','p22_entry_trial_node',
+                     'p22_exit_path','p22_route_trial','p22_exit_alignment'):
+            rel='src/arena_autonomy/arena_autonomy/'+name+'.py'
+            report['input_sha256'][rel]=hashlib.sha256((REPO/rel).read_bytes()).hexdigest()
     recorder = recorder_log = None
     if args.record_inputs:
         for rel in ('scripts/record_sensor_bag.py', 'scripts/recording_guard.py',
@@ -737,9 +793,10 @@ def main():
             position = np.array([pose["position"]["x"], pose["position"]["y"]])
             index = int(np.argmin(np.sum((xy - position) ** 2, axis=1)))
             s = float(route["s_m"][index])
+            p22_active = args.p22_entry_trial and state['autonomy'].get('p22_trial', {}).get('start_s') is not None
             if last_s is not None:
                 delta = (s - last_s + lap_length / 2) % lap_length - lap_length / 2
-                if abs(delta) > 1:
+                if abs(delta) > 1 and not p22_active:
                     raise RuntimeError(f"본선 진행 위치의 비연속 점프: {delta:.3f} m")
                 progress += delta
             last_s = s
@@ -850,8 +907,17 @@ def main():
                     )
             else:
                 drivetrain_stalled_since = None
-            if collision_samples > 3 or error > .35:
+            p22_active = args.p22_entry_trial and bool(autonomous.get('p22_trial', {}).get('start_s') is not None)
+            if collision_samples > 3 or (error > .35 and not p22_active):
                 raise RuntimeError(f"벽 접촉 또는 본선 이탈: collision_samples={collision_samples}, error={error:.3f}")
+            if p22_active and args.p22_route_trial and autonomous.get('p22_trial',{}).get('route_complete'):
+                report['p22_route_end'] = {'reason': 'returned_main_1p2m_odometry', 'time_s': now,
+                                          'scope': 'limited_solo_entry_exit_not_lap'}
+                break
+            if p22_active and autonomous.get('reason') in ('p22_path_too_short', 'p22_entry_window_complete','p22_route_phase_timeout'):
+                report['p22_entry_end'] = {'reason': autonomous['reason'], 'time_s': now,
+                                           'scope': 'limited_entry_exit_not_main_lap' if args.p22_route_trial else 'limited_entry_only_not_main_lap'}
+                break
             if progress >= target_progress:
                 break
             if now - first_pose_time > args.max_sim_seconds:

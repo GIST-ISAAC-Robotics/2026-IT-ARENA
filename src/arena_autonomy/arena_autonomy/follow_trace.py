@@ -59,6 +59,12 @@ def snapshot_call(scan, history, reference_s, epoch, speed, side, steering, dt,
 
 
 def controller_mode(follow):
+    from arena_autonomy.p22_route_trial import P22Route
+    if isinstance(follow, P22Route):
+        return 'p22_route_trial'
+    from arena_autonomy.p22_trial import P22Entry
+    if isinstance(follow, P22Entry):
+        return 'p22_entry_trial'
     from arena_autonomy.bypass_handoff import BypassHandoffFollow
     if isinstance(follow, BypassHandoffFollow):
         return 'g1_g2_handoff_trial'
@@ -74,7 +80,7 @@ def controller_mode(follow):
 
 class FollowTrace:
     def __init__(self, path, motion_config, follow_config, capacity=128, *, mode='g1_follow', execution_config=None):
-        if mode not in ('g1_follow', 'r0_plus_candidate', 'm3_execution_trial', 'g2_entry_trial', 'g1_g2_handoff_trial'):
+        if mode not in ('g1_follow', 'r0_plus_candidate', 'm3_execution_trial', 'g2_entry_trial', 'g1_g2_handoff_trial', 'p22_entry_trial', 'p22_route_trial'):
             raise ValueError('unsupported decision trace mode')
         if mode == 'm3_execution_trial':
             from arena_autonomy.m3_execution_trial import ExecutionConfig
@@ -110,6 +116,12 @@ class FollowTrace:
         if mode == 'g1_g2_handoff_trial':
             identity = {'schema': 5, 'scope': 'g1_g2_handoff_decision_stage_only', 'controller_mode': mode,
                         'execution_config': asdict(execution_config)}
+        if mode == 'p22_entry_trial':
+            identity = {'schema': 6, 'scope': 'p22_limited_entry_trial', 'controller_mode': mode,
+                        'simulation_trial_only': True, 'vision_events': 'p22_frame'}
+        if mode == 'p22_route_trial':
+            identity = {'schema': 7, 'scope': 'p22_limited_solo_entry_exit', 'controller_mode': mode,
+                        'simulation_trial_only': True, 'vision_events': 'p22_frame'}
         self.emit('header', {**identity,
                             'history_units': {'wheels': 'm/s_after_conversion', 'gyro': 'rad/s_after_bias'},
                             'motion_config': asdict(motion_config), 'follow_config': asdict(follow_config)})

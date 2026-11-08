@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "scope": "관측 격자·장면 구성의 의미 보존 비용 절감(같은 격자 상태·장면·명령). 주행 전략·임계값·여유·설정·센서·모델·보호층 변경 없음.",
+  "parent_contract": "config/tests/follow_bundle_closure_r42_sha256.json",
+  "parent_contract_sha256": "5691ae7011e2140898b8590f00841b7080df4bc48e26a9b0dd7dbac01f8b1a3a",
+  "before_snapshot": "artifacts/validation/2026-11-08/grid_cost_r43_v1/before.zip",
+  "before_snapshot_sha256": "413bc8d6222cd5aace3cf1a26bec3f3c70c16960513901da8960679d14c381c7",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_scene.py": {
+      "before": "6687baae7936522702a7a0188218dcb72758ded90df030ed4225db6db0ac5400",
+      "after": "a599fcef11246ba4fa2aa00da926a8dba6a40d6da87a672f5b0f7ef970585bad",
+      "reason": "scene_from_scan parses the blind spec once per scan with the same formula and first-ray error order"
+    },
+    "src/arena_autonomy/arena_autonomy/lateral_intent.py": {
+      "before": "4683fa9e3532ee5b12447dfcfd083fe87815150cde6d715491513c91101da934",
+      "after": "1c8b5f876b51860f1bb8f2d1dec319a863bb55fe329c8fe5b9d39b742a2f86c3",
+      "reason": "ObservationGrid builds only free-sample indices that can reach the grid and may copy same-call compact returns"
+    },
+    "src/arena_autonomy/arena_autonomy/pass_release_trial.py": {
+      "before": "3da761e81ef365aa81d3725298e1cb2c3d44838fe4af8baf2f54ea18e9cba865",
+      "after": "69cb5103399c56ddf120d7736e1fa1b5ff96365884ffdb7330b359d9e2a7c13d",
+      "reason": "threat_view passes its own same-call ReturnGrid to ObservationGrid for compact reuse"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {}
+}

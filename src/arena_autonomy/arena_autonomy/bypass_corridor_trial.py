@@ -326,8 +326,23 @@ class CorridorGuide(EntryGuide):
                 transition_m=self._transition(fitting, min(maximum, abs(want))),
                 width_m=high-low, want_offset_m=want, offset_m=sign*min(maximum, abs(want)), surface=face['method'])
         blocked = straight_blocked(rows, self.config)
-        return dict(rows=rows, blocked=blocked, chosen=choose_side(rows) if blocked else None,
-                    side_comparison_is_permission=False)
+        chosen = choose_side(rows) if blocked else None
+        result = dict(rows=rows, blocked=blocked, chosen=chosen, side_comparison_is_permission=False)
+        if (getattr(self, 'adaptive_preview', False) and chosen is not None
+                and rows[chosen]['transition_limit_m'] < min(self.registered_entry.transitions_m)):
+            from arena_autonomy.short_entry_transition import compare_short_transition
+            candidate = compare_short_transition(scene, self.config, self.registered_entry,
+                rows[chosen], evidence['walls'][chosen])
+            result['short_transition_comparison'] = candidate
+            if candidate['applied']:
+                rows[chosen]['transition_m'] = candidate['transition_m']
+            from arena_autonomy.adaptive_corridor_offset import compare_roomy_path
+            lateral = compare_roomy_path(scene, self.config, self.registered_entry,
+                rows[chosen], evidence['walls'][chosen], self.corridor_policy.scan_reuse_s)
+            result['adaptive_corridor_offset'] = lateral
+            if lateral['applied']:
+                rows[chosen]['offset_m'] = lateral['offset_m']
+        return result
 
     def evaluate(self, scene, history, speed, previous, dt):
         self.corridor_use, self.motion_history = {}, history

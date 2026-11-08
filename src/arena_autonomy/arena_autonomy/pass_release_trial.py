@@ -101,7 +101,8 @@ class SelectorConfig:
 def lateral_config(follow_config):
     c = follow_config
     return LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', wheelbase_m=c.wheelbase_m,
-                               length_m=c.length_m, width_m=c.width_m, max_steering_rad=c.max_steering_rad)
+                               length_m=c.length_m, width_m=c.width_m, max_steering_rad=c.max_steering_rad,
+                               road_half_m=c.road_half_m)
 
 
 def threat_view(scene, path_points, cfg):
@@ -117,7 +118,8 @@ def threat_view(scene, path_points, cfg):
     light = mx.ReturnGrid(scene, cfg)
     ds, masks = mx.side_return_masks(frame, state, light, cfg)
     if any(np.any(m) for m in masks):
-        grid = ObservationGrid(scene, cfg)
+        # 이 호출에서 만든 반환 요약의 compact 묶음만 재사용한다(같은 scene·cfg 객체·반환 확인, 호출 사이 캐시 없음).
+        grid = ObservationGrid(scene, cfg, _same_call_returns=(scene, cfg, light))
         s, l = cell_coordinates(grid, frame)
         observed = grid.observed_free()
     else:
@@ -130,6 +132,32 @@ def threat_view(scene, path_points, cfg):
                      'rearmost_ds_m': float(np.min(values)) if len(values) else None,
                      'frontmost_ds_m': float(np.max(values)) if len(values) else None}
     return out
+
+
+
+def observed_guard_approach(frame, context, guarded_sides, rejected_sides):
+    """옆차 쪽으로 추가 접근하는 모든 이동 표본의 현재 관측을 요구한다.
+
+    과거 횡위치 초과의 대안 근거이며 미관측/장착 마스크는 통과시키지 않는다.
+    context의 free는 원시 반환과 기존 거리/시간 여유를 적용한 depth_support다.
+    """
+    evidence = {'accepted': False, 'unknown_filled': False, 'sides': {}}
+    if not rejected_sides or not context or frame is None:
+        return evidence
+    queries = context['queries']
+    if not len(queries):
+        return evidence
+    _, lateral = frame.project(queries)
+    for name in rejected_sides:
+        sign = 1. if name == 'left' else -1.
+        beyond = sign*lateral > guarded_sides[name]['current_m']+1e-9
+        count = int(np.count_nonzero(beyond))
+        free = int(np.count_nonzero(context['free'][beyond]))
+        evidence['sides'][name] = {'samples': count, 'currently_observed': free}
+        if count == 0 or free != count:
+            return evidence
+    evidence['accepted'] = True
+    return evidence
 
 
 def band_check(scene, frame, sign, cfg, sel, longitudinal=None):
@@ -198,7 +226,7 @@ def motion_region(scene, speed, target, steering, previous, dt, follow_cfg, lat_
               'masked_right': 0, 'masked_tail_extent_m':0., 'masked_front_samples':0}
     if not len(q):
         return result
-    pad = mx.ray_padding(scene, lat_cfg, .5)
+    pad = mx.ray_padding(scene, lat_cfg, follow_cfg.object_motion_bound_mps)
     free = depth_support(scene, q, pad)
     if np.any(~free):
         masked = np.zeros(len(q), dtype=bool)
@@ -374,6 +402,7 @@ class PassReleaseSelector:
                                       extrema_arc(a, max(distance, .01), self.lat)))
                            for a in sorted({float(b_steer), float(previous)})])
         info.update(envelope_distance_m=distance, guarded_sides={})
+        rejected_sides = []
         for name, sign in SIDES:
             side = self.sides[name]
             if not side['seen'] or (side['passed'] and not side['present']):
@@ -386,7 +415,12 @@ class PassReleaseSelector:
                                            'additional_approach_m': predicted-current,
                                            'not_increasing_present_extent': predicted <= current+1e-9}
             if predicted > anchor+self.config.small_excursion_m and predicted > current+1e-9:
-                return reject(f'toward_{name}')
+                rejected_sides.append(name)
+        if rejected_sides and not (
+                self.follow_config.traffic_recovery_trial
+                and b_detail.get('boundary_from_memory') is False
+                and b_detail.get('path_source_s') == scene.source_first_s):
+            return reject(f'toward_{rejected_sides[0]}')
         excursion = lateral_excursion(v, age, b_steer, previous, dt, self.follow_config)
         info['excursion_m'] = excursion
         # GUARD에는 미해제 물체가 있다. 작은 움직임도 현재 관측/마스크 분류를 생략하지 않는다.
@@ -417,11 +451,24 @@ class PassReleaseSelector:
         blocked = region_blocked(region, self.config, bounded_unknown_risk=fringe['accepted'] or same['accepted'])
         if blocked is not None:
             return reject(blocked)
+        if rejected_sides:
+            # 통과/해제 이력을 조작하지 않는다. 기존 전체 이동 검사에 더하여
+            # 위협 방향의 추가 접근 표본 모두에 현재 자유 관측을 요구한다.
+            if not context:
+                _, queries = motion_queries(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
+                pad = mx.ray_padding(scene, self.lat, self.follow_config.object_motion_bound_mps)
+                context = {'queries': queries, 'free': depth_support(scene, queries, pad)}
+            approach = observed_guard_approach(view['frame'], context, info['guarded_sides'], rejected_sides)
+            info['current_approach'] = approach
+            if not approach['accepted']:
+                return reject(f'toward_{rejected_sides[0]}')
         small_tail = bool(region['masked_left'] or region['masked_right'])
         info['accepted'] = True
         reason = ('guard_curve_bounded_rear_fringe' if fringe['accepted'] else
                   'guard_curve_bounded_same_path_gap' if same['accepted'] else
                   'guard_curve_observed_motion_small_masked_tail' if small_tail else 'guard_curve_observed_motion')
+        if rejected_sides:
+            reason = 'guard_curve_current_approach_observed'
         risk_detail = ({'selector_same_path_gap_risk_accepted': same['accepted']}
                        if self.follow_config.traffic_recovery_trial else {})
         return target, b_steer, {**b_detail, **detail, 'selector_choice': 'guard_baseline', 'selector_reason': reason,
@@ -591,6 +638,18 @@ class PassReleaseSelector:
             context.clear()
             region = motion_region(scene, speed, b_speed, b_steer, previous, dt,
                                    self.follow_config, self.lat, context=context)
+        if self.follow_config.traffic_recovery_trial and not retained:
+            from arena_autonomy.masked_motion_speed import lower_masked_motion
+            def evaluate_reduced_target(target):
+                reduced_context = {}
+                reduced_region = motion_region(scene, speed, target, b_steer, previous, dt,
+                    self.follow_config, self.lat, context=reduced_context)
+                return reduced_region, reduced_context
+            reduced = lower_masked_motion(region, partial, b_speed, self.config, evaluate_reduced_target)
+            if reduced is not None:
+                detail['selector_masked_speed_recheck'] = reduced['diagnostic']
+                if reduced['accepted']:
+                    b_speed, region, context = reduced['target_mps'], reduced['region'], reduced['context']
         detail['selector_region'] = region
         same, fringe = dict(accepted=False), dict(accepted=False)
         if self.follow_config.traffic_recovery_trial:
@@ -623,7 +682,8 @@ class PassReleaseSelector:
             small_tail=bool(region['masked_left'] or region['masked_right'])
             return b_speed, b_steer, {**b_detail, **detail, 'selector_choice': 'baseline',
                 'selector_masked_tail_risk_accepted':small_tail,
-                'selector_reason':'released_bounded_rear_sweep' if fringe.get('policy') in ('released_low_speed_rear_sweep_v1','released_low_speed_body_fringe_v2') and fringe['accepted'] else
+                'selector_reason':'released_masked_motion_speed_limited' if detail.get('selector_masked_speed_recheck',{}).get('applied') else
+                                  'released_bounded_rear_sweep' if fringe.get('policy') in ('released_low_speed_rear_sweep_v1','released_low_speed_body_fringe_v2') and fringe['accepted'] else
                                   'released_bounded_rear_fringe' if fringe['accepted'] else
                                   'released_bounded_same_path_gap' if same['accepted'] else
                                   'released_observed_motion_small_masked_tail' if small_tail

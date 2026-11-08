@@ -1,0 +1,74 @@
+"""실제 지주 가림과 충분한 현재 직선 조각만 고정 외벽 여유로 분류한다."""
+from dataclasses import replace
+from types import SimpleNamespace
+from unittest.mock import patch
+import math
+import numpy as np
+import pytest
+
+from arena_autonomy.local_follow import FollowConfig
+from arena_autonomy.bypass_entry_trial import current_outer_wall_padding
+from arena_autonomy.moving_pass_wall_padding import current_outer_and_rear_padding
+from test_moving_pass_faster import faster_controller
+from test_moving_pass import moving_controller
+
+
+def sample(side='left', change='none'):
+    config = replace(FollowConfig(), object_motion_bound_mps=1.2)
+    sign = 1 if side == 'left' else -1
+    principal = [(1.2-.02*i, sign*.18) for i in range(63)]
+    count = 24 if change == 'short' else 40
+    start = -.12 if change == 'wide' else -.072
+    tail = [(start-.01*i, sign*.18+(.02 if change == 'displaced' else 0.)) for i in range(count)]
+    values = principal+[None]*5+tail
+    if side == 'right':
+        values = values[::-1]
+    rays = [SimpleNamespace(source_index=i,hit_xy_m=p,status='masked' if p is None else 'return',
+                             acquired_at_s=.4) for i,p in enumerate(values)]
+    gaps = [r.source_index for r in rays if r.status == 'masked']
+    if change == 'unknown':
+        rays[gaps[2]].status = 'unknown'
+    if change == 'obstacle_in_gap':
+        rays[gaps[2]].status = 'return'; rays[gaps[2]].hit_xy_m = (.05, .02)
+    scene = SimpleNamespace(rays=rays,t_ref_s=.5,
+        occupied_endpoints_xy_m=np.asarray([r.hit_xy_m for r in rays if r.status == 'return']))
+    indices = [r.source_index for r in rays if r.hit_xy_m in principal]
+    wall = dict(reason='current_connected_straight_wall_fit',source_ray_indices=indices,
+        slope=0.,intercept_m=sign*(.18-config.wall_offset_m),observed_x_m=[-.04,1.2])
+    scan = SimpleNamespace(ranges=[1.]*len(rays))
+    rows = [dict(rays=np.asarray(gaps),explained=change!='unexplained')]
+    return config,scene,scan,wall,rows
+
+
+@pytest.mark.parametrize('side',['left','right'])
+@pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+    cfg,scene,scan,wall,rows = sample(side,change)
+    original = scene.occupied_endpoints_xy_m.copy()
+    old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+    with patch('arena_autonomy.moving_pass_wall_padding.classify',return_value=(None,None,rows)):
+        new,detail = current_outer_and_rear_padding(scene,cfg,side,wall,raw_scan=scan,sectors=((0.,1.),))
+    np.testing.assert_array_equal(scene.occupied_endpoints_xy_m, original)
+    if change != 'none':
+        np.testing.assert_array_equal(new, old)
+        assert 'rear_wall_padding' not in detail
+    else:
+        assert np.sum(new < old) >= 35
+        assert np.min(new) == pytest.approx(.025+cfg.measurement_padding_m)
+        proof = detail['rear_wall_padding']
+        assert proof['minimum_rear_span_m'] == pytest.approx(math.hypot(.2,.15)+.06+.03)
+        assert not proof['static_identity_verified'] and not detail['unknown_filled']
+        assert detail['all_returns_retained']
+
+
+def test_only_explicit_faster_profile_connects_padding_provider():
+    assert moving_controller().moving_pass.guide.padding_provider is None
+    assert faster_controller().moving_pass.guide.padding_provider is not None
+
+
+def test_missing_raw_sensor_does_not_claim_structural_explanation():
+    cfg,scene,scan,wall,_ = sample()
+    old,_ = current_outer_wall_padding(scene,cfg,'left',wall)
+    for raw,sectors in [(None,((0.,1.),)),(scan,())]:
+        new,_ = current_outer_and_rear_padding(scene,cfg,'left',wall,raw_scan=raw,sectors=sectors)
+        np.testing.assert_array_equal(new,old)

@@ -80,6 +80,10 @@ class G1G2Node(LocalPursuit):
         observed_motion = self.declare_parameter('g1_g2_observed_motion_gates',False).value
         continuous_pace = self.declare_parameter('g1_g2_continuous_forward_pace',False).value
         moving_pass = self.declare_parameter('g1_g2_moving_pass_trial',False).value
+        moving_profile = self.declare_parameter('g1_g2_moving_pass_profile','slow_v1').value
+        wall_witness = self.declare_parameter('g1_g2_rear_wall_witness',False).value
+        center_stopped = self.declare_parameter('g1_g2_stopped_entry_centering',False).value
+        adaptive_preview = self.declare_parameter('g1_g2_adaptive_entry_preview',False).value
         if type(continuous_pace) is not bool:
             raise ValueError('typed G1/G2 continuous forward pace option required')
         side_departure = self.declare_parameter('g1_g2_side_departure_trial',False).value
@@ -94,11 +98,13 @@ class G1G2Node(LocalPursuit):
             low_motion_reserve=low_motion_reserve,moving_pace_floor=moving_pace_floor,reacquire_policy=reacquire,
             entry_policy=entry_policy,preparation_hold_policy=preparation_hold,initial_reference_policy=initial_reference,
             motion_pause_policy=motion_pause,
-            relative_yield_policy=relative_yield,entry_motion_gate=observed_motion,
+            relative_yield_policy=relative_yield,entry_motion_gate=observed_motion,stopped_entry_centering=center_stopped,
+            adaptive_entry_preview=adaptive_preview,
             observed_forward_pace=observed_motion and moving_pace_floor,
             continuous_forward_pace=continuous_pace,
-            moving_pass_trial=moving_pass,
-            bypass=BypassExecutionConfig(corridor_policy=corridor,steerable_transition=observed_motion)),
+            moving_pass_trial=moving_pass, moving_pass_profile=moving_profile,
+            bypass=BypassExecutionConfig(corridor_policy=corridor,steerable_transition=observed_motion,
+                                         rear_wall_witness=wall_witness)),
             allow_simulation_trial=True)
         trace = FollowTrace(trace_path,self.motion.history.config,self.follow.config,
             mode='g1_g2_handoff_trial',execution_config=self.follow.execution)

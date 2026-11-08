@@ -1,0 +1,129 @@
+--- src/arena_autonomy/arena_autonomy/local_follow.py before
++++ src/arena_autonomy/arena_autonomy/local_follow.py after
+@@ -62,6 +62,7 @@
+     preview_turn_speed: bool = False
+     preview_above_base_speed: bool = False  # 단독 선택형. 코너 예측을 통상 상한 위의 양수 목표에도 적용.
+     boundary_bridge: bool = False  # 단독 선택형. 점유가 아닌 경로 근거 전환 때문에 생긴 정지만 잇는다.
++    traffic_boundary_refresh_trial: bool = False  # 교통 선택형. 짧은 현재 벽이 최근 승인 경로와 일치할 때만 갱신.
+     low_speed_arc_reacquire: bool = False  # 단독 시험 선택. 낮은 측정 속도의 양측 경로 재획득만.
+     standing_wall_reacquire: bool = False  # 재개 후보. 기억 없는 낮은 속도에서 선호 벽의 긴 현재 관측으로 재획득.
+     lateral_acceleration_mps2: float = 3.5
+@@ -178,10 +179,13 @@
+         if (type(self.low_speed_arc_reacquire) is not bool or
+                 (self.low_speed_arc_reacquire and not self.blend_open_speed_by_length)):
+             raise ValueError('low speed arc reacquire requires the solo observed route speed profile')
++        if (type(self.traffic_boundary_refresh_trial) is not bool or
++                (self.traffic_boundary_refresh_trial and (self.solo_route_only or not self.traffic_path_recovery_trial))):
++            raise ValueError('traffic boundary refresh requires the traffic path recovery profile')
+         if type(self.standing_wall_reacquire) is not bool:
+             raise ValueError('standing wall reacquire must be bool')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('solo_corner_approach_trial', 'oblique_gap_trial', 'piecewise_wall_trial', 'solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
++               if k not in ('traffic_boundary_refresh_trial', 'solo_corner_approach_trial', 'oblique_gap_trial', 'piecewise_wall_trial', 'solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
+@@ -817,7 +821,8 @@
+                             detail.update(boundary_selection='bilateral_observed_corner_distance',
+                                           boundary_candidate_reason=info['reason'],
+                                           boundary_candidate_ahead_m=info.get('boundary_observed_ahead_m'))
+-                if (not eligible and cfg.boundary_bridge and carried is not None and preferred is not None
++                if (not eligible and (cfg.boundary_bridge or cfg.traffic_boundary_refresh_trial)
++                        and carried is not None and preferred is not None
+                         and anchor_error(preferred_info, cfg) <= cfg.boundary_anchor_error_m
+                         and path_agrees(preferred, carried, cfg.boundary_agreement_m)):
+                     # 긴 경계 조건만 못 채운 현재 관측이 직전 경로와 겹친다. 더 짧은 현재 경로로 줄여 쓴다.
+--- src/arena_autonomy/arena_autonomy/local_pursuit.py before
++++ src/arena_autonomy/arena_autonomy/local_pursuit.py after
+@@ -157,6 +157,7 @@
+             boundary_bridge=bool(self.declare_parameter('g1_boundary_bridge',False).value),
+             low_speed_arc_reacquire=bool(self.declare_parameter('g1_low_speed_arc_reacquire',False).value),
+             standing_wall_reacquire=bool(self.declare_parameter('g1_standing_wall_reacquire',False).value),
++            traffic_boundary_refresh_trial=bool(self.declare_parameter('g1_traffic_boundary_refresh_trial',False).value),
+             lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),
+             wall_offset_m=float(self.settings['target_wall_distance_m']),
+             road_half_m=float(self.declare_parameter('g1_road_half_m', .225).value))) if (self.g1_enabled or self.r0_plus_enabled) else None
+--- src/arena_bringup/launch/g1_follow.launch.py before
++++ src/arena_bringup/launch/g1_follow.launch.py after
+@@ -36,6 +36,9 @@
+         DeclareLaunchArgument('g1_standing_wall_reacquire', default_value='false', choices=['true', 'false'],
+                               description='재개 후보: 기억 없는 낮은 속도에서 선호 벽의 긴 현재 관측으로 재획득; 기본 비활성'),
+         SetParameter(name='g1_standing_wall_reacquire', value=LaunchConfiguration('g1_standing_wall_reacquire')),
++        DeclareLaunchArgument('g1_traffic_boundary_refresh_trial', default_value='false', choices=['true', 'false'],
++                              description='교통 선택형: 짧은 현재 벽과 최근 경로의 일치 갱신'),
++        SetParameter(name='g1_traffic_boundary_refresh_trial', value=LaunchConfiguration('g1_traffic_boundary_refresh_trial')),
+         DeclareLaunchArgument('g1_boundary_evidence_mode', default_value='connected',
+                               choices=['connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate']),
+         SetParameter(name='g1_boundary_evidence_mode', value=LaunchConfiguration('g1_boundary_evidence_mode')),
+--- scripts/g1_handoff_eval.py before
++++ scripts/g1_handoff_eval.py after
+@@ -2,13 +2,13 @@
+ import json
+ 
+ 
+-def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False, moving_profile='slow_v1', wall_witness=False, standing_reacquire=False):
++def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False, moving_profile='slow_v1', wall_witness=False, standing_reacquire=False, boundary_refresh=False):
+     if moving_profile not in ('slow_v1', 'medium_v1') or (moving_profile != 'slow_v1' and not moving_pass):
+         raise ValueError('moving pass profile requires an explicit moving pass trial')
+     if wall_witness and not observed_motion:
+         raise ValueError('wall witness requires explicit observed handoff motion')
+     if mode != 'g1g2':
+-        if reserve is not None or progress or rear_sweep or observed_motion or side_departure or current_lane or continuous_pace or moving_pass or wall_witness or standing_reacquire:
++        if reserve is not None or progress or rear_sweep or observed_motion or side_departure or current_lane or continuous_pace or moving_pass or wall_witness or standing_reacquire or boundary_refresh:
+             raise ValueError('reserve comparison is only defined for the G1/G2 trial')
+         return []
+     if (reserve not in ('fixed', 'moving','closing','recent','low_motion','paced') or not recorded or
+@@ -26,6 +26,7 @@
+     extra = ['evaluation_handoff_yield_progress:=true'] if progress else []
+     if wall_witness:extra.append('evaluation_handoff_wall_witness:=true')
+     if standing_reacquire:extra.append('g1_standing_wall_reacquire:=true')
++    if boundary_refresh:extra.append('g1_traffic_boundary_refresh_trial:=true')
+     if rear_sweep:extra.append('evaluation_handoff_rear_sweep:=true')
+     if observed_motion:extra.append('evaluation_handoff_observed_motion:=true')
+     if side_departure:extra.append('evaluation_side_departure_trial:=true')
+@@ -40,7 +41,7 @@
+             'g1_guard_curve_trial:=true', 'g1_traffic_recovery_trial:=true', 'g1_traffic_path_recovery_trial:=true']
+ 
+ 
+-def inspect_header(path, reserve, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False, moving_profile='slow_v1', wall_witness=False, standing_reacquire=False):
++def inspect_header(path, reserve, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False, moving_profile='slow_v1', wall_witness=False, standing_reacquire=False, boundary_refresh=False):
+     with path.open(encoding='utf-8') as stream:
+         first = json.loads(next(stream))
+     header = first['data']; f = header['follow_config']; e = header['execution_config']
+@@ -48,6 +49,7 @@
+         normal_path=all(f.get(k) is True for k in ('corridor_fallback_enabled', 'short_boundary_prefix_enabled',
+             'parallel_hold_trial','pass_release_trial','guard_curve_trial','traffic_recovery_trial','traffic_path_recovery_trial')),
+         standing_reacquire=f.get('standing_wall_reacquire',False) is standing_reacquire,
++        boundary_refresh=f.get('traffic_boundary_refresh_trial',False) is boundary_refresh,
+         normal_speed=f.get('open_route_speed_mps')==1.5, occupancy=f.get('occupancy_timing_mode')=='per_ray_candidate',
+         boundary=f.get('boundary_evidence_mode')=='corner_distance_candidate',
+         observation=f.get('partial_observation_policy')=='bounded_local_v4',
+--- scripts/validate_g1_traffic.py before
++++ scripts/validate_g1_traffic.py after
+@@ -434,6 +434,8 @@
+                         help='Explicit moving-pass speed/tracking envelope; medium requires moving-pass-trial')
+     parser.add_argument('--moving-pass-trial', action='store_true',
+                         help='연속 전진 관측·후방 복귀 확인을 사용하는 저속 이동차 추월(기본 꺼짐)')
++    parser.add_argument('--handoff-boundary-refresh', action='store_true',
++                        help='교통 경로의 짧은 현재 벽과 최근 경로가 일치할 때만 갱신하는 선택형 시험')
+     parser.add_argument('--handoff-standing-wall-reacquire', action='store_true',
+                         help='기존 저속 현재 선호 벽 재획득을 G1/G2 교통에서 명시 선택(기본 꺼짐)')
+     parser.add_argument('--g1-piecewise-wall', action='store_true',
+@@ -567,7 +569,7 @@
+         raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
+     specs = actor_specs(config, case)
+     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
+-    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire)
++    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire, boundary_refresh=args.handoff_boundary_refresh)
+     facility_sources = {}
+     world_dir = DEMO_WORLD
+     if args.team_signal_course:
+@@ -1363,7 +1365,7 @@
+             report['m4_operation']['original_traffic_verdict_preserved'] = True
+         if handoff_arguments:
+             try:
+-                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire)
++                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire, boundary_refresh=args.handoff_boundary_refresh)
+             except (OSError,KeyError,ValueError,StopIteration) as error:
+                 evidence = {'passed':False,'error':repr(error)}
+             report['handoff_execution'] = evidence

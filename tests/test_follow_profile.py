@@ -163,3 +163,33 @@ def test_partial_candidate_profile_uses_raw_scan_and_compares_decisions(tmp_path
     next(e for e in changed if e['kind'] == 'call')['data']['output'][0] += .01
     with pytest.raises(ValueError, match='outputs'):
         profile(changed, repeats=1, warmups=0)
+
+
+def test_cli_runs_from_minimal_bundle_layout_and_reports_missing_optional_test(tmp_path):
+    """묶음과 같은 배치(폐포 파일만, tests/ 없음)에서 문서상 CLI를 실제로 실행한다."""
+    import json
+    import os
+    import shutil
+    import subprocess
+    import sys
+    import zipfile
+    from profile_follow_trace import ROOT, SNAPSHOT_CLOSURE, SNAPSHOT_OPTIONAL, snapshot_paths
+    bundle = tmp_path/'bundle'
+    for name in SNAPSHOT_CLOSURE['files']:
+        (bundle/name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT/name, bundle/name)
+    trace, _ = make_trace(tmp_path)
+    env = {k: v for k, v in os.environ.items() if not k.startswith(('PYTHON', 'ROS', 'AMENT', 'COLCON'))}
+    env.update(PYTHONNOUSERSITE='1', PYTHONPATH=os.pathsep.join(
+        str(bundle/part) for part in ('src/arena_autonomy', 'src/arena_vehicle_interface', 'scripts')))
+    done = subprocess.run([sys.executable, '-B', 'scripts/profile_follow_trace.py', str(trace), '--repeats', '1',
+                           '--warmups', '0', '--output', 'artifacts/cli'], cwd=bundle, env=env,
+                          capture_output=True, text=True, timeout=120)
+    assert done.returncode == 0, done.stderr[-2000:]
+    report = json.loads((bundle/'artifacts/cli/report.json').read_text(encoding='utf-8'))
+    assert report['passed'] and report['source_unchanged']
+    assert report['source_snapshot_omitted'] == list(SNAPSHOT_OPTIONAL) and not report['source_snapshot_complete']
+    names = set(zipfile.ZipFile(bundle/'artifacts/cli/source_snapshot.zip').namelist())
+    assert names == set(SNAPSHOT_CLOSURE['files']) == set(report['source_sha256'])
+    # 저장소에서는 선택 시험까지 담아 완전 스냅샷으로 보고한다.
+    assert snapshot_paths()[1] == []

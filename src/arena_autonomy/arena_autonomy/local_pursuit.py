@@ -127,9 +127,12 @@ class LocalPursuit(WallFollow):
             solo_route_only=solo_route,
             corridor_arc_agreement=bool(self.declare_parameter('g1_corridor_arc_agreement',False).value),
             ray_wall_continuity=bool(self.declare_parameter('g1_ray_wall_continuity',False).value),
+            piecewise_wall_trial=bool(self.declare_parameter('g1_piecewise_wall_trial',False).value),
             solo_straight_budget_trial=bool(self.declare_parameter('g1_solo_straight_budget_trial',False).value),
             headway_s=solo_headway,
             partial_observation_policy=partial_observation,
+            solo_corner_approach_trial=bool(self.declare_parameter('g1_solo_corner_approach_trial',False).value),
+            oblique_gap_trial=bool(self.declare_parameter('g1_oblique_gap_trial',False).value),
             known_structure_policy=structure_policy,
             known_structure_sectors_json=structure_sectors,
             parallel_hold_trial=parallel_hold,
@@ -154,8 +157,10 @@ class LocalPursuit(WallFollow):
             boundary_bridge=bool(self.declare_parameter('g1_boundary_bridge',False).value),
             low_speed_arc_reacquire=bool(self.declare_parameter('g1_low_speed_arc_reacquire',False).value),
             standing_wall_reacquire=bool(self.declare_parameter('g1_standing_wall_reacquire',False).value),
+            traffic_boundary_refresh_trial=bool(self.declare_parameter('g1_traffic_boundary_refresh_trial',False).value),
             lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),
-            wall_offset_m=float(self.settings['target_wall_distance_m']))) if (self.g1_enabled or self.r0_plus_enabled) else None
+            wall_offset_m=float(self.settings['target_wall_distance_m']),
+            road_half_m=float(self.declare_parameter('g1_road_half_m', .225).value))) if (self.g1_enabled or self.r0_plus_enabled) else None
         if self.m3_execution_enabled:
             from arena_autonomy.m3_execution_trial import M3ExecutionFollow, ExecutionConfig
             self.follow = M3ExecutionFollow(self.follow.config,
@@ -167,13 +172,20 @@ class LocalPursuit(WallFollow):
         if self.vision_execution not in ('inline', 'process'):
             raise ValueError('vision_execution must be inline or process')
         self.start_signal_mode = str(self.declare_parameter('start_signal_mode', 'temporary_3light').value)
-        if self.start_signal_mode not in ('temporary_3light', 'official_4red_candidate', 'official_4red_local_candidate'):
+        if self.start_signal_mode not in ('temporary_3light', 'official_4red_candidate', 'official_4red_local_candidate',
+                                          'official_marker_late_candidate'):
             raise ValueError('unsupported start_signal_mode')
         if self.start_signal_mode != 'temporary_3light' and self.vision_execution != 'process':
             raise ValueError('official start candidate requires process vision')
         self.race_control_mode = str(self.declare_parameter('race_control_mode', 'legacy').value)
         if self.race_control_mode not in ('legacy', 'b3_candidate'):
             raise ValueError('unsupported race_control_mode')
+        if bool(self.declare_parameter('g1_marker_late_start_trial', False).value):
+            if self.start_signal_mode != 'official_4red_local_candidate':
+                raise ValueError('marker late start trial requires the official local signal')
+            self.start_signal_mode = 'official_marker_late_candidate'
+        if self.start_signal_mode == 'official_marker_late_candidate' and self.race_control_mode != 'b3_candidate':
+            raise ValueError('marker late start requires B3 operator preparation boundary')
         if self.race_control_mode != 'legacy' and self.vision_execution != 'process':
             raise ValueError('B3 race supervisor requires process vision generations')
         self.vision_pipeline = None

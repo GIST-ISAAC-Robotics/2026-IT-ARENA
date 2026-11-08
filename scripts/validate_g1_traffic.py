@@ -27,8 +27,8 @@ from shapely.strtree import STRtree
 from audit_local_pursuit_road import road_polygon
 from build_experimental_track import obstacle_polygons, rectangle
 from lidar_shutdown import audit_shutdown, group_processes, stop_gazebo_service, stop_launch
-from validate_basic_autonomy import (DEMO_WORLD, REPO, add_rate_metrics, configured_feedback_topic,
-                                     early_start_detected, start_demo_process)
+from validate_basic_autonomy import (DEMO_TRACK, DEMO_WORLD, REPO, TRACK_WORLDS, add_rate_metrics,
+                                     configured_feedback_topic, early_start_detected, start_demo_process)
 from validate_facility_visibility import yaw_of
 import g1_traffic_eval as ev
 import g1_handoff_eval
@@ -44,6 +44,9 @@ from traffic_merge import (merge_profile_for_case, scheduled_merge_pose, validat
                            audit_merge_motion)
 
 CONFIG = REPO/'config/tests/g1_traffic_v1.json'
+# 새 코스 g1g2 C1 주입은 이 등록 프로필(경로·ImpairmentConfig 전체 값) 하나만 허용한다.
+G1G2_LIDAR_PROFILE = REPO/'config/tests/lidar_uniform30_delay50_jitter20.json'
+G1G2_LIDAR_REQUESTED = dict(mode='uniform', amplitude_m=0.03, bias_m=0., delay_s=0.05, jitter_s=0.02, seed=23)
 WORLD_NAME = 'it_arena_track'
 SET_POSE_SERVICE = f'/world/{WORLD_NAME}/set_pose'
 CONTACT_TOPIC = '/eval/g1b_actor/contact'
@@ -57,7 +60,7 @@ SOURCE_FILES = [
     'scripts/validate_g1_traffic.py', 'scripts/g1_traffic_eval.py', 'scripts/validate_basic_autonomy.py',
     'scripts/lidar_shutdown.py', 'scripts/audit_local_pursuit_road.py', 'scripts/probe_static_actor_contact.py',
     'scripts/traffic_actors.py', 'scripts/traffic_actor_runtime.py',
-    'scripts/traffic_road_route.py', 'scripts/traffic_encounter.py', 'scripts/traffic_merge.py',
+    'scripts/traffic_road_route.py', 'scripts/traffic_corner_route.py', 'scripts/traffic_encounter.py', 'scripts/traffic_merge.py',
     'scripts/m4_operation_trial.py', 'scripts/m4_operation_eval.py', 'scripts/m4_second_start.py',
     'config/tests/g1_traffic_v1.json', 'config/tests/g1b_r0_sha256.json',
     'config/tests/m3_execution_r0_sha256.json',
@@ -133,7 +136,7 @@ def load_config(path=CONFIG):
         lateral = actor_lateral_offset(config, case)
         if not math.isfinite(lateral) or abs(lateral) > .45:
             raise ValueError('invalid actor lateral offset')
-        if lateral and case.get('route_kind') not in ('side_grass_straight', 'side_road_straight', 'merge_straight'):
+        if lateral and case.get('route_kind') not in ('side_grass_straight', 'side_road_straight', 'side_two_wheel_straight', 'side_first_curve', 'merge_straight'):
             raise ValueError('lateral actor requires registered road or grass side route')
         merge_profile_for_case(case)
     if set(config['seeds']) != {'0', '1', '2'}:
@@ -174,12 +177,15 @@ def check_straight(config, centerline, case, s0):
 def check_route(config, centerline, case, s0, road=None, obstacles=()):
     """확장 시험만 등록한 첫 코너까지 허용한다. 기존 직선 제한은 유지한다."""
     kind = case.get('route_kind', 'straight')
+    if kind == 'side_first_curve':
+        from traffic_corner_route import check_corner_route
+        return check_corner_route(config, centerline, case, s0, road, obstacles)
     if kind == 'full_course':
         from g1_course_eval import check_full_course
         return check_full_course(config, centerline, case, s0, road, obstacles)
     if kind == 'merge_straight':
         return validate_merge_route(config, centerline, case, s0, road, obstacles, check_straight)
-    if kind == 'side_road_straight':
+    if kind in ('side_road_straight', 'side_two_wheel_straight'):
         return check_onroad_route(config, centerline, case, s0, road, obstacles, check_straight, actor_pose_at)
     if kind == 'straight':
         return {'kind': kind, **check_straight(config, centerline, case, s0)}
@@ -250,6 +256,9 @@ def actor_pose_at(centerline, s0, schedule, elapsed, lateral_offset=0.):
 
 def primary_pose_at(config, centerline, s0, case, elapsed):
     """주 actor만 명시 합류 경로를 선택한다. 기존/추가 actor의 자세 계산은 그대로다."""
+    if case.get('route_kind') == 'side_first_curve':
+        from traffic_corner_route import corner_pose
+        return corner_pose(config, centerline, s0, case, elapsed)
     profile = merge_profile_for_case(case)
     lateral = actor_lateral_offset(config, case)
     if profile is not None:
@@ -391,6 +400,15 @@ def stop_owned(process, timeouts=((signal.SIGINT, 15), (signal.SIGTERM, 5), (sig
     return forced
 
 
+def piecewise_arguments(enabled, mode, recorded):
+    """단독에서 확인한 직각 경로를 교통에서도 명시 선택. 속도·점유/STOP 불변."""
+    if not enabled:
+        return []
+    if mode not in ('g1', 'g1g2') or not recorded:
+        raise ValueError('piecewise walls require recorded G1 or G1/G2 traffic')
+    return ['g1_piecewise_wall_trial:=true']
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--case', required=True)
@@ -398,6 +416,8 @@ def main():
                         help='11/1 등록된 155초 앞차·옆차와 2×5 픽셀 출발을 사용한다.')
     parser.add_argument('--official-signal-course', action='store_true',
                         help='공식 v2026.11.01 실행 월드와 2×5 점등을 쓰는 선정 교통 시험. 11/1 fixture 경로와 별개다.')
+    parser.add_argument('--track', choices=tuple(TRACK_WORLDS), default=DEMO_TRACK,
+                        help='공식 교통 경로의 실행·평가 월드. 새 코스는 official_v2026_11_06 명시, 같은 track으로 등록한 설정 필요')
     parser.add_argument('--seed', type=int, choices=(0, 1, 2), required=True)
     parser.add_argument('--mode', choices=('g1', 'r0', 'r0plus', 'm3', 'g1g2'), required=True)
     parser.add_argument('--handoff-reserve', choices=('fixed','moving','closing','recent','low_motion','paced'),
@@ -411,8 +431,18 @@ def main():
                         help='현재 면의 전진 근거로 우회 양보 예산을 갱신하는 선택형 비교')
     parser.add_argument('--handoff-continuous-pace', action='store_true',
                         help='paced+관측 이동 후보에서 연속 전진율로 고정 우회 여유만 보완하는 선택형 비교(기본 꺼짐)')
+    parser.add_argument('--handoff-wall-witness', action='store_true',
+                        help='Use existing current rear-wall returns across a known structure shadow in the stationary bypass guide')
+    parser.add_argument('--moving-pass-profile', choices=['slow_v1','medium_v1','faster_v1'], default='slow_v1',
+                        help='Explicit moving-pass speed/tracking envelope; medium requires moving-pass-trial')
     parser.add_argument('--moving-pass-trial', action='store_true',
                         help='연속 전진 관측·후방 복귀 확인을 사용하는 저속 이동차 추월(기본 꺼짐)')
+    parser.add_argument('--handoff-boundary-refresh', action='store_true',
+                        help='교통의 관측 벽 조각 경로와 기존 승인 벽 갱신을 선택하는 시험')
+    parser.add_argument('--handoff-standing-wall-reacquire', action='store_true',
+                        help='기존 저속 현재 선호 벽 재획득을 G1/G2 교통에서 명시 선택(기본 꺼짐)')
+    parser.add_argument('--g1-piecewise-wall', action='store_true',
+                        help='기존 관측 벽의 두 직선+원호 경로를 교통에서도 명시 선택(기본 꺼짐)')
     parser.add_argument('--m3-command-fallback', action='store_true',
                         help='M3 실제 발행 검사까지 포함한 경로 후보 선택 비교; 기본 비활성')
     parser.add_argument('--m3-release-to-baseline', action='store_true',
@@ -464,6 +494,8 @@ def main():
                         help='점별 취득 시각 팽창 후보. 기본 oldest 유지, 점/거리 여유/운동 상한 유지')
     parser.add_argument('--zero-speed-mode', choices=ZERO_SPEED_MODES, default='legacy',
                         help='평가 전용 0목표 구동 특성 대조. 기본 legacy는 실행 인자를 추가하지 않음')
+    parser.add_argument('--grass-alignment', choices=('original', 'road_level'), default='original',
+                        help='v11.06 잔디 1 mm 단차 대조. 기본 원본 유지')
     parser.add_argument('--physics-step', choices=PHYSICS_STEPS,
                         help='평가 전용 물리 step. 생략하면 월드 기본 1 ms')
     parser.add_argument('--race-operation-test', nargs='?', const='same_race', choices=('same_race', 'new_race', 'new_race_restart'),
@@ -500,12 +532,18 @@ def main():
         parser.error('R0+/M3 requires per-ray occupancy and decision recording')
     if args.occupancy_timing != 'oldest' and (args.mode not in ('g1', 'r0plus', 'm3') or not args.record_follow_decisions):
         parser.error('--occupancy-timing candidate requires G1 with decision recording')
-    if args.lidar_test_profile and (args.mode not in ('g1', 'm3') or not args.record_follow_decisions):
-        parser.error('--lidar-test-profile requires G1/M3 with decision recording')
+    if args.lidar_test_profile and (args.mode not in ('g1', 'm3', 'g1g2') or not args.record_follow_decisions):
+        parser.error('--lidar-test-profile requires G1/M3/G1G2 with decision recording')
+    g1g2_lidar_stress = bool(args.lidar_test_profile) and args.mode == 'g1g2'
+    if g1g2_lidar_stress and (args.track != 'official_v2026_11_06' or not args.official_signal_course
+                              or args.team_signal_course or args.handoff_reserve != 'paced' or args.seed != 0):
+        parser.error('G1/G2 lidar stress requires recorded paced official_v2026_11_06 signal course, seed 0')
     if args.motion_test_profile and (args.mode not in ('g1','m3') or not args.record_follow_decisions
                                     or args.lidar_test_profile or args.actor_overlay):
         parser.error('--motion-test-profile requires recorded G1/M3 without other stress or actor overlays')
     lidar_profile, lidar_requested = load_test_profile(args.lidar_test_profile, REPO)
+    if g1g2_lidar_stress and (lidar_profile != G1G2_LIDAR_PROFILE or lidar_requested != G1G2_LIDAR_REQUESTED):
+        parser.error('G1/G2 lidar stress accepts only config/tests/lidar_uniform30_delay50_jitter20.json')
     motion_profile, motion_requested = load_motion_profile(args.motion_test_profile, REPO)
     if motion_profile and configured_feedback_topic() != '/drive_motor/encoder':
         parser.error('registered motion stress requires current single motor-shaft feedback')
@@ -520,6 +558,10 @@ def main():
         parser.error('corridor fallback requires G1 corner-distance/per-ray/decision recording')
     if args.short_boundary_prefix and (args.mode != 'g1' or not args.corridor_fallback):
         parser.error('short boundary prefix requires explicit G1 corridor fallback')
+    if args.grass_alignment != 'original' and (args.track != 'official_v2026_11_06'
+            or not args.official_signal_course or not args.record_follow_decisions):
+        parser.error('grass alignment requires recorded v11.06 official signal course')
+    corner_arguments = piecewise_arguments(args.g1_piecewise_wall, args.mode, args.record_follow_decisions)
     config = load_config(args.config)
     if args.actor_overlay:
         args.actor_overlay.resolve().relative_to(REPO)
@@ -529,12 +571,14 @@ def main():
         raise ValueError('관측 이동 후보는 공식 교통 경로에서만 선택한다')
     if args.team_signal_course and args.official_signal_course:
         raise ValueError('11/1 fixture와 공식 월드 교통 경로는 함께 선택할 수 없다')
+    if args.track != DEMO_TRACK and (not args.official_signal_course or args.local_sensor_config is None):
+        raise ValueError('새 코스 교통 시험은 --official-signal-course와 --local-sensor-config를 함께 명시한다')
     if merge_profile is not None and (args.mode != ('g1g2' if args.official_signal_course else 'g1') or args.race_operation_test
                                       or args.lidar_test_profile or motion_profile):
         raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
     specs = actor_specs(config, case)
     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
-    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial)
+    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire, boundary_refresh=args.handoff_boundary_refresh)
     facility_sources = {}
     world_dir = DEMO_WORLD
     if args.team_signal_course:
@@ -544,11 +588,12 @@ def main():
         world_dir = FIXTURE
     elif args.official_signal_course:
         import official_traffic_course as official
-        facility_sources = official.inputs(args, config, case)
+        world_dir = TRACK_WORLDS[args.track]
+        facility_sources = official.inputs(args, config, case, world_dir, args.track)
     selected_course = args.team_signal_course or args.official_signal_course
     if handoff_arguments and ((not selected_course and (args.case not in ('stop_restart','slow_lead') or args.actor_overlay))
             or args.seed != 0 or
-            args.race_operation_test or lidar_profile or motion_profile or args.partial_observation_policy != 'strict'
+            args.race_operation_test or (lidar_profile and not g1g2_lidar_stress) or motion_profile or args.partial_observation_policy != 'strict'
             or args.zero_speed_mode != 'legacy' or args.physics_step
             or args.corridor_fallback or args.short_boundary_prefix or args.parallel_hold_trial
             or args.pass_release_trial or args.traffic_recovery_trial or args.guard_curve_trial
@@ -575,7 +620,7 @@ def main():
     output = args.output.resolve()
     if not output.is_relative_to(REPO/'artifacts'):
         raise ValueError('output must be under artifacts')
-    centerline, scene = load_centerline(world_dir) if args.team_signal_course else load_centerline()
+    centerline, scene = load_centerline(world_dir)
     s0 = actor_start_s(config, scene, args.seed, case)
     lateral = actor_lateral_offset(config, case)
     route = check_route(config, centerline, case, s0, road_polygon(world_dir/'world.sdf'),
@@ -634,6 +679,8 @@ def main():
               'actor_sdf_sha256': sha256(actor_path), 'route_check': route,
               'straight_section': route if route['kind'] == 'straight' else None,
               'actor_visible_section': actor_cfg['visible_section'], 'started_wall_monotonic': time.monotonic()}
+    if args.track != DEMO_TRACK:
+        report['track'] = args.track
     if args.local_sensor_config is not None:
         sensor_path = Path(args.local_sensor_config).resolve(strict=True)
         report['local_sensor_config'] = {'path': str(sensor_path), 'sha256': sha256(sensor_path)}
@@ -665,6 +712,8 @@ def main():
         # 평가 전용 구동 대조일 때만 기록한다. 기본 보고서 형식은 유지한다.
         report['drivetrain_evaluation'] = {'zero_speed_mode': args.zero_speed_mode,
                                            'physics_step_override_s': args.physics_step}
+    if args.grass_alignment != 'original':
+        report['grass_alignment_requested'] = args.grass_alignment
     rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
     node = rclpy.create_node('g1b_traffic_validator')
     state, trace, scans, drive_stamps, acquisition_records = {}, [], [], [], []
@@ -823,7 +872,10 @@ def main():
 
     try:
         extra = [f'evaluation_actor_sdf:={actor_path}', *partial_arguments, *parallel_arguments, *release_arguments,
-                 *guard_arguments, *recovery_arguments, *path_recovery_arguments, *handoff_arguments]
+                 *guard_arguments, *recovery_arguments, *path_recovery_arguments, *handoff_arguments,
+                 *corner_arguments]
+        if corner_arguments:
+            report['piecewise_wall_requested'] = True
         if handoff_arguments:
             report.update(boundary_evidence_mode='corner_distance_candidate', occupancy_timing_mode='per_ray_candidate',
                 handoff_reserve=args.handoff_reserve, handoff_launch_arguments=handoff_arguments,
@@ -856,8 +908,12 @@ def main():
         if args.record_wheel_contacts:
             extra.append('evaluation_wheel_contacts:=true')
         extra += drivetrain_evaluation_arguments(args.zero_speed_mode, args.physics_step)
+        if args.grass_alignment != 'original':
+            extra.append('evaluation_grass_alignment:='+args.grass_alignment)
         if args.local_sensor_config is not None:
             extra.append('local_sensor_config:='+str(Path(args.local_sensor_config).resolve(strict=True)))
+        if args.track != DEMO_TRACK:
+            extra.append('track:='+args.track)
         if args.pilot_marker_z is not None:
             extra.append(f'pilot_marker_z:={args.pilot_marker_z:.3f}')
         processes.append(start_demo_process(
@@ -1259,7 +1315,7 @@ def main():
         if merge_profile is not None:
             try:
                 result = audit_merge_motion(config, case, centerline, s0, t_green, actor,
-                    road_polygon(DEMO_WORLD/'world.sdf'), obstacle_polygons(DEMO_WORLD/'world.sdf'))
+                    road_polygon(TRACK_WORLDS[args.track]/'world.sdf'), obstacle_polygons(TRACK_WORLDS[args.track]/'world.sdf'))
             except Exception as error:
                 result = {'valid': False, 'error': f'{type(error).__name__}: {error}'}
             report['m2_merge_motion'] = result
@@ -1318,7 +1374,7 @@ def main():
             report['m4_operation']['original_traffic_verdict_preserved'] = True
         if handoff_arguments:
             try:
-                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial)
+                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire, boundary_refresh=args.handoff_boundary_refresh)
             except (OSError,KeyError,ValueError,StopIteration) as error:
                 evidence = {'passed':False,'error':repr(error)}
             report['handoff_execution'] = evidence

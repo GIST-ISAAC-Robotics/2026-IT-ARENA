@@ -1,0 +1,1047 @@
+# base sha256 (working tree at check time)
+76606fbe7ac4d23b2c59574f1d597527995d9cc5f23105f5ccf5480006476174  scripts/validate_g1_traffic.py
+0a8ea61d52b615644e4d1c535abab78b80f3e0fd36eff7c707bb138dcfcc66d0  scripts/official_traffic_course.py
+afa9a20c8c2da324f5b9d86a73ba74ebad4d29b9e2e8c38f30793244fcac3f69  scripts/race_ops_eval.py
+e2ede5d59598d7702336a4c0b8421cbfb8390650c1e16c7381f113d8ff0239bc  scripts/summarize_motion_lap.py
+# patched sha256
+24c7224c42d0c577e7f29e0325d1a7f69200e73d8dc97bf98765b683741e57ca  scripts/official_traffic_course.py
+5a5899bce088d538d1edd1c338d7b685113ba5035c7586cbd8f69a8650b853e3  scripts/race_ops_eval.py
+69974341d9f08bccf7e7569cd841b4befa633a95f173da4eea1b47cc5ace98a8  scripts/summarize_motion_lap.py
+10d283a83ed8f686520e01d3025aefe47578338d5580109615962ea9bff197f6  scripts/validate_g1_traffic.py
+f7ebd8c5a445f8fe33e5b4e26afa943273e3c8d156931d788a895baf96c52436  tests/test_traffic_course_track.py
+PY_COMPILE_OK
+......................F...................F............................. [ 13%]
+.....................................................................FFF [ 27%]
+........................................................................ [ 41%]
+F....F.....................ssssssssssssssss............................. [ 55%]
+............................EEE..............F..F...............FFsFFFFF [ 68%]
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 82%]
+FFFFFFFFFFFFFFFFFFFFFF..F............................................... [ 96%]
+..................                                                       [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of test_default_runtime_world_bytes_match_previous_launch[options0] _
+tests/test_physics_step_option.py:32: in previous_launch
+    with zipfile.ZipFile(PREVIOUS_RUN/'source_snapshot.zip') as bundle:
+/usr/lib/python3.12/zipfile/__init__.py:1347: in __init__
+    self.fp = io.open(file, filemode)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-08/zero_speed_v1/flat_passive_damping/source_snapshot.zip'
+_ ERROR at setup of test_default_runtime_world_bytes_match_previous_launch[options1] _
+tests/test_physics_step_option.py:32: in previous_launch
+    with zipfile.ZipFile(PREVIOUS_RUN/'source_snapshot.zip') as bundle:
+/usr/lib/python3.12/zipfile/__init__.py:1347: in __init__
+    self.fp = io.open(file, filemode)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-08/zero_speed_v1/flat_passive_damping/source_snapshot.zip'
+_ ERROR at setup of test_default_runtime_world_bytes_match_previous_launch[options2] _
+tests/test_physics_step_option.py:32: in previous_launch
+    with zipfile.ZipFile(PREVIOUS_RUN/'source_snapshot.zip') as bundle:
+/usr/lib/python3.12/zipfile/__init__.py:1347: in __init__
+    self.fp = io.open(file, filemode)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-08/zero_speed_v1/flat_passive_damping/source_snapshot.zip'
+=================================== FAILURES ===================================
+____________ test_tail_fix_preserves_invalid_run_source_and_verdict ____________
+tests/test_actor_tail_provenance.py:15: in test_tail_fix_preserves_invalid_run_source_and_verdict
+    assert sha(snapshot.read_bytes())==child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-28/bump_traffic_v1/run1_sources.zip'
+__ test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract __
+tests/test_g1_dense_stop.py:87: in test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract
+    assert hashlib.sha256((root/name).read_bytes()).hexdigest() == entry['after']
+E   AssertionError: assert '10d283a83ed8...62ea9bff197f6' == '61917b447bfb...832853d32b994'
+E     - 61917b447bfb1e9984e2e796f37235abf9e0cd9b89897b31243832853d32b994
+E     + 10d283a83ed8f686520e01d3025aefe47578338d5580109615962ea9bff197f6
+_____ test_official_post_rejects_only_the_left_side_scene_on_the_new_world _____
+tests/test_g1_side_occlusion.py:24: in test_official_post_rejects_only_the_left_side_scene_on_the_new_world
+    with pytest.raises(ValueError, match='not wholly off-road'):
+E   Failed: DID NOT RAISE <class 'ValueError'>
+___________ test_side_route_is_wholly_offroad_and_inside_walls[left] ___________
+tests/test_g1_side_occlusion.py:35: in test_side_route_is_wholly_offroad_and_inside_walls
+    road = harness.road_polygon(PRE_POST_WORLD)
+scripts/audit_local_pursuit_road.py:15: in road_polygon
+    root = ET.parse(world_path)
+/usr/lib/python3.12/xml/etree/ElementTree.py:1204: in parse
+    tree.parse(source, parser)
+/usr/lib/python3.12/xml/etree/ElementTree.py:558: in parse
+    source = open(source, "rb")
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/signal_marker_offset_v1/fixture/world.sdf'
+__________ test_side_route_is_wholly_offroad_and_inside_walls[right] ___________
+tests/test_g1_side_occlusion.py:35: in test_side_route_is_wholly_offroad_and_inside_walls
+    road = harness.road_polygon(PRE_POST_WORLD)
+scripts/audit_local_pursuit_road.py:15: in road_polygon
+    root = ET.parse(world_path)
+/usr/lib/python3.12/xml/etree/ElementTree.py:1204: in parse
+    tree.parse(source, parser)
+/usr/lib/python3.12/xml/etree/ElementTree.py:558: in parse
+    source = open(source, "rb")
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/signal_marker_offset_v1/fixture/world.sdf'
+___ test_selected_coordinates_and_only_wire_reserve_differs_from_run_profile ___
+tests/test_jr60_adoption_profile.py:59: in test_selected_coordinates_and_only_wire_reserve_differs_from_run_profile
+    run = yaml.safe_load(RUN_PROFILE.read_text(encoding='utf-8'))
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-04/lidar_jr_forward_v1/profiles/jr60p20.yaml'
+______________ test_solo_runner_selects_jr60p20_and_raised_marker ______________
+tests/test_jr60_adoption_profile.py:174: in test_solo_runner_selects_jr60p20_and_raised_marker
+    recorded = json.loads(RUN_RECORD.read_text(encoding='utf-8'))['args']
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-04/lidar_jr_forward_v1/jr60p20_1_registered.json'
+______________________ test_launch_argument_default_empty ______________________
+/opt/ros/jazzy/lib/python3.12/site-packages/ament_index_python/packages.py:60: in get_package_prefix
+    content, package_prefix = get_resource('packages', package_name)
+/opt/ros/jazzy/lib/python3.12/site-packages/ament_index_python/resources.py:92: in get_resource
+    raise LookupError(
+E   LookupError: Could not find the resource 'arena_description' of type 'packages'
+
+During handling of the above exception, another exception occurred:
+tests/test_physics_step_option.py:110: in test_launch_argument_default_empty
+    description = launch.generate_launch_description()
+src/arena_bringup/launch/simulation.launch.py:1471: in generate_launch_description
+    description_share = Path(get_package_share_directory("arena_description"))
+/opt/ros/jazzy/lib/python3.12/site-packages/ament_index_python/packages.py:82: in get_package_share_directory
+    path = os.path.join(get_package_prefix(package_name), 'share', package_name)
+/opt/ros/jazzy/lib/python3.12/site-packages/ament_index_python/packages.py:62: in get_package_prefix
+    raise PackageNotFoundError(
+E   ament_index_python.packages.PackageNotFoundError: "package 'arena_description' not found, searching: ['/opt/ros/jazzy']"
+_______________ test_contract_records_evaluation_script_changes ________________
+tests/test_physics_step_option.py:142: in test_contract_records_evaluation_script_changes
+    previous = json.loads((PREVIOUS_RUN/'report.json').read_text())['source_sha256']
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-08/zero_speed_v1/flat_passive_damping/report.json'
+___ test_short_boundary_prefix_successor_preserves_before_and_current_bytes ____
+tests/test_source_provenance_r0_plus_b3.py:28: in test_short_boundary_prefix_successor_preserves_before_and_current_bytes
+    assert sha(snapshot.read_bytes())==child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-27/short_prefix_connection_v1/before.zip'
+_______ test_r0_plus_e3_successor_links_head_bytes_to_recorded_run_bytes _______
+tests/test_source_provenance_r0_plus_b3.py:72: in test_r0_plus_e3_successor_links_head_bytes_to_recorded_run_bytes
+    report = json.loads((ROOT/contract['after_source']['report']).read_text(encoding='utf-8'))['source_sha256']
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-24/e3_onroad_v1/r0plus/report.json'
+__________ test_b3_successor_continues_r0_plus_and_preserves_b3_bytes __________
+tests/test_source_provenance_r0_plus_b3.py:121: in test_b3_successor_continues_r0_plus_and_preserves_b3_bytes
+    report = json.loads((ROOT/contract['newly_tracked_before_source']['e3_report']).read_text(encoding='utf-8'))
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-24/e3_onroad_v1/r0plus/report.json'
+_____ test_moving_pass_revisions_link_registered_sources_and_before_bytes ______
+tests/test_source_provenance_r0_plus_b3.py:168: in test_moving_pass_revisions_link_registered_sources_and_before_bytes
+    assert sha(before.read_bytes())==child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/moving_pass_v1/before.zip'
+_________ test_local_signal_successor_preserves_failed_five_car_source _________
+tests/test_source_provenance_r0_plus_b3.py:185: in test_local_signal_successor_preserves_failed_five_car_source
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-27/official_departure_v2/local_signal_before.zip'
+_ test_m3_successor_records_current_bytes_without_rewriting_previous_contract __
+tests/test_source_provenance_r0_plus_b3.py:238: in test_m3_successor_records_current_bytes_without_rewriting_previous_contract
+    assert m3_revision_digest(path) == row['after'] != row['before']
+tests/test_source_provenance_r0_plus_b3.py:212: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '10d283a83ed8...62ea9bff197f6' == '76606fbe7ac4...5480006476174'
+E     - 76606fbe7ac4d23b2c59574f1d597527995d9cc5f23105f5ccf5480006476174
+E     + 10d283a83ed8f686520e01d3025aefe47578338d5580109615962ea9bff197f6
+____________ test_command_selection_continues_m3_recorded_run_bytes ____________
+tests/test_source_provenance_r0_plus_b3.py:253: in test_command_selection_continues_m3_recorded_run_bytes
+    assert m3_revision_digest(path) == row['before'] == expected
+tests/test_source_provenance_r0_plus_b3.py:212: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '10d283a83ed8...62ea9bff197f6' == '76606fbe7ac4...5480006476174'
+E     - 76606fbe7ac4d23b2c59574f1d597527995d9cc5f23105f5ccf5480006476174
+E     + 10d283a83ed8f686520e01d3025aefe47578338d5580109615962ea9bff197f6
+________ test_baseline_release_continues_command_selection_run13_bytes _________
+tests/test_source_provenance_r0_plus_b3.py:268: in test_baseline_release_continues_command_selection_run13_bytes
+    assert row['before'] == parent_rows[path]['after'] == m3_revision_digest(path, newer_than=M3_SUCCESSORS[0])
+tests/test_source_provenance_r0_plus_b3.py:212: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '10d283a83ed8...62ea9bff197f6' == '76606fbe7ac4...5480006476174'
+E     - 76606fbe7ac4d23b2c59574f1d597527995d9cc5f23105f5ccf5480006476174
+E     + 10d283a83ed8f686520e01d3025aefe47578338d5580109615962ea9bff197f6
+_________ test_release_gate_continues_preserved_rejected_release_bytes _________
+tests/test_source_provenance_r0_plus_b3.py:284: in test_release_gate_continues_preserved_rejected_release_bytes
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[1]) == row['before']
+tests/test_source_provenance_r0_plus_b3.py:212: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '10d283a83ed8...62ea9bff197f6' == '76606fbe7ac4...5480006476174'
+E     - 76606fbe7ac4d23b2c59574f1d597527995d9cc5f23105f5ccf5480006476174
+E     + 10d283a83ed8f686520e01d3025aefe47578338d5580109615962ea9bff197f6
+_____________ test_small_center_continues_release_gate_run19_bytes _____________
+tests/test_source_provenance_r0_plus_b3.py:303: in test_small_center_continues_release_gate_run19_bytes
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[2]) == row['before']
+tests/test_source_provenance_r0_plus_b3.py:212: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '10d283a83ed8...62ea9bff197f6' == '76606fbe7ac4...5480006476174'
+E     - 76606fbe7ac4d23b2c59574f1d597527995d9cc5f23105f5ccf5480006476174
+E     + 10d283a83ed8f686520e01d3025aefe47578338d5580109615962ea9bff197f6
+________________ test_surface_commitment_continues_run32_source ________________
+tests/test_source_provenance_r0_plus_b3.py:315: in test_surface_commitment_continues_run32_source
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[3]) == row['before']
+tests/test_source_provenance_r0_plus_b3.py:212: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '10d283a83ed8...62ea9bff197f6' == '76606fbe7ac4...5480006476174'
+E     - 76606fbe7ac4d23b2c59574f1d597527995d9cc5f23105f5ccf5480006476174
+E     + 10d283a83ed8f686520e01d3025aefe47578338d5580109615962ea9bff197f6
+_________________ test_retained_threats_continues_run35_source _________________
+tests/test_source_provenance_r0_plus_b3.py:327: in test_retained_threats_continues_run35_source
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[4]) == row['before']
+tests/test_source_provenance_r0_plus_b3.py:212: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '10d283a83ed8...62ea9bff197f6' == '76606fbe7ac4...5480006476174'
+E     - 76606fbe7ac4d23b2c59574f1d597527995d9cc5f23105f5ccf5480006476174
+E     + 10d283a83ed8f686520e01d3025aefe47578338d5580109615962ea9bff197f6
+_________ test_sensor_stress_only_extends_evaluator_option_after_run55 _________
+tests/test_source_provenance_r0_plus_b3.py:341: in test_sensor_stress_only_extends_evaluator_option_after_run55
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[6]) == row['after'] != row['before']
+tests/test_source_provenance_r0_plus_b3.py:212: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '10d283a83ed8...62ea9bff197f6' == '76606fbe7ac4...5480006476174'
+E     - 76606fbe7ac4d23b2c59574f1d597527995d9cc5f23105f5ccf5480006476174
+E     + 10d283a83ed8f686520e01d3025aefe47578338d5580109615962ea9bff197f6
+____ test_m4_operation_successor_preserves_run59_and_changes_no_controller _____
+tests/test_source_provenance_r0_plus_b3.py:350: in test_m4_operation_successor_preserves_run59_and_changes_no_controller
+    with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+/usr/lib/python3.12/zipfile/__init__.py:1347: in __init__
+    self.fp = io.open(file, filemode)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-25/m3_execution_review_v1/run59_narrow_offset_lead/run/source_snapshot.zip'
+__________ test_m4_clock_boundary_preserves_original_evaluator_bytes ___________
+tests/test_source_provenance_r0_plus_b3.py:368: in test_m4_clock_boundary_preserves_original_evaluator_bytes
+    with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+/usr/lib/python3.12/zipfile/__init__.py:1347: in __init__
+    self.fp = io.open(file, filemode)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-25/m3_execution_review_v1/run61_b3_same_race/run/source_snapshot.zip'
+__________________ test_m4_new_race_only_extends_test_harness __________________
+tests/test_source_provenance_r0_plus_b3.py:379: in test_m4_new_race_only_extends_test_harness
+    with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+/usr/lib/python3.12/zipfile/__init__.py:1347: in __init__
+    self.fp = io.open(file, filemode)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-25/m3_execution_review_v1/run63_m4_new_race_preflight/before_sources.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[10] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-26/m3_return_command_guard_v1/baseline_sources.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[11] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-26/m4_second_start_v1/before_harness_sources.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[12] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-26/m2_merge_preparation_v1/before_integration_sources.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[13] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-26/m3_cost_preserving_v1/before_integration_sources.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[14] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-26/m2_motion_stress_v1/before_sources.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[15] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-26/m2_motion_stress_v1/count_fix_before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[16] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-26/m2_motion_stress_v1/schema_fix_before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[17] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-10-26/official_v2026_10_24_update/m5_publication_before_v3.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[56] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/signed_forward_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[57] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/race_continuity_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[58] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/race_continuity_v1/before_course_profile.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[59] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/race_continuity_v1/before_selector.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[60] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/corner_approach_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[61] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/race_follow_pair_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[62] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/race_follow_pair_v1/slow_lead_before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[63] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/official_prelap_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[64] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/race_follow_closing_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[65] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/turn_preview_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[66] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/mixed_course_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[67] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/race_acceleration_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[68] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/rolling_lead_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[69] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/qualifying_profile_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[70] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/rolling_lead_recent_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[71] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/follow_continuity_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[72] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/yield_progress_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[73] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/released_rear_sweep_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[74] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/low_speed_arc_reacquire_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[75] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/solo_route_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[76] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/solo_headway_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[77] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/sweep_batch_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[78] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/follow_bundle_refresh_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[79] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/released_fringe_budget_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[80] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/solo_corridor_arc_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[81] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/solo_ray_join_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[82] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/solo_preview_gate_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[83] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/solo_corner_handoff_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[84] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_facility_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[85] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_start_roi_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[86] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_forward_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[87] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_forward_rejoin_v2/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[88] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_forward_pace_v3/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[89] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_traffic_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[90] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_traffic_v1/before_eval_fix.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[91] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_ops_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[92] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_ops_recovery_v2/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[93] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_ops_traffic_v3/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[94] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_ops_browser_v4/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[95] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_ops_route_v5/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[96] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/solo_alternative_speed_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[97] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/handoff_profile_bundle_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[98] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/same_call_reference_v1/before.zip'
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[99] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/entry_obstruction_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[100] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/solo_ray_combination_v1/profile_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[101] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/official_camera_mount_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[102] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/standing_steering_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[103] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-02/observed_gap_recovery_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[104] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-03/post_free_facility_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[105] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-03/ordinary_resume_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[106] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-03/irregular_actor_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[107] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-03/right_reapproach_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[108] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-03/side_departure_runtime_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[109] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-03/side_departure_runtime_v1/rear_fix_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[110] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-03/side_departure_runtime_v1/selector_fix_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[111] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-03/rear_lane_continuity_v1/runtime_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[112] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-04/lidar_mount_performance_v1/runtime_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[113] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-04/lidar_mount_adapted_v2/runtime_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[114] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-04/lidar_mount_speed_v4/pilot_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[115] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-04/lidar_mount_speed_v4/runtime_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[116] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-04/lidar_mount_speed_v4/launch_forwarding_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[117] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-04/lidar_jr60_adoption_v1/traffic_marker_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[118] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/lidar_structure_review_v1/structure_gate_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[119] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/moving_follow_continuity_v1/continuity_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[120] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/moving_pass_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[121] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/moving_pass_v1/witness_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[122] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/moving_pass_v1/abort_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[123] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/moving_pass_v1/rejoin_before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[124] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/moving_pass_v1/../moving_pass_withdrawal_v1/before_r13.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[125] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/moving_pass_v1/../moving_pass_withdrawal_v1/before_r14.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[126] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/solo_straight_refresh_v1/apply_live/before_r15.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[127] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-05/moving_pass_handoff_v1/before_r16.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[128] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-07/track_migration_v1/before_r1.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[129] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-07/b0390_course_baseline_v1/before_camera_migration.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[130] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-07/course_section_v1/before.zip'
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[131] __
+tests/test_source_provenance_r0_plus_b3.py:391: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-07/piecewise_corner_v1/before.zip'
+___________ test_actual_sdf_composition_and_offroad_route_is_labeled ___________
+tests/test_traffic_actor_integration.py:24: in test_actual_sdf_composition_and_offroad_route_is_labeled
+    runner.road_polygon(PRE_POST_WORLD), runner.obstacle_polygons(PRE_POST_WORLD),
+scripts/audit_local_pursuit_road.py:15: in road_polygon
+    root = ET.parse(world_path)
+/usr/lib/python3.12/xml/etree/ElementTree.py:1204: in parse
+    tree.parse(source, parser)
+/usr/lib/python3.12/xml/etree/ElementTree.py:558: in parse
+    source = open(source, "rb")
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-01/signal_marker_offset_v1/fixture/world.sdf'
+___________ test_unspecified_outline_preserves_old_sdf_byte_for_byte ___________
+tests/test_traffic_actor_outline.py:17: in test_unspecified_outline_preserves_old_sdf_byte_for_byte
+    old = (ROOT/'artifacts/validation/2026-11-03/irregular_actor_v1/legacy_actor.sdf').read_text()
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+/usr/lib/python3.12/pathlib.py:1015: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/jinhyeong/arena_scratch/traffic_course_migration_v1/artifacts/validation/2026-11-03/irregular_actor_v1/legacy_actor.sdf'
+=========================== short test summary info ============================
+FAILED tests/test_actor_tail_provenance.py::test_tail_fix_preserves_invalid_run_source_and_verdict
+FAILED tests/test_g1_dense_stop.py::test_evaluation_changes_have_explicit_successor_not_rewritten_old_contract
+FAILED tests/test_g1_side_occlusion.py::test_official_post_rejects_only_the_left_side_scene_on_the_new_world
+FAILED tests/test_g1_side_occlusion.py::test_side_route_is_wholly_offroad_and_inside_walls[left]
+FAILED tests/test_g1_side_occlusion.py::test_side_route_is_wholly_offroad_and_inside_walls[right]
+FAILED tests/test_jr60_adoption_profile.py::test_selected_coordinates_and_only_wire_reserve_differs_from_run_profile
+FAILED tests/test_jr60_adoption_profile.py::test_solo_runner_selects_jr60p20_and_raised_marker
+FAILED tests/test_physics_step_option.py::test_launch_argument_default_empty
+FAILED tests/test_physics_step_option.py::test_contract_records_evaluation_script_changes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_short_boundary_prefix_successor_preserves_before_and_current_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_r0_plus_e3_successor_links_head_bytes_to_recorded_run_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_b3_successor_continues_r0_plus_and_preserves_b3_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_moving_pass_revisions_link_registered_sources_and_before_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_local_signal_successor_preserves_failed_five_car_source
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_m3_successor_records_current_bytes_without_rewriting_previous_contract
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_command_selection_continues_m3_recorded_run_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_baseline_release_continues_command_selection_run13_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_release_gate_continues_preserved_rejected_release_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_small_center_continues_release_gate_run19_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_surface_commitment_continues_run32_source
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_retained_threats_continues_run35_source
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_sensor_stress_only_extends_evaluator_option_after_run55
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_m4_operation_successor_preserves_run59_and_changes_no_controller
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_m4_clock_boundary_preserves_original_evaluator_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_m4_new_race_only_extends_test_harness
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[10]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[11]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[12]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[13]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[14]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[15]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[16]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[17]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[56]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[57]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[58]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[59]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[60]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[61]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[62]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[63]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[64]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[65]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[66]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[67]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[68]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[69]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[70]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[71]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[72]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[73]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[74]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[75]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[76]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[77]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[78]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[79]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[80]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[81]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[82]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[83]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[84]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[85]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[86]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[87]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[88]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[89]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[90]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[91]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[92]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[93]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[94]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[95]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[96]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[97]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[98]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[99]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[100]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[101]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[102]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[103]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[104]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[105]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[106]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[107]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[108]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[109]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[110]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[111]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[112]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[113]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[114]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[115]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[116]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[117]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[118]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[119]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[120]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[121]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[122]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[123]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[124]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[125]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[126]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[127]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[128]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[129]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[130]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[131]
+FAILED tests/test_traffic_actor_integration.py::test_actual_sdf_composition_and_offroad_route_is_labeled
+FAILED tests/test_traffic_actor_outline.py::test_unspecified_outline_preserves_old_sdf_byte_for_byte
+ERROR tests/test_physics_step_option.py::test_default_runtime_world_bytes_match_previous_launch[options0]
+ERROR tests/test_physics_step_option.py::test_default_runtime_world_bytes_match_previous_launch[options1]
+ERROR tests/test_physics_step_option.py::test_default_runtime_world_bytes_match_previous_launch[options2]
+111 failed, 391 passed, 17 skipped, 3 errors in 23.19s

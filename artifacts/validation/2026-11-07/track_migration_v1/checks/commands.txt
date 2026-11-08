@@ -1,0 +1,11 @@
+# 2026-11-07 v2026.11.06 이관 실행 명령(저장소 루트, Git Bash → WSL). 순서대로 실행했다.
+MSYS_NO_PATHCONV=1 wsl.exe -e bash -lc "bash '<repo>/artifacts/validation/2026-11-07/track_migration_v1/run_tests.sh' baseline $(cat checks/affected_test_files.txt)"   # 편집 전
+MSYS_NO_PATHCONV=1 wsl.exe -e bash -lc "bash '<repo>/artifacts/validation/2026-11-07/track_migration_v1/build.sh'"            # 재현 대조·새 월드 생성·check 2종·옛 해시
+python -I -B artifacts/validation/2026-11-07/track_migration_v1/audit_world_diff.py                                           # Windows Python, 공식 대비 전수 diff
+MSYS_NO_PATHCONV=1 wsl.exe -e bash -lc "bash '<repo>/artifacts/validation/2026-11-07/track_migration_v1/run_tests.sh' after1 <affected> tests/test_official_track_v2026_11_06.py"   # 계약 전(실패 42건 증가)
+python -I -B artifacts/validation/2026-11-07/track_migration_v1/prepare_contract.py                                           # 후속 출처 계약 생성
+MSYS_NO_PATHCONV=1 wsl.exe -e bash -lc "bash '<repo>/artifacts/validation/2026-11-07/track_migration_v1/run_tests.sh' after2 <affected> tests/test_official_track_v2026_11_06.py"
+MSYS_NO_PATHCONV=1 wsl.exe -e bash -lc "bash '<repo>/artifacts/validation/2026-11-07/track_migration_v1/colcon.sh'"           # arena_gazebo, arena_bringup
+MSYS_NO_PATHCONV=1 wsl.exe -e bash -lc "bash '<repo>/artifacts/validation/2026-11-07/track_migration_v1/render.sh' render_v1"      # 실패 보존(도구 변수 가림 오류, Gazebo 시작 전)
+MSYS_NO_PATHCONV=1 wsl.exe -e bash -lc "bash '<repo>/artifacts/validation/2026-11-07/track_migration_v1/launch_probe.sh' launch_probe_v1"
+MSYS_NO_PATHCONV=1 wsl.exe -e bash -lc "bash '<repo>/artifacts/validation/2026-11-07/track_migration_v1/render.sh' render_v2"      # 수정 후 1회

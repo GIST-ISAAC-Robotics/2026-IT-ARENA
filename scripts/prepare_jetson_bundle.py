@@ -6,6 +6,9 @@ import json
 from pathlib import Path
 import tarfile
 
+from python_dependency_closure import (CLOSURE_VERSION, PACKAGE_ROOTS, SCRIPT_ROOTS, TEST_ROOTS,
+                                       collect, third_party)
+
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES = ('arena_autonomy', 'arena_vehicle_interface')
 SCRIPTS = ('replay_sensor_bag.py', 'replay_observer.py', 'audit_sensor_bag.py', 'audit_replay_delivery.py',
@@ -37,46 +40,50 @@ SENSOR_PROBE_TOOLS = (
     'tests/test_sensor_probe_inputs.py', 'tests/test_sensor_probe_session.py',
     'docs/hardware/SENSOR_PROBE_RUNBOOK.md',
 )
-FOLLOW_PROFILE_TOOLS = (
+# 판단 비용·실물 입력 감사의 명시 진입점. 내부 모듈은 고정 목록 대신 정적 import 폐포로 모은다.
+# test_follow_profile.py는 보조 시험을 통해 ROS·영상 의존을 끌어오므로 최소 묶음에서 제외한다.
+FOLLOW_PROFILE_ENTRIES = (
     'scripts/profile_follow_trace.py', 'scripts/audit_hardware_capture.py', 'scripts/verify_follow_profile_bundle.py',
-    'scripts/audit_follow_occupancy.py', 'tests/test_follow_occupancy_audit.py',
+    'scripts/audit_follow_occupancy.py', 'tests/test_follow_occupancy_audit.py', 'tests/test_hardware_capture_audit.py',
+)
+FOLLOW_PROFILE_DATA = (
     'config/tests/hardware_capture_nominal_v1.jsonl',
-    'src/arena_vehicle_interface/arena_vehicle_interface/__init__.py',
-    'src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py',
-    'src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py',
-    'src/arena_autonomy/arena_autonomy/__init__.py',
-    *(f'src/arena_autonomy/arena_autonomy/{name}.py' for name in
-      ('follow_trace', 'local_follow', 'r0_plus', 'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'continuous_prefix', 'bypass_corridor_trial', 'bypass_handoff_corridor_trial', 'bypass_initial_reference', 'bypass_motion_pause_trial', 'bypass_preparation_hold', 'bypass_relative_yield', 'bypass_relative_yield_pause', 'bypass_signed_hold_trial', 'local_scene', 'scene_motion',
-         'bypass_yield_progress', 'front_patch_motion', 'released_rear_sweep', 'static_side_return', 'turn_preview',
-         'lidar_motion', 'lidar_observation', 'local_path', 'occupancy_timing',
-         'observation_support', 'observation_lateral', 'linear_observation',
-         'parallel_lane_trial', 'partial_observation', 'partial_surface_alignment', 'pass_release_trial', 'traffic_recovery_trial',
-         'traffic_path_recovery_trial', 'corridor_roles', 'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial', 'rear_lane_keep_trial', 'observed_lane_preference_trial', 'observed_parallel_speed_trial', 'measured_lane_preference_trial', 'measured_parallel_speed_trial', 'measured_parallel_trial', 'fresh_parallel_trial', 'fresh_parallel_speed_trial')),
-    'tests/test_follow_profile.py', 'tests/test_hardware_capture_audit.py',
     'docs/hardware/HARDWARE_CAPTURE_AUDIT_2026_10_13.md',
     'docs/simulation/G1_DECISION_PROFILE_2026_10_13.md',
-    'src/arena_autonomy/arena_autonomy/lateral_intent.py',
-    'src/arena_autonomy/arena_autonomy/m3_execution_trial.py',
-    'src/arena_autonomy/arena_autonomy/m3_observed_follow.py',
-    'src/arena_autonomy/arena_autonomy/observed_lateral_trial.py',
-    'src/arena_autonomy/arena_autonomy/polygon_batch.py',
-    'src/arena_autonomy/arena_autonomy/rounded_occupancy_candidate.py',
-    'src/arena_autonomy/arena_autonomy/scan_topology.py',
 )
+FOLLOW_PROFILE_ROOTS = PACKAGE_ROOTS + SCRIPT_ROOTS + TEST_ROOTS
+FOLLOW_PROFILE_THIRD_PARTY = ('numpy', 'pytest')  # ROS·DDS·영상 의존은 이 묶음 밖이다.
+FOLLOW_PROFILE_TOOLS_VERSION = 2
 
 
-def follow_profile_files(traces):
+def follow_profile_closure(base=None):
+    closure = collect(FOLLOW_PROFILE_ENTRIES, base=base or ROOT, roots=FOLLOW_PROFILE_ROOTS)
+    extra = sorted(set(third_party(closure))-set(FOLLOW_PROFILE_THIRD_PARTY))
+    if extra:
+        raise ValueError(f'follow-profile bundle must not depend on {extra}')
+    return closure
+
+
+def follow_profile_tools(base=None):
+    return tuple(follow_profile_closure(base)['files'])+FOLLOW_PROFILE_DATA
+
+
+def follow_profile_files(traces, tools=None):
     """비공개 원시 입력은 artifacts 아래 명시된 JSONL만. 폴더 전체 수집 금지."""
-    files = [ROOT/name for name in FOLLOW_PROFILE_TOOLS]
     if not traces:
         raise ValueError('at least one explicit follow trace required')
+    paths = []
     for trace in traces:
         path = Path(trace).resolve()
         if (not path.is_relative_to((ROOT/'artifacts').resolve()) or not path.is_file()
-                or path.suffix != '.jsonl' or path in files):
+                or path.suffix != '.jsonl' or path in paths):
             raise ValueError('unique artifact JSONL trace required')
-        files.append(path)
-    return files
+        paths.append(path)
+    # 원시 입력 검사를 먼저 끝낸 뒤 도구 폐포를 계산한다. 도구 목록에는 artifacts JSONL이 없다.
+    files = [ROOT/name for name in (follow_profile_tools() if tools is None else tools)]
+    if set(files) & set(paths):
+        raise ValueError('unique artifact JSONL trace required')
+    return files+paths
 
 
 def digest(path):
@@ -124,7 +131,9 @@ def main():
         raise ValueError('follow-profile-only and explicit follow-trace must be supplied together')
     subset = (SENSOR_PROBE_TOOLS if args.sensor_probe_tools_only else IMU_PROBE_TOOLS if args.imu_probe_tools_only else ('scripts/replay_sensor_bag.py', 'scripts/run_jetson_replay_trial.py', 'scripts/replay_imu_probe.py')
               if args.imu_trace_tools_only else DDS_TOOLS if args.dds_tools_only else ())
-    files = follow_profile_files(args.follow_trace) if args.follow_profile_only else [ROOT/name for name in subset]
+    closure = follow_profile_closure() if args.follow_profile_only else None
+    files = (follow_profile_files(args.follow_trace, tuple(closure['files'])+FOLLOW_PROFILE_DATA)
+             if args.follow_profile_only else [ROOT/name for name in subset])
     if not subset and not args.follow_profile_only:
         for package in PACKAGES:
             files.extend(p for p in (ROOT/'src'/package).rglob('*') if p.is_file()
@@ -146,6 +155,11 @@ def main():
     manifest.write_text(json.dumps(dict(files=inventory, archive_size=archive.stat().st_size,
         includes_recording=includes_recording,
         **({'sensor_probe_tools_version': 4} if args.sensor_probe_tools_only else {}),
+        **(dict(follow_profile_tools_version=FOLLOW_PROFILE_TOOLS_VERSION,
+                dependency_closure=dict(version=CLOSURE_VERSION, entries=list(FOLLOW_PROFILE_ENTRIES),
+                    roots=list(FOLLOW_PROFILE_ROOTS), files=len(closure['files']), modules=len(closure['modules']),
+                    external=closure['external'], allowed_third_party=list(FOLLOW_PROFILE_THIRD_PARTY)))
+           if args.follow_profile_only else {}),
         includes_follow_traces=args.follow_profile_only,
         bundle_mode='sensor-probe-tools-only' if args.sensor_probe_tools_only else 'follow-profile-only' if args.follow_profile_only else 'imu-probe-tools-only' if args.imu_probe_tools_only else 'imu-trace-tools-only' if args.imu_trace_tools_only else 'dds-tools-only' if args.dds_tools_only else 'source',
         archive_sha256=digest(archive),

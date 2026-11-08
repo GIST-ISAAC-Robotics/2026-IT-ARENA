@@ -43,6 +43,9 @@ class LidarSafety(Node):
         if self.signed_motion_policy not in ('legacy_hold', 'forward_drive'):
             raise ValueError('unknown signed motion policy')
         policy = str(self.declare_parameter('partial_observation_policy', 'strict').value)
+        oblique = bool(self.declare_parameter('g1_oblique_gap_trial', False).value)
+        if oblique and policy != 'bounded_local_v4':
+            raise ValueError('oblique gap safety trial requires explicit v4')
         traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
         if traffic_recovery and policy != 'bounded_local_v4':
             raise ValueError('traffic recovery safety requires explicit v4 policy')
@@ -68,7 +71,8 @@ class LidarSafety(Node):
                     str(self.get_parameter('lidar_blind_sectors_json').value))
             self.partial_policy = PartialObservationPolicy(allow_narrow_forward=policy in ('bounded_local_v2','bounded_local_v3','bounded_local_v4'),
                                                           surface_translation_enabled=policy in ('bounded_local_v3','bounded_local_v4'),
-                                                          lateral_metric_enabled=policy=='bounded_local_v4')
+                                                          lateral_metric_enabled=policy=='bounded_local_v4',
+                                                          oblique_metric_enabled=oblique)
         self.observation_cache = None
         self.observation_epoch = 0
         self.previous_safe_steering = 0.

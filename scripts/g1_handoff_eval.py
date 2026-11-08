@@ -2,9 +2,13 @@
 import json
 
 
-def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False):
+def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False, moving_profile='slow_v1', wall_witness=False, standing_reacquire=False, boundary_refresh=False):
+    if moving_profile not in ('slow_v1', 'medium_v1', 'faster_v1') or (moving_profile != 'slow_v1' and not moving_pass):
+        raise ValueError('moving pass profile requires an explicit moving pass trial')
+    if wall_witness and not observed_motion:
+        raise ValueError('wall witness requires explicit observed handoff motion')
     if mode != 'g1g2':
-        if reserve is not None or progress or rear_sweep or observed_motion or side_departure or current_lane or continuous_pace or moving_pass:
+        if reserve is not None or progress or rear_sweep or observed_motion or side_departure or current_lane or continuous_pace or moving_pass or wall_witness or standing_reacquire or boundary_refresh:
             raise ValueError('reserve comparison is only defined for the G1/G2 trial')
         return []
     if (reserve not in ('fixed', 'moving','closing','recent','low_motion','paced') or not recorded or
@@ -20,12 +24,16 @@ def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sw
     if moving_pass and not continuous_pace:
         raise ValueError('moving pass requires continuous forward pace')
     extra = ['evaluation_handoff_yield_progress:=true'] if progress else []
+    if wall_witness:extra.append('evaluation_handoff_wall_witness:=true')
+    if standing_reacquire:extra.append('g1_standing_wall_reacquire:=true')
+    if boundary_refresh:extra.append('g1_traffic_boundary_refresh_trial:=true')
     if rear_sweep:extra.append('evaluation_handoff_rear_sweep:=true')
     if observed_motion:extra.append('evaluation_handoff_observed_motion:=true')
     if side_departure:extra.append('evaluation_side_departure_trial:=true')
     if current_lane:extra.append('evaluation_current_lane_preference_trial:=true')
     if continuous_pace:extra.append('evaluation_handoff_continuous_pace:=true')
-    if moving_pass:extra.append('evaluation_moving_pass_trial:=true')
+    if moving_pass:extra.extend(['evaluation_moving_pass_trial:=true',
+                                  f'evaluation_moving_pass_profile:={moving_profile}'])
     return extra + [f'evaluation_handoff_reserve:={reserve}',
             'g1_boundary_evidence_mode:=corner_distance_candidate', 'g1_occupancy_timing_mode:=per_ray_candidate',
             'partial_observation_policy:=bounded_local_v4', 'g1_corridor_fallback_enabled:=true',
@@ -33,13 +41,15 @@ def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sw
             'g1_guard_curve_trial:=true', 'g1_traffic_recovery_trial:=true', 'g1_traffic_path_recovery_trial:=true']
 
 
-def inspect_header(path, reserve, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False):
+def inspect_header(path, reserve, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False, moving_profile='slow_v1', wall_witness=False, standing_reacquire=False, boundary_refresh=False):
     with path.open(encoding='utf-8') as stream:
         first = json.loads(next(stream))
     header = first['data']; f = header['follow_config']; e = header['execution_config']
     checks = dict(header=first['kind']=='header', mode=header.get('controller_mode')=='g1_g2_handoff_trial',
         normal_path=all(f.get(k) is True for k in ('corridor_fallback_enabled', 'short_boundary_prefix_enabled',
             'parallel_hold_trial','pass_release_trial','guard_curve_trial','traffic_recovery_trial','traffic_path_recovery_trial')),
+        standing_reacquire=f.get('standing_wall_reacquire',False) is standing_reacquire,
+        boundary_refresh=f.get('traffic_boundary_refresh_trial',False) is boundary_refresh,
         normal_speed=f.get('open_route_speed_mps')==1.5, occupancy=f.get('occupancy_timing_mode')=='per_ray_candidate',
         boundary=f.get('boundary_evidence_mode')=='corner_distance_candidate',
         observation=f.get('partial_observation_policy')=='bounded_local_v4',
@@ -52,6 +62,8 @@ def inspect_header(path, reserve, *, progress=False, rear_sweep=False, observed_
         observed_forward_pace=e.get('observed_forward_pace',False) is (observed_motion and reserve=='paced'),
         continuous_pace=e.get('continuous_forward_pace',False) is continuous_pace,
         moving_pass=e.get('moving_pass_trial',False) is moving_pass,
+        moving_profile=e.get('moving_pass_profile','slow_v1') == moving_profile,
+        wall_witness=e.get('bypass',{}).get('rear_wall_witness',False) is wall_witness,
         observed_rejoin=(e.get('reacquire_policy') == 'observed_rejoin_v2') is observed_motion,
         motor_policy=f.get('signed_motion_policy')=='forward_drive', entry=e.get('follow_entry_space_enabled') is True,
         reserve=e.get('moving_follow_reserve') is (reserve in ('moving','closing','recent','low_motion','paced')),

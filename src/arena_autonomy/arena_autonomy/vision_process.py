@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from arena_autonomy.core import StartSignal, image_rgb, marker_ids
+from arena_autonomy.core import StartSignal, image_rgb, marker_ids, marker_observations
 
 
 def make_start_signal(mode):
@@ -19,6 +19,9 @@ def make_start_signal(mode):
     if mode == 'official_4red_local_candidate':
         from arena_autonomy.race_start_local import LocalOfficialStartSignal
         return LocalOfficialStartSignal()
+    if mode == 'official_marker_late_candidate':
+        from arena_autonomy.race_start_marker import MarkerAnchoredStartSignal
+        return MarkerAnchoredStartSignal()
     raise ValueError('unsupported visual start mode')
 
 
@@ -30,16 +33,25 @@ def recognize(request, data):
     signal_mode = request.get('signal_mode', 'temporary_3light')
     start = make_start_signal(signal_mode)
     start.__dict__.update(copy.deepcopy(request['signal']))
-    if signal_mode in ('official_4red_candidate', 'official_4red_local_candidate'):
-        start.update(rgb, request['stamp'])
+    if signal_mode == 'official_marker_late_candidate':
+        observations = marker_observations(rgb, .02)
+        marked = time.perf_counter_ns()
+        start.update(rgb, request['stamp'], observations)
+        ended = time.perf_counter_ns()
+        ids = sorted({identity for identity, _ in observations})
+        signal_ms, markers_ms = (ended-marked)/1e6, (marked-decoded)/1e6
     else:
-        start.update(rgb)
-    signaled = time.perf_counter_ns()
-    ids = sorted(set(marker_ids(rgb, .02)))
-    ended = time.perf_counter_ns()
+        if signal_mode in ('official_4red_candidate', 'official_4red_local_candidate'):
+            start.update(rgb, request['stamp'])
+        else:
+            start.update(rgb)
+        signaled = time.perf_counter_ns()
+        ids = sorted(set(marker_ids(rgb, .02)))
+        ended = time.perf_counter_ns()
+        signal_ms, markers_ms = (signaled-decoded)/1e6, (ended-signaled)/1e6
     return dict(epoch=request['epoch'], sequence=request['sequence'], stamp=request['stamp'],
         signal=vars(start), signal_mode=signal_mode, ids=ids, stages_ms=dict(decode=(decoded-began)/1e6,
-        signal=(signaled-decoded)/1e6, markers=(ended-signaled)/1e6),
+        signal=signal_ms, markers=markers_ms),
         duration_ms=(ended-began)/1e6)
 
 

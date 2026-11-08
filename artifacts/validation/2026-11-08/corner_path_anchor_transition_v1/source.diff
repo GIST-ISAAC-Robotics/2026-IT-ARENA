@@ -1,0 +1,40 @@
+--- /tmp/cpat_before/src/arena_autonomy/arena_autonomy/local_path.py	2026-11-08 07:22:14.000000000 +0900
++++ src/arena_autonomy/arena_autonomy/local_path.py	2026-11-08 08:03:08.961182600 +0900
+@@ -202,9 +202,13 @@
+     # 원래 관측 벽과 그 법선만 사용한다. 36점은 경로 표현 해상도이며 새 센서점이 아니다.
+     path_s = np.r_[0., np.cumsum(np.linalg.norm(np.diff(shifted, axis=0), axis=1))]
+     path = np.column_stack([np.interp(np.linspace(0., path_s[-1], 36), path_s, shifted[:, axis]) for axis in (0, 1)])
+-    return path, {"reason": "local_path", "boundary_samples": len(wall),
+-                  "boundary_observed_ahead_m": float(last-anchor_s),
+-                  "wall_distance_m": float(abs(wall[anchor, 1])), "path_points": path.tolist()}
++    info = {"reason": "local_path", "boundary_samples": len(wall),
++            "boundary_observed_ahead_m": float(last-anchor_s),
++            "wall_distance_m": float(abs(wall[anchor, 1])), "path_points": path.tolist()}
++    if piecewise_corner:
++        # 같은 코너 경로가 관측에 따라 이 곡선 표현으로 바뀌어도 앵커 판정 지표를 유지한다. 진단 전용.
++        info["path_anchor_error_m"] = _origin_error(path)
++    return path, info
+ 
+ 
+ def pursuit_command(points, side, speed, wheelbase=.145, max_steering=.37,
+--- /tmp/cpat_before/src/arena_autonomy/arena_autonomy/local_follow.py	2026-11-08 07:22:30.000000000 +0900
++++ src/arena_autonomy/arena_autonomy/local_follow.py	2026-11-08 08:03:08.961182600 +0900
+@@ -197,12 +197,14 @@
+ 
+ 
+ def anchor_error(details, config):
+-    """경계 앵커 오차. 기본 OFF 한 모서리 경로는 원점에서 생성 경로 선분까지의 거리를 쓴다.
++    """경계 앵커 오차. 기본 OFF 선택형 경로는 원점에서 생성 경로 선분까지의 거리를 쓴다.
+ 
+-    직각 벽을 원호로 도는 차는 벽 y좌표가 오프셋과 달라도 경로 위에 있다. 근접 장애물
+-    여유가 아니므로 앵커 판정에만 쓴다. 값이 없으면 기존 벽 거리 대조, 비유한/음수는 거부한다.
++    직각 벽을 원호로 도는 차는 벽 y좌표가 오프셋과 달라도 경로 위에 있다. 같은 코너가
++    한 모서리 표현(piecewise_corner)과 일반 곡선(wall_model 없음) 사이를 오가도 같은 지표를 쓴다.
++    근접 장애물 여유가 아니므로 앵커 판정에만 쓴다. 값이 없거나 다른 모델이면 기존 벽 거리 대조,
++    비유한/음수는 거부한다.
+     """
+-    if (config.piecewise_wall_trial and details.get('wall_model') == 'piecewise_corner'
++    if (config.piecewise_wall_trial and details.get('wall_model') in (None, 'piecewise_corner')
+             and 'path_anchor_error_m' in details):
+         try:
+             value = float(details['path_anchor_error_m'])

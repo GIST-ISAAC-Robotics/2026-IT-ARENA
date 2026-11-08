@@ -1,0 +1,37 @@
+profile: official_v2026.11.06
+status: official_610mm_right_angle_2x5_signal_without_bump_team_lamp_control_no_track_post
+upstream_repository: https://github.com/MOSW626/istech-it-arena
+upstream_commit: 45691aec825ebfe4ff3edd9f221118e0c5026d1a
+upstream_release: v2026.11.06
+release_asset: it_arena_track_v2026.11.06.zip
+release_sha256: d1f3fbc1c16c6901130f260f5baa80ebf00040bcbaf3ccdb175e63738ed325fa
+
+# 공식 v2026.11.06: 본선 0.61 m·지름길 0.20 m(공식 design/scene), 직각 코너. 폭 기준은 빌더 릴리스 등록에 둡니다.
+# 기존 v2026.11.01 파생 정책 재사용: 11/2 사용자 확인(실제 코스 안에 기둥 없음)에 따라 tl_post 시각/충돌만 제외합니다.
+# 신호 가로대·패널·10광원과 마커·검정 그리드·도로·잔디·벽·재질·물성은 공식 원본 그대로입니다.
+# 공식 광원은 상시 발광 정적 재질이므로 파생본은 광원 재질만 소등으로 시작하고 팀 시뮬 제어기가 전환합니다.
+# 결승 체크무늬는 기존 팀 표시(공식 s=0, 폭은 그 지점 도로 폭)입니다. 제어기 상수·카메라는 이 프로필 범위가 아닙니다.
+facilities:
+  status: official_v2026.11.06_2x5_signal_black_grid_no_bump_team_lamp_control_finish_no_track_post
+  traffic_light:
+    representation: official_2x5
+    initial_state: 'off'
+    remove_track_post: true
+  markers:
+    representation: official_pbr_texture
+    mount_type: gantry
+    orientation_mode: official_pose
+    printed_board_size_m: 0.10
+    black_square_size_m: 0.07
+    quiet_zone_m: 0.015
+    bottom_height_m: 0.35
+  starting_grid:
+    representation: official_filled_slots
+    length_m: 0.25
+    width_m: 0.17
+    center_height_m: 0.0037
+    thickness_m: 0.001
+  finish_line:
+    depth_m: 0.10
+    cells_across: 9
+    rows: 2

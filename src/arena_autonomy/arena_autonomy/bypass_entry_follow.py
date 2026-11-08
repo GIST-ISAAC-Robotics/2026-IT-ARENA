@@ -17,6 +17,7 @@ class BypassExecutionConfig:
     corridor_policy: str = 'off'
     # 앞차 가까이 멈춘 뒤에도 조향 한계 안의 등록 전이를 후보로 고른다. 점유 검사는 그대로다.
     steerable_transition: bool = False
+    rear_wall_witness: bool = False
 
     def __post_init__(self):
         if any(type(value) is not bool for key,value in vars(self).items() if key!='corridor_policy'):
@@ -50,6 +51,7 @@ class BypassEntryFollow:
             prefer_earlier_transition=self.execution.prefer_earlier_transition),
             stationary_outer_boundary=self.execution.stationary_outer_boundary,
             wall_reanchor=self.execution.wall_reanchor,tracked_wall_fit=self.execution.tracked_wall_fit,
+            rear_wall_witness=self.execution.rear_wall_witness,
             rejoin_enabled=self.execution.rejoin_enabled,**options)
         if self.execution.steerable_transition:
             self.guide.steerable_transition=True
@@ -58,10 +60,13 @@ class BypassEntryFollow:
         self.guide.reset()
 
     def command(self,scene,history,speed,side,previous_steering,dt,*,raw_scan=None):
+        self.guide.raw_scan=raw_scan
         planning=forward_planning_speed(self.config,speed)
         result=self.guide.evaluate(scene,history,planning,previous_steering,dt)
         chosen=result['selected']
         target,steering=(0.,previous_steering) if chosen is None else (chosen['speed_mps'],chosen['steering_rad'])
+        if chosen is None and result.get('preview_alignment'):
+            steering=result['preview_alignment']['requested_rad']
         detail={**result,'mode':'g2_entry_trial','behavior':'BYPASS' if target>0 else 'HOLD',
             'passing_enabled':True,'simulation_trial_only':True,'automatic_race_mode_selection':False,
             'output_requires_independent_guard':True,'source_first_s':scene.source_first_s,

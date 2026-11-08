@@ -455,10 +455,20 @@ class RaceSupervisor:
         if self.resume is not None or self.recovery_intervention == self.permission.intervention:
             # 복구 RESET 뒤의 해제는 입력 경계를 지나는 START 한 경로뿐이다.
             return self._result(request, op, False, 'recovery_requires_start')
+        prepare_late = (not self.permission.started and
+                        getattr(self.vision, 'signal_mode', None) == 'official_marker_late_candidate')
+        if prepare_late and (not _finite(now_s) or now_s < 0):
+            return self._result(request, op, False, 'invalid_preparation_stamp')
         if not self.permission.acknowledge(race_epoch=payload['race_epoch'],
                 intervention=payload['intervention'], hazards_cleared=payload['hazards_cleared'],
                 operator_reviewed=payload['operator_reviewed']):
             return self._result(request, op, False, 'acknowledge_rejected')
+        if prepare_late:
+            # 준비 전 시험 녹색을 이후 출발 사실로 재사용하지 않는다.
+            # 영상 작업 세대와 촬영시각 경계만 변경하며 MCU/주행을 허가하지 않는다.
+            self._reset_vision()
+            self.vision.input_floor_s = now_s
+            self._event('visual_start_prepared', capture_boundary_s=now_s)
         self._event('acknowledged')
         return self._result(request, op, True, 'policy_latch_cleared_mcu_and_sensors_still_required')
 

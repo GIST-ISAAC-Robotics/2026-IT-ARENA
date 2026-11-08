@@ -18,6 +18,8 @@ spec.loader.exec_module(launch)
 import analyze_physics_step as analysis  # noqa: E402
 import probe_braking_contact as probe  # noqa: E402
 import validate_g1_traffic as g1  # noqa: E402
+from provenance_chain_helpers import expected_parent  # noqa: E402
+from test_source_provenance_r0_plus_b3 import B3, CHAIN, M3_SUCCESSORS, R0E3  # noqa: E402
 
 OFFICIAL = ROOT/'src/arena_gazebo/worlds/it_arena_official/world.sdf'
 PREVIOUS_RUN = ROOT/'artifacts/validation/2026-10-08/zero_speed_v1/flat_passive_damping'
@@ -141,21 +143,19 @@ def test_contract_records_evaluation_script_changes():
     # 직전 1 ms 실행이 기록한 실행 소스 해시가 변경 전 값이다.
     previous = json.loads((PREVIOUS_RUN/'report.json').read_text())['source_sha256']
     # 10/8 격자 발행 후속 계약이 probe의 다음 변경을 등록한다. 이 계약은 소급 수정하지 않는다.
+    scheduled = tuple(f'config/tests/scheduled_command_r{i}_sha256.json' for i in range(8))
+    # 그 뒤 후속 계약 순서는 소스 출처 검사의 공통 목록(M3_SUCCESSORS)을 그대로 따른다.
     chain, parent = [], 'config/tests/physics_step_r0_sha256.json'
-    for name in ('scheduled_command_r0_sha256.json', 'scheduled_command_r1_sha256.json', 'scheduled_command_r2_sha256.json',
-                 'scheduled_command_r3_sha256.json', 'scheduled_command_r4_sha256.json', 'scheduled_command_r5_sha256.json',
-                 'scheduled_command_r6_sha256.json', 'scheduled_command_r7_sha256.json',
-                 'follow_trace_r0_sha256.json', 'fragmented_boundary_r0_sha256.json', 'dense_stop_evidence_r0_sha256.json',
-                 'lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json',
-                 'r0_plus_e3_r0_sha256.json', 'b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json', 'partial_observation_r0_sha256.json', 'profile_bundle_selector_r0_sha256.json', 'g1_course_evaluation_r0_sha256.json', 'short_boundary_prefix_r0_sha256.json', 'local_start_signal_r0_sha256.json', 'traffic_recovery_trial_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'small_alignment_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'g2_handoff_manifest_r1_sha256.json', 'rear_lane_keep_r1_sha256.json', 'observed_lane_preference_r1_sha256.json', 'measured_lane_preference_r1_sha256.json', 'fresh_confirmation_r2_sha256.json'):
-        successor = json.loads((ROOT/'config/tests'/name).read_text())
+    for name in (*scheduled, 'config/tests/follow_trace_r0_sha256.json', 'config/tests/fragmented_boundary_r0_sha256.json',
+                 *('config/tests/'+n for n in CHAIN), R0E3, B3, 'config/tests/m3_execution_r0_sha256.json', *M3_SUCCESSORS):
+        successor = json.loads((ROOT/name).read_text())
+        # 직전 계약에 잇는다. 실제 기록된 분기만 helper의 정확한 이름쌍을 따른다.
+        parent = expected_parent(name, parent)
         assert successor['parent_contract'] == parent
-        if name in ('follow_trace_r0_sha256.json', 'fragmented_boundary_r0_sha256.json', 'dense_stop_evidence_r0_sha256.json',
-                    'lidar_stress_eval_r0_sha256.json', 'per_ray_occupancy_r0_sha256.json', 'corner_anchor_r0_sha256.json', 'corner_distance_r0_sha256.json', 'corridor_fallback_r0_sha256.json', 'recent_observation_r0_sha256.json',
-                 'r0_plus_e3_r0_sha256.json', 'b3_race_session_r0_sha256.json', 'm3_execution_r0_sha256.json', 'm3_command_selection_r0_sha256.json', 'm3_baseline_release_r0_sha256.json', 'm3_release_gate_r0_sha256.json', 'm3_small_center_r0_sha256.json', 'm3_surface_commitment_r0_sha256.json', 'm3_retained_threats_r0_sha256.json', 'm3_sensor_stress_r0_sha256.json', 'm4_operation_r0_sha256.json', 'm4_operation_clock_r0_sha256.json', 'm4_new_race_r0_sha256.json', 'm3_guarded_return_r0_sha256.json', 'm4_second_start_r0_sha256.json', 'm2_merge_r0_sha256.json', 'm3_exact_cost_r0_sha256.json', 'm2_motion_stress_r0_sha256.json', 'm2_count_fault_r0_sha256.json', 'm2_motion_config_r0_sha256.json', 'm5_publication_r0_sha256.json', 'partial_observation_r0_sha256.json', 'profile_bundle_selector_r0_sha256.json', 'g1_course_evaluation_r0_sha256.json', 'short_boundary_prefix_r0_sha256.json', 'local_start_signal_r0_sha256.json', 'traffic_recovery_trial_r0_sha256.json', 'traffic_recovery_release_fringe_r1_sha256.json', 'traffic_path_recovery_r0_sha256.json', 'traffic_anchor_set_r1_sha256.json', 'traffic_speed_recheck_r1_sha256.json', 'traffic_positive_clearance_r1_sha256.json', 'traffic_positive_bundle_r1_sha256.json', 'traffic_side_scope_r1_sha256.json', 'traffic_manifest_r1_sha256.json', 'short_prefix_origin_r1_sha256.json', 'rotation_reobservation_r1_sha256.json', 'actor_tail_capture_r1_sha256.json', 'small_alignment_r1_sha256.json', 'rolling_clearance_r1_sha256.json', 'fresh_scan_wait_r1_sha256.json', 'g2_handoff_manifest_r1_sha256.json', 'rear_lane_keep_r1_sha256.json', 'observed_lane_preference_r1_sha256.json', 'measured_lane_preference_r1_sha256.json', 'fresh_confirmation_r2_sha256.json'):
+        if name not in scheduled:
             assert hashlib.sha256((ROOT/parent).read_bytes()).hexdigest() == successor['parent_contract_sha256']
         chain.append(successor)
-        parent = 'config/tests/'+name
+        parent = name
     for path, change in scripts.items():
         assert change['before'] == previous[path]
         latest = change

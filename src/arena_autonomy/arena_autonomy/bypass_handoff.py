@@ -1,5 +1,5 @@
 """명시 시뮬레이션 G1/G2 전환. 낮은 이동 반환은 정지/물체 신원 증명이 아니다."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import math
 import numpy as np
 
@@ -56,6 +56,7 @@ class HandoffExecutionConfig:
     # 이번 새 스캔에서 양수일 때만 고정 우회 여유 상한에 그 전진율을 더한다.
     continuous_forward_pace: bool = False
     moving_pass_trial: bool = False
+    moving_pass_profile: str = 'slow_v1'
     reacquire_policy: str = 'positive_command_v0'
     front_patch_policy: str = 'contiguous_three_v0'
     entry_policy: str = 'registered_v0'
@@ -65,10 +66,17 @@ class HandoffExecutionConfig:
     relative_yield_policy: str = 'off'
     # 전방 조각이 전진하기 시작한 스캔의 우회 진입을 막는 선택형 근거. 정지 판정이 아니다.
     entry_motion_gate: bool = False
+    stopped_entry_centering: bool = False
+    adaptive_entry_preview: bool = False
 
     def __post_init__(self):
         if not isinstance(self.bypass, BypassExecutionConfig):
             raise ValueError('typed bypass execution configuration required')
+        if type(self.adaptive_entry_preview) is not bool or (self.adaptive_entry_preview and self.entry_policy != 'corridor_local_v1'):
+            raise ValueError('adaptive preview requires explicit corridor handoff')
+        if type(self.stopped_entry_centering) is not bool or (self.stopped_entry_centering and not (
+                self.entry_policy == 'corridor_local_v1' and self.low_motion_reserve and self.entry_motion_gate)):
+            raise ValueError('stopped entry centering requires observed low-motion corridor handoff')
         if self.preparation_policy not in PREPARATION_POLICIES:
             raise ValueError('registered preparation policy required')
         if self.persistence_window_policy not in PERSISTENCE_WINDOWS:
@@ -97,6 +105,9 @@ class HandoffExecutionConfig:
         if type(self.moving_pass_trial) is not bool or (self.moving_pass_trial and (
                 not self.continuous_forward_pace or self.entry_policy != 'corridor_local_v1')):
             raise ValueError('moving pass requires continuous forward pace and corridor trial')
+        if self.moving_pass_profile not in ('slow_v1', 'medium_v1', 'faster_v1') or (
+                self.moving_pass_profile != 'slow_v1' and not self.moving_pass_trial):
+            raise ValueError('moving pass profile requires an explicit moving pass trial')
         if self.follow_entry_space_enabled and (self.preparation_policy != 'observed_entry_space_v1'
                 or self.persistence_window_policy != 'trim_before_compare_v1'):
             raise ValueError('follow entry space requires explicit space and bounded window policies')
@@ -315,6 +326,11 @@ class BypassHandoffFollow:
         self.execution = execution or HandoffExecutionConfig()
         if not isinstance(self.execution, HandoffExecutionConfig):
             raise ValueError('typed handoff execution configuration required')
+        if self.execution.moving_pass_profile == 'faster_v1':
+            from arena_autonomy.moving_pass import moving_pass_profile
+            bound = moving_pass_profile(self.execution.moving_pass_profile).object_motion_bound_mps
+            # 명시 빠른 상대 후보는 일반 추종/진입/복귀에서 같은 시차 운동 예산을 쓴다.
+            self.config = replace(self.config, object_motion_bound_mps=max(bound, self.config.object_motion_bound_mps))
         required = ('parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial',
                     'traffic_recovery_trial', 'traffic_path_recovery_trial', 'corridor_fallback_enabled')
         if (self.config.partial_observation_policy != 'bounded_local_v4'
@@ -336,6 +352,11 @@ class BypassHandoffFollow:
                 from arena_autonomy.bypass_motion_pause_trial import OverspeedHoldGuide
                 guide_type = OverspeedHoldGuide
             configure_guide(self,guide_type)
+            self.bypass.guide.adaptive_preview=self.execution.adaptive_entry_preview
+            if self.execution.adaptive_entry_preview:
+                from arena_autonomy.adaptive_corridor_offset import AdaptiveCorridorEntryConfig
+                expanded = AdaptiveCorridorEntryConfig(**vars(self.bypass.guide.registered_entry))
+                self.bypass.guide.registered_entry = self.bypass.guide.entry = expanded
         self.monitor = BlockingPersistence(self.execution, self.config.object_motion_bound_mps, self.config.open_route_speed_mps)
         self.mode = 'FOLLOW'; self.last_key = None; self.last_ref = None
         self.reacquire = 0
@@ -377,8 +398,14 @@ class BypassHandoffFollow:
         전방 조각 소실 자체는 근거가 아니다. G2가 이미 복귀를 선택하고, G1의 실제
         경계/점유 검사와 측방 이력이 양수 경로를 허용할 때만 기존 두 스캔 확인에 진입한다.
         """
+        phase=candidate[2].get('entry_phase')
+        if self.execution.bypass.rear_wall_witness and phase is None:
+            # HOLD도 실제 복귀 단계를 지우지 않는다. G2 벽 길이 거절은 G1의
+            # 현재 경로/점유/측방 검사를 통과한 출력으로 인계할 수 없다는 뜻이 아니다.
+            # 입력·시각 고장은 guide.reset()이 entry로 돌리므로 과거 허가를 잇지 않는다.
+            phase=self.bypass.guide.phase
         if (self.execution.reacquire_policy != 'observed_rejoin_v2'
-                or candidate[2].get('entry_phase') != 'rejoin' or normal[0] <= 0):
+                or phase != 'rejoin' or normal[0] <= 0):
             return False
         nd = normal[2]
         path, sides = nd.get('path_points'), nd.get('selector_sides')
@@ -666,6 +693,19 @@ class BypassHandoffFollow:
                     detail['entry_space']['hold'] = True
                 else:
                     detail['entry_space']['hold'] = False
+            hold_steer = normal[1]
+            if (self.execution.stopped_entry_centering and target == 0. and speed == 0.
+                    and normal[0] > 0. and normal[2].get('selector_choice') == 'baseline'
+                    and persistence.get('ready') and not self._front_patch_advancing()
+                    and detail.get('follow_entry_space', {}).get('reason') == 'observed_entry_distance_reserve'):
+                # 정지한 단일 모터축의 최근 표본을 확인한다. 차체 속도/물체 신원의 증명은 아니다.
+                # 정상 G1은 전진을 허용했으나 우회 여유만 0인 동안, 기존 3 rad/s로 명령을 정렬한다.
+                # 속도를 만들거나 우회 진입 조건을 바꾸지 않는다. 양수 우회 후보는 아래 원 검사로만 나온다.
+                from arena_autonomy.stopped_entry_centering import stopped_shaft_window
+                if stopped_shaft_window(history, scene.t_ref_s):
+                    hold_steer = math.copysign(max(0., abs(previous) - 3. * dt), previous)
+                    detail['stopped_entry_centering'] = dict(previous_rad=previous, requested_rad=hold_steer,
+                        new_motion_authorized=False, shaft_quiet_window_s=.20)
             # .35는 출력 상한이다. 28카운트/15:1의 20 ms 속도 양자화로 측정값은
             # .340/.365를 오가므로 이를 입력 허용선으로 쓰면 관측을 매번 버린다.
             # 측정 속도는 그대로 G2에 전달하여 기존 반응/제동 영역에서 검사한다.
@@ -680,7 +720,7 @@ class BypassHandoffFollow:
                     if (chosen['offset_m'], chosen['transition_m']) not in usable:
                         self._discard_path_only()
                         detail['entry_admission']['admitted'] = False
-                        return self._output(target, normal[1], detail, 'handoff_follow')
+                        return self._output(target, hold_steer, detail, 'handoff_follow')
                     detail['entry_admission']['admitted'] = True
                 if chosen is not None and chosen['offset_m'] != 0. and candidate[0] > 0:
                     selected_side = 'left' if chosen['offset_m'] > 0 else 'right'
@@ -692,7 +732,7 @@ class BypassHandoffFollow:
                     self.bypass.reset()
             else:
                 self._discard_path_only()
-            return self._output(target, normal[1], detail, 'handoff_follow')
+            return self._output(target, hold_steer, detail, 'handoff_follow')
         candidate = self.bypass.command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
         detail['bypass'] = candidate[2]
         centered = candidate[2].get('entry_phase') == 'centered'

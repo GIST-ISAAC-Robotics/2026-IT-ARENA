@@ -1,0 +1,51 @@
+{
+  "scope": "r27 registered args (traffic_faster_reacquire_live_v1/two_actor_course_lap) with byte-identical config/overlay copies in this folder; A uses these args, B appends only the registered lidar profile",
+  "r27_registered": "artifacts/validation/2026-11-08/traffic_faster_reacquire_live_v1/two_actor_course_lap/registered.json",
+  "copied_inputs": {
+    "artifacts/validation/2026-11-08/g1g2_lidar_stress_pair_v1/new_track_course.json": "artifacts/validation/2026-11-08/traffic_faster_reacquire_live_v1/new_track_course.json",
+    "artifacts/validation/2026-11-08/g1g2_lidar_stress_pair_v1/actor_overlay.json": "artifacts/validation/2026-11-08/traffic_faster_reacquire_live_v1/additional_actors.json"
+  },
+  "common_args": [
+    "scripts/validate_g1_traffic.py",
+    "--mode",
+    "g1g2",
+    "--handoff-reserve",
+    "paced",
+    "--handoff-yield-progress",
+    "--handoff-rear-sweep",
+    "--official-signal-course",
+    "--config",
+    "artifacts/validation/2026-11-08/g1g2_lidar_stress_pair_v1/new_track_course.json",
+    "--case",
+    "two_actor_course_lap",
+    "--seed",
+    "0",
+    "--record-follow-decisions",
+    "--handoff-observed-motion",
+    "--side-departure-trial",
+    "--current-lane-preference-trial",
+    "--local-sensor-config",
+    "src/arena_description/config/b0390_c1_jr60p20_sim.yaml",
+    "--pilot-marker-z",
+    "0.140",
+    "--handoff-continuous-pace",
+    "--moving-pass-trial",
+    "--track",
+    "official_v2026_11_06",
+    "--output",
+    "OUTPUT",
+    "--grass-alignment",
+    "road_level",
+    "--g1-piecewise-wall",
+    "--handoff-wall-witness",
+    "--moving-pass-profile",
+    "medium_v1",
+    "--actor-overlay",
+    "artifacts/validation/2026-11-08/g1g2_lidar_stress_pair_v1/actor_overlay.json",
+    "--handoff-standing-wall-reacquire"
+  ],
+  "b_only_args": [
+    "--lidar-test-profile",
+    "config/tests/lidar_uniform30_delay50_jitter20.json"
+  ]
+}

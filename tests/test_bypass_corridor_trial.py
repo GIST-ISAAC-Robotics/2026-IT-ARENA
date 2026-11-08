@@ -256,7 +256,20 @@ def test_corridor_trace_replays_and_status_stays_json_safe(tmp_path):
 
 def test_default_launches_and_files_do_not_select_the_policy():
     root = Path(__file__).resolve().parents[1]
-    for name in ('simulation.launch.py', 'demo.launch.py', 'local_pursuit.launch.py', 'g1_follow.launch.py'):
+    for name in ('demo.launch.py', 'local_pursuit.launch.py', 'g1_follow.launch.py'):
         assert 'g2_corridor_policy' not in (root/'src/arena_bringup/launch'/name).read_text()
     assert "declare_parameter('g2_corridor_policy','off')" in (root/'src/arena_autonomy/arena_autonomy/g2_entry_node.py').read_text(encoding='utf-8')
+    # simulation.launch는 명시 평가 옵션을 지원한다. 문자열의 존재가 기본 활성화는 아니다.
+    import ast
+    from test_bypass_handoff import test_default_launch_and_drive_boundary_unchanged
+    test_default_launch_and_drive_boundary_unchanged()
+    tree=ast.parse((root/'src/arena_bringup/launch/simulation.launch.py').read_text())
+    parents={child:node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
+    selected=[node for node in ast.walk(tree) if isinstance(node,ast.keyword) and node.arg=='g1_g2_corridor_policy']
+    assert selected
+    for node in selected:
+        ancestors=[]
+        while node in parents:
+            node=parents[node];ancestors.append(node)
+        assert any(isinstance(a,ast.If) and ast.unparse(a.test)=="reserve != 'off'" for a in ancestors)
     assert LocalPursuit.__name__ == 'LocalPursuit'

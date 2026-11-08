@@ -1,0 +1,47 @@
+Traceback (most recent call last):
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-08/corner_r46_transition_audit_v1/capture.py", line 70, in <module>
+    out=freeze(replay_call(c,d['input'],mc))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/follow_trace.py", line 181, in replay_call
+    return follow.command(scene, history, data['speed_mps'], data['side'],
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/bypass_handoff.py", line 612, in command
+    output = self.moving_pass.command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/moving_pass.py", line 473, in command
+    normal = owner._base_command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/bypass_handoff.py", line 619, in _base_command
+    output = self._relative_yield.command(self, scene, planning,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/bypass_relative_yield_pause.py", line 48, in command
+    output=evaluate()
+           ^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/bypass_handoff.py", line 620, in <lambda>
+    lambda: self._prepared_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/bypass_handoff.py", line 629, in _prepared_command
+    output = self._command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/bypass_handoff.py", line 649, in _command
+    normal = self.normal.command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_follow.py", line 488, in command
+    output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_follow.py", line 502, in _forward_command
+    output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_follow.py", line 517, in _observed_command
+    return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_follow.py", line 567, in _partial_command
+    output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/local_follow.py", line 594, in _path_command
+    baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt,
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-08/corner_r46_transition_audit_v1/capture.py", line 37, in baseline
+    prior = dict(wall=self.path_wall, source=self.path_source, reference=self.path_ref, age=scene.t_ref_s-self.path_source, present=self.path is not None)
+                                                                                            ~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+TypeError: unsupported operand type(s) for -: 'float' and 'NoneType'

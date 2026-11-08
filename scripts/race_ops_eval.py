@@ -32,6 +32,8 @@ PORT = 18765
 VEHICLE = 'eval_car'
 SOURCES = ('race_session', 'local_pursuit', 'wall_follow', 'vision_process', 'lidar_motion_ros', 'lidar_safety',
            'race_ops_core', 'race_ops_node', 'race_ops_export', 'race_ops_page')
+# 정지·재배치·상대 s좌표와 ID30·섬 통과 판정을 등록한 track. 다른 track은 재등록 전 실행하지 않는다.
+REGISTERED_SCENARIOS = {'official': ('representative', 'across_marker', 'parked_recovery', 'browser_stop')}
 
 
 def digest(path):
@@ -146,11 +148,11 @@ class Truth:
 
 
 class Course:
-    def __init__(self):
-        route = np.genfromtxt(WORLD/'centerline.csv', delimiter=',', names=True)
+    def __init__(self, world=WORLD):
+        route = np.genfromtxt(world/'centerline.csv', delimiter=',', names=True)
         self.xy = np.column_stack((route['x_m'], route['y_m']))
         self.s = route['s_m']
-        self.branch = np.genfromtxt(WORLD/'branch_1.csv', delimiter=',', skip_header=1, usecols=(0, 1))
+        self.branch = np.genfromtxt(world/'branch_1.csv', delimiter=',', skip_header=1, usecols=(0, 1))
 
     def nearest(self, x, y):
         index = int(np.argmin(np.sum((self.xy-(x, y))**2, axis=1)))
@@ -461,6 +463,7 @@ class Scenario:
 
 
 def main():
+    from validate_basic_autonomy import DEMO_TRACK, TRACK_WORLDS
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--scenario', choices=('representative', 'across_marker', 'parked_recovery', 'browser_stop'), default='representative')
@@ -472,9 +475,17 @@ def main():
     parser.add_argument('--across-watch-s', type=float, default=15.)
     parser.add_argument('--wall-limit-s', type=float, default=2400.)
     parser.add_argument('--wall-scale', type=float, default=14., help='시뮬 초당 벽시계 초 여유. 평가 환경 실시간 비율 약 0.09 기준')
+    parser.add_argument('--track', choices=tuple(TRACK_WORLDS), default=DEMO_TRACK,
+                        help='실행·평가 월드. 운영 시나리오를 등록한 track만 실행한다.')
+    parser.add_argument('--local-sensor-config', type=Path, help='센서 프로필 명시 선택. 기본 track 외에는 필수')
     args = parser.parse_args()
     if args.browser_stop and args.scenario != 'parked_recovery':
         parser.error('--browser-stop requires parked_recovery')
+    if args.track != DEMO_TRACK and args.local_sensor_config is None:
+        parser.error('새 코스 운영 시험은 --local-sensor-config를 명시한다')
+    if args.scenario not in REGISTERED_SCENARIOS.get(args.track, ()):
+        parser.error(f'{args.track}의 {args.scenario} 운영 시나리오는 미등록이다. 옛 정지·재배치·상대 s좌표를 옮겨 쓰지 않고 재등록한다')
+    world = TRACK_WORLDS[args.track]
     output = args.output.resolve()
     output.relative_to(REPO/'artifacts')
     output.mkdir(parents=True, exist_ok=False)
@@ -487,6 +498,9 @@ def main():
     sources = {f'src/arena_autonomy/arena_autonomy/{name}.py': digest(REPO/f'src/arena_autonomy/arena_autonomy/{name}.py')
                for name in SOURCES}
     sources['scripts/race_ops_eval.py'] = digest(__file__)
+    if args.track != DEMO_TRACK:
+        for name in ('world.sdf', 'scene.json', 'centerline.csv', 'branch_1.csv'):
+            sources[(world/name).relative_to(REPO).as_posix()] = digest(world/name)
     traffic = args.scenario == 'parked_recovery'
     if traffic:
         from validate_g1_traffic import actor_sdf, source_paths
@@ -501,6 +515,8 @@ def main():
             for relative in sources:
                 snapshot.write(REPO/relative, relative)
     report = dict(scenario=args.scenario, started_wall=time.time(), source_sha256=sources, passed=False, steps=[])
+    if args.track != DEMO_TRACK:
+        report['track'] = args.track
     log_path = output/'simulation.log'
     log = log_path.open('w', encoding='utf-8')
     extra = g1_solo_arguments(True, 'corner_distance_candidate', 'per_ray_candidate', True, output, True, False)
@@ -508,10 +524,16 @@ def main():
                                        'g1_guard_curve_trial', 'g1_traffic_recovery_trial', 'g1_traffic_path_recovery_trial')]
     extra += ['partial_observation_policy:=bounded_local_v4', 'race_control_mode:=b3_candidate',
               'g1_standing_wall_reacquire:=true']
+    if args.track != DEMO_TRACK:
+        extra.append('track:='+args.track)
+    if args.local_sensor_config is not None:
+        sensor_path = args.local_sensor_config.resolve(strict=True)
+        report['local_sensor_config'] = dict(path=str(sensor_path), sha256=digest(sensor_path))
+        extra.append(f'local_sensor_config:={sensor_path}')
     if traffic:
         config = json.loads(config_path.read_text(encoding='utf-8'))
         actor_path = output/'parked_actor.sdf'
-        actor_pose = Course().pose(2.1)
+        actor_pose = Course(world).pose(2.1)
         actor_path.write_text(actor_sdf(config, actor_pose), encoding='utf-8')
         report['actor_evaluation_only'] = dict(s_m=2.1, pose=actor_pose, config=config['actor'])
         extra += [f'evaluation_actor_sdf:={actor_path}', 'evaluation_handoff_reserve:=paced',
@@ -548,7 +570,7 @@ def main():
             if time.monotonic() > deadline:
                 raise Stop('no truth pose')
             time.sleep(.2)
-        course = Course()
+        course = Course(world)
         if traffic:
             report['contact_topic_info'] = subprocess.run(['gz', 'topic', '-i', '-t', '/eval/g1b_actor/contact'],
                 capture_output=True, text=True, timeout=10.).stdout

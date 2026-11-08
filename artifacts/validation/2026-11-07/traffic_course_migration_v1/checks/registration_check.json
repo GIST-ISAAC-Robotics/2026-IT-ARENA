@@ -1,0 +1,309 @@
+{
+ "scope": "Gazebo 미실행. 평가 전용 위치·거부·launch 인자 확인이며 주행 결과가 아님",
+ "proposal_positions_new_track": {
+  "slow_lead": {
+   "route_check": {
+    "kind": "straight",
+    "actor_start_s_m": 43.26,
+    "actor_end_s_m": 47.46,
+    "first_corner_s_m": 51.34
+   },
+   "actor_start_pose": [
+    9.8,
+    5.12,
+    1.5707963267948966
+   ],
+   "actor_end_pose": [
+    9.8,
+    9.32,
+    1.5707963267948966
+   ],
+   "ego_slot": {
+    "index": 3,
+    "s_m": 41.66,
+    "x": 9.89,
+    "y": 3.52,
+    "yaw_rad": 1.5708
+   },
+   "ego_to_actor_center_m": 1.6025292509030842,
+   "actor_end_to_corner_m": 3.8800000000000026,
+   "actor_start_inside_road": true
+  },
+  "straight_moving_lead": {
+   "route_check": {
+    "kind": "side_road_straight",
+    "actor_start_s_m": 43.26,
+    "actor_end_s_m": 47.888,
+    "first_corner_s_m": 51.34,
+    "lateral_offset_m": -0.12,
+    "actor_onroad_samples": 464,
+    "maximum_sample_step_m": 0.01,
+    "minimum_sampled_road_edge_distance_m": 0.11000000000000124,
+    "scope": "fixed actor sampled route only; not ego passing clearance or continuous motion proof"
+   },
+   "actor_start_pose": [
+    9.92,
+    5.12,
+    1.5707963267948966
+   ],
+   "actor_end_pose": [
+    9.92,
+    9.747999999999998,
+    1.5707963267948966
+   ],
+   "ego_slot": {
+    "index": 3,
+    "s_m": 41.66,
+    "x": 9.89,
+    "y": 3.52,
+    "yaw_rad": 1.5708
+   },
+   "ego_to_actor_center_m": 1.600281225285106,
+   "actor_end_to_corner_m": 3.4520000000000053,
+   "actor_start_inside_road": true
+  }
+ },
+ "refusals": {
+  "proposal_on_default_track": {
+   "refused": true,
+   "message": "교통 설정은 track=official_v2026_11_06 기준이다. official에서는 장면·s좌표·판정을 재등록해야 한다"
+  },
+  "config/tests/official_traffic_v1.json_on_new_track": {
+   "refused": true,
+   "message": "교통 설정은 track=official 기준이다. official_v2026_11_06에서는 장면·s좌표·판정을 재등록해야 한다"
+  },
+  "artifacts/validation/2026-11-05/moving_pass_withdrawal_v1/course.json_on_new_track": {
+   "refused": true,
+   "message": "교통 설정은 track=official 기준이다. official_v2026_11_06에서는 장면·s좌표·판정을 재등록해야 한다"
+  }
+ },
+ "proposal_accepted_on_new_track": [
+  "scripts/official_2x5_facilities.py",
+  "scripts/official_traffic_course.py",
+  "src/arena_gazebo/scripts/traffic_light_controller.py"
+ ],
+ "dry": {
+  "r16_old_track_current_code": {
+   "exit": 0,
+   "stdout_tail": "",
+   "stderr_tail": "",
+   "argv": [
+    "ros2",
+    "launch",
+    "--noninteractive",
+    "arena_bringup",
+    "g1_follow.launch.py",
+    "headless:=true",
+    "speed_profile:=g1_open_1p5",
+    "lidar_rate_hz:=10",
+    "tof_safety:=true",
+    "red_duration_s:=1",
+    "autonomy_mode:=local_pursuit",
+    "actuation_mode:=virtual_mcu",
+    "timing_probe:=false",
+    "lidar_acquisition:=sequential",
+    "lidar_compensation:=both",
+    "autonomy_control_rate_hz:=50.0",
+    "render_backend:=wsl_nvidia",
+    "sensor_wall_timeout_s:=30.0",
+    "speed_bump:=false",
+    "collision_detector:=configured",
+    "runtime_artifacts:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/r16_old_track",
+    "grid_slot:=3",
+    "batch_static_visuals:=true",
+    "chase_camera:=false",
+    "evaluation_actor_sdf:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/r16_old_track/evaluation_actor.sdf",
+    "evaluation_handoff_yield_progress:=true",
+    "evaluation_handoff_rear_sweep:=true",
+    "evaluation_handoff_observed_motion:=true",
+    "evaluation_side_departure_trial:=true",
+    "evaluation_current_lane_preference_trial:=true",
+    "evaluation_handoff_continuous_pace:=true",
+    "evaluation_moving_pass_trial:=true",
+    "evaluation_handoff_reserve:=paced",
+    "g1_boundary_evidence_mode:=corner_distance_candidate",
+    "g1_occupancy_timing_mode:=per_ray_candidate",
+    "partial_observation_policy:=bounded_local_v4",
+    "g1_corridor_fallback_enabled:=true",
+    "g1_short_boundary_prefix_enabled:=true",
+    "g1_parallel_hold_trial:=true",
+    "g1_pass_release_trial:=true",
+    "g1_guard_curve_trial:=true",
+    "g1_traffic_recovery_trial:=true",
+    "g1_traffic_path_recovery_trial:=true",
+    "g1_trace_path:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/r16_old_track/follow_decisions.jsonl",
+    "local_sensor_config:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_description/config/b0183_c1_jr60p20_sim.yaml",
+    "pilot_marker_z:=0.140"
+   ]
+  },
+  "new_slow_lead": {
+   "exit": 0,
+   "stdout_tail": "",
+   "stderr_tail": "",
+   "argv": [
+    "ros2",
+    "launch",
+    "--noninteractive",
+    "arena_bringup",
+    "g1_follow.launch.py",
+    "headless:=true",
+    "speed_profile:=g1_open_1p5",
+    "lidar_rate_hz:=10",
+    "tof_safety:=true",
+    "red_duration_s:=1",
+    "autonomy_mode:=local_pursuit",
+    "actuation_mode:=virtual_mcu",
+    "timing_probe:=false",
+    "lidar_acquisition:=sequential",
+    "lidar_compensation:=both",
+    "autonomy_control_rate_hz:=50.0",
+    "render_backend:=wsl_nvidia",
+    "sensor_wall_timeout_s:=30.0",
+    "speed_bump:=false",
+    "collision_detector:=configured",
+    "runtime_artifacts:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_slow_lead",
+    "grid_slot:=3",
+    "batch_static_visuals:=true",
+    "chase_camera:=false",
+    "evaluation_actor_sdf:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_slow_lead/evaluation_actor.sdf",
+    "evaluation_handoff_yield_progress:=true",
+    "evaluation_handoff_rear_sweep:=true",
+    "evaluation_handoff_observed_motion:=true",
+    "evaluation_side_departure_trial:=true",
+    "evaluation_current_lane_preference_trial:=true",
+    "evaluation_handoff_continuous_pace:=true",
+    "evaluation_moving_pass_trial:=true",
+    "evaluation_handoff_reserve:=paced",
+    "g1_boundary_evidence_mode:=corner_distance_candidate",
+    "g1_occupancy_timing_mode:=per_ray_candidate",
+    "partial_observation_policy:=bounded_local_v4",
+    "g1_corridor_fallback_enabled:=true",
+    "g1_short_boundary_prefix_enabled:=true",
+    "g1_parallel_hold_trial:=true",
+    "g1_pass_release_trial:=true",
+    "g1_guard_curve_trial:=true",
+    "g1_traffic_recovery_trial:=true",
+    "g1_traffic_path_recovery_trial:=true",
+    "g1_trace_path:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_slow_lead/follow_decisions.jsonl",
+    "local_sensor_config:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_description/config/b0390_c1_jr60p20_sim.yaml",
+    "track:=official_v2026_11_06",
+    "pilot_marker_z:=0.140"
+   ],
+   "launch_option_diff_vs_r16": {
+    "evaluation_actor_sdf": [
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/r16_old_track/evaluation_actor.sdf",
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_slow_lead/evaluation_actor.sdf"
+    ],
+    "g1_trace_path": [
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/r16_old_track/follow_decisions.jsonl",
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_slow_lead/follow_decisions.jsonl"
+    ],
+    "local_sensor_config": [
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_description/config/b0183_c1_jr60p20_sim.yaml",
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_description/config/b0390_c1_jr60p20_sim.yaml"
+    ],
+    "runtime_artifacts": [
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/r16_old_track",
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_slow_lead"
+    ],
+    "track": [
+     null,
+     "official_v2026_11_06"
+    ]
+   },
+   "checks": {
+    "track": true,
+    "sensor_b0390": true,
+    "only_expected_keys_differ": true,
+    "r16_flags_kept": true
+   }
+  },
+  "new_straight_moving_lead": {
+   "exit": 0,
+   "stdout_tail": "",
+   "stderr_tail": "",
+   "argv": [
+    "ros2",
+    "launch",
+    "--noninteractive",
+    "arena_bringup",
+    "g1_follow.launch.py",
+    "headless:=true",
+    "speed_profile:=g1_open_1p5",
+    "lidar_rate_hz:=10",
+    "tof_safety:=true",
+    "red_duration_s:=1",
+    "autonomy_mode:=local_pursuit",
+    "actuation_mode:=virtual_mcu",
+    "timing_probe:=false",
+    "lidar_acquisition:=sequential",
+    "lidar_compensation:=both",
+    "autonomy_control_rate_hz:=50.0",
+    "render_backend:=wsl_nvidia",
+    "sensor_wall_timeout_s:=30.0",
+    "speed_bump:=false",
+    "collision_detector:=configured",
+    "runtime_artifacts:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_straight_moving_lead",
+    "grid_slot:=3",
+    "batch_static_visuals:=true",
+    "chase_camera:=false",
+    "evaluation_actor_sdf:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_straight_moving_lead/evaluation_actor.sdf",
+    "evaluation_handoff_yield_progress:=true",
+    "evaluation_handoff_rear_sweep:=true",
+    "evaluation_handoff_observed_motion:=true",
+    "evaluation_side_departure_trial:=true",
+    "evaluation_current_lane_preference_trial:=true",
+    "evaluation_handoff_continuous_pace:=true",
+    "evaluation_moving_pass_trial:=true",
+    "evaluation_handoff_reserve:=paced",
+    "g1_boundary_evidence_mode:=corner_distance_candidate",
+    "g1_occupancy_timing_mode:=per_ray_candidate",
+    "partial_observation_policy:=bounded_local_v4",
+    "g1_corridor_fallback_enabled:=true",
+    "g1_short_boundary_prefix_enabled:=true",
+    "g1_parallel_hold_trial:=true",
+    "g1_pass_release_trial:=true",
+    "g1_guard_curve_trial:=true",
+    "g1_traffic_recovery_trial:=true",
+    "g1_traffic_path_recovery_trial:=true",
+    "g1_trace_path:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_straight_moving_lead/follow_decisions.jsonl",
+    "local_sensor_config:=/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_description/config/b0390_c1_jr60p20_sim.yaml",
+    "track:=official_v2026_11_06",
+    "pilot_marker_z:=0.140"
+   ],
+   "launch_option_diff_vs_r16": {
+    "evaluation_actor_sdf": [
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/r16_old_track/evaluation_actor.sdf",
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_straight_moving_lead/evaluation_actor.sdf"
+    ],
+    "g1_trace_path": [
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/r16_old_track/follow_decisions.jsonl",
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_straight_moving_lead/follow_decisions.jsonl"
+    ],
+    "local_sensor_config": [
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_description/config/b0183_c1_jr60p20_sim.yaml",
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_description/config/b0390_c1_jr60p20_sim.yaml"
+    ],
+    "runtime_artifacts": [
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/r16_old_track",
+     "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-07/traffic_course_migration_v1/dryargs/new_straight_moving_lead"
+    ],
+    "track": [
+     null,
+     "official_v2026_11_06"
+    ]
+   },
+   "checks": {
+    "track": true,
+    "sensor_b0390": true,
+    "only_expected_keys_differ": true,
+    "r16_flags_kept": true
+   }
+  },
+  "old_r16_config_new_track": {
+   "exit": 3,
+   "stdout_tail": "REFUSED ValueError: 교통 설정은 track=official 기준이다. official_v2026_11_06에서는 장면·s좌표·판정을 재등록해야 한다\n",
+   "stderr_tail": ""
+  }
+ }
+}

@@ -1,0 +1,989 @@
+{
+ "scenario": "representative",
+ "started_wall": 1794079319.1518803,
+ "source_sha256": {
+  "src/arena_autonomy/arena_autonomy/race_session.py": "4c28b19a2fa09bc99f0e8b8557ddd2818ab890eaf5feacf93d8b2e93ad1c9045",
+  "src/arena_autonomy/arena_autonomy/local_pursuit.py": "1471a399a46855e41e216ada460b7eceee41c553caf6d111b4d3f715b274ca65",
+  "src/arena_autonomy/arena_autonomy/wall_follow.py": "83204c35c487dc902fb65ec5ec6ef5c7ec5cba6486e0f2b399101a041d717c52",
+  "src/arena_autonomy/arena_autonomy/vision_process.py": "145a2489ba84c1a9ff5029ec40388a5faf1588794252f03af768c90f8cab63a8",
+  "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py": "aa57663f3ebc9ba937af0a0bfde180c4095028164d7022fc6757c70202fa4e02",
+  "src/arena_autonomy/arena_autonomy/lidar_safety.py": "265261b2adfa6b64c62a27a309a78af02c229bdce421773bf83daffa6183f0e1",
+  "src/arena_autonomy/arena_autonomy/race_ops_core.py": "c8976381117b7f4cc70ed42b89dadec554144a9bdcb9a8d3ed24959040a0c6b1",
+  "src/arena_autonomy/arena_autonomy/race_ops_node.py": "428962934fa25fb015355a1146772ee5ccbcc24d02f0f2c5de250301f3230ded",
+  "src/arena_autonomy/arena_autonomy/race_ops_export.py": "cec71a92355853765d3a0a619cc70dcec0051548f42fcdfbc50da501825c984c",
+  "src/arena_autonomy/arena_autonomy/race_ops_page.py": "7d146c8b49521c47090de41e26f8b37dbbb3d4f200b0367dfc93c98271773971",
+  "scripts/race_ops_eval.py": "5a5899bce088d538d1edd1c338d7b685113ba5035c7586cbd8f69a8650b853e3",
+  "src/arena_gazebo/worlds/it_arena_official_v2026_11_06/world.sdf": "4c2136c7eec1615293db9f0cd8a5acb5133fc5f433c4a16f292b527bca851b3b",
+  "src/arena_gazebo/worlds/it_arena_official_v2026_11_06/scene.json": "d51d2e8c05463ae97f7371ca1970b09104ac67476ac5aefdb48e721303715027",
+  "src/arena_gazebo/worlds/it_arena_official_v2026_11_06/centerline.csv": "66c04180c607388a90af89432f06a6a3ba4eec241d18560a6aedf83a1dc2cd56",
+  "src/arena_gazebo/worlds/it_arena_official_v2026_11_06/branch_1.csv": "27f8376b4d833b44fa384b55f27eaac0566a70be60763f6ad0679e3d35d603ca"
+ },
+ "passed": false,
+ "steps": [
+  {
+   "step": "process_start",
+   "wall_s": 71974.302243099,
+   "truth": [
+    0.08700000000000001,
+    9.89,
+    3.519999999921463,
+    1.5708000000000006,
+    0.0027861957027698336
+   ],
+   "sim_s": 0.068,
+   "ui_state": "setup",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 1
+   },
+   "side": "left",
+   "latch": "process_start"
+  },
+  {
+   "step": "press_resume_start",
+   "wall_s": 71974.304080792,
+   "truth": [
+    0.08700000000000001,
+    9.89,
+    3.519999999921463,
+    1.5708000000000006,
+    0.0027861957027698336
+   ],
+   "sim_s": 0.068,
+   "ui_state": "setup",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 1
+   },
+   "side": "left",
+   "request": "eval-001-resume",
+   "stage": "rejected_by_adapter",
+   "adapter_reason": "race_not_started"
+  },
+  {
+   "step": "first_start_cli_rejected",
+   "wall_s": 71979.273253355,
+   "truth": [
+    0.5710000000000001,
+    9.89,
+    3.5200000000017737,
+    1.5708000000000006,
+    0.002997150475403665
+   ],
+   "sim_s": 0.34,
+   "ui_state": "setup",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 1
+   },
+   "side": "left",
+   "code": 3,
+   "text": "{\"outcome\": \"rejected\", \"command\": {\"v\": 1, \"request\": \"4e411c78f29e45f396edc68b6d1a52ad\", \"op\": \"resume_start\", \"session\": \"45b5220a1ecb48149737a94a7d680f18\", \"race_epoch\": 0, \"intervention\": 1}, \"result\": {\"v\": 1, \"request\": \"4e411c78f29e45f396edc68b6d1a52ad\", \"op\": \"resume_start\", \"accepted\": false, \"reason\": \"race_not_started\", \"session\": \"45b5220a1ecb48149737a94a7d680f18\", \"race_epoch\": 0, \"intervention\": 1, \"latch\": \"process_start\"}, \"boundary\": \"upper race policy only; no MCU STOP/CLEAR/ARM or drive publication; accepted does not prove physical stop or permission to move\"}"
+  },
+  {
+   "step": "no_motion_before_prepare",
+   "wall_s": 71982.530685729,
+   "truth": [
+    0.8730000000000001,
+    9.89,
+    3.520000000000284,
+    1.570800000000001,
+    0.0029991687048720878
+   ],
+   "sim_s": 0.78,
+   "ui_state": "setup",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 1
+   },
+   "side": "left",
+   "truth_speed": 0.0
+  },
+  {
+   "step": "press_prepare_start",
+   "wall_s": 71982.532983031,
+   "truth": [
+    0.8730000000000001,
+    9.89,
+    3.520000000000284,
+    1.570800000000001,
+    0.0029991687048720878
+   ],
+   "sim_s": 0.78,
+   "ui_state": "setup",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 1
+   },
+   "side": "left",
+   "request": "eval-002-prepar",
+   "stage": "queued",
+   "adapter_reason": null
+  },
+  {
+   "step": "armed_waiting_signal",
+   "wall_s": 71982.734061479,
+   "truth": [
+    0.891,
+    9.89,
+    3.520000000000284,
+    1.570800000000001,
+    0.0029991687048720878
+   ],
+   "sim_s": 0.88,
+   "ui_state": "signal",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 1
+   },
+   "side": "left"
+  },
+  {
+   "step": "visual_started",
+   "wall_s": 72058.050155607,
+   "truth": [
+    8.187,
+    9.89,
+    3.520000000000284,
+    1.570800000000001,
+    0.0029991687048720878
+   ],
+   "sim_s": 8.18,
+   "ui_state": "yield_hold",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 1
+   },
+   "side": "left",
+   "source": "visual"
+  },
+  {
+   "step": "first_stop_point",
+   "wall_s": 72074.437217438,
+   "truth": [
+    9.783,
+    9.787930686873626,
+    4.515793729447208,
+    1.5679008187734176,
+    0.002999994992527552
+   ],
+   "sim_s": 9.58,
+   "ui_state": "running",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 1
+   },
+   "side": "left"
+  },
+  {
+   "step": "press_stop",
+   "wall_s": 72074.439207384,
+   "truth": [
+    9.783,
+    9.787930686873626,
+    4.515793729447208,
+    1.5679008187734176,
+    0.002999994992527552
+   ],
+   "sim_s": 9.58,
+   "ui_state": "running",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 1
+   },
+   "side": "left",
+   "request": "eval-003-stop",
+   "stage": "queued",
+   "adapter_reason": null
+  },
+  {
+   "step": "stopped",
+   "wall_s": 72079.350891624,
+   "truth": [
+    10.267,
+    9.796577119199636,
+    4.8559714239392004,
+    1.5354308604222204,
+    0.0029999950557784566
+   ],
+   "sim_s": 10.24,
+   "ui_state": "operator_stop",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 2
+   },
+   "side": "left",
+   "policy": {
+    "accepted": true,
+    "reason": "stop_latched",
+    "wall_s": 72074.440893056
+   },
+   "mcu": "stop:확인 software_stop",
+   "physical": "미확인",
+   "motor": 0.0,
+   "stationary_ready": false
+  },
+  {
+   "step": "first_stop_hold",
+   "wall_s": 72084.612599276,
+   "truth": [
+    10.769,
+    9.796347469399567,
+    4.850516516944457,
+    1.5359957913421542,
+    0.002999995009429407
+   ],
+   "sim_s": 10.66,
+   "ui_state": "operator_stop",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 2
+   },
+   "side": "left",
+   "from_sim_s": 10.267,
+   "to_sim_s": 10.769,
+   "drift_m": 0.005459738945405208
+  },
+  {
+   "step": "press_resume_start",
+   "wall_s": 72084.614231042,
+   "truth": [
+    10.769,
+    9.796347469399567,
+    4.850516516944457,
+    1.5359957913421542,
+    0.002999995009429407
+   ],
+   "sim_s": 10.66,
+   "ui_state": "operator_stop",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 2
+   },
+   "side": "left",
+   "request": "eval-004-resume",
+   "stage": "queued",
+   "adapter_reason": null
+  },
+  {
+   "step": "resume_closed",
+   "wall_s": 72088.674251913,
+   "truth": [
+    11.165,
+    9.79634670806769,
+    4.850498447609338,
+    1.5359977503065516,
+    0.002999995009212081
+   ],
+   "sim_s": 11.16,
+   "ui_state": "running",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 2
+   },
+   "side": "left",
+   "scenario": "same_position_no_reset",
+   "last": {
+    "request": "eval-004-resume",
+    "outcome": "permitted",
+    "reason": "race_permitted",
+    "phase": "mcu",
+    "intervention": 2,
+    "boundary_s": 10.770000000000001,
+    "missing": []
+   },
+   "sim_seconds": 0.395999999999999,
+   "route": {
+    "ready": true,
+    "reason": "local_follow",
+    "route_reason": "local_follow",
+    "planned_speed_mps": 1.5,
+    "preferred_wall": "left",
+    "path_wall": "left",
+    "stamp_s": 11.14
+   }
+  },
+  {
+   "step": "same_race_resumed",
+   "wall_s": 72088.674862852,
+   "truth": [
+    11.165,
+    9.79634670806769,
+    4.850498447609338,
+    1.5359977503065516,
+    0.002999995009212081
+   ],
+   "sim_s": 11.16,
+   "ui_state": "running",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 2
+   },
+   "side": "left",
+   "initial_binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 1
+   },
+   "current_binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 2
+   },
+   "start_source": "visual"
+  },
+  {
+   "step": "post_resume_progress",
+   "wall_s": 72105.262223772,
+   "truth": [
+    12.755,
+    9.79840543187634,
+    6.051948570012084,
+    1.5711910766061798,
+    0.0029999949945709176
+   ],
+   "sim_s": 12.620000000000001,
+   "ui_state": "running",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 2
+   },
+   "side": "left",
+   "progress_m": 1.2014338156335744,
+   "from_sim_s": 10.769
+  },
+  {
+   "step": "press_stop",
+   "wall_s": 72105.264441751,
+   "truth": [
+    12.755,
+    9.79840543187634,
+    6.051948570012084,
+    1.5711910766061798,
+    0.0029999949945709176
+   ],
+   "sim_s": 12.620000000000001,
+   "ui_state": "running",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 2
+   },
+   "side": "left",
+   "request": "eval-005-stop",
+   "stage": "queued",
+   "adapter_reason": null
+  },
+  {
+   "step": "stopped",
+   "wall_s": 72110.476671138,
+   "truth": [
+    13.275,
+    9.798542309529315,
+    6.444480650065577,
+    1.5699592546091177,
+    0.002999995055324861
+   ],
+   "sim_s": 13.180000000000001,
+   "ui_state": "operator_stop",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 3
+   },
+   "side": "left",
+   "policy": {
+    "accepted": true,
+    "reason": "stop_latched",
+    "wall_s": 72105.281739279
+   },
+   "mcu": "stop:확인 software_stop",
+   "physical": "미확인",
+   "motor": -0.08129882628142206,
+   "stationary_ready": false
+  },
+  {
+   "step": "final_stop_hold",
+   "wall_s": 72115.688333368,
+   "truth": [
+    13.777,
+    9.79853577604932,
+    6.439073643791956,
+    1.5699904853725517,
+    0.002999995009427228
+   ],
+   "sim_s": 13.600000000000001,
+   "ui_state": "operator_stop",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 3
+   },
+   "side": "left",
+   "from_sim_s": 13.275,
+   "to_sim_s": 13.777,
+   "drift_m": 0.005407010220938571
+  },
+  {
+   "step": "newcourse_simple_ops_complete",
+   "wall_s": 72115.688854787,
+   "truth": [
+    13.777,
+    9.79853577604932,
+    6.439073643791956,
+    1.5699904853725517,
+    0.002999995009427228
+   ],
+   "sim_s": 13.600000000000001,
+   "ui_state": "operator_stop",
+   "binding": {
+    "session": "45b5220a1ecb48149737a94a7d680f18",
+    "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+    "race_epoch": 0,
+    "intervention": 3
+   },
+   "side": "left",
+   "scope": "RGB start, same-position STOP/START without RESET, G1 only"
+  }
+ ],
+ "track": "official_v2026_11_06",
+ "local_sensor_config": {
+  "path": "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_description/config/b0390_c1_jr60p20_sim.yaml",
+  "sha256": "06d9b783f116886369920a34fe6f177cde8657443c8e6afd2e9a87c21339daa0"
+ },
+ "speed_profile": "g1_open_1p5",
+ "completed": true,
+ "final_state": {
+  "v": 1,
+  "vehicle_id": "eval_car",
+  "seq": 72,
+  "state": "operator_stop",
+  "state_label": "운영자 STOP",
+  "connection": {
+   "status_age_s": 1.7993039459979627,
+   "status_stale": false,
+   "mcu_age_s": 0.0018776670040097088,
+   "safety_age_s": 0.1604467370052589
+  },
+  "binding": {
+   "session": "45b5220a1ecb48149737a94a7d680f18",
+   "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+   "race_epoch": 0,
+   "intervention": 3
+  },
+  "race": {
+   "latch": "explicit_stop",
+   "started": true,
+   "start_source": "visual",
+   "recovery_ready": false,
+   "resume_start_ready": true,
+   "resume": null,
+   "last_resume": {
+    "request": "eval-004-resume",
+    "outcome": "permitted",
+    "reason": "race_permitted",
+    "phase": "mcu",
+    "intervention": 2,
+    "boundary_s": 10.770000000000001,
+    "missing": []
+   },
+   "policy_reason": "explicit_stop",
+   "actuator_reason": "mcu_not_armed",
+   "rearm_required": true,
+   "input_boundary_s": 10.770000000000001,
+   "visual_start_fact": true
+  },
+  "speeds": {
+   "plan_mps": 0.0,
+   "plan_age_s": 0.16253207999398,
+   "protected_mps": 0.0,
+   "protected_age_s": 0.1606269309995696,
+   "mcu_target_mps": 0.0,
+   "motor_shaft_equiv_mps": 0.0,
+   "motor_feedback_valid": true,
+   "mcu_age_s": 0.0018776670040097088
+  },
+  "mcu": {
+   "state": "ESTOP_LATCHED",
+   "reason": "software_stop",
+   "estop_held": false,
+   "stationary_ready": true,
+   "output_ready": true,
+   "generation": 5
+  },
+  "sensors": [
+   {
+    "name": "scan",
+    "age_s": 0.19700000000000095,
+    "limit_s": 0.45,
+    "ok": true
+   },
+   {
+    "name": "rgb",
+    "age_s": 0.11200000000000188,
+    "limit_s": 1.0,
+    "ok": true
+   },
+   {
+    "name": "gyro",
+    "age_s": 0.004000000000001336,
+    "limit_s": 0.2,
+    "ok": true
+   },
+   {
+    "name": "encoder",
+    "age_s": 0.005000000000000782,
+    "limit_s": 0.2,
+    "ok": true
+   }
+  ],
+  "driving": {
+   "state": "RACE_LATCHED",
+   "reason": null,
+   "behavior": null,
+   "handoff": null,
+   "side": "left",
+   "side_marker": 0,
+   "marker_ids": [],
+   "route": {
+    "ready": true,
+    "reason": "local_follow",
+    "route_reason": "local_follow",
+    "planned_speed_mps": 1.5,
+    "preferred_wall": "left",
+    "path_wall": "left",
+    "stamp_s": 11.14
+   },
+   "sim_s": 13.600000000000001,
+   "safety_reason": "clear",
+   "clearance_m": 3.0
+  },
+  "controls": {
+   "stop": {
+    "allowed": true,
+    "reason": null
+   },
+   "recovery_reset": {
+    "allowed": true,
+    "reason": null
+   },
+   "resume_start": {
+    "allowed": true,
+    "reason": null
+   },
+   "prepare_start": {
+    "allowed": false,
+    "reason": "race_already_started"
+   },
+   "new_race": {
+    "allowed": true,
+    "reason": null
+   },
+   "restore_race": {
+    "allowed": false,
+    "reason": "no_restorable_record"
+   }
+  },
+  "restore_offer": null,
+  "commands": [
+   {
+    "request": "eval-005-stop",
+    "op": "stop",
+    "client": "evalclient",
+    "view": null,
+    "received_wall": 72105.263935516,
+    "sent_wall": 72105.280225322,
+    "stage": "policy_accepted",
+    "adapter_reason": null,
+    "policy": {
+     "accepted": true,
+     "reason": "stop_latched",
+     "wall_s": 72105.281739279
+    },
+    "mcu": "stop:확인 software_stop",
+    "mcu_steps": [
+     {
+      "step": "stop",
+      "success": true,
+      "message": "software_stop",
+      "wall_s": 72105.300201635
+     }
+    ],
+    "physical_stop": "미확인"
+   },
+   {
+    "request": "eval-004-resume",
+    "op": "resume_start",
+    "client": "evalclient",
+    "view": {
+     "session": "45b5220a1ecb48149737a94a7d680f18",
+     "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+     "race_epoch": 0,
+     "intervention": 2
+    },
+    "received_wall": 72084.613957859,
+    "sent_wall": 72084.620142183,
+    "stage": "permitted",
+    "adapter_reason": null,
+    "policy": {
+     "accepted": true,
+     "reason": "preparing_not_motion_permission",
+     "wall_s": 72084.621426023
+    },
+    "mcu": "arm:확인 explicit_arm",
+    "mcu_steps": [
+     {
+      "step": "clear_stop",
+      "success": true,
+      "message": "explicit_clear",
+      "wall_s": 72088.460122407
+     },
+     {
+      "step": "arm",
+      "success": true,
+      "message": "explicit_arm",
+      "wall_s": 72088.580173818
+     }
+    ],
+    "physical_stop": null,
+    "outcome": "race_permitted"
+   },
+   {
+    "request": "eval-003-stop",
+    "op": "stop",
+    "client": "evalclient",
+    "view": null,
+    "received_wall": 72074.438789949,
+    "sent_wall": 72074.440239262,
+    "stage": "policy_accepted",
+    "adapter_reason": null,
+    "policy": {
+     "accepted": true,
+     "reason": "stop_latched",
+     "wall_s": 72074.440893056
+    },
+    "mcu": "stop:확인 software_stop",
+    "mcu_steps": [
+     {
+      "step": "stop",
+      "success": true,
+      "message": "software_stop",
+      "wall_s": 72074.460173982
+     }
+    ],
+    "physical_stop": "미확인"
+   },
+   {
+    "request": "eval-002-prepar",
+    "op": "prepare_start",
+    "client": "evalclient",
+    "view": {
+     "session": "45b5220a1ecb48149737a94a7d680f18",
+     "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+     "race_epoch": 0,
+     "intervention": 1
+    },
+    "received_wall": 71982.532619947,
+    "sent_wall": 71982.540279373,
+    "stage": "policy_accepted",
+    "adapter_reason": null,
+    "policy": {
+     "accepted": true,
+     "reason": "policy_latch_cleared_mcu_and_sensors_still_required",
+     "wall_s": 71982.541225282
+    },
+    "mcu": "arm:확인 explicit_arm",
+    "mcu_steps": [
+     {
+      "step": "arm",
+      "success": true,
+      "message": "explicit_arm",
+      "wall_s": 71982.580192521
+     }
+    ],
+    "physical_stop": null,
+    "outcome": "armed_waiting_signal"
+   },
+   {
+    "request": "eval-001-resume",
+    "op": "resume_start",
+    "client": "evalclient",
+    "view": {
+     "session": "45b5220a1ecb48149737a94a7d680f18",
+     "race_id": "b312dfa9ff4b482dbe98e4b034660e98",
+     "race_epoch": 0,
+     "intervention": 1
+    },
+    "received_wall": 71974.303774083,
+    "sent_wall": null,
+    "stage": "rejected_by_adapter",
+    "adapter_reason": "race_not_started",
+    "policy": null,
+    "mcu": null,
+    "mcu_steps": [],
+    "physical_stop": null
+   }
+  ],
+  "events": [
+   {
+    "wall_s": 72105.299305246,
+    "kind": "decel",
+    "text": "계획 속도 1.48 → 0.00 m/s, 이유 None",
+    "sim_s": 12.760000000000002,
+    "source": "autonomy",
+    "speed_before": 1.4800000000000009,
+    "speed_after": 0.0
+   },
+   {
+    "wall_s": 72105.299305246,
+    "kind": "latch",
+    "text": "래치: None → explicit_stop",
+    "sim_s": 12.760000000000002,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72105.299305246,
+    "kind": "behavior",
+    "text": "거동: CRUISE → None",
+    "sim_s": 12.760000000000002,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72105.299305246,
+    "kind": "reason",
+    "text": "이유: local_follow → None",
+    "sim_s": 12.760000000000002,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72105.299305246,
+    "kind": "state",
+    "text": "상태: RUNNING → RACE_LATCHED",
+    "sim_s": 12.760000000000002,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72105.281789322,
+    "kind": "mcu",
+    "text": "MCU ESTOP_LATCHED (software_stop)",
+    "sim_s": 12.620000000000001,
+    "source": "mcu"
+   },
+   {
+    "wall_s": 72105.281739279,
+    "kind": "operator",
+    "text": "stop eval-005: 정책 수락 stop_latched",
+    "sim_s": 12.620000000000001,
+    "source": "operator",
+    "request": "eval-005-stop"
+   },
+   {
+    "wall_s": 72105.280225322,
+    "kind": "operator",
+    "text": "stop eval-005: sent",
+    "sim_s": 12.620000000000001,
+    "source": "operator",
+    "request": "eval-005-stop"
+   },
+   {
+    "wall_s": 72105.263935516,
+    "kind": "operator",
+    "text": "stop 요청 eval-005",
+    "sim_s": 12.620000000000001,
+    "source": "operator",
+    "request": "eval-005-stop"
+   },
+   {
+    "wall_s": 72088.824371473,
+    "kind": "mcu",
+    "text": "MCU ACTIVE (drive)",
+    "sim_s": 11.16,
+    "source": "mcu"
+   },
+   {
+    "wall_s": 72088.640191356,
+    "kind": "operator",
+    "text": "resume_start eval-004: permitted",
+    "sim_s": 11.16,
+    "source": "operator",
+    "request": "eval-004-resume"
+   },
+   {
+    "wall_s": 72088.623636397,
+    "kind": "latch",
+    "text": "래치: explicit_stop → None",
+    "sim_s": 11.16,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72088.623636397,
+    "kind": "reason",
+    "text": "이유: resume_preparing → local_follow",
+    "sim_s": 11.16,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72088.623636397,
+    "kind": "state",
+    "text": "상태: RESUME_PREPARING → RUNNING",
+    "sim_s": 11.16,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72088.561571187,
+    "kind": "mcu",
+    "text": "MCU ARMED (explicit_arm)",
+    "sim_s": 11.14,
+    "source": "mcu"
+   },
+   {
+    "wall_s": 72088.441514589,
+    "kind": "mcu",
+    "text": "MCU DISARMED (explicit_clear)",
+    "sim_s": 11.14,
+    "source": "mcu"
+   },
+   {
+    "wall_s": 72088.20726395,
+    "kind": "behavior",
+    "text": "거동: HOLD → CRUISE",
+    "sim_s": 11.120000000000001,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72086.176295194,
+    "kind": "behavior",
+    "text": "거동: None → HOLD",
+    "sim_s": 10.92,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72086.176295194,
+    "kind": "reason",
+    "text": "이유: None → resume_preparing",
+    "sim_s": 10.92,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72086.176295194,
+    "kind": "state",
+    "text": "상태: SENSOR_STOP → RESUME_PREPARING",
+    "sim_s": 10.92,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72086.168551509,
+    "kind": "safety",
+    "text": "보호층 clear",
+    "sim_s": 10.780000000000001,
+    "source": "safety"
+   },
+   {
+    "wall_s": 72084.713688205,
+    "kind": "safety",
+    "text": "보호층 missing_input",
+    "sim_s": 10.780000000000001,
+    "source": "safety"
+   },
+   {
+    "wall_s": 72084.713631249,
+    "kind": "state",
+    "text": "상태: RACE_LATCHED → SENSOR_STOP",
+    "sim_s": 10.780000000000001,
+    "source": "autonomy"
+   },
+   {
+    "wall_s": 72084.621434569,
+    "kind": "operator",
+    "text": "resume_start eval-004: preparing",
+    "sim_s": 10.66,
+    "source": "operator",
+    "request": "eval-004-resume"
+   }
+  ],
+  "log": {
+   "dropped": 0,
+   "failed": 0,
+   "bytes": 56188
+  },
+  "limits": {
+   "physical_stop": "미확인",
+   "wifi_stop_is_not_hardware_stop": true
+  }
+ },
+ "gazebo_stop_service": {
+  "method": "server_control",
+  "partition": "arena_autonomy_test_155228",
+  "verified": true,
+  "server_processes_before": [
+   155290
+  ],
+  "return_code": 0,
+  "stdout": "data: true\n\n",
+  "stderr": "",
+  "acknowledged": true,
+  "remaining_server_pids": [],
+  "elapsed_s": 0.719619577008416
+ },
+ "auxiliary_cleanup": [
+  {
+   "pgid": 155282,
+   "members_before": {
+    "155282": {
+     "ppid": 155228,
+     "start": "7196700"
+    },
+    "155287": {
+     "ppid": 155282,
+     "start": "7196784"
+    }
+   },
+   "forced": false,
+   "exit_code": 0,
+   "elapsed_s": 0.5214593749988126,
+   "remaining_members": {}
+  }
+ ],
+ "launch_cleanup": {},
+ "remaining_test_pids": [],
+ "exit_codes": [
+  0,
+  0
+ ],
+ "source_unchanged": true
+}

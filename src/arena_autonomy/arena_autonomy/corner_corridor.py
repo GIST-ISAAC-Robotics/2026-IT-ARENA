@@ -174,12 +174,14 @@ def short_inner_prefix_evidence(geometry, config):
             'opposite_path_used_for_steering':True, 'unknown_filled':False}
 
 
-def short_prefix_evidence(points, side, config):
+def short_prefix_evidence(points, side, config, *, allow_long_preferred=False):
     """반대 경로와 일치하는 첫 구간 끝에서 선호 경로를 자르는 기하 후보.
 
     반대 경로는 대조에만 쓰며 그 먼 끝으로 연장하지 않는다. 편측 지지만
     있는 시작 부분은 차체 길이 이내, 공동 지지는 기존 비교와 같은 0.25 m다.
-    이는 시험 가정이며 벽 정체·자유 공간·차량 주행 허가가 아니다.
+    선택형 직각 후보에서는 선호 벽이 길고 반대 벽이 짧은 조합도 대조한다.
+    조향 기준은 계속 선호 경로이며 공통 구간 끝에서 자른다. 이는 시험 가정이며
+    벽 정체·자유 공간·차량 주행 허가가 아니다.
     """
     base = dict(supported=False, reason='invalid_input', path=None,
                 runtime_connected=False, driving_authorized=False,
@@ -195,11 +197,17 @@ def short_prefix_evidence(points, side, config):
     base.update(preferred_info=info, opposite_info=other_info)
     if own is None or other is None:
         return {**base, 'reason':'missing_path'}
-    if info['boundary_observed_ahead_m'] >= config.boundary_min_ahead_m:
-        return {**base, 'reason':'not_a_short_boundary'}
+    long_preferred = info['boundary_observed_ahead_m'] >= config.boundary_min_ahead_m
+    if long_preferred:
+        if not allow_long_preferred or other_info['boundary_observed_ahead_m'] >= config.boundary_min_ahead_m:
+            return {**base, 'reason':'not_a_short_boundary'}
+        if abs(other_info['wall_distance_m']-config.wall_offset_m) > config.boundary_anchor_error_m:
+            return {**base, 'reason':'opposite_anchor_unconfirmed'}
+        base.update(long_preferred_short_opposite=True,
+                    base_observed_ahead_m=other_info['boundary_observed_ahead_m'])
     if abs(info['wall_distance_m']-config.wall_offset_m) > config.boundary_anchor_error_m:
         return {**base, 'reason':'preferred_anchor_unconfirmed'}
-    if other_info['boundary_observed_ahead_m'] < config.boundary_min_ahead_m:
+    if not long_preferred and other_info['boundary_observed_ahead_m'] < config.boundary_min_ahead_m:
         return {**base, 'reason':'opposite_reference_short'}
     nearest = int(np.argmin(np.linalg.norm(own, axis=1)))
     if np.linalg.norm(own[nearest]) > config.boundary_anchor_error_m:

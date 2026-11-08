@@ -1,0 +1,1544 @@
+{
+ "scope": "read-only audit of completed r35 B and r34 A/B; no simulation, no replay, gates unchanged",
+ "rule": {
+  "low_speed": "trace ground_speed_mps < 0.05 after first > 0.10, within case window (assess.py r27_gates)"
+ },
+ "runs": {
+  "r34_A": {
+   "exit_line": "HARNESS_EXIT=1 SURFACE_EXIT=0 INTEGRITY_EXIT=0 LEFTOVER_PGREP=1 ASSESSMENT_EXIT=0 WALL_S=775",
+   "report_passed": false,
+   "raw_failed_gates": [
+    "final_gap"
+   ],
+   "supplementary_passed": true,
+   "supplementary_failed_gates": [],
+   "progress_m": 48.13999999999861,
+   "longest_low_speed_s": 0.10000000000000142,
+   "first_motion_s": 8.085,
+   "peak_mps": 1.5697023844126654,
+   "min_gap_m": 0.6961370810536553,
+   "min_swept_gap_m": 0.6946306300242177,
+   "sampled_gap_at_window_end_m": 1.2478918041550022,
+   "actor_contact_messages_with_ego": 0,
+   "additional_actor_contact_rows": 0,
+   "behavior_counts": {
+    "CRUISE": 0,
+    "FOLLOW": 588,
+    "HOLD": 4
+   },
+   "integrity": {
+    "inputs": 902,
+    "changed": [],
+    "snapshot_unchanged": true,
+    "postflight_processes_empty": true,
+    "source_unchanged": true,
+    "sensor_only_inputs": true
+   },
+   "stop": {
+    "request_s": 67.895,
+    "stable": true,
+    "checks": {
+     "model_stop_stable": true,
+     "dense_pose_stop_evidence": true,
+     "explicit_mcu_stop": true,
+     "no_mcu_latch_before_stop": true,
+     "no_deadline_diagnostic": true,
+     "no_wall_collision": true
+    },
+    "mcu_state": "ESTOP_LATCHED",
+    "mcu_reason": "software_stop",
+    "shutdown_clean": true,
+    "remaining_test_pids": []
+   },
+   "lidar_stress_report": {
+    "verified": null,
+    "minimum_added_delay_s": null,
+    "maximum_added_delay_s": null
+   },
+   "injection_raw": {
+    "acquisition_records": 686,
+    "received_scans": 686,
+    "injected_records": 0,
+    "injected_delay_s": null,
+    "max_abs_error_m": null
+   },
+   "scan_age_assessment": {
+    "calls": 3051,
+    "unique_scans": 611,
+    "not_in_acquisition": 0,
+    "min": 0.11599999999999966,
+    "p50": 0.15600000000000236,
+    "p95": 0.19600000000000506,
+    "max": 0.19600000000001216,
+    "scope": "decision reference_s minus first-ray stamp; recorded, not a gate"
+   },
+   "scan_age_recomputed": {
+    "decision_calls": 3051,
+    "all_calls": {
+     "n": 3051,
+     "min": 0.11599999999999966,
+     "p50": 0.15600000000000236,
+     "p95": 0.19600000000000506,
+     "max": 0.19600000000001216,
+     "mean": 0.1560065552277963
+    },
+    "case_window_calls": {
+     "n": 2989,
+     "min": 0.11599999999999966,
+     "p50": 0.15600000000000236,
+     "p95": 0.19600000000000506,
+     "max": 0.19600000000001216,
+     "mean": 0.15600000000000208
+    },
+    "rule": "decision input.reference_s minus input.scan stamp (first-ray)"
+   },
+   "processing_ms": {
+    "field": "autonomy_status.jsonl motion.processing_ms",
+    "status_rows": 325,
+    "all": {
+     "n": 288,
+     "min": 0.41162500565405935,
+     "p50": 0.5058770038885996,
+     "p95": 0.7027052430203184,
+     "max": 1.0244069999316707,
+     "mean": 0.5330600934535646
+    },
+    "case_window": {
+     "n": 281,
+     "min": 0.41162500565405935,
+     "p50": 0.5060700059402734,
+     "p95": 0.7029799890005961,
+     "max": 1.0244069999316707,
+     "mean": 0.5339440815395169
+    },
+    "scope": "sampled status rows only, not every decision call; per-scan motion compensation time as recorded"
+   },
+   "low_speed_segments_total": 2,
+   "low_speed_segments": [
+    {
+     "start_s": 45.537,
+     "end_s": 45.637,
+     "duration_s": 0.10000000000000142,
+     "end_kind": "speed_recovered",
+     "hold_episode_start_s": 45.537,
+     "progress_m": [
+      30.66999999999982,
+      30.66999999999982,
+      0.0
+     ],
+     "course_s_m": 27.69,
+     "ground_speed_mps": {
+      "mean": 0.04781619682617078,
+      "max": 0.06416687050546882
+     },
+     "drive_speed_mps_max": 0.2199999988079071,
+     "safe_speed_mps_max": 0.20000000298023224,
+     "controller_speed_command_mps_max": 0.21999999999999997,
+     "trace_behavior_reason": {
+      "FOLLOW/handoff_follow": 2
+     },
+     "safety_reason": {
+      "clear": 2
+     },
+     "safety_clearance_m": [
+      0.72,
+      0.72
+     ],
+     "lead_in_0p5s": {
+      "trace_rows": 4,
+      "ground_speed_mps": [
+       0.6014403272952747,
+       0.6547430685941297,
+       0.4346406780543695,
+       0.10337265972624525
+      ],
+      "controller_speed_command_mps": [
+       0.63,
+       0.0,
+       0.0,
+       0.02
+      ],
+      "safe_speed_mps": [
+       0.6499999761581421,
+       0.6499999761581421,
+       0.0,
+       0.0
+      ],
+      "behavior": [
+       "FOLLOW",
+       "HOLD",
+       "HOLD",
+       "FOLLOW"
+      ]
+     },
+     "status_window_s": [
+      45.037,
+      45.637
+     ],
+     "status_rows": 4,
+     "status_runs": [
+      [
+       45.08,
+       45.08,
+       1,
+       "FOLLOW",
+       "local_follow",
+       "no_side_threat_seen"
+      ],
+      [
+       45.22,
+       45.22,
+       1,
+       "HOLD",
+       "follow_boundary_unconfirmed",
+       "baseline_not_normal"
+      ],
+      [
+       45.42,
+       45.62,
+       2,
+       "FOLLOW",
+       "local_follow",
+       "no_side_threat_seen"
+      ]
+     ],
+     "status_normal_reason": {
+      "local_follow": 3,
+      "follow_boundary_unconfirmed": 1
+     },
+     "status_selector": {
+      "SOLO/baseline/no_side_threat_seen": 3,
+      "SOLO/baseline/baseline_not_normal": 1
+     },
+     "status_persistence_reason": {
+      "low_motion_patch_candidate": 4
+     },
+     "status_follow_entry_space": {
+      "unconfirmed_front_patch": 2,
+      "patch_outside_g1_swept_arc": 2
+     },
+     "status_preparation": {
+      "single_scan_patch": 1,
+      "g1_command_hold": 1,
+      "short_low_motion_history": 1,
+      "patch_outside_g1_swept_arc": 1
+     },
+     "primary_actor_ego_xy_m": {
+      "start": [
+       1.309,
+       0.456
+      ],
+      "end": [
+       1.388,
+       0.479
+      ]
+     },
+     "primary_sampled_gap_m": [
+      1.1673663789322788,
+      1.2495358356409103
+     ],
+     "recovery": {
+      "recovered": true,
+      "first_speed_over_0p10_s": 45.739,
+      "delay_after_segment_end_s": 0.10199999999999676
+     },
+     "second_actor_ego_xy_m": {
+      "start": [
+       3.126,
+       4.298
+      ],
+      "end": [
+       3.111,
+       4.361
+      ]
+     },
+     "persistence_front_median_xy": {
+      "n": 4,
+      "x": [
+       0.6515611444502407,
+       0.8117232478876418,
+       0.8839992438321036
+      ],
+      "y": [
+       -0.22275514707867777,
+       -0.21627015633103708,
+       -0.19483186840583794
+      ]
+     },
+     "decision_calls": {
+      "n": 5,
+      "output_speed_positive": 5,
+      "output_speed_max": 0.5499999999999999
+     }
+    }
+   ]
+  },
+  "r34_B": {
+   "exit_line": "HARNESS_EXIT=1 SURFACE_EXIT=0 INTEGRITY_EXIT=0 LEFTOVER_PGREP=1 ASSESSMENT_EXIT=1 WALL_S=774",
+   "report_passed": false,
+   "raw_failed_gates": [
+    "no_permanent_stall",
+    "final_gap",
+    "full_lap"
+   ],
+   "supplementary_passed": false,
+   "supplementary_failed_gates": [
+    "one_lap",
+    "no_contacts",
+    "additional_valid",
+    "sustained_motion",
+    "decision_scans_acquired"
+   ],
+   "progress_m": 9.11,
+   "longest_low_speed_s": 48.39599999999987,
+   "first_motion_s": 8.041,
+   "peak_mps": 1.5583097191118127,
+   "min_gap_m": 0.8487104270250244,
+   "min_swept_gap_m": 0.847411843721249,
+   "sampled_gap_at_window_end_m": 3.9622928496186773,
+   "actor_contact_messages_with_ego": 0,
+   "additional_actor_contact_rows": 1840,
+   "behavior_counts": {
+    "CRUISE": 0,
+    "FOLLOW": 106,
+    "HOLD": 487
+   },
+   "integrity": {
+    "inputs": 902,
+    "changed": [],
+    "snapshot_unchanged": true,
+    "postflight_processes_empty": true,
+    "source_unchanged": true,
+    "sensor_only_inputs": true
+   },
+   "stop": {
+    "request_s": 67.843,
+    "stable": true,
+    "checks": {
+     "model_stop_stable": true,
+     "dense_pose_stop_evidence": true,
+     "explicit_mcu_stop": true,
+     "no_mcu_latch_before_stop": true,
+     "no_deadline_diagnostic": true,
+     "no_wall_collision": true
+    },
+    "mcu_state": "ESTOP_LATCHED",
+    "mcu_reason": "software_stop",
+    "shutdown_clean": true,
+    "remaining_test_pids": []
+   },
+   "lidar_stress_report": {
+    "verified": true,
+    "minimum_added_delay_s": 0.031999999999996476,
+    "maximum_added_delay_s": 0.07000000000000739
+   },
+   "injection_raw": {
+    "acquisition_records": 682,
+    "received_scans": 682,
+    "injected_records": 682,
+    "injected_delay_s": {
+     "n": 682,
+     "min": 0.031999999999996476,
+     "p50": 0.04999999999999716,
+     "p95": 0.06800000000000139,
+     "max": 0.07000000000000739,
+     "mean": 0.05029618768328428
+    },
+    "max_abs_error_m": 0.029999887548838047
+   },
+   "scan_age_assessment": {
+    "calls": 3041,
+    "unique_scans": 609,
+    "not_in_acquisition": 2,
+    "min": 0.13700000000000045,
+    "p50": 0.19700000000000273,
+    "p95": 0.25700000000000145,
+    "max": 0.257000000000005,
+    "scope": "decision reference_s minus first-ray stamp; recorded, not a gate"
+   },
+   "scan_age_recomputed": {
+    "decision_calls": 3041,
+    "all_calls": {
+     "n": 3041,
+     "min": 0.13700000000000045,
+     "p50": 0.19700000000000273,
+     "p95": 0.25700000000000145,
+     "max": 0.257000000000005,
+     "mean": 0.20482637290365238
+    },
+    "case_window_calls": {
+     "n": 2991,
+     "min": 0.13700000000000045,
+     "p50": 0.19700000000000273,
+     "p95": 0.25700000000000145,
+     "max": 0.257000000000005,
+     "mean": 0.20475660314276387
+    },
+    "rule": "decision input.reference_s minus input.scan stamp (first-ray)"
+   },
+   "processing_ms": {
+    "field": "autonomy_status.jsonl motion.processing_ms",
+    "status_rows": 322,
+    "all": {
+     "n": 285,
+     "min": 0.4191589978290722,
+     "p50": 0.49866599147208035,
+     "p95": 0.6732262059813365,
+     "max": 1.0583160037640482,
+     "mean": 0.5257534773064483
+    },
+    "case_window": {
+     "n": 280,
+     "min": 0.4191589978290722,
+     "p50": 0.4965824991813861,
+     "p95": 0.6738588082953356,
+     "max": 1.0583160037640482,
+     "mean": 0.525420164402541
+    },
+    "scope": "sampled status rows only, not every decision call; per-scan motion compensation time as recorded"
+   },
+   "low_speed_segments_total": 1,
+   "low_speed_segments": [
+    {
+     "start_s": 18.965,
+     "end_s": 67.361,
+     "duration_s": 48.396,
+     "end_kind": "case_window_end",
+     "hold_episode_start_s": 18.561,
+     "progress_m": [
+      9.109999999999957,
+      9.109999999999957,
+      0.0
+     ],
+     "course_s_m": 6.13,
+     "ground_speed_mps": {
+      "mean": 0.00012334472099152495,
+      "max": 0.043385706116424096
+     },
+     "drive_speed_mps_max": 0,
+     "safe_speed_mps_max": 0,
+     "controller_speed_command_mps_max": 0,
+     "trace_behavior_reason": {
+      "HOLD/handoff_follow": 481
+     },
+     "safety_reason": {
+      "clear": 480,
+      "invalid_near_return": 1
+     },
+     "safety_clearance_m": [
+      0.0,
+      0.9199999999999999
+     ],
+     "lead_in_0p5s": {
+      "trace_rows": 8,
+      "ground_speed_mps": [
+       0.5769604891337891,
+       0.7137904709915206,
+       0.8380894711406881,
+       0.954192656787164,
+       1.0055140118189951,
+       0.7365602257044653,
+       0.38867239456697344,
+       0.057937649114721546
+      ],
+      "controller_speed_command_mps": [
+       0.7200000000000002,
+       0.7200000000000002,
+       0.7200000000000002,
+       0.9400000000000004,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "safe_speed_mps": [
+       0.699999988079071,
+       0.800000011920929,
+       0.8999999761581421,
+       1.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "behavior": [
+       "FOLLOW",
+       "FOLLOW",
+       "FOLLOW",
+       "FOLLOW",
+       "HOLD",
+       "HOLD",
+       "HOLD",
+       "HOLD"
+      ]
+     },
+     "status_window_s": [
+      18.061,
+      67.361
+     ],
+     "status_rows": 230,
+     "status_runs": [
+      [
+       18.14,
+       18.36,
+       2,
+       "FOLLOW",
+       "local_follow",
+       "no_side_threat_seen"
+      ],
+      [
+       18.52,
+       65.32,
+       219,
+       "HOLD",
+       "follow_boundary_unconfirmed",
+       "baseline_not_normal"
+      ],
+      [
+       65.52,
+       65.52,
+       1,
+       "HOLD",
+       "follow_invalid_near_return",
+       "baseline_not_normal"
+      ],
+      [
+       65.74,
+       67.24,
+       8,
+       "HOLD",
+       "follow_boundary_unconfirmed",
+       "baseline_not_normal"
+      ]
+     ],
+     "status_normal_reason": {
+      "follow_boundary_unconfirmed": 227,
+      "local_follow": 2,
+      "follow_invalid_near_return": 1
+     },
+     "status_selector": {
+      "SOLO/baseline/baseline_not_normal": 228,
+      "SOLO/baseline/no_side_threat_seen": 2
+     },
+     "status_persistence_reason": {
+      "low_motion_patch_candidate": 228,
+      "multiple_near_front_patches": 1,
+      "no_front_patch": 1
+     },
+     "status_follow_entry_space": {
+      "two_wall_straight_reference_unavailable": 228,
+      "unconfirmed_front_patch": 2
+     },
+     "status_preparation": {
+      "g1_command_hold": 227,
+      "no_current_front_patch": 2,
+      "short_low_motion_history": 1
+     },
+     "primary_actor_ego_xy_m": {
+      "start": [
+       0.564,
+       1.158
+      ],
+      "end": [
+       -4.19,
+       -0.011
+      ]
+     },
+     "primary_sampled_gap_m": [
+      1.056717224805477,
+      3.989492849618671
+     ],
+     "recovery": {
+      "recovered": false,
+      "first_speed_over_0p10_s": null,
+      "delay_after_segment_end_s": null
+     },
+     "second_actor_ego_xy_m": {
+      "start": [
+       -4.767,
+       1.82
+      ],
+      "end": [
+       0.565,
+       1.241
+      ]
+     },
+     "persistence_front_median_xy": {
+      "n": 228,
+      "x": [
+       0.25722848266373255,
+       1.0718888738525396,
+       1.4918223292993726
+      ],
+      "y": [
+       -0.00661158497019145,
+       1.2741601175547897e-06,
+       0.16105676674503394
+      ]
+     },
+     "after_window_to_stop": {
+      "stop_request_s": 67.843,
+      "note": "trace ends at the case window; see ego_after_window"
+     },
+     "decision_calls": {
+      "n": 2420,
+      "output_speed_positive": 0,
+      "output_speed_max": 0.0
+     }
+    }
+   ]
+  },
+  "r35_B": {
+   "exit_line": "HARNESS_EXIT=1 SURFACE_EXIT=0 INTEGRITY_EXIT=0 LEFTOVER_PGREP=1 ASSESSMENT_EXIT=1 WALL_S=775",
+   "report_passed": false,
+   "raw_failed_gates": [
+    "no_permanent_stall",
+    "final_gap",
+    "full_lap"
+   ],
+   "supplementary_passed": false,
+   "supplementary_failed_gates": [
+    "one_lap",
+    "sustained_motion"
+   ],
+   "progress_m": 42.549999999998334,
+   "longest_low_speed_s": 6.763999999999996,
+   "first_motion_s": 8.045,
+   "peak_mps": 1.5629576653141106,
+   "min_gap_m": 0.8088878370760425,
+   "min_swept_gap_m": 0.807739737548159,
+   "sampled_gap_at_window_end_m": 6.827582761618487,
+   "actor_contact_messages_with_ego": 0,
+   "additional_actor_contact_rows": 0,
+   "behavior_counts": {
+    "CRUISE": 0,
+    "FOLLOW": 508,
+    "HOLD": 84
+   },
+   "integrity": {
+    "inputs": 903,
+    "changed": [],
+    "snapshot_unchanged": true,
+    "postflight_processes_empty": true,
+    "source_unchanged": true,
+    "sensor_only_inputs": true
+   },
+   "stop": {
+    "request_s": 67.847,
+    "stable": true,
+    "checks": {
+     "model_stop_stable": true,
+     "dense_pose_stop_evidence": true,
+     "explicit_mcu_stop": true,
+     "no_mcu_latch_before_stop": true,
+     "no_deadline_diagnostic": true,
+     "no_wall_collision": true
+    },
+    "mcu_state": "ESTOP_LATCHED",
+    "mcu_reason": "software_stop",
+    "shutdown_clean": true,
+    "remaining_test_pids": []
+   },
+   "lidar_stress_report": {
+    "verified": true,
+    "minimum_added_delay_s": 0.031999999999996476,
+    "maximum_added_delay_s": 0.07000000000000028
+   },
+   "injection_raw": {
+    "acquisition_records": 683,
+    "received_scans": 683,
+    "injected_records": 683,
+    "injected_delay_s": {
+     "n": 683,
+     "min": 0.031999999999996476,
+     "p50": 0.05000000000000071,
+     "p95": 0.06800000000000495,
+     "max": 0.07000000000000028,
+     "mean": 0.05042459736456789
+    },
+    "max_abs_error_m": 0.029999887548838047
+   },
+   "scan_age_assessment": {
+    "calls": 2989,
+    "unique_scans": 599,
+    "not_in_acquisition": 0,
+    "min": 0.13700000000000045,
+    "p50": 0.19700000000000273,
+    "p95": 0.25700000000000145,
+    "max": 0.2570000000000121,
+    "scope": "case-window decision reference_s minus first-ray stamp; footer completeness covers all calls",
+    "excluded_outside_case_calls": 51,
+    "all_calls_not_in_acquisition": 0
+   },
+   "scan_age_recomputed": {
+    "decision_calls": 3040,
+    "all_calls": {
+     "n": 3040,
+     "min": 0.13700000000000045,
+     "p50": 0.19700000000000273,
+     "p95": 0.25700000000000145,
+     "max": 0.2570000000000121,
+     "mean": 0.2047631578947391
+    },
+    "case_window_calls": {
+     "n": 2989,
+     "min": 0.13700000000000045,
+     "p50": 0.19700000000000273,
+     "p95": 0.25700000000000145,
+     "max": 0.2570000000000121,
+     "mean": 0.20472164603546558
+    },
+    "rule": "decision input.reference_s minus input.scan stamp (first-ray)"
+   },
+   "processing_ms": {
+    "field": "autonomy_status.jsonl motion.processing_ms",
+    "status_rows": 328,
+    "all": {
+     "n": 291,
+     "min": 0.4012480058008805,
+     "p50": 0.5057630041847005,
+     "p95": 0.7240415070555173,
+     "max": 1.0796209971886128,
+     "mean": 0.5333602300019378
+    },
+    "case_window": {
+     "n": 286,
+     "min": 0.4012480058008805,
+     "p50": 0.5054924986325204,
+     "p95": 0.7157640065997839,
+     "max": 1.0796209971886128,
+     "mean": 0.5327181956141379
+    },
+    "scope": "sampled status rows only, not every decision call; per-scan motion compensation time as recorded"
+   },
+   "low_speed_segments_total": 6,
+   "low_speed_segments": [
+    {
+     "start_s": 60.595,
+     "end_s": 67.359,
+     "duration_s": 6.763999999999996,
+     "end_kind": "case_window_end",
+     "hold_episode_start_s": 60.394,
+     "progress_m": [
+      42.54999999999993,
+      42.54999999999993,
+      0.0
+     ],
+     "course_s_m": 39.57,
+     "ground_speed_mps": {
+      "mean": 0.0009503724212544561,
+      "max": 0.04644579720367588
+     },
+     "drive_speed_mps_max": 0,
+     "safe_speed_mps_max": 0,
+     "controller_speed_command_mps_max": 0,
+     "trace_behavior_reason": {
+      "HOLD/handoff_follow": 68
+     },
+     "safety_reason": {
+      "clear": 68
+     },
+     "safety_clearance_m": [
+      0.84,
+      0.88
+     ],
+     "lead_in_0p5s": {
+      "trace_rows": 6,
+      "ground_speed_mps": [
+       0.8521800377061758,
+       0.5798299504212467,
+       0.33339733625814516,
+       0.2847415465265364,
+       0.3393993463789738,
+       0.10331751791423138
+      ],
+      "controller_speed_command_mps": [
+       0.35,
+       0.35,
+       0.35,
+       0.35,
+       0.0,
+       0.0
+      ],
+      "safe_speed_mps": [
+       0.3499999940395355,
+       0.3499999940395355,
+       0.3499999940395355,
+       0.3700000047683716,
+       0.0,
+       0.0
+      ],
+      "behavior": [
+       "FOLLOW",
+       "FOLLOW",
+       "FOLLOW",
+       "FOLLOW",
+       "HOLD",
+       "HOLD"
+      ]
+     },
+     "status_window_s": [
+      59.894,
+      67.359
+     ],
+     "status_rows": 35,
+     "status_runs": [
+      [
+       59.98,
+       60.18,
+       2,
+       "FOLLOW",
+       "local_follow",
+       "released_observed_motion_small_masked_tail"
+      ],
+      [
+       60.36,
+       67.24,
+       33,
+       "HOLD",
+       "parallel_hold_partial_observation_outside_trial",
+       "large_motion_region_unobserved"
+      ]
+     ],
+     "status_normal_reason": {
+      "parallel_hold_partial_observation_outside_trial": 33,
+      "local_follow": 2
+     },
+     "status_selector": {
+      "RELEASED/parallel/large_motion_region_unobserved": 33,
+      "RELEASED/baseline/released_observed_motion_small_masked_tail": 2
+     },
+     "status_persistence_reason": {
+      "low_motion_patch_candidate": 35
+     },
+     "status_follow_entry_space": {
+      "patch_outside_g1_swept_arc": 35
+     },
+     "status_preparation": {
+      "g1_command_hold": 33,
+      "patch_motion_observed": 1,
+      "short_low_motion_history": 1
+     },
+     "primary_actor_ego_xy_m": {
+      "start": [
+       1.198,
+       1.064
+      ],
+      "end": [
+       5.027,
+       4.88
+      ]
+     },
+     "primary_sampled_gap_m": [
+      1.376544933177681,
+      6.781979281408171
+     ],
+     "recovery": {
+      "recovered": false,
+      "first_speed_over_0p10_s": null,
+      "delay_after_segment_end_s": null
+     },
+     "second_actor_ego_xy_m": {
+      "start": [
+       5.49,
+       5.257
+      ],
+      "end": [
+       7.539,
+       9.119
+      ]
+     },
+     "persistence_front_median_xy": {
+      "n": 35,
+      "x": [
+       0.605793851959448,
+       0.6409517673173346,
+       0.755730217019811
+      ],
+      "y": [
+       -0.2100762356184575,
+       -0.18738106471803256,
+       -0.11821225893822951
+      ]
+     },
+     "after_window_to_stop": {
+      "stop_request_s": 67.847,
+      "note": "trace ends at the case window; see ego_after_window"
+     },
+     "decision_calls": {
+      "n": 338,
+      "output_speed_positive": 0,
+      "output_speed_max": 0.0
+     },
+     "scan_cluster_at_patch": {
+      "reference_s": 63.980000000000004,
+      "frame": "lidar ray xy + lidar_x_m(0.06) offset; assumed vehicle frame, not verified",
+      "beyond_ends": [
+       {
+        "ray": 208,
+        "kind": "jump",
+        "xy": [
+         0.567,
+         -0.295
+        ],
+        "step_m": 0.053
+       },
+       {
+        "ray": 231,
+        "kind": "jump",
+        "xy": [
+         0.696,
+         -0.155
+        ],
+        "step_m": 0.055
+       }
+      ],
+      "group_xy": [
+       [
+        0.525,
+        -0.263
+       ],
+       [
+        0.553,
+        -0.271
+       ],
+       [
+        0.565,
+        -0.269
+       ],
+       [
+        0.571,
+        -0.265
+       ],
+       [
+        0.555,
+        -0.248
+       ],
+       [
+        0.558,
+        -0.242
+       ],
+       [
+        0.569,
+        -0.24
+       ],
+       [
+        0.571,
+        -0.233
+       ],
+       [
+        0.61,
+        -0.242
+       ],
+       [
+        0.611,
+        -0.234
+       ],
+       [
+        0.581,
+        -0.214
+       ],
+       [
+        0.595,
+        -0.212
+       ],
+       [
+        0.597,
+        -0.205
+       ],
+       [
+        0.629,
+        -0.209
+       ],
+       [
+        0.644,
+        -0.206
+       ],
+       [
+        0.657,
+        -0.202
+       ],
+       [
+        0.644,
+        -0.19
+       ],
+       [
+        0.66,
+        -0.187
+       ],
+       [
+        0.647,
+        -0.175
+       ],
+       [
+        0.637,
+        -0.164
+       ],
+       [
+        0.682,
+        -0.168
+       ],
+       [
+        0.641,
+        -0.149
+       ]
+      ],
+      "nearest_ray_index": 225,
+      "nearest_ray_xy": [
+       0.644,
+       -0.19
+      ],
+      "nearest_ray_to_patch_m": 0.004081864554312375,
+      "connected_rays": 22,
+      "connected_span_m": 0.16280919902314606,
+      "connected_end_xy": [
+       [
+        0.525,
+        -0.263
+       ],
+       [
+        0.641,
+        -0.149
+       ]
+      ],
+      "rule": "adjacent finite rays with point step <= 0.05 m",
+      "evaluation_only_wall_check": {
+       "ego_pose": [
+        63.98,
+        9.722758472758256,
+        1.4256786661747864,
+        0.7899692747420016
+       ],
+       "scope": "ground-truth wall visual mesh (batched_walls_0.obj) XY footprint, evaluation only; ego pose reference point vs vehicle frame origin not verified (few cm uncertainty)",
+       "points": [
+        {
+         "vehicle_xy": [
+          0.641,
+          -0.187
+         ],
+         "world_xy": [
+          10.307,
+          1.749
+         ],
+         "wall_footprint_distance_m": 0
+        },
+        {
+         "vehicle_xy": [
+          0.525,
+          -0.263
+         ],
+         "world_xy": [
+          10.279,
+          1.613
+         ],
+         "wall_footprint_distance_m": 0.0259
+        },
+        {
+         "vehicle_xy": [
+          0.641,
+          -0.149
+         ],
+         "world_xy": [
+          10.28,
+          1.776
+         ],
+         "wall_footprint_distance_m": 0.0252
+        }
+       ]
+      }
+     }
+    },
+    {
+     "start_s": 44.695,
+     "end_s": 45.197,
+     "duration_s": 0.5020000000000024,
+     "end_kind": "speed_recovered",
+     "hold_episode_start_s": 44.695,
+     "progress_m": [
+      29.74999999999993,
+      29.75999999999993,
+      0.010000000000001563
+     ],
+     "course_s_m": 26.77,
+     "ground_speed_mps": {
+      "mean": 0.03230550439757401,
+      "max": 0.13755042652080757
+     },
+     "drive_speed_mps_max": 0.23999999463558197,
+     "safe_speed_mps_max": 0.2199999988079071,
+     "controller_speed_command_mps_max": 0.21999999999999997,
+     "trace_behavior_reason": {
+      "FOLLOW/handoff_follow": 4,
+      "HOLD/handoff_follow": 2
+     },
+     "safety_reason": {
+      "clear": 6
+     },
+     "safety_clearance_m": [
+      0.7999999999999999,
+      1.0
+     ],
+     "lead_in_0p5s": {
+      "trace_rows": 4,
+      "ground_speed_mps": [
+       1.027266468226086,
+       0.8577835343651116,
+       0.5829294666994789,
+       0.24608272188534508
+      ],
+      "controller_speed_command_mps": [
+       1.0,
+       0.0,
+       0.0,
+       0.02
+      ],
+      "safe_speed_mps": [
+       0.949999988079071,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "behavior": [
+       "FOLLOW",
+       "HOLD",
+       "HOLD",
+       "FOLLOW"
+      ]
+     },
+     "status_window_s": [
+      44.195,
+      45.197
+     ],
+     "status_rows": 7,
+     "status_runs": [
+      [
+       44.32,
+       44.32,
+       1,
+       "HOLD",
+       "parallel_hold_baseline_unavailable",
+       "baseline_not_normal"
+      ],
+      [
+       44.52,
+       44.52,
+       1,
+       "HOLD",
+       "follow_release_wait",
+       "released_hold_keep_steering"
+      ],
+      [
+       44.58,
+       44.58,
+       1,
+       "FOLLOW",
+       "local_follow",
+       "released_observed_motion_small_masked_tail"
+      ],
+      [
+       44.72,
+       44.72,
+       1,
+       "HOLD",
+       "parallel_hold_baseline_unavailable",
+       "baseline_not_normal"
+      ],
+      [
+       44.94,
+       44.94,
+       1,
+       "HOLD",
+       "follow_release_wait",
+       "released_hold_keep_steering"
+      ],
+      [
+       44.96,
+       45.16,
+       2,
+       "FOLLOW",
+       "local_follow",
+       "released_observed_motion_small_masked_tail"
+      ]
+     ],
+     "status_normal_reason": {
+      "local_follow": 3,
+      "parallel_hold_baseline_unavailable": 2,
+      "follow_release_wait": 2
+     },
+     "status_selector": {
+      "RELEASED/baseline/released_observed_motion_small_masked_tail": 3,
+      "RELEASED/parallel/baseline_not_normal": 2,
+      "RELEASED/baseline/released_hold_keep_steering": 2
+     },
+     "status_persistence_reason": {
+      "low_motion_patch_candidate": 7
+     },
+     "status_follow_entry_space": {
+      "two_wall_straight_reference_unavailable": 7
+     },
+     "status_preparation": {
+      "g1_command_hold": 4,
+      "two_wall_straight_reference_unavailable": 2,
+      "patch_motion_observed": 1
+     },
+     "primary_actor_ego_xy_m": {
+      "start": [
+       0.59,
+       1.135
+      ],
+      "end": [
+       0.637,
+       1.529
+      ]
+     },
+     "primary_sampled_gap_m": [
+      1.0507751387333129,
+      1.4362763435495172
+     ],
+     "recovery": {
+      "recovered": true,
+      "first_speed_over_0p10_s": 45.299,
+      "delay_after_segment_end_s": 0.10199999999999676
+     },
+     "second_actor_ego_xy_m": {
+      "start": [
+       -1.383,
+       4.979
+      ],
+      "end": [
+       -1.773,
+       5.037
+      ]
+     },
+     "persistence_front_median_xy": {
+      "n": 7,
+      "x": [
+       0.961979540899091,
+       0.9673262113361522,
+       1.188190561560222
+      ],
+      "y": [
+       -0.011022077168277104,
+       -0.005848229611415644,
+       -7.3022223658952535e-06
+      ]
+     },
+     "decision_calls": {
+      "n": 25,
+      "output_speed_positive": 13,
+      "output_speed_max": 0.7499999999999999
+     }
+    },
+    {
+     "start_s": 38.859,
+     "end_s": 39.061,
+     "duration_s": 0.20199999999999818,
+     "end_kind": "speed_recovered",
+     "hold_episode_start_s": 38.859,
+     "progress_m": [
+      25.04999999999993,
+      25.059999999999928,
+      0.00999999999999801
+     ],
+     "course_s_m": 22.07,
+     "ground_speed_mps": {
+      "mean": 0.07861073640862935,
+      "max": 0.15750353557782
+     },
+     "drive_speed_mps_max": 0.30000001192092896,
+     "safe_speed_mps_max": 0.30000001192092896,
+     "controller_speed_command_mps_max": 0.23999999999999996,
+     "trace_behavior_reason": {
+      "FOLLOW/handoff_follow": 3
+     },
+     "safety_reason": {
+      "clear": 3
+     },
+     "safety_clearance_m": [
+      1.2,
+      1.28
+     ],
+     "lead_in_0p5s": {
+      "trace_rows": 4,
+      "ground_speed_mps": [
+       0.7885688988445333,
+       0.6721614185081011,
+       0.47055302946722416,
+       0.13745691054823375
+      ],
+      "controller_speed_command_mps": [
+       0.7499999999999999,
+       0.7499999999999999,
+       0.0,
+       0.0
+      ],
+      "safe_speed_mps": [
+       0.699999988079071,
+       0.699999988079071,
+       0.0,
+       0.0
+      ],
+      "behavior": [
+       "FOLLOW",
+       "FOLLOW",
+       "HOLD",
+       "HOLD"
+      ]
+     },
+     "status_window_s": [
+      38.359,
+      39.061
+     ],
+     "status_rows": 3,
+     "status_runs": [
+      [
+       38.56,
+       38.56,
+       1,
+       "HOLD",
+       "parallel_hold_reference_not_straight",
+       "guard_curve_rejected_toward_right"
+      ],
+      [
+       38.76,
+       38.98,
+       2,
+       "FOLLOW",
+       "local_follow",
+       "released_observed_motion_small_masked_tail"
+      ]
+     ],
+     "status_normal_reason": {
+      "local_follow": 2,
+      "parallel_hold_reference_not_straight": 1
+     },
+     "status_selector": {
+      "RELEASED/baseline/released_observed_motion_small_masked_tail": 2,
+      "GUARD/parallel/guard_curve_rejected_toward_right": 1
+     },
+     "status_persistence_reason": {
+      "low_motion_patch_candidate": 3
+     },
+     "status_follow_entry_space": {
+      "patch_outside_g1_swept_arc": 3
+     },
+     "status_preparation": {
+      "patch_motion_observed": 2,
+      "g1_command_hold": 1
+     },
+     "primary_actor_ego_xy_m": {
+      "start": [
+       0.659,
+       -1.193
+      ],
+      "end": [
+       0.708,
+       -1.342
+      ]
+     },
+     "primary_sampled_gap_m": [
+      1.13854118899353,
+      1.2953783985270786
+     ],
+     "recovery": {
+      "recovered": true,
+      "first_speed_over_0p10_s": 39.162,
+      "delay_after_segment_end_s": 0.10099999999999909
+     },
+     "second_actor_ego_xy_m": {
+      "start": [
+       2.172,
+       0.203
+      ],
+      "end": [
+       2.114,
+       0.388
+      ]
+     },
+     "persistence_front_median_xy": {
+      "n": 3,
+      "x": [
+       0.8411219232625883,
+       0.8478392952570785,
+       0.9178099149336476
+      ],
+      "y": [
+       0.03162048481947445,
+       0.06960793428630646,
+       0.08195480723076594
+      ]
+     },
+     "decision_calls": {
+      "n": 11,
+      "output_speed_positive": 11,
+      "output_speed_max": 1.1999999999999997
+     }
+    }
+   ],
+   "ego_after_window_to_stop": {
+    "from_s": 67.359,
+    "to_s": 67.847,
+    "displacement_m": 5.0266054269965464e-05
+   }
+  }
+ },
+ "same_place_reference": {
+  "run": "g1g2_lidar_stress_pair_v1/A_no_injection",
+  "progress_window_m": [
+   41.54999999999993,
+   43.54999999999993
+  ],
+  "course_s_at_r35_stall": 39.57,
+  "time_s": [
+   59.429,
+   61.945
+  ],
+  "min_ground_speed_mps": 0.03157305727882057,
+  "trace_behavior": {
+   "FOLLOW": 25,
+   "HOLD": 1
+  },
+  "status_runs": [
+   [
+    59.54,
+    60.4,
+    5,
+    "FOLLOW",
+    "local_follow",
+    "no_side_threat_seen"
+   ],
+   [
+    60.56,
+    60.56,
+    1,
+    "HOLD",
+    "follow_boundary_unconfirmed",
+    "baseline_not_normal"
+   ],
+   [
+    60.72,
+    61.8,
+    6,
+    "FOLLOW",
+    "local_follow",
+    "no_side_threat_seen"
+   ]
+  ],
+  "status_selector": {
+   "SOLO/baseline/no_side_threat_seen": 11,
+   "SOLO/baseline/baseline_not_normal": 1
+  },
+  "front_patches": [
+   [
+    59.54,
+    [
+     1.088,
+     -0.004
+    ]
+   ],
+   [
+    59.76,
+    [
+     0.918,
+     -0.012
+    ]
+   ],
+   [
+    59.98,
+    [
+     0.761,
+     -0.125
+    ]
+   ],
+   [
+    60.18,
+    [
+     0.652,
+     -0.18
+    ]
+   ],
+   [
+    60.4,
+    [
+     0.648,
+     -0.2
+    ]
+   ],
+   [
+    60.56,
+    [
+     0.763,
+     -0.212
+    ]
+   ],
+   [
+    60.72,
+    [
+     1.006,
+     -0.222
+    ]
+   ],
+   [
+    60.94,
+    [
+     1.038,
+     -0.225
+    ]
+   ],
+   [
+    61.16,
+    null
+   ],
+   [
+    61.36,
+    null
+   ],
+   [
+    61.58,
+    null
+   ],
+   [
+    61.8,
+    null
+   ]
+  ],
+  "note": "r34 A is a different (no-injection) run; actor-relative timing differs; context only"
+ },
+ "inputs_sha256": {
+  "c1_piecewise_noise_v1/B_c1_injection/assessment_run1.json": "d700fdcd09044249dce4ccc1d04e8bac182ef795fcb516f7dc8bf1c998e07469",
+  "c1_piecewise_noise_v1/B_c1_injection/postflight_integrity_run1.json": "ac87adc5ab228bcbfba79bfb982a7902beda3766088879f255b5f6d6dee9ad7d",
+  "c1_piecewise_noise_v1/B_c1_injection/postflight_processes_run1.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "c1_piecewise_noise_v1/B_c1_injection/run1/acquisition.json": "35d959ee37d7a7315376b8401bd03b9f39a55c106012f6cbc32d6bf306f9ba5b",
+  "c1_piecewise_noise_v1/B_c1_injection/run1/additional_actors.json": "f92b5fc5f9ef20efc6b7316b2ca4950327d169f9a76a698ca7c767841eea038e",
+  "c1_piecewise_noise_v1/B_c1_injection/run1/autonomy_status.jsonl": "a6850da6d1748becff321bd694929eb38bcd425b6d569f6946b6f9256f8aaa30",
+  "c1_piecewise_noise_v1/B_c1_injection/run1/batched_walls_0.obj": "fd3db9686fc9c364757439575d816741424263e3dc7b075b4cabe640d1f35195",
+  "c1_piecewise_noise_v1/B_c1_injection/run1/ego_poses.jsonl": "32bad2d4c2e5ed45aec93c1a12d62e775ef5ef5e86266f87ae5625d31975af38",
+  "c1_piecewise_noise_v1/B_c1_injection/run1/follow_decisions.jsonl": "10edf109aa301ec2ec53e85536e22768cc5b294f7669bf039bf5267e16b343e7",
+  "c1_piecewise_noise_v1/B_c1_injection/run1/report.json": "e3822facdbc3e43b8075767c100abf7a8ce2128a7b90fda2aa607bd94b192268",
+  "c1_piecewise_noise_v1/B_c1_injection/run1/scans_received.jsonl": "ee4292a0232c5e6f9f0d6313afa00d4119390ca96d6717a89d6e7a3c82778669",
+  "c1_piecewise_noise_v1/B_c1_injection/run1/trace.json": "57bf4d6a9f558782bd76496b1f050d6daa2eec14b7041183a1178f28afb4a921",
+  "c1_piecewise_noise_v1/B_c1_injection/run1.exit": "8e478c9a5ba3b2e37b9f08233c099d928ca88b34ef2c556a292cf5a0000d82cf",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/assessment_run1.json": "85a32d2f2ee4e93cf00a606b6e089306ed21fc1957bf2253264472edda332035",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/postflight_integrity_run1.json": "db42271567ddffc019d1964687b555ddd465dd070cdf3ab7f57fc75058d100f0",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/postflight_processes_run1.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/run1/acquisition.json": "2ad44300c5564772413496c9ff11b2f7b90c39f15a645de9b5d743343d659fa8",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/run1/additional_actors.json": "4f0be77b0e06719419a0b360e4951f12e1aa47a37a23df633924e5f99debc874",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/run1/autonomy_status.jsonl": "4fedfc00ca3275106fe89767054febd995b3c236069939fe894382272ec05ebf",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/run1/follow_decisions.jsonl": "2de86d7364ac4b3176e2c236198bbbb1b57b55039fad43476a15b25a00017e92",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/run1/report.json": "783f01bfa3efe2f1e0b724e7ebbc909340d6aa815bb716cbf07768205e19806d",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/run1/scans_received.jsonl": "b3588299a24f8a54eedf11fb5dfb3fd5a2fe48d4b8f12b62c0e52a817426f20a",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/run1/trace.json": "dc4d0f0fb94f9c84ba7f4f001fce9adf3a6036a53415061921575c79b9dd9ca0",
+  "g1g2_lidar_stress_pair_v1/A_no_injection/run1.exit": "b11acb342d32c18d7ccfe203446392f01f20627e92c9bafd9d1f0876bf030082",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/assessment_run1.json": "5f28990c7aa4bf41aa5d7aa00a19b33e0199ec7af2d7947e30f6f2d0c610ca96",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/postflight_integrity_run1.json": "db42271567ddffc019d1964687b555ddd465dd070cdf3ab7f57fc75058d100f0",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/postflight_processes_run1.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/run1/acquisition.json": "39af7f0ba455c5bd1ad338e42018f607563f45f19c00cae9aff7df7d83186462",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/run1/additional_actors.json": "a8e9514cf3aedfaf318b54587568be7e5a6e60873e77238d81b40cafe2c07c6f",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/run1/autonomy_status.jsonl": "9941df96b8e9b2a7c6e6697bd60269a1be6af992bdaf0b6bc857e4840206a17f",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/run1/follow_decisions.jsonl": "04982d5eaf5c46fd6ebfe51d4cc379f9c3db293d6938b8c90c4d5ef110af3c24",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/run1/report.json": "56253649572dc7b1fd53b602934d0ac8f9b5b7b2f8bb9c63205e46eac7a62127",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/run1/scans_received.jsonl": "9d26e6edb8199e42ab635b7052125cb6780ebc8342bc47f4174a5e39bcc88878",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/run1/trace.json": "ea3a520cd0c2de3eb633426935fe3f3b88d3db1810b91ce7eb5bc94ec85a69ff",
+  "g1g2_lidar_stress_pair_v1/B_c1_injection/run1.exit": "a519c0ee9ecf4d92bd576258b27cddaa1342357f92f0260788008c169c0bb646"
+ }
+}

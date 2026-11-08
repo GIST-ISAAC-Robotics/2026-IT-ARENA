@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "scope": "B0390 선택형 카메라 프로필과 명시 새 코스 단독 실행. 기존 기본 인자·조향 정책 유지.",
+  "parent_contract": "config/tests/track_migration_v2026_11_06_r1_sha256.json",
+  "parent_contract_sha256": "ac8cf6788f70133de8629ac9d697e592f7d8b2fe5a3be7947c7404a4ea578093",
+  "before_snapshot": "artifacts/validation/2026-11-07/b0390_course_baseline_v1/before_camera_migration.zip",
+  "before_snapshot_sha256": "a0af5b0f32d8be3088d0447fb4617884d3176ef8790036f5c568fb5d1b07bcb2",
+  "approved_changes": {
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "17ebb72f403bbecf9d0e5a05cc1631d70c5d3bb76e85a11a2862f3c86c403770",
+      "after": "5e6445d47ffc5a080125e549469f153e01a2260d1a860f14bf5d569c3caac670",
+      "reason": "카메라·IMU 로그에 선택 프로필 모델명 사용. 동작 변경 없음"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/run_current_solo.py": {
+      "before": "a2444fb5fac7ddcb1451cefb93de3fa5e2251983165d03e3c9e2c1ab92c5535c",
+      "after": "25a7290c211c641831f93bb9c894ea1a14a05cc1d68cb7c604c214b026e0e468",
+      "reason": "--track/--local-sensor-config 명시 선택 전달. 기존 인자 생략 재현 유지"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_description/config/b0390_c1_jr60p20_sim.yaml": "06d9b783f116886369920a34fe6f177cde8657443c8e6afd2e9a87c21339daa0"
+  }
+}

@@ -63,11 +63,14 @@ def short_observed_surface(point, current, source_indices):
 class PartialObservationPolicy:
     speed_cap_mps = .5
 
-    def __init__(self, allow_narrow_forward=False, surface_translation_enabled=False, lateral_metric_enabled=False):
-        if any(type(v) is not bool for v in (allow_narrow_forward,surface_translation_enabled,lateral_metric_enabled)):
+    def __init__(self, allow_narrow_forward=False, surface_translation_enabled=False, lateral_metric_enabled=False, oblique_metric_enabled=False):
+        if any(type(v) is not bool for v in (allow_narrow_forward,surface_translation_enabled,lateral_metric_enabled,oblique_metric_enabled)):
             raise ValueError('forward candidate flag must be bool')
         self.allow_narrow_forward = allow_narrow_forward
         self.surface_translation_enabled = surface_translation_enabled
+        if oblique_metric_enabled and not (allow_narrow_forward and surface_translation_enabled and lateral_metric_enabled):
+            raise ValueError('oblique gap trial requires the complete v4 policy')
+        self.oblique_metric_enabled = oblique_metric_enabled
         self.lateral_metric_enabled = lateral_metric_enabled
         self.reset()
 
@@ -161,14 +164,25 @@ class PartialObservationPolicy:
         if metric_gap and not self.lateral_metric_enabled:
             return {**report, 'reason':'wide_or_many_missing'}
         # v4는 3도 초과 측방 공백만 별도 후보로 다룬다. 정면/전체 고장 완화가 아니다.
+        minimum_metric_angle = 30. if self.oblique_metric_enabled else 60.
         if metric_gap:
-            radius=max(.6,.16+speed*(now-source+.10)+speed*speed/4)
+            # 사선 저속 후보: 원점 고정 반경 대신 감속 동안 차체가 닿을 수 있는 반경.
+            # 후륜축 이동 D에 차체 중심 회전 이동 <= D*abs(tan(delta))/2를 더한다.
+            # 현재 차체 외곽/센서 오프셋과 기존 .06 m 예측 여유도 포함한다.
+            # 50 mm의 제한 위험을 재는 거리이며 미관측 공간의 자유 증명이 아니다.
+            radius=max(
+                (math.hypot(length/2+.05,width/2+.05)
+                 +math.hypot(history.config.lidar_x_m,history.config.lidar_y_m)
+                 +(1+max(abs(math.tan(steering)),abs(math.tan(previous_steering)))/2)
+                   *(speed*(now-source+.10)+speed*speed/4+.06))
+                    if self.oblique_metric_enabled else .6,
+                .16+speed*(now-source+.10)+speed*speed/4)
             # 양쪽 실제 유효 광선 사이 전체 간격을 쓴다(무반환 셀 폭보다 한 step 큼).
             chord=2*radius*math.sin((widest+step)/2)
             report['lateral_metric']=dict(radius_m=radius,missing_chord_m=chord,
-                maximum_chord_m=.05,minimum_angle_deg=60.,maximum_measured_or_requested_speed_mps=.6,
+                maximum_chord_m=.05,minimum_angle_deg=minimum_metric_angle, oblique_trial=self.oblique_metric_enabled,maximum_measured_or_requested_speed_mps=.6,
                 scope='bounded_hidden_sliver_risk_not_measured_free_space')
-            if speed>.6 or chord>.05 or np.any(np.abs(angles[unknown])<math.radians(60)):
+            if speed>.6 or chord>.05 or np.any(np.abs(angles[unknown])<math.radians(minimum_metric_angle)):
                 return {**report,'reason':'lateral_metric_outside_trial'}
             report['speed_cap_mps']=.2
         central = bool(np.any(np.abs(angles[unknown]) <= math.radians(30)+step/2))
@@ -200,7 +214,7 @@ class PartialObservationPolicy:
         central = central or central_after
         if metric_gap:
             transported_angles=np.abs((direction+math.pi)%math.tau-math.pi)
-            if (np.any(transported_angles<math.radians(60)) or
+            if (np.any(transported_angles<math.radians(minimum_metric_angle)) or
                     np.any(transported_angles>math.radians(100)) or min(boundary_ranges)<1.):
                 return {**report,'reason':'lateral_metric_observation_unconfirmed'}
         if central:

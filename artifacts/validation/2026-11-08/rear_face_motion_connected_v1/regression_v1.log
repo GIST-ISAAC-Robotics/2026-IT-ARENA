@@ -1,0 +1,29 @@
+arena-autonomy /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_autonomy/arena_autonomy.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy
+arena-vehicle-interface /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_vehicle_interface/arena_vehicle_interface.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_vehicle_interface
+installed packages and child process entry points resolved: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/turn_preview.py
+........................................................................ [ 26%]
+........................................................F............... [ 52%]
+........................................................................ [ 78%]
+..........................................................               [100%]
+=================================== FAILURES ===================================
+___________ test_default_launches_and_files_do_not_select_the_policy ___________
+
+    def test_default_launches_and_files_do_not_select_the_policy():
+        root = Path(__file__).resolve().parents[1]
+        for name in ('simulation.launch.py', 'demo.launch.py', 'local_pursuit.launch.py', 'g1_follow.launch.py'):
+>           assert 'g2_corridor_policy' not in (root/'src/arena_bringup/launch'/name).read_text()
+E           AssertionError: assert 'g2_corridor_policy' not in 'from __futu...  ]\n    )\n'
+E             'g2_corridor_policy' is contained here:
+E                      g1_g2_corridor_policy='corridor_v2_signed_hold', g1_g2_preparation_policy='observed_entry_space_v1',
+E             ?           ++++++++++++++++++
+E                               g1_g2_persistence_window='trim_before_compare_v1', g1_g2_follow_entry_space=True,
+E                               g1_g2_moving_follow_reserve=reserve in ('moving','closing','recent','low_motion','paced'),
+E                               g1_g2_closing_follow_reserve=reserve in ('closing','recent','low_motion','paced'),
+E                               g1_g2_recent_forward_reserve=reserve=='recent', g1_g2_low_motion_reserve=reserve in ('low_motion','paced'),...
+E             
+E             ...Full output truncated (212 lines hidden), use '-vv' to show
+
+tests/test_bypass_corridor_trial.py:260: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_bypass_corridor_trial.py::test_default_launches_and_files_do_not_select_the_policy
+1 failed, 273 passed in 112.07s (0:01:52)

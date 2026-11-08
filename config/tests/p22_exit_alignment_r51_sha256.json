@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "scope": "P22 입구 잔여 경로 보존 및 관측 통로 중심 정렬 뒤 출구 연장. 기본OFF/물성/보호불변.",
+  "parent_contract": "config/tests/p22_route_connected_r50_sha256.json",
+  "parent_contract_sha256": "e4b4437d13e348726a56e497c0b0f48aeab3ca58b05058819b9b65130c98e50b",
+  "before_snapshot": "artifacts/validation/2026-11-09/p22_exit_alignment_connected_v1/before.zip",
+  "before_snapshot_sha256": "be130a41b9c19c0a52a517d34be3e25597c4ada67c2c50a630b633bbc9ddb158",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/p22_route_trial.py": {
+      "before": "7673f9fdf16a8a34cfdff0b09f10c533e0559eed8dddb64fa7641e5231deb4dd",
+      "after": "0211b5e2e266a9a58abab7b4c9eaf4dd760e7161bd2f6da99878dff02a2d04b3",
+      "reason": "Preserve entry path and align its tail to observed corridor before extending exit"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "a687f9d4ba26af899882c0527d6ed5e2a9521d9595d136b98846a776aa05f301",
+      "after": "4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135",
+      "reason": "Preserve entry path and align its tail to observed corridor before extending exit"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/p22_exit_alignment.py": "81f2f666b6d747fdcecf62c147c5e5f4bd0ca0a270245abbefdfa346d9e174df"
+  }
+}

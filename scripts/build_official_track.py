@@ -3,8 +3,9 @@
 
 노면·잔디·벽·중심선·분기·그리드 슬롯은 릴리스를 따릅니다. 코스 ArUco의
 SDF 링크 전체·위치·방향·텍스처와 scene 메타데이터를 보존합니다.
-v2026.11.01은 공식 2×5 신호 구조물·광원 기하를 보존하고 광원 재질만 소등으로
+v2026.11.01·v2026.11.06은 공식 2×5 신호 구조물·광원 기하를 보존하고 광원 재질만 소등으로
 시작합니다. 이전 릴리스 프로필의 팀 임시 신호·방지턱 표현은 재현용으로 남습니다.
+릴리스마다 ZIP 해시·크기·파일 수·공식 폭을 등록하고, 실행 월드 경로를 릴리스별로 분리합니다.
 보존 ZIP은 절대 수정하지 않습니다.
 """
 
@@ -42,11 +43,44 @@ VEHICLE = REPO / "src/arena_description/config/vehicle.yaml"
 EXPECTED_ARCHIVE_SHA256 = "ef50e0f125eb4b8cba3cfa736188a24038b7a8c99a4de6b6a782fac5dd2e5cf5"
 EXPECTED_ARCHIVE_SIZE = 790_959
 EXPECTED_MEMBER_COUNT = 23
+# 릴리스별 (ZIP SHA-256, 크기, 파일 수, 본선 폭 m, 지름길 폭 m). 폭은 공식 design/scene 값이며 팀 정책값이 아닙니다.
 RELEASES = {
-    'v2026.09.14': ('a4ff2ea0ab99c217803fff799189d7e24794f1944faf21db56215517c4c5d814',805_607),
-    'v2026.10.24': ('16b2f078609abea45ac3f351215df6576ced02bc6c40e933998ab91578de8a79',812_042),
-    'v2026.11.01': (EXPECTED_ARCHIVE_SHA256,EXPECTED_ARCHIVE_SIZE),
+    'v2026.09.14': ('a4ff2ea0ab99c217803fff799189d7e24794f1944faf21db56215517c4c5d814',805_607,23,.45,(.20,.20)),
+    'v2026.10.24': ('16b2f078609abea45ac3f351215df6576ced02bc6c40e933998ab91578de8a79',812_042,23,.45,(.20,.20)),
+    'v2026.11.01': (EXPECTED_ARCHIVE_SHA256,EXPECTED_ARCHIVE_SIZE,EXPECTED_MEMBER_COUNT,.45,(.20,.20)),
+    'v2026.11.06': ('d1f3fbc1c16c6901130f260f5baa80ebf00040bcbaf3ccdb175e63738ed325fa',691_524,25,.61,(.20,.20)),
 }
+# 릴리스별 실행 월드. 이전 실행 월드를 새 릴리스로 덮지 않도록 등록된 경로끼리 교차 생성을 거부합니다.
+RUNTIME_DESTINATIONS = {
+    'v2026.11.01': DESTINATION,
+    'v2026.11.06': REPO / "src/arena_gazebo/worlds/it_arena_official_v2026_11_06",
+}
+# 출력 바이트를 유지한 채 빌더만 바뀐 경우의 등록. 현재 빌더로 같은 프로필을 임시 경로에 재생성해
+# provenance.json의 builder 해시 외 모든 출력이 같음을 확인한 근거가 있을 때만 추가합니다.
+REPRODUCED_BUILDER_SHA256 = {
+    'official_v2026.11.01': {
+        '855e7373ae200f536b0a568623efd88bd1d06194d620fec63c5c391989c914de':
+            'artifacts/validation/2026-11-07/track_migration_v1/checks/rebuild_v2026_11_01.json',
+    },
+}
+
+
+def release_spec(release):
+    if release not in RELEASES:
+        raise ValueError('지원하지 않는 공식 릴리스입니다.')
+    sha, size, members, main_width, shortcut_widths = RELEASES[release]
+    return {'sha256': sha, 'size_bytes': size, 'members': members,
+            'main_width_m': main_width, 'shortcut_widths_m': list(shortcut_widths)}
+
+
+def runtime_destination(profile, destination=None):
+    """명시 경로가 없으면 릴리스 등록 경로를 쓰고, 다른 릴리스에 등록된 실행 월드는 거부합니다."""
+    release = profile['upstream_release']
+    target = Path(destination) if destination is not None else RUNTIME_DESTINATIONS.get(release, DESTINATION)
+    for owner, registered in RUNTIME_DESTINATIONS.items():
+        if owner != release and target.resolve() == registered.resolve():
+            raise ValueError(f'{registered.name}은 {owner} 실행 월드입니다. {release}로 덮어쓸 수 없습니다.')
+    return target
 
 
 def profile_archive(profile):
@@ -70,22 +104,22 @@ def write_json(path: Path, data: dict) -> None:
 def verify_archive(archive_path: Path = ARCHIVE) -> dict:
     if not archive_path.is_file():
         raise FileNotFoundError(f"공식 릴리스 자산이 없습니다: {archive_path}")
-    expected_hash,expected_size=RELEASES[archive_path.parent.name]
+    spec = release_spec(archive_path.parent.name)
     digest = sha256(archive_path)
-    if digest != expected_hash or archive_path.stat().st_size != expected_size:
+    if digest != spec["sha256"] or archive_path.stat().st_size != spec["size_bytes"]:
         raise ValueError("공식 릴리스 ZIP 해시 또는 크기가 기준과 다릅니다.")
     with ZipFile(archive_path) as archive:
         names = archive.namelist()
         if len(names) != len(set(names)):
             raise ValueError("중복 ZIP 경로가 있습니다.")
         file_count = sum(not info.is_dir() for info in archive.infolist())
-        if file_count != EXPECTED_MEMBER_COUNT:
-            raise ValueError(f"공식 ZIP 파일 수가 {EXPECTED_MEMBER_COUNT}개가 아닙니다.")
+        if file_count != spec["members"]:
+            raise ValueError(f"공식 ZIP 파일 수가 {spec['members']}개가 아닙니다.")
         for name in names:
             target = Path(name)
             if target.is_absolute() or ".." in target.parts:
                 raise ValueError(f"안전하지 않은 ZIP 경로: {name}")
-    return {"size_bytes": archive_path.stat().st_size, "sha256": digest, "members": EXPECTED_MEMBER_COUNT}
+    return {"size_bytes": archive_path.stat().st_size, "sha256": digest, "members": spec["members"]}
 
 
 def extract_archive(destination: Path, archive_path: Path = ARCHIVE) -> None:
@@ -251,8 +285,11 @@ def prepare(profile_path: Path, scratch: Path) -> tuple[dict, object, dict, dict
     source_scene = json.loads((raw / "scene.json").read_text(encoding="utf-8"))
     if not math.isclose(float(result["meta"]["Ltot"]), float(source_scene["track"]["lap_length_m"]), abs_tol=5e-4):
         raise ValueError("공식 설계의 재생성 길이가 릴리스 scene과 다릅니다.")
-    if float(result["meta"]["track_w"]) != .45 or [float(item["width_m"]) for item in result["branches"]] != [.20, .20]:
-        raise ValueError("공식 본선 45 cm·지름길 20 cm 조건을 만족하지 않습니다.")
+    spec = release_spec(release)
+    if float(result["meta"]["track_w"]) != spec["main_width_m"] \
+            or [float(item["width_m"]) for item in result["branches"]] != spec["shortcut_widths_m"] \
+            or not math.isclose(float(source_scene["track"]["width_m"]), spec["main_width_m"], abs_tol=1e-9):
+        raise ValueError(f"공식 본선 {spec['main_width_m']} m·지름길 {spec['shortcut_widths_m']} m 조건을 만족하지 않습니다.")
     marker_placements = verify_official_markers(raw / "world.sdf", source_scene,release)
     official_signal = official_2x5_profile(profile)
     facility_config = (configure_official_2x5(result, profile) if official_signal
@@ -341,7 +378,8 @@ def verify_preserved_markers(source: Path, runtime: Path) -> None:
             raise ValueError(f"공식 마커 {marker_id} PNG가 변경되었습니다.")
 
 
-def build(profile_path: Path = PROFILE, destination: Path = DESTINATION) -> dict:
+def build(profile_path: Path = PROFILE, destination: Path | None = None) -> dict:
+    destination = runtime_destination(yaml.safe_load(profile_path.read_text(encoding="utf-8")), destination)
     scratch_root = REPO / "build/official_track_generation"
     scratch_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="official_", dir=scratch_root) as temporary:
@@ -374,7 +412,8 @@ def build(profile_path: Path = PROFILE, destination: Path = DESTINATION) -> dict
             **prepared["archive"],
         },
         "official_values": {
-            "main_width_m": .45, "shortcut_widths_m": [.20, .20],
+            "main_width_m": release_spec(profile["upstream_release"])["main_width_m"],
+            "shortcut_widths_m": release_spec(profile["upstream_release"])["shortcut_widths_m"],
             "lap_length_m": round(float(result["meta"]["Ltot"]), 6),
             "vehicle_envelope_m": {"length": .20, "width": .15},
             "grid_slots": 6, "grid_slot_size_m": {"length": .25, "width": .17},
@@ -415,12 +454,13 @@ def build(profile_path: Path = PROFILE, destination: Path = DESTINATION) -> dict
     return provenance
 
 
-def check(destination: Path = DESTINATION, profile_path: Path = PROFILE) -> dict:
+def check(destination: Path | None = None, profile_path: Path = PROFILE) -> dict:
     profile=yaml.safe_load(profile_path.read_text(encoding='utf-8'))
+    destination = runtime_destination(profile, destination)
     archive = verify_archive(profile_archive(profile))
     saved = json.loads((destination / "provenance.json").read_text(encoding="utf-8"))
-    if saved["upstream"]["sha256"] != archive["sha256"]:
-        raise ValueError("생성된 월드의 공식 입력 해시가 현재 ZIP과 다릅니다.")
+    if saved["profile"] != profile["profile"] or saved["upstream"]["sha256"] != archive["sha256"]:
+        raise ValueError("생성된 월드의 프로필 또는 공식 입력 해시가 현재 ZIP과 다릅니다.")
     expected_inputs = {
         "profile": sha256(profile_path), "builder": sha256(Path(__file__)),
         "vehicle_config": sha256(VEHICLE),
@@ -430,13 +470,23 @@ def check(destination: Path = DESTINATION, profile_path: Path = PROFILE) -> dict
         **official_signal_inputs(profile),
         **published_bump_inputs(profile),
     }
-    if saved["input_sha256"] != expected_inputs:
+    reproduced = None
+    recorded_inputs = dict(saved["input_sha256"])
+    evidence = REPRODUCED_BUILDER_SHA256.get(profile["profile"], {}).get(recorded_inputs.get("builder"))
+    if evidence is not None and recorded_inputs["builder"] != expected_inputs["builder"]:
+        record = json.loads((REPO / evidence).read_text(encoding="utf-8")) if (REPO / evidence).is_file() else {}
+        if not (record.get("passed") is True and record.get("builder_sha256_recorded") == recorded_inputs["builder"]
+                and record.get("builder_sha256_current") == expected_inputs["builder"]):
+            raise ValueError(f"현재 빌더의 재현 근거가 없거나 맞지 않습니다: {evidence}")
+        recorded_inputs["builder"], reproduced = expected_inputs["builder"], evidence
+    if recorded_inputs != expected_inputs:
         raise ValueError("공식 실행 월드를 재생성해야 하는 입력 변경이 있습니다.")
     for name, expected in saved["output_sha256"].items():
         path = (destination / name).resolve()
         if not path.is_relative_to(destination.resolve()) or sha256(path) != expected:
             raise ValueError(f"공식 실행 월드 해시 불일치: {name}")
-    result = {"archive": archive, "outputs": len(saved["output_sha256"]), "status": "ok"}
+    result = {"archive": archive, "outputs": len(saved["output_sha256"]), "status": "ok",
+              **({"builder_reproduced_by": reproduced} if reproduced else {})}
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return result
 
@@ -444,7 +494,8 @@ def check(destination: Path = DESTINATION, profile_path: Path = PROFILE) -> dict
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, default=PROFILE)
-    parser.add_argument("--destination", type=Path, default=DESTINATION)
+    parser.add_argument("--destination", type=Path, default=None,
+                        help="기본은 프로필 릴리스에 등록된 실행 월드 경로")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     if args.check:

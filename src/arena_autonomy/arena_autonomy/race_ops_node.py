@@ -244,8 +244,15 @@ class RaceOps(Node):
                 self.start = None
             return
         if entry['op'] == 'resume_start':
-            self.start = dict(entry=entry, client=entry['client'], session=payload.get('session'))
-            self.core.mark(entry, time.monotonic(), stage='preparing')
+            view = entry['view']
+            if (payload.get('op') != 'resume_start' or payload.get('reason') != 'preparing_not_motion_permission'
+                    or any(payload.get(k) != view[k] for k in ('session', 'race_epoch', 'intervention'))):
+                self.core.mark(entry, time.monotonic(), stage='unknown_after_send', outcome='start_ack_mismatch')
+                return
+            wall = time.monotonic()
+            self.start = dict(entry=entry, client=entry['client'], session=view['session'],
+                              status_deadline=wall+self.result_timeout_s)
+            self.core.mark(entry, wall, stage='preparing')
         elif entry['op'] == 'prepare_start':
             self.rearm = dict(entry=entry, deadline=time.monotonic()+self.mcu_timeout_s, next=0., future=None)
 
@@ -342,6 +349,14 @@ class RaceOps(Node):
             if last.get('request') == entry['request']:
                 self.core.mark(entry, wall, stage=last['outcome'], outcome=last.get('reason'))
                 self.start = self.rearm = None
+                return
+            if wall >= job['status_deadline']:
+                self.core.mark(entry, wall, stage='unknown_after_send', outcome='start_status_unconfirmed')
+                self.start = self.rearm = None
+                return
+            if resume is not None:
+                return
+        if any(race.get(k) != entry['view'][k] for k in ('race_epoch', 'intervention')):
             return
         if not self.core.client_fresh(job['client'], wall):
             # 재연결 뒤 자동 재실행하지 않는다. 다시 확인한 상태의 새 요청만 받는다.
@@ -353,8 +368,9 @@ class RaceOps(Node):
             return
         if wall-self.last_link >= LINK_PERIOD_S:
             self.last_link = wall
+            # START 수락 응답은 주기 상태보다 먼저 도착할 수 있다. 이는 연결 확인뿐이며 ARM 허가가 아니다.
             self.link_publisher.publish(String(data=entry['request']))
-        if resume.get('phase') == 'mcu':
+        if resume is not None and resume.get('phase') == 'mcu':
             if self.rearm is None or self.rearm['entry'] is not entry:
                 self.rearm = dict(entry=entry, next=0., future=None)
             self.rearm_step(self.rearm, wall)

@@ -1,0 +1,90 @@
+--- a/src/arena_autonomy/arena_autonomy/local_path.py
++++ b/src/arena_autonomy/arena_autonomy/local_path.py
+@@ -67,6 +67,13 @@
+     return bool(np.max(np.min(distance, axis=1)) <= tolerance)
+ 
+ 
++def _origin_error(path):
++    """차량 원점(0,0)에서 경로 선분까지의 최소 거리. 경로 점만 쓰며 외삽하지 않는다."""
++    a, d = path[:-1], np.diff(path, axis=0)
++    t = np.clip(-np.sum(a*d, axis=1)/np.maximum(1e-12, np.sum(d*d, axis=1)), 0., 1.)
++    return float(np.min(np.linalg.norm(a+t[:, None]*d, axis=1)))
++
++
+ def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corner=False, minimum_radius=0.):
+     """연결된 관측 벽의 호길이 매개곡선. 수직 벽/급커브도 y=f(x)로 강제하지 않는다.
+ 
+@@ -155,7 +162,9 @@
+             info = {'reason': 'local_path', 'wall_model': 'piecewise_corner',
+                     'boundary_samples': len(wall),
+                     'boundary_observed_ahead_m': float(last-anchor_s),
+-                    'wall_distance_m': float(abs(wall[anchor, 1])), 'path_points': path.tolist()}
++                    'wall_distance_m': float(abs(wall[anchor, 1])), 'path_points': path.tolist(),
++                    # 원호 위에서는 벽 y좌표가 오프셋과 달라도 경로 위에 있을 수 있다. 앵커 판정용.
++                    'path_anchor_error_m': _origin_error(path)}
+             if budget is not None:
+                 info['corner_path_budget'] = budget
+             return path, info
+--- a/src/arena_autonomy/arena_autonomy/local_follow.py
++++ b/src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -196,6 +196,22 @@
+             raise ValueError('invalid follow time/speed/hysteresis contract')
+ 
+ 
++def anchor_error(details, config):
++    """경계 앵커 오차. 기본 OFF 한 모서리 경로는 원점에서 생성 경로 선분까지의 거리를 쓴다.
++
++    직각 벽을 원호로 도는 차는 벽 y좌표가 오프셋과 달라도 경로 위에 있다. 근접 장애물
++    여유가 아니므로 앵커 판정에만 쓴다. 값이 없으면 기존 벽 거리 대조, 비유한/음수는 거부한다.
++    """
++    if (config.piecewise_wall_trial and details.get('wall_model') == 'piecewise_corner'
++            and 'path_anchor_error_m' in details):
++        try:
++            value = float(details['path_anchor_error_m'])
++        except (TypeError, ValueError):
++            return math.inf
++        return value if math.isfinite(value) and value >= 0. else math.inf
++    return abs(details['wall_distance_m']-config.wall_offset_m)
++
++
+ def path_agrees(candidate, reference, tolerance):
+     """실제로 겹치는 가까운 전방 구간의 대칭 거리.
+ 
+@@ -668,7 +684,7 @@
+                 candidate_wall, corroborated = side, False
+                 def sufficient(path, details):
+                     return (path is not None and details['boundary_observed_ahead_m'] >= cfg.boundary_min_ahead_m
+-                            and abs(details['wall_distance_m']-cfg.wall_offset_m) <= cfg.boundary_anchor_error_m)
++                            and anchor_error(details, cfg) <= cfg.boundary_anchor_error_m)
+ 
+                 def supported(reference, wall_side):
+                     # 기준 경로와 일치하는 실제 반환만으로 wall_side 벽 후보를 다시 만든다.
+@@ -699,7 +715,7 @@
+                     if not opposite_observed:
+                         opposite_observed.append(observed_path(points, other_side))
+                     return opposite_observed[0]
+-                if not eligible and preferred is not None and abs(preferred_info['wall_distance_m']-cfg.wall_offset_m) <= cfg.boundary_anchor_error_m:
++                if not eligible and preferred is not None and anchor_error(preferred_info, cfg) <= cfg.boundary_anchor_error_m:
+                     # 급커브 안쪽 벽은 짧아질 수 있다. 반대 벽만 보고 전환하지 않고,
+                     # 같은 스캔의 실제 선호 벽 경로와 중심 형상이 일치할 때만 사용한다.
+                     # 채택할 반대 벽에는 원래의 긴 경계 조건을 그대로 요구한다.
+@@ -800,7 +816,7 @@
+                                           boundary_candidate_reason=info['reason'],
+                                           boundary_candidate_ahead_m=info.get('boundary_observed_ahead_m'))
+                 if (not eligible and cfg.boundary_bridge and carried is not None and preferred is not None
+-                        and abs(preferred_info['wall_distance_m']-cfg.wall_offset_m) <= cfg.boundary_anchor_error_m
++                        and anchor_error(preferred_info, cfg) <= cfg.boundary_anchor_error_m
+                         and path_agrees(preferred, carried, cfg.boundary_agreement_m)):
+                     # 긴 경계 조건만 못 채운 현재 관측이 직전 경로와 겹친다. 더 짧은 현재 경로로 줄여 쓴다.
+                     candidate, info, eligible = preferred, preferred_info, True
+--- a/tests/test_source_provenance_r0_plus_b3.py
++++ b/tests/test_source_provenance_r0_plus_b3.py
+@@ -171,6 +171,8 @@
+ M3_SUCCESSORS += ('config/tests/official_grid_multi_r20_sha256.json',)
+ # 11/8 기본 OFF 한 모서리 경로의 관측 탐색 예산 보완(local_path.py 한 파일).
+ M3_SUCCESSORS += ('config/tests/corner_path_budget_r21_sha256.json',)
++# 11/8 기본 OFF 한 모서리 경로의 앵커 오차를 생성 경로 거리로 판정(local_path.py·local_follow.py).
++M3_SUCCESSORS += ('config/tests/corner_path_anchor_r22_sha256.json',)
+ 
+ 
+ def test_moving_pass_revisions_link_registered_sources_and_before_bytes():

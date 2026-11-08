@@ -562,7 +562,7 @@ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, co
                      clears_side_actor=final_ego_s is not None and final_ego_s-final_actor_s >= rules['minimum_final_ahead_m'])
     else:
         raise ValueError('unknown case')
-    if case.get('route_kind') == 'first_curve':
+    if case.get('route_kind') in ('first_curve', 'side_first_curve'):
         # 단순히 시험 시간이 길었다는 이유로 코너 통과를 주장하지 않는다.
         # 사전 등록한 출구를 실제 ego가 지나고 방향도 바뀌었는지 정답으로만 평가한다.
         route_rows = window_tuples(ego, t_green, t_end)

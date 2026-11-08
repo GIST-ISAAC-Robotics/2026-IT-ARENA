@@ -104,7 +104,7 @@ class M3ObservedFollow:
         self.trial_speed_cap_mps = min(.35, c.max_speed_mps)
         self.lateral_config = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass',
             wheelbase_m=c.wheelbase_m, length_m=c.length_m, width_m=c.width_m,
-            max_steering_rad=c.max_steering_rad)
+            max_steering_rad=c.max_steering_rad, road_half_m=c.road_half_m)
         if not math.isclose(c.wall_offset_m, self.lateral_config.wall_offset_m, abs_tol=1e-12):
             raise ValueError('M3 requires the registered wall-to-road geometry')
         self.base = LocalFollow(c)

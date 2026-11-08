@@ -1,0 +1,224 @@
+--- src/arena_autonomy/arena_autonomy/bypass_entry_trial.py.before
++++ src/arena_autonomy/arena_autonomy/bypass_entry_trial.py
+@@ -30,6 +30,10 @@
+     speed_cap_mps: float = .35
+     path_step_m: float = .02
+     prefer_earlier_transition: bool = False
++
++    @property
++    def measured_speed_envelope(self):
++        return False
+ 
+     def __post_init__(self):
+         if type(self.prefer_earlier_transition) is not bool:
+@@ -49,6 +53,20 @@
+                 (self.speed_cap_mps, self.path_step_m))
+                 or not 0 < self.speed_cap_mps <= .35 or not .005 <= self.path_step_m <= .02):
+             raise ValueError('invalid entry comparison bounds')
++
++
++def entry_speed_in_scope(speed, config, entry):
++    # 기존 재현은 명령 1 m/s 경계를 보존한다. 새 추월 프로필은 측정과 명령을 분리한다.
++    return speed >= 0. and (entry.measured_speed_envelope or speed <= config.max_speed_mps+1e-12)
++
++
++def entry_measured_envelope(scene, speed, dt, entry):
++    if not entry.measured_speed_envelope:
++        return None
++    distance = mx.envelope_distance(speed, scene.t_ref_s-scene.source_first_s, dt, mx.ExecutionConfig())
++    if distance > 2.5:
++        return dict(reason='measured_envelope_outside_swept_horizon', measured_distance_m=distance)
++    return None
+ 
+ 
+ def observed_straight_wall(scene, config, side):
+@@ -191,7 +209,7 @@
+     region=motion_region(scene,speed,target,steer,previous,dt,config,lateral,context=context)
+     if occupied_padding is None or 'queries' not in context:
+         return region
+-    pad=mx.ray_padding(scene,lateral,.5)
++    pad=mx.ray_padding(scene,lateral,config.object_motion_bound_mps)
+     returns=np.asarray([r.status=='return' for r in scene.rays])
+     original=per_ray_padding(scene,.025+config.measurement_padding_m,config.object_motion_bound_mps)
+     fixed=occupied_padding<original
+@@ -231,10 +249,13 @@
+         scope='current_sensor_straight_entry_shadow')
+     if (not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+                 for v in (now, speed, previous_steering, dt))
+-            or not 0 <= speed <= config.max_speed_mps+1e-12 or not 0 < dt <= .2
++            or not entry_speed_in_scope(speed, config, entry) or not 0 < dt <= .2
+             or abs(previous_steering) > config.max_steering_rad
+             or abs(now-scene.t_ref_s) > 1e-9 or not source_valid(scene)):
+         return result
++    envelope = entry_measured_envelope(scene, speed, dt, entry)
++    if envelope is not None:
++        return {**result, **envelope}
+     reference_fn = straight_reference if reference_provider is None else reference_provider
+     reference, evidence = reference_fn(scene, config) if guide is None else (True, guide['reference'])
+     result['reference'] = evidence
+@@ -295,7 +316,8 @@
+             row['preview_maximum_steering_rad'] = float(np.max(np.arctan(config.wheelbase_m*curvature)))
+             if row['preview_maximum_steering_rad'] > config.max_steering_rad:
+                 raise ValueError('preview_path_exceeds_steering_limit')
+-            cap, steer, remaining = pursue_path(path, speed, config, age)
++            cap, steer, remaining = pursue_path(path, speed, config, age,
++                speed_cap=entry.speed_cap_mps if entry.measured_speed_envelope else None)
+         except (ValueError, MotionUnavailable) as error:
+             result['candidates'].append({**row, 'reason':str(error)})
+             continue
+@@ -563,7 +585,7 @@
+         now, source = scene.t_ref_s, scene.source_first_s
+         invalid = (not source_valid(scene) or not all(isinstance(v,(int,float)) and
+             not isinstance(v,bool) and math.isfinite(v) for v in (speed,previous_steering,dt))
+-            or not 0 <= speed <= self.config.max_speed_mps+1e-12 or not 0 < dt <= .2
++            or not entry_speed_in_scope(speed, self.config, self.entry) or not 0 < dt <= .2
+             or abs(previous_steering)>self.config.max_steering_rad)
+         changed = ((self.epoch is not None and self.epoch != scene.source_epoch)
+             or (self.reference_s is not None and now < self.reference_s)
+@@ -571,6 +593,10 @@
+         if invalid or changed:
+             self.reset()
+             return self._hold('entry_guide_input_reset')
++        envelope = entry_measured_envelope(scene, speed, dt, self.entry)
++        if envelope is not None:
++            # 과대 속력은 새 허가가 아니다. 방향 기억까지 명령 상한으로 지우지는 않는다.
++            return self._hold(envelope['reason'], measured_distance_m=envelope['measured_distance_m'])
+         fresh=self.last_source is None or source>self.last_source
+         self.epoch, self.last_source = scene.source_epoch, source
+         if self.path is None:
+--- src/arena_autonomy/arena_autonomy/moving_pass.py.before
++++ src/arena_autonomy/arena_autonomy/moving_pass.py
+@@ -31,6 +31,8 @@
+     lead_upper_mps: float
+     minimum_advantage_mps: float
+     association_speed_mps: float
++    measured_entry_envelope: bool = False
++    object_motion_bound_mps: float = .5
+ 
+ 
+ def moving_pass_profile(name):
+@@ -39,6 +41,8 @@
+         return MovingPassProfile(.65, .50, .15, .75)
+     if name == 'medium_v1':
+         return MovingPassProfile(.90, .70, .20, 1.)
++    if name == 'faster_v1':
++        return MovingPassProfile(1.20, 1.00, .20, 1.20, True, 1.20)
+     raise ValueError('registered moving pass profile required')
+ 
+ 
+@@ -47,6 +51,10 @@
+     speed_cap_mps: float = .65
+     offsets_m: tuple = (0., -.20, .20, -.24, .24, -.27, .27)
+     profile: str = 'slow_v1'
++
++    @property
++    def measured_speed_envelope(self):
++        return moving_pass_profile(self.profile).measured_entry_envelope
+ 
+     def __post_init__(self):
+         ceiling = moving_pass_profile(self.profile).speed_cap_mps
+@@ -259,7 +267,8 @@
+         self.sectors = (parse_sectors(config.known_structure_sectors_json)
+                         if config.known_structure_policy=='structure_aware_v1' else ())
+         super().__init__(config, MovingEntryConfig(speed_cap_mps=tracker.profile.speed_cap_mps,
+-                         profile=tracker.profile_name), stationary_outer_boundary=True,
++                         profile=tracker.profile_name, transitions_m=((.9,1.2,1.5) if tracker.profile.measured_entry_envelope
++                         else (.6,.9,1.2))), stationary_outer_boundary=True,
+                          rejoin_enabled=True, wall_reanchor=True, tracked_wall_fit=True)
+ 
+     def reset(self):
+@@ -347,7 +356,7 @@
+         self.owner = owner
+         self.profile_name = getattr(getattr(owner, 'execution', None), 'moving_pass_profile', 'slow_v1')
+         self.profile = moving_pass_profile(self.profile_name)
+-        if self.profile.speed_cap_mps > owner.config.max_speed_mps:
++        if not self.profile.measured_entry_envelope and self.profile.speed_cap_mps > owner.config.max_speed_mps:
+             raise ValueError('moving pass profile exceeds entry feedback envelope')
+         self.max_lead_speed_mps = self.profile.lead_upper_mps
+         self.minimum_speed_advantage_mps = self.profile.minimum_advantage_mps
+@@ -411,19 +420,19 @@
+         except (ValueError, MotionUnavailable):
+             return dict(ready=False, reason='target_speed_motion_unavailable')
+         estimate_upper = (q[-1, 0]-q[0, 0]+pace.bound)/span if span > 0 else math.inf
+-        tolerance = 1e-12 if self.profile_name == 'medium_v1' else 0.
++        tolerance = 1e-12 if self.profile_name != 'slow_v1' else 0.
+         ready = (estimate_upper <= self.max_lead_speed_mps + tolerance and
+                  self.guide.entry.speed_cap_mps-estimate_upper >= self.minimum_speed_advantage_mps - tolerance)
+         return dict(ready=ready, reason='slow_forward_candidate' if ready else 'speed_advantage_insufficient',
+                     estimated_lead_upper_mps=estimate_upper, source_span_s=span,
+                     pass_speed_cap_mps=self.guide.entry.speed_cap_mps,
+                     scope=('initial_straight_slow_target_only' if self.profile_name == 'slow_v1'
+-                           else 'initial_straight_medium_target_only'), future_speed_guaranteed=False)
++                           else ('initial_straight_medium_target_only' if self.profile_name == 'medium_v1' else 'initial_straight_faster_target_only')), future_speed_guaranteed=False)
+ 
+     def entry_advantage_sufficient(self, chosen_speed, estimated_lead_upper):
+         # 기존 저속 후보의 >0 조건은 재현용으로 유지한다. 새 중속은 실제 곡률/점유로
+         # 제한된 후보가 0.20m/s 이점을 갖춰야 한다. 상한 숫자만 비교하지 않는다.
+-        required = self.minimum_speed_advantage_mps if self.profile_name == 'medium_v1' else 0.
++        required = self.minimum_speed_advantage_mps if self.profile_name != 'slow_v1' else 0.
+         return (math.isfinite(chosen_speed) and math.isfinite(estimated_lead_upper)
+                 and chosen_speed > estimated_lead_upper
+                 and chosen_speed - estimated_lead_upper >= required - 1e-12)
+--- src/arena_autonomy/arena_autonomy/bypass_handoff.py.before
++++ src/arena_autonomy/arena_autonomy/bypass_handoff.py
+@@ -1,5 +1,5 @@
+ """명시 시뮬레이션 G1/G2 전환. 낮은 이동 반환은 정지/물체 신원 증명이 아니다."""
+-from dataclasses import dataclass, field
++from dataclasses import dataclass, field, replace
+ import math
+ import numpy as np
+ 
+@@ -98,7 +98,7 @@
+         if type(self.moving_pass_trial) is not bool or (self.moving_pass_trial and (
+                 not self.continuous_forward_pace or self.entry_policy != 'corridor_local_v1')):
+             raise ValueError('moving pass requires continuous forward pace and corridor trial')
+-        if self.moving_pass_profile not in ('slow_v1', 'medium_v1') or (
++        if self.moving_pass_profile not in ('slow_v1', 'medium_v1', 'faster_v1') or (
+                 self.moving_pass_profile != 'slow_v1' and not self.moving_pass_trial):
+             raise ValueError('moving pass profile requires an explicit moving pass trial')
+         if self.follow_entry_space_enabled and (self.preparation_policy != 'observed_entry_space_v1'
+@@ -319,6 +319,11 @@
+         self.execution = execution or HandoffExecutionConfig()
+         if not isinstance(self.execution, HandoffExecutionConfig):
+             raise ValueError('typed handoff execution configuration required')
++        if self.execution.moving_pass_profile == 'faster_v1':
++            from arena_autonomy.moving_pass import moving_pass_profile
++            bound = moving_pass_profile(self.execution.moving_pass_profile).object_motion_bound_mps
++            # 명시 빠른 상대 후보는 일반 추종/진입/복귀에서 같은 시차 운동 예산을 쓴다.
++            self.config = replace(self.config, object_motion_bound_mps=max(bound, self.config.object_motion_bound_mps))
+         required = ('parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial',
+                     'traffic_recovery_trial', 'traffic_path_recovery_trial', 'corridor_fallback_enabled')
+         if (self.config.partial_observation_policy != 'bounded_local_v4'
+--- src/arena_autonomy/arena_autonomy/pass_release_trial.py.before
++++ src/arena_autonomy/arena_autonomy/pass_release_trial.py
+@@ -199,7 +199,7 @@
+               'masked_right': 0, 'masked_tail_extent_m':0., 'masked_front_samples':0}
+     if not len(q):
+         return result
+-    pad = mx.ray_padding(scene, lat_cfg, .5)
++    pad = mx.ray_padding(scene, lat_cfg, follow_cfg.object_motion_bound_mps)
+     free = depth_support(scene, q, pad)
+     if np.any(~free):
+         masked = np.zeros(len(q), dtype=bool)
+--- scripts/g1_handoff_eval.py.before
++++ scripts/g1_handoff_eval.py
+@@ -3,7 +3,7 @@
+ 
+ 
+ def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False, moving_profile='slow_v1', wall_witness=False, standing_reacquire=False, boundary_refresh=False):
+-    if moving_profile not in ('slow_v1', 'medium_v1') or (moving_profile != 'slow_v1' and not moving_pass):
++    if moving_profile not in ('slow_v1', 'medium_v1', 'faster_v1') or (moving_profile != 'slow_v1' and not moving_pass):
+         raise ValueError('moving pass profile requires an explicit moving pass trial')
+     if wall_witness and not observed_motion:
+         raise ValueError('wall witness requires explicit observed handoff motion')
+--- scripts/validate_g1_traffic.py.before
++++ scripts/validate_g1_traffic.py
+@@ -430,7 +430,7 @@
+                         help='paced+관측 이동 후보에서 연속 전진율로 고정 우회 여유만 보완하는 선택형 비교(기본 꺼짐)')
+     parser.add_argument('--handoff-wall-witness', action='store_true',
+                         help='Use existing current rear-wall returns across a known structure shadow in the stationary bypass guide')
+-    parser.add_argument('--moving-pass-profile', choices=['slow_v1','medium_v1'], default='slow_v1',
++    parser.add_argument('--moving-pass-profile', choices=['slow_v1','medium_v1','faster_v1'], default='slow_v1',
+                         help='Explicit moving-pass speed/tracking envelope; medium requires moving-pass-trial')
+     parser.add_argument('--moving-pass-trial', action='store_true',
+                         help='연속 전진 관측·후방 복귀 확인을 사용하는 저속 이동차 추월(기본 꺼짐)')

@@ -1,0 +1,24 @@
+arena-autonomy /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_autonomy/arena_autonomy.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy
+arena-vehicle-interface /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_vehicle_interface/arena_vehicle_interface.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_vehicle_interface
+installed packages and child process entry points resolved: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/turn_preview.py
+F....FF                                                                  [100%]
+=================================== FAILURES ===================================
+______ test_operator_link_covers_ack_until_first_status_without_rearming _______
+tests/test_race_ops_node.py:97: in test_operator_link_covers_ack_until_first_status_without_rearming
+    assert len(beats) == 6 and all(call.args[0].data == 'start-2' for call in beats)
+E   assert (0 == 6)
+E    +  where 0 = len([])
+_ test_accepted_start_cannot_keep_an_unrelated_or_expired_job_alive[status_deadline] _
+tests/test_race_ops_node.py:122: in test_accepted_start_cannot_keep_an_unrelated_or_expired_job_alive
+    assert n.start is None and n.core.mark.call_args.kwargs['stage'] == 'unknown_after_send'
+E   AssertionError: assert ({'client': 'desk', 'entry': {'client': 'desk', 'op': 'resume_start', 'request': 'start-2', 'view': {'intervention': 2, 'race_epoch': 1, 'race_id': 'race', 'session': 's'}}, 'session': 's', 'status_deadline': 13.0} is None)
+E    +  where {'client': 'desk', 'entry': {'client': 'desk', 'op': 'resume_start', 'request': 'start-2', 'view': {'intervention': 2, 'race_epoch': 1, 'race_id': 'race', 'session': 's'}}, 'session': 's', 'status_deadline': 13.0} = namespace(start={'entry': {'client': 'desk', 'op': 'resume_start', 'request': 'start-2', 'view': {'session': 's', 'rac...ink_publisher=<Mock id='125584930142832'>, publish=<Mock id='125584930142544'>, rearm_step=<Mock id='125584930143024'>).start
+_ test_accepted_start_cannot_keep_an_unrelated_or_expired_job_alive[client_gone] _
+tests/test_race_ops_node.py:120: in test_accepted_start_cannot_keep_an_unrelated_or_expired_job_alive
+    assert n.publish.call_args.args[0]['start_request'] == 'start-2' and n.start is None
+E   AttributeError: 'NoneType' object has no attribute 'args'
+=========================== short test summary info ============================
+FAILED tests/test_race_ops_node.py::test_operator_link_covers_ack_until_first_status_without_rearming
+FAILED tests/test_race_ops_node.py::test_accepted_start_cannot_keep_an_unrelated_or_expired_job_alive[status_deadline]
+FAILED tests/test_race_ops_node.py::test_accepted_start_cannot_keep_an_unrelated_or_expired_job_alive[client_gone]
+3 failed, 4 passed, 4 deselected in 0.55s

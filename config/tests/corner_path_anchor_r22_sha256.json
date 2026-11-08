@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scope": "기본 OFF 한 모서리 경로의 앵커 오차 계산 보완(코너 원호 위 벽 y거리 대신 생성 경로 거리); 기본 채택/실차 승인 아님",
+  "parent_contract": "config/tests/corner_path_budget_r21_sha256.json",
+  "parent_contract_sha256": "d101a648a5390409fefae2ff7c7beb3d833fed4d9856bb4d98e48bf4f3092885",
+  "before_snapshot": "artifacts/validation/2026-11-08/corner_path_anchor_v1/before.zip",
+  "before_snapshot_sha256": "5db75a1dc3886a63acae9729481144bbf25cbd6c0402b8dd41fa381d48c113c6",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/local_path.py": {
+      "before": "d53210ade534f93ab47637f485387ba3d3e88090e5cbed75951409433b668ac4",
+      "after": "c9d4efedf4ab899d928106a8f7251638c4a2af6eb0b045ecdb369031b084e2a5",
+      "reason": "기본 OFF piecewise_corner 성공 반환에만 진단 path_anchor_error_m(차량 원점에서 반환 경로 선분까지 최소 거리) 추가. 경로·wall_distance_m·기본/직선/곡선 출력 불변"
+    },
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "a5915f2f0cbd1e7b1e9699a61a72cba8f2a829189972cc1a1cfda14c3f00e7db",
+      "after": "79a53ca3ce50b13ee92d877262610f09bf18f3c17edbdad3fb3730cb40e2427c",
+      "reason": "앵커 오차 공통 helper anchor_error: piecewise_wall_trial이고 piecewise_corner 결과에 path_anchor_error_m가 있으면 그 값(비유한/음수는 거부), 그 밖은 기존 벽 거리 대조. 0.12·0.08·0.65·TTL·확인·점유·속도·STOP 불변"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {}
+}

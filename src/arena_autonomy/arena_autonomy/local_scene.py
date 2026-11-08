@@ -140,16 +140,31 @@ def blind_parameter(rear_half_angle_deg, sectors_json=''):
     return value
 
 
-def rear_masked(angle_rad, rear_half_angle_deg=30.):
-    angle = math.remainder(_finite(angle_rad, 'angle_rad'), math.tau)
+def _blind_limits(rear_half_angle_deg):
+    """blind_spec 검증과 각도 한계(rad). rear_masked와 같은 식·같은 예외 순서다."""
     half, sectors = blind_spec(rear_half_angle_deg)
     if not 0 <= half < 180:
         raise ValueError('invalid rear mask angle')
+    return (math.radians(180 - half) + 1e-12,
+            tuple((math.radians(center), math.radians(width) + 1e-12) for center, width in sectors))
+
+
+def _masked_by(angle, limits):
+    rear, sectors = limits
     # 센서 축 기준. ±150° 경계의 표본은 현행 mask_scan과 같이 관측한다.
-    if abs(angle) > math.radians(180 - half) + 1e-12:
+    if abs(angle) > rear:
         return True
-    return any(abs(math.remainder(angle - math.radians(center), math.tau)) <= math.radians(width) + 1e-12
-               for center, width in sectors)
+    return any(abs(math.remainder(angle - center, math.tau)) <= width for center, width in sectors)
+
+
+def _reusable_blind_spec(value):
+    """한 번 파싱한 값을 광선마다 재사용해도 매번 파싱한 결과와 같은 입력인지. 그 밖은 기존처럼 매번 파싱한다."""
+    return not isinstance(value, dict) or isinstance(value.get('sectors_deg', ()), (list, tuple))
+
+
+def rear_masked(angle_rad, rear_half_angle_deg=30.):
+    angle = math.remainder(_finite(angle_rad, 'angle_rad'), math.tau)
+    return _masked_by(angle, _blind_limits(rear_half_angle_deg))
 
 
 def scene_from_scan(ranges, *, angle_min, angle_increment, range_min, range_max,
@@ -176,6 +191,9 @@ def scene_from_scan(ranges, *, angle_min, angle_increment, range_min, range_max,
     if len(poses) != len(values):
         raise ValueError('transform count mismatch')
     rays = []
+    # 마스크 spec은 첫 광선에서 한 번만 검증·파싱한다(광선 0개면 검증하지 않는 기존 동작, 같은 예외 순서 유지).
+    limits = None
+    reuse = _reusable_blind_spec(rear_half_angle_deg)
     for index, (distance, stamp, pose) in enumerate(zip(values, stamps, poses)):
         if len(pose) != 3:
             raise ValueError('SE(2) transform must have three components')
@@ -183,7 +201,13 @@ def scene_from_scan(ranges, *, angle_min, angle_increment, range_min, range_max,
         c, s = math.cos(turn), math.sin(turn)
         origin = (dx + c * sx - s * sy, dy + s * sx + c * sy)
         angle = math.remainder(start + index * increment, math.tau)
-        masked = rear_masked(angle, rear_half_angle_deg)
+        if reuse:
+            masked_angle = math.remainder(_finite(angle, 'angle_rad'), math.tau)
+            if limits is None:
+                limits = _blind_limits(rear_half_angle_deg)
+            masked = _masked_by(masked_angle, limits)
+        else:
+            masked = rear_masked(angle, rear_half_angle_deg)
         valid = (not isinstance(distance, bool) and isinstance(distance, (int, float))
                  and math.isfinite(distance) and minimum <= distance <= maximum)
         status = 'masked' if masked else ('return' if valid else 'unknown')

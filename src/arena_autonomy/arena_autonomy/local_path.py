@@ -52,7 +52,29 @@ def ray_continuous_gaps(points, gaps, limits, rays, horizon, tolerance=.03, near
     return joined
 
 
-def local_path(points, side, offset=.425, horizon=1.8, rays=None):
+def _path_ahead(path):
+    """원점 최근접 경로점부터 끝까지의 경로 호길이."""
+    arc = np.r_[0., np.cumsum(np.linalg.norm(np.diff(path, axis=0), axis=1))]
+    return float(arc[-1]-arc[int(np.argmin(np.linalg.norm(path, axis=1)))])
+
+
+def _covers(path, old, tolerance):
+    """old의 모든 점이 path 선분에서 tolerance 안에 있는가."""
+    a, d = path[:-1], np.diff(path, axis=0)
+    norm2 = np.maximum(1e-12, np.sum(d*d, axis=1))
+    t = np.clip(np.sum((old[:, None]-a[None])*d[None], axis=2)/norm2, 0., 1.)
+    distance = np.linalg.norm(a[None]+t[:, :, None]*d[None]-old[:, None], axis=2)
+    return bool(np.max(np.min(distance, axis=1)) <= tolerance)
+
+
+def _origin_error(path):
+    """차량 원점(0,0)에서 경로 선분까지의 최소 거리. 경로 점만 쓰며 외삽하지 않는다."""
+    a, d = path[:-1], np.diff(path, axis=0)
+    t = np.clip(-np.sum(a*d, axis=1)/np.maximum(1e-12, np.sum(d*d, axis=1)), 0., 1.)
+    return float(np.min(np.linalg.norm(a+t[:, None]*d, axis=1)))
+
+
+def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corner=False, minimum_radius=0.):
     """연결된 관측 벽의 호길이 매개곡선. 수직 벽/급커브도 y=f(x)로 강제하지 않는다.
 
     rays는 points와 같은 순서의 원시 광선 번호다. 주지 않으면 거리 간격만으로 연결한다.
@@ -117,6 +139,35 @@ def local_path(points, side, offset=.425, horizon=1.8, rays=None):
     # 같은 호길이 간격으로 재표본화하고 이웃 점으로 접선을 구한다. 관측 끝 밖으로 외삽하지 않는다.
     sample_s = np.linspace(first, last, max(12, int((last-first)/.025)+1))
     samples = np.column_stack([np.interp(sample_s, arc, wall[:, axis]) for axis in (0, 1)])
+    if piecewise_corner:
+        from arena_autonomy.piecewise_wall import corner_path
+        path = corner_path(samples, side, offset, minimum_radius)
+        if path is not None:
+            budget = None
+            # 벽 탐색 길이는 벽 호길이다. 바깥 모서리의 오프셋 경로는 평행 이동·원호 때문에
+            # 그보다 짧다. 같은 연결 구간에 실제 관측이 남을 때만 한 번 더 읽는다.
+            # 관측 끝 밖 외삽·다른 구간 연결·경계 길이 기준 변경은 하지 않는다.
+            ahead = _path_ahead(path)
+            if ahead < horizon and arc[-1]-last > 1e-9:
+                extended = min(arc[-1], last+max(0., horizon-ahead)+.05)  # .05는 재표본화 여유
+                wider_s = np.linspace(first, extended, max(12, int((extended-first)/.025)+1))
+                wider = corner_path(np.column_stack([np.interp(wider_s, arc, wall[:, axis]) for axis in (0, 1)]),
+                                    side, offset, minimum_radius)
+                # 두 번째 모서리·다른 면이 들어오면 corner_path가 거부한다. 기존 경로를 벽 적합
+                # 허용량 안에서 그대로 포함하고 더 길어질 때만 바꾼다.
+                if wider is not None and _path_ahead(wider) >= ahead and _covers(wider, path, .03):
+                    budget = {'wall_ahead_before_m': float(last-anchor_s), 'path_ahead_before_m': ahead,
+                              'path_ahead_m': _path_ahead(wider), 'extended': True}
+                    path, last = wider, extended
+            info = {'reason': 'local_path', 'wall_model': 'piecewise_corner',
+                    'boundary_samples': len(wall),
+                    'boundary_observed_ahead_m': float(last-anchor_s),
+                    'wall_distance_m': float(abs(wall[anchor, 1])), 'path_points': path.tolist(),
+                    # 원호 위에서는 벽 y좌표가 오프셋과 달라도 경로 위에 있을 수 있다. 앵커 판정용.
+                    'path_anchor_error_m': _origin_error(path)}
+            if budget is not None:
+                info['corner_path_budget'] = budget
+            return path, info
     # x(s), y(s)를 함께 적합한다. y=f(x)와 달리 수직 벽을 표현하며,
     # 상자 벽의 작은 끝면/돌출부를 매 점의 법선으로 증폭하지 않는다.
     u = (sample_s-first) / max(1e-6, last-first)
@@ -151,9 +202,13 @@ def local_path(points, side, offset=.425, horizon=1.8, rays=None):
     # 원래 관측 벽과 그 법선만 사용한다. 36점은 경로 표현 해상도이며 새 센서점이 아니다.
     path_s = np.r_[0., np.cumsum(np.linalg.norm(np.diff(shifted, axis=0), axis=1))]
     path = np.column_stack([np.interp(np.linspace(0., path_s[-1], 36), path_s, shifted[:, axis]) for axis in (0, 1)])
-    return path, {"reason": "local_path", "boundary_samples": len(wall),
-                  "boundary_observed_ahead_m": float(last-anchor_s),
-                  "wall_distance_m": float(abs(wall[anchor, 1])), "path_points": path.tolist()}
+    info = {"reason": "local_path", "boundary_samples": len(wall),
+            "boundary_observed_ahead_m": float(last-anchor_s),
+            "wall_distance_m": float(abs(wall[anchor, 1])), "path_points": path.tolist()}
+    if piecewise_corner:
+        # 같은 코너 경로가 관측에 따라 이 곡선 표현으로 바뀌어도 앵커 판정 지표를 유지한다. 진단 전용.
+        info["path_anchor_error_m"] = _origin_error(path)
+    return path, info
 
 
 def pursuit_command(points, side, speed, wheelbase=.145, max_steering=.37,

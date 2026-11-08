@@ -1,0 +1,602 @@
+[INFO] [launch]: All log files can be found below /home/jinhyeong/.ros/log/2026-11-08-17-49-37-835375-DESKTOP-KA11CHH-292819
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [launch.user]: Collision detector: configured; SceneBroadcaster: True
+[INFO] [launch.user]: Gazebo rendering request: wsl_nvidia; driver=d3d12; D3D12 lifetime guard=True. Verify actual GL_RENDERER in Ogre2 log.
+[INFO] [launch.user]: Drive: single_motor; differential: configured; safety=LiDAR enabled=True. Motor/tire properties are provisional.
+[INFO] [launch.user]: Drive feedback: drive_motor_shaft on /drive_motor/encoder; resolution={'counts_per_motor_revolution': 28, 'counts_per_mean_wheel_revolution': 251.1764705882353, 'mean_wheel_travel_m_per_count': 0.0008129882628142205}; rate/latency provisional. Single motor-shaft channel: mean wheel motion only; left/right difference, slip, backlash and opposite rotation unobservable; yaw from IMU.
+[INFO] [launch.user]: Track: official_v2026_11_06; main width: 0.61 m; shortcut widths: [0.2, 0.2] m. Official v2026.11.06 610 mm right-angle course; team derivative without tl_post, lamps start dark.
+[INFO] [launch.user]: Rear identification marker: enabled=True; DICT_4X4_50 ID 49; board=0.05 m (team registered; mount provisional).
+[INFO] [launch.user]: Camera: Arducam_B0390_IMX219 + independent IMU LSM6DSOX; RGB 1280x720 @ 60.0 Hz; depth 848x480 @ 60.0 Hz (enabled=False).
+[INFO] [launch.user]: Sensor mode: local_pursuit; ToF layout=none (mount provisional); speed_bump=False; batch_visuals=True; comparison ballast=0.069 kg.
+[INFO] [launch.user]: ToF ring: enabled=False; profile=tracking_8x8_15; 8x8 @ 15.0 Hz; modules=[].
+[INFO] [launch.user]: 2D LiDAR: enabled=True; 10 Hz, 500 samples/scan. acquisition=sequential; source=500 Hz; capture quantization <=2.1 ms; raw scan uncorrected, controller compensation=both.
+[INFO] [launch.user]: A1-2 virtual MCU: explicit /actuation/arm required; no automatic restart. MCU feedback=drive_motor_shaft (motor-shaft stationary check is mean-only). Gazebo inner motor PI still uses ideal joint velocities.
+[INFO] [gz-1]: process started with pid [292831]
+[INFO] [parameter_bridge-2]: process started with pid [292832]
+[INFO] [parameter_bridge-3]: process started with pid [292833]
+[INFO] [guarded_sim_actuator-4]: process started with pid [292834]
+[INFO] [actuation_host-5]: process started with pid [292835]
+[INFO] [virtual_mcu-6]: process started with pid [292836]
+[INFO] [rotating_lidar-7]: process started with pid [292837]
+[INFO] [parameter_bridge-8]: process started with pid [292838]
+[INFO] [static_transform_publisher-9]: process started with pid [292839]
+[INFO] [traffic_light_controller.py-10]: process started with pid [292840]
+[INFO] [lidar_safety-11]: process started with pid [292841]
+[INFO] [g1_g2_handoff_trial-12]: process started with pid [292842]
+[INFO] [sim_wheel_encoder-13]: process started with pid [292843]
+[static_transform_publisher-9] [INFO] [1794127778.890771995] [lidar_transform]: Spinning until stopped - publishing transform
+[static_transform_publisher-9] translation: ('0.060000', '0.000000', '0.075000')
+[static_transform_publisher-9] rotation: ('0.000000', '0.000000', '0.000000', '1.000000')
+[static_transform_publisher-9] from 'base_link' to 'laser_frame'
+[parameter_bridge-2] [INFO] [1794127778.917828267] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/clock (gz.msgs.Clock) -> /clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1794127778.920988805] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/arena_car/cmd_vel (gz.msgs.Twist) -> /model/arena_car/cmd_vel (geometry_msgs/msg/Twist)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1794127778.926297697] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/arena_car/cmd_vel (geometry_msgs/msg/Twist) -> /model/arena_car/cmd_vel (gz.msgs.Twist)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1794127778.927190956] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/arena_car/steer_angle (std_msgs/msg/Float64) -> /model/arena_car/steer_angle (gz.msgs.Double)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1794127778.927890866] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/arena_car/drivetrain (gz.msgs.StringMsg) -> /model/arena_car/drivetrain (std_msgs/msg/String)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1794127778.928598911] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/arena_car/odometry (gz.msgs.Odometry) -> /model/arena_car/odometry (nav_msgs/msg/Odometry)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1794127778.932331093] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/arena_car/odometry (nav_msgs/msg/Odometry) -> /model/arena_car/odometry (gz.msgs.Odometry)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1794127778.933107285] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/arena_car/tf (gz.msgs.Pose_V) -> /model/arena_car/tf (tf2_msgs/msg/TFMessage)] (Lazy 0)
+[parameter_bridge-8] [INFO] [1794127778.936077870] [lidar_bridge]: Creating GZ->ROS Bridge: [/sim/lidar_instantaneous (gz.msgs.LaserScan) -> /sim/lidar_instantaneous (sensor_msgs/msg/LaserScan)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1794127778.938356522] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/arena_car/tf (tf2_msgs/msg/TFMessage) -> /model/arena_car/tf (gz.msgs.Pose_V)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1794127778.939240494] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/model/arena_car/joint_state (gz.msgs.Model) -> /model/arena_car/joint_state (sensor_msgs/msg/JointState)] (Lazy 0)
+[parameter_bridge-2] [INFO] [1794127778.942534454] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/model/arena_car/joint_state (sensor_msgs/msg/JointState) -> /model/arena_car/joint_state (gz.msgs.Model)] (Lazy 0)
+[INFO] [1794127779.232491344] [race_ops]: 경기 운영 어댑터: 127.0.0.1:18765 차량 eval_car
+[gz-1] [1;32m[Msg] [0m[1;32mGazebo Sim Server v[0m[1;32m8.11.0[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mLoading SDF world file[[0m[1;32m/tmp/arena_world_07wl1nxa/world.sdf[0m[1;32m].[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing entity system service on [[0m[1;32m/[0m[1;32mentity/system/add[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mCreate[0m[1;32m service on [[0m[1;32m/world/it_arena_track/create_multiple[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mCreate[0m[1;32m service on [[0m[1;32m/world/it_arena_track/create_multiple/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mRemove[0m[1;32m service on [[0m[1;32m/world/it_arena_track/remove[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mRemove[0m[1;32m service on [[0m[1;32m/world/it_arena_track/remove/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPose[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_pose[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPose[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_pose/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPose[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_pose_vector[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPose[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_pose_vector/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mLight configuration[0m[1;32m service on [[0m[1;32m/world/it_arena_track/light_config[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mLight configuration[0m[1;32m service on [[0m[1;32m/world/it_arena_track/light_config/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPhysics[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_physics[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPhysics[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_physics/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mSphericalCoordinates[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_spherical_coordinates[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mSphericalCoordinates[0m[1;32m service on [[0m[1;32m/world/it_arena_track/set_spherical_coordinates/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mEnable collision[0m[1;32m service on [[0m[1;32m/world/it_arena_track/enable_collision[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mEnable collision[0m[1;32m service on [[0m[1;32m/world/it_arena_track/enable_collision/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mDisable collision[0m[1;32m service on [[0m[1;32m/world/it_arena_track/disable_collision[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mDisable collision[0m[1;32m service on [[0m[1;32m/world/it_arena_track/disable_collision/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mMaterial[0m[1;32m service on [[0m[1;32m/world/it_arena_track/visual_config[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mMaterial[0m[1;32m service on [[0m[1;32m/world/it_arena_track/visual_config/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mMaterial[0m[1;32m service on [[0m[1;32m/world/it_arena_track/wheel_slip[0m[1;32m] (async)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mMaterial[0m[1;32m service on [[0m[1;32m/world/it_arena_track/wheel_slip/blocking[0m[1;32m] (blocking)[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mLoaded level [[0m[1;32mdefault[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing world controls on [[0m[1;32m/world/it_arena_track[0m[1;32m/control], [[0m[1;32m/world/it_arena_track[0m[1;32m/control/state] and [[0m[1;32m/world/it_arena_track[0m[1;32m/playback/control][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing GUI information on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mgui/info[0m[1;32m][0m[1;32m[0m
+[parameter_bridge-3] [INFO] [1794127779.925662353] [d435i_sensor_bridge]: Creating GZ->ROS Bridge: [/camera/color/image_raw (gz.msgs.Image) -> /camera/color/image_raw (sensor_msgs/msg/Image)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1794127779.932090381] [d435i_sensor_bridge]: Creating GZ->ROS Bridge: [/camera/color/camera_info (gz.msgs.CameraInfo) -> /camera/color/camera_info (sensor_msgs/msg/CameraInfo)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1794127779.933491513] [d435i_sensor_bridge]: Creating GZ->ROS Bridge: [/imu/data (gz.msgs.IMU) -> /imu/data (sensor_msgs/msg/Imu)] (Lazy 0)
+[sim_wheel_encoder-13] [INFO] [1794127780.440706664] [sim_wheel_encoder]: Simulated drive motor encoder ready (single channel; left/right difference unobservable): 28 counts/motor rev x 8.97059:1 = 251.176 counts/mean wheel rev, 0.8130 mm/count, 100 Hz, 2 ms latency (provisional)
+[INFO] [create-14]: process started with pid [293051]
+[create-14] [INFO] [1794127781.165251459] [ros_gz_sim]: Entity creation successful.
+[INFO] [create-14]: process has finished cleanly [pid 293051]
+[g1_g2_handoff_trial-12] [INFO] [1794127781.612929607] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=both; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+[gz-1] [1;33m[Wrn] [OBJLoader.cc:202] [0m[1;33mMissing material for shape[[0m[1;33m] [0m[1;33min OBJ file[[0m[1;33m/tmp/arena_world_07wl1nxa/batched_track_surface_0.obj[0m[1;33m][0m[1;33m[0m
+[gz-1] [1;33m[Wrn] [OBJLoader.cc:202] [0m[1;33mMissing material for shape[[0m[1;33m] [0m[1;33min OBJ file[[0m[1;33m/tmp/arena_world_07wl1nxa/batched_grass_0.obj[0m[1;33m][0m[1;33m[0m
+[gz-1] [1;33m[Wrn] [OBJLoader.cc:202] [0m[1;33mMissing material for shape[[0m[1;33m] [0m[1;33min OBJ file[[0m[1;33m/tmp/arena_world_07wl1nxa/batched_walls_0.obj[0m[1;33m][0m[1;33m[0m
+[gz-1] [1;33m[Wrn] [Ogre2Camera.cc:423] [0m[1;33mOgre2Camera::SetVisibilityMask: Mask bits [0m[1;33mc0000000[0m[1;33m are set but will be ignored as they conflict with the [0m[1;33mreserved bits used internally by the ogre2 backend.[0m[1;33m[0m
+[parameter_bridge-2] [INFO] [1794127782.818676769] [ros_gz_bridge]: Passing message from ROS std_msgs/msg/Float64 to Gazebo gz.msgs.Double (showing msg only once per type)
+[parameter_bridge-2] [INFO] [1794127782.818890576] [ros_gz_bridge]: Passing message from ROS geometry_msgs/msg/Twist to Gazebo gz.msgs.Twist (showing msg only once per type)
+[g1_g2_handoff_trial-12] [INFO] [1794127783.587303567] [local_pursuit]: B3 race supervisor candidate: session=9a89ef6e54b44b76bb624685289da905
+[g1_g2_handoff_trial-12] [INFO] [1794127783.794807747] [local_pursuit]: G1/G2 sensor handoff trial (preparation observed_entry_space_v1); /drive through independent safety
+[g1_g2_handoff_trial-12] [INFO] [1794127783.820214846] [local_pursuit]: t=0.084000 SENSOR_STOP / left 벽 / unknown
+[g1_g2_handoff_trial-12] [INFO] [1794127784.181413190] [local_pursuit]: t=0.120000 RACE_LATCHED / left 벽 / red_unclassified
+[g1_g2_handoff_trial-12] [INFO] [1794127792.168936330] [local_pursuit]: t=0.880000 WAIT_GREEN / left 벽 / red_unclassified
+[traffic_light_controller.py-10] [INFO] [1794127793.227623687] [traffic_light_controller]: 실제 신호 광원: green_probe
+[traffic_light_controller.py-10] [INFO] [1794127803.965479392] [traffic_light_controller]: 실제 신호 광원: off
+[traffic_light_controller.py-10] [INFO] [1794127814.649214811] [traffic_light_controller]: 실제 신호 광원: red1
+[traffic_light_controller.py-10] [INFO] [1794127825.978861070] [traffic_light_controller]: 실제 신호 광원: red2
+[traffic_light_controller.py-10] [INFO] [1794127836.724483944] [traffic_light_controller]: 실제 신호 광원: red3
+[traffic_light_controller.py-10] [INFO] [1794127847.433482633] [traffic_light_controller]: 실제 신호 광원: red4
+[traffic_light_controller.py-10] [INFO] [1794127864.374743279] [traffic_light_controller]: 실제 신호 광원: green
+[g1_g2_handoff_trial-12] [INFO] [1794127866.468170438] [local_pursuit]: t=8.100000 HANDOFF_FOLLOW / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127867.691740711] [local_pursuit]: t=8.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127892.363919398] [local_pursuit]: t=10.580000 RACE_LATCHED / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127899.366813628] [local_pursuit]: t=11.260000 SENSOR_STOP / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127901.077724087] [local_pursuit]: t=11.420000 RESUME_PREPARING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127903.687365146] [local_pursuit]: t=11.660000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127910.790973485] [local_pursuit]: t=12.320000 HANDOFF_FOLLOW / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127918.266492453] [local_pursuit]: t=13.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127929.399646101] [local_pursuit]: t=14.100000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127929.587923249] [local_pursuit]: t=14.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127930.435764586] [local_pursuit]: t=14.200000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127930.632496964] [local_pursuit]: t=14.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127931.484800206] [local_pursuit]: t=14.300000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127931.670977417] [local_pursuit]: t=14.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127932.349879626] [local_pursuit]: t=14.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127932.757089507] [local_pursuit]: t=14.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127933.398546989] [local_pursuit]: t=14.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127933.819549337] [local_pursuit]: t=14.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127934.465034921] [local_pursuit]: t=14.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127934.865043660] [local_pursuit]: t=14.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127935.512828750] [local_pursuit]: t=14.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127935.921366068] [local_pursuit]: t=14.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127936.563273702] [local_pursuit]: t=14.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127936.984036895] [local_pursuit]: t=14.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127937.635972976] [local_pursuit]: t=14.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127938.059570638] [local_pursuit]: t=14.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127938.703788509] [local_pursuit]: t=14.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127939.085696854] [local_pursuit]: t=15.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127939.749722672] [local_pursuit]: t=15.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127940.191210367] [local_pursuit]: t=15.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127941.106437530] [local_pursuit]: t=15.200000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127941.316892032] [local_pursuit]: t=15.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127941.989106369] [local_pursuit]: t=15.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127942.407573653] [local_pursuit]: t=15.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127943.100368343] [local_pursuit]: t=15.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127943.500114224] [local_pursuit]: t=15.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127944.206419441] [local_pursuit]: t=15.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127944.601310197] [local_pursuit]: t=15.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127945.266535431] [local_pursuit]: t=15.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127945.674451723] [local_pursuit]: t=15.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127946.314539549] [local_pursuit]: t=15.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127946.710470712] [local_pursuit]: t=15.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127947.391698391] [local_pursuit]: t=15.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127947.754273128] [local_pursuit]: t=15.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127948.405743309] [local_pursuit]: t=15.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127948.796567843] [local_pursuit]: t=15.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127949.227553496] [local_pursuit]: t=15.960000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127949.853925331] [local_pursuit]: t=16.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127950.295064806] [local_pursuit]: t=16.060000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127950.908798355] [local_pursuit]: t=16.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127951.330095722] [local_pursuit]: t=16.160000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127951.962399728] [local_pursuit]: t=16.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127952.416797251] [local_pursuit]: t=16.260000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127953.027900971] [local_pursuit]: t=16.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127953.467620013] [local_pursuit]: t=16.360000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127954.090656826] [local_pursuit]: t=16.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127954.713032913] [local_pursuit]: t=16.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127955.122702479] [local_pursuit]: t=16.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127955.560143614] [local_pursuit]: t=16.560000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127956.167906619] [local_pursuit]: t=16.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127956.840453012] [local_pursuit]: t=16.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127957.204788319] [local_pursuit]: t=16.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127957.926878803] [local_pursuit]: t=16.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127958.313486051] [local_pursuit]: t=16.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127958.749437382] [local_pursuit]: t=16.860000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127959.386812314] [local_pursuit]: t=16.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127960.064753449] [local_pursuit]: t=16.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127960.436273852] [local_pursuit]: t=17.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127960.855954924] [local_pursuit]: t=17.060000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127961.457049805] [local_pursuit]: t=17.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127962.105284045] [local_pursuit]: t=17.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127962.515868028] [local_pursuit]: t=17.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127963.144398929] [local_pursuit]: t=17.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127963.559399931] [local_pursuit]: t=17.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127963.979078351] [local_pursuit]: t=17.360000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127964.603732031] [local_pursuit]: t=17.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127965.247115396] [local_pursuit]: t=17.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127965.627884974] [local_pursuit]: t=17.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127966.255591399] [local_pursuit]: t=17.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127966.659701164] [local_pursuit]: t=17.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127967.300829023] [local_pursuit]: t=17.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127967.680634080] [local_pursuit]: t=17.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127968.325275225] [local_pursuit]: t=17.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127968.732672058] [local_pursuit]: t=17.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127969.391658415] [local_pursuit]: t=17.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127969.801116969] [local_pursuit]: t=17.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127970.460521914] [local_pursuit]: t=17.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127970.849081672] [local_pursuit]: t=18.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127971.488376226] [local_pursuit]: t=18.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127971.902286785] [local_pursuit]: t=18.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127972.586928856] [local_pursuit]: t=18.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127972.961373227] [local_pursuit]: t=18.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127973.727505675] [local_pursuit]: t=18.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127974.159107404] [local_pursuit]: t=18.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127974.680360663] [local_pursuit]: t=18.360000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127975.265214233] [local_pursuit]: t=18.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127975.691211942] [local_pursuit]: t=18.460000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127976.317584456] [local_pursuit]: t=18.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127976.750914993] [local_pursuit]: t=18.560000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127977.376985025] [local_pursuit]: t=18.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127977.889815277] [local_pursuit]: t=18.660000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127978.497408798] [local_pursuit]: t=18.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127978.960606018] [local_pursuit]: t=18.760000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127979.565830776] [local_pursuit]: t=18.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127979.997337889] [local_pursuit]: t=18.860000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127980.625798604] [local_pursuit]: t=18.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127981.057177715] [local_pursuit]: t=18.960000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127981.670927868] [local_pursuit]: t=19.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127982.116752943] [local_pursuit]: t=19.060000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127982.737188857] [local_pursuit]: t=19.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127983.178417020] [local_pursuit]: t=19.160000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127983.797713906] [local_pursuit]: t=19.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127984.216759157] [local_pursuit]: t=19.260000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127984.832283526] [local_pursuit]: t=19.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127985.287534004] [local_pursuit]: t=19.360000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127985.918336079] [local_pursuit]: t=19.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127986.379132679] [local_pursuit]: t=19.460000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127986.968766278] [local_pursuit]: t=19.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127987.414218222] [local_pursuit]: t=19.560000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127988.024410913] [local_pursuit]: t=19.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127988.467754460] [local_pursuit]: t=19.660000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127989.080730671] [local_pursuit]: t=19.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127989.526402558] [local_pursuit]: t=19.760000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127990.136064538] [local_pursuit]: t=19.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127990.586666883] [local_pursuit]: t=19.860000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127991.202944740] [local_pursuit]: t=19.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127991.653029144] [local_pursuit]: t=19.960000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127992.276795143] [local_pursuit]: t=20.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127992.708599653] [local_pursuit]: t=20.060000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127993.328890907] [local_pursuit]: t=20.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127993.755768524] [local_pursuit]: t=20.160000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127994.390977795] [local_pursuit]: t=20.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127994.873570682] [local_pursuit]: t=20.260000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127995.478782404] [local_pursuit]: t=20.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127996.112522812] [local_pursuit]: t=20.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127996.528101508] [local_pursuit]: t=20.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127996.966186996] [local_pursuit]: t=20.460000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127997.551095608] [local_pursuit]: t=20.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127997.989825007] [local_pursuit]: t=20.560000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127998.610460711] [local_pursuit]: t=20.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127999.241527533] [local_pursuit]: t=20.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794127999.643710216] [local_pursuit]: t=20.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128000.344629859] [local_pursuit]: t=20.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128000.735751474] [local_pursuit]: t=20.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128001.380668381] [local_pursuit]: t=20.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128001.765747328] [local_pursuit]: t=20.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128002.196137471] [local_pursuit]: t=20.960000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128002.802065715] [local_pursuit]: t=21.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128003.499454008] [local_pursuit]: t=21.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128003.905397376] [local_pursuit]: t=21.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128004.394499754] [local_pursuit]: t=21.160000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128005.048699318] [local_pursuit]: t=21.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128005.721967788] [local_pursuit]: t=21.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128006.126396608] [local_pursuit]: t=21.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128006.788441150] [local_pursuit]: t=21.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128007.163200183] [local_pursuit]: t=21.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128007.626012485] [local_pursuit]: t=21.460000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128008.223324966] [local_pursuit]: t=21.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128008.662477440] [local_pursuit]: t=21.560000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128009.295231886] [local_pursuit]: t=21.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128009.728015750] [local_pursuit]: t=21.660000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128010.365516672] [local_pursuit]: t=21.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128010.795898154] [local_pursuit]: t=21.760000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128011.424286632] [local_pursuit]: t=21.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128011.865658469] [local_pursuit]: t=21.860000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128012.468257479] [local_pursuit]: t=21.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128012.896224530] [local_pursuit]: t=21.960000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128013.519632486] [local_pursuit]: t=22.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128013.944087644] [local_pursuit]: t=22.060000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128014.554266229] [local_pursuit]: t=22.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128015.006818889] [local_pursuit]: t=22.160000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128015.636796197] [local_pursuit]: t=22.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128016.105589708] [local_pursuit]: t=22.260000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128016.698442477] [local_pursuit]: t=22.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128017.152047358] [local_pursuit]: t=22.360000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128017.729979094] [local_pursuit]: t=22.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128018.156477366] [local_pursuit]: t=22.460000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128018.749408078] [local_pursuit]: t=22.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128019.175398005] [local_pursuit]: t=22.560000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128019.767570318] [local_pursuit]: t=22.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128020.247288483] [local_pursuit]: t=22.660000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128020.828800718] [local_pursuit]: t=22.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128021.267980331] [local_pursuit]: t=22.760000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128021.878304638] [local_pursuit]: t=22.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128022.299767591] [local_pursuit]: t=22.860000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128022.925204800] [local_pursuit]: t=22.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128023.346200372] [local_pursuit]: t=22.960000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128023.955894838] [local_pursuit]: t=23.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128024.393484584] [local_pursuit]: t=23.060000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128025.020548411] [local_pursuit]: t=23.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128025.474100616] [local_pursuit]: t=23.160000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128026.111627353] [local_pursuit]: t=23.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128026.521167623] [local_pursuit]: t=23.260000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128027.128565217] [local_pursuit]: t=23.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128027.562484566] [local_pursuit]: t=23.360000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128028.166255538] [local_pursuit]: t=23.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128028.631843556] [local_pursuit]: t=23.460000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128029.241337189] [local_pursuit]: t=23.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128029.699387737] [local_pursuit]: t=23.560000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128030.348826223] [local_pursuit]: t=23.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128030.991548308] [local_pursuit]: t=23.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128031.390250937] [local_pursuit]: t=23.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128031.826078680] [local_pursuit]: t=23.760000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128032.427222675] [local_pursuit]: t=23.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128033.099782515] [local_pursuit]: t=23.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128033.509506261] [local_pursuit]: t=23.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128034.210856282] [local_pursuit]: t=23.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128034.588132384] [local_pursuit]: t=24.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128035.229088700] [local_pursuit]: t=24.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128035.645199704] [local_pursuit]: t=24.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128036.285680240] [local_pursuit]: t=24.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128036.667289466] [local_pursuit]: t=24.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128037.343740402] [local_pursuit]: t=24.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128037.726181790] [local_pursuit]: t=24.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128038.370741818] [local_pursuit]: t=24.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128038.783060782] [local_pursuit]: t=24.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128039.417319442] [local_pursuit]: t=24.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128039.841744938] [local_pursuit]: t=24.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128040.504951214] [local_pursuit]: t=24.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128040.897941184] [local_pursuit]: t=24.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128041.575392522] [local_pursuit]: t=24.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128041.952236260] [local_pursuit]: t=24.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128042.586427548] [local_pursuit]: t=24.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128042.995130695] [local_pursuit]: t=24.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128043.619782708] [local_pursuit]: t=24.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128044.035789909] [local_pursuit]: t=24.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128044.713216788] [local_pursuit]: t=24.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128045.109185086] [local_pursuit]: t=25.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128045.797171138] [local_pursuit]: t=25.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128046.154042494] [local_pursuit]: t=25.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128046.808677349] [local_pursuit]: t=25.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128047.207070135] [local_pursuit]: t=25.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128047.849149946] [local_pursuit]: t=25.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128048.240609050] [local_pursuit]: t=25.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128048.900390082] [local_pursuit]: t=25.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128049.285662003] [local_pursuit]: t=25.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128049.961401023] [local_pursuit]: t=25.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128050.318563704] [local_pursuit]: t=25.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128051.011349984] [local_pursuit]: t=25.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128051.379256284] [local_pursuit]: t=25.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128052.007338711] [local_pursuit]: t=25.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128052.422160928] [local_pursuit]: t=25.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128053.106333263] [local_pursuit]: t=25.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128053.509790073] [local_pursuit]: t=25.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128054.196319124] [local_pursuit]: t=25.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128054.546207215] [local_pursuit]: t=25.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128055.220947077] [local_pursuit]: t=25.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128055.640692560] [local_pursuit]: t=26.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128056.292289185] [local_pursuit]: t=26.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128056.704712578] [local_pursuit]: t=26.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128057.369497749] [local_pursuit]: t=26.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128057.785727769] [local_pursuit]: t=26.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128058.473679597] [local_pursuit]: t=26.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128058.846145334] [local_pursuit]: t=26.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128059.522119275] [local_pursuit]: t=26.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128059.953100464] [local_pursuit]: t=26.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128060.630653118] [local_pursuit]: t=26.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128061.036915648] [local_pursuit]: t=26.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128061.706156244] [local_pursuit]: t=26.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128062.091396157] [local_pursuit]: t=26.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128062.799047822] [local_pursuit]: t=26.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128063.164381346] [local_pursuit]: t=26.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128063.894162295] [local_pursuit]: t=26.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128064.292582989] [local_pursuit]: t=26.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128064.954113857] [local_pursuit]: t=26.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128065.366234921] [local_pursuit]: t=26.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128066.023989703] [local_pursuit]: t=26.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128066.429474344] [local_pursuit]: t=27.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128067.088990516] [local_pursuit]: t=27.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128067.450710293] [local_pursuit]: t=27.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128068.074699373] [local_pursuit]: t=27.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128068.472075955] [local_pursuit]: t=27.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128069.082106034] [local_pursuit]: t=27.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128069.469351296] [local_pursuit]: t=27.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128070.136558628] [local_pursuit]: t=27.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128070.535360915] [local_pursuit]: t=27.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128071.226947987] [local_pursuit]: t=27.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128071.599942522] [local_pursuit]: t=27.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128072.252981996] [local_pursuit]: t=27.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128072.643212218] [local_pursuit]: t=27.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128073.296622401] [local_pursuit]: t=27.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128073.705889714] [local_pursuit]: t=27.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128074.373296553] [local_pursuit]: t=27.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128074.766043308] [local_pursuit]: t=27.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128075.453335418] [local_pursuit]: t=27.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128075.857133685] [local_pursuit]: t=27.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128076.562450303] [local_pursuit]: t=27.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128076.993438937] [local_pursuit]: t=28.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128077.666015541] [local_pursuit]: t=28.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128078.085441694] [local_pursuit]: t=28.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128078.807899855] [local_pursuit]: t=28.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128079.188594383] [local_pursuit]: t=28.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128079.895642701] [local_pursuit]: t=28.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128080.309654409] [local_pursuit]: t=28.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128081.019250014] [local_pursuit]: t=28.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128081.427682324] [local_pursuit]: t=28.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128082.097807549] [local_pursuit]: t=28.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128082.518924713] [local_pursuit]: t=28.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128083.217832792] [local_pursuit]: t=28.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128083.599468910] [local_pursuit]: t=28.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128084.261675186] [local_pursuit]: t=28.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128084.681522243] [local_pursuit]: t=28.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128085.349970517] [local_pursuit]: t=28.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128085.782586222] [local_pursuit]: t=28.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128086.435924029] [local_pursuit]: t=28.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128086.849800631] [local_pursuit]: t=28.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128087.559036331] [local_pursuit]: t=28.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128087.930423686] [local_pursuit]: t=29.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128088.623007500] [local_pursuit]: t=29.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128089.035675727] [local_pursuit]: t=29.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128089.716152944] [local_pursuit]: t=29.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128090.151329680] [local_pursuit]: t=29.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128090.827543027] [local_pursuit]: t=29.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128091.233560419] [local_pursuit]: t=29.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128091.931215200] [local_pursuit]: t=29.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128092.305900250] [local_pursuit]: t=29.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128093.001574304] [local_pursuit]: t=29.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128093.411919092] [local_pursuit]: t=29.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128094.131081376] [local_pursuit]: t=29.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128094.585901630] [local_pursuit]: t=29.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128095.293780959] [local_pursuit]: t=29.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128095.676830312] [local_pursuit]: t=29.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128096.368931095] [local_pursuit]: t=29.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128096.772370088] [local_pursuit]: t=29.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128097.460767277] [local_pursuit]: t=29.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128097.870401206] [local_pursuit]: t=29.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128098.545973564] [local_pursuit]: t=29.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128098.965071346] [local_pursuit]: t=30.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128099.654930403] [local_pursuit]: t=30.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128100.051510851] [local_pursuit]: t=30.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128100.710859833] [local_pursuit]: t=30.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128101.130577899] [local_pursuit]: t=30.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128101.835399657] [local_pursuit]: t=30.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128102.271201885] [local_pursuit]: t=30.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128102.925960381] [local_pursuit]: t=30.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128103.354110334] [local_pursuit]: t=30.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128103.997039128] [local_pursuit]: t=30.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128104.413766244] [local_pursuit]: t=30.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128105.119116835] [local_pursuit]: t=30.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128105.540842987] [local_pursuit]: t=30.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128106.208977398] [local_pursuit]: t=30.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128106.621750717] [local_pursuit]: t=30.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128107.320143019] [local_pursuit]: t=30.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128107.721549151] [local_pursuit]: t=30.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128108.365996211] [local_pursuit]: t=30.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128108.768945682] [local_pursuit]: t=30.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128109.456229699] [local_pursuit]: t=30.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128109.853719795] [local_pursuit]: t=31.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128110.532458410] [local_pursuit]: t=31.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128110.946412123] [local_pursuit]: t=31.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128111.642165441] [local_pursuit]: t=31.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128112.050621860] [local_pursuit]: t=31.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128112.705391836] [local_pursuit]: t=31.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128113.115424459] [local_pursuit]: t=31.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128113.796143036] [local_pursuit]: t=31.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128114.190749619] [local_pursuit]: t=31.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128114.888915666] [local_pursuit]: t=31.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128115.287187639] [local_pursuit]: t=31.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128115.995861068] [local_pursuit]: t=31.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128116.379998254] [local_pursuit]: t=31.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128117.028456697] [local_pursuit]: t=31.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128117.441817582] [local_pursuit]: t=31.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128118.111085520] [local_pursuit]: t=31.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128118.508245058] [local_pursuit]: t=31.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128119.183598038] [local_pursuit]: t=31.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128119.594505232] [local_pursuit]: t=31.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128120.333558499] [local_pursuit]: t=31.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128120.727518071] [local_pursuit]: t=32.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128121.371218120] [local_pursuit]: t=32.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128121.802429152] [local_pursuit]: t=32.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128122.450226140] [local_pursuit]: t=32.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128122.861675408] [local_pursuit]: t=32.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128123.586053779] [local_pursuit]: t=32.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128124.020109903] [local_pursuit]: t=32.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128124.718154776] [local_pursuit]: t=32.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128125.115425538] [local_pursuit]: t=32.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128125.790060760] [local_pursuit]: t=32.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128126.243642848] [local_pursuit]: t=32.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128126.913616587] [local_pursuit]: t=32.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128127.316853465] [local_pursuit]: t=32.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128127.960862014] [local_pursuit]: t=32.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128128.366244756] [local_pursuit]: t=32.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128129.030810242] [local_pursuit]: t=32.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128129.428509084] [local_pursuit]: t=32.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128130.056639936] [local_pursuit]: t=32.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128130.464810411] [local_pursuit]: t=32.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128131.162662056] [local_pursuit]: t=32.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128131.556728376] [local_pursuit]: t=33.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128132.223826705] [local_pursuit]: t=33.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128132.620867776] [local_pursuit]: t=33.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128133.333446979] [local_pursuit]: t=33.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128133.714099568] [local_pursuit]: t=33.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128134.356829550] [local_pursuit]: t=33.280000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128134.753557072] [local_pursuit]: t=33.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128135.429196315] [local_pursuit]: t=33.380000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128135.809965705] [local_pursuit]: t=33.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128136.472544497] [local_pursuit]: t=33.480000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128136.850757497] [local_pursuit]: t=33.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128137.530516379] [local_pursuit]: t=33.580000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128137.924790352] [local_pursuit]: t=33.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128138.545122430] [local_pursuit]: t=33.680000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128138.955291030] [local_pursuit]: t=33.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128139.592231135] [local_pursuit]: t=33.780000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128140.006604572] [local_pursuit]: t=33.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128140.637703703] [local_pursuit]: t=33.880000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128141.033719973] [local_pursuit]: t=33.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128141.711654302] [local_pursuit]: t=33.980000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128142.103388597] [local_pursuit]: t=34.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128142.723237123] [local_pursuit]: t=34.080000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128143.129010547] [local_pursuit]: t=34.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128143.780620816] [local_pursuit]: t=34.180000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128144.169710563] [local_pursuit]: t=34.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128144.624645367] [local_pursuit]: t=34.260000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128145.220947256] [local_pursuit]: t=34.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128145.693475979] [local_pursuit]: t=34.360000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128146.273813691] [local_pursuit]: t=34.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128146.704787091] [local_pursuit]: t=34.460000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128147.316629180] [local_pursuit]: t=34.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128147.747567715] [local_pursuit]: t=34.560000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128148.337159090] [local_pursuit]: t=34.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128148.782651602] [local_pursuit]: t=34.660000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128149.394255208] [local_pursuit]: t=34.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128149.894738974] [local_pursuit]: t=34.760000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128150.541199924] [local_pursuit]: t=34.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128150.968131181] [local_pursuit]: t=34.860000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128151.587148315] [local_pursuit]: t=34.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128152.006016677] [local_pursuit]: t=34.960000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128152.623340140] [local_pursuit]: t=35.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128153.060468072] [local_pursuit]: t=35.060000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128153.703809213] [local_pursuit]: t=35.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128154.163073790] [local_pursuit]: t=35.160000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128154.792972780] [local_pursuit]: t=35.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128155.246996724] [local_pursuit]: t=35.260000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128155.836701498] [local_pursuit]: t=35.320000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128156.260927733] [local_pursuit]: t=35.360000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128156.857109598] [local_pursuit]: t=35.420000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128157.305011521] [local_pursuit]: t=35.460000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128157.898085749] [local_pursuit]: t=35.520000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128158.402866807] [local_pursuit]: t=35.560000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128158.998737429] [local_pursuit]: t=35.620000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128159.441875574] [local_pursuit]: t=35.660000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128160.061767821] [local_pursuit]: t=35.720000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128160.522143269] [local_pursuit]: t=35.760000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128161.131068809] [local_pursuit]: t=35.820000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128161.594453957] [local_pursuit]: t=35.860000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128162.192622082] [local_pursuit]: t=35.920000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128162.630552257] [local_pursuit]: t=35.960000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128163.237355803] [local_pursuit]: t=36.020000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128163.656056779] [local_pursuit]: t=36.060000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128164.265371799] [local_pursuit]: t=36.120000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128164.706638179] [local_pursuit]: t=36.160000 HANDOFF_BYPASS / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128165.288029042] [local_pursuit]: t=36.220000 RUNNING / left 벽 / green_confirmed
+[g1_g2_handoff_trial-12] [INFO] [1794128165.633223910] [local_pursuit]: t=36.260000 RACE_LATCHED / left 벽 / green_confirmed
+[gz-1] [1;32m[Msg] [0m[1;32mWorld [[0m[1;32mit_arena_track[0m[1;32m] initialized with [[0m[1;32mdefault_physics[0m[1;32m] physics profile.[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing world SDF generation service on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mgenerate_world_sdf[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing world names on [[0m[1;32m/gazebo/worlds[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mResource path add service on [[0m[1;32m/gazebo/resource_paths/add[0m[1;32m].[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mResource path get service on [[0m[1;32m/gazebo/resource_paths/get[0m[1;32m].[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mResource path resolve service on [[0m[1;32m/gazebo/resource_paths/resolve[0m[1;32m].[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mResource paths published on [[0m[1;32m/gazebo/resource_paths[0m[1;32m].[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServer control service on [[0m[1;32m/server_control[0m[1;32m].[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mFound no publishers on /stats, adding root stats topic[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mFound no publishers on /clock, adding root clock topic[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mContact system publishing on [0m[1;32m/eval/g1b_actor/contact[0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing scene information on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mscene/info[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing graph information on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mscene/graph[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing full state on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mstate[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mServing full state (async) on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mstate_async[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPublishing scene information on [[0m[1;32m/world/it_arena_track/scene/info[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPublishing entity deletions on [[0m[1;32m/world/it_arena_track/scene/deletion[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPublishing state changes on [[0m[1;32m/world/it_arena_track/state[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPublishing pose messages on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mpose/info[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32mPublishing dynamic pose messages on [[0m[1;32m/world/it_arena_track[0m[1;32m/[0m[1;32mdynamic_pose/info[0m[1;32m][0m[1;32m[0m
+[gz-1] [1;32m[Msg] [0m[1;32m단일 모터 토크 구동: 좌우 뒷바퀴 + 기계식 차동, 속도 강제 지정 없음[0m
+[gz-1] [1;32m[Msg] [0m[1;32mLoading plugin [[0m[1;32mgz-rendering-ogre2[0m[1;32m][0m[1;32m[0m
+[INFO] [gz-1]: process has finished cleanly [pid 292831]
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[INFO] [sim_wheel_encoder-13]: sending signal 'SIGINT' to process[sim_wheel_encoder-13]
+[INFO] [g1_g2_handoff_trial-12]: sending signal 'SIGINT' to process[g1_g2_handoff_trial-12]
+[INFO] [lidar_safety-11]: sending signal 'SIGINT' to process[lidar_safety-11]
+[INFO] [traffic_light_controller.py-10]: sending signal 'SIGINT' to process[traffic_light_controller.py-10]
+[INFO] [static_transform_publisher-9]: sending signal 'SIGINT' to process[static_transform_publisher-9]
+[INFO] [parameter_bridge-8]: sending signal 'SIGINT' to process[parameter_bridge-8]
+[INFO] [rotating_lidar-7]: sending signal 'SIGINT' to process[rotating_lidar-7]
+[INFO] [virtual_mcu-6]: sending signal 'SIGINT' to process[virtual_mcu-6]
+[INFO] [actuation_host-5]: sending signal 'SIGINT' to process[actuation_host-5]
+[INFO] [guarded_sim_actuator-4]: sending signal 'SIGINT' to process[guarded_sim_actuator-4]
+[INFO] [parameter_bridge-3]: sending signal 'SIGINT' to process[parameter_bridge-3]
+[INFO] [parameter_bridge-2]: sending signal 'SIGINT' to process[parameter_bridge-2]
+[static_transform_publisher-9] [INFO] [1794128171.957033049] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-8] [INFO] [1794128171.958114505] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-3] [INFO] [1794128171.963508428] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-2] [INFO] [1794128171.964967956] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [parameter_bridge-8]: process has finished cleanly [pid 292838]
+[INFO] [static_transform_publisher-9]: process has finished cleanly [pid 292839]
+[INFO] [parameter_bridge-3]: process has finished cleanly [pid 292833]
+[INFO] [parameter_bridge-2]: process has finished cleanly [pid 292832]
+[INFO] [rotating_lidar-7]: process has finished cleanly [pid 292837]
+[INFO] [virtual_mcu-6]: process has finished cleanly [pid 292836]
+[INFO] [guarded_sim_actuator-4]: process has finished cleanly [pid 292834]
+[INFO] [actuation_host-5]: process has finished cleanly [pid 292835]
+[INFO] [sim_wheel_encoder-13]: process has finished cleanly [pid 292843]
+[INFO] [traffic_light_controller.py-10]: process has finished cleanly [pid 292840]
+[INFO] [lidar_safety-11]: process has finished cleanly [pid 292841]
+[INFO] [g1_g2_handoff_trial-12]: process has finished cleanly [pid 292842]

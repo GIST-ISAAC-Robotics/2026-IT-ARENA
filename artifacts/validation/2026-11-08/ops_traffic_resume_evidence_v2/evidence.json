@@ -1,0 +1,247 @@
+{
+  "scope": "post-run evaluation of preserved ops_traffic_resume_v1 run1 raw data; no rerun, official 1.2 m failure preserved",
+  "inputs": {
+    "report.json": "55d399e1b6b24236d5c791bc45d79552d6a3672e7bd0682866a754fbf6b4a3c3",
+    "ego_poses.jsonl": "27d4a02a4e3982932f5435a3fdc68f53c9845b53f8b9fc29385c990fd890663c",
+    "actor_poses.jsonl": "d62cc379dac96bac2fb151b65fd12807956290a69ff2ce5ff711ae1212c6a725",
+    "contacts.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "runtime_world.sdf": "db1d8b5896c4f9ed3f7b809f1dfae9e0712363cdc574b1e2a4a2fec921ba6923",
+    "actor_registered.json": "89ddd634fdbe2a9ff39d3808bda3f987e530554b647b96fcabcd28ccb3138182",
+    "ops_log.jsonl": "4bf9c5b307baff9e06a33f944731aa858826640e176c20f34a7d25c279b5bc06",
+    "../assessment.json": "6fcb115e354b6248185b86a3a55d590094b77a74b15667eadd06b51eedb15bfa",
+    "../assess.py": "02dd71cbdaea2f310e588a54cc69bdeab263e236fcecfc163316e585d6c66b08"
+  },
+  "official": {
+    "report_passed": false,
+    "error": "Stop: traffic resume did not progress 1.2m within test time",
+    "v1_assessment_passed": false,
+    "progress_gate_m": 1.2,
+    "retained": "FAIL"
+  },
+  "v1_measurement_defects": {
+    "actor_time": "v1 read top-level header (absent in all lines) -> every stamp 0 -> 1 actor sample kept",
+    "window": "no final_stop_hold -> v1 window ended at first_stop_hold 11.357 s (1603 ego samples); corrected window ends at failure_stop_hold 73.477 s"
+  },
+  "timeline_sim_s": {
+    "visual_start": 8.129,
+    "first_departure_gt_0p01m": 8.557,
+    "first_stop_press": 10.682,
+    "first_stopped": 10.856,
+    "first_stop_hold": [
+      10.856,
+      11.357
+    ],
+    "resume_press": 11.357,
+    "resume_permitted": 11.769,
+    "resume_boundary_s": 11.360000000000001,
+    "resume_latency_sim_s": 0.4120000000000008,
+    "failure_stop_press": 72.973,
+    "failure_stopped": 72.977,
+    "failure_stop_hold": [
+      72.977,
+      73.477
+    ],
+    "ego_last_sample": 73.487
+  },
+  "ego_samples": {
+    "all": {
+      "samples": 36012,
+      "first_s": 0.001,
+      "last_s": 73.487,
+      "min_dt_s": 0.000999999999990564,
+      "median_dt_s": 0.002000000000000668,
+      "max_dt_s": 0.003000000000007219,
+      "non_positive": 0,
+      "dt_ms_histogram": {
+        "1": 1321,
+        "2": 31905,
+        "3": 2785
+      }
+    },
+    "evaluation_window": {
+      "from_sim_s": 8.129,
+      "to_sim_s": 73.477,
+      "samples": 32003
+    },
+    "pose_tuple": "[t_sim_s, x, y, yaw, 5th field unused]"
+  },
+  "actor": {
+    "model": "eval_g1b_actor",
+    "audit": {
+      "lines": 7352,
+      "parse_errors": 0,
+      "top_level_header_lines": 0,
+      "pose_entries": 7352,
+      "names": {
+        "eval_g1b_actor": 7352
+      },
+      "frame_ids": {
+        "it_arena_track": 7352
+      },
+      "child_frame_ids": {
+        "eval_g1b_actor": 7352
+      },
+      "stamp_missing": 0,
+      "non_increasing": 0
+    },
+    "stream": {
+      "samples": 7352,
+      "first_s": 0.01,
+      "last_s": 73.52,
+      "min_dt_s": 0.009999999999990905,
+      "median_dt_s": 0.009999999999999787,
+      "max_dt_s": 0.010000000000005116,
+      "non_positive": 0,
+      "dt_ms_histogram": {
+        "10": 7351
+      },
+      "x_range": [
+        9.8,
+        9.8
+      ],
+      "y_range": [
+        5.12,
+        5.12
+      ],
+      "registered_pose": [
+        9.8,
+        5.12,
+        1.5707963267948966
+      ],
+      "max_offset_from_registered_m": 0.0,
+      "covers_ego_window": true
+    }
+  },
+  "gap": {
+    "ego_rect_m": [
+      0.2,
+      0.15
+    ],
+    "actor_rect_m": [
+      0.2,
+      0.15
+    ],
+    "samples": 32003,
+    "uncovered_samples": 0,
+    "actor_max_age_s": 0.009000000000000341,
+    "min_sample_gap_m": 0.4725686214061158,
+    "min_gap_at_sim_s": 12.652,
+    "overlap_samples": 0,
+    "max_ego_travel_between_samples_m": 0.001850113056103778,
+    "conservative_lower_bound_m": 0.470718508350012,
+    "method": "discrete samples at ego rate; actor static; lower bound subtracts max ego travel between samples"
+  },
+  "contact": {
+    "contacts_jsonl_bytes": 0,
+    "graph_probe_returncode": 0,
+    "publisher_present": true,
+    "reader_alive": true,
+    "note": "topic emits only on touch; empty file plus live publisher/reader means no contact message recorded"
+  },
+  "surface": {
+    "method": "v1 formula: evaluate_pose at every window ego sample for steering 0,-0.45,+0.45 rad; identical poses reuse result (equivalent)",
+    "window_samples": 32003,
+    "unique_poses_evaluated": 13272,
+    "max_off_wheels": {
+      "any": 0,
+      "center": 0,
+      "full": 0
+    },
+    "wall_wheel_samples": 0,
+    "body_outside_samples": 0,
+    "any_off_intervals": [],
+    "steering_scope": "discrete 3-angle samples, no measured steering joint trace"
+  },
+  "progress": {
+    "reference": "before_resume truth pose (same as run.py at)",
+    "reference_pose": [
+      11.357,
+      9.899844945057117,
+      4.207423178005722,
+      1.246483973290219
+    ],
+    "evaluated_from_permit_to_failure_stop_press": [
+      11.769,
+      72.973
+    ],
+    "max_longitudinal_m": 0.21961198282612063,
+    "max_at_sim_s": 12.652,
+    "at_failure_stop_press_m": 0.2119969611030676,
+    "at_failure_hold_end_m": 0.21190886268056552,
+    "lateral_at_failure_hold_end_m": 0.0846291439699338,
+    "planar_path_length_m": 0.2575979184439977,
+    "gate_m": 1.2,
+    "gate_met": false
+  },
+  "stall": {
+    "threshold_mps": 0.05,
+    "methods": {
+      "raw_pair_unsmoothed": "|p(k+1)-p(k)|/(t(k+1)-t(k)) for consecutive ego samples (1-3 ms), no filtering",
+      "displacement_over_0p05s": "|p(k)-p(j)|/(t(k)-t(j)), j = latest sample at least 0.05 s earlier; no other filtering"
+    },
+    "results": {
+      "raw_pair_unsmoothed": {
+        "after_permit_to_failure_stop": {
+          "longest_s": 60.353,
+          "from_sim_s": 12.62,
+          "to_sim_s": 72.973
+        },
+        "departure_to_first_stop": {
+          "longest_s": 0.0,
+          "from_sim_s": null,
+          "to_sim_s": null
+        },
+        "departure_to_failure_stop_including_operator_stop": {
+          "longest_s": 60.353,
+          "from_sim_s": 12.62,
+          "to_sim_s": 72.973
+        }
+      },
+      "displacement_over_0p05s": {
+        "after_permit_to_failure_stop": {
+          "longest_s": 60.327,
+          "from_sim_s": 12.646,
+          "to_sim_s": 72.973
+        },
+        "departure_to_first_stop": {
+          "longest_s": 0.0,
+          "from_sim_s": null,
+          "to_sim_s": null
+        },
+        "departure_to_failure_stop_including_operator_stop": {
+          "longest_s": 60.327,
+          "from_sim_s": 12.646,
+          "to_sim_s": 72.973
+        }
+      }
+    }
+  },
+  "stop_holds": {
+    "first": {
+      "from_sim_s": 10.856,
+      "to_sim_s": 11.357,
+      "samples": 251,
+      "duration_s": 0.5009999999999994,
+      "peak_mps": 0.03918867242246941,
+      "max_gap_s": 0.0030000000000001137,
+      "drift_m": 0.004055000071384798,
+      "from_stop_request_s": 0.6749999999999989
+    },
+    "failure_recovery": {
+      "from_sim_s": 72.977,
+      "to_sim_s": 73.477,
+      "samples": 243,
+      "duration_s": 0.5,
+      "peak_mps": 0.0006126691859616086,
+      "max_gap_s": 0.0030000000000001137,
+      "drift_m": 0.00010104688653604167,
+      "from_stop_request_s": 0.5040000000000049
+    },
+    "note": "failure stop is the recovery STOP after the progress timeout, not the planned final_stop_hold"
+  },
+  "ops_state_after_permit_sim_s": {
+    "HANDOFF_FOLLOW|handoff_follow|clear": 60.553,
+    "RUNNING|handoff_follow|clear": 0.4399999999999995
+  },
+  "runtime_s": 15.159692090004683
+}

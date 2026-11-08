@@ -4,6 +4,7 @@
 모든 현재 점유를 유지한다. 명시 side_departure_trial만 측방 시차 겹침을 별도로
 검사하고 고정 측정 여유·비접근 궤적을 요구한다. 커브/결측/입력 실패 시
 기존 중앙 복귀로 우회하지 않고 대기한다. 상대 차량 정답은 사용하지 않는다.
+명령 상한보다 빠른 측정속도는 잘라내지 않고 실제 반응·제동 거리와 관측 범위를 확인한다.
 """
 import math
 
@@ -48,10 +49,19 @@ def proposal(scene, baseline, speed, previous, dt, config):
     partial = detail.get('partial_observation') or {}
     if partial.get('reason') != 'fully_observed' or partial.get('allowed') is not True:
         return {**result, 'reason': 'partial_observation_outside_trial'}
-    if (not all(math.isfinite(v) for v in (speed, previous, dt)) or not 0 <= speed <= 1.
+    if (not all(math.isfinite(v) for v in (speed, previous, dt)) or speed < 0.
             or not 0 < dt <= .2 or abs(previous) > config.max_steering_rad+1e-9):
         return {**result, 'reason': 'invalid_motion'}
     age = scene.t_ref_s-scene.source_first_s
+    measured_distance = None
+    if speed > config.max_speed_mps:
+        from arena_autonomy.m3_execution_trial import envelope_distance, ExecutionConfig
+        if not math.isfinite(age) or not 0 <= age < .3:
+            return {**result, 'reason': 'invalid_motion_age'}
+        measured_distance = envelope_distance(speed, age, dt, ExecutionConfig())
+        if measured_distance > 2.5:
+            return {**result, 'reason': 'measured_envelope_outside_swept_horizon',
+                    'measured_distance_m': measured_distance}
     path = np.asarray(detail.get('path_points', []), dtype=float).reshape(-1, 2)
     if len(path) < 6 or not np.all(np.isfinite(path)) or not 0 <= age < .3:
         return result
@@ -116,6 +126,17 @@ def proposal(scene, baseline, speed, previous, dt, config):
                   maximum_padding_m=float(np.max(padding)))
     if clearance <= config.hold_clearance_m:
         return {**result, 'reason': 'unchanged_gap_hold'}
+    if measured_distance is not None:
+        from arena_autonomy.pass_release_trial import motion_region, region_blocked, lateral_config, SelectorConfig
+        result.update(measured_above_target_cap=True, measured_speed_mps=speed,
+                      measured_distance_m=measured_distance)
+        if measured_distance > min(available, remaining):
+            return {**result, 'reason': 'measured_stop_space_insufficient'}
+        region = motion_region(scene, speed, target, steering, previous, dt, config, lateral_config(config))
+        blocked = region_blocked(region, SelectorConfig())
+        result['measured_region'] = region
+        if blocked is not None:
+            return {**result, 'reason': 'measured_region_unobserved', 'measured_region_blocked': blocked}
     return {**result, 'eligible': True, 'reason': 'parallel_current_position'}
 
 

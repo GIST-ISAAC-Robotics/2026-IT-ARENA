@@ -31,24 +31,51 @@ class EntryConfig:
     path_step_m: float = .02
     prefer_earlier_transition: bool = False
 
-    def __post_init__(self):
+    @property
+    def measured_speed_envelope(self):
+        return False
+
+    @property
+    def maximum_offset_m(self):
+        return .27
+
+    def _validate_geometry(self):
         if type(self.prefer_earlier_transition) is not bool:
             raise ValueError('explicit transition comparison required')
         if (not isinstance(self.offsets_m, tuple) or len(self.offsets_m) > 9
                 or not self.offsets_m or self.offsets_m[0] != 0.
                 or len(set(self.offsets_m)) != len(self.offsets_m)
                 or any(isinstance(v, bool) or not isinstance(v, (int, float))
-                       or not math.isfinite(v) or abs(v) > .27 for v in self.offsets_m)):
+                       or not math.isfinite(v) or abs(v) > self.maximum_offset_m for v in self.offsets_m)):
             raise ValueError('bounded unique entry offsets starting at zero required')
         if (not isinstance(self.transitions_m, tuple) or not 1 <= len(self.transitions_m) <= 4
                 or any(isinstance(v, bool) or not isinstance(v, (int, float))
                        or not math.isfinite(v) or not .6 <= v <= 1.5 for v in self.transitions_m)
                 or tuple(sorted(set(self.transitions_m))) != self.transitions_m):
             raise ValueError('bounded increasing transition lengths required')
+        if isinstance(self.path_step_m, bool) or not math.isfinite(self.path_step_m) or not .005 <= self.path_step_m <= .02:
+            raise ValueError('invalid entry path step')
+
+    def __post_init__(self):
+        self._validate_geometry()
         if (any(isinstance(v, bool) or not math.isfinite(v) for v in
                 (self.speed_cap_mps, self.path_step_m))
                 or not 0 < self.speed_cap_mps <= .35 or not .005 <= self.path_step_m <= .02):
             raise ValueError('invalid entry comparison bounds')
+
+
+def entry_speed_in_scope(speed, config, entry):
+    # 기존 재현은 명령 1 m/s 경계를 보존한다. 새 추월 프로필은 측정과 명령을 분리한다.
+    return speed >= 0. and (entry.measured_speed_envelope or speed <= config.max_speed_mps+1e-12)
+
+
+def entry_measured_envelope(scene, speed, dt, entry):
+    if not entry.measured_speed_envelope:
+        return None
+    distance = mx.envelope_distance(speed, scene.t_ref_s-scene.source_first_s, dt, mx.ExecutionConfig())
+    if distance > 2.5:
+        return dict(reason='measured_envelope_outside_swept_horizon', measured_distance_m=distance)
+    return None
 
 
 def observed_straight_wall(scene, config, side):
@@ -191,7 +218,7 @@ def entry_motion_region(scene,speed,target,steer,previous,dt,config,lateral,occu
     region=motion_region(scene,speed,target,steer,previous,dt,config,lateral,context=context)
     if occupied_padding is None or 'queries' not in context:
         return region
-    pad=mx.ray_padding(scene,lateral,.5)
+    pad=mx.ray_padding(scene,lateral,config.object_motion_bound_mps)
     returns=np.asarray([r.status=='return' for r in scene.rays])
     original=per_ray_padding(scene,.025+config.measurement_padding_m,config.object_motion_bound_mps)
     fixed=occupied_padding<original
@@ -217,7 +244,7 @@ def compare_entries(scene, now, speed, previous_steering, dt, *, config=None, en
 
 
 def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, entry=None, guide=None,
-                     stationary_boundaries=False, padding_growth_s=0., padding_provider=None, reference_provider=None):
+                     stationary_boundaries=False, padding_growth_s=0., padding_provider=None, reference_provider=None, pursuit_provider=None):
     """순수 비교 출력. selected가 있어도 독립 보호/운영 연결 전까지 구동 허가 아님."""
     config, entry = config or FollowConfig(), entry or EntryConfig()
     # 기본은 기존 함수다. 명시 시험 후보만 같은 호출 형식의 공급자를 넘긴다.
@@ -231,10 +258,14 @@ def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, e
         scope='current_sensor_straight_entry_shadow')
     if (not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
                 for v in (now, speed, previous_steering, dt))
-            or not 0 <= speed <= config.max_speed_mps+1e-12 or not 0 < dt <= .2
+            or not entry_speed_in_scope(speed, config, entry) or not 0 < dt <= .2
             or abs(previous_steering) > config.max_steering_rad
             or abs(now-scene.t_ref_s) > 1e-9 or not source_valid(scene)):
         return result
+    envelope = entry_measured_envelope(scene, speed, dt, entry)
+    if envelope is not None:
+        return {**result, **envelope}
+    pursuit = pursue_path if pursuit_provider is None else pursuit_provider
     reference_fn = straight_reference if reference_provider is None else reference_provider
     reference, evidence = reference_fn(scene, config) if guide is None else (True, guide['reference'])
     result['reference'] = evidence
@@ -295,10 +326,13 @@ def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, e
             row['preview_maximum_steering_rad'] = float(np.max(np.arctan(config.wheelbase_m*curvature)))
             if row['preview_maximum_steering_rad'] > config.max_steering_rad:
                 raise ValueError('preview_path_exceeds_steering_limit')
-            cap, steer, remaining = pursue_path(path, speed, config, age)
+            cap, steer, remaining = pursuit(path, speed, config, age,
+                speed_cap=entry.speed_cap_mps if entry.measured_speed_envelope else None)
         except (ValueError, MotionUnavailable) as error:
             result['candidates'].append({**row, 'reason':str(error)})
             continue
+        if pursuit_provider is not None:
+            row['preview_unclipped_steering_rad'] = steer
         steer = float(np.clip(steer, previous_steering-3*dt, previous_steering+3*dt))
         padding_key=wall_name if stationary_boundaries else None
         clearance = min(command_clearance(steer,padding_key), command_clearance(previous_steering,padding_key))
@@ -315,8 +349,21 @@ def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, e
             preview_return_progress_m=preview_clearance(path, points, padding, config),
             preview_point_gap_m=preview_point_gap(path,points,padding,config) if stationary_boundaries else 0.,
             maximum_occupancy_padding_m=float(np.max(padding)), occupied_points=len(points))
+        # 짧은 주시거리 후보는 점유/제동에서 이미 0인 명령을 관측 비교 없이 거부한다.
+        # 양수 후보의 관측 검사를 생략하지 않으며 기본 비교의 출력은 바꾸지 않는다.
+        if pursuit_provider is not None and (clearance <= 0. or target <= 0.):
+            row.update(reason='known_occupied_command_hold',
+                motion_region=dict(evaluated=False,reason='occupied_command_already_rejected'))
+            result['candidates'].append(row)
+            continue
         # 현재 속도는 target이 낮아져도 낮아졌다고 가정하지 않는다.
         command_key = (steer, target, padding_key)
+        if pursuit_provider is not None and command_key not in regions:
+            from arena_autonomy.adaptive_entry_preview import sampled_region_rejection
+            rejected=sampled_region_rejection(scene,speed,target,steer,previous_steering,dt,config,lateral,
+                padding if stationary_boundaries or 'outer_boundary_padding' in result else None)
+            if rejected is not None:
+                regions[command_key]=rejected
         if command_key not in regions:
             regions[command_key] = entry_motion_region(scene, speed, target, steer, previous_steering, dt, config, lateral,
                 padding if stationary_boundaries or 'outer_boundary_padding' in result else None)
@@ -428,7 +475,7 @@ class EntryGuide:
     조향 목표일 뿐 자유 공간/점유 허가가 아니다. 안쪽의 표적 반환도 제동과
     관측 검사에 그대로 남는다. 중앙 복귀는 명시적으로 선택한 비교에서만 다룬다.
     """
-    def __init__(self, config=None, entry=None, *, stationary_outer_boundary=False, rejoin_enabled=False, wall_reanchor=False, tracked_wall_fit=False):
+    def __init__(self, config=None, entry=None, *, stationary_outer_boundary=False, rejoin_enabled=False, wall_reanchor=False, tracked_wall_fit=False, rear_wall_witness=False):
         self.config, self.entry = config or FollowConfig(), entry or EntryConfig()
         self.reference_provider = None
         if type(stationary_outer_boundary) is not bool:
@@ -443,6 +490,15 @@ class EntryGuide:
         if type(tracked_wall_fit) is not bool or (tracked_wall_fit and not wall_reanchor):
             raise ValueError('tracked wall fit requires explicit wall reanchor trial')
         self.tracked_wall_fit=tracked_wall_fit
+        if type(rear_wall_witness) is not bool or (rear_wall_witness and (
+                not tracked_wall_fit or self.config.known_structure_policy!='structure_aware_v1')):
+            raise ValueError('rear wall witness requires tracked wall and known-structure inputs')
+        self.rear_wall_witness_enabled=rear_wall_witness
+        self.raw_scan=None
+        self.witness_sectors=()
+        if rear_wall_witness:
+            from arena_autonomy.known_structure import parse_sectors
+            self.witness_sectors=parse_sectors(self.config.known_structure_sectors_json)
         self.padding_provider=None
         self.reset()
 
@@ -468,8 +524,18 @@ class EntryGuide:
 
     def _outer_wall_fit(self,scene,remembered_wall):
         if self.tracked_wall_fit:
-            return tracked_straight_wall(scene,self.config,self.side,remembered_wall)
-        return observed_straight_wall(scene,self.config,self.side)
+            fit,wall=tracked_straight_wall(scene,self.config,self.side,remembered_wall)
+        else:
+            fit,wall=observed_straight_wall(scene,self.config,self.side)
+        if (not self.rear_wall_witness_enabled or fit is None or fit[2]<=-self.config.wheelbase_m/2
+                or not self.witness_sectors or self.raw_scan is None
+                or len(self.raw_scan.ranges)!=len(scene.rays)):
+            return fit,wall
+        from arena_autonomy.known_structure import classify
+        from arena_autonomy.wall_reference_support import rear_wall_witness
+        _,_,rows=classify(self.raw_scan,self.witness_sectors)
+        explained={frozenset(row['rays'].tolist()) for row in rows if row['explained']}
+        return rear_wall_witness(scene,self.config,self.side,fit,wall,explained)
 
     def _wall_covers_guide(self,fit,wall):
         return fit[2]<=-self.config.wheelbase_m/2 and fit[3]>=.30
@@ -507,7 +573,7 @@ class EntryGuide:
             self.start_confirmations=0
         return self.start_confirmations>=2,evidence
 
-    def _rejoin_band(self,scene,fit):
+    def _rejoin_band(self,scene,fit,wall=None):
         """현재 옆면에서 중앙 방향 띠의 양의 관측. 뒤차 부재/미래 경로 인증 아님."""
         slope,intercept,_,_=fit
         inward=-1. if self.side=='left' else 1.
@@ -517,15 +583,21 @@ class EntryGuide:
         if not len(y):
             return dict(supported=False,reason='no_lateral_return_band',samples=0,unobserved=0)
         q=np.stack(np.meshgrid(x,y,indexing='ij'),axis=-1).reshape(-1,2)
-        pad=mx.ray_padding(scene,lateral_config(self.config),.5)
+        pad=mx.ray_padding(scene,lateral_config(self.config),self.config.object_motion_bound_mps)
+        occupied_pad=per_ray_padding(scene,.025+self.config.measurement_padding_m,
+                                     self.config.object_motion_bound_mps)
+        if self.entry.measured_speed_envelope and self.padding_provider is not None and wall is not None:
+            fixed_pad,_=self.padding_provider(scene,self.config,self.side,wall)
+            fixed=fixed_pad<occupied_pad
+            returns=np.flatnonzero([r.status=='return' for r in scene.rays])
+            pad[returns[fixed]]=np.maximum(.025+lateral_config(self.config).budget.range_bias_m,fixed_pad[fixed])
+            occupied_pad=fixed_pad
         supported=depth_support(scene,q,pad)
         # 복귀 시도 신호와 실제 차체 이동 허가를 구별한다. 후반 띠의 가림은
         # 그대로 기록하고, 전반 띠의 양의 관측+전체 띠의 현재 점유 부재로
         # 후보만 만든다. 후보 명령의 뒤 모서리는 기존 이동 영역에서 다시 검사한다.
         front=q[:,0]>=-1e-9
         points=np.asarray(scene.occupied_endpoints_xy_m,dtype=float).reshape(-1,2)
-        occupied_pad=per_ray_padding(scene,.025+self.config.measurement_padding_m,
-                                     self.config.object_motion_bound_mps)
         occupied=(points[:,0]+occupied_pad>=x.min())&(points[:,0]-occupied_pad<=x.max())&(
             points[:,1]+occupied_pad>=y.min())&(points[:,1]-occupied_pad<=y.max())
         return dict(supported=bool(np.all(supported[front])) and not bool(np.any(occupied)),
@@ -544,7 +616,7 @@ class EntryGuide:
         now, source = scene.t_ref_s, scene.source_first_s
         invalid = (not source_valid(scene) or not all(isinstance(v,(int,float)) and
             not isinstance(v,bool) and math.isfinite(v) for v in (speed,previous_steering,dt))
-            or not 0 <= speed <= self.config.max_speed_mps+1e-12 or not 0 < dt <= .2
+            or not entry_speed_in_scope(speed, self.config, self.entry) or not 0 < dt <= .2
             or abs(previous_steering)>self.config.max_steering_rad)
         changed = ((self.epoch is not None and self.epoch != scene.source_epoch)
             or (self.reference_s is not None and now < self.reference_s)
@@ -552,6 +624,10 @@ class EntryGuide:
         if invalid or changed:
             self.reset()
             return self._hold('entry_guide_input_reset')
+        envelope = entry_measured_envelope(scene, speed, dt, self.entry)
+        if envelope is not None:
+            # 과대 속력은 새 허가가 아니다. 방향 기억까지 명령 상한으로 지우지는 않는다.
+            return self._hold(envelope['reason'], measured_distance_m=envelope['measured_distance_m'])
         fresh=self.last_source is None or source>self.last_source
         self.epoch, self.last_source = scene.source_epoch, source
         if self.path is None:
@@ -616,7 +692,7 @@ class EntryGuide:
             offset_now=abs(intercept)/math.sqrt(1+slope*slope)
             aligned=abs(math.atan(slope))<=.08
             if self.phase=='entry' and aligned and abs(offset_now-abs(self.offset))<=.03:
-                rejoin=self._rejoin_band(scene,fit)
+                rejoin=self._rejoin_band(scene,fit,wall=wall)
                 if self._confirm_rejoin(rejoin,fresh):
                     proposed=entry_path(fit,0.,self.config,self.entry,self.entry.transitions_m[-1])
                     if proposed[-1,0]-proposed[0,0]>=self.entry.transitions_m[-1]:
@@ -652,11 +728,19 @@ class EntryGuide:
         reference=dict(reason='current_outer_wall_rechecked_for_remembered_guide',walls={self.side:wall},
             inner_points_still_occupied=True,initial_two_wall_agreement=True,
             wall_offset_assumption_m=self.config.wall_offset_m,disagreement_m=disagreement)
-        result=_compare_entries(scene,now,speed,previous_steering,dt,config=self.config,entry=self.entry,
+        comparison=dict(config=self.config,entry=self.entry,
             guide=dict(reference=reference,path=path,offset_m=self.offset,transition_m=self.transition,
                 outer_side=self.side,
                 stationary_outer_boundary=self.stationary_outer_boundary and self.wall_confirmations>=2),
             padding_provider=self.padding_provider)
+        result=_compare_entries(scene,now,speed,previous_steering,dt,**comparison)
+        if getattr(self,'adaptive_preview',False) and self.entry.speed_cap_mps <= .35:
+            from functools import partial
+            from arena_autonomy.adaptive_entry_preview import compare_shorter_previews,shorter_pursuit
+            result=compare_shorter_previews(result,
+                lambda lookahead,previous: _compare_entries(scene,now,speed,previous,dt,
+                    pursuit_provider=partial(shorter_pursuit,lookahead_m=lookahead),**comparison),
+                history=history,now=now,speed=speed,previous=previous_steering,dt=dt)
         return {**result,'intent_direction':self.intent.sign,'intent_remembered_permission':False,
             'guide_mode':'measured_motion_transport_current_outer_wall', 'guide_permission_remembered':False,
             'outer_wall_fresh_confirmations':self.wall_confirmations,

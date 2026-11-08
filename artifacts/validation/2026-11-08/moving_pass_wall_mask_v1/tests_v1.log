@@ -1,0 +1,471 @@
+arena-autonomy /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_autonomy/arena_autonomy.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_autonomy
+arena-vehicle-interface /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/build/arena_vehicle_interface/arena_vehicle_interface.egg-info /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/install/arena_vehicle_interface
+installed packages and child process entry points resolved: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/turn_preview.py
+FFFFFFFFFFFFFF.F........................................................ [ 39%]
+........................................................................ [ 79%]
+.....................................                                    [100%]
+=================================== FAILURES ===================================
+___ test_only_long_current_matching_rear_face_gets_static_padding[none-left] ___
+
+side = 'left', change = 'none'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(1.2, 0.18), status='return', acquired_at_s=0.4), namespace(source_...[-0.422,  0.18 ],
+       [-0.432,  0.18 ],
+       [-0.442,  0.18 ],
+       [-0.452,  0.18 ],
+       [-0.462,  0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+__ test_only_long_current_matching_rear_face_gets_static_padding[none-right] ___
+
+side = 'right', change = 'none'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(-0.462, -0.18), status='return', acquired_at_s=0.4), namespace(sou...[ 1.12 , -0.18 ],
+       [ 1.14 , -0.18 ],
+       [ 1.16 , -0.18 ],
+       [ 1.18 , -0.18 ],
+       [ 1.2  , -0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+__ test_only_long_current_matching_rear_face_gets_static_padding[short-left] ___
+
+side = 'left', change = 'short'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(1.2, 0.18), status='return', acquired_at_s=0.4), namespace(source_...[-0.262,  0.18 ],
+       [-0.272,  0.18 ],
+       [-0.282,  0.18 ],
+       [-0.292,  0.18 ],
+       [-0.302,  0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+__ test_only_long_current_matching_rear_face_gets_static_padding[short-right] __
+
+side = 'right', change = 'short'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(-0.302, -0.18), status='return', acquired_at_s=0.4), namespace(sou...[ 1.12 , -0.18 ],
+       [ 1.14 , -0.18 ],
+       [ 1.16 , -0.18 ],
+       [ 1.18 , -0.18 ],
+       [ 1.2  , -0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+___ test_only_long_current_matching_rear_face_gets_static_padding[wide-left] ___
+
+side = 'left', change = 'wide'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(1.2, 0.18), status='return', acquired_at_s=0.4), namespace(source_...],
+       [-0.47,  0.18],
+       [-0.48,  0.18],
+       [-0.49,  0.18],
+       [-0.5 ,  0.18],
+       [-0.51,  0.18]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+__ test_only_long_current_matching_rear_face_gets_static_padding[wide-right] ___
+
+side = 'right', change = 'wide'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(-0.51, -0.18), status='return', acquired_at_s=0.4), namespace(sour...],
+       [ 1.12, -0.18],
+       [ 1.14, -0.18],
+       [ 1.16, -0.18],
+       [ 1.18, -0.18],
+       [ 1.2 , -0.18]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+_ test_only_long_current_matching_rear_face_gets_static_padding[unknown-left] __
+
+side = 'left', change = 'unknown'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(1.2, 0.18), status='return', acquired_at_s=0.4), namespace(source_...[-0.422,  0.18 ],
+       [-0.432,  0.18 ],
+       [-0.442,  0.18 ],
+       [-0.452,  0.18 ],
+       [-0.462,  0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+_ test_only_long_current_matching_rear_face_gets_static_padding[unknown-right] _
+
+side = 'right', change = 'unknown'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(-0.462, -0.18), status='return', acquired_at_s=0.4), namespace(sou...[ 1.12 , -0.18 ],
+       [ 1.14 , -0.18 ],
+       [ 1.16 , -0.18 ],
+       [ 1.18 , -0.18 ],
+       [ 1.2  , -0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+_ test_only_long_current_matching_rear_face_gets_static_padding[displaced-left] _
+
+side = 'left', change = 'displaced'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(1.2, 0.18), status='return', acquired_at_s=0.4), namespace(source_...[-0.422,  0.2  ],
+       [-0.432,  0.2  ],
+       [-0.442,  0.2  ],
+       [-0.452,  0.2  ],
+       [-0.462,  0.2  ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+_ test_only_long_current_matching_rear_face_gets_static_padding[displaced-right] _
+
+side = 'right', change = 'displaced'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(-0.462, -0.16), status='return', acquired_at_s=0.4), namespace(sou...[ 1.12 , -0.18 ],
+       [ 1.14 , -0.18 ],
+       [ 1.16 , -0.18 ],
+       [ 1.18 , -0.18 ],
+       [ 1.2  , -0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+_ test_only_long_current_matching_rear_face_gets_static_padding[unexplained-left] _
+
+side = 'left', change = 'unexplained'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(1.2, 0.18), status='return', acquired_at_s=0.4), namespace(source_...[-0.422,  0.18 ],
+       [-0.432,  0.18 ],
+       [-0.442,  0.18 ],
+       [-0.452,  0.18 ],
+       [-0.462,  0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+_ test_only_long_current_matching_rear_face_gets_static_padding[unexplained-right] _
+
+side = 'right', change = 'unexplained'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(-0.462, -0.18), status='return', acquired_at_s=0.4), namespace(sou...[ 1.12 , -0.18 ],
+       [ 1.14 , -0.18 ],
+       [ 1.16 , -0.18 ],
+       [ 1.18 , -0.18 ],
+       [ 1.2  , -0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+_ test_only_long_current_matching_rear_face_gets_static_padding[obstacle_in_gap-left] _
+
+side = 'left', change = 'obstacle_in_gap'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(1.2, 0.18), status='return', acquired_at_s=0.4), namespace(source_...[-0.422,  0.18 ],
+       [-0.432,  0.18 ],
+       [-0.442,  0.18 ],
+       [-0.452,  0.18 ],
+       [-0.462,  0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+_ test_only_long_current_matching_rear_face_gets_static_padding[obstacle_in_gap-right] _
+
+side = 'right', change = 'obstacle_in_gap'
+
+    @pytest.mark.parametrize('side',['left','right'])
+    @pytest.mark.parametrize('change',['none','short','wide','unknown','displaced','unexplained','obstacle_in_gap'])
+    def test_only_long_current_matching_rear_face_gets_static_padding(side,change):
+        cfg,scene,scan,wall,rows = sample(side,change)
+        original = scene.occupied_endpoints_xy_m.copy()
+>       old,_ = current_outer_wall_padding(scene,cfg,side,wall)
+
+tests/test_moving_pass_wall_padding.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(-0.462, -0.18), status='return', acquired_at_s=0.4), namespace(sou...[ 1.12 , -0.18 ],
+       [ 1.14 , -0.18 ],
+       [ 1.16 , -0.18 ],
+       [ 1.18 , -0.18 ],
+       [ 1.2  , -0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+________ test_missing_raw_sensor_does_not_claim_structural_explanation _________
+
+    def test_missing_raw_sensor_does_not_claim_structural_explanation():
+        cfg,scene,scan,wall,_ = sample()
+>       old,_ = current_outer_wall_padding(scene,cfg,'left',wall)
+
+tests/test_moving_pass_wall_padding.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/bypass_entry_trial.py:183: in current_outer_wall_padding
+    if side not in ('left','right') or not source_valid(scene) or not len(points):
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+scene = namespace(rays=[namespace(source_index=0, hit_xy_m=(1.2, 0.18), status='return', acquired_at_s=0.4), namespace(source_...[-0.422,  0.18 ],
+       [-0.432,  0.18 ],
+       [-0.442,  0.18 ],
+       [-0.452,  0.18 ],
+       [-0.462,  0.18 ]]))
+
+    def source_valid(scene):
+>       if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+                or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
+                or [r.source_index for r in scene.rays]!=list(range(500))):
+E               AttributeError: 'types.SimpleNamespace' object has no attribute 'source_frame_id'
+
+src/arena_autonomy/arena_autonomy/observation_support.py:116: AttributeError
+=========================== short test summary info ============================
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[none-left]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[none-right]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[short-left]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[short-right]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[wide-left]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[wide-right]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[unknown-left]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[unknown-right]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[displaced-left]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[displaced-right]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[unexplained-left]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[unexplained-right]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[obstacle_in_gap-left]
+FAILED tests/test_moving_pass_wall_padding.py::test_only_long_current_matching_rear_face_gets_static_padding[obstacle_in_gap-right]
+FAILED tests/test_moving_pass_wall_padding.py::test_missing_raw_sensor_does_not_claim_structural_explanation
+15 failed, 166 passed in 7.41s

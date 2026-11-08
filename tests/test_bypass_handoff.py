@@ -287,6 +287,20 @@ def test_default_launch_and_drive_boundary_unchanged():
     for override in ({'guarded':False},{'actor':None},{'evidence':''},{'track':'experimental'}):
         with pytest.raises(ValueError):
             launch._autonomy_executable('local_pursuit','closing',**{**normal,**override})
+    # 두 공식 2×5 파생 track만 허용하고, 새 track에서도 보호층·상대·기록 조건은 그대로 요구한다.
+    assert launch.OFFICIAL_2X5_TRACKS == ('official', 'official_v2026_11_06')
+    for track in launch.OFFICIAL_2X5_TRACKS:
+        assert launch._autonomy_executable('local_pursuit','paced',**{**normal,'track':track})=='g1_g2_handoff_trial'
+        for override in ({'guarded':False},{'actor':None},{'evidence':''},{'actor':''}):
+            with pytest.raises(ValueError):
+                launch._autonomy_executable('local_pursuit','paced',**{**normal,'track':track,**override})
+        with pytest.raises(ValueError):
+            launch._autonomy_executable('lidar','paced',**{**normal,'track':track})
+        with pytest.raises(ValueError):
+            launch._autonomy_executable('local_pursuit','unknown',**{**normal,'track':track})
+    for track in ('experimental','original'):
+        with pytest.raises(ValueError):
+            launch._autonomy_executable('local_pursuit','paced',**{**normal,'track':track})
     assert G1G2Node.control is LocalPursuit.control
     assert G1G2Node.reset_follow is LocalPursuit.reset_follow
     assert G1G2Node.on_scan is LocalPursuit.on_scan

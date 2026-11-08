@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "scope": "공식 v2026.11.06 별도 실행 월드 등록·명시 선택. 기본 월드·제어기·카메라 변경 아님, 주행 검증 아님.",
+  "parent_contract": "config/tests/moving_pass_handoff_r16_sha256.json",
+  "parent_contract_sha256": "db600c8fee8e3e893ae59050244b7fb3332af1bc1e4cf34c6ae2fab3bb24ac2d",
+  "before_snapshot": "artifacts/validation/2026-11-07/track_migration_v1/before_r1.zip",
+  "before_snapshot_sha256": "2fff2914aee49e8fece06c2cc23ff0f9f64c129cac8c2e85ff523caa728ac45c",
+  "approved_changes": {
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "56c96af463e4be7ae0013f5bf4c25d2a85aaff471c09f02492fee495df33293e",
+      "after": "17ebb72f403bbecf9d0e5a05cc1631d70c5d3bb76e85a11a2862f3c86c403770",
+      "reason": "명시 track:=official_v2026_11_06 선택과 2×5 신호 공식 월드 목록 추가. 기본 official과 제어기 동작 유지"
+    },
+    "src/arena_bringup/launch/demo.launch.py": {
+      "before": "d2c94737fabed350b4c3935c5f840038874474fb93c2002044f3af6fefaa99b0",
+      "after": "0bd3a6d66ef54d0d320de67f19f9244cdf3767b0da8ae3bdbba8bb6a488f56be",
+      "reason": "track 인자 전달(기본 official). 다른 인자·자율주행 구성 유지"
+    },
+    "scripts/build_official_track.py": {
+      "before": "855e7373ae200f536b0a568623efd88bd1d06194d620fec63c5c391989c914de",
+      "after": "7c158ad7a724b171a255b3cce62327b7361039e6268b8cf7beaee8e0598f1fec",
+      "reason": "릴리스별 파일 수·공식 폭·실행 월드 경로 등록과 v2026.11.06 추가. v2026.11.01 출력은 재생성 바이트 동일"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "0e5bd1e637f98d0689c90f2778bd69bc618600b3c20bd8ed1b21fd2cb7c20281",
+      "after": "5fe56cc9c980de621fa65ec024b4f07c37b8354aa0ad87ca5ba5cc67bf7ad47a",
+      "reason": "--track 명시 시 launch와 평가 월드(중심선·scene·충돌)를 같은 경로로 선택. 기본 official 유지"
+    }
+  },
+  "new_dependencies": {}
+}

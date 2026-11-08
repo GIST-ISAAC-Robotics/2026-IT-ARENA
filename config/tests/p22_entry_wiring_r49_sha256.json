@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "scope": "명시 선택 P22 단독 입구 시험 연결. 기본 경로/출구/교통/물성/보호 unchanged.",
+  "parent_contract": "config/tests/observed_corner_continuity_r48_sha256.json",
+  "parent_contract_sha256": "912563c2e8ed80abe01bcb6a0e645daca692d701d1293f01cb1328994458bab3",
+  "before_snapshot": "artifacts/validation/2026-11-09/p22_entry_wiring_v1/before.zip",
+  "before_snapshot_sha256": "c4e37bab2517d7e601b0bf789dcea98d7d29e5edb126bb34ccc0afaf7d4950e4",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/follow_trace.py": {
+      "before": "fac23b0e486c94b0a0769975d175bd91c65e15243ed9b830755c1299c32f0751",
+      "after": "41dd21a9bcc9426686fee24d1d472dc5b57cf6174a8c1a455febd862c6686edb",
+      "reason": "Explicit separate P22 entry node/schema and limited evaluation; old defaults preserved"
+    },
+    "src/arena_autonomy/setup.py": {
+      "before": "f6216dcedd254ae6645f129101d7f27ab469dd7d20aa6947d7ebf66b7474e634",
+      "after": "f3d16d0725dcc0e0f85caad0ddfdff5334bc68f371f5e0c58244bed59d2c5e53",
+      "reason": "Explicit separate P22 entry node/schema and limited evaluation; old defaults preserved"
+    },
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "a1bea0d5a34b9df5d2ca441accbdb3b285057a9a7920689b2a0ef852db7d0538",
+      "after": "06b6e9373011165f8273e6920e454e7d1cebaf8107553437e2c0bdc9a7512419",
+      "reason": "Explicit separate P22 entry node/schema and limited evaluation; old defaults preserved"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "b4d48d5c95772983193efb501f2bd96c30002f3289c62b4fe8f5d02f2c583dba",
+      "after": "9893c6920f60d59acb3b88138940b41502a128084304b91908c7a6fb25fe99b7",
+      "reason": "Explicit separate P22 entry node/schema and limited evaluation; old defaults preserved"
+    }
+  },
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/p22_observation.py": "45965585c3a38e081d6c44c69dd45e6a8e29ff56ecd0a635c1fa5e32c45ebdfd",
+    "src/arena_autonomy/arena_autonomy/p22_intent.py": "b42f80e7c5be51ab3bbfbce9f6ea2a46ffb4519365b19363950e5e65d16cc907",
+    "src/arena_autonomy/arena_autonomy/p22_path.py": "a27720b3dcce465466d3f36138a637591ad2119b35ece01ff94fc230c0d078dc",
+    "src/arena_autonomy/arena_autonomy/p22_trial.py": "d9202dfd7b91740cf83656378083f31f85bc4483d6ecef5426ee52799af0c9de",
+    "src/arena_autonomy/arena_autonomy/p22_entry_trial_node.py": "1fa00144154944088832d3ba8404ea3e83cfeee9aae9617d98fa23af616cd1a3"
+  }
+}

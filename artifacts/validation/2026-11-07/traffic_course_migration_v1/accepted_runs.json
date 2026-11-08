@@ -1,0 +1,79 @@
+{
+  "decided": "2026-11-07 GPT 설계 결정(작업 총괄 지시)",
+  "proposal": "proposed_runs.json",
+  "proposal_sha256": "d76e00eb6ba13d411a76ed1b78aff95e1b8956cfebff6325a157117433790220",
+  "runs": {
+    "slow_lead": {
+      "args": [
+        "scripts/validate_g1_traffic.py",
+        "--mode",
+        "g1g2",
+        "--handoff-reserve",
+        "paced",
+        "--handoff-yield-progress",
+        "--handoff-rear-sweep",
+        "--official-signal-course",
+        "--config",
+        "artifacts/validation/2026-11-07/traffic_course_migration_v1/new_track_course.json",
+        "--case",
+        "slow_lead",
+        "--seed",
+        "0",
+        "--record-follow-decisions",
+        "--handoff-observed-motion",
+        "--side-departure-trial",
+        "--current-lane-preference-trial",
+        "--local-sensor-config",
+        "src/arena_description/config/b0390_c1_jr60p20_sim.yaml",
+        "--pilot-marker-z",
+        "0.140",
+        "--handoff-continuous-pace",
+        "--track",
+        "official_v2026_11_06",
+        "--output",
+        "OUTPUT"
+      ],
+      "change_from_proposal": "--moving-pass-trial 제거",
+      "reason": "순수 추종 대조. continuous pace 등 나머지 r16 준비 상태·감속비·센서·물성 유지"
+    },
+    "straight_moving_lead": {
+      "args": [
+        "scripts/validate_g1_traffic.py",
+        "--mode",
+        "g1g2",
+        "--handoff-reserve",
+        "paced",
+        "--handoff-yield-progress",
+        "--handoff-rear-sweep",
+        "--official-signal-course",
+        "--config",
+        "artifacts/validation/2026-11-07/traffic_course_migration_v1/new_track_course.json",
+        "--case",
+        "straight_moving_lead",
+        "--seed",
+        "0",
+        "--record-follow-decisions",
+        "--handoff-observed-motion",
+        "--side-departure-trial",
+        "--current-lane-preference-trial",
+        "--local-sensor-config",
+        "src/arena_description/config/b0390_c1_jr60p20_sim.yaml",
+        "--pilot-marker-z",
+        "0.140",
+        "--handoff-continuous-pace",
+        "--moving-pass-trial",
+        "--track",
+        "official_v2026_11_06",
+        "--output",
+        "OUTPUT"
+      ],
+      "change_from_proposal": "없음",
+      "reason": "r16 동작(moving pass ON) 새 직선 확인"
+    }
+  },
+  "order": [
+    "slow_lead",
+    "straight_moving_lead"
+  ],
+  "rule": "각 장면 1회, 동시 Gazebo 1개, run1 실행기/신호/환경 결함 없음 확인 뒤 run2"
+}

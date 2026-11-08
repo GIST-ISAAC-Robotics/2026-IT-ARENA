@@ -23,6 +23,14 @@ TRACK_DIRECTORIES = {
     "official": "it_arena_official",
     "original": "it_arena_track",
     "experimental": "it_arena_experimental",
+    "official_v2026_11_06": "it_arena_official_v2026_11_06",
+}
+# 공식 2×5 광원 링크가 있는 팀 파생 월드. 기본 track:=official(v2026.11.01 파생)은 그대로 유지합니다.
+OFFICIAL_2X5_TRACKS = ("official", "official_v2026_11_06")
+# 공식 본선 단면 치수만 전달한다. 지도/위치/코너 순서/자유 공간은 제어 입력이 아니다.
+# 이전 track은 기존 기본값을 그대로 사용한다. 지름길 단면 선택은 별도 주행 정책이다.
+COURSE_SECTION_PARAMETERS = {
+    "official_v2026_11_06": {"target_wall_distance_m": .505, "g1_road_half_m": .305},
 }
 D435I_STREAM_PROFILES = ("high_speed_async", "synchronized_60", "low_load_30")
 TOF_PROFILES = ("low_latency_4x4_60", "tracking_8x8_15")
@@ -202,11 +210,16 @@ def virtual_command_limit(profile_name):
     return max(2.5, SPEED_PROFILES[profile_name].get('g1_open_route_speed_mps', 0.))
 
 
-def _autonomy_executable(mode, reserve, *, guarded, actor, evidence, track):
+def _autonomy_executable(mode, reserve, *, guarded, actor, evidence, track, p22_entry_trial=False):
+    if p22_entry_trial:
+        if (mode != 'local_pursuit' or reserve != 'off' or not guarded or actor or not evidence
+                or track != 'official_v2026_11_06'):
+            raise ValueError('P22 entry requires guarded, recorded v11.06 solo without handoff actor')
+        return 'p22_entry_trial'
     if reserve == 'off':
         return {'local_pursuit':'local_pursuit', 'lidar':'wall_follow', 'stereo':'stereo_wall_follow'}[mode]
     if (reserve not in ('fixed','moving','closing','recent','low_motion','paced') or mode != 'local_pursuit' or not guarded
-            or not actor or not evidence or track != 'official'):
+            or not actor or not evidence or track not in OFFICIAL_2X5_TRACKS):
         raise ValueError('G1/G2 comparison requires a guarded official track, actor and recorded trial')
     return 'g1_g2_handoff_trial'
 
@@ -428,13 +441,49 @@ def _evaluation_course_markers(world, mode):
             'scope': 'course marker visual materials only; collisions and poses unchanged'}
 
 
+def _evaluation_grass_alignment(world, mode):
+    """새 코스의 1 mm 잔디 단차만 제거하는 대조. 원본·마찰·벽·도로는 보존한다."""
+    if mode == 'original':
+        return None
+    if mode != 'road_level':
+        raise ValueError('unknown grass alignment mode')
+    grass = world.find("model[@name='it_arena_track_static']/link[@name='grass']")
+    if grass is None:
+        raise ValueError('registered grass link missing')
+    shapes = grass.findall('collision') + grass.findall('visual')
+    if not shapes:
+        raise ValueError('registered grass shapes missing')
+    # 등록된 v11.06 형상만 허용: 임의 모델의 높이를 추측해서 바꾸지 않는다.
+    parsed = []
+    for shape in shapes:
+        pose = shape.find('pose')
+        size = shape.findtext('geometry/box/size')
+        values = list(map(float, pose.text.split())) if pose is not None else []
+        dimensions = list(map(float, size.split())) if size else []
+        if (len(values) != 6 or len(dimensions) != 3 or
+                abs(values[2] - .001) > 1e-9 or abs(dimensions[2] - .002) > 1e-9 or
+                any(abs(v) > 1e-9 for v in values[3:5])):
+            raise ValueError('grass shape does not match registered 2 mm flat boxes')
+        parsed.append((pose, values))
+    for pose, values in parsed:
+        # 다른 좌표/각도의 문자열도 보존한다.
+        fields = pose.text.split()
+        fields[2] = '0.0020'
+        pose.text = ' '.join(fields)
+    return dict(mode=mode, shifted_shapes=len(parsed), shift_z_m=.001,
+                before_top_m=.002, after_top_m=.003, friction_unchanged=True)
+
+
 def _runtime_world_overrides(source, destination, detector, scene_broadcaster, speed_bump=True, batch_visuals=False,
                              evaluation_models=None, evaluation_wheel_contacts=False, evaluation_physics_step="",
-                             evaluation_course_markers="visible"):
-    """형상·물성은 보존하고 선택형 런타임 설정만 사본에 적용합니다."""
+                             evaluation_course_markers="visible", evaluation_grass_alignment='original'):
+    """선택형 런타임 설정만 사본에 적용. 명시적 단차 대조 외 형상·물성은 보존한다."""
     tree = ET.parse(source)
     world = tree.getroot().find("world")
     marker_report = _evaluation_course_markers(world, evaluation_course_markers)
+    alignment = _evaluation_grass_alignment(world, evaluation_grass_alignment)
+    if alignment is not None:
+        marker_report['grass_alignment'] = alignment
     _evaluation_physics_step(world, evaluation_physics_step)
     if evaluation_wheel_contacts and world.find("plugin[@name='gz::sim::systems::Contact']") is None:
         ET.SubElement(world, "plugin", filename="gz-sim-contact-system", name="gz::sim::systems::Contact")
@@ -998,21 +1047,28 @@ def _launch_setup(context):
     evaluation_actor = LaunchConfiguration("evaluation_actor_sdf").perform(context)
     physics_step = LaunchConfiguration("evaluation_physics_step").perform(context)
     marker_visibility = LaunchConfiguration('evaluation_course_markers').perform(context)
-    if marker_visibility != 'visible' and (not runtime_artifacts or not local_mode or track != 'official' or world_override):
+    grass_alignment = LaunchConfiguration('evaluation_grass_alignment').perform(context)
+    if grass_alignment != 'original' and (not runtime_artifacts or not local_mode or
+            track != 'official_v2026_11_06' or world_override):
+        raise ValueError('grass alignment comparison requires recorded v11.06 local_pursuit')
+    if marker_visibility != 'visible' and (not runtime_artifacts or not local_mode or track not in OFFICIAL_2X5_TRACKS or world_override):
         raise ValueError('course marker visual test requires official local_pursuit and runtime evidence')
     _check_evaluation_physics_step(physics_step, runtime_artifacts)
     if evaluation_actor:
         # 평가기가 정답 자세를 움직이는 표적. 공식 원본은 그대로 두고 실행 사본에만 넣는다.
         evaluation_actor = Path(evaluation_actor).resolve()
-        if not local_mode or track != "official" or world_override or not evaluation_actor.is_file():
+        if not local_mode or track not in OFFICIAL_2X5_TRACKS or world_override or not evaluation_actor.is_file():
             raise RuntimeError("evaluation_actor_sdf는 official local_pursuit 실행 사본에서만 사용합니다.")
     if (collision_detector != "configured" or not scene_broadcaster or not speed_bump or batch_visuals
             or evaluation_actor or evaluation_wheel_contacts or physics_step or startup == "embedded_paused"
-            or marker_visibility != 'visible'):
+            or marker_visibility != 'visible' or grass_alignment != 'original'):
         temporary_world = tempfile.TemporaryDirectory(prefix="arena_world_")
         runtime_path = Path(temporary_world.name) / "world.sdf"
         marker_report = _runtime_world_overrides(world_path, runtime_path, collision_detector, scene_broadcaster, speed_bump, batch_visuals,
-                                 evaluation_actor or None, evaluation_wheel_contacts, physics_step, marker_visibility)
+                                 evaluation_actor or None, evaluation_wheel_contacts, physics_step, marker_visibility,
+                                 grass_alignment)
+        if grass_alignment != 'original':
+            (evidence/'grass_alignment.json').write_text(json.dumps(marker_report['grass_alignment'], indent=2), encoding='utf-8')
         if marker_visibility != 'visible':
             (evidence/'course_marker_render.json').write_text(json.dumps(marker_report, indent=2), encoding='utf-8')
         world_path = runtime_path
@@ -1167,11 +1223,13 @@ def _launch_setup(context):
                     f"shortcut widths: {[branch['width_m'] for branch in scene['branches']]} m. "
                     + ("Official v2026.10.24 colors and complete gantry markers are preserved; "
                      "signal and checker finish are provisional; bump uses published STL visuals with approximate collision."
-                     if track == "official" else "Historical reproduction / experimental course.")),
+                     if track == "official" else
+                     "Official v2026.11.06 610 mm right-angle course; team derivative without tl_post, lamps start dark."
+                     if track == "official_v2026_11_06" else "Historical reproduction / experimental course.")),
         LogInfo(msg=f"Rear identification marker: enabled={rear_marker['enabled']}; "
                     f"{rear_marker['dictionary']} ID {rear_marker['id']}; "
                     f"board={rear_marker['printed_board_size_m']} m (team registered; mount provisional)."),
-        LogInfo(msg=f"Camera: {'B0183 + independent LSM6DSOX 208 Hz' if local_mode else 'D435i ' + d435i_profile_name}; "
+        LogInfo(msg=f"Camera: {profile['camera']['model'] + ' + independent IMU ' + profile['imu']['model'] if local_mode else 'D435i ' + d435i_profile_name}; "
                     f"RGB {color['width_px']}x{color['height_px']} @ "
                     f"{d435i_profile['color_rate_hz']} Hz; depth "
                     f"{depth['width_px']}x{depth['height_px']} @ "
@@ -1297,9 +1355,9 @@ def _launch_setup(context):
     traffic = _as_bool(LaunchConfiguration("traffic_light").perform(context))
     if (autonomy or traffic) and (world_override or not render_sensors):
         raise RuntimeError("시험 월드/광학 센서 비활성화는 본선 자율주행·신호등과 함께 쓰지 않습니다.")
-    if (autonomy or traffic) and track not in {"official", "experimental"}:
+    if (autonomy or traffic) and track not in {*OFFICIAL_2X5_TRACKS, "experimental"}:
         raise RuntimeError("신호등·본선 벽 추종 데모는 official/experimental 지도에서만 지원합니다.")
-    if traffic and track != "official":
+    if traffic and track not in OFFICIAL_2X5_TRACKS:
         raise RuntimeError("신호 제어기는 공식 2×5 광원 링크가 있는 official 월드 전용입니다.")
     if autonomy and autonomy_mode in {"lidar", "local_pursuit"} and not lidar_enabled:
         raise RuntimeError("LiDAR 벽 추종에는 lidar_2d.enabled=true가 필요합니다.")
@@ -1347,6 +1405,18 @@ def _launch_setup(context):
         observed_motion = LaunchConfiguration("evaluation_handoff_observed_motion").perform(context) == "true"
         continuous_pace = LaunchConfiguration("evaluation_handoff_continuous_pace").perform(context) == "true"
         moving_pass = LaunchConfiguration("evaluation_moving_pass_trial").perform(context) == "true"
+        wall_witness = LaunchConfiguration("evaluation_handoff_wall_witness").perform(context) == "true"
+        center_stopped = LaunchConfiguration("evaluation_stopped_entry_centering").perform(context) == "true"
+        adaptive_preview = LaunchConfiguration("evaluation_adaptive_entry_preview").perform(context) == "true"
+        if adaptive_preview and reserve == "off":
+            raise ValueError("adaptive entry preview requires an explicit corridor handoff trial")
+        if center_stopped and (reserve != "paced" or not observed_motion or feedback["mode"] != "drive_motor_shaft"):
+            raise ValueError("stopped entry centering requires explicit paced motion trial and motor-shaft feedback")
+        if wall_witness and not observed_motion:
+            raise ValueError("wall witness requires explicit observed handoff motion")
+        moving_profile = LaunchConfiguration("evaluation_moving_pass_profile").perform(context)
+        if moving_profile not in ("slow_v1", "medium_v1", "faster_v1") or (moving_profile != "slow_v1" and not moving_pass):
+            raise ValueError("moving pass profile requires an explicit moving pass trial")
         if moving_pass and not continuous_pace:
             raise ValueError("moving pass requires continuous forward pace")
         if continuous_pace and (reserve != "paced" or not observed_motion):
@@ -1360,8 +1430,13 @@ def _launch_setup(context):
             raise ValueError("side departure requires an explicit handoff trial")
         if (yield_progress or rear_sweep) and reserve == "off":
             raise ValueError("observed yield progress requires an explicit handoff trial")
+        p22_trial = _as_bool(LaunchConfiguration('p22_entry_trial').perform(context))
+        p22_route = _as_bool(LaunchConfiguration('p22_route_trial').perform(context))
+        if p22_route and not p22_trial:
+            raise ValueError('P22 route requires the recorded solo entry trial')
         executable = _autonomy_executable(autonomy_mode,reserve,guarded=guarded_actuation,
-                                          actor=evaluation_actor,evidence=runtime_artifacts,track=track)
+                                          actor=evaluation_actor,evidence=runtime_artifacts,track=track,
+                                          p22_entry_trial=p22_trial)
         controller_parameters = {
             "use_sim_time": True,
             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
@@ -1370,9 +1445,13 @@ def _launch_setup(context):
             "wheelbase_m": float(drivetrain["wheelbase_m"]),
             "max_steering_angle_rad": float(drivetrain["max_steering_angle_rad"]),
         }
-        if local_mode and track == "official":
+        if local_mode and track in OFFICIAL_2X5_TRACKS:
             # 공식 월드에는 임시 3등이 없다. 출발은 2×5 RGB 판독만 사용한다.
             controller_parameters["start_signal_mode"] = "official_4red_local_candidate"
+            controller_parameters.update(COURSE_SECTION_PARAMETERS.get(track, {}))
+        if p22_trial:
+            controller_parameters['p22_entry_simulation_trial'] = True
+            controller_parameters['p22_route_simulation_trial'] = p22_route
         if reserve != 'off':
             controller_parameters.update(g1_g2_simulation_trial=True, g1_g2_entry_policy='corridor_local_v1',
                 g1_g2_corridor_policy='corridor_v2_signed_hold', g1_g2_preparation_policy='observed_entry_space_v1',
@@ -1385,6 +1464,9 @@ def _launch_setup(context):
                 g1_g2_observed_motion_gates=observed_motion,
                 g1_g2_continuous_forward_pace=continuous_pace,
                 g1_g2_moving_pass_trial=moving_pass,
+                g1_g2_moving_pass_profile=moving_profile,
+                g1_g2_rear_wall_witness=wall_witness, g1_g2_stopped_entry_centering=center_stopped,
+                g1_g2_adaptive_entry_preview=adaptive_preview,
                 g1_g2_side_departure_trial=side_departure,
                 g1_g2_current_lane_preference_trial=current_lane,
                 g1_g2_current_lane_headroom_mps=(feedback["resolution"]["mean_wheel_travel_m_per_count"]
@@ -1478,7 +1560,7 @@ def generate_launch_description() -> LaunchDescription:
                 "track",
                 default_value="official",
                 choices=list(TRACK_DIRECTORIES),
-                description="official: v2026.10.24 colors, 45/20 cm unchanged gantry markers; experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
+                description="official: v2026.11.01 derivative, 45/20 cm unchanged gantry markers; official_v2026_11_06: 61/20 cm right-angle derivative (explicit); experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
             ),
             DeclareLaunchArgument(
                 "vehicle_config",
@@ -1544,6 +1626,10 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("depth_camera", default_value="true", description="깊이 센서와 점군을 켭니다. RGB·IMU는 유지합니다."),
             DeclareLaunchArgument("speed_bump", default_value="true", description="false는 실행 사본에서만 임시 방지턱 제거"),
             DeclareLaunchArgument("runtime_artifacts", default_value="", description="검증 실행 입력 보관 폴더"),
+            DeclareLaunchArgument('p22_entry_trial', default_value='false', choices=['false','true'],
+                                  description='단독 P22 입구만 보는 별도 시험 실행점; 기본 본선 유지'),
+            DeclareLaunchArgument('p22_route_trial', default_value='false', choices=['false','true'],
+                                  description='P22 입구 시험에 관측 출구와 본선 복귀를 추가; 단독 전용'),
             DeclareLaunchArgument("evaluation_handoff_rear_sweep", default_value="false", choices=["false", "true"],
                                   description="평가 전용 통과 후 저속 후반부 이동 후보"),
             DeclareLaunchArgument("evaluation_current_lane_preference_trial", default_value="false", choices=["false", "true"],
@@ -1554,6 +1640,12 @@ def generate_launch_description() -> LaunchDescription:
                                   description="세계 고정 측방 반환과 전진 시작 조각을 구별하는 시험 후보"),
             DeclareLaunchArgument("evaluation_handoff_continuous_pace", default_value="false", choices=["false", "true"],
                                   description="paced+관측 이동 후보에서 연속 전진율로 고정 우회 여유만 보완하는 시험 후보"),
+            DeclareLaunchArgument("evaluation_stopped_entry_centering", default_value="false", choices=["false","true"]),
+            DeclareLaunchArgument("evaluation_adaptive_entry_preview", default_value="false", choices=["false","true"],
+                                  description="정지차 우회 경로가 점유 원호로만 막힐 때 짧은 목표점과 정지 정렬을 비교하는 시험 후보"),
+            DeclareLaunchArgument("evaluation_handoff_wall_witness", default_value="false", choices=["false","true"]),
+            DeclareLaunchArgument("evaluation_moving_pass_profile", default_value="slow_v1",
+                                  choices=["slow_v1", "medium_v1", "faster_v1"]),
             DeclareLaunchArgument("evaluation_moving_pass_trial", default_value="false", choices=["false", "true"],
                                   description="현재 관측으로 진입·후방 확인·복귀하는 직선 저속 이동차 추월 시험"),
             DeclareLaunchArgument("evaluation_handoff_yield_progress", default_value="false", choices=["false", "true"],
@@ -1574,6 +1666,8 @@ def generate_launch_description() -> LaunchDescription:
                                   description="평가 전용 플러그인 명령 수신/적용 전환 이벤트. 제어 입력 아님; 증거 경로 필요"),
             DeclareLaunchArgument("evaluation_actor_sdf", default_value="",
                                   description="평가 전용 정적 actor SDF 조각. official local_pursuit 실행 사본에만 삽입"),
+            DeclareLaunchArgument('evaluation_grass_alignment', default_value='original', choices=['original', 'road_level'],
+                                 description='v11.06 평가 사본의 잔디를 1 mm 높이는 단차 원인 대조. 기본 원본 유지'),
             DeclareLaunchArgument("evaluation_wheel_contacts", default_value="false", choices=["true", "false"],
                                   description="실행 사본의 평가 전용 바퀴 접촉 계측. 제어 입력 아님"),
             DeclareLaunchArgument("lidar_test_profile", default_value="", description="시험용 거리오차/지연 JSON; 빈 값은 기존 동작"),

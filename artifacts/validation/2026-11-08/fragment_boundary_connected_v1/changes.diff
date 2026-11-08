@@ -1,0 +1,80 @@
+--- src/arena_autonomy/arena_autonomy/local_follow.py before
++++ src/arena_autonomy/arena_autonomy/local_follow.py after
+@@ -62,7 +62,7 @@
+     preview_turn_speed: bool = False
+     preview_above_base_speed: bool = False  # 단독 선택형. 코너 예측을 통상 상한 위의 양수 목표에도 적용.
+     boundary_bridge: bool = False  # 단독 선택형. 점유가 아닌 경로 근거 전환 때문에 생긴 정지만 잇는다.
+-    traffic_boundary_refresh_trial: bool = False  # 교통 선택형. 짧은 현재 벽이 최근 승인 경로와 일치할 때만 갱신.
++    traffic_boundary_refresh_trial: bool = False  # 교통 선택형. 가려진 벽 조각 경로 가설 및 이미 승인한 벽의 긴 현재 관측 갱신.
+     low_speed_arc_reacquire: bool = False  # 단독 시험 선택. 낮은 측정 속도의 양측 경로 재획득만.
+     standing_wall_reacquire: bool = False  # 재개 후보. 기억 없는 낮은 속도에서 선호 벽의 긴 현재 관측으로 재획득.
+     lateral_acceleration_mps2: float = 3.5
+@@ -665,9 +665,23 @@
+                                  (r.source_index for r in scene.rays if r.status == 'return')))
+         def observed_path(cloud, wall_side):
+             if cfg.piecewise_wall_trial:
+-                return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
++                path, info = local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
+                                   rays=None if ray_index is None else [ray_index[tuple(p)] for p in cloud.tolist()],
+                                   piecewise_corner=True, minimum_radius=cfg.wheelbase_m/math.tan(cfg.max_steering_rad))
++                if cfg.traffic_boundary_refresh_trial and info.get('wall_model') != 'piecewise_corner':
++                    from arena_autonomy.fragmented_wall_hypothesis import propose
++                    candidate, evidence = propose(cloud, wall_side, cfg.wall_offset_m,
++                                                  cfg.wheelbase_m/math.tan(cfg.max_steering_rad))
++                    if candidate is not None and (path is None or path_agrees(candidate,path,cfg.boundary_agreement_m)):
++                        from arena_autonomy.local_path import _path_ahead, _origin_error
++                        sign = 1 if wall_side == 'left' else -1
++                        index = int(np.argmin(np.linalg.norm(cloud-[0.,sign*cfg.wall_offset_m],axis=1)))
++                        return candidate, dict(reason='local_path',wall_model='observed_fragment_corner',
++                            boundary_samples=evidence['points_used'],boundary_observed_ahead_m=_path_ahead(candidate),
++                            wall_distance_m=abs(float(cloud[index,1])),path_anchor_error_m=_origin_error(candidate),
++                            path_points=candidate.tolist(),fragment_hypothesis={k:v for k,v in evidence.items()
++                            if k not in ('source_indices','occluder_indices')})
++                return path,info
+             if ray_index is not None:
+                 return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
+                                   rays=[ray_index[tuple(p)] for p in cloud.tolist()])
+@@ -721,6 +735,12 @@
+                     if not opposite_observed:
+                         opposite_observed.append(observed_path(points, other_side))
+                     return opposite_observed[0]
++                if (not eligible and cfg.traffic_boundary_refresh_trial and carried is not None
++                        and self.path_wall == other_side):
++                    opposite, other = opposite_wall()
++                    if sufficient(opposite, other) and path_agrees(opposite,carried,cfg.boundary_agreement_m):
++                        candidate,info,candidate_wall,eligible = opposite,other,other_side,True
++                        detail['boundary_selection']='current_retained_wall_refresh'
+                 if not eligible and preferred is not None and anchor_error(preferred_info, cfg) <= cfg.boundary_anchor_error_m:
+                     # 급커브 안쪽 벽은 짧아질 수 있다. 반대 벽만 보고 전환하지 않고,
+                     # 같은 스캔의 실제 선호 벽 경로와 중심 형상이 일치할 때만 사용한다.
+@@ -821,7 +841,7 @@
+                             detail.update(boundary_selection='bilateral_observed_corner_distance',
+                                           boundary_candidate_reason=info['reason'],
+                                           boundary_candidate_ahead_m=info.get('boundary_observed_ahead_m'))
+-                if (not eligible and (cfg.boundary_bridge or cfg.traffic_boundary_refresh_trial)
++                if (not eligible and cfg.boundary_bridge
+                         and carried is not None and preferred is not None
+                         and anchor_error(preferred_info, cfg) <= cfg.boundary_anchor_error_m
+                         and path_agrees(preferred, carried, cfg.boundary_agreement_m)):
+--- src/arena_bringup/launch/g1_follow.launch.py before
++++ src/arena_bringup/launch/g1_follow.launch.py after
+@@ -37,7 +37,7 @@
+                               description='재개 후보: 기억 없는 낮은 속도에서 선호 벽의 긴 현재 관측으로 재획득; 기본 비활성'),
+         SetParameter(name='g1_standing_wall_reacquire', value=LaunchConfiguration('g1_standing_wall_reacquire')),
+         DeclareLaunchArgument('g1_traffic_boundary_refresh_trial', default_value='false', choices=['true', 'false'],
+-                              description='교통 선택형: 짧은 현재 벽과 최근 경로의 일치 갱신'),
++                              description='교통 선택형: 가려진 벽 조각 경로와 이미 승인한 벽의 현재 관측 갱신'),
+         SetParameter(name='g1_traffic_boundary_refresh_trial', value=LaunchConfiguration('g1_traffic_boundary_refresh_trial')),
+         DeclareLaunchArgument('g1_boundary_evidence_mode', default_value='connected',
+                               choices=['connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate']),
+--- scripts/validate_g1_traffic.py before
++++ scripts/validate_g1_traffic.py after
+@@ -435,7 +435,7 @@
+     parser.add_argument('--moving-pass-trial', action='store_true',
+                         help='연속 전진 관측·후방 복귀 확인을 사용하는 저속 이동차 추월(기본 꺼짐)')
+     parser.add_argument('--handoff-boundary-refresh', action='store_true',
+-                        help='교통 경로의 짧은 현재 벽과 최근 경로가 일치할 때만 갱신하는 선택형 시험')
++                        help='교통의 관측 벽 조각 경로와 기존 승인 벽 갱신을 선택하는 시험')
+     parser.add_argument('--handoff-standing-wall-reacquire', action='store_true',
+                         help='기존 저속 현재 선호 벽 재획득을 G1/G2 교통에서 명시 선택(기본 꺼짐)')
+     parser.add_argument('--g1-piecewise-wall', action='store_true',

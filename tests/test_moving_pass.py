@@ -282,18 +282,35 @@ def test_speed_selection_uses_observed_displacement_and_error_not_lower_rate():
     assert not adapter.eligibility(s,h)['ready']
 
 
-@pytest.mark.parametrize('changed',['none','ahead_only','short','missing','not_clear','entry','few','remembered'])
+@pytest.mark.parametrize('changed',['none','front_body','outside_body','short','missing','not_clear','entry','few','remembered'])
 def test_current_forward_reference_is_only_for_an_observed_rejoin(changed):
     guide=MovingPassGuide(FollowConfig(),tracker())
     guide.phase='entry' if changed=='entry' else 'rejoin'
     guide.tracker.detail['rear_clear']=changed!='not_clear'
     guide.tracker.current=None if changed=='missing' else np.array([[-.75,.21]])
-    fit=(0.,.039,.01 if changed=='ahead_only' else -.0256,.60 if changed=='short' else 1.86)
+    lower=.01 if changed=='front_body' else .101 if changed=='outside_body' else -.0256
+    fit=(0.,.039,lower,.60 if changed=='short' else 1.86)
     wall=dict(reason='history' if changed=='remembered' else 'current_connected_straight_wall_fit',
               actual_return_count=11 if changed=='few' else 130)
     assert not EntryGuide._wall_covers_guide(guide,fit,wall)
-    assert guide._wall_covers_guide(fit,wall)==(changed=='none')
-    assert ('guide_extent' in wall)==(changed=='none')
+    assert guide._wall_covers_guide(fit,wall)==(changed in ('none','front_body'))
+    assert ('guide_extent' in wall)==(changed in ('none','front_body'))
+
+
+@pytest.mark.parametrize('returning_behind',[False,True])
+@pytest.mark.parametrize('lower,allowed',[(.00055,True),(.03072,True),(.10,True),(.10001,False)])
+def test_rejoin_front_body_reference_needs_the_current_target_clearance(returning_behind,lower,allowed):
+    guide=MovingPassGuide(FollowConfig(),tracker())
+    guide.phase='rejoin';guide.returning_behind=returning_behind
+    guide.tracker.current=np.array([[.80 if returning_behind else -.80,.20]])
+    key='ahead_clear' if returning_behind else 'rear_clear'
+    other='rear_clear' if returning_behind else 'ahead_clear'
+    wall=dict(reason='current_connected_straight_wall_fit',actual_return_count=130)
+    fit=(.317,-.161,lower,1.844)
+    guide.tracker.detail.update({key:True,other:False})
+    assert guide._wall_covers_guide(fit,wall)==allowed
+    guide.tracker.detail.update({key:False,other:True})
+    assert not guide._wall_covers_guide(fit,dict(wall))
 
 
 def test_current_path_still_rejects_new_obstacle_and_unknown():

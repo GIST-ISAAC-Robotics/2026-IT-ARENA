@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scope": "기본 OFF 평행 경로의 측정속도 보완과 명시 두 바퀴 피추월 평가; 기본 채택/실차 승인 아님",
+  "parent_contract": "config/tests/corner_path_anchor_transition_r23_sha256.json",
+  "parent_contract_sha256": "4fab1c8b5ccf0fa04f8cc839b3405a62a2f1374de107e0b07d4b1e1f72f7e14e",
+  "before_snapshot": "artifacts/validation/2026-11-08/rear_overtake_continuity_connected_v1/before.zip",
+  "before_snapshot_sha256": "847be12f2f00a9174e3a7ac83482dc3390d426475bac8133a538545714cc21cc",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/parallel_lane_trial.py": {
+      "before": "c371c2c483ced88af72cd8fc00fb718bd4126af842d73213393837bda5aa380f",
+      "after": "8d15c181fa54b696599388fb12295e7599dfbdd19d169c088b9ad89b0eb1ecf0",
+      "reason": "측정속도 1 m/s 하드 거부 대신 명령 상한 초과 시 실제 제동 거리·관측 외곽 확인. 목표 0.35 m/s·측방/점유·두 fresh·기본 OFF 보존."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/traffic_road_route.py": {
+      "before": "2078fce2891a94dd785d785eb53e3661f2031ca54128411eb54bfa653115193a",
+      "after": "4d347c8d36e54ebf9581182892dc280130cf3e50b7c148fcd37d4cbbb586c231",
+      "reason": "명시 side_two_wheel_straight 평가 경로 추가. 기존 완전 도로 조건 유지, 별도 actor 바퀴 중심 두 개 허용·벽 교차 거부."
+    },
+    "scripts/validate_g1_traffic.py": {
+      "before": "ba0e5ed22ea9f09b9b2293c7d491d4bab5331b4008fc4b66fa912b50b25547ad",
+      "after": "6ecbace69199c1cc67c42a09989a48f1396266a9eaafbe34e32b8373e6c324cb",
+      "reason": "명시 side_two_wheel_straight 평가 경로를 실제 actor 실행에 연결. 기존 시나리오·판정선 불변."
+    }
+  },
+  "new_dependencies": {}
+}

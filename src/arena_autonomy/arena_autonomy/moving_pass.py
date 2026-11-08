@@ -22,20 +22,51 @@ from arena_autonomy.lidar_motion import MotionUnavailable
 from arena_autonomy.known_structure import ACCEPTED_HIDDEN_WIDTH_M, classify, parse_sectors
 from arena_autonomy.observation_support import source_valid
 from arena_autonomy.scene_motion import transport_points
+from arena_autonomy.wall_reference_support import rear_wall_witness
+
+
+@dataclass(frozen=True)
+class MovingPassProfile:
+    speed_cap_mps: float
+    lead_upper_mps: float
+    minimum_advantage_mps: float
+    association_speed_mps: float
+    measured_entry_envelope: bool = False
+    object_motion_bound_mps: float = .5
+
+
+def moving_pass_profile(name):
+    # 초기 저속 결과를 소급 변경하지 않는다. 중속도 명시 선택 시험 범위다.
+    if name == 'slow_v1':
+        return MovingPassProfile(.65, .50, .15, .75)
+    if name == 'medium_v1':
+        return MovingPassProfile(.90, .70, .20, 1.)
+    if name == 'faster_v1':
+        return MovingPassProfile(1.20, 1.00, .20, 1.20, True, 1.20)
+    raise ValueError('registered moving pass profile required')
 
 
 @dataclass(frozen=True)
 class MovingEntryConfig(EntryConfig):
     speed_cap_mps: float = .65
     offsets_m: tuple = (0., -.20, .20, -.24, .24, -.27, .27)
+    profile: str = 'slow_v1'
+
+    @property
+    def measured_speed_envelope(self):
+        return moving_pass_profile(self.profile).measured_entry_envelope
+
+    @property
+    def maximum_offset_m(self):
+        return .35 if self.measured_speed_envelope else .27
 
     def __post_init__(self):
+        ceiling = moving_pass_profile(self.profile).speed_cap_mps
         if (isinstance(self.speed_cap_mps, bool) or not math.isfinite(self.speed_cap_mps)
-                or not 0 < self.speed_cap_mps <= .65):
-            raise ValueError('moving pass initial speed envelope is (0, .65] m/s')
+                or not 0 < self.speed_cap_mps <= ceiling):
+            raise ValueError(f'moving pass {self.profile} speed envelope is (0, {ceiling}] m/s')
         # 기존 경로 형상 조건은 유지하고 별도 시험 속도 범위만 정의한다.
-        EntryConfig(self.offsets_m, self.transitions_m, min(.35, self.speed_cap_mps),
-                    self.path_step_m, self.prefer_earlier_transition)
+        self._validate_geometry()
 
 
 class MovingTargetTrack:
@@ -47,8 +78,11 @@ class MovingTargetTrack:
     target_diagonal_m = math.hypot(.20, .15)
     rear_margin_m = .06
 
-    def __init__(self, config):
+    def __init__(self, config, profile='slow_v1'):
         self.config = config
+        self.profile_name = profile
+        self.profile = moving_pass_profile(profile)
+        self.association_speed_mps = self.profile.association_speed_mps
         self.reset()
 
     def reset(self):
@@ -117,7 +151,7 @@ class MovingTargetTrack:
                 # 이미 옆에 있는 차의 보이는 면이 바뀌어 생긴 속도 변화는 쓰지 않는다.
                 # 앞 범퍼+여유까지 비었다는 더 강한 조건은 실제 옆 이동/복귀에 적용한다.
                 approaching=self.rear_bound(scene)>0.
-                lost=self.speed_upper>.50 and approaching
+                lost=self.speed_upper>self.profile.lead_upper_mps and approaching
                 self.lost_advantage_scans=self.lost_advantage_scans+1 if lost else 0
             else:
                 self.speed_upper=self.speed_lower=None;self.lost_advantage_scans=0
@@ -201,57 +235,8 @@ class MovingTargetTrack:
         return self.detail
 
 
-def rear_wall_witness(scene, config, side, fit, wall, explained_sectors):
-    """지지대 양옆에서 실제로 보인 면이 일치할 때만 후륜축의 경로 기준을 연장한다.
 
-    뒤쪽 짧은 면은 작은 차량 옆면일 수도 있다. 긴 벽에 붙이거나 고정 점유로
-    분류하지 않는다. 원래의 고정 여유 적용 광선 목록과 가림 상태도 보존한다.
-    """
-    if fit is None or wall.get('reason') != 'current_connected_straight_wall_fit':
-        return fit, wall
-    a,b,lower,upper=fit
-    if lower <= -config.wheelbase_m/2 or upper < .30 or upper-lower < .65:
-        return fit, wall
-    ids=wall['source_ray_indices']
-    rays={r.source_index:r for r in scene.rays}
-    if not ids or ids[0] not in rays or ids[-1] not in rays:
-        return fit, wall
-    # 광선 획득 순서는 좌/우에서 반대다. 차체 뒤쪽 끝에서 바깥 방향으로 검사한다.
-    edge,step=min(((ids[0],-1),(ids[-1],1)), key=lambda e:rays[e[0]].hit_xy_m[0])
-    sign=1 if side=='left' else -1
-    norm=math.hypot(1.,a)
-    actual_b=b+sign*config.wall_offset_m*norm
-    shift=sign*config.wall_offset_m*a/norm
-    i=edge+step
-    gap=[]
-    while i in rays and rays[i].status=='masked':
-        gap.append(i);i+=step
-    if not gap or frozenset(gap) not in explained_sectors or i not in rays or rays[i].status!='return':
-        return fit,wall
-    chord=math.dist(rays[edge].hit_xy_m,rays[i].hit_xy_m)
-    if chord>ACCEPTED_HIDDEN_WIDTH_M:
-        return fit,wall
-    points=[];last=rays[edge].hit_xy_m
-    while i in rays and rays[i].status=='return':
-        p=rays[i].hit_xy_m
-        if (not -.40<=p[0]<last[0] or math.dist(last,p)>.05
-                or abs(p[1]-a*p[0]-actual_b)/norm>.015):
-            break
-        points.append(p);last=p;i+=step
-    if len(points)<12 or points[0][0]-points[-1][0]<.20:
-        return fit,wall
-    x,y=np.asarray(points).T
-    observed_slope=np.dot(x-x.mean(),y-y.mean())/np.dot(x-x.mean(),x-x.mean())
-    new_lower=float(min(x)+shift)
-    if new_lower > -config.wheelbase_m/2 or abs(math.atan(observed_slope)-math.atan(a))>.08:
-        return fit,wall
-    proof=dict(principal_x_m=[lower,upper],observed_rear_x_m=[float(min(x)),float(max(x))],
-               rear_return_count=len(points),mask_indices=sorted(gap),shadow_chord_m=chord,
-               short_piece_static=False,unknown_filled=False)
-    return (a,b,new_lower,upper),{**wall,'observed_x_m':[new_lower,upper],'rear_geometry_witness':proof}
-
-
-def available_pass_offsets(scene, config, walls, patch):
+def available_pass_offsets(scene, config, walls, patch, *, fixed_outer_candidate=False, maximum_offset=.27):
     """옆에 섰을 때도 유지할 수 있는 편이를 제안한다. 미관측 부분의 통과 허가는 아니다."""
     half=config.width_m/2
     fixed=.025+config.measurement_padding_m
@@ -264,10 +249,13 @@ def available_pass_offsets(scene, config, walls, patch):
         _,normal=wall_frame(patch,config,side,walls[side])
         outer_age=abeam_age(scene,other,reuse)
         inner_age=abeam_age(scene,side,reuse)
-        low=half+fixed+config.object_motion_bound_mps*outer_age+tracking
+        # 명시 후보는 고정 외벽 가설로 편이만 제안한다. EntryGuide의 서로 다른 두 스캔
+        # 벽 일치 검사를 통과하기 전에는 주행을 허가하지 않는다. 상대차 여유는 유지한다.
+        outer_motion=0. if fixed_outer_candidate else config.object_motion_bound_mps
+        low=half+fixed+outer_motion*outer_age+tracking
         high=float(np.min(normal))-half-fixed-config.object_motion_bound_mps*inner_age-tracking
         # 벽에서 자차까지의 거리. 고정된 ±24 cm를 먼저 고르지 않는다.
-        center=float(np.clip((low+high)/2,config.wall_offset_m-.27,config.wall_offset_m))
+        center=float(np.clip((low+high)/2,config.wall_offset_m-maximum_offset,config.wall_offset_m))
         offset=sign*(config.wall_offset_m-center)
         feasible=low<=center<=high and abs(offset)>1e-6
         if feasible:offsets.append(offset)
@@ -284,8 +272,12 @@ class MovingPassGuide(EntryGuide):
         self.front_policy='contiguous_three_v0'
         self.sectors = (parse_sectors(config.known_structure_sectors_json)
                         if config.known_structure_policy=='structure_aware_v1' else ())
-        super().__init__(config, MovingEntryConfig(), stationary_outer_boundary=True,
+        super().__init__(config, MovingEntryConfig(speed_cap_mps=tracker.profile.speed_cap_mps,
+                         profile=tracker.profile_name, transitions_m=((.9,1.2,1.5) if tracker.profile.measured_entry_envelope
+                         else (.6,.9,1.2))), stationary_outer_boundary=True,
                          rejoin_enabled=True, wall_reanchor=True, tracked_wall_fit=True)
+        if self.entry.measured_speed_envelope:
+            self.padding_provider = self._faster_outer_padding
 
     def reset(self):
         super().reset()
@@ -302,7 +294,17 @@ class MovingPassGuide(EntryGuide):
         if reference[0] is None or patch is None:
             self.reset()
             return self._hold('moving_pass_two_walls_and_front_required',reference=reference[1])
-        offsets,width=available_pass_offsets(scene,self.config,reference[1]['walls'],patch)
+        if self.entry.measured_speed_envelope:
+            # 긴 외벽을 확인해도 진입 뒤에는 짧은 뒷부분만 남을 수 있다.
+            # 그때의 동적 여유를 유지할 수 없는 편이는 처음부터 제안하지 않는다.
+            # 후보가 없으면 상위 어댑터가 기존 FOLLOW를 계속 사용한다.
+            offsets,width=available_pass_offsets(scene,self.config,reference[1]['walls'],patch,
+                maximum_offset=self.entry.maximum_offset_m)
+            for row in width.values():
+                row.update(fixed_outer_hypothesis=False,requires_distinct_wall_confirmation=True,
+                           proposal_policy='dynamic_outer_continuation')
+        else:
+            offsets,width=available_pass_offsets(scene,self.config,reference[1]['walls'],patch)
         if len(offsets)==1:
             self.reset()
             return self._hold('moving_pass_sustained_side_width_unavailable',pass_width=width)
@@ -316,6 +318,11 @@ class MovingPassGuide(EntryGuide):
             self.entry=original
             self.reference_provider=None
 
+    def _faster_outer_padding(self, scene, config, side, wall, padding_growth_s=0.):
+        from arena_autonomy.moving_pass_wall_padding import current_outer_and_rear_padding
+        return current_outer_and_rear_padding(scene, config, side, wall, padding_growth_s,
+            raw_scan=self.raw_scan, sectors=self.sectors)
+
     def _outer_wall_fit(self,scene,remembered_wall):
         fit,wall=super()._outer_wall_fit(scene,remembered_wall)
         if (fit is None or fit[2]<=-self.config.wheelbase_m/2 or not self.sectors
@@ -325,8 +332,8 @@ class MovingPassGuide(EntryGuide):
         explained={frozenset(row['rays'].tolist()) for row in rows if row['explained']}
         return rear_wall_witness(scene,self.config,self.side,fit,wall,explained)
 
-    def _rejoin_band(self, scene, fit):
-        band = super()._rejoin_band(scene, fit)
+    def _rejoin_band(self, scene, fit, wall=None):
+        band = super()._rejoin_band(scene, fit, wall=wall)
         rear = self.tracker.detail.get('rear_clear', False) and self.tracker.current is not None
         ahead = self.tracker.ahead_clear(scene) and self.tracker.lost_advantage_scans>=3
         return {**band, 'supported': bool(band['supported'] and (rear or ahead)),
@@ -347,16 +354,18 @@ class MovingPassGuide(EntryGuide):
         if super()._wall_covers_guide(fit,wall):
             return True
         # 이미 실제 후방 반환을 확인하고 복귀를 시작한 동안에만 적용한다.
-        # 차체 중심과 앞쪽의 긴 벽이 지금 보이면 Pure Pursuit 목표를 그 안에서
-        # 고를 수 있다. 관측 시작점을 후륜축까지 연장하지 않고 실제 구간만 자른다.
+        # 긴 현재 경로의 시작점이 차체 앞부분 안에 있으면 전방 추종 목표를
+        # 관측 구간에서 고른다. 시작점을 후륜축까지 외삽하지 않는다.
+        # 경로 기준선의 길이 확인이며 실제 이동 영역의 관측/점유 검사는 별도다.
         current_clear=(self.tracker.detail.get('ahead_clear') if self.returning_behind
                        else self.tracker.detail.get('rear_clear'))
         if (self.phase=='rejoin' and current_clear
                 and self.tracker.current is not None
                 and wall.get('reason')=='current_connected_straight_wall_fit'
                 and wall.get('actual_return_count',0)>=12
-                and fit[2]<=0. and fit[3]>=.65):
-            wall['guide_extent']='current_body_center_and_forward_rejoin_only'
+                and fit[2]<=self.config.length_m/2 and fit[3]>=.65):
+            wall['guide_extent']=('current_body_center_and_forward_rejoin_only' if fit[2]<=0.
+                                  else 'current_front_body_and_forward_rejoin_only')
             return True
         return False
 
@@ -368,7 +377,13 @@ class MovingPassAdapter:
 
     def __init__(self, owner):
         self.owner = owner
-        self.tracker = MovingTargetTrack(owner.config)
+        self.profile_name = getattr(getattr(owner, 'execution', None), 'moving_pass_profile', 'slow_v1')
+        self.profile = moving_pass_profile(self.profile_name)
+        if not self.profile.measured_entry_envelope and self.profile.speed_cap_mps > owner.config.max_speed_mps:
+            raise ValueError('moving pass profile exceeds entry feedback envelope')
+        self.max_lead_speed_mps = self.profile.lead_upper_mps
+        self.minimum_speed_advantage_mps = self.profile.minimum_advantage_mps
+        self.tracker = MovingTargetTrack(owner.config, self.profile_name)
         self.guide = MovingPassGuide(owner.config, self.tracker)
         self.guide.front_policy=getattr(getattr(owner,'execution',None),'front_patch_policy','contiguous_three_v0')
         self.active = False
@@ -428,12 +443,22 @@ class MovingPassAdapter:
         except (ValueError, MotionUnavailable):
             return dict(ready=False, reason='target_speed_motion_unavailable')
         estimate_upper = (q[-1, 0]-q[0, 0]+pace.bound)/span if span > 0 else math.inf
-        ready = (estimate_upper <= self.max_lead_speed_mps and
-                 self.guide.entry.speed_cap_mps-estimate_upper >= self.minimum_speed_advantage_mps)
+        tolerance = 1e-12 if self.profile_name != 'slow_v1' else 0.
+        ready = (estimate_upper <= self.max_lead_speed_mps + tolerance and
+                 self.guide.entry.speed_cap_mps-estimate_upper >= self.minimum_speed_advantage_mps - tolerance)
         return dict(ready=ready, reason='slow_forward_candidate' if ready else 'speed_advantage_insufficient',
                     estimated_lead_upper_mps=estimate_upper, source_span_s=span,
                     pass_speed_cap_mps=self.guide.entry.speed_cap_mps,
-                    scope='initial_straight_slow_target_only', future_speed_guaranteed=False)
+                    scope=('initial_straight_slow_target_only' if self.profile_name == 'slow_v1'
+                           else ('initial_straight_medium_target_only' if self.profile_name == 'medium_v1' else 'initial_straight_faster_target_only')), future_speed_guaranteed=False)
+
+    def entry_advantage_sufficient(self, chosen_speed, estimated_lead_upper):
+        # 기존 저속 후보의 >0 조건은 재현용으로 유지한다. 새 중속은 실제 곡률/점유로
+        # 제한된 후보가 0.20m/s 이점을 갖춰야 한다. 상한 숫자만 비교하지 않는다.
+        required = self.minimum_speed_advantage_mps if self.profile_name != 'slow_v1' else 0.
+        return (math.isfinite(chosen_speed) and math.isfinite(estimated_lead_upper)
+                and chosen_speed > estimated_lead_upper
+                and chosen_speed - estimated_lead_upper >= required - 1e-12)
 
     def command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
         owner = self.owner
@@ -462,7 +487,7 @@ class MovingPassAdapter:
                 return normal[0], normal[1], detail
             conflict = entry_path_conflict(dict(path_points=self.guide.path), scene, owner.config)
             gate['path_conflict'] = conflict
-            if chosen['speed_mps'] <= gate['estimated_lead_upper_mps'] or conflict['rejected']:
+            if not self.entry_advantage_sufficient(chosen['speed_mps'], gate['estimated_lead_upper_mps']) or conflict['rejected']:
                 self.guide.reset()
                 gate['reason'] = 'entry_speed_or_path_conflict'
                 return normal[0], normal[1], detail

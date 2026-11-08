@@ -17,41 +17,22 @@ from arena_autonomy.follow_trace import comparable_decision, controller_mode, eq
 from arena_autonomy.lidar_motion import MotionConfig, MotionUnavailable
 from arena_autonomy.local_follow import FollowConfig, LocalFollow
 from arena_autonomy.scene_motion import motion_scene
+from python_dependency_closure import collect, package_modules
 
 ROOT = Path(__file__).resolve().parents[1]
 STAGES = ('restore_ms', 'projection_ms', 'decision_ms', 'total_ms', 'thread_cpu_ms', 'gc_elapsed_ms')
-SNAPSHOT_MODULES = {'arena_autonomy': ('boundary_evidence',
-                    'corner_corridor',
-                    'corner_distance',
-                    'corner_evidence',
-                    'corridor_observer', 'continuous_prefix', 'bypass_corridor_trial', 'bypass_handoff_corridor_trial', 'bypass_initial_reference', 'bypass_motion_pause_trial', 'bypass_preparation_hold', 'bypass_relative_yield', 'bypass_relative_yield_pause', 'bypass_signed_hold_trial',
-                    'follow_trace',
-                    'bypass_yield_progress', 'front_patch_motion', 'released_rear_sweep', 'static_side_return', 'turn_preview',
-                    'lateral_intent',
-                    'lidar_motion',
-                    'lidar_observation',
-                    'linear_observation',
-                    'local_follow',
-                    'local_path',
-                    'local_scene',
-                    'm3_execution_trial',
-                    'm3_observed_follow',
-                    'observation_lateral',
-                    'observation_support',
-                    'observed_lateral_trial',
-                    'occupancy_timing',
-                    'parallel_lane_trial',
-                    'partial_observation',
-                    'partial_surface_alignment',
-                    'pass_release_trial',
-                    'traffic_recovery_trial', 'traffic_path_recovery_trial', 'corridor_roles',
-                    'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial', 'rear_lane_keep_trial', 'observed_lane_preference_trial', 'observed_parallel_speed_trial', 'measured_lane_preference_trial', 'measured_parallel_speed_trial', 'measured_parallel_trial', 'fresh_parallel_trial', 'fresh_parallel_speed_trial',
-                    'polygon_batch',
-                    'r0_plus',
-                    'rounded_occupancy_candidate',
-                    'scan_topology',
-                    'scene_motion'),
- 'arena_vehicle_interface': ('queued_log', 'drive_feedback')}
+# 계측 진입점의 내부 import 폐포(지연 import 포함). 고정 목록은 새 보조 모듈을 빠뜨렸다.
+SNAPSHOT_CLOSURE = collect([Path(__file__).resolve().relative_to(ROOT).as_posix()], base=ROOT)
+SNAPSHOT_MODULES = package_modules(SNAPSHOT_CLOSURE)
+# 저장소에만 있는 소스 보존용 시험. 최소 묶음에는 없으므로 있을 때만 담고 없으면 누락으로 보고한다.
+SNAPSHOT_OPTIONAL = ('tests/test_follow_profile.py',)
+
+
+def snapshot_paths(root=ROOT):
+    """(스냅샷 경로, 빠진 선택 파일). 폐포 파일은 필수이며 없으면 digest에서 그대로 실패한다."""
+    paths = [root/name for name in SNAPSHOT_CLOSURE['files']]
+    omitted = [name for name in SNAPSHOT_OPTIONAL if not (root/name).is_file()]
+    return paths+[root/name for name in SNAPSHOT_OPTIONAL if name not in omitted], omitted
 
 
 class GCObservation:
@@ -227,9 +208,7 @@ def main():
     if not output.is_relative_to(ROOT/'artifacts') or output == ROOT/'artifacts':
         parser.error('fresh artifact subdirectory required')
     output.mkdir(parents=True, exist_ok=False)
-    paths = [Path(__file__).resolve(), ROOT/'tests/test_follow_profile.py']
-    paths += [ROOT/'src'/package/package/f'{name}.py'
-              for package, names in SNAPSHOT_MODULES.items() for name in names]
+    paths, omitted = snapshot_paths()
     hashes = {str(p.relative_to(ROOT)): digest(p) for p in paths}
     with zipfile.ZipFile(output/'source_snapshot.zip', 'x', zipfile.ZIP_DEFLATED) as bundle:
         for path in paths:
@@ -246,6 +225,7 @@ def main():
                   input_mode=args.input_mode,
                   input_unchanged=before == digest(args.input), source_sha256=hashes,
                   source_unchanged=all(digest(ROOT/p) == h for p, h in hashes.items()),
+                  source_snapshot_omitted=omitted, source_snapshot_complete=not omitted,
                   environment=dict(system=platform.system(), release=platform.release(), machine=platform.machine(),
                                    python=platform.python_version(), numpy=np.__version__,
                                    timer_resolution_s=time.get_clock_info('perf_counter').resolution))

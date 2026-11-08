@@ -6,6 +6,8 @@ import json
 from pathlib import Path, PurePosixPath
 import tarfile
 
+from python_dependency_closure import MissingInternalDependency, collect, third_party
+
 
 def digest(stream):
     value = hashlib.sha256()
@@ -24,7 +26,7 @@ def verify(archive, manifest):
     if Path(archive).stat().st_size != manifest['archive_size']:
         archive_matches = False
     expected = manifest['files']
-    seen, problems, trace_headers = set(), [], []
+    seen, problems, trace_headers, sources = set(), [], [], {}
     with tarfile.open(archive, 'r:gz') as bundle:
         for member in bundle:
             path = PurePosixPath(member.name)
@@ -39,6 +41,9 @@ def verify(archive, manifest):
                 checksum = digest(stream)
             if member.size != expected[member.name]['size'] or checksum != expected[member.name]['sha256']:
                 problems.append(dict(file=member.name, reason='member_hash_or_size_mismatch'))
+            if member.name.endswith('.py'):
+                with bundle.extractfile(member) as stream:
+                    sources[member.name] = stream.read()
             if member.name.startswith('artifacts/') and member.name.endswith('.jsonl'):
                 with bundle.extractfile(member) as stream:
                     header = json.loads(stream.readline(65537))
@@ -50,11 +55,32 @@ def verify(archive, manifest):
                     problems.append(dict(file=member.name, reason='not_decision_trace'))
                 trace_headers.append(member.name)
     missing = sorted(set(expected)-seen)
+    closure = closure_check(manifest, sources)
+    if closure.get('problem'):
+        problems.append(dict(file='<dependency_closure>', reason=closure['problem']))
     passed = archive_matches and not problems and not missing and bool(trace_headers)
     return dict(passed=passed, archive_hash_matches=archive_matches, members=len(seen),
-                missing=missing, problems=problems, decision_traces=trace_headers,
+                missing=missing, problems=problems, decision_traces=trace_headers, dependency_closure=closure,
                 extracted=False, transferred=False, remote_execution_verified=False,
                 scope='local_package_content_integrity_only_not_jetson_runtime_or_sensor_validation')
+
+
+def closure_check(manifest, sources):
+    """묶음 안의 .py만으로 진입점 import를 다시 닫는다. 기록 없는 이전 묶음은 미검사로 표시한다."""
+    spec = manifest.get('dependency_closure')
+    if spec is None:
+        return dict(checked=False)
+    try:
+        closure = collect(spec['entries'], roots=spec['roots'], members=sources)
+    except MissingInternalDependency as error:
+        return dict(checked=True, problem=f'missing_internal_dependency: {error}')
+    extra = sorted(set(third_party(closure))-set(spec['allowed_third_party']))
+    if extra:
+        return dict(checked=True, problem=f'unexpected_third_party: {extra}')
+    # 표준 라이브러리 분류는 Python 판마다 다를 수 있으므로 외부 이름 집합만 대조한다.
+    if set(closure['external']) != set(spec['external']) or len(closure['files']) != spec['files']:
+        return dict(checked=True, problem='closure_differs_from_manifest')
+    return dict(checked=True, files=len(closure['files']), third_party=third_party(closure))
 
 
 def main():

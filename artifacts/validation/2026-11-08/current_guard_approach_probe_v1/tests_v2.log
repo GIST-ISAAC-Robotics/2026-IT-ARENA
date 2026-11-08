@@ -1,0 +1,156 @@
+......FFFFF                                                              [100%]
+=================================== FAILURES ===================================
+_ test_guard_branch_requires_current_path_enabled_policy_and_current_free[True-True-True-True] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74a89275e8d0>
+current = True, recovery = True, free = True, expected = True
+
+    @pytest.mark.parametrize('current,recovery,free,expected',[
+        (True,True,True,True),(False,True,True,False),(True,False,True,False),
+        (True,True,False,False)])
+    def test_guard_branch_requires_current_path_enabled_policy_and_current_free(monkeypatch,current,recovery,free,expected):
+        cfg=FollowConfig(partial_observation_policy='bounded_local_v4',parallel_hold_trial=True,
+            pass_release_trial=True,guard_curve_trial=True,traffic_recovery_trial=recovery,
+            boundary_evidence_mode='corner_distance_candidate',occupancy_timing_mode='per_ray_candidate')
+>       c=m.PassReleaseSelector(cfg);c.mode='GUARD';c.sides['right'].update(seen=True,present=True,passed=False)
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+artifacts/validation/2026-11-08/current_guard_approach_probe_v1/test_candidate.py:49: AttributeError
+_ test_guard_branch_requires_current_path_enabled_policy_and_current_free[False-True-True-False] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74a8947ba6c0>
+current = False, recovery = True, free = True, expected = False
+
+    @pytest.mark.parametrize('current,recovery,free,expected',[
+        (True,True,True,True),(False,True,True,False),(True,False,True,False),
+        (True,True,False,False)])
+    def test_guard_branch_requires_current_path_enabled_policy_and_current_free(monkeypatch,current,recovery,free,expected):
+        cfg=FollowConfig(partial_observation_policy='bounded_local_v4',parallel_hold_trial=True,
+            pass_release_trial=True,guard_curve_trial=True,traffic_recovery_trial=recovery,
+            boundary_evidence_mode='corner_distance_candidate',occupancy_timing_mode='per_ray_candidate')
+>       c=m.PassReleaseSelector(cfg);c.mode='GUARD';c.sides['right'].update(seen=True,present=True,passed=False)
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+artifacts/validation/2026-11-08/current_guard_approach_probe_v1/test_candidate.py:49: AttributeError
+_ test_guard_branch_requires_current_path_enabled_policy_and_current_free[True-False-True-False] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74a8925be210>
+current = True, recovery = False, free = True, expected = False
+
+    @pytest.mark.parametrize('current,recovery,free,expected',[
+        (True,True,True,True),(False,True,True,False),(True,False,True,False),
+        (True,True,False,False)])
+    def test_guard_branch_requires_current_path_enabled_policy_and_current_free(monkeypatch,current,recovery,free,expected):
+        cfg=FollowConfig(partial_observation_policy='bounded_local_v4',parallel_hold_trial=True,
+            pass_release_trial=True,guard_curve_trial=True,traffic_recovery_trial=recovery,
+            boundary_evidence_mode='corner_distance_candidate',occupancy_timing_mode='per_ray_candidate')
+>       c=m.PassReleaseSelector(cfg);c.mode='GUARD';c.sides['right'].update(seen=True,present=True,passed=False)
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+artifacts/validation/2026-11-08/current_guard_approach_probe_v1/test_candidate.py:49: AttributeError
+_ test_guard_branch_requires_current_path_enabled_policy_and_current_free[True-True-False-False] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74a8925bd7c0>
+current = True, recovery = True, free = False, expected = False
+
+    @pytest.mark.parametrize('current,recovery,free,expected',[
+        (True,True,True,True),(False,True,True,False),(True,False,True,False),
+        (True,True,False,False)])
+    def test_guard_branch_requires_current_path_enabled_policy_and_current_free(monkeypatch,current,recovery,free,expected):
+        cfg=FollowConfig(partial_observation_policy='bounded_local_v4',parallel_hold_trial=True,
+            pass_release_trial=True,guard_curve_trial=True,traffic_recovery_trial=recovery,
+            boundary_evidence_mode='corner_distance_candidate',occupancy_timing_mode='per_ray_candidate')
+>       c=m.PassReleaseSelector(cfg);c.mode='GUARD';c.sides['right'].update(seen=True,present=True,passed=False)
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+artifacts/validation/2026-11-08/current_guard_approach_probe_v1/test_candidate.py:49: AttributeError
+__________ test_baseline_hold_and_positive_parallel_are_not_replaced ___________
+
+    def test_baseline_hold_and_positive_parallel_are_not_replaced():
+>       cfg=FollowConfig(parallel_hold_trial=True,pass_release_trial=True,guard_curve_trial=True)
+
+artifacts/validation/2026-11-08/current_guard_approach_probe_v1/test_candidate.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<string>:59: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = FollowConfig(signed_motion_policy='legacy_hold', solo_route_only=False, corridor_arc_agreement=False, ray_wall_continu...on_bound_mps=0.5, standstill_gap_m=0.16, hold_clearance_m=0.2, resume_clearance_m=0.28, headway_s=0.8, confirmations=2)
+
+    def __post_init__(self):
+        if type(self.piecewise_wall_trial) is not bool:
+            raise ValueError('piecewise wall trial must be boolean')
+        if (type(self.solo_corner_approach_trial) is not bool or
+                (self.solo_corner_approach_trial and not self.solo_straight_budget_trial)):
+            raise ValueError('corner approach requires explicit solo straight budget')
+        if (type(self.solo_straight_budget_trial) is not bool or
+                (self.solo_straight_budget_trial and not (
+                    self.solo_route_only and self.blend_open_speed_by_length and self.boundary_bridge
+                    and self.preview_above_base_speed and not self.ray_wall_continuity
+                    and self.occupancy_timing_mode == 'per_ray_candidate'
+                    and self.partial_observation_policy == 'bounded_local_v4'))):
+            raise ValueError('straight speed budget requires the selected solo observed route configuration')
+        if (type(self.side_departure_trial) is not bool or
+                (self.side_departure_trial and (not self.pass_release_trial or self.solo_route_only))):
+            raise ValueError('side departure requires traffic pass release trial')
+        if type(self.solo_route_only) is not bool:
+            raise ValueError('solo route mode must be boolean')
+        if (type(self.corridor_arc_agreement) is not bool or
+                (self.corridor_arc_agreement and not (self.solo_route_only and self.corridor_fallback_enabled))):
+            raise ValueError('corridor arc agreement requires solo route and corridor fallback')
+        if (type(self.ray_wall_continuity) is not bool or
+                (self.ray_wall_continuity and not (self.solo_route_only and self.blend_open_speed_by_length))):
+            raise ValueError('ray wall continuity requires the solo observed route speed profile')
+        if self.signed_motion_policy not in ('legacy_hold', 'forward_drive'):
+            raise ValueError('unknown signed motion policy')
+        if (self.rear_lane_keep_policy not in ('timed', 'observed', 'observed_measured_v1', 'observed_fresh_v2') or
+                (self.rear_lane_keep_policy != 'timed' and not self.rear_lane_keep_trial)):
+            raise ValueError('observed lane preference requires explicit rear lane keep trial')
+        if (type(self.traffic_path_recovery_trial) is not bool or
+                (self.traffic_path_recovery_trial and
+                 (not self.traffic_recovery_trial or not self.corridor_fallback_enabled))):
+            raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
+        if (type(self.rear_lane_keep_trial) is not bool or
+                (self.rear_lane_keep_trial and not self.traffic_path_recovery_trial)):
+            raise ValueError('rear lane keep trial requires explicit traffic path recovery')
+        if (type(self.short_boundary_prefix_enabled) is not bool or
+                (self.short_boundary_prefix_enabled and
+                 (not self.corridor_fallback_enabled or self.recent_observation_enabled or self.max_speed_mps > 1.))):
+            raise ValueError('short boundary prefix requires corridor fallback, <=1 m/s and no recent observation')
+        if type(self.pass_release_trial) is not bool or (self.pass_release_trial and not self.parallel_hold_trial):
+            raise ValueError('pass release trial requires explicit parallel hold trial')
+        if (type(self.released_rear_sweep_trial) is not bool or
+                (self.released_rear_sweep_trial and not self.traffic_recovery_trial)):
+            raise ValueError('released rear sweep requires traffic recovery')
+        if (type(self.current_lane_preference_trial) is not bool or
+                (self.current_lane_preference_trial and (not self.traffic_path_recovery_trial
+                 or not self.static_side_release_trial or not self.side_departure_trial
+                 or self.rear_lane_keep_trial or self.solo_route_only))):
+            raise ValueError('current lane preference requires the explicit side departure/path recovery profile')
+        if (isinstance(self.current_lane_headroom_mps, bool) or not math.isfinite(self.current_lane_headroom_mps)
+                or not 0 <= self.current_lane_headroom_mps < self.max_speed_mps
+                or (self.current_lane_preference_trial and self.current_lane_headroom_mps <= 0)):
+            raise ValueError('current lane preference requires a positive configured speed quantum')
+        if (type(self.static_side_release_trial) is not bool or
+                (self.static_side_release_trial and not self.pass_release_trial)):
+            raise ValueError('static side release requires pass release trial')
+        if (type(self.traffic_recovery_trial) is not bool or
+                (self.traffic_recovery_trial and not self.guard_curve_trial)):
+            raise ValueError('traffic recovery requires explicit guard curve trial')
+        if type(self.guard_curve_trial) is not bool or (self.guard_curve_trial and not self.pass_release_trial):
+            raise ValueError('guard curve trial requires explicit pass release trial')
+        if (type(self.parallel_hold_trial) is not bool or (self.parallel_hold_trial and
+                (self.partial_observation_policy != 'bounded_local_v4' or
+                 self.occupancy_timing_mode != 'per_ray_candidate' or
+                 self.boundary_evidence_mode != 'corner_distance_candidate'))):
+>           raise ValueError('parallel hold trial requires v4, corner-distance and per-ray candidates')
+E           ValueError: parallel hold trial requires v4, corner-distance and per-ray candidates
+
+src/arena_autonomy/arena_autonomy/local_follow.py:149: ValueError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-08/current_guard_approach_probe_v1/test_candidate.py::test_guard_branch_requires_current_path_enabled_policy_and_current_free[True-True-True-True]
+FAILED artifacts/validation/2026-11-08/current_guard_approach_probe_v1/test_candidate.py::test_guard_branch_requires_current_path_enabled_policy_and_current_free[False-True-True-False]
+FAILED artifacts/validation/2026-11-08/current_guard_approach_probe_v1/test_candidate.py::test_guard_branch_requires_current_path_enabled_policy_and_current_free[True-False-True-False]
+FAILED artifacts/validation/2026-11-08/current_guard_approach_probe_v1/test_candidate.py::test_guard_branch_requires_current_path_enabled_policy_and_current_free[True-True-False-False]
+FAILED artifacts/validation/2026-11-08/current_guard_approach_probe_v1/test_candidate.py::test_baseline_hold_and_positive_parallel_are_not_replaced
+5 failed, 6 passed in 0.55s

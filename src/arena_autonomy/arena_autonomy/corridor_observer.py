@@ -16,6 +16,37 @@ from arena_autonomy.occupancy_timing import per_ray_padding
 from arena_autonomy.scene_motion import transport_points
 
 
+def path_agrees_common_segments(candidate, reference, tolerance):
+    """이미 관측한 경로의 공통 선분만 대조한다. 센서 결측/경로 끝 외삽은 하지 않는다.
+
+    각 경로의 끝 표본이 조금 어긋나도 실제 공통 길이를 잘라내지 않는다.
+    보간한 끝점은 원래 표본 각5개의 요건에 포함하지 않는다.
+    """
+    paths = [np.asarray(p, dtype=float) for p in (candidate, reference)]
+    if any(p.ndim != 2 or p.shape[1] != 2 or len(p) < 5 or not np.all(np.isfinite(p))
+           or np.any(np.diff(p[:, 0]) <= 0) for p in paths):
+        return False
+    lo = max(.05, *(p[0, 0] for p in paths))
+    hi = min(.65, *(p[-1, 0] for p in paths))
+    if hi-lo < .25:
+        return False
+    if any(np.count_nonzero((p[:, 0] >= lo) & (p[:, 0] <= hi)) < 5 for p in paths):
+        return False
+    clipped = []
+    for p in paths:
+        x = np.r_[lo, p[(p[:, 0] > lo) & (p[:, 0] < hi), 0], hi]
+        clipped.append(np.c_[x, np.interp(x, p[:, 0], p[:, 1])])
+
+    def gap(p, q):
+        delta = np.diff(q, axis=0)
+        offset = p[:, None, :]-q[None, :-1, :]
+        fraction = np.clip(np.sum(offset*delta, axis=2)/np.sum(delta*delta, axis=1), 0., 1.)
+        distances = np.linalg.norm(offset-fraction[:, :, None]*delta, axis=2)
+        return float(np.max(np.min(distances, axis=1)))
+
+    return max(gap(*clipped), gap(*clipped[::-1])) <= tolerance
+
+
 def current_proposal(scene, speed, side, previous_steering, dt, config, *, partial_candidate=False):
     base = dict(geometry_supported=False, point_occupancy_supported=False, proposed_speed_mps=0.,
                 reason='invalid_motion_state', driving_authorized=False, runtime_connected=False,
@@ -41,7 +72,10 @@ def current_proposal(scene, speed, side, previous_steering, dt, config, *, parti
         geometry = corridor_evidence(points, side, config)
     if (config.short_boundary_prefix_enabled and not geometry['supported']
             and geometry['reason'] == 'long_outer_reference_unavailable'):
-        alternative = short_prefix_evidence(points,side,config)
+        if config.piecewise_wall_trial:
+            alternative = short_prefix_evidence(points,side,config,allow_long_preferred=True)
+        else:
+            alternative = short_prefix_evidence(points,side,config)
         if alternative.get('reason') == 'insufficient_contiguous_common_prefix':
             from arena_autonomy.continuous_prefix import refine
             alternative = refine(alternative,config)
@@ -161,6 +195,10 @@ class CorridorObserver:
                         # 공통 전방 구간으로 세지 않는다. 점유/TTL/확인 횟수는 그대로다.
                         compatible = True
                         comparison = 'common_arc'
+                    if (not compatible and self.config.piecewise_wall_trial and proposal.get('short_prefix')
+                            and path_agrees_common_segments(path, transported, self.config.boundary_agreement_m)):
+                        compatible = True
+                        comparison = 'continuous_common_x'
             except (ValueError,MotionUnavailable) as error:
                 transport_error = str(error)
         result.update(previous_source_age_s=prior_age, previous_path_agrees=bool(compatible),

@@ -460,7 +460,7 @@ class ObservationGrid:
     광선 사이 구멍·후방 마스크·unknown 방향·가림 뒤는 UNOBS로 남는다. 자유 공간을 만들어 채우지 않는다.
     """
 
-    def __init__(self, scene, cfg):
+    def __init__(self, scene, cfg, *, _same_call_returns=None):
         self.cfg = cfg
         r = cfg.grid_resolution_m
         self.x0, self.x1 = cfg.grid_x_m
@@ -476,7 +476,8 @@ class ObservationGrid:
                 hits.append(ray.hit_xy_m)
         self.returns = np.asarray(hits, dtype=float).reshape(-1, 2)
         self.ages = np.asarray([scene.t_ref_s-ray.acquired_at_s for ray in scene.rays if ray.status == 'return'], dtype=float)
-        self.compact_returns, self.return_components = compact_return_mask(scene, cfg)
+        self.compact_returns, self.return_components = self._compact(scene, cfg, _same_call_returns,
+                                                                     self.returns, self.ages)
         if len(hits):
             o = np.asarray(origins, dtype=float)
             h = self.returns
@@ -485,20 +486,72 @@ class ObservationGrid:
             free = np.maximum(0., dist-cfg.budget.range_bias_m)
             step = r/2
             counts = np.ceil(free/step).astype(int)
-            total = int(np.sum(counts))
-            if total:
-                ray_index = np.repeat(np.arange(len(o)), counts)
-                offsets = np.arange(total)-np.repeat(np.cumsum(counts)-counts, counts)
-                t = np.minimum(offsets*step, np.repeat(free, counts))
-                pts = o[ray_index]+(vec[ray_index]/np.maximum(dist[ray_index], 1e-9)[:, None])*t[:, None]
-                ix, iy, inside = self.index(pts)
-                state[ix[inside], iy[inside]] = FREE
+            if int(np.sum(counts)):
+                # 격자에 닿을 수 있는 표본 번호 구간만 만든다. 표본 간격·원점·방향·식과 원래 정수 번호는 그대로다.
+                first, kept = self._free_sample_window(o, vec, dist, free, counts, step)
+                total = int(np.sum(kept))
+                if total:
+                    ray_index = np.repeat(np.arange(len(o)), kept)
+                    offsets = np.arange(total)-np.repeat(np.cumsum(kept)-kept, kept)+np.repeat(first, kept)
+                    t = np.minimum(offsets*step, np.repeat(free, kept))
+                    pts = o[ray_index]+(vec[ray_index]/np.maximum(dist[ray_index], 1e-9)[:, None])*t[:, None]
+                    ix, iy, inside = self.index(pts)
+                    state[ix[inside], iy[inside]] = FREE
             ix, iy, inside = self.index(h)
             state[ix[inside], iy[inside]] = OCC
         ex, ey = self.centers()
         ego = (np.abs(ex) <= cfg.length_m/2+GEOMETRY_EPS_M) & (np.abs(ey) <= cfg.width_m/2+GEOMETRY_EPS_M)
         state[ego] = EGO
         self.state = state
+
+    @staticmethod
+    def _compact(scene, cfg, same_call, returns, ages):
+        """같은 호출에서 같은 scene·cfg 객체로 만든 반환 요약(ReturnGrid)의 compact 묶음만 복사해 재사용한다.
+
+        객체가 다르거나 반환·나이가 지금 계산과 정확히 같지 않으면 기존처럼 다시 계산한다. 시각 사이 캐시는 두지 않는다.
+        """
+        if same_call is not None:
+            owner_scene, owner_cfg, light = same_call
+            compact = getattr(light, 'compact_returns', None)
+            components = getattr(light, 'return_components', None)
+            if (owner_scene is scene and owner_cfg is cfg and isinstance(compact, np.ndarray)
+                    and compact.dtype == bool and compact.shape == (len(returns),) and isinstance(components, list)
+                    and np.array_equal(getattr(light, 'returns', None), returns)
+                    and np.array_equal(getattr(light, 'ages', None), ages)):
+                return compact.copy(), [dict(item) for item in components]
+        return compact_return_mask(scene, cfg)
+
+    def _free_sample_window(self, o, vec, dist, free, counts, step):
+        """광선별 자유 표본 번호 구간 [first, first+kept). 격자 안에 들 수 있는 번호를 모두 포함한다.
+
+        한 칸 넓힌 격자와 광선 slab 교차의 t 구간을 원래 번호로 바꾸고 앞 2·뒤 3 번호를 더 둔다. 빠지는 번호의
+        표본은 기존 계산에서도 격자 밖이라 버려졌다. 비유한 값, 격자 칸에 비해 큰 좌표(반올림 오차를 칸 크기로
+        덮을 수 없음) 등 보수 계산을 믿기 어려운 입력은 기존처럼 모든 번호를 만든다.
+        """
+        everything = (np.zeros(len(o), dtype=counts.dtype), counts)
+        r = self.r
+        bounds = ((self.x0-r, self.x0+(self.nx+1)*r), (self.y0-r, self.y0+(self.ny+1)*r))
+        values = (o, vec, free, np.asarray(bounds, dtype=float))
+        if not all(np.all(np.isfinite(v)) for v in values):
+            return everything
+        scale = max(1., *(float(np.max(np.abs(v))) for v in values))
+        if not (scale*2.**-40 < r and float(np.max(free))/step < 2.**52):
+            return everything
+        unit = vec/np.maximum(dist, 1e-9)[:, None]
+        lo_t, hi_t = np.zeros(len(o)), free
+        with np.errstate(divide='ignore', invalid='ignore', over='ignore'):
+            for axis, (lo, hi) in enumerate(bounds):
+                p, d = o[:, axis], unit[:, axis]
+                a, b = (lo-p)/d, (hi-p)/d
+                still = d == 0
+                within = (p >= lo) & (p <= hi)
+                lo_t = np.maximum(lo_t, np.where(still, np.where(within, -np.inf, np.inf), np.minimum(a, b)))
+                hi_t = np.minimum(hi_t, np.where(still, np.where(within, np.inf, -np.inf), np.maximum(a, b)))
+        hit = lo_t <= hi_t
+        lo_t, hi_t = np.where(hit, lo_t, 0.), np.where(hit, hi_t, 0.)
+        first = np.clip(np.floor(lo_t/step).astype(counts.dtype)-2, 0, counts)
+        last = np.clip(np.ceil(hi_t/step).astype(counts.dtype)+3, first, counts)
+        return first, np.where(hit, last-first, 0)
 
     def index(self, xy):
         xy = np.asarray(xy, dtype=float).reshape(-1, 2)

@@ -1,0 +1,42 @@
+--- a/scripts/validate_g1_traffic.py
++++ b/scripts/validate_g1_traffic.py
+@@ -44,6 +44,9 @@
+                            audit_merge_motion)
+ 
+ CONFIG = REPO/'config/tests/g1_traffic_v1.json'
++# 새 코스 g1g2 C1 주입은 이 등록 프로필(경로·ImpairmentConfig 전체 값) 하나만 허용한다.
++G1G2_LIDAR_PROFILE = REPO/'config/tests/lidar_uniform30_delay50_jitter20.json'
++G1G2_LIDAR_REQUESTED = dict(mode='uniform', amplitude_m=0.03, bias_m=0., delay_s=0.05, jitter_s=0.02, seed=23)
+ WORLD_NAME = 'it_arena_track'
+ SET_POSE_SERVICE = f'/world/{WORLD_NAME}/set_pose'
+ CONTACT_TOPIC = '/eval/g1b_actor/contact'
+@@ -529,12 +532,18 @@
+         parser.error('R0+/M3 requires per-ray occupancy and decision recording')
+     if args.occupancy_timing != 'oldest' and (args.mode not in ('g1', 'r0plus', 'm3') or not args.record_follow_decisions):
+         parser.error('--occupancy-timing candidate requires G1 with decision recording')
+-    if args.lidar_test_profile and (args.mode not in ('g1', 'm3') or not args.record_follow_decisions):
+-        parser.error('--lidar-test-profile requires G1/M3 with decision recording')
++    if args.lidar_test_profile and (args.mode not in ('g1', 'm3', 'g1g2') or not args.record_follow_decisions):
++        parser.error('--lidar-test-profile requires G1/M3/G1G2 with decision recording')
++    g1g2_lidar_stress = bool(args.lidar_test_profile) and args.mode == 'g1g2'
++    if g1g2_lidar_stress and (args.track != 'official_v2026_11_06' or not args.official_signal_course
++                              or args.team_signal_course or args.handoff_reserve != 'paced' or args.seed != 0):
++        parser.error('G1/G2 lidar stress requires recorded paced official_v2026_11_06 signal course, seed 0')
+     if args.motion_test_profile and (args.mode not in ('g1','m3') or not args.record_follow_decisions
+                                     or args.lidar_test_profile or args.actor_overlay):
+         parser.error('--motion-test-profile requires recorded G1/M3 without other stress or actor overlays')
+     lidar_profile, lidar_requested = load_test_profile(args.lidar_test_profile, REPO)
++    if g1g2_lidar_stress and (lidar_profile != G1G2_LIDAR_PROFILE or lidar_requested != G1G2_LIDAR_REQUESTED):
++        parser.error('G1/G2 lidar stress accepts only config/tests/lidar_uniform30_delay50_jitter20.json')
+     motion_profile, motion_requested = load_motion_profile(args.motion_test_profile, REPO)
+     if motion_profile and configured_feedback_topic() != '/drive_motor/encoder':
+         parser.error('registered motion stress requires current single motor-shaft feedback')
+@@ -584,7 +593,7 @@
+     selected_course = args.team_signal_course or args.official_signal_course
+     if handoff_arguments and ((not selected_course and (args.case not in ('stop_restart','slow_lead') or args.actor_overlay))
+             or args.seed != 0 or
+-            args.race_operation_test or lidar_profile or motion_profile or args.partial_observation_policy != 'strict'
++            args.race_operation_test or (lidar_profile and not g1g2_lidar_stress) or motion_profile or args.partial_observation_policy != 'strict'
+             or args.zero_speed_mode != 'legacy' or args.physics_step
+             or args.corridor_fallback or args.short_boundary_prefix or args.parallel_hold_trial
+             or args.pass_release_trial or args.traffic_recovery_trial or args.guard_curve_trial

@@ -1,0 +1,40 @@
+"""재개의 정지 상태에서 초기 조향 문턱과 후속 경로 검사를 분리하는 열린고리 진단. 차체로 발행하지 않는다."""
+import copy,json,collections,hashlib,math
+from pathlib import Path
+from arena_autonomy.follow_trace import MotionConfig,FollowConfig,replay_call,freeze,comparable_decision,equal_output
+from arena_autonomy.bypass_handoff import BypassHandoffFollow,HandoffExecutionConfig
+A=Path(__file__).resolve().parent;trace=A.parent/'ops_traffic_resume_v1/run1/follow_decisions.jsonl'
+start,end=14.,15.5
+arms={};rows=[];stable=collections.Counter()
+for line in trace.open():
+ e=json.loads(line);d=e['data']
+ if e['kind']=='header':
+    h=d;m=MotionConfig(**d['motion_config'])
+    base=BypassHandoffFollow(FollowConfig(**d['follow_config']),HandoffExecutionConfig.from_mapping(d['execution_config']),allow_simulation_trial=True)
+ elif e['kind']=='reset':base.reset()
+ elif e['kind']=='call':
+    i=d['input'];t=i['reference_s']
+    if t>end:break
+    if t>=start and not arms:
+        arms={k:copy.deepcopy(base) for k in ('same_angle_diagnostic','centred_steering_hypothesis')}
+        object.__setattr__(arms['same_angle_diagnostic'].execution,'maximum_initial_steering_rad',.45)
+        previous=i['previous_steering_rad'];first={}
+    b=freeze(replay_call(base,i,m));assert equal_output(comparable_decision(b),comparable_decision(d['output']))
+    if t<start:continue
+    assert i['speed_mps']==0
+    for k,f in arms.items():
+        if k in first:continue  # once movement is requested further stationary scans cease to be counterfactual evidence
+        data=dict(i)
+        if k=='centred_steering_hypothesis':
+            # At rest alone, ramp the previous *command* towards straight by the existing 3 rad/s.
+            # Here no servo feedback/sim movement is generated, so not a physical release proof.
+            data['previous_steering_rad']=previous
+            previous=math.copysign(max(0.,abs(previous)-3*i['dt_s']),previous)
+        v,s,o=replay_call(f,data,m);z=o.get('bypass') or {};ad=o.get('entry_admission') or {};pl=z.get('corridor_plan') or {}
+        r=dict(t=t,arm=k,previous=data['previous_steering_rad'],speed=v,command_steer=s,mode=o.get('handoff_state'),reason=o.get('reason'),guide=z.get('reason'),admission=ad.get('reason'),admitted=ad.get('admitted'),boundary_count=z.get('boundary_confirmations'),corridor=pl.get('reason'))
+        if v>0:first[k]=r
+        stable[(k,r['guide'],r['corridor'],r['admitted'])]+=1;rows.append(r)
+assert rows
+result=dict(scope='입력 재생/진단 전용, 현재 스캔에 대해 첫 양수 요청까지만. 실제 서보·차체 응답·우회 성공이 아님',input_sha256=hashlib.sha256(trace.read_bytes()).hexdigest(),begin=start,end=end,first_positive=first,counts=[dict(arm=k[0],guide=k[1],corridor=k[2],admitted=k[3],count=n) for k,n in stable.items()],rows=rows)
+(A/'sequential_result.json').write_text(json.dumps(result,ensure_ascii=False,indent=1)+'\n',encoding='utf8')
+print(json.dumps({k:v for k,v in result.items() if k!='rows'},ensure_ascii=True))
