@@ -88,6 +88,17 @@ Bus Servo Adapter (A)는 전압을 낮춰 주는 DC-DC 강압기가 아니다. �
 
 제조사 근거: [Bus Servo Adapter (A) 사양](https://docs.waveshare.com/Bus_Servo_Adapter_A), [전원·통신 배선 예시](https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example), [FAQ — 출력 전압/최대 전류/레귤레이터 없음](https://docs.waveshare.com/Bus_Servo_Adapter_A/FAQ).
 
+### 지급 PDB의 서보 전원 한계
+
+[공식 지급 PDB 사양](https://github.com/MOSW626/istech-it-arena/blob/main/docs/hardware/power-modules.md)은 Preliminary 판이며 다음을 명시한다.
+
+- J01: 19 V CH1 최대 2.3 A, 5 V CH2/CH3 합계 1.5 A, 5 V CH4 0.5 A, 3.3 V CH5/CH6 합계 0.6 A.
+- M01: 입력 24~36 V, CH1~4는 입력 전압 직결, CH5/CH6은 12 V 각 2.0 A.
+- 우리 배터리 6S 22.2 V는 공칭 전압에서 M01 입력 하한 24 V보다 낮다. 만충 25.2 V일 때만 사양 범위에 들어가며, 방전 중 전압이 내려가면 정격 범위를 벗어난다. CH5/CH6이 낮은 입력에서도 12 V를 유지할 수 있다는 추정은 제조사 확인이 아니다.
+- 기존 팀 전원 검토 문서에는 ST3215-HS 2개의 stall 전류 합계 4 A가 기재돼 있다. 현재 실제 사용은 1개이므로 이 수치를 단일 서보 전류로 그대로 쓰지 않는다. 정확한 단일 서보 피크/정지 전류는 납품품 자료와 제한된 실측으로 확인한다.
+
+따라서 M01의 12 V/2 A 한 채널이 단일 서보의 순간 전류를 감당한다고 아직 판정하지 않는다. CH5/CH6을 임의 병렬 연결하지 않는다. PDB 입력 하한과 출력 전류 조건까지 만족하는지 확인하거나, 6S 배터리 전체 전압 범위를 입력으로 받을 수 있고 서보 요구 피크에 여유가 있는 별도 DC-DC 강압기를 선정해야 한다. **전원 경로가 확정되기 전에는 서보에 전원을 넣지 않는다.**
+
 ## 3. 1단계 — 전원 레일과 독립 STOP 확인
 
 ### 3.1 배터리/PDB/전원 분배
