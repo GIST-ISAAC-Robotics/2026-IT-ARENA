@@ -18,7 +18,7 @@ flowchart TD
   MCU <-->|"UART"| ADP
   JET <-->|"USB"| LIDAR["RPLIDAR C1"]
   JET <-->|"CAM0 CSI · 15↔22 FPC"| CAM["B0390 / IMX219"]
-  JET -->|"J12 pin 2 · 5 V"| ENC["PGE-213 엔코더"]
+  J01 -->|"CH4 · 5 V / 0.5 A · XT30"| ENC["PGE-213 엔코더"]
   ENC -->|"A/B"| CF["CF-0108 · 출력 방식 확인 후 적용"]
   CF -->|"필요한 경우에만 3.3 V 변환"| MCU
 ~~~
@@ -30,7 +30,7 @@ flowchart TD
 | Jetson Orin Nano Super | J01 CH1 19 V | XT30 수 피그테일 → DC 5.5×2.5 mm, 중앙 + |
 | ESP32-S3 VND018 | Jetson USB-A | Jetson USB-A → VND018 CH343P USB-UART USB-C. 같은 케이블로 5 V 전원과 USB-UART 통신 |
 | IMU Adafruit 4438 | ESP32 3V3 | VND018 3V3 → IMU VIN, GND 공통 |
-| PGE-213 엔코더 | Jetson 40핀 J12 | pin 2 = 5 V, pin 6 = GND |
+| PGE-213 엔코더 | **J01 CH4 5 V / 0.5 A** | J01 CH4 XT30 출력 → 엔코더 pin 1 VCC, pin 2 GND. Jetson J12는 사용하지 않음 |
 | MB4266-24180 모터 | 배터리 → M01 CH1 | M01 CH1 출력 → MD20A VB+/VB− |
 | ST3215-HS 서보 1개 | M01 CH5 또는 CH6 | 12 V / 2 A 한 채널 → Adapter A 전원 입력 |
 | RPLIDAR C1 | Jetson USB | C1 USB 어댑터 → Jetson USB-A |
@@ -39,7 +39,7 @@ flowchart TD
 ### 전원 관련 금지 사항
 - ESP32는 Jetson USB로 전원 공급한다. VND018의 다른 USB-C 포트에 외부 5 V를 동시에 공급하지 않는다.
 - IMU는 ESP32 3V3를 사용한다. IMU의 3Vo는 전원 입력이 아니다.
-- 엔코더는 Jetson J12 5 V를 사용한다. VND018의 5Vin은 사용하지 않는다.
+- 엔코더 전원은 **J01 CH4 5 V / 0.5 A**에서 공급한다. J01 출력은 XT30 암 커넥터이므로 보유 XT30 수 케이블을 사용한다. 기존 MCU 전용으로 표기된 CH4는 ESP32가 Jetson USB로 전원을 받으므로 비어 있다. Jetson J12와 VND018 5Vin은 사용하지 않는다.
 - 서보는 M01의 12 V / 2 A 단일 채널만 사용한다. CH5/CH6은 각 독립 출력이며, 제조사가 병렬 운전/전류 공유를 명시적으로 허용하기 전에는 출력끼리 연결하지 않는다.
 - 별도 DC-DC, 추가 전원 분배기, 대용량 콘덴서, U1/U2 버퍼 회로는 현재 승인 구성에 포함하지 않는다.
 
@@ -76,7 +76,7 @@ VND018 실물 사진 방향은 안테나 위, USB-C 두 개 아래이며 이때 
 | 커넥터 핀 | 1=VCC, 2=GND, 3=HA, 4=HB |
 | 모터 단자 | 5=모터 −, 6=모터 + |
 
-엔코더 전원은 사용자가 정한 Jetson 40핀 J12 pin 2의 5 V, pin 6의 GND를 사용한다. 5 V는 PGE-213의 4.5–24 V 입력 범위 안이다. VND018의 5Vin은 사용하지 않는다.
+엔코더 전원은 **J01 CH4의 5 V / 0.5 A 출력**에서 공급한다. J01 출력 커넥터는 XT30 암이므로 보유한 XT30 수 리드를 사용한다. PGE-213 소비전류 14–20 mA는 CH4 0.5 A 한도 이내다. Jetson J12와 VND018 5Vin은 사용하지 않는다.
 
 ### 4.2 제조사 출력 회로도에서 읽히는 사항
 
@@ -116,6 +116,7 @@ VND018 실물 사진 방향은 안테나 위, USB-C 두 개 아래이며 이때 
 
 ### 4.6 핀 배정 상태
 
+- 엔코더 전원: J01 CH4 5 V / 0.5 A → PGE-213 XHP-4 pin 1 VCC, pin 2 GND. 엔코더 신호 GND는 ESP32/CF-0108과 공통 기준을 가져야 한다.
 - 엔코더 커넥터의 논리 핀은 제조사 자료 기준 1=VCC, 2=GND, 3=HA, 4=HB로 확인됐다.
 - ESP32 쪽 GPIO4/5는 프로젝트의 엔코더 A/B 후보 할당으로만 남겨 둔다.
 - **VND018 P1/P2 물리 헤더 번호와 CF-0108 모듈의 실제 패드 번호는 아직 최종 매칭하지 않았다.**
@@ -184,7 +185,7 @@ MA/MB는 모터 출력이며 GND가 아니다. MD20A의 PWM LOW는 브레이크 
 - 사용자가 제공한 PGE-213 상세자료에는 4.5–24 V 공급, 7 PPR, XHP-4 pin 1=VCC, 2=GND, 3=HA, 4=HB 및 출력 회로도가 있다. 회로도상 HA/HB에 VCC 방향 4.7 kΩ 저항이 표시되어 있어 오픈 컬렉터 가설만으로 3.3 V 직접 연결을 승인하지 않는다.
 - 사용자가 희망한 임시 IC 방향은 TXS0108E 계열이며 TXB0108 계열은 선택하지 않는다. TI TXS0108E는 open-drain/push-pull 자동 양방향 변환을 지원하지만 CF-0108 실물에 해당 IC가 실장됐다는 증거는 아니다. PGE 출력 회로의 10 nF 부하가 TXS 성능에 미치는 영향도 실측해야 한다.
 - ESP32-S3 GPIO 절대 최대 입력 전압은 3.6 V다. 5 V push-pull 엔코더 출력을 직접 연결하지 않는다.
-- Jetson Orin Nano Developer Kit USB-A 포트 스택의 VBUS 한도는 3 A로 안내되어 있다. 40핀 헤더의 정확한 전류 한도는 Carrier Board Specification을 적용한다.
+- J01 CH4는 5 V / 0.5 A 출력이며 현재 ESP32는 Jetson USB에서 전원을 받으므로 CH4를 엔코더 전용으로 재배정한다. J01의 출력 커넥터는 XT30 암이다. Jetson Orin Nano Developer Kit USB-A 포트 스택의 VBUS 한도는 3 A로 안내되어 있다.
 - NVIDIA는 15핀 카메라를 22핀 CSI 커넥터에 연결할 때 15→22 변환 FPC를 안내한다.
 
 참고 자료:
