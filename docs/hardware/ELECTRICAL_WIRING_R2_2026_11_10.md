@@ -29,7 +29,7 @@
 2. ST3215-HS stall 전류 2.4 A는 M01 CH5 2.0 A보다 높다. 이 회로는 단일 서보의 무부하·저부하 조향 시험용이다. 기계적 끝단 구속·stall 시험은 금지한다.
 3. J01 CH2/CH3는 5 V 합계 1.5 A다. CH2를 엔코더 전용으로 쓰고 CH3는 비운다.
 4. MD20A PWM LOW는 coast가 아니라 brake 동작이다. STOP 시 PWM 입력을 LOW로 만들도록 설계한다.
-5. CF-0108은 표준 CJMCU-0108/TXS0108E 보드로 식별되는 경우에만 아래 핀표대로 사용한다. TI TXS0108E의 칩 윗면 표기는 YF08E다. 다른 칩 표기(TXB0108 등)면 이 배선에 전원을 넣지 말고 부품을 재식별한다.
+5. CF-0108은 내부 IC가 TXS0108E로 식별되는 경우에만 아래 핀표대로 사용한다. 판매명 CF-0108 또는 보드 실크 CJMCU-0108만으로 IC를 확정하지 않는다. TXB0108 등 다른 IC면 이 배선에 전원을 넣지 말고 부품을 재식별한다.
 
 ## 2. 전원 분배·퓨즈·커넥터
 
@@ -81,7 +81,7 @@ FM 10 A는 R1의 초기 보호값이다. 모터 정격전류 표기 10.28 A와 �
 - VND018은 CH343P USB-UART 포트 한 곳으로만 공급한다. USB 직결 포트와 USB-UART 포트에 외부 5 V를 동시에 연결하지 않는다.
 - IMU VIN은 VND018 3V3에서 공급한다. Adafruit 보드의 3Vo는 사용하지 않는다.
 - PGE-213은 J01 CH2 5 V로 공급한다. Jetson J12 pin 2/4는 이번 R2 엔코더 전원에 사용하지 않는다.
-- CF-0108 VA는 MCU 3.3 V, VB는 엔코더 5 V다. GND는 공통이다.
+- CF-0108 VA는 MCU 3.3 V, VB는 엔코더 5 V다. GND는 공통이다. OE는 GPIO14로 제어하며, 전원 안정 전까지 10 kΩ pulldown이 LOW를 유지한다.
 - MD20A VB−는 M01 CH1−로 직접 귀환한다. 모터 전류를 ESP32 GND나 USB 케이블로 흘리지 않는다.
 - Servo Adapter H1-1은 M01 CH5−로 직접 귀환한다. H2 GND는 논리 기준으로 VND018 GND와 연결한다.
 - 논리 GND는 VND018–CF-0108–PGE GND–IMU GND–U2–MD20A signal GND–Adapter H2 GND 사이에서 공통 기준을 만든다. 전력 귀환은 각 PDB 채널 음극으로 별도 배선한다.
@@ -95,6 +95,7 @@ FM 10 A는 R1의 초기 보호값이다. 모터 정격전류 표기 10.28 A와 �
 
 - TXS0108E A 포트: 1.4–3.6 V
 - TXS0108E B 포트: 1.65–5.5 V
+- VCCA는 VCCB 이하로 유지한다. OE는 VCCA 기준 입력이며 LOW에서 모든 I/O가 Hi-Z가 된다. TI 권고대로 OE를 GND에 10 kΩ으로 pulldown하고, VCCA/VCCB가 안정된 뒤 MCU GPIO14로 HIGH를 인가한다.
 - 방향 제어: 자동 감지
 - 지원: open-drain 및 push-pull
 - 최대 데이터 속도: push-pull 110 Mbps, open-drain 1.2 Mbps
@@ -114,7 +115,7 @@ FM 10 A는 R1의 초기 보호값이다. 모터 정격전류 표기 10.28 A와 �
 | VA | VND018 P1-1 또는 P1-2, 3V3 | 저전압 A측 전원 |
 | VB | J01 CH2 5 V, FE 퓨즈 뒤 | 고전압 B측 전원 |
 | GND | 공통 논리 GND | VA/VB 기준 |
-| OE | VA에 10 kΩ 풀업 | 활성 High, 전원 상승 전 기본 비활성 유지 |
+| OE | VND018 GPIO14/P1-20, OE–GND 10 kΩ pulldown | 부팅/전원 상승 중 LOW(Hi-Z), 양 전원 안정 후 GPIO14 HIGH로 활성 |
 | B1 | PGE-213 pin 3, A | 5 V 엔코더 A 입력 |
 | A1 | 100 Ω 직렬 → VND018 GPIO4/P1-4 | 3.3 V A 출력 |
 | B2 | PGE-213 pin 4, B | 5 V 엔코더 B 입력 |
@@ -143,7 +144,8 @@ FM 10 A는 R1의 초기 보호값이다. 모터 정격전류 표기 10.28 A와 �
     CF-0108 A2 ─ 100Ω ─────────→ VND018 GPIO5 / P1-5
 
     VND018 P1-1 (3V3) ─────────→ CF-0108 VA
-    VA ─ 10kΩ ─────────────────→ CF-0108 OE
+    VND018 GPIO14/P1-20 ────────→ CF-0108 OE
+    CF-0108 OE ─ 10kΩ ─────────→ GND (default disabled)
 
 PGE-213 판매 사양은 5 V, 14–20 mA, 2채널 7 PPR이다. 실제 출력 파형은 실물에서 확인한다. TXS0108E는 open-drain과 push-pull 모두 지원하므로 출력단 유형이 확인되기 전에도 모듈 선정은 가능하지만, 전압·위상·펄스 폭 검사는 반드시 수행한다.
 
@@ -168,6 +170,7 @@ PGE-213 판매 사양은 5 V, 14–20 mA, 2채널 7 PPR이다. 실제 출력 파
 | 17 | GPIO11 | IMU MOSI/SDI |
 | 18 | GPIO12 | IMU SCLK |
 | 19 | GPIO13 | IMU MISO/SDO |
+| 20 | GPIO14 | CF-0108 OE enable |
 | 22 | GND | 논리 GND |
 
 | P2 번호 | 실크/GPIO | R2 연결 |
@@ -387,7 +390,7 @@ ESP-IDF v6.1을 기준으로 한다. 기존 portable core는 프로토콜·수�
 - STOP 접점이 열리면 PWM 경로가 물리적으로 열리고 GPIO8이 상태를 보고한다.
 - 통신 단절·Jetson 종료·MCU reset·센서 고장 후 자동 ARM 금지.
 - STOP 해제는 CLEAR와 ARM을 대신하지 않는다.
-- GPIO1 ADC, GPIO2 FAULT, GPIO14 CLEAR, GPIO21 ENABLE, GPIO47 watchdog은 R2에서 외부 회로가 없으므로 물리 연결하지 않고 미구현으로 표시한다.
+- GPIO1 ADC, GPIO2 FAULT, GPIO21 ENABLE, GPIO47 watchdog은 R2에서 외부 회로가 없으므로 물리 연결하지 않고 미구현으로 표시한다. GPIO14는 CF-0108 OE 제어로 재배정했으며 CLEAR 입력으로 사용하지 않는다.
 
 ## 12. 설계 확정과 실물 검증을 구분
 
