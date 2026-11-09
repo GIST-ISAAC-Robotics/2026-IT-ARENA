@@ -119,36 +119,15 @@ NVIDIA Carrier Board Specification §2.1은 USB-A 두 스택 각각의 VBUS load
 - LSM6DSOX: VND018 3.3 V 레일 사용(기존 SPI 배선안).
 - PGE-213: 5 V, 판매 사양 14–20 mA. Jetson J12 pin 2(5 V), pin 6(GND)에서 공급한다. 40핀 헤더의 5 V 공급 한도는 총 0.5 A이며 엔코더 부하에 충분하다. VND018의 `5Vin` 헤더/IN-OUT 점퍼는 사용하지 않는다. A/B는 CF-0108 적합성 확인 후 3.3 V로 변환해 ESP32 GPIO4/5에 입력.
 
-### 11/10 실물 사진 확인: VND018 5Vin과 엔코더 전원 경로
+### VND018 5Vin과 엔코더 전원 경로 — R2로 대체
 
-**사용자 실물 사진 기준으로 VND018의 5Vin 헤더를 USB 5 V 출력으로 사용하지 않는다.** 앞면 아래 양쪽 헤더는 `5Vin`으로 표기되어 있고, 뒷면에는 `USB-OTG` 2패드가 보이며 `IN-OUT` 표기는 확인되지 않는다. ESP32 모듈의 `ESP32-S3-WROOM-1 V1.3` 표기는 모듈 표기이지 캐리어 PCB 리비전의 증거가 아니다. V1.4 회로의 IN-OUT/D26 점퍼를 실물에 추정 적용하거나 납땜하지 않는다.
+사용자 실물 사진의 VND018 헤더는 5Vin으로 표기되어 있다. 이 헤더를 출력으로 사용하거나 IN-OUT/USB-OTG 패드를 추정 납땜하지 않는다.
 
-**엔코더 5 V 전원은 Jetson 40핀 확장 헤더 J12를 사용한다.** NVIDIA Orin Nano Developer Kit Carrier Board Specification SP-11324-001 v1.2:
-- J12 pin 2 및 pin 4: Main 5.0 V supply.
-- J12 pin 6 및 pin 9: GND.
-- Table 5-3: J12 40-pin header의 VDD_5V_SYS 공급 한도 **0.5 A**.
-- PGE-213 판매 사양 소비전류 14–20 mA이므로 이 공급 한도에 충분한 여유가 있다.
+기존 초안의 Jetson J12 pin 2/6 엔코더 전원 방식은 폐기했다. R2에서는 J01 CH2 5 V를 FE 0.25 A 퓨즈를 거쳐 PGE-213 VCC 및 CF-0108 VB에 공급한다. 세부 배선·공통 GND·TXS0108E 방향은 [전장 배선 R2 §2–3](ELECTRICAL_WIRING_R2_2026_11_10.md)을 따른다.
 
-연결은 Jetson J12 pin 2 → PGE-213 VCC, J12 pin 6 → PGE-213 GND로 한다. Jetson은 J01 19 V로 전원을 공급받으므로 J12 5 V는 Jetson 캐리어 보드의 시스템 5 V 레일이다. 40핀 헤더의 GPIO 신호 핀은 3.3 V 논리이며, pin 2/4는 GPIO가 아니라 전원 핀이다.
+### 지급 PDB의 서보 전원 한계 — R2 적용
 
-PGE-213 A/B는 5 V pull-up 신호이므로 ESP32 GPIO4/5에 직접 넣지 않는다. 기존 CF-0108의 실제 입력·출력 정격과 핀 배열을 확인한 뒤 5→3.3 V 레벨 변환을 거친다. Jetson과 VND018은 USB 케이블로 연결되어 있으므로 GND 기준이 공유되지만, 엔코더와 레벨 변환 회로의 GND를 명시적으로 공통 연결한다.
-
-**이 구성에서는 VND018의 5Vin을 엔코더 전원으로 사용하지 않으며, IN-OUT/USB-OTG 패드를 납땜하지 않는다.** J01 CH4 5 V는 엔코더 전원에 사용하지 않고 예비로 남긴다.
-
-NVIDIA 근거: [Jetson Orin Nano Developer Kit Carrier Board Specification — §3.3, Table 3-3, §5, Table 5-3](https://developer.nvidia.com/downloads/assets/embedded/secure/jetson/orin_nano/docs/jetson_orin_nano_devkit_carrier_board_specification_sp.pdf). PGE-213의 소비전류와 A/B 출력은 구매·케이블 대조 문서 및 판매 회로를 기준으로 하며 실제 납품품의 파형은 별도 확인한다.
-
-### 지급 PDB의 서보 전원 한계
-
-[공식 지급 PDB 사양](https://github.com/MOSW626/istech-it-arena/blob/main/docs/hardware/power-modules.md)은 Preliminary 판이며 다음을 명시한다.
-
-- J01: 19 V CH1 최대 2.3 A, 5 V CH2/CH3 합계 1.5 A, 5 V CH4 0.5 A, 3.3 V CH5/CH6 합계 0.6 A.
-- M01: 입력 24~36 V, CH1~4는 입력 전압 직결, CH5/CH6은 12 V 각 2.0 A.
-- 우리 배터리 6S 22.2 V는 공칭 전압에서 M01 입력 하한 24 V보다 낮다. 만충 25.2 V일 때만 사양 범위에 들어가며, 방전 중 전압이 내려가면 정격 범위를 벗어난다. CH5/CH6이 낮은 입력에서도 12 V를 유지할 수 있다는 추정은 제조사 확인이 아니다.
-- 구매·케이블 대조 문서의 단일 ST3215-HS 사양은 **6–12.6 V, 무부하 240 mA, 구속(stall) 2.4 A**다([Waveshare 제품 사양](https://www.waveshare.com/st3215-hs-servo-motor.htm)). 과거 전원 모듈 문서의 2개 서보 합계 4 A는 현재 구성의 단일 서보 정격이 아니므로 적용하지 않는다.
-- M01 CH5/CH6은 12 V 각 2.0 A이므로 **단일 서보의 2.4 A 구속 전류보다 낮다.** 구속 시험을 하지 않더라도 기동/급격한 부하에서 여유가 부족할 수 있어 단일 서보 전원으로 적합하다고 승인할 수 없다.
-- M01 전체 입력은 24–36 V이고 6S 배터리는 만충 25.2 V, 공칭 22.2 V다. 따라서 배터리 전압이 내려가면 보드의 명시 입력 범위 밖에서 운용된다. 12 V 강압 채널이 입력 하한 미만에서도 정상 regulation을 유지하는지는 공식 문서에서 보증하지 않는다. 단순히 'buck이므로 될 것'이라고 가정하지 않는다.
-
-**현재 실물 시험 권장안:** 추가 구매 없이 M01 CH5 또는 CH6 중 한 채널의 12 V를 먼저 시험한다. 이는 정격 여유가 충분하다고 승인한 것이 아니라, 단일 서보의 실제 조향 부하가 2 A 안에서 동작하는지 제한된 시험으로 확인하는 임시 경로다. 서보를 기계 끝단에 밀어 넣거나 stall시키지 말고, 낮은 토크/속도에서 전압·전류·온도를 기록한다. 2 A 초과·전압 강하·리셋·과열이 관찰되면 즉시 중단하고 별도 6S 입력 대응 DC-DC를 검토한다. M01 입력 24–36 V 정격과 6S 배터리의 방전 전압 불일치는 여전히 미해결 위험이다. **M01 CH5/CH6 병렬 연결 및 6S 배터리의 서보 어댑터 직결은 금지한다.**
+M01 CH5 12 V/2 A 한 채널을 Bus Servo Adapter A H1에 공급한다. ST3215-HS stall 2.4 A보다 공급 채널 정격이 낮으므로 저부하 조향 시험만 허용하고, stall/기계적 끝단 구속은 금지한다. R2의 FS 2 A 퓨즈는 전류 제한기가 아니다. M01 입력 24–36 V와 6S 배터리 21–25.2 V의 차이는 그대로 남으므로 첫 PDB 통전은 24.0–25.2 V에서 수행한다. 상세 운용 제한은 [전장 배선 R2 §1–2, §6](ELECTRICAL_WIRING_R2_2026_11_10.md)을 따른다.
 
 ## 3. 1단계 — 전원 레일과 독립 STOP 확인
 
