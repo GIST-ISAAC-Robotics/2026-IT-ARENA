@@ -133,6 +133,21 @@ M01 CH1(=Vin) ─XT30 수 피그테일→ MD20A VB+/VB− → 모터
 
 HW STOP 부품·출처와 방식(GPIO8 상태 입력만 할지, 구동 전원을 직접 차단할지)은 [현행 전달 목록](../HARDWARE_AND_RULE_QUESTIONS.md)의 미결 항목이다. 전원 차단을 택하면 M01 입력 또는 MD20A VB+ 선에 모터 전류 정격 이상의 스위치와 인라인 커넥터 짝(XT30 암+수)이 추가된다. GPIO8 상태를 읽는 신호 자체는 접점 2선으로 연결할 수 있지만, 그것만으로 독립 정지 기능이 구현되지는 않는다. GPIO21/47(구동 허가·watchdog), 2/14(고장·해제) 외부 회로도 아직 부품이 없어 케이블을 산정하지 않았다.
 
+### 3.7 회로 정격 교차검토 (2026-11-10)
+
+이 절은 배선 수량과 별도로 각 전원 출력이 실제 부하에 맞는지 확인한다. 정격 적합성은 통전·부하 시험 전까지 미승인이다.
+
+- **Jetson 전원:** J01 CH1은 19 V 최대 2.3 A다. 공식 PDB 문서는 Jetson 부팅 요구 3 A와 차이가 있음을 경고한다. Jetson 단독 부팅 → 저전력 모드 → C1/ESP32 추가 → 전체 노드 부하 순으로 시험하고 19 V 최저값·전류·전원 throttling을 기록한다.
+- **Jetson USB:** NVIDIA Orin Nano Developer Kit의 USB-A 두 스택은 각 VBUS 부하 스위치 한도가 3 A다. VND018과 C1은 서로 다른 스택에 연결하고 실제 소비전류·재연결을 확인한다.
+- **엔코더 전원:** PGE-213 5 V/14–20 mA는 Jetson J12 pin 2 또는 4에서 공급, GND는 pin 6 또는 9를 사용한다. NVIDIA Table 5-3의 40핀 헤더 공급 한도 0.5 A를 보수적 상한으로 적용한다(같은 문서 Table 3-3에는 1 A 표기도 있어 낮은 값을 채택). J01 CH4를 엔코더 전원으로 사용하지 않으며 VND018의 '5Vin' 헤더/미확인 IN-OUT 점퍼를 사용하지 않는다.
+- **B0390 CSI 전원:** Arducam B0390 SKU 사양은 peak current 300 mA, NVIDIA Table 5-3의 카메라 커넥터 VDD_3V3_SYS 한도는 커넥터당 260 mA다. 실제 피크가 정격을 초과할 수 있어 실측 또는 제조사 확인 전 전원 적합성 미승인. CSI VCC 핀에 외부 3.3 V를 임의 주입하지 않는다.
+- **J01/M01 입력:** J01 입력은 21–36 V로 6S 배터리 21–25.2 V 범위와 경계에서 겹친다. M01 입력은 24–36 V이므로 6S 공칭 22.2 V/방전 구간이 정격 미달이다. M01 CH1~4는 pass-through라 배터리 전압을 그대로 통과할 것으로 보인다는 공식 문서 설명은 추정이며 제조사 보증이 아니다.
+- **모터:** M01 CH1~4 → MD20A는 배터리 직결이다. MD20A는 6–30 V, 20 A 연속/60 A 피크이며 역극성 보호가 없다. 모터 24 V/10.28 A 정격과 기동·고착 전류, 배선/커넥터/인라인 보호를 별도로 확인한다.
+- **서보:** 단일 ST3215-HS는 6–12.6 V, 무부하 240 mA, locked-rotor 2.4 A다. M01 12 V 단일 채널은 2.0 A이므로 구속 정격을 충족하지 못한다. 저부하 시험만 조건부로 수행하고, 끝단/구속 시험 금지. 2 A 초과·전압강하·리셋·과열 시 즉시 중단. 최종 전원에는 6S 전체 전압 범위 대응 12 V DC-DC와 충분한 피크 전류 여유가 필요할 수 있다.
+- **하드웨어 STOP:** 공식 대회 MANUAL §5는 하드웨어·소프트웨어 비상정지를 각각 요구한다. GPIO8은 상태 입력일 뿐 독립 정지 회로가 아니다. 독립 차단/구동 억제 회로, 전류 정격, 단선 시 fail-safe를 설계·시험하기 전 실차 운용 불가.
+
+근거: [공식 PDB 사양](https://github.com/MOSW626/istech-it-arena/blob/main/docs/hardware/power-modules.md), [대회 MANUAL §5](https://github.com/MOSW626/istech-it-arena/blob/main/MANUAL.md), [NVIDIA Carrier Board Specification](https://developer.nvidia.com/downloads/assets/embedded/secure/jetson/orin_nano/docs/jetson_orin_nano_devkit_carrier_board_specification_sp.pdf), [Arducam B0390](https://www.arducam.com/arducam-imx219-visible-light-fixed-focus-camera-module-raspberry-pi.html), [Waveshare ST3215-HS](https://www.waveshare.com/product/robotics/st3215-hs-servo-motor.htm), [Cytron MD20A](https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver).
+
 ## 4. 선정품과 부족할 때의 구매 후보(보유품 대조 전 구매 수량 미정)
 
 | 필요 | 규격 | 예 | 주의 |
