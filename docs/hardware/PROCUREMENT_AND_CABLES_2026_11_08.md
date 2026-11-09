@@ -109,7 +109,7 @@ Jetson USB 포트는 USB 3.2 Type-A 4개이며 USB-C도 Host 모드를 지원한
 ### 엔코더 신호 변환 선정 — R2 확정
 
 - **구매 대상:** 사용자가 선정한 [CF-0108(쿠팡 상품 13919546)](https://www.coupang.com/vp/products/13919546). 같은 모델명 판매 등록은 8채널 로직 레벨 변환 모듈로 확인했다.
-- **R2 설계 모델:** 표준 CJMCU-0108/TI TXS0108E. A측 1.4–3.6 V, B측 1.65–5.5 V, 자동 양방향, open-drain/push-pull 지원. A측=3.3 V, B측=5 V로 설정하고 B1/B2에 PGE A/B, A1/A2에서 ESP32 GPIO4/5로 출력한다. OE는 VA에 10 kΩ 풀업한다.
+- **R2 설계 모델:** 표준 CJMCU-0108/TI TXS0108E. A측 1.4–3.6 V, B측 1.65–5.5 V, 자동 양방향, open-drain/push-pull 지원. A측=3.3 V, B측=5 V로 설정하고 B1/B2에 PGE A/B, A1/A2에서 ESP32 GPIO4/5로 출력한다. OE는 GPIO14로 제어하고 10 kΩ pulldown으로 기본 LOW를 유지한다.
 - **실물 수령 판정:** CF-0108 내부 IC가 TXS0108E인지 top-mark와 판매자료를 대조한다. TI DGS 패키지의 공식 marking은 XS0108이며 다른 패키지/clone은 다를 수 있다. TXB0108 등 다른 IC면 R2 결선을 적용하지 않는다. 상품명만으로 IC 실장을 보증하지 않는다.
 - **전원:** PGE-213 VCC와 CF-0108 VB는 J01 CH2 5 V를 공유한다. CH2 +에서 FE 0.25 A를 거쳐 분기하고, CH2−는 PGE GND/CF GND와 공통으로 한다. Jetson J12 pin 2/4는 사용하지 않는다.
 - **기존 TI 부품 후보와 관계:** 10/2의 SN74LVC2G17 2채널 회로는 엔코더용 U1으로 사용하지 않는다. R2에서는 CF-0108이 엔코더 변환을 담당하고, SN74LVC2G17DBVR 1개(U2)는 서보 Adapter RX 보호용으로만 유지한다.
@@ -135,7 +135,7 @@ GPIO15 PWM ─S_RUN─S_STOP-A(NC)─→ MD20A PWM; GPIO8 ← S_STOP-B(NC)
 
 **다음 수량은 공식 보드가 모두 암이라는 조건의 연결점 계산이며 신규 구매 수량이 아니다.** 기본 XT30 수 4개는 PDB 입력 2개와 Jetson·MD20A 출력 각 1개다. 이 중 입력 2개는 지급 Y선으로 충족한다. 서보 전원을 독립된 PDB 출력에서 취하면 1개 추가(5개)다. 현재 MCU는 Jetson USB, 엔코더는 J01 CH2 5 V에서 공급하므로 MCU용 PDB 출력은 추가하지 않는다. 엔코더용 J01 CH2 출력은 이미 사용한다. 분기선이나 완제품에 이미 달린 단자는 중복 구매하지 않는다. 배터리→두 보드 분배는 §1.1의 보유품 조합으로 단자 구성이 맞으며, 잔여 변환선 2개는 MD20A/서보 전원 배선에 우선 검토한다. PDB 측은 모두 XT30 **암**이므로 케이블 측은 **수**다([공식 §3](https://github.com/MOSW626/istech-it-arena/blob/main/docs/hardware/power-modules.md)).
 
-HW STOP은 2NC 잠금식 버튼으로 구성한다. NC-A는 GPIO15 PWM 경로에 직렬 삽입해 눌림/단선 시 MD20A PWM pulldown이 LOW를 만들고, NC-B는 GPIO8 상태 입력으로 연결한다. 별도 S_RUN은 기본 OPEN 수동 허가 스위치다. GPIO21/47/2/14는 R2에서 미사용·미배선이다. 상세 결선은 [전장 배선 R2 §7](ELECTRICAL_WIRING_R2_2026_11_10.md#7-md20a모터하드웨어-stop)을 따른다.
+HW STOP은 2NC 잠금식 버튼으로 구성한다. NC-A는 GPIO15 PWM 경로에 직렬 삽입해 눌림/단선 시 MD20A PWM pulldown이 LOW를 만들고, NC-B는 GPIO8 상태 입력으로 연결한다. 별도 S_RUN은 기본 OPEN 수동 허가 스위치다. GPIO21/47/1/2는 R2에서 미사용·미배선이다. GPIO14는 CF-0108 OE 제어로 사용한다. 상세 결선은 [전장 배선 R2 §7](ELECTRICAL_WIRING_R2_2026_11_10.md#7-md20a모터하드웨어-stop)을 따른다.
 
 ### 3.7 회로 정격 교차검토 (2026-11-10)
 
