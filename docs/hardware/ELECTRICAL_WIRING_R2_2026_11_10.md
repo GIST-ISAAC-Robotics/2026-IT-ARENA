@@ -313,7 +313,7 @@ U2는 SN74LVC2G17DBVR(SOT-23-6) 한 개다. 엔코더용 CF-0108과 다른 부�
 
 | 부품 | 수량 | 값/규격 | 용도 |
 |---|---:|---|---|
-| CF-0108 | 1 | TXS0108E/CJMCU-0108, YF08E 표기 확인 | 엔코더 A/B 5→3.3 V |
+| CF-0108 | 1 | CJMCU-0108 계열; IC part number를 top-mark/판매자료로 TXS0108E 확인 | 엔코더 A/B 5→3.3 V |
 | SN74LVC2G17DBVR | 1 | SOT-23-6 | 서보 RX U2 |
 | SOT-23-6 변환기판 | 1 | DBVR 패키지와 핀번호 대응 | U2 실장 |
 | 100 nF 세라믹 | 2 | U2, PGE 전원 | 디커플링 |
@@ -372,6 +372,7 @@ FM 10 A는 초기 설계값이다. 모터 정격 전류와 지속 운전 조건�
 | Encoder | PCNT quadrature | A=GPIO4, B=GPIO5 |
 | Motor | LEDC PWM + GPIO DIR | PWM15, DIR6 |
 | STOP | GPIO input + external NC contact | GPIO8 |
+| CF translator enable | GPIO output | GPIO14 / P1-20, OE LOW by default |
 
 ESP-IDF v6.1을 기준으로 한다. 기존 portable core는 프로토콜·수신 상태기계 후보이며, firmware_bench는 출력 비활성 UART 시험 앱이다. 실제 PCNT/SPI/LEDC/Servo driver와 통합 제어 task를 이관해야 한다.
 
