@@ -97,7 +97,7 @@ Bus Servo Adapter (A)는 전압을 낮춰 주는 DC-DC 강압기가 아니다. �
 
 - J01 CH1 19 V → Jetson DC 입력.
 - J01 CH2 5 V → FE 0.25 A → PGE-213 VCC 및 CF-0108 VB.
-- Jetson USB-A → VND018 CH343P USB-UART USB-C: ESP32 전원 + UART0 통신.
+- Jetson USB-A → VND018 CH343P USB-UART USB-C: ESP32 전원 + UART1(GPIO43/44) 통신. UART0는 ROM/부트 용도로 남긴다.
 - VND018 3V3 → LSM6DSOX VIN 및 CF-0108 VA.
 - PGE-213 A/B → CF-0108 B1/B2 → A1/A2 → GPIO4/5.
 - M01 CH1 pass-through → FM → MD20A → MB4266 모터.
@@ -428,8 +428,8 @@ timestamp_s,servo_id,command_position,feedback_position,left_wheel_deg,right_whe
 ## 15. ESP32 프로그램 이관·빌드·테스트 순서
 
 R2에서 실제 사용할 주변장치 배정:
-- UART0 / CH343P: GPIO43 TX, GPIO44 RX — Jetson host link
-- UART1 / Bus Servo Adapter A: GPIO17 TX, GPIO18 RX(U2 수신 버퍼)
+- UART1 / CH343P: GPIO43 TX, GPIO44 RX — Jetson host link
+- UART2 / Bus Servo Adapter A: GPIO17 TX, GPIO18 RX(U2 수신 버퍼)
 - SPI2 / LSM6DSOX: SCLK12, MOSI11, MISO13, CS10, INT1 9
 - PCNT / PGE-213: A=GPIO4, B=GPIO5
 - LEDC + GPIO / MD20A: PWM15, DIR6
@@ -437,7 +437,7 @@ R2에서 실제 사용할 주변장치 배정:
 
 기존 portable core는 프로토콜·수신 상태기계 후보이며 firmware_bench는 출력 비활성 UART 시험 앱이다. 실제 PCNT/SPI/LEDC/Servo driver와 통합 제어 task를 이관해야 한다. ESP-IDF v6.1 기준으로 프로젝트를 구성하고 기존 Python/ROS 참조 구현과 동일 입력·기대 결과 벡터를 대조한다.
 
-**UART0 운용:** CH343P는 UART0에 고정 연결되어 있으므로 Jetson 바이너리 링크로 사용한다. 앱/부트로더 로그 콘솔은 Native USB Serial/JTAG(GPIO19/20)로 옮긴다. ROM 부팅 메시지는 기본적으로 UART0에도 나올 수 있으므로 호스트 수신기는 임의의 시작 잡음을 폐기하고 IA+길이+CRC가 유효한 첫 프레임에서 동기화해야 한다. eFuse를 성급히 굽지 않는다. 포트 개방·reset·DTR/RTS·USB 단절·재연결을 시험하고, 새 ARM 전까지 PWM=0임을 확인한다.
+**CH343P/UART 운용:** CH343P는 물리적으로 GPIO43/44에 연결되지만 ESP-IDF GPIO Matrix로 UART1 TX/RX를 해당 핀에 배정한다. UART0는 ROM/부트 용도로 남기고, 서보는 UART2(GPIO17/18)를 사용한다. 앱/부트로더 로그 콘솔은 Native USB Serial/JTAG(GPIO19/20)로 옮긴다. UART1 드라이버 설치 후 RX 입력·사건 큐를 비우고 프로토콜을 시작한다. eFuse를 굽거나 GPIO46 strapping을 바꾸지 않는다. 포트 개방·reset·DTR/RTS·USB 단절·재연결을 시험하고, 새 ARM 전까지 PWM=0임을 확인한다. [ESP-IDF UART GPIO Matrix](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/uart.html).
 
 **시험 순서:** F0 무전원 연속성/극성 → F1 PDB 무부하 전압 → F2 MCU 부팅·USB → F3 UART 프레임 → F4 IMU → F5 엔코더 → F6 서보/실제 바퀴각 → F7 MD20A/모터 → F8 2NC STOP·단절 고장 주입 → F9 센서 동시 실행·저속 실차. 실제 결과 로그와 계측값을 남기기 전에는 게이트를 통과 처리하지 않는다.
 
