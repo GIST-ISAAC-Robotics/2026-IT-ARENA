@@ -1,6 +1,6 @@
 # 최종 구매안과 ESP32·인터페이스 검토
 
-> **엔코더 신호 변환 후속 — 2026-11-10 R2:** 사용자가 [CF-0108(쿠팡 상품 13919546)](https://www.coupang.com/vp/products/13919546)을 선정했다. 현재 설계는 표준 CJMCU-0108/TI TXS0108E 모듈(VA=3.3 V, VB=5 V, B1/B2→A1/A2)을 엔코더 A/B에 사용하고, SN74LVC2G17DBVR 1개는 서보 RX 보호 U2로 유지한다. 이 문서는 10/2 당시의 엔코더 U1 후보·핀 예산 검토 이력을 보존한다. 현행 배선·BOM·조립은 [전장 배선 R2](ELECTRICAL_WIRING_R2_2026_11_10.md)와 [현행 선정 기록](PROCUREMENT_AND_CABLES_2026_11_08.md#엔코더-신호-변환-선정)을 따른다. 실물 CF 칩 top-mark YF08E는 통전 전 대조한다.
+> **엔코더 신호 변환 후속 — 2026-11-10 R2:** 사용자가 [CF-0108(쿠팡 상품 13919546)](https://www.coupang.com/vp/products/13919546)을 선정했다. 현재 설계는 TXS0108E가 확인된 CJMCU-0108 계열 모듈(VA=3.3 V, VB=5 V, B1/B2→A1/A2, OE=GPIO14 제어)을 엔코더 A/B에 사용하고, SN74LVC2G17DBVR 1개는 서보 RX 보호 U2로 유지한다. 이 문서는 10/2 당시의 엔코더 U1 후보·핀 예산 검토 이력을 보존한다. 현행 배선·BOM·조립은 [전장 배선 R2](ELECTRICAL_WIRING_R2_2026_11_10.md)와 [현행 선정 기록](PROCUREMENT_AND_CABLES_2026_11_08.md#엔코더-신호-변환-선정)을 따른다. 실물 CF-0108 IC가 TXS0108E인지 top-mark와 판매자료로 확인하고, OE는 GPIO14 및 10 kΩ pulldown으로 전원 안정 후 활성화한다.
 
 > **현행 구매 구성 — 2026-11-08:** 사용자가 확정한 변경은 카메라 B0183→**Arducam B0390**([메카솔루션 605921](https://www.mechasolution.com/goods/goods_view.php?goodsNo=605921))과 IMU 조달처 변경(동일 Adafruit 4438, [로봇사이언스몰 RS-022841](https://robotscience.kr/goods/view?no=22841)) 두 가지다. 다른 품목·구매처·옵션은 아래 10/2 확정안을 유지한다. 결제·수령 확정은 아니며 아래 표·금액·잔액은 10/2 기록으로 보존한다. 케이블·부속 대조는 [11/8 문서](PROCUREMENT_AND_CABLES_2026_11_08.md)에 있다.
 
