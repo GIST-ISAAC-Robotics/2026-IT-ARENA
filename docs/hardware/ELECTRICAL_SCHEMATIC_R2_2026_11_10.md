@@ -410,7 +410,7 @@ GPIO1(배터리 ADC), GPIO2(FAULT), GPIO21(ENABLE), GPIO47(WATCHDOG)은 R2에서
 | CF-0108 | 1 | 8채널 모듈. 내부 IC가 TXS0108E인지 확인 | 엔코더 A/B 5→3.3 V |
 | U2 SN74LVC2G17DBVR | 1 | SOT-23-6 | 서보 RX 보호 버퍼 |
 | SOT-23-6 변환 기판 | 1 | DBVR 핀번호 확인 | U2 실장 |
-| 100 nF | 2 | 세라믹 | PGE/CF/U2 디커플링(모듈 내장 여부 확인 후 수량 조정) |
+| 100 nF | 3 기본 + CF 미실장 시 2 추가 | 세라믹 | PGE 1, U2 1, PGE 보드/CF 모듈 전원 디커플링; CF 모듈에 VA/VB 캡이 없으면 2개 추가 |
 | 1 µF | 1 | ≥16 V | PGE VCC 디커플링 |
 | 100 Ω | 3 | 1/8 W 이상 | CF A1/A2, U2 출력 직렬 |
 | 1 kΩ | 4 | 1/8 W 이상 | PWM, DIR, Servo TX, Servo RX 직렬 |
@@ -444,7 +444,7 @@ GPIO1(배터리 ADC), GPIO2(FAULT), GPIO21(ENABLE), GPIO47(WATCHDOG)은 R2에서
 
 ## 13. 참고 자료
 
-- 팀의 기존 Electrical R1 assembly guide — U1/U2·퓨즈·STOP·PDB 전원 분기 근거.
+- 팀의 기존 Electrical R1 assembly_guide.pdf — U1/U2·퓨즈·STOP·PDB 전원 분기 근거(팀 제공 참고자료).
 - [공식 J01/M01 PDB 사양](https://github.com/MOSW626/istech-it-arena/blob/main/docs/hardware/power-modules.md)
 - [VCC-GND YD-ESP32-S3 제조사 핀맵](https://github.com/vcc-gnd/YD-ESP32-S3/blob/main/README.md)
 - [TI TXS0108E 데이터시트 Rev.L](https://www.ti.com/lit/ds/symlink/txs0108e.pdf)
