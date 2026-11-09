@@ -1,0 +1,599 @@
+........................................................................ [  6%]
+........................................................................ [ 13%]
+....................................F............F...................... [ 19%]
+........................................................................ [ 26%]
+..............................F......................................... [ 32%]
+........................................................................ [ 39%]
+........................................................................ [ 45%]
+.....................................................................FF. [ 52%]
+........................................................................ [ 58%]
+........................................................................ [ 65%]
+.F.......................................F.............................. [ 71%]
+..F...........................F.................F.F.FF.FF.FFFFFFFFFFFFFF [ 78%]
+...FFFFFFFF............FF......F..FFFF.F..FF.....F.FFFF.FF...F..FFF..F.. [ 84%]
+.........F.F..F............FFF.......................................... [ 91%]
+........................................................................ [ 97%]
+................F.........                                               [100%]
+=================================== FAILURES ===================================
+______ test_successor_preserves_prior_source_and_registers_new_dependency ______
+tests/test_continuous_prefix.py:81: in test_successor_preserves_prior_source_and_registers_new_dependency
+    assert m3_revision_digest(file,newer_than=name)==version['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '62b5cb5b3c8b...7bc9140d3de87' == '4e9bbab868df...ace89989ae135'
+E     - 4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135
+E     + 62b5cb5b3c8bfbe16d7b6bb99449b329588499f0be431635e437bc9140d3de87
+_ test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes _
+tests/test_corner_follow.py:168: in test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
+    assert hashlib.sha256((root/path).read_bytes()).hexdigest()==row['after']
+E   AssertionError: assert 'efb815a76529...b4f19c579728a' == '79f0ec5d012c...c7aa8de74de30'
+E     - 79f0ec5d012c546195fb625c51a21041f7acbe14663c678d922c7aa8de74de30
+E     + efb815a765299d64325d92e5bd55095b536bc9c2529257c614fb4f19c579728a
+_____ test_official_post_rejects_only_the_left_side_scene_on_the_new_world _____
+tests/test_g1_side_occlusion.py:24: in test_official_post_rejects_only_the_left_side_scene_on_the_new_world
+    with pytest.raises(ValueError, match='not wholly off-road'):
+E   Failed: DID NOT RAISE <class 'ValueError'>
+______ test_eight_cases_preregistered_and_sensor_configuration_unchanged _______
+tests/test_multi_vehicle_g0.py:26: in test_eight_cases_preregistered_and_sensor_configuration_unchanged
+    assert {p for p,row in comparison['files'].items() if not row['matches']}=={
+E   AssertionError: assert {'src/arena_a...vehicle.yaml'} == {'src/arena_a...on.launch.py'}
+E     Extra items in the left set:
+E     'src/arena_description/config/vehicle.yaml'
+E     'src/arena_autonomy/arena_autonomy/local_path.py'
+E     Use -v to get more diff
+__ test_g0_default_baseline_retains_original_meaning_after_g1b_launch_change ___
+tests/test_multi_vehicle_g0.py:37: in test_g0_default_baseline_retains_original_meaning_after_g1b_launch_change
+    assert {p for p, row in result['files'].items() if not row['matches']} == {
+E   AssertionError: assert {'src/arena_a...vehicle.yaml'} == {'src/arena_a...on.launch.py'}
+E     Extra items in the left set:
+E     'src/arena_description/config/vehicle.yaml'
+E     'src/arena_autonomy/arena_autonomy/local_path.py'
+E     Use -v to get more diff
+____ test_current_g1b_r0_contract_allows_only_the_registered_launch_change _____
+tests/test_r0_safety_contract.py:108: in test_current_g1b_r0_contract_allows_only_the_registered_launch_change
+    assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest() == value
+E   AssertionError: assert 'e39389905bd1...0cf10d8ab191e' == '3fd02294ef92...c0adaf1bbe512'
+E     - 3fd02294ef92bb8dfcc0bb5b0bf83b4b326b52bf85263d88d31c0adaf1bbe512
+E     + e39389905bd16032ab020b4d60e02eedc3853ab49d9b9f1bf390cf10d8ab191e
+_________________ test_registered_r7_chain_and_current_source __________________
+tests/test_scheduled_apply.py:182: in test_registered_r7_chain_and_current_source
+    assert change['after']==hash_before_observation_extension(ROOT,p)
+tests/source_contract_helpers.py:32: in hash_before_observation_extension
+    assert current==change['after'],path
+E   AssertionError: src/arena_bringup/launch/simulation.launch.py
+E   assert 'be6c0af4925e...a58743c2a2a0d' == '5dd54b1e5e92...45b4419c05201'
+E     - 5dd54b1e5e924b101d92519da1c4fed351ffde8efd4eb5de24045b4419c05201
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+____________ test_scheduled_contract_chains_without_runtime_change _____________
+tests/test_scheduled_command.py:291: in test_scheduled_contract_chains_without_runtime_change
+    assert r6_sha(path) == value, path
+E   AssertionError: src/arena_autonomy/arena_autonomy/local_path.py
+E   assert '7ae30cae4784...b24a31ead0268' == '96c270c0a58f...d7dc42595c24e'
+E     - 96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e
+E     + 7ae30cae4784468dc332a0dd6a447c3d4301be5ce9bcdf358c9b24a31ead0268
+_____ test_moving_pass_revisions_link_registered_sources_and_before_bytes ______
+tests/test_source_provenance_r0_plus_b3.py:226: in test_moving_pass_revisions_link_registered_sources_and_before_bytes
+    assert m3_revision_digest(p,newer_than=name)==row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[15] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[17] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[57] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[58] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[60] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[61] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[63] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '62b5cb5b3c8b...7bc9140d3de87' == '4e9bbab868df...ace89989ae135'
+E     - 4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135
+E     + 62b5cb5b3c8bfbe16d7b6bb99449b329588499f0be431635e437bc9140d3de87
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[64] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[65] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[66] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '62b5cb5b3c8b...7bc9140d3de87' == '4e9bbab868df...ace89989ae135'
+E     - 4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135
+E     + 62b5cb5b3c8bfbe16d7b6bb99449b329588499f0be431635e437bc9140d3de87
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[67] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[68] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '62b5cb5b3c8b...7bc9140d3de87' == '4e9bbab868df...ace89989ae135'
+E     - 4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135
+E     + 62b5cb5b3c8bfbe16d7b6bb99449b329588499f0be431635e437bc9140d3de87
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[69] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[70] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[71] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[72] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[73] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[74] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[75] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[76] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[80] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[81] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[82] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[83] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[84] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[85] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[86] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+__ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[87] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[100] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[101] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[108] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[111] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[112] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[113] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[114] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[116] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '3c0e96b1f31e...2c6687fa6ed43' == '0bd3a6d66ef5...8bb6a488f56be'
+E     - 0bd3a6d66ef54d0d320de67f19f9244cdf3767b0da8ae3bdbba8bb6a488f56be
+E     + 3c0e96b1f31e20d7fadccecfe6dea84de47a612fc7fce6cfc772c6687fa6ed43
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[119] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[120] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[126] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '62b5cb5b3c8b...7bc9140d3de87' == '4e9bbab868df...ace89989ae135'
+E     - 4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135
+E     + 62b5cb5b3c8bfbe16d7b6bb99449b329588499f0be431635e437bc9140d3de87
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[128] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[129] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[130] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[131] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '62b5cb5b3c8b...7bc9140d3de87' == '4e9bbab868df...ace89989ae135'
+E     - 4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135
+E     + 62b5cb5b3c8bfbe16d7b6bb99449b329588499f0be431635e437bc9140d3de87
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[133] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[134] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[138] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '62b5cb5b3c8b...7bc9140d3de87' == '4e9bbab868df...ace89989ae135'
+E     - 4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135
+E     + 62b5cb5b3c8bfbe16d7b6bb99449b329588499f0be431635e437bc9140d3de87
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[141] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '62b5cb5b3c8b...7bc9140d3de87' == '4e9bbab868df...ace89989ae135'
+E     - 4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135
+E     + 62b5cb5b3c8bfbe16d7b6bb99449b329588499f0be431635e437bc9140d3de87
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[142] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[143] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[146] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert '62b5cb5b3c8b...7bc9140d3de87' == '4e9bbab868df...ace89989ae135'
+E     - 4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135
+E     + 62b5cb5b3c8bfbe16d7b6bb99449b329588499f0be431635e437bc9140d3de87
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[158] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[160] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[163] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[176] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+tests/test_source_provenance_r0_plus_b3.py:264: in m3_revision_digest
+    assert digest == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[177] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+E   AssertionError: assert 'be6c0af4925e...a58743c2a2a0d' == '9767bcf49562...46c71306a294e'
+E     - 9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[178] __
+tests/test_source_provenance_r0_plus_b3.py:449: in test_registered_oct26_and_nov01_successors_have_preserved_source_chain
+    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+E   AssertionError: assert '62b5cb5b3c8b...7bc9140d3de87' == '4e9bbab868df...ace89989ae135'
+E     - 4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135
+E     + 62b5cb5b3c8bfbe16d7b6bb99449b329588499f0be431635e437bc9140d3de87
+____________________________ test_equations[legacy] ____________________________
+tests/test_zero_speed_modes.py:112: in test_equations
+    result = subprocess.run([str(equation_executable), case], check=True, capture_output=True, text=True)
+/usr/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['/tmp/pytest-of-jinhyeong/pytest-0/zero_speed_cpp0/probe', 'legacy']' died with <Signals.SIGABRT: 6>.
+=========================== short test summary info ============================
+FAILED tests/test_continuous_prefix.py::test_successor_preserves_prior_source_and_registers_new_dependency
+FAILED tests/test_corner_follow.py::test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
+FAILED tests/test_g1_side_occlusion.py::test_official_post_rejects_only_the_left_side_scene_on_the_new_world
+FAILED tests/test_multi_vehicle_g0.py::test_eight_cases_preregistered_and_sensor_configuration_unchanged
+FAILED tests/test_multi_vehicle_g0.py::test_g0_default_baseline_retains_original_meaning_after_g1b_launch_change
+FAILED tests/test_r0_safety_contract.py::test_current_g1b_r0_contract_allows_only_the_registered_launch_change
+FAILED tests/test_scheduled_apply.py::test_registered_r7_chain_and_current_source
+FAILED tests/test_scheduled_command.py::test_scheduled_contract_chains_without_runtime_change
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_moving_pass_revisions_link_registered_sources_and_before_bytes
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[15]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[17]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[57]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[58]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[60]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[61]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[63]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[64]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[65]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[66]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[67]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[68]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[69]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[70]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[71]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[72]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[73]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[74]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[75]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[76]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[80]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[81]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[82]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[83]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[84]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[85]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[86]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[87]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[100]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[101]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[108]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[111]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[112]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[113]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[114]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[116]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[119]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[120]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[126]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[128]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[129]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[130]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[131]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[133]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[134]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[138]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[141]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[142]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[143]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[146]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[158]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[160]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[163]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[176]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[177]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[178]
+FAILED tests/test_zero_speed_modes.py::test_equations[legacy] - subprocess.Ca...
+66 failed, 1040 passed in 227.53s (0:03:47)

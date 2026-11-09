@@ -39,12 +39,28 @@ def entry_path_conflict(row, scene, config):
                 overlap_tolerance_m=config.measurement_padding_m, free_space_verified=False)
 
 class ForecastGuide(SignedHoldGuide):
+    def _wall_covers_guide(self,fit,wall):
+        if super()._wall_covers_guide(fit,wall):return True
+        # 실제 관측으로 이미 시작한 복귀에서만 현재 전방 벽 기준을 쓴다.
+        # 경로 시작을 뒤로 외삽하지 않으며 점유/전체 이동영역 검사는 그대로다.
+        if (self.rear_wall_witness_enabled and self.config.narrow_occluder_bridge
+                and self.phase=='rejoin' and self.path is not None and self.wall_confirmations>=2
+                and wall.get('reason')=='current_connected_straight_wall_fit'
+                and wall.get('actual_return_count',0)>=12
+                and fit[2]<=self.config.length_m/2 and fit[3]>=.65):
+            wall['guide_extent']='current_front_body_and_forward_rejoin_only'
+            return True
+        return False
+
     def reset(self):
         super().reset()
         self.rear_face_motion={}
+        self.nearby_face_motion={}
         if self.rear_wall_witness_enabled:
             from arena_autonomy.rear_face_motion import RearFaceMotion
             self.rear_face_motion={side:RearFaceMotion(self.corridor_policy) for side in ('left','right')}
+            from arena_autonomy.nearby_face_motion import NearbyFragments
+            self.nearby_face_motion={side:NearbyFragments(self.corridor_policy) for side in ('left','right')}
 
     def evaluate(self,scene,history,speed,previous,dt):
         original_entry,original_registered=self.entry,self.registered_entry
@@ -135,6 +151,9 @@ class ForecastGuide(SignedHoldGuide):
             padding,rear=self.rear_face_motion[side].apply(scene,config,side,wall,self.raw_scan,
                 self.witness_sectors,self.motion_history,padding,growth_s,active=self.path is not None)
             detail['rear_face_motion']=rear
+            padding,nearby=self.nearby_face_motion[side].apply(scene,config,side,wall,
+                self.motion_history,padding,growth_s,active=self.path is not None)
+            detail['nearby_face_motion']=nearby
         return padding,detail
 
 

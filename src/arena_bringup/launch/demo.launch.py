@@ -96,7 +96,7 @@ def generate_launch_description():
         DeclareLaunchArgument("drive_mode", default_value="configured"),
         DeclareLaunchArgument("speed_bump", default_value="true"),
         DeclareLaunchArgument("runtime_artifacts", default_value=""),
-        DeclareLaunchArgument('evaluation_course_markers', default_value='visible', choices=['visible','blank_30','blank_all']),
+        DeclareLaunchArgument('evaluation_course_markers', default_value='visible', choices=['visible','blank_30','blank_20_30','blank_all']),
         DeclareLaunchArgument("batch_static_visuals", default_value="false"),
         OpaqueFunction(function=_include_simulation),
     ])

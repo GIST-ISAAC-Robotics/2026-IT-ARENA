@@ -22,7 +22,7 @@ def generate_launch_description():
         DeclareLaunchArgument('g1_traffic_path_recovery_trial', default_value='false', choices=['true', 'false']),
         DeclareLaunchArgument('partial_observation_policy', default_value='strict',
                               choices=['strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4']),
-        DeclareLaunchArgument('evaluation_course_markers', default_value='visible', choices=['visible','blank_30','blank_all']),
+        DeclareLaunchArgument('evaluation_course_markers', default_value='visible', choices=['visible','blank_30','blank_all','blank_20_30']),
         *[DeclareLaunchArgument(key, default_value=value) for key, value in defaults.items()],
         IncludeLaunchDescription(PythonLaunchDescriptionSource(str(demo)), launch_arguments={
             'g1_parallel_hold_trial': LaunchConfiguration('g1_parallel_hold_trial'),

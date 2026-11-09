@@ -203,6 +203,15 @@ M3_SUCCESSORS += ('config/tests/observed_corner_continuity_r48_sha256.json',)
 M3_SUCCESSORS += ('config/tests/p22_entry_wiring_r49_sha256.json',)
 M3_SUCCESSORS += ('config/tests/p22_route_connected_r50_sha256.json',)
 M3_SUCCESSORS += ('config/tests/p22_exit_alignment_r51_sha256.json',)
+# 11/9 신호 양지주 실행 사본 선택(기본 none)·갈림길 마커 누락 후보(기본 OFF).
+M3_SUCCESSORS += ('config/tests/signal_posts_markers_r52_sha256.json',)
+M3_SUCCESSORS += ('config/tests/signal_posts_marker_launch_r53_sha256.json',)
+M3_SUCCESSORS += ('config/tests/junction_priority_r54_sha256.json',)
+M3_SUCCESSORS += ('config/tests/junction_divergence_r55_sha256.json',)
+M3_SUCCESSORS += ('config/tests/nearby_face_motion_r56_sha256.json',)
+M3_SUCCESSORS += ('config/tests/nearby_long_window_r57_sha256.json',)
+M3_SUCCESSORS += ('config/tests/tracked_wall_occluder_r58_sha256.json',)
+M3_SUCCESSORS += ('config/tests/forward_rejoin_posts_r59_sha256.json',)
 
 
 def test_moving_pass_revisions_link_registered_sources_and_before_bytes():

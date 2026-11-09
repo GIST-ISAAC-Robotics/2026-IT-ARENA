@@ -23,6 +23,27 @@ PRESETS = {
 }
 
 
+# 프리셋 뒤에 덧붙이는 시설/평가 선택. 기본값이면 인자를 추가하지 않아 r25 대조가 그대로다.
+FACILITY_OPTIONS = {
+    # 11/9 최신 정보: 신호등 양지주(제작측 STL 단면·610 mm 간격 임시값). none은 11/3 기둥 없는 파생본.
+    "signal_posts": ("--signal-posts", "none", ("none", "stl_61cm_provisional")),
+    # 평가 주입: 갈림길 ID20/30 무늬만 가려 앞차 가림·검출 실패를 재현한다. 제어 입력 아님.
+    "course_marker_visibility": ("--course-marker-visibility", "visible", ("visible", "blank_20_30")),
+}
+
+
+# 11/9 기본 OFF 제어 후보. 지정할 때만 검증기 플래그를 붙인다.
+CANDIDATE_FLAGS = {
+    "narrow_occluder_bridge": "--g1-narrow-occluder-bridge",  # 신호 지주 같은 좁은 가림체가 벽 연결을 끊지 않게
+    "junction_continuity": "--g1-junction-continuity",        # 갈림길 마커 누락·오래된 기억에서 본선 유지
+}
+
+
+def facility_args(opts):
+    return [item for key, (flag, default, _) in FACILITY_OPTIONS.items()
+            if getattr(opts, key) != default for item in (flag, getattr(opts, key))] +         [flag for key, flag in CANDIDATE_FLAGS.items() if getattr(opts, key, False)]
+
+
 def preset_args(name, output):
     """run_current_solo.py --print-args로 최종 검증기 인자를 받는다."""
     command = [sys.executable, "-B", str(BASE), str(output), "--print-args", *PRESETS[name]]
@@ -71,6 +92,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path, help="새 결과 디렉터리(기존 경로 거절)")
     parser.add_argument("--preset", choices=tuple(PRESETS), required=True, help="이름 있는 실행 조합")
+    for key, (flag, default, choices) in FACILITY_OPTIONS.items():
+        parser.add_argument(flag, dest=key, choices=choices, default=default)
+    for key, flag in CANDIDATE_FLAGS.items():
+        parser.add_argument(flag.replace("--g1-", "--"), dest=key, action="store_true")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--print-args", action="store_true", help="실행 없이 최종 인자 출력")
     mode.add_argument("--check-r25", action="store_true",
@@ -80,7 +105,7 @@ def main():
     output = opts.output.resolve()
     if output.exists():
         parser.error(f"이미 있는 결과 경로입니다: {output}")
-    args = preset_args(opts.preset, output)
+    args = preset_args(opts.preset, output) + facility_args(opts)
     if opts.check_r25:
         diff = compare_with_r25(args)
         print(json.dumps({"preset": opts.preset, "reference": str(R25_REGISTERED.relative_to(ROOT)).replace("\\", "/"),

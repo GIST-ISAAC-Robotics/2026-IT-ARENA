@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "scope": "11/9 signal posts (runtime facility, default none) and junction marker loss candidates (default OFF)",
+  "parent_contract": "config/tests/p22_exit_alignment_r51_sha256.json",
+  "parent_contract_sha256": "8e0387c36c9271225b11b68019cd496fd3e2a238cf235247b5da8748dca5c18d",
+  "before_snapshot": "artifacts/validation/2026-11-09/signal_posts_markers_v1/before.zip",
+  "before_snapshot_sha256": "9d618301896512b03351ae3b58eb0f7a16fc6a3f5964bc52f5f3827bd147ea19",
+  "approved_changes": {
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "9767bcf49562c5069cd623cf144c2320c88f42e34eb164899aa46c71306a294e",
+      "after": "be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d",
+      "reason": "Default-none v11.06 runtime-copy signal posts (STL sections, 610 mm spacing) and blank_20_30 evaluation marker mode"
+    },
+    "src/arena_bringup/launch/demo.launch.py": {
+      "before": "0bd3a6d66ef54d0d320de67f19f9244cdf3767b0da8ae3bdbba8bb6a488f56be",
+      "after": "3c0e96b1f31e20d7fadccecfe6dea84de47a612fc7fce6cfc772c6687fa6ed43",
+      "reason": "Accept the blank_20_30 evaluation marker mode"
+    },
+    "src/arena_bringup/launch/g1_follow.launch.py": {
+      "before": "6ec7a3d3cd54382f3cbbd1a1f0f9e558d6d3085c7ed90fe65a1ab82cf966b7e1",
+      "after": "ce975f787502571ccab840880d8ca9ebfa666c82c0c1cdb398f809c4281e9b0b",
+      "reason": "Default-off narrow occluder bridge and junction continuity parameters"
+    },
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "efb815a765299d64325d92e5bd55095b536bc9c2529257c614fb4f19c579728a",
+      "after": "9cde66e1c0d993782082629f92712c6f46c02b98431ad3d40e397793be1fddb8",
+      "reason": "Default-off narrow occluder bridge passthrough and junction continuity (opposite wall / recently expired path agreement)"
+    },
+    "src/arena_autonomy/arena_autonomy/local_path.py": {
+      "before": "7ae30cae4784468dc332a0dd6a447c3d4301be5ce9bcdf358c9b24a31ead0268",
+      "after": "3b56708b05ec7012c57e247d358b94a8813bb2228cce4b3effa9f102edaee20d",
+      "reason": "Default-off narrow occluder bridge in wall chain extraction"
+    },
+    "src/arena_autonomy/arena_autonomy/local_pursuit.py": {
+      "before": "5f02c252556b153fb0091a6d347e016a86236ebdc2d6f055574425033f507918",
+      "after": "358e23214fee632af8ea77ee1091e8d30ca4cfbabf24f7e3b62bd08a1b2d8bd5",
+      "reason": "Declare the two default-off candidate parameters"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/validate_basic_autonomy.py": {
+      "before": "4e9bbab868df5a22de0c8338c27f24c4676292a03b3838202d2ace89989ae135",
+      "after": "a46b6083fc71386a280336e84147f7add3c453498b70a9c49a616768dc46f8cb",
+      "reason": "Signal post obstacles/clearance evidence, blank_20_30 route evidence and candidate flags"
+    },
+    "scripts/run_new_course_solo.py": {
+      "before": "975b1b46301aeffb4b4fbe89782224b59d890ec81f807288418b539ad206a753",
+      "after": "d7ddfc4a14d4e20efddda8f470a71b13cc7d89447c9d05bf2d9bf394109b5920",
+      "reason": "Optional signal post, marker blank and candidate flags appended to the r25 preset"
+    }
+  },
+  "new_dependencies": {}
+}

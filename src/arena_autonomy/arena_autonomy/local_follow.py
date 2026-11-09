@@ -65,6 +65,11 @@ class FollowConfig:
     traffic_boundary_refresh_trial: bool = False  # 교통 선택형. 가려진 벽 조각 경로 가설 및 이미 승인한 벽의 긴 현재 관측 갱신.
     low_speed_arc_reacquire: bool = False  # 단독 시험 선택. 낮은 측정 속도의 양측 경로 재획득만.
     standing_wall_reacquire: bool = False  # 재개 후보. 기억 없는 낮은 속도에서 선호 벽의 긴 현재 관측으로 재획득.
+    # 11/9 신호 양지주 대비(단독 선택형): 벽 앞 좁은 가림체가 벽 연결만 끊어 관측 길이를 줄이지 않게 한다.
+    narrow_occluder_bridge: bool = False
+    # 11/9 마커 누락 대비(선택형): 선호 벽이 갈림길로 갈라져 확인되지 않으면 직전 승인 경로와
+    # 일치하는 반대 벽의 긴 현재 관측으로 본선을 잇는다.
+    junction_continuity: bool = False
     lateral_acceleration_mps2: float = 3.5
     memory_ttl_s: float = .30
     memory_motion_limit_m: float = .45
@@ -184,8 +189,10 @@ class FollowConfig:
             raise ValueError('traffic boundary refresh requires the traffic path recovery profile')
         if type(self.standing_wall_reacquire) is not bool:
             raise ValueError('standing wall reacquire must be bool')
+        if type(self.narrow_occluder_bridge) is not bool or type(self.junction_continuity) is not bool:
+            raise ValueError('narrow occluder bridge and junction continuity must be bool')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('traffic_boundary_refresh_trial', 'solo_corner_approach_trial', 'oblique_gap_trial', 'piecewise_wall_trial', 'solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+               if k not in ('traffic_boundary_refresh_trial', 'solo_corner_approach_trial', 'oblique_gap_trial', 'piecewise_wall_trial', 'solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'narrow_occluder_bridge', 'junction_continuity', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
             raise ValueError('follow configuration must be finite and positive')
         if (type(self.corridor_fallback_enabled) is not bool or
                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
@@ -485,6 +492,7 @@ class LocalFollow:
             self.corridor_observer.reset()
         self.path = self.pending = None
         self.path_ref = self.path_source = self.pending_ref = None
+        self.recent_path = None  # junction_continuity 전용: 막 만료된 승인 경로(경로, 기준 시각, 원천 시각)
         self.pending_count = self.release_count = 0
         self.last_source = self.last_ref = None
         self.epoch = self.side = None
@@ -701,11 +709,13 @@ class LocalFollow:
             # 경계 선택이 넘기는 부분집합도 같은 실제 점이므로 좌표로 원시 광선 번호를 찾는다.
             ray_index = dict(zip(map(tuple, points.tolist()),
                                  (r.source_index for r in scene.rays if r.status == 'return')))
+        bridge = {'narrow_occluder_bridge': True} if cfg.narrow_occluder_bridge else {}
         def observed_path(cloud, wall_side):
             if cfg.piecewise_wall_trial:
                 path, info = local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
                                   rays=None if ray_index is None else [ray_index[tuple(p)] for p in cloud.tolist()],
-                                  piecewise_corner=True, minimum_radius=cfg.wheelbase_m/math.tan(cfg.max_steering_rad))
+                                  piecewise_corner=True, minimum_radius=cfg.wheelbase_m/math.tan(cfg.max_steering_rad),
+                                  **bridge)
                 if cfg.traffic_boundary_refresh_trial and info.get('wall_model') != 'piecewise_corner':
                     from arena_autonomy.fragmented_wall_hypothesis import propose
                     candidate, evidence = propose(cloud, wall_side, cfg.wall_offset_m,
@@ -722,10 +732,10 @@ class LocalFollow:
                 return path,info
             if ray_index is not None:
                 return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
-                                  rays=[ray_index[tuple(p)] for p in cloud.tolist()])
+                                  rays=[ray_index[tuple(p)] for p in cloud.tolist()], **bridge)
             if horizon == 1.8:
-                return local_path(cloud, wall_side, cfg.wall_offset_m)
-            return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon)
+                return local_path(cloud, wall_side, cfg.wall_offset_m, **bridge)
+            return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon, **bridge)
         carried = None
         try:
             if self.path is not None and now-self.path_source < cfg.memory_ttl_s:
@@ -773,6 +783,16 @@ class LocalFollow:
                     if not opposite_observed:
                         opposite_observed.append(observed_path(points, other_side))
                     return opposite_observed[0]
+                if (cfg.junction_continuity and carried is not None
+                        and self.path_wall == other_side):
+                    # 본선의 반대 벽을 이미 선택했다면 현재도 보이는 그 벽을 먼저 갱신한다.
+                    # 갈림길로 열린 선호 벽으로 매 스캔 되돌아가며 경로를 조금씩 꺾지 않는다.
+                    opposite, other = opposite_wall()
+                    if (sufficient(opposite, other) and path_agrees(opposite, carried, cfg.boundary_agreement_m)
+                            and (not sufficient(preferred, preferred_info)
+                                 or not path_agrees_arc(preferred, opposite, cfg.boundary_agreement_m))):
+                        candidate, info, candidate_wall, eligible = opposite, other, other_side, True
+                        detail['boundary_selection'] = 'junction_retained_wall_refresh'
                 if (not eligible and cfg.traffic_boundary_refresh_trial and carried is not None
                         and self.path_wall == other_side):
                     opposite, other = opposite_wall()
@@ -816,6 +836,8 @@ class LocalFollow:
                             detail.update(boundary_selection='bilateral_reference_support', **support)
                 detail['boundary_candidate_reason'] = info['reason']
                 detail['boundary_candidate_ahead_m'] = info.get('boundary_observed_ahead_m')
+                if info.get('narrow_occluders_bridged'):
+                    detail['narrow_occluders_bridged'] = info['narrow_occluders_bridged']
                 detail['bilateral_alternative_confirmed'] = corroborated
                 if eligible and carried is None and not bilateral:
                     # 초기/만료 뒤 재획득에는 반대쪽의 독립된 긴 관측도 일치해야 한다.
@@ -899,6 +921,15 @@ class LocalFollow:
                         detail['current_corner_observed_wall_ahead_m'] = preferred_info['boundary_observed_ahead_m']
                         detail['boundary_selection'] = 'current_corner_prefix_agreement'
                         detail['current_corner_prefix_agreement'] = prefix_match
+                if not eligible and cfg.junction_continuity and carried is not None:
+                    # 짧은 선호 벽으로 경로 길이를 줄이기 전에, 승인 경로와 일치하는
+                    # 긴 현재 반대 벽을 쓴다. 점유·제동·독립 보호 입력은 그대로 둔다.
+                    opposite, other = opposite_wall()
+                    if sufficient(opposite, other) and path_agrees(opposite, carried, cfg.boundary_agreement_m):
+                        candidate, info, candidate_wall, eligible = opposite, other, other_side, True
+                        detail.update(boundary_selection='junction_opposite_continuity',
+                                      boundary_candidate_reason=info['reason'],
+                                      boundary_candidate_ahead_m=info.get('boundary_observed_ahead_m'))
                 if (not eligible and cfg.boundary_bridge
                         and carried is not None and preferred is not None
                         and anchor_error(preferred_info, cfg) <= cfg.boundary_anchor_error_m
@@ -926,8 +957,37 @@ class LocalFollow:
                         detail.update(boundary_selection='current_two_face_corner_support',
                             boundary_candidate_reason=info['reason'], boundary_candidate_ahead_m=None,
                             corner_supported_path_ahead_m=support_evidence['path_ahead_m'])
+                recent_confirmed = False
+                if not eligible and cfg.junction_continuity and carried is None:
+                    # 갈림길 열림으로 한 스캔의 선호 벽이 짧아져 기억이 막 만료된 경우, 그 승인 경로를
+                    # 운동 보정한 것과 가까운 전방에서 일치하는 현재 긴 관측(선호 벽 먼저)만 다시 받는다.
+                    # 기억으로 주행하지 않고 미관측을 채우지 않는다. 양측 확인 없는 첫 재획득을 줄이는 대체다.
+                    recent = None
+                    if (getattr(self, 'recent_path', None) is not None
+                            and now-self.recent_path[2] <= 2*cfg.memory_ttl_s):
+                        recent = transport_points(self.recent_path[0], history, self.recent_path[1], now)
+                        # 창을 TTL의 두 배로 둔 만큼 운동 보정 이동 한도도 같은 비율로만 늘린다.
+                        if np.max(np.linalg.norm(recent-self.recent_path[0], axis=1)) > 2*cfg.memory_motion_limit_m:
+                            recent = None
+                    if recent is not None:
+                        for path, details, wall_side in ((preferred, preferred_info, side), (*opposite_wall(), other_side)):
+                            if sufficient(path, details) and path_agrees(path, recent, cfg.boundary_agreement_m):
+                                candidate, info, candidate_wall = path, details, wall_side
+                                eligible = recent_confirmed = True
+                                detail.update(boundary_selection='junction_recent_path_agreement',
+                                              boundary_candidate_reason=info['reason'],
+                                              boundary_candidate_ahead_m=info.get('boundary_observed_ahead_m'))
+                                break
+                if (eligible and cfg.junction_continuity and carried is not None
+                        and candidate_wall != self.path_wall
+                        and not path_agrees_arc(candidate, carried, cfg.boundary_agreement_m)):
+                    # 가까운 접선은 같아도 약 1 m 안에서 갈라지는 다른 벽 경로는
+                    # 본선 갱신으로 받지 않는다. 한 스캔 누락이면 기존 TTL 경로만 남긴다.
+                    # 경로 끝 밖 외삽이나 TTL 연장은 하지 않는다.
+                    eligible = False
+                    detail['junction_wall_switch_rejected'] = 'forward_path_diverges'
                 if eligible:
-                    confirmed = carried is not None
+                    confirmed = carried is not None or recent_confirmed
                     if not confirmed:
                         old = (transport_points(self.pending, history, self.pending_ref, now)
                                if self.pending is not None and now-self.pending_ref <= cfg.memory_ttl_s else None)
@@ -937,12 +997,15 @@ class LocalFollow:
                     if confirmed:
                         self.path, self.path_ref, self.path_source = candidate.copy(), now, scene.source_first_s
                         self.path_wall = candidate_wall
+                        self.recent_path = None
                         carried = candidate
                 else:
                     self.pending = None
                     self.pending_count = 0
                 detail['fresh_boundary_accepted'] = bool(eligible and self.path_source == scene.source_first_s)
             if carried is None:
+                if cfg.junction_continuity and self.path is not None:
+                    self.recent_path = (self.path, self.path_ref, self.path_source)
                 self.path = None
                 return self._hold('follow_boundary_unconfirmed', detail)
             memory_age = now-self.path_source

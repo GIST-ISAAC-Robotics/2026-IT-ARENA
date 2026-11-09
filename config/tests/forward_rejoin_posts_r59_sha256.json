@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scope": "r59: selected post handling during established stationary-actor rejoin; occupancy, surface, STOP and guard boundaries unchanged",
+  "parent_contract": "config/tests/tracked_wall_occluder_r58_sha256.json",
+  "parent_contract_sha256": "dbfceeb0e2a88f0b1ae8369e6a770e8b87811b075ec4e8dd9c93d0539823745f",
+  "before_snapshot": "artifacts/validation/2026-11-09/signal_posts_markers_v1/before_r59.zip",
+  "before_snapshot_sha256": "dd7712925830a7daaca7b2230bd50efdef6dcf72c304dcb3bb6a3ae20c794b04",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/bypass_wall_fit.py": {
+      "before": "294ffed2fd054876c32e932109ea22632408b29debe8df1aea57bab70358972a",
+      "after": "1b340ab0fe85d153a843b79679214cf3c170e92f49eb0b859fcbe7a2a5661d79",
+      "reason": "Use physical extent for narrow foreground returns, retaining every obstacle and actual ray continuity"
+    },
+    "src/arena_autonomy/arena_autonomy/bypass_handoff_corridor_trial.py": {
+      "before": "ff9f9fc9ee9350f1f6568d05e55852025c728deef50aa3a2d44c1ca5366de55a",
+      "after": "7a23e444bfcbeb0d6d2282978f356fff21c7020c1e82d69537c1a0ed242bbf6d",
+      "reason": "Continue an already observed rejoin from current front-body and forward wall support; no initial entry permission or missing-space fill"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {}
+}

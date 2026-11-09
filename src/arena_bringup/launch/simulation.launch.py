@@ -421,7 +421,8 @@ def _evaluation_models(path, world):
 
 def _evaluation_course_markers(world, mode):
     """시각 누락 시험: 공식 판의 재질만 바꾸고 자세·형상·충돌·신호는 보존한다."""
-    choices = {'visible': (), 'blank_30': (30,), 'blank_all': (0, 20, 30, 45)}
+    # blank_20_30: 갈림길 마커만 가려 앞차 가림·검출 실패를 평가 주입한다(신호 좌우 0/45는 유지).
+    choices = {'visible': (), 'blank_30': (30,), 'blank_20_30': (20, 30), 'blank_all': (0, 20, 30, 45)}
     if mode not in choices:
         raise ValueError('unknown evaluation course marker mode')
     selected = choices[mode]
@@ -474,9 +475,76 @@ def _evaluation_grass_alignment(world, mode):
                 before_top_m=.002, after_top_m=.003, friction_unchanged=True)
 
 
+# 11/9 사용자 최신 정보: 신호등 양옆 지주가 실제로 설치된다(11/3 기둥 없는 파생본은 당시 정보로 보존).
+# 형상은 제작측 STL(issue #3 2026-10-09 공유 'STadium starting light.stl', 도로 0.45 m 당시)의
+# 지주·발판 단면을 그대로 쓰고, 0.61 m 도로에 맞춰 지주 간격만 (0.61-0.45)/2씩 넓힌 임시값이다.
+# 제작측이 '기둥 및 고정 부분은 트랙 규격에 맞추어 수정 예정'이라 밝혀 실물 확정치가 아니다.
+# 시설 표현일 뿐 제어 입력이 아니며, 공식 가로대·패널·광원·마커 링크는 바꾸지 않는다.
+SIGNAL_POST_FACILITIES = {
+    "stl_61cm_provisional": {
+        "source_sha256": "955addee8f1640902f34cf7a49924335aa4d641219d1cdcfa1537fac426c7d57",
+        "track": "official_v2026_11_06",
+        # 공식 가로대 중심에서 길이 방향으로 지주 중심까지: STL 0.2925 m + 0.08 m
+        "post_center_offset_m": .3725,
+        # 길이 방향(도로 횡방향) × 진행 방향 × 높이, 바닥 기준 하단
+        "post_size_m": (.015, .01462, .455), "post_bottom_m": .010,
+        "foot_size_m": (.040, .050, .010), "foot_bottom_m": 0.,
+    },
+}
+
+
+def _signal_posts(world, mode, track):
+    """실행 사본에만 양지주·발판을 추가한다. 기본 none은 아무것도 바꾸지 않는다."""
+    if mode == 'none':
+        return None
+    spec = SIGNAL_POST_FACILITIES.get(mode)
+    if spec is None:
+        raise ValueError('unknown signal post facility')
+    if track != spec['track']:
+        raise ValueError('signal post facility is registered only for the v11.06 610 mm derivative')
+    model = world.find("model[@name='it_arena_track_static']")
+    if model is None or model.find("link[@name='tl_post']") is not None:
+        raise ValueError('signal posts require the team derivative without the official single tl_post')
+    beams = [link for link in model.findall('link') if link.get('name') == 'tl_beam']
+    if len(beams) != 1 or beams[0].find('collision/pose') is None:
+        raise ValueError('expected exactly one official tl_beam collision')
+    if any(model.find(f"link[@name='{name}']") is not None for name in
+           ('tl_post_left', 'tl_post_right', 'tl_foot_left', 'tl_foot_right')):
+        raise ValueError('signal posts already present')
+    x, y, _, roll, pitch, yaw = map(float, beams[0].findtext('collision/pose').split())
+    if abs(roll) > 1e-9 or abs(pitch) > 1e-9:
+        raise ValueError('official tl_beam must be level')
+    material = beams[0].find('visual/material')
+    # 가로대 상자의 길이 축(로컬 y)을 세계 좌표로: yaw=pi/2이면 -x, 즉 +y 진행 방향의 왼쪽이다.
+    axis = (-math.sin(yaw), math.cos(yaw))
+    placed = []
+    for side, sign in (('left', 1.), ('right', -1.)):
+        cx, cy = x+sign*spec['post_center_offset_m']*axis[0], y+sign*spec['post_center_offset_m']*axis[1]
+        for part, (across, along, height), bottom in (
+                ('post', spec['post_size_m'], spec['post_bottom_m']),
+                ('foot', spec['foot_size_m'], spec['foot_bottom_m'])):
+            name = f'tl_{part}_{side}'
+            link = ET.SubElement(model, 'link', name=name)
+            pose = f'{cx:.4f} {cy:.4f} {bottom+height/2:.4f} 0 0 {yaw:.5f}'
+            size = f'{along:.5f} {across:.4f} {height:.4f}'
+            for tag in ('collision', 'visual'):
+                element = ET.SubElement(link, tag, name=f'{name}_{tag[:3] if tag == "visual" else "col"}')
+                ET.SubElement(element, 'pose').text = pose
+                ET.SubElement(ET.SubElement(ET.SubElement(element, 'geometry'), 'box'), 'size').text = size
+                if tag == 'visual' and material is not None:
+                    element.append(copy.deepcopy(material))
+            placed.append(dict(name=name, center_xy_m=[round(cx, 4), round(cy, 4)],
+                               bottom_m=bottom, top_m=round(bottom+height, 4),
+                               across_m=across, along_m=along))
+    return dict(mode=mode, source_sha256=spec['source_sha256'], beam_center_xy_m=[x, y], beam_yaw_rad=yaw,
+                links=placed, official_links_unchanged=['tl_beam', 'tl_panel', 'lamps', 'aruco_0..45'],
+                scope='provisional STL-derived 610 mm spacing; not confirmed physical dimensions; not a controller input')
+
+
 def _runtime_world_overrides(source, destination, detector, scene_broadcaster, speed_bump=True, batch_visuals=False,
                              evaluation_models=None, evaluation_wheel_contacts=False, evaluation_physics_step="",
-                             evaluation_course_markers="visible", evaluation_grass_alignment='original'):
+                             evaluation_course_markers="visible", evaluation_grass_alignment='original',
+                             signal_posts='none', track=None):
     """선택형 런타임 설정만 사본에 적용. 명시적 단차 대조 외 형상·물성은 보존한다."""
     tree = ET.parse(source)
     world = tree.getroot().find("world")
@@ -484,6 +552,9 @@ def _runtime_world_overrides(source, destination, detector, scene_broadcaster, s
     alignment = _evaluation_grass_alignment(world, evaluation_grass_alignment)
     if alignment is not None:
         marker_report['grass_alignment'] = alignment
+    posts = _signal_posts(world, signal_posts, track)
+    if posts is not None:
+        marker_report['signal_posts'] = posts
     _evaluation_physics_step(world, evaluation_physics_step)
     if evaluation_wheel_contacts and world.find("plugin[@name='gz::sim::systems::Contact']") is None:
         ET.SubElement(world, "plugin", filename="gz-sim-contact-system", name="gz::sim::systems::Contact")
@@ -1053,6 +1124,9 @@ def _launch_setup(context):
         raise ValueError('grass alignment comparison requires recorded v11.06 local_pursuit')
     if marker_visibility != 'visible' and (not runtime_artifacts or not local_mode or track not in OFFICIAL_2X5_TRACKS or world_override):
         raise ValueError('course marker visual test requires official local_pursuit and runtime evidence')
+    signal_posts = LaunchConfiguration('signal_posts').perform(context)
+    if signal_posts != 'none' and (track != 'official_v2026_11_06' or world_override):
+        raise ValueError('signal post facility is registered only for the v11.06 derivative without world_override')
     _check_evaluation_physics_step(physics_step, runtime_artifacts)
     if evaluation_actor:
         # 평가기가 정답 자세를 움직이는 표적. 공식 원본은 그대로 두고 실행 사본에만 넣는다.
@@ -1061,12 +1135,14 @@ def _launch_setup(context):
             raise RuntimeError("evaluation_actor_sdf는 official local_pursuit 실행 사본에서만 사용합니다.")
     if (collision_detector != "configured" or not scene_broadcaster or not speed_bump or batch_visuals
             or evaluation_actor or evaluation_wheel_contacts or physics_step or startup == "embedded_paused"
-            or marker_visibility != 'visible' or grass_alignment != 'original'):
+            or marker_visibility != 'visible' or grass_alignment != 'original' or signal_posts != 'none'):
         temporary_world = tempfile.TemporaryDirectory(prefix="arena_world_")
         runtime_path = Path(temporary_world.name) / "world.sdf"
         marker_report = _runtime_world_overrides(world_path, runtime_path, collision_detector, scene_broadcaster, speed_bump, batch_visuals,
                                  evaluation_actor or None, evaluation_wheel_contacts, physics_step, marker_visibility,
-                                 grass_alignment)
+                                 grass_alignment, signal_posts, track)
+        if signal_posts != 'none' and runtime_artifacts:
+            (evidence/'signal_posts.json').write_text(json.dumps(marker_report['signal_posts'], indent=2), encoding='utf-8')
         if grass_alignment != 'original':
             (evidence/'grass_alignment.json').write_text(json.dumps(marker_report['grass_alignment'], indent=2), encoding='utf-8')
         if marker_visibility != 'visible':
@@ -1653,7 +1729,7 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("evaluation_handoff_reserve", default_value="off", choices=["off","fixed","moving","closing","recent","low_motion","paced"],
                                   description="상대차 평가 전용: G1/G2의 우회 준비 여유 비교"),
             DeclareLaunchArgument('evaluation_course_markers', default_value='visible',
-                                 choices=['visible','blank_30','blank_all'], description='평가 전용 코스 마커 무늬 가림; 형상 불변'),
+                                 choices=['visible','blank_30','blank_20_30','blank_all'], description='평가 전용 코스 마커 무늬 가림; 형상 불변'),
             DeclareLaunchArgument("evaluation_scheduled_apply", default_value="false", choices=["true", "false"],
                                  description="Evaluation-only paired command deadline/ack; native default unchanged"),
             DeclareLaunchArgument("evaluation_startup", default_value="service", choices=["service", "embedded_paused"],
@@ -1666,6 +1742,8 @@ def generate_launch_description() -> LaunchDescription:
                                   description="평가 전용 플러그인 명령 수신/적용 전환 이벤트. 제어 입력 아님; 증거 경로 필요"),
             DeclareLaunchArgument("evaluation_actor_sdf", default_value="",
                                   description="평가 전용 정적 actor SDF 조각. official local_pursuit 실행 사본에만 삽입"),
+            DeclareLaunchArgument('signal_posts', default_value='none', choices=['none', *SIGNAL_POST_FACILITIES],
+                                 description='v11.06 실행 사본의 신호등 양지주(제작측 STL 단면·610 mm 간격 임시값). none은 11/3 기둥 없는 파생본'),
             DeclareLaunchArgument('evaluation_grass_alignment', default_value='original', choices=['original', 'road_level'],
                                  description='v11.06 평가 사본의 잔디를 1 mm 높이는 단차 원인 대조. 기본 원본 유지'),
             DeclareLaunchArgument("evaluation_wheel_contacts", default_value="false", choices=["true", "false"],

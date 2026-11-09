@@ -29,12 +29,29 @@ def tracked_straight_wall(scene,config,side,remembered_centerline):
     association=2*config.measurement_padding_m
     matches=(abs(points[:,1]-slope*points[:,0]-physical_intercept)/norm<=association)&(
         points[:,0]>=-.4)&(points[:,0]<=1.8)
+    joins=set()
+    if config.narrow_occluder_bridge and len(points)>2:
+        from arena_autonomy.local_path import narrow_occluders
+        gaps=np.linalg.norm(np.diff(points,axis=0),axis=1)
+        limits=.10+.035*np.minimum(np.linalg.norm(points[:-1],axis=1),np.linalg.norm(points[1:],axis=1))
+        # 가까워지면 같은 작은 지주도 광선 수가 늘어난다. 고정 점 개수 대신
+        # 기존 40 mm 실측 크기/깊이/그림자 길이 한도로 좁은 가림체를 구별한다.
+        _,pairs=narrow_occluders(points,gaps>limits,max_points=len(points))
+        # 실제 반환이 연속인 좁은 가림체만 벽 사슬에서 건너뛴다.
+        # 미반환/차체 가림 광선을 메우지 않으며 해당 점의 점유는 그대로다.
+        for before,after in pairs:
+            if (matches[before] and matches[after]
+                    and np.all(np.diff(ids[before:after+1])==1)):
+                joins.add((int(ids[before]),int(ids[after])))
+                matches[before+1:after]=False
     candidates=np.flatnonzero(matches)
     if len(candidates)<12:return fail('tracked_wall_current_returns_missing')
     candidates=candidates[np.argsort(ids[candidates])]
     gaps=np.linalg.norm(np.diff(points[candidates],axis=0),axis=1)
     limits=.10+.035*np.minimum(np.linalg.norm(points[candidates[:-1]],axis=1),np.linalg.norm(points[candidates[1:]],axis=1))
     breaks=(gaps>limits)|(np.diff(ids[candidates])!=1)
+    for i,(before,after) in enumerate(zip(candidates,candidates[1:])):
+        if (int(ids[before]),int(ids[after])) in joins:breaks[i]=False
     fits=[]
     for piece in np.split(candidates,np.flatnonzero(breaks)+1):
         part=points[piece]
@@ -62,6 +79,10 @@ def tracked_straight_wall(scene,config,side,remembered_centerline):
           reason='current_connected_straight_wall_fit',actual_return_count=len(piece),
           source_ray_indices=ids[piece].tolist(),association_budget_m=association,
           remembered_line_is_current_observation=False,all_returns_remain_occupied=True)
+        used=[pair for pair in joins if pair[0] in ids[piece] and pair[1] in ids[piece]]
+        if used:
+            detail['narrow_occluders_bridged']=len(used)
+            detail['wall_reference_only_not_free_space']=True
         fits.append((score,fit,detail))
     if not fits:return fail('tracked_wall_current_line_unconfirmed')
     _,fit,detail=min(fits,key=lambda item:item[0])

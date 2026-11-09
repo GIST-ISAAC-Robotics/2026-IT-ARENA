@@ -74,10 +74,43 @@ def _origin_error(path):
     return float(np.min(np.linalg.norm(a+t[:, None]*d, axis=1)))
 
 
-def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corner=False, minimum_radius=0.):
+def narrow_occluders(points, broken, max_points=6, max_extent=.04, min_depth=.03):
+    """방위 순서 벽 사슬에서 벽 바로 앞 좁은 가림체(신호 지주 등) 묶음을 찾는다.
+
+    양옆 연결이 모두 끊긴 max_points 이하·지름 max_extent 이하 묶음이, 앞뒤 실제 벽점을 잇는
+    선분보다 차량 쪽으로 min_depth 이상 나와 있고, 앞뒤 벽점 간격이 그 그림자로 설명될 만큼
+    짧을 때만 해당한다. 반환은 (묶음 점 마스크, 앞뒤 벽점 인덱스 쌍). 점을 만들거나 옮기지 않는다.
+    """
+    breaks = np.flatnonzero(broken)
+    mask, joins = np.zeros(len(points), dtype=bool), []
+    for first, second in zip(breaks[:-1], breaks[1:]):
+        cluster = points[first+1:second+1]
+        if not 1 <= len(cluster) <= max_points or second+1 >= len(points):
+            continue
+        before, after = points[first], points[second+1]
+        if 2*np.max(np.linalg.norm(cluster-cluster.mean(axis=0), axis=1)) > max_extent:
+            continue
+        chord = after-before
+        length = float(np.linalg.norm(chord))
+        if length < 1e-9 or length > 2*(.10+.035*min(np.linalg.norm(before), np.linalg.norm(after))):
+            continue
+        normal = np.array([-chord[1], chord[0]])/length
+        if np.dot(-before, normal) < 0:
+            normal = -normal  # 차량(원점) 쪽이 양수
+        if np.min((cluster-before) @ normal) < min_depth:
+            continue
+        mask[first+1:second+1] = True
+        joins.append((int(first), int(second+1)))
+    return mask, joins
+
+
+def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corner=False, minimum_radius=0.,
+               narrow_occluder_bridge=False):
     """연결된 관측 벽의 호길이 매개곡선. 수직 벽/급커브도 y=f(x)로 강제하지 않는다.
 
     rays는 points와 같은 순서의 원시 광선 번호다. 주지 않으면 거리 간격만으로 연결한다.
+    narrow_occluder_bridge(선택형, 기본 꺼짐)는 벽 앞 좁은 가림체 묶음을 벽 사슬에서만 빼고
+    그 앞뒤 실제 벽점을 잇는다. 가림체 점은 호출자의 점유·보호 검사에 그대로 남는다.
     """
     sign = 1 if side == "left" else -1
     points = np.asarray(points, dtype=float)
@@ -97,6 +130,22 @@ def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corn
     broken = gaps > limits
     if rays is not None:
         broken &= ~ray_continuous_gaps(points, gaps, limits, np.asarray(rays)[finite][order], horizon)
+    bridged = 0
+    if narrow_occluder_bridge:
+        occluder, joins = narrow_occluders(points, broken)
+        if joins:
+            keep = ~occluder
+            new_index = np.cumsum(keep)-1
+            points = points[keep]
+            gaps = np.linalg.norm(np.diff(points, axis=0), axis=1)
+            limits = .10 + .035 * np.minimum(np.linalg.norm(points[:-1], axis=1), np.linalg.norm(points[1:], axis=1))
+            broken = gaps > limits
+            if rays is not None:
+                kept_rays = np.asarray(rays)[finite][order][keep]
+                broken &= ~ray_continuous_gaps(points, gaps, limits, kept_rays, horizon)
+            for before, _ in joins:
+                broken[new_index[before]] = False
+            bridged = len(joins)
     breaks = np.flatnonzero(broken)
     eligible = []
     for wall in np.split(points, breaks + 1):
@@ -167,6 +216,8 @@ def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corn
                     'path_anchor_error_m': _origin_error(path)}
             if budget is not None:
                 info['corner_path_budget'] = budget
+            if bridged:
+                info['narrow_occluders_bridged'] = bridged
             return path, info
     # x(s), y(s)를 함께 적합한다. y=f(x)와 달리 수직 벽을 표현하며,
     # 상자 벽의 작은 끝면/돌출부를 매 점의 법선으로 증폭하지 않는다.
@@ -208,6 +259,8 @@ def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corn
     if piecewise_corner:
         # 같은 코너 경로가 관측에 따라 이 곡선 표현으로 바뀌어도 앵커 판정 지표를 유지한다. 진단 전용.
         info["path_anchor_error_m"] = _origin_error(path)
+    if bridged:
+        info["narrow_occluders_bridged"] = bridged
     return path, info
 
 

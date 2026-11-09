@@ -1,0 +1,160 @@
+........................................................................ [  1%]
+........................................................................ [  3%]
+........................................................................ [  4%]
+........................................................................ [  6%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+...............................................F........................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 16%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 23%]
+..........................................F............................. [ 24%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 29%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+.............F.......................................................... [ 39%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+...FF................................................................... [ 44%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 49%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 57%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................F............................... [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 70%]
+........................................................................ [ 72%]
+............................F........................................... [ 74%]
+..............................F......................................... [ 75%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 80%]
+........................................................................ [ 82%]
+.........................................................F.............. [ 83%]
+..................F..................................................... [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 90%]
+........................................................................ [ 92%]
+........................................................................ [ 93%]
+........................................................................ [ 95%]
+........................................................................ [ 97%]
+........................................................................ [ 98%]
+............................................F.........                   [100%]
+=================================== FAILURES ===================================
+_ test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes _
+tests/test_corner_follow.py:168: in test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
+    assert hashlib.sha256((root/path).read_bytes()).hexdigest()==row['after']
+E   AssertionError: assert '9cde66e1c0d9...97793be1fddb8' == '79f0ec5d012c...c7aa8de74de30'
+E     - 79f0ec5d012c546195fb625c51a21041f7acbe14663c678d922c7aa8de74de30
+E     + 9cde66e1c0d993782082629f92712c6f46c02b98431ad3d40e397793be1fddb8
+_____ test_official_post_rejects_only_the_left_side_scene_on_the_new_world _____
+tests/test_g1_side_occlusion.py:24: in test_official_post_rejects_only_the_left_side_scene_on_the_new_world
+    with pytest.raises(ValueError, match='not wholly off-road'):
+E   Failed: DID NOT RAISE <class 'ValueError'>
+_ test_measured_lane_preference_contract_preserves_previous_bytes_and_offline_origin _
+tests/test_measured_lane_preference_provenance.py:30: in test_measured_lane_preference_contract_preserves_previous_bytes_and_offline_origin
+    assert sha(previous.read(path)) == sha((ROOT/path).read_bytes())
+E   AssertionError: assert 'e60cb3551dc6...32591269352d3' == '358e23214fee...bd08a1b2d8bd5'
+E     - 358e23214fee632af8ea77ee1091e8d30ca4cfbabf24f7e3b62bd08a1b2d8bd5
+E     + e60cb3551dc6724370f830a242ff82bfc3b86f94187ecce655832591269352d3
+______ test_eight_cases_preregistered_and_sensor_configuration_unchanged _______
+tests/test_multi_vehicle_g0.py:26: in test_eight_cases_preregistered_and_sensor_configuration_unchanged
+    assert {p for p,row in comparison['files'].items() if not row['matches']}=={
+E   AssertionError: assert {'src/arena_a...vehicle.yaml'} == {'src/arena_a...on.launch.py'}
+E     Extra items in the left set:
+E     'src/arena_autonomy/arena_autonomy/local_path.py'
+E     'src/arena_description/config/vehicle.yaml'
+E     Use -v to get more diff
+__ test_g0_default_baseline_retains_original_meaning_after_g1b_launch_change ___
+tests/test_multi_vehicle_g0.py:37: in test_g0_default_baseline_retains_original_meaning_after_g1b_launch_change
+    assert {p for p, row in result['files'].items() if not row['matches']} == {
+E   AssertionError: assert {'src/arena_a...vehicle.yaml'} == {'src/arena_a...on.launch.py'}
+E     Extra items in the left set:
+E     'src/arena_autonomy/arena_autonomy/local_path.py'
+E     'src/arena_description/config/vehicle.yaml'
+E     Use -v to get more diff
+______________ test_parallel_copy_changes_only_explicit_speed_cap ______________
+tests/test_observed_lane_preference_trial.py:312: in test_parallel_copy_changes_only_explicit_speed_cap
+    assert inspect.getsource(parallel_speed.proposal).strip() == expected.strip()
+E   assert "def proposal...nt_position'}" == "def proposal...nt_position'}"
+E     Skipping 786 identical leading characters in diff, use -v to show
+E     - , dt)) or speed < 0.
+E     + , dt)) or not 0 <= speed <= 1.
+E                   or not 0 < dt <= .2 or abs(previous) > config.max_steering_rad+1e-9):
+E               return {**result, 'reason': 'invalid_motion'}
+E           age = scene.t_ref_s-scene.source_first_s
+E     -     measured_distance = None...
+E     
+E     ...Full output truncated (84 lines hidden), use '-vv' to show
+__________ test_pipeline_snapshot_includes_all_internal_dependencies ___________
+tests/test_pipeline_fault_validation.py:422: in test_pipeline_snapshot_includes_all_internal_dependencies
+    assert node.module in manifest, (module,node.module)
+E   AssertionError: ('arena_autonomy.parallel_lane_trial', 'arena_autonomy.parallel_side_departure')
+E   assert 'arena_autonomy.parallel_side_departure' in {'arena_autonomy.anchor_clearance_trial', 'arena_autonomy.boundary_evidence', 'arena_autonomy.bypass_entry_follow', 'arena_autonomy.bypass_entry_trial', 'arena_autonomy.bypass_handoff', 'arena_autonomy.bypass_wall_fit', ...}
+E    +  where 'arena_autonomy.parallel_side_departure' = <ast.ImportFrom object at 0x77940cfa2490>.module
+____ test_current_g1b_r0_contract_allows_only_the_registered_launch_change _____
+tests/test_r0_safety_contract.py:108: in test_current_g1b_r0_contract_allows_only_the_registered_launch_change
+    assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest() == value
+E   AssertionError: assert 'e39389905bd1...0cf10d8ab191e' == '3fd02294ef92...c0adaf1bbe512'
+E     - 3fd02294ef92bb8dfcc0bb5b0bf83b4b326b52bf85263d88d31c0adaf1bbe512
+E     + e39389905bd16032ab020b4d60e02eedc3853ab49d9b9f1bf390cf10d8ab191e
+_________________ test_registered_r7_chain_and_current_source __________________
+tests/test_scheduled_apply.py:182: in test_registered_r7_chain_and_current_source
+    assert change['after']==hash_before_observation_extension(ROOT,p)
+tests/source_contract_helpers.py:32: in hash_before_observation_extension
+    assert current==change['after'],path
+E   AssertionError: src/arena_bringup/launch/simulation.launch.py
+E   assert 'be6c0af4925e...a58743c2a2a0d' == '5dd54b1e5e92...45b4419c05201'
+E     - 5dd54b1e5e924b101d92519da1c4fed351ffde8efd4eb5de24045b4419c05201
+E     + be6c0af4925e399a8e7ad975a879c401b213bd9cded635a5c92a58743c2a2a0d
+____________ test_scheduled_contract_chains_without_runtime_change _____________
+tests/test_scheduled_command.py:291: in test_scheduled_contract_chains_without_runtime_change
+    assert r6_sha(path) == value, path
+E   AssertionError: src/arena_autonomy/arena_autonomy/local_path.py
+E   assert '3b56708b05ec...9f102edaee20d' == '96c270c0a58f...d7dc42595c24e'
+E     - 96c270c0a58f2ae517e17ea5d9f3c624402ee57f3c94423abdcd7dc42595c24e
+E     + 3b56708b05ec7012c57e247d358b94a8813bb2228cce4b3effa9f102edaee20d
+____________________________ test_equations[legacy] ____________________________
+tests/test_zero_speed_modes.py:112: in test_equations
+    result = subprocess.run([str(equation_executable), case], check=True, capture_output=True, text=True)
+/usr/lib/python3.12/subprocess.py:571: in run
+    raise CalledProcessError(retcode, process.args,
+E   subprocess.CalledProcessError: Command '['/tmp/pytest-of-jinhyeong/pytest-0/zero_speed_cpp0/probe', 'legacy']' died with <Signals.SIGABRT: 6>.
+=============================== warnings summary ===============================
+tests/test_swept_limit_batch.py::test_empty_points_and_nonfinite_points_keep_existing_behavior
+tests/test_swept_limit_batch.py::test_empty_points_and_nonfinite_points_keep_existing_behavior
+  Warning: invalid value encountered in multiply
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_corner_follow.py::test_corner_source_contract_has_explicit_parent_and_unchanged_previous_bytes
+FAILED tests/test_g1_side_occlusion.py::test_official_post_rejects_only_the_left_side_scene_on_the_new_world
+FAILED tests/test_measured_lane_preference_provenance.py::test_measured_lane_preference_contract_preserves_previous_bytes_and_offline_origin
+FAILED tests/test_multi_vehicle_g0.py::test_eight_cases_preregistered_and_sensor_configuration_unchanged
+FAILED tests/test_multi_vehicle_g0.py::test_g0_default_baseline_retains_original_meaning_after_g1b_launch_change
+FAILED tests/test_observed_lane_preference_trial.py::test_parallel_copy_changes_only_explicit_speed_cap
+FAILED tests/test_pipeline_fault_validation.py::test_pipeline_snapshot_includes_all_internal_dependencies
+FAILED tests/test_r0_safety_contract.py::test_current_g1b_r0_contract_allows_only_the_registered_launch_change
+FAILED tests/test_scheduled_apply.py::test_registered_r7_chain_and_current_source
+FAILED tests/test_scheduled_command.py::test_scheduled_contract_chains_without_runtime_change
+FAILED tests/test_zero_speed_modes.py::test_equations[legacy] - subprocess.Ca...
+11 failed, 4363 passed, 2 warnings in 422.22s (0:07:02)

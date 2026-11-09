@@ -157,6 +157,8 @@ class LocalPursuit(WallFollow):
             boundary_bridge=bool(self.declare_parameter('g1_boundary_bridge',False).value),
             low_speed_arc_reacquire=bool(self.declare_parameter('g1_low_speed_arc_reacquire',False).value),
             standing_wall_reacquire=bool(self.declare_parameter('g1_standing_wall_reacquire',False).value),
+            narrow_occluder_bridge=bool(self.declare_parameter('g1_narrow_occluder_bridge',False).value),
+            junction_continuity=bool(self.declare_parameter('g1_junction_continuity',False).value),
             traffic_boundary_refresh_trial=bool(self.declare_parameter('g1_traffic_boundary_refresh_trial',False).value),
             lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),
             wall_offset_m=float(self.settings['target_wall_distance_m']),

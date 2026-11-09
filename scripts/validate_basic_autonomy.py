@@ -68,9 +68,63 @@ def g1_solo_arguments(enabled, boundary, occupancy, record, output, corridor=Fal
             *([f'g1_trace_path:={Path(output)/"follow_decisions.jsonl"}'] if record else [])]
 
 
+def hidden_course_markers(marker_visibility):
+    """평가 주입으로 무늬를 가린 코스 마커 ID."""
+    return {'visible': set(), 'blank_30': {30}, 'blank_20_30': {20, 30}, 'blank_all': {0, 20, 30, 45}}[marker_visibility]
+
+
 def solo_route_complete(progress, target, full_lap, markers, marker_visibility='visible'):
-    required = {'visible': {20,30}, 'blank_30': {20}, 'blank_all': set()}[marker_visibility]
+    # 경로 완료 판정은 가리지 않은 갈림길 마커만 요구한다(시험 도우미가 이 함수만 읽으므로 자체 완결).
+    required = {20, 30} - {'visible': set(), 'blank_30': {30}, 'blank_20_30': {20, 30},
+                           'blank_all': {0, 20, 30, 45}}[marker_visibility]
     return progress >= target and (not full_lap or required.issubset(markers))
+
+
+def load_simulation_launch():
+    """실행 사본 시설 함수를 launch와 같은 소스에서 읽는다(평가 형상 전용)."""
+    import importlib.util
+    path = REPO / "src/arena_bringup/launch/simulation.launch.py"
+    spec = importlib.util.spec_from_file_location("arena_simulation_launch_for_eval", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def signal_post_obstacles(world_sdf, mode, track, scratch):
+    """신호 양지주 선택 시 launch와 같은 함수로 만든 사본에서 정적 충돌 다각형을 읽는다.
+
+    반환: (전체 장애물, 지주 다각형, 발판 다각형, launch 보고). 발판(높이 10 mm)은 기존 낮은 노면
+    시설 규칙대로 차체 충돌 다각형에서 빠지므로 별도 겹침 지표로만 센다.
+    """
+    import xml.etree.ElementTree as ET
+    tree = ET.parse(world_sdf)
+    report = load_simulation_launch()._signal_posts(tree.getroot().find("world"), mode, track)
+    path = Path(scratch) / "signal_post_eval_world.sdf"
+    tree.write(path, encoding="utf-8", xml_declaration=True)  # 결과 폴더의 평가 사본; 원본 월드는 읽기만 한다
+    posts, feet = [], []
+    for link in report["links"]:
+        polygon = rectangle(*link["center_xy_m"], report["beam_yaw_rad"], link["along_m"], link["across_m"])
+        (posts if link["name"].startswith("tl_post_") else feet).append(polygon)
+    return obstacle_polygons(path), posts, feet, report
+
+
+def signal_post_clearance(trace, posts, feet):
+    """평가 전용: 20×15 cm 외곽과 지주/발판 사이 최소 거리·겹침 표본. 제어 입력 아님."""
+    rows = [row for row in trace if all(key in row for key in ("x", "y", "yaw"))]
+    post_gap, foot_gap, post_hits, foot_hits = math.inf, math.inf, 0, 0
+    closest = None
+    for row in rows:
+        footprint = rectangle(row["x"], row["y"], row["yaw"], .20, .15)
+        gap = min(footprint.distance(item) for item in posts)
+        if gap < post_gap:
+            post_gap, closest = gap, dict(time=row.get("time"), x=row["x"], y=row["y"], s=row.get("s"))
+        foot_gap = min(foot_gap, min(footprint.distance(item) for item in feet))
+        post_hits += any(footprint.intersection(item).area > 1e-9 for item in posts)
+        foot_hits += any(footprint.intersection(item).area > 1e-9 for item in feet)
+    return dict(samples=len(rows), min_body_to_post_m=None if not rows else round(post_gap, 4),
+                min_body_to_foot_m=None if not rows else round(foot_gap, 4), closest_post_sample=closest,
+                post_overlap_samples=post_hits, foot_overlap_samples=foot_hits,
+                scope="evaluation-only 2D body footprint vs registered STL-derived posts/feet; not physics contact")
 
 
 def configured_feedback_topic(config_path=REPO / "src/arena_description/config/vehicle.yaml"):
@@ -302,7 +356,9 @@ def main():
     parser.add_argument('--g1-race-path', action='store_true', help='10/31 경기 구성의 관측 경로 복구를 단독 속도 시험에 사용')
     parser.add_argument('--g1-recent-observation', action='store_true', help='선택형 측방 관측 보완; 후방 사각/실시간 마감 보증 아님')
     parser.add_argument('--partial-observation-policy', choices=('strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4'), default='strict')
-    parser.add_argument('--course-marker-visibility', choices=('visible','blank_30','blank_all'), default='visible')
+    parser.add_argument('--course-marker-visibility', choices=('visible','blank_30','blank_20_30','blank_all'), default='visible')
+    parser.add_argument('--signal-posts', choices=('none', 'stl_61cm_provisional'), default='none',
+                        help='v11.06 신호등 양지주 시설(제작측 STL 단면·610 mm 간격 임시값). 기본 none')
     parser.add_argument("--video", action="store_true",
                         help="제어 입력과 분리된 차량 추적 카메라를 H.264 MP4로 기록합니다.")
     parser.add_argument("--disable-speed-bump", action="store_true")
@@ -311,6 +367,10 @@ def main():
     parser.add_argument('--g1-solo-corner-approach', action='store_true', help='기본 OFF 단독 직각 접근 감속 후보')
     parser.add_argument('--g1-oblique-gap', action='store_true', help='기본 OFF 단독 v4 사선 공백 저속 시험')
     parser.add_argument('--g1-piecewise-wall', action='store_true', help='관측 벽 두 직선+원호 선택 시험')
+    parser.add_argument('--g1-narrow-occluder-bridge', action='store_true',
+                        help='11/9 신호 지주 대비 후보: 벽 앞 좁은 가림체가 벽 연결만 끊지 않게 함')
+    parser.add_argument('--g1-junction-continuity', action='store_true',
+                        help='11/9 마커 누락 대비 후보: 갈림길에서 직전 승인 경로와 일치하는 현재 관측으로 본선 유지')
     parser.add_argument('--g1-standing-wall-reacquire', action='store_true',
                         help='기존 저속 선호 벽 재획득 후보. 현재 관측/점유/STOP 검사는 유지')
     parser.add_argument('--team-signal-prelap',action='store_true',
@@ -358,6 +418,12 @@ def main():
         if not (args.g1_follow and args.record_follow_decisions):
             raise ValueError('standing wall reacquire requires recorded G1')
         extra_arguments.append('g1_standing_wall_reacquire:=true')
+    for flag, key in ((args.g1_narrow_occluder_bridge, 'g1_narrow_occluder_bridge'),
+                      (args.g1_junction_continuity, 'g1_junction_continuity')):
+        if flag:
+            if not (args.g1_follow and args.record_follow_decisions):
+                raise ValueError(key+' requires recorded G1')
+            extra_arguments.append(key+':=true')
     if args.pilot_marker_z is not None:
         if not args.g1_follow or not (0.115 <= args.pilot_marker_z <= 0.30):
             raise ValueError('--pilot-marker-z is a G1 pilot-only board center height (0.115..0.30 m)')
@@ -381,9 +447,14 @@ def main():
             raise ValueError('local sensor config requires local_pursuit')
         extra_arguments.append('local_sensor_config:='+str(Path(args.local_sensor_config).resolve(strict=True)))
     if args.course_marker_visibility != 'visible':
-        if args.autonomy_mode != 'local_pursuit' or args.g1_follow:
+        # blank_20_30은 등록 G1 단독 구성에서도 갈림길 마커 누락 시 본선 유지를 보는 평가 주입이다.
+        if args.autonomy_mode != 'local_pursuit' or (args.g1_follow and args.course_marker_visibility != 'blank_20_30'):
             raise ValueError('course marker visual trial currently requires baseline local_pursuit')
         extra_arguments.append('evaluation_course_markers:='+args.course_marker_visibility)
+    if args.signal_posts != 'none':
+        if args.track != 'official_v2026_11_06':
+            raise ValueError('signal posts are registered only for the v11.06 derivative')
+        extra_arguments.append('signal_posts:='+args.signal_posts)
     open_speed_trial = args.speed_profile.startswith('g1_open_')
     if open_speed_trial and not (args.g1_follow and args.actuation_mode == 'virtual_mcu' and args.record_follow_decisions):
         raise ValueError('open speed trial requires recorded solo G1 with independent guard and virtual MCU')
@@ -546,6 +617,10 @@ def main():
                             else args.laps * lap_length + 2)
     full_lap_validation = target_progress >= lap_length
     obstacles = obstacle_polygons(world / "world.sdf")
+    signal_posts = None
+    if args.signal_posts != 'none':
+        obstacles, post_polygons, foot_polygons, signal_posts = signal_post_obstacles(
+            world / "world.sdf", args.signal_posts, args.track, output)
     tree = STRtree(obstacles)
     report = {"started_at_utc": datetime.now(timezone.utc).isoformat(), "passed": False, "track": args.track,
               "requested_laps": args.laps, "target_progress_m": target_progress,
@@ -618,6 +693,8 @@ def main():
                                       record_follow_decisions=args.record_follow_decisions,
                                       corridor_fallback=args.g1_corridor_fallback, recent_observation=args.g1_recent_observation,
                                       standing_wall_reacquire=args.g1_standing_wall_reacquire,
+                                      narrow_occluder_bridge=args.g1_narrow_occluder_bridge,
+                                      junction_continuity=args.g1_junction_continuity,
                                       oblique_gap_trial=args.g1_oblique_gap)
         for relative in ('src/arena_autonomy/arena_autonomy/local_follow.py',
                          'src/arena_autonomy/arena_autonomy/scene_motion.py',
@@ -1066,8 +1143,13 @@ def main():
         (output/'stop_trace.json').write_text(json.dumps(stop_trace, indent=2), encoding='utf-8')
         route_evidence = solo_route_complete(progress, target_progress, full_lap_validation, markers_seen,
                                              args.course_marker_visibility)
+        if signal_posts is not None:
+            launched = json.loads((output/'signal_posts.json').read_text(encoding='utf-8'))
+            report['signal_post_evidence'] = dict(
+                mode=args.signal_posts, applied=launched == json.loads(json.dumps(signal_posts)),
+                links=signal_posts['links'], **signal_post_clearance(trace, post_polygons, foot_polygons))
         if args.course_marker_visibility != 'visible':
-            hidden = {30} if args.course_marker_visibility == 'blank_30' else {0,20,30,45}
+            hidden = hidden_course_markers(args.course_marker_visibility)
             actual = json.loads((output/'course_marker_render.json').read_text(encoding='utf-8'))
             report['marker_visibility_evidence'] = dict(mode=args.course_marker_visibility,
                 hidden_ids=sorted(hidden), observed_ids=sorted(markers_seen),
