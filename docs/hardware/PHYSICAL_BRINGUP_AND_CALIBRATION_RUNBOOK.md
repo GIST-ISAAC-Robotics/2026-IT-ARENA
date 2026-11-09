@@ -88,6 +88,30 @@ Bus Servo Adapter (A)는 전압을 낮춰 주는 DC-DC 강압기가 아니다. �
 
 제조사 근거: [Bus Servo Adapter (A) 사양](https://docs.waveshare.com/Bus_Servo_Adapter_A), [전원·통신 배선 예시](https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example), [FAQ — 출력 전압/최대 전류/레귤레이터 없음](https://docs.waveshare.com/Bus_Servo_Adapter_A/FAQ).
 
+### 현재 저장소에 기록된 임시 전원·통신 토폴로지
+
+아래는 [구매·케이블 대조 문서 §3.6](PROCUREMENT_AND_CABLES_2026_11_08.md#36-전원-분기와-stop)와 [ESP32 인터페이스 검토](ESP32_BUDGET_REVIEW_2026_10_02.md)의 연결 관계를 합쳐 표시한 것이다. **서보 전원 공급원은 아직 미확정**이므로 점선 후보로 남긴다.
+
+```text
+6S 배터리 21.0~25.2 V
+  └─ XT60↔XT30 변환선 + XT30 Y 분기
+       ├─ J01 (입력 사양 21~36 V)
+       │    ├─ CH1 19 V ───────────────→ Jetson Orin Nano Super
+       │    ├─ CH4 5 V ────────────────→ VND018 ESP32-S3
+       │    └─ CH2/CH3 5 V ────────────→ 엔코더 등 (전류 예산 확인 후)
+       │
+       └─ M01 (입력 사양 24~36 V; 6S 방전 구간은 사양 밖)
+            ├─ CH1~4 배터리 전압 직결 → MD20A → MB4266 모터
+            └─ CH5/CH6 12 V, 각 2 A ──→ 단일 서보 전원 후보
+                                           (2.4 A stall보다 작아 부적합)
+       별도 6S 입력 대응 DC-DC 12 V 후보 ─→ Bus Servo Adapter (A) DC 입력
+                                                └─ ST3215-HS 1개
+VND018 UART TX/RX/GND ─────────────────→ Bus Servo Adapter (A) UART
+Bus Servo Adapter (A) 서보 버스 포트 ──→ ST3215-HS 데이터/전원
+```
+
+위에서 M01 CH5/CH6은 출력 전압·전류만의 문제가 아니다. M01 입력 정격도 24 V부터이므로 6S 배터리의 공칭 22.2 V 및 방전 구간을 정격 운용으로 간주할 수 없다. 기존 임시 회로의 큰 구조(J01 컴퓨팅, M01 모터, 별도 서보 전원)는 유지하되, **서보 레일의 실제 공급원·강압기·전류 여유는 미결**로 취급한다.
+
 ### 지급 PDB의 서보 전원 한계
 
 [공식 지급 PDB 사양](https://github.com/MOSW626/istech-it-arena/blob/main/docs/hardware/power-modules.md)은 Preliminary 판이며 다음을 명시한다.
