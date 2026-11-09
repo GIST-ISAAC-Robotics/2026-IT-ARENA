@@ -4,6 +4,7 @@
 - 상태: **배선 설계 기준 확정 / 실물 통전·부하·주행 검증 전**
 - 적용: VND018 N16R8, Jetson Orin Nano Super, J01/M01 지급 PDB, 6S 배터리, MB4266-24180, PGE-213, CF-0108, MD20A, Adafruit 4438, Bus Servo Adapter (A), ST3215-HS 1개, RPLIDAR C1, Arducam B0390
 - 상위 문서: [실물 Bring-up Runbook](PHYSICAL_BRINGUP_AND_CALIBRATION_RUNBOOK.md), [구매·케이블 대조](PROCUREMENT_AND_CABLES_2026_11_08.md)
+- 개별 배선표: [R2 connector-to-connector netlist CSV](electrical_netlist_r2_2026_11_10.csv)
 
 > 이 문서는 기존 Electrical R1 설계에서 실제 선정된 CF-0108을 엔코더 수신부에 통합한 R2다. R1의 전원 분기·퓨즈·2접점 STOP·서보 RX 보호 버퍼를 유지하되, 엔코더의 별도 U1(SN74LVC2G17) 대신 CF-0108 표준 TXS0108E 모듈을 사용한다. 서보 RX 보호용 U2(SN74LVC2G17)는 유지한다. 이전 Runbook의 엔코더 전원(Jetson J12 pin 2/6) 연결은 폐기하고, **J01 CH2 5 V**로 통일한다.
 
