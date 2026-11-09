@@ -7,7 +7,7 @@
 - `arena_bench_protocol_plan{}`의 기본값은 `enabled=false`다. `app_main`은 공유 가짜 I/O 사례만 실행하고 진단 JSON을 콘솔에 한 줄 쓴 뒤 반환한다. 이 경우 UART 드라이버 설치·핀 설정·소유 작업 생성이 없다.
 - 합성 자기 검사(`self_check_ok`)가 하나라도 실패하면 계획이 준비돼 있어도 외부 I/O를 시작하지 않는다. 자기 검사 통과도 실물 동작 확인은 아니다.
 - 계획을 켜려면 실물 판본·배선·상대 장치 확인(`wiring_confirmed`), 포트/TX/RX/baud 명시, 진단 콘솔과 다른 포트·핀, ESP32-S3 직접 USB(19/20)·flash/PSRAM(26~37)·strapping(0/3/45/46) 회피, 다른 기능 배정 핀과의 충돌 없음이 모두 필요하다. UART0는 ROM/부트로더 출력 침묵을 별도로 확인해야 한다. 이 조건을 통과해도 전기적 적합성 확인은 아니다.
-- 기존 [CH343P→UART0 우선안](../../../docs/hardware/ESP32_BUDGET_REVIEW_2026_10_02.md#usb-연결-검토---102-후속)은 현재 기본 진단 콘솔과 같은 포트다. 프로토콜과 콘솔을 섞지 않으므로 이 앱은 그 경로를 자동 선택하지 않는다. 콘솔 이동/부팅 출력 처리·실제 납품 판본 대조는 남은 결정이다.
+- **R2 배선 기준:** VND018의 CH343P USB-UART는 물리적으로 GPIO43/44에 연결된다. ESP32-S3 UART 신호는 GPIO Matrix로 임의 GPIO에 라우팅할 수 있으므로 Jetson host link는 UART1을 GPIO43 TX/GPIO44 RX에 배정하고, 서보는 UART2를 GPIO17 TX/GPIO18 RX에 배정한다. UART0는 ROM/부트 용도로 남긴다. [ESP-IDF v6.1 UART GPIO Matrix](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/uart.html).
 
 ## 구성
 
