@@ -1,0 +1,78 @@
+wire_id,from_connector,from_pin,to_connector,to_pin,wire_or_part,notes
+PWR001,Battery XT60,positive,F0,input,16AWG red,F0 15A main fuse; near battery
+PWR002,F0,output,S0,input,16AWG red,S0 DC rated >=32V 20A
+PWR003,S0,output,XT30 Y input,positive,16AWG red,Main positive split
+PWR004,XT30 Y output 1,positive,FJ input,16AWG red,J01 branch
+PWR005,FJ output,positive,J01 INPUT,positive,16AWG red,FJ 5A
+PWR006,XT30 Y output 2,positive,M01 INPUT,positive,16AWG red,M01 branch
+PWR007,Battery XT60,negative,J01 INPUT,negative,16AWG black,Separate negative return
+PWR008,Battery XT60,negative,M01 INPUT,negative,16AWG black,Separate negative return
+PWR009,J01 CH1,positive,Jetson DC jack,center pin +,18AWG red,19V 2.3A; DC plug 5.5x2.5mm
+PWR010,J01 CH1,negative,Jetson DC jack,outer barrel -,18AWG black,Verify polarity before insertion
+PWR011,J01 CH2,positive,FE 0.25A fuse,input,24AWG red,5V encoder rail
+PWR012,FE fuse,output,PGE-213 XHP-4,pin 1 VCC,24AWG red,5V encoder supply
+PWR013,FE fuse,output,CF-0108 breakout,pad VB,24AWG red,Only if TXS0108E module verified
+PWR014,J01 CH2,negative,PGE-213 XHP-4,pin 2 GND,24AWG black,Encoder return
+PWR015,J01 CH2,negative,CF-0108 breakout,pad GND,24AWG black,Common logic reference
+PWR016,PGE-213 VCC,pin 1,PGE-213 GND,pin 2,100nF + 1uF capacitor,Place close to encoder connector
+PWR017,VND018 P1,pin 1 3V3,CF-0108 breakout,pad VA,26AWG red,Low voltage side
+PWR018,VND018 P1,pin 1 3V3,IMU Adafruit 4438,VIN,26AWG red,3.3V only
+PWR019,VND018 P1,pin 22 GND,IMU Adafruit 4438,GND,26AWG black,Logic ground
+PWR020,VND018 P1,pin 1 3V3,U2 SN74LVC2G17,pin 5 VCC,26AWG red,Servo RX buffer supply
+PWR021,VND018 P1,pin 22 GND,U2 SN74LVC2G17,pin 2 GND,26AWG black,Servo RX buffer ground
+PWR022,U2 pin 5 VCC,U2 pin 2 GND,100nF capacitor,Place next to U2
+PWR023,M01 CH1,positive,FM 10A fuse,input,16AWG red,Motor power branch
+PWR024,FM fuse,output,MD20A,pin VB+,16AWG red,Check fuse holder DC rating
+PWR025,M01 CH1,negative,MD20A,pin VB-,16AWG black,Motor power return
+PWR026,MD20A,pin MA,MB4266-24180,motor terminal 1,16AWG,Motor lead; insulate and strain-relieve
+PWR027,MD20A,pin MB,MB4266-24180,motor terminal 2,16AWG,Motor lead; insulate and strain-relieve
+PWR028,M01 CH5,positive,FS 2A fuse,input,22AWG red,12V servo rail; use CH5 only
+PWR029,FS fuse,output,S_SERVO,input,22AWG red,Servo power switch >=32VDC 3A
+PWR030,S_SERVO,output,Bus Servo Adapter A,H1 pin 2 DC+,22AWG red,Use H1 2P screw terminal
+PWR031,M01 CH5,negative,Bus Servo Adapter A,H1 pin 1 GND,22AWG black,Servo power return
+PWR032,Bus Servo Adapter A,H3,pin 1 DATA,ST3215-HS, D,3-wire servo cable,Check D/V/G continuity
+PWR033,Bus Servo Adapter A,H3,pin 2 SERVO V+,ST3215-HS,V,3-wire servo cable,12V from M01 CH5
+PWR034,Bus Servo Adapter A,H3,pin 3 GND,ST3215-HS,G,3-wire servo cable,Common ground
+ENC001,PGE-213 XHP-4,pin 3 A,CF-0108 breakout,pad B1,26AWG,5V-side encoder A; only TXS0108E board
+ENC002,PGE-213 XHP-4,pin 4 B,CF-0108 breakout,pad B2,26AWG,5V-side encoder B; only TXS0108E board
+ENC003,CF-0108 breakout,pad A1,100R resistor,input,26AWG,3.3V-side channel 1
+ENC004,100R resistor,output,VND018 P1,pin 4 GPIO4,26AWG,Encoder A to PCNT
+ENC005,CF-0108 breakout,pad A2,100R resistor,input,26AWG,3.3V-side channel 2
+ENC006,100R resistor,output,VND018 P1,pin 5 GPIO5,26AWG,Encoder B to PCNT
+ENC007,VND018 P1,pin 20 GPIO14,CF-0108 breakout,pad OE,26AWG,Drive HIGH only after VA/VB stable
+ENC008,CF-0108 breakout,pad OE,10k resistor,ground pulldown,26AWG,Default Hi-Z during power-up
+IMU001,VND018 P1,pin 18 GPIO12,Adafruit 4438,SCK/SCL,26AWG,SPI2 clock
+IMU002,VND018 P1,pin 17 GPIO11,Adafruit 4438,SDI/MOSI,26AWG,SPI2 MOSI
+IMU003,Adafruit 4438,SDO/MISO,VND018 P1,pin 19 GPIO13,26AWG,SPI2 MISO
+IMU004,VND018 P1,pin 16 GPIO10,Adafruit 4438,CS,26AWG,10k pull-up to 3V3
+IMU005,Adafruit 4438,INT1,VND018 P1,pin 15 GPIO9,26AWG,Check INT1 polarity
+IMU006,VND018 P1,pin 1 3V3,Adafruit 4438,3V3 rail,10k resistor,CS pull-up reference
+SER001,VND018 P1,pin 10 GPIO17 TX,1k resistor,input,26AWG,UART2 TX series
+SER002,1k resistor,output,Bus Servo Adapter A,H2 pin 3 TXD,26AWG,TX to TX per adapter documentation
+SER003,Bus Servo Adapter A,H2 pin 2 RXD,1k resistor,input,26AWG,UART2 RX input protection
+SER004,1k resistor,output,U2 SN74LVC2G17,pin 1 1A,26AWG,100k pulldown to GND
+SER005,U2 SN74LVC2G17,pin 6 1Y,100R resistor,input,26AWG,Buffered 3.3V output
+SER006,100R resistor,output,VND018 P1,pin 11 GPIO18 RX,26AWG,UART2 RX
+SER007,U2 SN74LVC2G17,pin 3 2A,U2 SN74LVC2G17,pin 2 GND,short link,Unused input tied low
+SER008,U2 SN74LVC2G17,pin 4 2Y,not connected,NC,,Unused output
+SER009,U2 SN74LVC2G17,pin 1 1A,100k resistor,ground pulldown,26AWG,Default low
+SER010,Bus Servo Adapter A,H2 pin 1 GND,VND018 P1,pin 22 GND,26AWG,UART signal ground
+MOT001,VND018 P1,pin 8 GPIO15 PWM,1k resistor,input,26AWG,Series PWM path
+MOT002,1k resistor,output,S_RUN,NO contact input,26AWG,Manual run permit default open
+MOT003,S_RUN,NO contact output,S_STOP-A,NC contact input,26AWG,Hardware STOP channel A
+MOT004,S_STOP-A,NC contact output,MD20A, PWM input,26AWG,STOP press/open wire opens PWM path
+MOT005,MD20A,PWM input,10k resistor,ground pulldown,26AWG,Default PWM LOW; MD20A LOW is brake
+MOT006,VND018 P1,pin 6 GPIO6 DIR,1k resistor,input,26AWG,DIR series resistor
+MOT007,1k resistor,output,MD20A,DIR input,26AWG,Direction control
+MOT008,MD20A,DIR input,10k resistor,signal GND pulldown,26AWG,Default DIR LOW
+STOP001,VND018 P1,pin 12 GPIO8,S_STOP-B,NC contact output,26AWG,STOP state input
+STOP002,S_STOP-B,NC contact other side,logic GND,ground,26AWG,Released LOW; pressed/open wire HIGH
+STOP003,VND018 P1,pin 1 3V3,10k resistor,input,26AWG,GPIO8 pull-up
+STOP004,10k resistor,output,VND018 P1,pin 12 GPIO8,26AWG,STOP status pull-up
+GND001,VND018 P1,pin 22 GND,CF-0108 breakout,pad GND,26AWG,Common logic ground
+GND002,VND018 P1,pin 22 GND,MD20A,signal GND,26AWG,Signal reference only; not motor power return
+GND003,VND018 P1,pin 22 GND,Bus Servo Adapter A,H2 pin 1 GND,26AWG,UART signal reference
+GND004,VND018 P1,pin 22 GND,PGE-213 XHP-4,pin 2 GND,24AWG,Encoder common reference
+USB001,Jetson USB-A stack 1,USB data+VBUS,VND018 CH343P USB-C,USB-UART port,USB cable,ESP32 power + UART bridge
+USB002,Jetson USB-A stack 2,USB data+VBUS,RPLIDAR C1 adapter,USB port,USB cable,Use different USB stack from VND018
+CSI001,Jetson CAM0/J20,22-pin 0.5mm CSI,B0390,15-pin 1.0mm CSI,15-to-22 FPC,Use manufactured FPC; do not hand-wire MIPI
