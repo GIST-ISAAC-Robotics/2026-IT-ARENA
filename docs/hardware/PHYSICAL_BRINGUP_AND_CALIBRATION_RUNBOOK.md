@@ -10,7 +10,7 @@
 | 항목 | 저장소 기준 | 실물에서 확인할 것 |
 |---|---|---|
 | 연산 | Jetson Orin Nano Super, ROS 2 Humble | JetPack/L4T·커널·ROS 설치판, 전원 모드, 실제 전체 노드 주기와 온도 |
-| MCU | VCC-GND Studio VND018, ESP32-S3-WROOM-1 N16R8 | 실물 PCB 판본·헤더·GPIO 연속성·USB 포트 구분 |
+| MCU | VCC-GND Studio VND018, ESP32-S3-WROOM-1 N16R8; Jetson USB-A→CH343P USB-C로 전원+UART | 실물 PCB 판본·헤더·GPIO 연속성·USB 포트 구분·USB 부하 확인 |
 | 구동 모터 | MB4266-24180 + Cytron MD20A, PWM/DIR | 모터 라벨·정격·극성·MD20A 전원/논리 입력·전류/온도·중립/제동 동작 |
 | 엔코더 | PGE-213 단일 모터축 A/B, 5 V 공급(판매 사양 14–20 mA), A/B만 3.3 V로 변환 | 실제 출력 회로·전압·PPR·A/B 위상·부호·카운트 손실 |
 | 감속·바퀴 | 공칭 실행 감속비 8.9706:1, 바퀴 외경 65 mm | 실제 기어 잇수/조립·회전비·실제 유효 구름 둘레·헛돎 |
@@ -90,7 +90,7 @@ Bus Servo Adapter (A)는 전압을 낮춰 주는 DC-DC 강압기가 아니다. �
 
 ### 현재 저장소에 기록된 임시 전원·통신 토폴로지
 
-아래는 [구매·케이블 대조 문서 §3.6](PROCUREMENT_AND_CABLES_2026_11_08.md#36-전원-분기와-stop)와 [ESP32 인터페이스 검토](ESP32_BUDGET_REVIEW_2026_10_02.md)의 연결 관계를 합쳐 표시한 것이다. **서보 전원 공급원은 아직 미확정**이므로 점선 후보로 남긴다.
+아래는 [구매·케이블 대조 문서 §3.6](PROCUREMENT_AND_CABLES_2026_11_08.md#36-전원-분기와-stop)와 [ESP32 인터페이스 검토](ESP32_BUDGET_REVIEW_2026_10_02.md)의 연결 관계를 합쳐 표시한 것이다. **서보 전원은 M01 CH5 또는 CH6 단일 12 V 채널을 우선 시험 후보로 두며, 실제 부하 적합성은 미검증**이다.
 
 ```text
 6S 배터리 21.0~25.2 V
