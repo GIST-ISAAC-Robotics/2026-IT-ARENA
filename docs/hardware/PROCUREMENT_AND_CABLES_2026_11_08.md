@@ -89,7 +89,7 @@ Jetson USB 포트는 USB 3.2 Type-A 4개이며 USB-C도 Host 모드를 지원한
 
 ### 3.3 VND018과 IMU
 
-- VND018은 USB-C 두 개다. 주행 통신은 **CH343P "USB to serial" 포트**(UART0 GPIO43/44)에 데이터 USB 케이블을 연결한다. 다른 USB-C는 S3 직접 USB(개발·디버깅용)다. 헤더 납땜 상태와 판본은 입고 후 확인한다([10/2 검토](ESP32_BUDGET_REVIEW_2026_10_02.md#usb-연결-검토---102-후속)).
+- VND018은 USB-C 두 개다. 주행 통신은 **CH343P "USB to serial" 포트**에 데이터 USB 케이블을 연결한다. 물리 신호선은 GPIO43/44이며 R2 펌웨어는 UART1 TX/RX를 GPIO Matrix로 해당 핀에 배정한다. 다른 USB-C는 S3 Native USB Serial/JTAG(GPIO19/20, 개발·디버깅용)다. 헤더 납땜 상태와 판본은 입고 후 확인한다([R2 전장 배선](ELECTRICAL_WIRING_R2_2026_11_10.md)).
 - MCU 전원은 Jetson USB-A→VND018 CH343P USB-C로 공급하고 UART 통신도 같은 케이블로 처리한다. J01 CH4 5 V는 MCU 전원으로 연결하지 않는다. 엔코더 5 V는 J01 CH2에서 공급하고 FE 0.25 A 퓨즈를 사용한다.
 - Adafruit 4438은 SPI·INT1 핀이 모두 하단 0.1" 줄에 있다. 모든 입력이 Vin 기준으로 레벨 변환되므로 **VIN을 3.3 V로** 공급한다. 별도 헤더 납땜(또는 직접 배선 납땜)이 필요하고 STEMMA QT 케이블은 필요 없다. 로봇사이언스 판매 본문은 Adafruit 설명을 그대로 쓰며 "QT Cable is not included"를 명시한다.
 
