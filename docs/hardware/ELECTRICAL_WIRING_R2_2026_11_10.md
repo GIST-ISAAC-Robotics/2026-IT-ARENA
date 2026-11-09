@@ -100,11 +100,11 @@ FM 10 A는 R1의 초기 보호값이다. 모터 정격전류 표기 10.28 A와 �
 - 지원: open-drain 및 push-pull
 - 최대 데이터 속도: push-pull 110 Mbps, open-drain 1.2 Mbps
 - OE Low: 모든 출력 Hi-Z, OE High: 활성
-- TI TXS0108E 칩 표기: YF08E
+- TI 공식 package addendum의 DGS 패키지 part marking: XS0108 (다른 패키지는 marking이 다를 수 있음)
 
 공식 자료: [TI TXS0108E 제품·데이터시트](https://www.ti.com/product/TXS0108E), [TXS0108E 데이터시트 Rev. L](https://www.ti.com/lit/ds/symlink/txs0108e.pdf), [CJMCU-0108 모듈 설명·핀 기능](https://www.voltnova.pl/produkt/txs0108e-8-kanalowy-konwerter-napiec/).
 
-**납땜 전 식별:** 보드 실크가 CJMCU-0108 계열이고 IC 윗면 표기가 YF08E인지 확인한다. 상품명 CF-0108만으로 내부 IC를 보증하지 않는다. 칩 표기가 다르면 TXS0108E로 간주하지 않는다.
+**납땜 전 식별:** CF-0108/ CJMCU-0108은 판매 보드명이지 IC part number가 아니다. IC top-mark와 판매자 자료를 대조해 TXS0108E인지 확인한다. TI DGS 패키지의 공식 marking은 XS0108이며 다른 패키지/호환 clone은 marking이 다를 수 있다. YF08E만으로 TI 정품이라고 단정하지 않는다. IC를 식별할 수 없으면 통전하지 말고, 확정된 대안은 R1의 SN74LVC2G17 2채널 수신 회로다.
 
 ### 3.2 모듈 핀 연결
 
@@ -115,7 +115,7 @@ FM 10 A는 R1의 초기 보호값이다. 모터 정격전류 표기 10.28 A와 �
 | VA | VND018 P1-1 또는 P1-2, 3V3 | 저전압 A측 전원 |
 | VB | J01 CH2 5 V, FE 퓨즈 뒤 | 고전압 B측 전원 |
 | GND | 공통 논리 GND | VA/VB 기준 |
-| OE | VND018 GPIO14/P1-20, OE–GND 10 kΩ pulldown | 부팅/전원 상승 중 LOW(Hi-Z), 양 전원 안정 후 GPIO14 HIGH로 활성 |
+| OE | VND018 GPIO14/P1-20, OE–GND 10 kΩ pulldown | 부팅/전원 상승 중 LOW(Hi-Z), VA/VB 안정 후 GPIO14 HIGH로 활성. 모듈에 OE pull-up이 실장됐다면 제거 |
 | B1 | PGE-213 pin 3, A | 5 V 엔코더 A 입력 |
 | A1 | 100 Ω 직렬 → VND018 GPIO4/P1-4 | 3.3 V A 출력 |
 | B2 | PGE-213 pin 4, B | 5 V 엔코더 B 입력 |
@@ -336,7 +336,7 @@ FM 10 A는 초기 설계값이다. 모터 정격 전류와 지속 운전 조건�
 
 | 순서 | 작업 | 통과 조건 |
 |---:|---|---|
-| 1 | CF-0108 칩 표기·보드 실크 확인 | CJMCU-0108/TXS0108E, YF08E, VA/VB/A/B/OE 식별 |
+| 1 | CF-0108 칩 표기·보드 실크 확인 | IC top-mark/판매자료로 TXS0108E 식별, VA/VB/A/B/OE 실크 확인 |
 | 2 | U2·저항·커패시터 기판 조립 | IC 방향·핀1·납땜 브리지·도통 검사 |
 | 3 | PDB/배터리 하네스·퓨즈·스위치 조립 | 극성·연속성·단락 검사, 퓨즈 값/위치 기록 |
 | 4 | VND018 헤더·IMU·CF·엔코더 신호 배선 | P1/P2 번호와 GPIO 실크 일치, 공통 GND 확인 |
@@ -394,7 +394,7 @@ ESP-IDF v6.1을 기준으로 한다. 기존 portable core는 프로토콜·수�
 
 ## 12. 설계 확정과 실물 검증을 구분
 
-**R2에서 핀·전원·신호 경로로 결정한 사항:** CF-0108의 표준 TXS0108E 결선, PGE 전원 J01 CH2, ESP32 P1/P2 핀, IMU SPI, U2 서보 RX 버퍼, Adapter H1/H2/H3, MD20A PWM/DIR, 2NC STOP, B0390 15-to-22 FPC, C1 USB.
+**R2에서 핀·전원·신호 경로로 결정한 사항:** TXS0108E가 확인된 CF-0108의 결선, OE GPIO14 제어, PGE 전원 J01 CH2, ESP32 P1/P2 핀, IMU SPI, U2 서보 RX 버퍼, Adapter H1/H2/H3, MD20A PWM/DIR, 2NC STOP, B0390 15-to-22 FPC, C1 USB.
 
 **현장에서 측정해야 하는 사항(설계 미결이 아니라 수령품/환경 승인 시험):**
 - CF-0108 실제 IC top-mark와 보드 실크가 표준 TXS0108E와 일치하는지.
