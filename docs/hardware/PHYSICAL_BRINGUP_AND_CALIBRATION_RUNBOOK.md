@@ -187,6 +187,142 @@ NVIDIA Carrier Board Specification §2.1은 USB-A 두 스택 각각의 VBUS load
 - LSM6DSOX: VND018 3.3 V 레일 사용(기존 SPI 배선안).
 - PGE-213: 5 V, 판매 사양 14–20 mA. Jetson J12 pin 2 또는 4(5 V), pin 6 또는 9(GND)에서 공급한다. 40핀 헤더의 5 V 공급 한도는 총 0.5 A이며 엔코더 부하에 충분하다. VND018의 `5Vin` 헤더/IN-OUT 점퍼는 사용하지 않는다. A/B는 CF-0108 적합성 확인 후 3.3 V로 변환해 ESP32 GPIO4/5에 입력.
 
+## 14. 조립용 최종 핀·커넥터 배선표 (2026-11-10)
+
+이 절은 배선 작업자가 양쪽 끝을 바로 찾을 수 있도록 기능 GPIO, VND018 헤더 실크, 상대 장치 단자, 전원 출처를 한 표로 모은다. GPIO 번호는 물리 헤더의 순번이 아니다. VND018 사진에서 보이는 실크 라벨을 기준으로 한다.
+
+### 14.1 VND018 보드 방향과 헤더 실크
+
+사용자가 제공한 실물 사진처럼 ESP32 안테나가 위, USB-C 두 개가 아래를 향하도록 놓고 본다.
+
+- 사진 왼쪽 헤더: 위에서 아래로 3V3, 3V3, RST, 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, 5Vin, GND.
+- 사진 오른쪽 헤더: 위에서 아래로 GND, RX, TX, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 45, 48, 47, 21, 20, 19, GND, GND.
+- 이 방향 설명은 사용자가 제공한 사진의 실크 판독이다. 보드가 뒤집히거나 180° 회전되면 좌우/위아래가 바뀐다. 배선할 때는 숫자·실크를 직접 보고 확인하고 사진 기준 위치만으로 연결하지 않는다.
+- 오른쪽 RX/TX 실크는 CH343P가 연결된 UART0 신호(GPIO44/43)다. Jetson USB 케이블은 보드의 CH343P USB-UART 포트에 연결한다. 두 USB-C 포트 중 좌/우를 사진만으로 추측하지 말고 보드 자료/USB 장치 열거로 구분한다.
+- 앞면 하단 5Vin은 입력 표기다. 엔코더 출력 전원으로 쓰지 않는다. USB-OTG 점퍼나 무표기 패드는 건드리지 않는다.
+
+### 14.2 ESP32 신호선 양끝 핀표
+
+| 기능 | VND018 GPIO / 실크 | 상대 장치 핀 | 신호 방향 | 배선·주의 |
+|---|---|---|---|---|
+| 엔코더 A | GPIO4 / 왼쪽 4 | CF-0108 3.3 V 출력 A | 입력 | CF-0108 실제 핀명/방향 확인 후 연결 |
+| 엔코더 B | GPIO5 / 왼쪽 5 | CF-0108 3.3 V 출력 B | 입력 | A/B 순서는 계수 방향 실측 후 필요 시 소프트웨어 반전 |
+| MD20A PWM | GPIO15 / 왼쪽 15 | MD20A PWM | 출력 | LEDC 출력; 주파수/극성은 무부하 시험 전 미확정 |
+| MD20A DIR | GPIO6 / 왼쪽 6 | MD20A DIR | 출력 | 정·역방향은 바퀴를 띄운 상태에서 확인 |
+| IMU SCLK | GPIO12 / 왼쪽 12 | Adafruit 4438 SCK | 출력 | SPI2 SCLK |
+| IMU MOSI | GPIO11 / 왼쪽 11 | Adafruit 4438 SDI/MOSI | 출력 | SPI2 MOSI |
+| IMU MISO | GPIO13 / 왼쪽 13 | Adafruit 4438 SDO/MISO | 입력 | SPI2 MISO |
+| IMU CS | GPIO10 / 왼쪽 10 | Adafruit 4438 CS | 출력 | Active-low chip select |
+| IMU INT1 | GPIO9 / 왼쪽 9 | Adafruit 4438 INT1 | 입력 | 보드의 INT1 설정/극성 확인 |
+| 서보 UART TX | GPIO17 / 왼쪽 17 | Bus Servo Adapter (A) TX | 출력 | Waveshare 지침대로 TX→TX |
+| 서보 UART RX | GPIO18 / 왼쪽 18 | Bus Servo Adapter (A) RX | 입력 | Waveshare 지침대로 RX→RX |
+| 물리 STOP 상태 | GPIO8 / 왼쪽 8 | STOP 접점의 상태 신호 | 입력 | 버튼 종류/접점 확정 후 pull-up/down 포함 배선 |
+| 구동 허가 요청 | GPIO21 / 오른쪽 21 | 외부 구동 허가 회로 입력 | 출력 | 외부 회로 미구현. 지금은 MD20A에 직결하지 않음 |
+| Watchdog 진행 | GPIO47 / 오른쪽 47 | 외부 watchdog 회로 입력 | 출력 | 외부 회로 미구현. 지금은 미연결 |
+| 배터리 ADC | GPIO1 / 오른쪽 1 | 배터리 분압기 출력 | 입력 | 배터리를 GPIO1에 직접 연결 금지. 분압값/최대전압/과도전압 보호 미설계 |
+| 선택 FAULT | GPIO2 / 오른쪽 2 | 외부 FAULT 출력 | 입력 | 사용하지 않을 때 부동 금지, 회로 결정 전 예약 |
+| 선택 CLEAR | GPIO14 / 왼쪽 14 | 외부 CLEAR 요청 | 입력 | 사용하지 않을 때 부동 금지, 회로 결정 전 예약 |
+
+**기능별 GND 연결**
+- IMU GND → VND018 GND.
+- CF-0108 GND → 엔코더/Jetson J12 GND와 공통, CF-0108의 3.3 V 출력 기준은 VND018 GND와 공통.
+- MD20A 신호 GND → VND018 GND. MD20A VB−/전력 귀환은 M01 CH1−에 연결한다.
+- Bus Servo Adapter UART GND → VND018 GND. 서보 전력은 M01 12 V 채널에서 어댑터로 공급한다.
+- Jetson과 VND018은 USB 케이블로 연결되어 GND 기준을 공유하지만, 센서/레벨 변환/드라이버 신호 GND를 회로도에 명시한다. USB shield를 전력 귀환선으로 사용하지 않는다.
+
+### 14.3 전원·외부 커넥터 핀표
+
+| 공급원 | 공급 핀/단자 | 수신 핀/단자 | 연결할 것 | 금지/주의 |
+|---|---|---|---|---|
+| J01 CH1 | 19 V 출력 +/−, XT30 | Jetson DC 잭 5.5×2.5 mm | 중심 +, 외곽 GND | 극성/플러그 치수 멀티미터 확인 |
+| Jetson USB-A | USB-A VBUS/GND/D+/D− | VND018 CH343P USB-C | ESP32 전원 + UART0 데이터 | 충전 전용 케이블 금지. 외부 5 V 동시 공급 금지 |
+| Jetson USB-A 다른 스택 | USB VBUS + 데이터 | C1 USB 어댑터 보드 | LiDAR 데이터·전원 | ESP32와 다른 USB 스택 권장 |
+| Jetson J12 pin 2 | 5 V | PGE-213 XHP-4 pin 1 VCC | 엔코더 전원 | J12 5 V 총 한도 0.5 A를 보수적으로 적용 |
+| Jetson J12 pin 6 | GND | PGE-213 XHP-4 pin 2 GND | 엔코더 전원 귀환 | 엔코더/레벨 변환 GND 공통 |
+| PGE-213 XHP-4 pin 3 | A 출력 | CF-0108 A 입력 | 엔코더 A | 5 V 신호를 ESP32 GPIO에 직접 연결 금지 |
+| PGE-213 XHP-4 pin 4 | B 출력 | CF-0108 B 입력 | 엔코더 B | 5 V 신호를 ESP32 GPIO에 직접 연결 금지 |
+| CF-0108 | 5 V 측 VCC/GND, A/B 입력 | 3.3 V 측 VCC/GND, A/B 출력 | 실제 보드의 HV/LV/채널 표기 확인 후 결선 | CF-0108 핀 배열·방향·pull-up·주파수 적합성 미확인. 보드 실크 확인 전 연결 금지 |
+| VND018 3V3 | 왼쪽 3V3 | IMU VIN | LSM6DSOX 3.3 V | 5 V 연결 금지 |
+| VND018 GND | 왼쪽 GND 등 | IMU GND | IMU 귀환 | 실제 GND 연속성 확인 |
+| M01 CH1 | XT30 +/−, 배터리 pass-through | MD20A VB+/VB− | 모터 드라이버 전력 입력 | 역극성 즉시 손상 가능. 전압/극성 확인 |
+| MD20A MA/MB | 모터 출력 단자 | MB4266 모터 2선 | 모터 전력 | 모터 회전 방향은 저출력 시험으로 확인 |
+| VND018 GPIO15/6 | PWM/DIR/GND | MD20A PWM/DIR/GND 헤더 | 제어 신호 | 전력 단자와 신호 헤더 혼동 금지 |
+| M01 CH5 또는 CH6 | 12 V +/−, XT30 | Bus Servo Adapter (A) DC 5.5×2.1 mm 또는 2P 전원 단자 | 서보 전원 | 한 채널만 사용, CH5/6 병렬 금지, 극성 확인 |
+| VND018 GPIO17/18/GND | UART TX/RX/GND | Adapter (A) UART TX/RX/GND | 서보 통신 | TX→TX, RX→RX. 서보 버스 D/V/G와 MCU UART를 혼동 금지 |
+| Adapter (A) D/V/G | 단일 버스 서보 포트 | ST3215-HS D/V/G | 서보 데이터·전원·GND | D/V/G 핀 순서와 케이블 양끝 연속성 확인 |
+| Jetson CSI CAM0 또는 CAM1 | 22-pin 0.5 mm CSI | B0390 FFC | 카메라 영상 + CSI 커넥터 전원 | CAM0는 2-lane, CAM1은 2/4-lane. 실제 FFC 접점 면·카메라 핀 수 확인 |
+
+Jetson J12의 pin 2/4는 5 V, pin 6/9는 GND다. 본 설계는 엔코더에 pin 2와 pin 6을 고정 사용해 배선 선택을 단순화한다. Jetson 40핀 헤더 5 V 공급 한도는 NVIDIA 사양서 Table 5-3의 0.5 A를 보수적으로 적용한다. PGE-213 14–20 mA는 이 안에 들어간다.
+
+**B0390 카메라 연결:** CAM0는 CSI 2-lane을 지원하므로 2-lane IMX219 모듈의 기본 연결 후보로 사용한다. CAM0/CAM1 중 실제 커넥터 위치, 15/22핀 FFC, 접점 방향은 Jetson·카메라 실물에 맞춰 확인한다. CAM0에서 인식되지 않는다고 FFC를 반대로 꽂거나 전원 핀에 외부 전압을 주입하지 않는다. CAM1은 대체 커넥터 후보로 남긴다.
+
+### 14.4 회로에서 아직 핀/부품 확정이 안 된 부분
+
+아래는 GPIO 번호가 예약되어 있다는 것과 외부 회로가 완성됐다는 것을 구분한다.
+
+| 항목 | 현재 상태 | 조립 전에 필요한 결정 |
+|---|---|---|
+| CF-0108 | 구매 후보명만 확정, 내부 회로/핀 배열 미확인 | 실제 모듈 앞·뒷면/데이터시트, HV/LV 방향, 전원, pull-up, 펄스 대역폭 확인 |
+| VND018 5Vin/IN-OUT | 사용자 실물은 5Vin 실크, IN-OUT 확인 안 됨 | 사용하지 않음. 점퍼 납땜 금지 |
+| UART0/CH343P | CH343P는 GPIO43/44 UART0, 기존 진단 콘솔도 UART0 | Jetson 프로토콜과 콘솔 충돌 해결 전 운영 링크 사용 금지(§15.2) |
+| 배터리 ADC GPIO1 | ADC 핀만 예약 | 6S 만충 25.2 V + 과도전압에 맞는 분압/보호/필터 설계 |
+| STOP GPIO8 | 상태 입력만 예약 | 버튼 NO/NC, 풀업/다운, 독립 PWM 억제/전력 차단 방식 결정 |
+| ENABLE GPIO21 / WATCHDOG GPIO47 | 논리 신호 후보 | 외부 fail-safe 회로/기본 OFF/단선 동작 설계 |
+| FAULT GPIO2 / CLEAR GPIO14 | 선택 입력 | 미사용이면 정의된 pull 상태 유지 |
+| B0390 CSI 전원 | CAM0/CAM1 연결 가능 | 카메라 인식·스트리밍·전원 안정성 확인. 외부 전원 임의 주입 금지 |
+| 서보 12 V | M01 12 V/2 A 우선 시험 | 정상 조향 피크전류/전압강하 실측. 2 A 한계 도달 시 중단 |
+
+## 15. ESP32 프로그램 이관·빌드·테스트 순서
+
+현재 저장소의 C++ portable core는 프레임·명령·수신 상태기계·링크·송신 정책의 보드 독립 후보다. firmware_bench는 출력 비활성 UART 연결/목표 빌드 검사 앱이다. 현재 펌웨어에 PCNT 엔코더, IMU SPI, MD20A PWM/DIR, ST3215 UART, STOP/ENABLE/watchdog의 실제 드라이버가 모두 구현된 상태는 아니다. 따라서 이 절차는 이관 작업 순서이며, 펌웨어 완성이나 주행 가능 판정이 아니다.
+
+### 15.1 ESP-IDF 프로젝트 기본 구성
+
+1. ESP-IDF 버전을 저장소의 기존 firmware_bench와 맞춘다. 기존 검증은 ESP-IDF v6.1 기준이므로 임의로 다른 SDK에 올리지 않는다.
+2. 타깃은 esp32s3로 설정한다. VND018 상품 구성은 N16R8(16 MB Flash/8 MB PSRAM)이지만 실물 모듈 각인·부팅 로그·flash/PSRAM 인식으로 확인한다.
+3. Flash size는 실물 확인 후 16 MB로 설정한다. 현재 portable core는 고정 메모리 위주이고 PSRAM을 요구하지 않으므로, PSRAM 사용은 별도 확인 전 필수화하지 않는다.
+4. actuation_wire.hpp → actuation_command.hpp → actuation_receiver.hpp → actuation_link.hpp / actuation_ingress.hpp → actuation_tx.hpp 순서로 포팅한다. 기존 Python/ROS 참조 구현과 동일 입력·기대 결과를 공유 테스트로 대조한다.
+5. 하드웨어 초기화 전에 모든 모터/서보/ENABLE 출력이 비활성 기본값인지 확인한다. 리셋·부팅·통신 재연결에서 자동 ARM 금지.
+6. 현재 firmware_bench는 UART 계획을 비활성으로 시작하고, UART0는 콘솔 충돌/ROM 부트 출력이 확인되지 않으면 거절한다. 이 검사를 무시하거나 wiring_confirmed만 강제로 true로 만들어 운영하지 않는다.
+
+### 15.2 Jetson↔ESP32 USB/UART 충돌 해결 — 실물 연결 전 필수
+
+VND018 CH343P USB-UART는 ESP32 UART0(GPIO43 TX/GPIO44 RX)에 연결된다. 기존 ESP-IDF 검사 앱의 기본 콘솔도 UART0이므로, CH343P를 Jetson 주행 프로토콜 포트로 바로 사용하면 로그와 바이너리 프레임이 섞일 수 있다. ROM/부트로더가 reset 직후 UART0에 출력할 가능성도 있다.
+
+다음 두 경로 중 하나를 실물 보드에서 결정한다.
+
+- **안 A — CH343P UART0를 Jetson 주행 링크로 사용:** ESP-IDF 앱 로그 콘솔을 VND018의 별도 S3 USB Serial/JTAG 포트(GPIO19/20)로 이동하거나 비활성화한다. CH343P의 DTR/RTS가 보드를 리셋하는지 확인한다. reset/부팅 때 UART0에 ROM 출력이 실제로 나오는지 로직 분석기/시리얼 캡처로 기록하고, 프로토콜 수신기가 시작 잡음을 버리고 첫 정상 IA+길이+CRC 프레임에 동기화하는지 검증한다. portable adapter의 uart0_boot_output_quiet_confirmed는 이 검증 없이 true로 설정하지 않는다.
+- **안 B — CH343P는 디버그 콘솔, S3 직접 USB(GPIO19/20)는 Jetson 링크:** USB Serial/JTAG CDC byte-stream 입출력 어댑터를 별도 구현한다. 현재 UartBenchAdapter를 USB에 그대로 연결했다고 간주하지 않는다. CDC 재연결·장치 식별·수신/송신 한도·리셋 동작을 별도 시험한다.
+
+현재 문서의 우선 물리 배선은 CH343P USB-UART를 Jetson에 연결하는 안이지만, 운영 펌웨어 링크는 §15.2 검증을 통과한 뒤 확정한다. 진단 로그와 바이너리 프로토콜을 같은 포트에 혼합하지 않는다.
+
+### 15.3 주변장치 드라이버 이관 순서
+
+1. **UART/통신만:** 모터 전원과 서보 전원을 분리한 상태에서 Jetson↔ESP32 프레임 송수신, CRC, 분할/합쳐짐, 잘못된 길이, 중복/역순 seq, USB 분리, 포트 재개방, MCU reset을 시험한다.
+2. **서보 UART:** GPIO17/18 UART1로 Adapter (A)에 연결한다. Waveshare/ST 기본 baud는 1,000,000 bps 후보지만 실제 서보 설정을 먼저 읽는다. 서보 ID·baud·모드·위치 단위를 확인하고, 혼/링크 분리 상태에서 작은 상대 이동만 명령한다.
+3. **IMU SPI:** GPIO12/11/13/10/9로 SPI2 + INT1을 구현한다. WHO_AM_I, ODR, full-scale, data-ready, axis sign을 확인하고 3.3 V 레벨을 유지한다.
+4. **엔코더 PCNT:** GPIO4/5로 A/B 쿼드러처 1개를 구현한다. 엔코더 전원은 Jetson J12 pin2 5 V/pin6 GND다. CF-0108의 입력·출력 방향과 3.3 V 출력 확인 전에는 PCNT에 연결하지 않는다. 정해진 모터축 회전수에서 count/rev·방향·최대 에지율·필터 손실을 측정한다.
+5. **MD20A:** GPIO15 PWM, GPIO6 DIR, 공통 GND. PWM 주파수/해상도/극성은 데이터시트와 오실로스코프로 확인한 뒤 정한다. 처음에는 모터를 띄우고 드라이버 입력만 측정한다. PWM LOW는 MD20A 제동 상태이므로 단순 coast로 취급하지 않는다.
+6. **STOP/ENABLE:** GPIO8 상태 입력과 GPIO21/47 외부 감시 신호를 구현한다. 독립 하드웨어 차단 회로가 준비되기 전에는 실차 구동 허가를 내지 않는다.
+7. **ADC:** GPIO1은 분압 회로가 확정된 뒤에만 배터리 측정에 사용한다. 배터리 6S를 GPIO에 직접 연결하지 않는다.
+
+### 15.4 단계별 통합 시험 게이트
+
+| 게이트 | 연결/실행 | 통과 근거 |
+|---|---|---|
+| F0 | VND018 판본·헤더·전원 극성·핀 연속성 | 보드 실크와 이 표 일치, 5Vin/미확인 점퍼 미사용 |
+| F1 | ESP32 USB 전원·flash/PSRAM 인식·부팅 | 안정 부팅, 리셋 원인 확인, 출력 비활성 |
+| F2 | Jetson 링크/진단 콘솔 분리 | 포트 식별, startup noise, DTR/RTS reset, 프레임 송수신/CRC |
+| F3 | IMU 단독 | WHO_AM_I·축·단위·timestamp |
+| F4 | 엔코더 단독 | CF-0108 전기 검증, A/B 파형, count/rev·부호·에지 손실 |
+| F5 | 서보 단독 | ID/baud/위치 피드백, 작은 상대 이동, 실제 바퀴각 |
+| F6 | MD20A 입력/모터 | PWM/DIR 파형, 저출력 회전, 정지·제동, 전류·온도 |
+| F7 | 센서·제어 동시 실행 | CPU/heap/stack, 제어 지터, 데이터 누락, 통신 지연 |
+| F8 | 독립 STOP/고장 주입 | 버튼, Jetson 종료, USB 단절, MCU reset, watchdog에서 재출발 없음 |
+| F9 | 저속 실차 | 직진·원호·코너·정지거리, 측정값 기록 후 제한적 속도 상승 |
+
+모든 게이트는 실제 결과 파일/로그/계측 사진을 남긴 뒤 통과 처리한다. 빌드 성공이나 ROS 토픽 발행만으로 하드웨어 교정을 통과 처리하지 않는다.
+
 ### 11/10 실물 사진 확인: VND018 5Vin과 엔코더 전원 경로
 
 **사용자 실물 사진 기준으로 VND018의 5Vin 헤더를 USB 5 V 출력으로 사용하지 않는다.** 앞면 아래 양쪽 헤더는 `5Vin`으로 표기되어 있고, 뒷면에는 `USB-OTG` 2패드가 보이며 `IN-OUT` 표기는 확인되지 않는다. ESP32 모듈의 `ESP32-S3-WROOM-1 V1.3` 표기는 모듈 표기이지 캐리어 PCB 리비전의 증거가 아니다. V1.4 회로의 IN-OUT/D26 점퍼를 실물에 추정 적용하거나 납땜하지 않는다.
