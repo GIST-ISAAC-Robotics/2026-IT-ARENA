@@ -117,7 +117,7 @@ NVIDIA Carrier Board Specification §2.1은 USB-A 두 스택 각각의 VBUS load
 - B0390: CSI 커넥터를 통해 Jetson에서 공급.
 - RPLIDAR C1: Jetson USB에서 전원과 데이터를 함께 공급.
 - LSM6DSOX: VND018 3.3 V 레일 사용(기존 SPI 배선안).
-- PGE-213: 5 V, 판매 사양 14–20 mA. Jetson J12 pin 2(5 V), pin 6(GND)에서 공급한다. 40핀 헤더의 5 V 공급 한도는 총 0.5 A이며 엔코더 부하에 충분하다. VND018의 `5Vin` 헤더/IN-OUT 점퍼는 사용하지 않는다. A/B는 CF-0108 적합성 확인 후 3.3 V로 변환해 ESP32 GPIO4/5에 입력.
+- PGE-213: 5 V, 판매 사양 14–20 mA. J01 CH2에서 FE 0.25 A 퓨즈를 거쳐 공급한다. A/B는 CF-0108 TXS0108E B1/B2→A1/A2를 통해 GPIO4/5로 연결하고, OE는 GPIO14로 제어한다. VND018 5Vin과 Jetson J12는 사용하지 않는다.
 
 ### VND018 5Vin과 엔코더 전원 경로 — R2로 대체
 
