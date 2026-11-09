@@ -107,13 +107,13 @@ Bus Servo Adapter (A)는 전압을 낮춰 주는 DC-DC 강압기가 아니다. �
 
 Jetson USB-A ──데이터+5 V──→ VND018 USB-UART USB-C (ESP32 전원/통신)
 VND018 3.3 V ─────────────→ Adafruit 4438 IMU VIN (기존 핀 계획)
-Jetson J12 pin 2 또는 4 (5 V) + pin 6 또는 9 (GND) ─→ PGE-213 엔코더 VCC/GND
+Jetson J12 pin 2 (5 V) + pin 6 (GND) ─→ PGE-213 엔코더 VCC/GND
 PGE-213 A/B ──→ CF-0108(사양·핀 배열 확인 후) ──→ VND018 GPIO4/5
 VND018 UART TX/RX/GND ────→ Bus Servo Adapter (A) UART
 Bus Servo Adapter (A) 서보 포트 ─→ ST3215-HS 1개
 ```
 
-VND018은 Jetson USB-A→USB-C 데이터 케이블 한 개로 전원과 UART 통신을 함께 공급하는 기존 구성을 우선한다. IMU는 VND018의 3.3 V 핀을 사용한다. VND018의 실제 사진에서는 헤더가 `5Vin`으로 표기되어 있고 `IN-OUT` 점퍼를 확인할 수 없다. USB 전원 상태에서 이를 엔코더용 5 V 출력으로 사용할 수 있다고 가정하거나 점퍼를 납땜하지 않는다. 엔코더 전원은 Jetson Orin Nano Developer Kit의 40핀 확장 헤더 J12를 사용한다. PGE-213은 5 V·14–20 mA이며, NVIDIA가 명시한 J12 5 V 공급 한도 0.5 A 안에 충분히 들어간다. Jetson J12 pin 2 또는 4를 VCC에, pin 6 또는 9를 GND에 연결한다. 공통 GND 및 A/B 레벨 변환이 필요하다.
+VND018은 Jetson USB-A→USB-C 데이터 케이블 한 개로 전원과 UART 통신을 함께 공급하는 기존 구성을 우선한다. IMU는 VND018의 3.3 V 핀을 사용한다. VND018의 실제 사진에서는 헤더가 `5Vin`으로 표기되어 있고 `IN-OUT` 점퍼를 확인할 수 없다. USB 전원 상태에서 이를 엔코더용 5 V 출력으로 사용할 수 있다고 가정하거나 점퍼를 납땜하지 않는다. 엔코더 전원은 Jetson Orin Nano Developer Kit의 40핀 확장 헤더 J12를 사용한다. PGE-213은 5 V·14–20 mA이며, NVIDIA가 명시한 J12 5 V 공급 한도 0.5 A 안에 충분히 들어간다. Jetson J12 pin 2를 VCC에, pin 6을 GND에 연결한다. 공통 GND 및 A/B 레벨 변환이 필요하다.
 
 서보는 우선 M01의 CH5 또는 CH6 중 **한 채널만** 사용해 12 V를 Bus Servo Adapter (A)의 DC 5.5×2.1 입력 또는 2P 나사 단자에 공급하는 것이 현재 부품으로 가능한 현실적인 경로다. XT30 수 피그테일을 DC 5.5×2.1 수 플러그 또는 나사 단자로 연결한다. 단, ST3215-HS의 stall 2.4 A가 채널 정격 2 A보다 높으므로 stall/기계적 끝단 시험은 금지하고, 낮은 토크·자유로운 링크 상태에서 전압 강하와 전류를 측정한다. M01의 6S 저전압 입력은 명시 정격 밖이므로 실제 팩 전압 구간에서 12 V 유지 여부를 관찰한다. **CH5와 CH6을 병렬 연결하지 않는다.** 이 시험에서 전압 강하·리셋·과열·전류 제한이 나타나면 그때 별도 DC-DC를 검토한다.
 
@@ -148,7 +148,7 @@ GPIO 43/44는 CH343P USB-UART의 UART0으로 별도 예약하고, 19/20은 S3 �
 | Jetson J01 CH1 | 19 V, 최대 2.3 A (43.7 W) | Jetson 동봉 어댑터 19 V/2.37 A (45.0 W); 25 W 모드의 모듈 전력 예산 | **기본 구성으로 합리적이며 유지**. 최대 동시 부하에서 전압 강하·throttling만 실측 확인 |
 | ESP32 USB | Jetson USB-A에서 5 V | ESP32 보드와 로직 부하 | CH343P USB-UART 케이블 하나로 전원+통신. C1과 다른 USB 스택에 배치 |
 | Jetson USB-A | 두 USB-A 스택 각각 VBUS 부하 스위치, 스택당 3 A 한도(NVIDIA §2.1) | ESP32 + C1 USB 어댑터 | 서로 다른 스택에 분리. 실제 장치별 소비전류와 재연결/전압강하 확인 |
-| Jetson J12 5 V | Table 5-3의 40핀 헤더 공급 한도 0.5 A를 보수적 설계 상한으로 사용 | PGE-213 14–20 mA | **충분**. J12 pin 2/4→encoder VCC, pin 6/9→GND |
+| Jetson J12 5 V | Table 5-3의 40핀 헤더 공급 한도 0.5 A를 보수적 설계 상한으로 사용 | PGE-213 14–20 mA | **충분**. J12 pin 2→encoder VCC, pin 6→GND |
 | VND018 3.3 V | 실제 보드 LDO/리비전 정격 미확인 | Adafruit 4438 IMU VIN | 부하 작음. 3V3 실측 및 IMU 동작 확인 |
 | Jetson CSI 3.3 V | NVIDIA Table 5-3: 카메라 커넥터당 0.26 A | Arducam B0390 판매 사양: peak 0.30 A | **문서상 피크 수치 차이, 즉시 부적합 판정 아님**. CSI 직결 유지, 인식·동작 안정성 확인. 별도 전원 주입 금지 |
 | M01 입력 | 24–36 V 표기 | 지급 6S 배터리 21–25.2 V | 지급된 조합을 유지. 입력 표기 하한 미만 구간은 실측 관찰 사항으로 기록하되, pass-through 모터 경로를 이유로 PDB 교체를 요구하지 않음 |
@@ -185,7 +185,7 @@ NVIDIA Carrier Board Specification §2.1은 USB-A 두 스택 각각의 VBUS load
 - B0390: CSI 커넥터를 통해 Jetson에서 공급.
 - RPLIDAR C1: Jetson USB에서 전원과 데이터를 함께 공급.
 - LSM6DSOX: VND018 3.3 V 레일 사용(기존 SPI 배선안).
-- PGE-213: 5 V, 판매 사양 14–20 mA. Jetson J12 pin 2 또는 4(5 V), pin 6 또는 9(GND)에서 공급한다. 40핀 헤더의 5 V 공급 한도는 총 0.5 A이며 엔코더 부하에 충분하다. VND018의 `5Vin` 헤더/IN-OUT 점퍼는 사용하지 않는다. A/B는 CF-0108 적합성 확인 후 3.3 V로 변환해 ESP32 GPIO4/5에 입력.
+- PGE-213: 5 V, 판매 사양 14–20 mA. Jetson J12 pin 2(5 V), pin 6(GND)에서 공급한다. 40핀 헤더의 5 V 공급 한도는 총 0.5 A이며 엔코더 부하에 충분하다. VND018의 `5Vin` 헤더/IN-OUT 점퍼는 사용하지 않는다. A/B는 CF-0108 적합성 확인 후 3.3 V로 변환해 ESP32 GPIO4/5에 입력.
 
 ### 11/10 실물 사진 확인: VND018 5Vin과 엔코더 전원 경로
 
@@ -197,7 +197,7 @@ NVIDIA Carrier Board Specification §2.1은 USB-A 두 스택 각각의 VBUS load
 - Table 5-3: J12 40-pin header의 VDD_5V_SYS 공급 한도 **0.5 A**.
 - PGE-213 판매 사양 소비전류 14–20 mA이므로 이 공급 한도에 충분한 여유가 있다.
 
-연결은 Jetson J12 pin 2 또는 4 → PGE-213 VCC, J12 pin 6 또는 9 → PGE-213 GND로 한다. Jetson은 J01 19 V로 전원을 공급받으므로 J12 5 V는 Jetson 캐리어 보드의 시스템 5 V 레일이다. 40핀 헤더의 GPIO 신호 핀은 3.3 V 논리이며, pin 2/4는 GPIO가 아니라 전원 핀이다.
+연결은 Jetson J12 pin 2 → PGE-213 VCC, J12 pin 6 → PGE-213 GND로 한다. Jetson은 J01 19 V로 전원을 공급받으므로 J12 5 V는 Jetson 캐리어 보드의 시스템 5 V 레일이다. 40핀 헤더의 GPIO 신호 핀은 3.3 V 논리이며, pin 2/4는 GPIO가 아니라 전원 핀이다.
 
 PGE-213 A/B는 5 V pull-up 신호이므로 ESP32 GPIO4/5에 직접 넣지 않는다. 기존 CF-0108의 실제 입력·출력 정격과 핀 배열을 확인한 뒤 5→3.3 V 레벨 변환을 거친다. Jetson과 VND018은 USB 케이블로 연결되어 있으므로 GND 기준이 공유되지만, 엔코더와 레벨 변환 회로의 GND를 명시적으로 공통 연결한다.
 
@@ -620,7 +620,7 @@ VND018 CH343P USB-UART는 ESP32 UART0(GPIO43 TX/GPIO44 RX)에 연결된다. 기�
 1. **UART/통신만:** 모터 전원과 서보 전원을 분리한 상태에서 Jetson↔ESP32 프레임 송수신, CRC, 분할/합쳐짐, 잘못된 길이, 중복/역순 seq, USB 분리, 포트 재개방, MCU reset을 시험한다.
 2. **서보 UART:** GPIO17/18 UART1로 Adapter (A)에 연결한다. Waveshare/ST 기본 baud는 1,000,000 bps 후보지만 실제 서보 설정을 먼저 읽는다. 서보 ID·baud·모드·위치 단위를 확인하고, 혼/링크 분리 상태에서 작은 상대 이동만 명령한다.
 3. **IMU SPI:** GPIO12/11/13/10/9로 SPI2 + INT1을 구현한다. WHO_AM_I, ODR, full-scale, data-ready, axis sign을 확인하고 3.3 V 레벨을 유지한다.
-4. **엔코더 PCNT:** GPIO4/5로 A/B 쿼드러처 1개를 구현한다. 엔코더 전원은 Jetson J12 pin2 5 V/pin6 GND다. CF-0108의 입력·출력 방향과 3.3 V 출력 확인 전에는 PCNT에 연결하지 않는다. 정해진 모터축 회전수에서 count/rev·방향·최대 에지율·필터 손실을 측정한다.
+4. **엔코더 PCNT:** GPIO4/5로 A/B 쿼드러처 1개를 구현한다. 엔코더 전원은 Jetson J12 pin 2(5 V)/pin 6(GND)다. CF-0108의 입력·출력 방향과 3.3 V 출력 확인 전에는 PCNT에 연결하지 않는다. 정해진 모터축 회전수에서 count/rev·방향·최대 에지율·필터 손실을 측정한다.
 5. **MD20A:** GPIO15 PWM, GPIO6 DIR, 공통 GND. PWM 주파수/해상도/극성은 데이터시트와 오실로스코프로 확인한 뒤 정한다. 처음에는 모터를 띄우고 드라이버 입력만 측정한다. PWM LOW는 MD20A 제동 상태이므로 단순 coast로 취급하지 않는다.
 6. **STOP/ENABLE:** GPIO8 상태 입력과 GPIO21/47 외부 감시 신호를 구현한다. 독립 하드웨어 차단 회로가 준비되기 전에는 실차 구동 허가를 내지 않는다.
 7. **ADC:** GPIO1은 분압 회로가 확정된 뒤에만 배터리 측정에 사용한다. 배터리 6S를 GPIO에 직접 연결하지 않는다.
