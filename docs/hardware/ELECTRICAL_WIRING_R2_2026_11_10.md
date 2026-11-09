@@ -12,7 +12,7 @@
 
 | 항목 | R2 최종 선택 | 연결/설계 이유 |
 |---|---|---|
-| MCU 전원·Jetson 통신 | Jetson USB-A → VND018 CH343P USB-UART USB-C 한 가닥 | USB 5 V로 ESP32 전원, UART0(GPIO43/44)로 데이터 통신 |
+| MCU 전원·Jetson 통신 | Jetson USB-A → VND018 CH343P USB-UART USB-C 한 가닥 | USB 5 V로 ESP32 전원, UART1을 GPIO43/44에 매핑해 데이터 통신 |
 | IMU 전원 | VND018 3V3 → Adafruit 4438 VIN | 3.3 V 논리, MCU와 같은 기준 GND |
 | 엔코더 전원 | J01 CH2 5 V → FE 0.25 A → PGE-213 pin 1 | VND018 5Vin/5V 헤더와 Jetson J12 5V 한도에 의존하지 않음 |
 | 엔코더 신호 | PGE A/B 5 V → CF-0108(TXS0108E) B1/B2 → A1/A2 → 100 Ω → GPIO4/5 | 8채널 중 2채널 사용, 5→3.3 V 자동 방향 변환 |
@@ -176,8 +176,8 @@ PGE-213 판매 사양은 5 V, 14–20 mA, 2채널 7 PPR이다. 실제 출력 파
 | P2 번호 | 실크/GPIO | R2 연결 |
 |---:|---|---|
 | 1 | GND | 보조 논리 GND |
-| 2 | TX / GPIO43 | CH343P UART0 TX, Jetson 링크 |
-| 3 | RX / GPIO44 | CH343P UART0 RX, Jetson 링크 |
+| 2 | TX / GPIO43 | CH343P host link, UART1 TX |
+| 3 | RX / GPIO44 | CH343P host link, UART1 RX |
 | 18 | GPIO21 | 미사용, 예약 |
 | 17 | GPIO47 | 미사용, 예약 |
 | 4 | GPIO1 | 미사용, ADC 분압 회로 없음 |
@@ -187,7 +187,7 @@ PGE-213 판매 사양은 5 V, 14–20 mA, 2채널 7 PPR이다. 실제 출력 파
 
 ### 4.2 USB 포트
 
-- CH343P USB-UART 포트: Jetson USB-A에 연결한다. 전원 5 V와 UART0 데이터가 한 케이블로 전달된다.
+- CH343P USB-UART 포트: Jetson USB-A에 연결한다. 전원 5 V와 UART 데이터가 한 케이블로 전달된다. ESP-IDF는 UART1을 GPIO43 TX/GPIO44 RX에 매핑한다. 물리적인 CH343P 배선이 UART0 전용인 것은 아니며 UART 신호는 GPIO Matrix로 재배정할 수 있다.
 - ESP32-S3 Native USB 포트(GPIO19/20): 개발 PC의 펌웨어 업로드·디버깅용으로 남긴다. 주행 중에는 비워 둔다.
 - USB 두 포트를 동시에 외부 5 V 전원으로 공급하지 않는다.
 - VND018 P1-21의 5V/5Vin은 R2에서 외부 전원 출력으로 사용하지 않는다.
@@ -366,8 +366,9 @@ FM 10 A는 초기 설계값이다. 모터 정격 전류와 지속 운전 조건�
 
 | 기능 | 주변장치 | 핀 |
 |---|---|---|
-| Jetson host link | UART0 / CH343P | GPIO43 TX, GPIO44 RX |
-| Servo bus | UART1 | GPIO17 TX, GPIO18 RX |
+| Jetson host link | UART1 / CH343P | GPIO43 TX, GPIO44 RX |
+| Servo bus | UART2 | GPIO17 TX, GPIO18 RX |
+
 | IMU | SPI2 | SCLK12, MOSI11, MISO13, CS10, INT1 9 |
 | Encoder | PCNT quadrature | A=GPIO4, B=GPIO5 |
 | Motor | LEDC PWM + GPIO DIR | PWM15, DIR6 |
@@ -376,14 +377,17 @@ FM 10 A는 초기 설계값이다. 모터 정격 전류와 지속 운전 조건�
 
 ESP-IDF v6.1을 기준으로 한다. 기존 portable core는 프로토콜·수신 상태기계 후보이며, firmware_bench는 출력 비활성 UART 시험 앱이다. 실제 PCNT/SPI/LEDC/Servo driver와 통합 제어 task를 이관해야 한다.
 
-### 11.2 UART0와 ROM 부팅 로그
+### 11.2 UART peripheral과 콘솔 분리
 
-- CH343P는 UART0(GPIO43/44)에 고정 연결되어 있다. Jetson 주행 프로토콜은 이 포트를 사용한다.
-- ESP-IDF 앱/부트로더 콘솔은 Native USB Serial/JTAG(GPIO19/20)로 이동한다. CH343P UART0에 로그와 바이너리 프레임을 섞지 않는다.
-- ESP32-S3 ROM 메시지는 기본 설정에서 UART0와 USB Serial/JTAG 양쪽에 출력될 수 있다. eFuse를 성급히 굽지 않는다. 호스트 수신기는 임의의 시작 잡음을 폐기하고 IA+길이+CRC가 유효한 첫 프레임에서 동기화해야 한다.
-- 포트 개방/보드 reset/DTR-RTS/ROM 로그/USB 단절 후 재연결을 시험한다. 부팅 잡음이 유효 프레임으로 오인되지 않고 새 ARM 전까지 PWM이 LOW인지 확인한다.
-- Jetson–MCU 링크 초기 baud는 2 Mbps를 후보로 두고 실제 최대 프레임 크기·전송 주기·CRC 오류·지연을 측정해 고정한다. 115200 bps를 무조건 기본값으로 쓰지 않는다.
-- Native USB Serial/JTAG는 개발·로그·복구용으로 남기고 주행 중 데이터 링크는 CH343P UART0로 유지한다.
+- VND018 CH343P USB-UART는 물리적으로 GPIO43/44에 연결된다. ESP-IDF v6.1의 uart_set_pin()/GPIO Matrix를 사용해 **UART1 TX=GPIO43, RX=GPIO44**로 지정한다. UART0는 ROM/부트 용도로 남기고 애플리케이션 주행 링크에 사용하지 않는다.
+- 서보 Bus Servo Adapter는 **UART2 TX=GPIO17, RX=GPIO18**로 지정한다. 따라서 Jetson 링크와 서보가 서로 다른 UART peripheral을 사용한다.
+- ESP-IDF 앱·부트로더 진단 콘솔은 Native USB Serial/JTAG(GPIO19/20)로 지정한다. R2의 sdkconfig.defaults에는 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y를 설정했다. CH343P는 데이터 링크로만 사용한다.
+- ROM은 애플리케이션 시작 전 GPIO43/44에 UART0 부팅 문자를 출력할 수 있다. UartBenchAdapter는 UART1을 사용하므로 UART0 boot-output guard와 충돌하지 않는다. UART1 드라이버 설치 직후 RX input/event queue를 비우고 첫 정상 프레임부터 수신한다. eFuse를 굽거나 GPIO46 strapping을 바꾸지 않는다.
+- 실제 시험에서 CH343P가 받은 부팅 문자·드라이버 flush·첫 IA+length+CRC 프레임 동기화, DTR/RTS reset, 포트 재개방, USB 분리/재연결을 확인한다. 새 ARM 전까지 PWM=0과 DISARMED가 유지되어야 한다.
+- Jetson–MCU 링크 초기 baud는 2 Mbps를 후보로 두고 최대 프레임 크기·전송 주기·CRC 오류·지연을 측정해 고정한다. 115200 bps를 무조건 기본값으로 쓰지 않는다.
+- Native USB Serial/JTAG는 개발·로그·복구용으로 남기고 주행 중 데이터 링크는 CH343P를 통해 UART1로 유지한다.
+
+근거: [ESP-IDF v6.1 UART GPIO Matrix·uart_set_pin](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/uart.html).
 
 ### 11.3 소프트웨어 상태·안전 기본값
 
