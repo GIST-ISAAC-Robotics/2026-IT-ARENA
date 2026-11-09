@@ -15,7 +15,7 @@
 | 연산 | Jetson Orin Nano Super, ROS 2 Humble | JetPack/L4T·커널·ROS 설치판, 전원 모드, 실제 전체 노드 주기와 온도 |
 | MCU | VCC-GND Studio VND018, ESP32-S3-WROOM-1 N16R8; Jetson USB-A→CH343P USB-C로 전원+UART | 실물 PCB 판본·헤더·GPIO 연속성·USB 포트 구분·USB 부하 확인 |
 | 구동 모터 | MB4266-24180 + Cytron MD20A, PWM/DIR | 모터 라벨·정격·극성·MD20A 전원/논리 입력·전류/온도·중립/제동 동작 |
-| 엔코더 | PGE-213 5 V, J01 CH2 공급; A/B는 CF-0108 표준 TXS0108E의 B1/B2→A1/A2로 3.3 V 변환, GPIO4/5 PCNT | 실제 CF 칩 표기(YF08E)·PGE 커넥터 도통·A/B 파형·위상·PPR·카운트 손실 |
+| 엔코더 | PGE-213 5 V, J01 CH2 공급; A/B는 CF-0108 표준 TXS0108E의 B1/B2→A1/A2로 3.3 V 변환, GPIO4/5 PCNT | 실제 CF IC가 TXS0108E인지 식별·PGE 커넥터 도통·A/B 파형·위상·PPR·카운트 손실 |
 | 감속·바퀴 | 공칭 실행 감속비 8.9706:1, 바퀴 외경 65 mm | 실제 기어 잇수/조립·회전비·실제 유효 구름 둘레·헛돎 |
 | 조향 | 지급 ST3215-HS 버스 서보 1개, Bus Servo Adapter (A) | 서보 ID·통신속도·전원 범위·피드백 필드·기구 연결·실제 좌우 바퀴각 |
 | IMU | Adafruit 4438 LSM6DSOX 6축, VND018 3.3 V 레일에서 공급하는 기존 배선안 | SPI/I²C 실제 배선·보드 판본·축 방향·단위·ODR·필터·온도·장착 변환 |
@@ -26,7 +26,7 @@
 
 **중요한 계수 주의:** 10월 문서의 15:1·420 count/wheel rev·0.4862 mm/count는 이전 구성의 이력이다. 현재 현황은 공칭 8.9706:1이다. 따라서 과거 420 count/wheel rev 환산을 실물에 그대로 적용하지 않는다. 28 count/motor rev도 납품 엔코더에서 확인할 가정이다. 공칭비만 곱한 이론값은 약 251.18 count/wheel rev이지만, 실제 기어비·엔코더 체배·유효 구름 둘레를 확인하기 전에는 교정 계수로 채택하지 않는다.
 
-CF-0108의 R2 설계 기준은 표준 CJMCU-0108/TI TXS0108E다. VA=3.3 V, VB=5 V, OE=VA pull-up, 엔코더 A/B는 B1/B2 입력, A1/A2 출력으로 연결한다. TI 칩 윗면 표기 YF08E와 보드 실크를 실물에서 대조한다. 자세한 양끝 핀표·주의사항은 [전장 배선 R2 §3](ELECTRICAL_WIRING_R2_2026_11_10.md#3-cf-0108-엔코더-변환-회로)를 따른다.
+CF-0108의 R2 설계 기준은 표준 CJMCU-0108/TI TXS0108E다. VA=3.3 V, VB=5 V, OE는 GPIO14로 제어하며 10 kΩ pulldown으로 기본 LOW를 유지한다. 엔코더 A/B는 B1/B2 입력, A1/A2 출력으로 연결한다. 실물 IC top-mark와 판매자료를 대조해 TXS0108E인지 식별한다. 자세한 양끝 핀표·주의사항은 [전장 배선 R2 §3](ELECTRICAL_WIRING_R2_2026_11_10.md#3-cf-0108-엔코더-변환-회로)를 따른다.
 
 ## 1. 시험 운영 원칙 및 공통 기록
 
@@ -183,8 +183,8 @@ M01 CH5 12 V/2 A 한 채널을 Bus Servo Adapter A H1에 공급한다. ST3215-HS
 - PGE-213 pin 2 GND ← J01 CH2 GND 및 공통 논리 GND.
 - PGE-213 pin 3 A → CF-0108 B1 → CF-0108 A1 → 100 Ω → VND018 GPIO4.
 - PGE-213 pin 4 B → CF-0108 B2 → CF-0108 A2 → 100 Ω → VND018 GPIO5.
-- CF-0108 VA=VND018 3V3, VB=J01 CH2 5 V, GND=공통, OE=VA에 10 kΩ 풀업.
-- CF-0108 실물 IC 표기가 YF08E인지 확인한다. TXB0108 또는 다른 칩이면 이 결선을 적용하지 않는다.
+- CF-0108 VA=VND018 3V3, VB=J01 CH2 5 V, GND=공통, OE=GPIO14/P1-20 제어. OE–GND 10 kΩ pulldown으로 기본 LOW, VA/VB 안정 후 GPIO14 HIGH.
+- CF-0108 실물 IC가 TXS0108E인지 top-mark와 판매자료로 식별한다. TXB0108 또는 식별 불가 IC면 이 결선을 적용하지 않는다.
 
 **전기 인터페이스 검사**
 1. 무전원 상태에서 PGE XHP-4 pin 1–4와 보유 케이블 맨선의 도통을 하나씩 확인한다. 색상만으로 핀을 판단하지 않는다.
