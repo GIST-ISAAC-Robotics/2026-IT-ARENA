@@ -1,0 +1,55 @@
+wire_id,from,via,to,wire_or_component,notes
+W001,Battery XT60+,F0 15A,S0 input,16AWG red,Main positive; fuse close to battery
+W002,S0 output+,XT30 Y split,J01 input+,16AWG red,Through FJ 5A on J01 branch
+W003,S0 output+,XT30 Y split,M01 input+,16AWG red,Motor PDB branch
+W004,Battery XT60-,Y split,J01 input-,16AWG black,Separate power return
+W005,Battery XT60-,Y split,M01 input-,16AWG black,Separate power return
+W006,J01 CH1+,XT30 pigtail,Jetson DC jack center+,18AWG red,19V; verify center polarity
+W007,J01 CH1-,XT30 pigtail,Jetson DC jack outer-,18AWG black,19V return
+W008,J01 CH2+,FE 0.25A fuse,PGE-213 XHP4 pin1 VCC,24AWG red,5V encoder supply
+W009,J01 CH2-,direct,PGE-213 XHP4 pin2 GND,24AWG black,Encoder supply return
+W010,J01 CH2+ after FE,branch,CF-0108 VB,24AWG red,5V B-side reference
+W011,J01 CH2-,branch,CF-0108 GND,24AWG black,Common logic reference
+W012,Jetson USB-A,USB data+VBUS,VND018 CH343P USB-C,USB data cable,ESP32 power and UART0
+W013,Jetson USB-A other stack,USB data+VBUS,RPLIDAR C1 adapter,USB cable,Separate USB stack from ESP32
+W014,Jetson CAM0/J20,15pin-to-22pin FPC,B0390 15pin CSI,15-22 FPC,2-lane; check contact orientation
+W015,VND018 P1-1 3V3,wire,Adafruit 4438 VIN,26AWG,3.3V only
+W016,VND018 P1-22 GND,wire,Adafruit 4438 GND,26AWG,Logic GND
+W017,VND018 P1-18 GPIO12,wire,Adafruit 4438 SCK,26AWG,SPI2 clock
+W018,VND018 P1-17 GPIO11,wire,Adafruit 4438 SDI/MOSI,26AWG,SPI2 MOSI
+W019,Adafruit 4438 SDO/MISO,wire,VND018 P1-19 GPIO13,26AWG,SPI2 MISO
+W020,VND018 P1-16 GPIO10,wire,Adafruit 4438 CS,26AWG,Add 10k pull-up to 3V3
+W021,Adafruit 4438 INT1,wire,VND018 P1-15 GPIO9,26AWG,Check INT1 polarity
+W022,VND018 P1-1 3V3,wire,CF-0108 VA,26AWG,Low-voltage A-side
+W023,CF-0108 VA,10k pull-up,CF-0108 OE,26AWG,OE active high
+W024,PGE-213 XHP4 pin3 A,wire,CF-0108 B1,26AWG,5V encoder A
+W025,CF-0108 A1,100R series,VND018 P1-4 GPIO4,26AWG,3.3V encoder A
+W026,PGE-213 XHP4 pin4 B,wire,CF-0108 B2,26AWG,5V encoder B
+W027,CF-0108 A2,100R series,VND018 P1-5 GPIO5,26AWG,3.3V encoder B
+W028,M01 CH1+,FM 10A fuse,MD20A VB+,16AWG red,Pass-through motor supply
+W029,M01 CH1-,direct,MD20A VB-,16AWG black,Power return
+W030,MD20A MA,wire,MB4266 motor terminal1,16AWG,Motor lead; insulate
+W031,MD20A MB,wire,MB4266 motor terminal2,16AWG,Motor lead; insulate
+W032,VND018 P1-8 GPIO15,1k series + S_RUN NO + S_STOP-A NC,MD20A PWM,26AWG,STOP opens PWM path
+W033,MD20A PWM,10k pulldown,MD20A signal GND,26AWG,Default PWM LOW/brake
+W034,VND018 P1-6 GPIO6,1k series,MD20A DIR,26AWG,Direction logic
+W035,MD20A DIR,10k pulldown,MD20A signal GND,26AWG,Default DIR LOW
+W036,M01 CH5+,FS 2A fuse + S_SERVO,Adapter A H1-2 DC+,22AWG red,12V servo power
+W037,M01 CH5-,direct,Adapter A H1-1 GND,22AWG black,Servo power return
+W038,VND018 P1-10 GPIO17 TX,1k series,Adapter A H2-3 TXD,26AWG,TX-to-TX
+W039,Adapter A H2-2 RXD,1k series,U2 pin1 1A,26AWG,Servo RX protection input
+W040,U2 pin6 1Y,100R series,VND018 P1-11 GPIO18 RX,26AWG,Buffered 3.3V RX
+W041,U2 pin5 VCC,3V3,VND018 P1-1 3V3,26AWG,U2 supply
+W042,U2 pin2 GND,direct,VND018 GND,26AWG,U2 ground
+W043,U2 pin1 1A,100k pulldown,U2 pin2 GND,26AWG,Default low
+W044,U2 pin3 2A,direct,U2 pin2 GND,26AWG,Unused input tied low
+W045,U2 pin4 2Y,NC,not connected,,Unused output
+W046,U2 pin5 to pin2,100nF capacitor,local decoupling,,Place near U2
+W047,Adapter A H2-1 GND,direct,VND018 GND,26AWG,UART signal ground
+W048,Adapter A H3 pin1 DATA,3-pin servo cable,ST3215-HS D,,Verify D/V/G continuity
+W049,Adapter A H3 pin2 SERVO V+,3-pin servo cable,ST3215-HS V,,From M01 CH5 12V
+W050,Adapter A H3 pin3 GND,3-pin servo cable,ST3215-HS G,,Common ground
+W051,VND018 P1-12 GPIO8,10k pull-up to 3V3 + S_STOP-B NC,STOP status input,26AWG,Released LOW; pressed/open wire HIGH
+W052,S_STOP-A NC,series contact,GPIO15 PWM path,low-current signal,Independent hardware PWM inhibit
+W053,S_RUN NO,series contact,GPIO15 PWM path,low-current signal,Default OPEN
+W054,VND018 P1-22 GND,logic ground star,CF-0108/U2/IMU/MD20A signal GND,26AWG,Do not use USB shield as return
