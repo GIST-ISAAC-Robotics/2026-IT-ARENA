@@ -39,7 +39,8 @@ def test_empty_has_no_new_observation_and_contract_has_no_truth_fields():
     scene = build(())
     assert scene.rays == () and scene.source_first_s is scene.source_last_s is None
     assert {f.name for f in fields(LocalScene)} == {
-        't_ref_s', 'source_first_s', 'source_last_s', 'source_frame_id', 'source_epoch', 'rays', 'frame_id'}
+        't_ref_s', 'source_first_s', 'source_last_s', 'source_frame_id', 'source_epoch', 'rays', 'frame_id',
+        'source_angles_rad'}
     with pytest.raises(TypeError):
         LocalScene(1., None, None, 'laser', 0, (), actor_id=1)
 

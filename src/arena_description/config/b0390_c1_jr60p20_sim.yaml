@@ -37,13 +37,17 @@ lidar:
   rate_hz: 10.0
 imu:
   model: LSM6DSOX
-  status: provisional_6axis_candidate
+  status: hardware_identified_mount_uncalibrated
   xyz_m: [0.0, 0.0, 0.060]
-  rate_hz: 208.0
+  # 11/11 실물 명목 ODR208에서199.069Hz 관측. Gazebo는 아래 요청에 실제200Hz였다.
+  # 이전208 요청은 r25에서 실제250Hz였으므로 명목 모드와 시뮬 출력 근사를 구분한다.
+  nominal_rate_hz: 208.0
+  rate_hz: 199.06850941348748
   gyro_full_scale_dps: 500
   accel_full_scale_g: 8
   mass_kg: 0.003
-  # 임의의 소규모 백색잡음. 제조사 잡음밀도를 표준편차로 오인하지 않는다.
-  simulated_gyro_stddev_rad_s: 0.001
-  simulated_accel_stddev_mps2: 0.01
+  # 11/11 미장착5분 산포의 축별 Gaussian 근사. 잡음밀도·차량진동·교정값이 아니다.
+  # 평균은 기존0 유지. 관측된 z 평균은 별도 민감도 시험에서만 주입하며 보정값으로 쓰지 않는다.
+  simulated_gyro_stddev_rad_s: 0.0011
+  simulated_accel_stddev_mps2: 0.0103
   source: https://www.st.com/resource/en/datasheet/lsm6dsox.pdf

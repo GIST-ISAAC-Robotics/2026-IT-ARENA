@@ -29,7 +29,7 @@ def test_oblique_gap_keeps_raw_unknown_and_only_allows_point_two():
 @pytest.mark.parametrize('case',['central','wide','high_speed','stale','near_flank','under_range','all_missing'])
 def test_direct_front_or_unsupported_input_still_rejected(case):
     p,h=ready(True);raw=sample(.5,range(301,306));speed=.5;now=.6
-    if case=='central':raw=sample(.5,range(249,254))
+    if case=='central':raw=sample(.5,range(246,255))  # 단일 저속 후보의 총6도 범위도 넘음
     if case=='wide':raw=sample(.5,range(301,310))  # 6도 초과; 7광선은 실제 반경으로 별도 검사
     if case=='high_speed':speed=.61
     if case=='stale':now=.81
@@ -46,8 +46,16 @@ def test_near_disappearing_return_is_still_latched():
     assert not r['allowed'] and r['reason']=='known_obstacle_latched'
 
 
-def test_rotation_that_transports_the_gap_to_central_still_rejected():
+def test_rotation_to_central_uses_same_bounded_single_gap():
     p,h=ready(True);h=history(w=4.)
+    result=p.evaluate(sample(.5,range(301,306)),[],h,.7,.5)
+    assert result['allowed'] and result['speed_cap_mps']==.2
+    assert not result['unknown_filled']
+    assert result['lateral_metric']['missing_chord_m']<=.05
+
+
+def test_rotation_outside_front_observation_domain_still_rejected():
+    p,h=ready(True);h=history(w=-8.)
     assert not p.evaluate(sample(.5,range(301,306)),[],h,.7,.5)['allowed']
 
 

@@ -7,6 +7,7 @@
 """
 import math
 import time
+from copy import copy
 
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Imu, JointState
@@ -86,7 +87,12 @@ class MotionInput:
         callback = self.on_drive_motor if self.feedback_mode == MODE_MOTOR else self.on_wheels
         node.create_subscription(JointState, self.feedback_topic, wrap('wheels', callback), 100)
         imu_topic = str(node.declare_parameter("motion_imu_topic", "/camera/imu").value)
-        node.create_subscription(Imu, imu_topic, wrap('imu', self.on_imu), qos_profile_sensor_data)
+        # 각속도는 최신값만 필요한 영상과 달리 적분용 이력이다. 기본5표본은
+        # 200Hz에서25ms뿐이라 짧은 계산 지연에도 중간 표본을 잃었다(r134).
+        # 약320ms를 보관하되 원 취득시각·세대/만료 검사는 그대로 적용한다.
+        imu_qos = copy(qos_profile_sensor_data)
+        imu_qos.depth = 64
+        node.create_subscription(Imu, imu_topic, wrap('imu', self.on_imu), imu_qos)
 
     def clock(self):
         now = self.node.get_clock().now().nanoseconds * 1e-9
@@ -180,9 +186,8 @@ class MotionInput:
         try:
             if scan.header.frame_id != "laser_frame":
                 raise MotionUnavailable("scan_frame_mismatch")
-            points, indices, meta = self.history.project(
-                scan.ranges, scan.angle_min, scan.angle_increment, scan.range_min, scan.range_max,
-                seconds(scan.header.stamp), float(scan.time_increment), now, self.mode, self.verified)
+            from arena_autonomy.scan_input import project_scan
+            points, indices, meta = project_scan(scan,self.history,now,self.mode,self.verified)
             self.last_meta = {**meta, **diagnostic, "reason": "ok", "processing_ms": (time.perf_counter() - began) * 1000}
             return points, len(indices)
         except MotionUnavailable as error:

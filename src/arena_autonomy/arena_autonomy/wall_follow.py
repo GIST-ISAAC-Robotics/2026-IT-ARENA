@@ -60,7 +60,8 @@ class WallFollow(Node):
         self.state_log = QueuedLog(self.get_logger().info)
         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive", 10)
         self.status_publisher = self.create_publisher(String, "/autonomy/status", 10)
-        self.create_subscription(LaserScan, "/scan", self.timing.wrap('scan', self.on_scan), qos_profile_sensor_data)
+        from arena_autonomy.native_lidar_input import subscribe_scan
+        subscribe_scan(self,self.timing.wrap('scan',self.on_scan),qos_profile_sensor_data)
         self.create_subscription(Image, "/camera/color/image_raw", self.timing.wrap('image', self.on_image), QoSProfile(depth=2))
         self.create_service(SetBool, "/autonomy/enable", self.on_enable)
         self.create_service(Trigger, "/autonomy/reset", self.on_reset)
@@ -141,6 +142,7 @@ class WallFollow(Node):
                   "marker_ids": self.ids, "started": self.signal.started, "enabled": self.enabled,
                   "sim_time_s": now}
         speed, steering = 0.0, self.last_steering
+        emit_command = True
         scan_fresh = self.scan is not None and 0 <= now - stamp_seconds(self.scan.header.stamp) < self.settings["scan_timeout_s"]
         image_fresh = self.rgb_stamp is not None and 0 <= now - self.rgb_stamp < self.settings["image_timeout_s"]
         wall_timeout = self.settings.get("sensor_wall_timeout_s", 3.0)
@@ -164,22 +166,34 @@ class WallFollow(Node):
             if valid_count < 30:
                 status["state"] = "MOTION_STOP" if self.motion and self.motion.last_meta.get("reason") != "ok" else "SCAN_INVALID"
             else:
-                speed, steering, details = self.timing.call('path_command', self.command, points)
-                status.update(details)
-                curvature = abs(math.tan(steering) / self.settings["wheelbase_m"])
-                if curvature > 1e-6:
-                    speed = min(speed, math.sqrt(self.settings["lateral_acceleration_limit_mps2"] / curvature))
-                status["state"] = "RUNNING" if speed > 0 else details["reason"].upper()
-        dt = 1 / self.settings["control_rate_hz"]
+                command = self.timing.call('path_command', self.command, points)
+                if command is None:
+                    # 선택형 분리 계산: 대기 중 이전 명령의 timestamp를 갱신하지 않는다.
+                    emit_command = False
+                    speed, steering = self.last_speed, self.last_steering
+                    status["state"] = "RUNNING" if speed > 0 else "DECISION_PENDING"
+                    status["decision_pending"] = True
+                else:
+                    speed, steering, details = command
+                    status.update(details)
+                    curvature = abs(math.tan(steering) / self.settings["wheelbase_m"])
+                    if curvature > 1e-6:
+                        speed = min(speed, math.sqrt(self.settings["lateral_acceleration_limit_mps2"] / curvature))
+                    status["state"] = "RUNNING" if speed > 0 else details["reason"].upper()
+        dt = getattr(self, 'decision_output_dt_s', 1 / self.settings["control_rate_hz"])
         # 증속은 완만하게, 위험·센서 누락 시에는 즉시 0 명령을 내립니다.
-        speed = min(speed, self.last_speed + self.settings.get("acceleration_mps2", .5) * dt)
-        steering = max(self.last_steering - 3 * dt, min(self.last_steering + 3 * dt, steering))
-        self.last_speed, self.last_steering = speed, steering
-        message = AckermannDriveStamped()
-        message.header.stamp = self.get_clock().now().to_msg()
-        message.header.frame_id = "base_link"
-        message.drive.speed, message.drive.steering_angle = float(speed), float(steering)
-        self.timing.call('command_publish', self.publisher.publish, message)
+        self.command_was_published = emit_command
+        if emit_command:
+            speed = min(speed, self.last_speed + self.settings.get("acceleration_mps2", .5) * dt)
+            steering = max(self.last_steering - 3 * dt, min(self.last_steering + 3 * dt, steering))
+            self.last_speed, self.last_steering = speed, steering
+            message = AckermannDriveStamped()
+            reference = getattr(self, 'decision_command_stamp_s', None)
+            message.header.stamp = (self.get_clock().now().to_msg() if reference is None else
+                rclpy.time.Time(nanoseconds=round(reference * 1e9)).to_msg())
+            message.header.frame_id = "base_link"
+            message.drive.speed, message.drive.steering_angle = float(speed), float(steering)
+            self.timing.call('command_publish', self.publisher.publish, message)
         status.update(speed_command_mps=speed, steering_command_rad=steering)
         status['text_log'] = self.state_log.snapshot()
         if getattr(self, 'vision_pipeline', None) is not None:

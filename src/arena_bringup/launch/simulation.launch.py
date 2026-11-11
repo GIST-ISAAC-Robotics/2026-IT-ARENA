@@ -895,6 +895,12 @@ def _launch_setup(context):
     if motion_test and not local_mode:
         raise RuntimeError('IMU/엔코더 오류 시험은 local_pursuit 전용입니다.')
     test_profile = LaunchConfiguration('lidar_test_profile').perform(context)
+    native_sampling=LaunchConfiguration('lidar_native_sampling_profile').perform(context)
+    if native_sampling:
+        if (not local_mode or LaunchConfiguration('lidar_acquisition').perform(context)!='sequential'
+                or LaunchConfiguration('lidar_compensation').perform(context)!='both'):
+            raise ValueError('native sampling requires local_pursuit, sequential and both compensation')
+        native_sampling=str(Path(native_sampling).resolve(strict=True))
     if test_profile and LaunchConfiguration('lidar_acquisition').perform(context) != 'sequential':
         raise RuntimeError('LiDAR 오차/지연 시험은 sequential 취득에서만 허용합니다.')
     profile = _local_sensor_profile(description_share,
@@ -986,7 +992,7 @@ def _launch_setup(context):
             **{f"lidar_{axis}": str(value) for axis, value in zip(("roll", "pitch", "yaw"), lidar["rpy_rad"])},
             "lidar_rate": str(float(LaunchConfiguration("lidar_source_rate_hz").perform(context)) if LaunchConfiguration("lidar_acquisition").perform(context) != "snapshot" else lidar_rate_hz),
             "lidar_topic": "/sim/lidar_instantaneous" if LaunchConfiguration("lidar_acquisition").perform(context) != "snapshot" else "/scan",
-            "lidar_samples": str(lidar["samples_per_scan"]),
+            "lidar_samples": '5000' if native_sampling else str(lidar["samples_per_scan"]),
             "lidar_min": str(lidar["range_min_m"]),
             "lidar_max": str(lidar["range_max_m"]),
             "lidar_resolution": str(lidar["nominal_range_resolution_m"]),
@@ -1370,7 +1376,8 @@ def _launch_setup(context):
         if sequential:
             actions.append(Node(package="arena_vehicle_interface", executable="rotating_lidar",
                                 parameters=[{"use_sim_time": True, "rotation_rate_hz": lidar_rate_hz,
-                                             "samples_per_scan": int(lidar["samples_per_scan"]),
+                                             "samples_per_scan": 5000 if native_sampling else int(lidar["samples_per_scan"]),
+                                             "native_sampling_profile": native_sampling,
                                              "acquisition": LaunchConfiguration("lidar_acquisition").perform(context),
                                              "test_impairment_profile": test_profile}],
                                 output="screen"))
@@ -1454,6 +1461,7 @@ def _launch_setup(context):
         equivalent_steering = _float32_limit_not_above(math.atan(float(drivetrain["wheelbase_m"]) /
             (float(drivetrain["wheelbase_m"])/math.tan(float(drivetrain["max_steering_angle_rad"])) + float(drivetrain["track_width_m"])/2)))
         actions.append(Node(package="arena_autonomy", executable="lidar_safety", parameters=[{
+            "lidar_input_representation": 'native_simulation_v1' if native_sampling else 'laser_scan',
             "use_sim_time": True, "lidar_compensation": "both", "motion_scan_timing_verified": True,
             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
             **feedback["motion"],
@@ -1554,6 +1562,7 @@ def _launch_setup(context):
         if autonomy_mode in {"lidar", "local_pursuit"}:
             controller_parameters["lidar_x_m"] = float(lidar["xyz_m"][0])
             controller_parameters.update(
+                lidar_input_representation='native_simulation_v1' if native_sampling else 'laser_scan',
                 lidar_compensation=LaunchConfiguration("lidar_compensation").perform(context),
                 motion_scan_timing_verified=True,  # 이 launch의 시뮬레이션 어댑터에 한정
                 **feedback["motion"],
@@ -1676,6 +1685,8 @@ def generate_launch_description() -> LaunchDescription:
             ),
             DeclareLaunchArgument("lidar_acquisition", default_value="snapshot", choices=["snapshot", "snapshot_matched", "sequential"],
                                   description="순간 스캔 또는 물리 프레임 누적 회전 스캔"),
+            DeclareLaunchArgument('lidar_native_sampling_profile',default_value='',
+                                  description='선택형 C1 원천 각도/가변 점수 JSON. dense 5000광선에서 순차 취득; 시간은 합성 근사'),
             DeclareLaunchArgument("render_backend", default_value="system", choices=["auto", "system", "wsl_nvidia", "software"],
                                   description="auto: WSL GPU 연결 시 D3D12 선택, system: 기존 환경, software: CPU 비교"),
             DeclareLaunchArgument("collision_detector", default_value="configured", choices=["configured", "ode", "bullet", "fcl"],

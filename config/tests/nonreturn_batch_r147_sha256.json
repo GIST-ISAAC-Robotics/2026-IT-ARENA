@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "scope": "r145 exact nonreturn query batching adopted; geometry, uncertainty policy and driving defaults unchanged",
+  "parent_contract": "config/tests/snapshot_copy_r138_sha256.json",
+  "parent_contract_sha256": "446d54d0041d61f3b3d0cde78eca82a87a5ac720f265037585ae05661e2f9ab9",
+  "before_snapshot": "artifacts/validation/2026-11-11/follow_rebase_r126_v1/two_actor_run1/extra_sources.zip",
+  "before_snapshot_sha256": "efb5762e9080437ff1eb8bff086e803057dafd698aa601816a757a3ffd74d630",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/partial_observation.py": {
+      "before": "02deeb5fcc49734ccb727e605ed468472f3f33513469e41a6a033e97cc393ecf",
+      "after": "cffd6898945ae5f8052f0dbd5467291a765d65d28cf620b32ec1ef239189a827",
+      "reason": "전방에 닿는 연속 공백 전체와 별개 측방 폭을 구분하고 같은 경로 증거에 연결; 기존 속도/점유/소실 검사 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/same_path_gap_trial.py": {
+      "before": "1505dcffe724827b373a9ea4ed422b74589d8767e41c0e5b679c543e799c2769",
+      "after": "846311afd62c67e3af539aef13b8c1f821664086a6321d0b9fcb27f3f085650c",
+      "reason": "전방에 닿는 연속 공백 전체와 별개 측방 폭을 구분하고 같은 경로 증거에 연결; 기존 속도/점유/소실 검사 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "9c23ef525bdee63683fbde2ae659d2febc1ac36e6d4c4ffc8201916f2b0b633c",
+      "after": "9a0db82e05ea7b895084b324495fa9f3ae40c826a36f449af2375caa3265414f",
+      "reason": "Use bounded expired approved geometry immediately for current boundary confirmation; never drive on expired memory"
+    },
+    "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py": {
+      "before": "dd402dcba91d236534a1942fc582f4013b91bfb2796203a8ceb23294136ffe09",
+      "after": "2230c6ab91261fba78240bbbe385a3f0360de4778fb6cd9a842c98cfc31c64a2",
+      "reason": "Retain64 IMU history samples with unchanged source timestamps and other sensor QoS policies; r134 synthetic ROS proof only"
+    },
+    "src/arena_autonomy/arena_autonomy/follow_trace.py": {
+      "before": "dbcab3523c1dbb3dbdb61ab78b7dc3e9486326b3de42f260427736097981986c",
+      "after": "11ae59b5466c63f25b34f78edddb2fe85dd1439d074da0c3397c1d9dfe518fee",
+      "reason": "Preserve exact snapshot encoding while avoiding duplicate immutable native scan copy and generic numeric dispatch; r138 isolated Jetson evidence"
+    },
+    "src/arena_autonomy/arena_autonomy/rear_fringe_trial.py": {
+      "before": "d9807d4a7dd6fe43b59a7aafec2a23c8c0a51e317c94d49e8295abb0aa6e9aee",
+      "after": "cd39ebe9659e83bcd4fe78812a26f8b9cb626a3750bf1d24e38d6773d8202943",
+      "reason": "원 질의/동률/첫 거절 순서를 유지한 32질의 묶음 연산. 센서/기하/보호 조건 미변경"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {
+    "tests/test_motion_imu_queue.py": "7bc4642e3a91a4806cf7d4c22db4c4ccb6ab236cccd5ce201f76414a4b27c134",
+    "tests/test_snapshot_copy.py": "9a7e17906b58064083669fd6dd71188362ce39cb73e67431743a0a7d07c6d1ca"
+  },
+  "parent_sha256": "3d3115bf255e17319711a8dc78cc2e37dede0b0d24914dfdb38387c1c36f435b",
+  "before_source": "artifacts/validation/2026-11-11/snapshot_cost_r138_v1/follow_trace.before.py"
+}

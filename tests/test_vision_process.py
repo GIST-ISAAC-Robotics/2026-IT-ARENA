@@ -106,6 +106,58 @@ def test_stale_pending_not_sent_and_out_of_order_ignored():
     assert pipe.stats['rejected_stale'] == 1
 
 
+def test_finished_work_is_not_expired_only_because_parent_polls_late():
+    worker = WorkerDouble()
+    pipe = VisionPipeline(worker, wall_timeout=30.)
+    begin(pipe)
+    worker.finish()
+    worker.result['completed_wall_s'] = 10.006
+    accepted = pipe.pump(1.1, 11.2)  # 느린 시뮬 .1초 동안 벽시계 1.2초 경과
+    assert accepted['stamp'] == 1. and accepted['received'] == 10.
+    assert accepted['completion_wait_ms'] == pytest.approx(1194.)
+    assert pipe.stats['accepted'] == 1 and not pipe.fault
+
+
+def test_wall_clock_is_read_after_poll_for_concurrently_completed_work(monkeypatch):
+    worker = WorkerDouble()
+    pipe = VisionPipeline(worker)
+    begin(pipe)
+    worker.finish()
+    worker.result['completed_wall_s'] = 10.006
+    readings = iter((10., 10.02))
+    monkeypatch.setattr('arena_autonomy.vision_process.time.monotonic', lambda: next(readings))
+    assert pipe.pump(1.1)['completion_wait_ms'] == pytest.approx(14.)
+    assert not pipe.fault
+
+
+@pytest.mark.parametrize('now,wall,completed', [
+    (1.1,11.2,11.),    # 실제 작업/전달 전 대기가1초: 기존 work budget 실패
+    (2.,11.2,10.006),  # 원천 영상 나이1초: 완료가 빨라도 거절
+    (1.1,13.,10.006),  # 벽시계 수신 나이3초: 완료가 빨라도 거절
+])
+def test_completion_stamp_does_not_bypass_work_or_input_freshness(now, wall, completed):
+    worker = WorkerDouble()
+    pipe = VisionPipeline(worker)
+    begin(pipe)
+    worker.finish()
+    worker.result['completed_wall_s'] = completed
+    worker.result['signal']['started'] = True
+    assert pipe.pump(now,wall) is None
+    assert pipe.stats['rejected_stale'] == 1 and not pipe.signal.started
+
+
+@pytest.mark.parametrize('completed', [float('nan'),float('inf'),9.99,11.21,True])
+def test_invalid_completion_time_is_not_an_age_bypass(completed):
+    worker = WorkerDouble()
+    pipe = VisionPipeline(worker)
+    begin(pipe)
+    worker.finish()
+    worker.result['completed_wall_s'] = completed
+    assert pipe.pump(1.1,11.2) is None
+    assert pipe.fault == 'RuntimeError: Vision completion time invalid'
+    assert pipe.stats['accepted'] == 0
+
+
 @pytest.mark.parametrize('kind', ['death', 'timeout', 'identity', 'image'])
 def test_fault_is_latched_and_does_not_auto_resume_on_reset(kind):
     worker = WorkerDouble()
@@ -165,6 +217,7 @@ def test_real_spawn_shared_buffer_result_and_normal_cleanup():
             time.sleep(.005)
         assert result['epoch'] == 2 and result['sequence'] == 3
         assert result['signal']['red_frames'] == 1
+        assert result['completed_wall_s'] <= time.monotonic()
         assert result['ids'] == []
     finally:
         cleanup = worker.close()

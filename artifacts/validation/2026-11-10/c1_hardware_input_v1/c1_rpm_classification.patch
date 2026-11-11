@@ -1,0 +1,11 @@
+--- official/sl_lidar_driver.cpp
++++ diagnostic/sl_lidar_driver_c1_rpm.cpp
+@@ -844,7 +844,7 @@
+                 ans = getDeviceInfo(devInfo, 500);
+                 if (!ans) return ans;
+                 sl_u8 majorId = devInfo.model >> 4;
+-                if (majorId >= BUILTIN_MOTORCTL_MINUM_MAJOR_ID) {
++                if (majorId == TOF_C_SERIAL_MINUM_MAJOR_ID || majorId >= BUILTIN_MOTORCTL_MINUM_MAJOR_ID) {
+                         support = MotorCtrlSupportRpm;
+                         return ans;
+                 }

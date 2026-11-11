@@ -39,11 +39,10 @@ def test_off_is_original(speed):
     raw=sample(.5,range(301,308))
     assert p.evaluate(raw,[],h,.6,speed)==q.evaluate(raw,[],j,.6,speed)
 
-@pytest.mark.parametrize('case',['central','many','fast','stale','near','under','all','steer'])
-def test_excessive_blind_or_front_or_bad_input_remains_blocked(case):
+@pytest.mark.parametrize('case',['many','fast','stale','near','under','all','steer'])
+def test_excessive_blind_or_bad_input_remains_blocked(case):
     p,h=ready();raw=sample(.5,range(301,308));v=.4;now=.6;kw={}
-    if case=='central':raw=sample(.5,range(248,255))
-    elif case=='many':raw=sample(.5,range(301,310))
+    if case=='many':raw=sample(.5,range(301,310))
     elif case=='fast':v=.61
     elif case=='stale':now=.81
     elif case=='near':raw.ranges[300]=.9
@@ -69,7 +68,7 @@ def test_disappearing_near_target_is_not_erased(distance):
     assert not r['allowed'] and r['reason']=='known_obstacle_latched',r
 
 @pytest.mark.parametrize('indices,w',[(range(301,308),4.),(range(193,200),-4.)])
-def test_turning_into_front_is_not_a_side_gap(indices,w):
+def test_turning_single_gap_uses_forward_metric_bound(indices,w):
     from arena_autonomy.scene_motion import relative_poses
     p,h=ready();h=history(w=w)
     raw=sample(.5,indices);ids=np.array(list(indices))
@@ -77,7 +76,19 @@ def test_turning_into_front_is_not_a_side_gap(indices,w):
     angles=raw.angle_min+ids*raw.angle_increment+yaw
     assert np.any(np.abs(angles)<math.radians(30))
     r=p.evaluate(raw,[],h,.7,.4)
-    assert not r['allowed'],r
+    # r69부터 단일 정면 공백도 같은 저속 이동 반경/50mm 폭으로 판정한다.
+    # 회전 후30도 안으로 들어왔다는 이유만으로 무조건 거절하지 않는다.
+    assert r['allowed'] and r['speed_cap_mps']==.2,r
+    assert r['lateral_metric']['missing_chord_m']<=.05
+    assert not r['unknown_filled']
+
+
+def test_central_single_gap_is_bounded_low_speed_not_free_space():
+    p,h=ready();raw=sample(.5,range(248,255))
+    r=p.evaluate(raw,[],h,.6,.4)
+    assert r['allowed'] and r['speed_cap_mps']==.2,r
+    assert r['lateral_metric']['missing_chord_m']<=.05
+    assert not r['unknown_filled']
 
 
 @pytest.mark.parametrize('speed',[0.,.2,.4,.6])

@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "pipeline": "nvarguscamerasrc name=camera sensor-id=0 sensor-mode=4 do-timestamp=true ! video/x-raw(memory:NVMM),width=1280,height=720,format=NV12,framerate=60/1 ! nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! video/x-raw,format=BGR ! appsink name=receiver sync=false max-buffers=8 drop=false wait-on-eos=false",
+  "gstreamer": "GStreamer 1.20.3",
+  "requested": {
+    "width": 1280,
+    "height": 720,
+    "fps": 60,
+    "duration_s": 3.0,
+    "warmup_s": 1.0,
+    "sensor_id": 0,
+    "sensor_mode": 4
+  },
+  "caps": "video/x-raw, width=(int)1280, height=(int)720, framerate=(fraction)60/1, format=(string)BGR",
+  "frames": 1,
+  "source_frames_in_pts_window": 1,
+  "source_sink_pts_identical": true,
+  "pts_span_s": 0,
+  "host_span_s": 0,
+  "pts_fps": null,
+  "host_fps": null,
+  "pts_interval_ms": null,
+  "host_interval_ms": null,
+  "source_to_sink_ms": {
+    "count": 1,
+    "min": 8.244567,
+    "median": 8.244567,
+    "p95": 8.244567,
+    "p99": 8.244567,
+    "max": 8.244567
+  },
+  "pts_gaps_gt_1_5_period": 0,
+  "pts_gaps_gt_2_period": 0,
+  "host_gaps_gt_1_5_period": 0,
+  "host_gaps_gt_2_period": 0,
+  "nonpositive_pts_intervals": 0,
+  "consecutive_identical_crc32": 0,
+  "discont_after_first": 0,
+  "errors": [
+    {
+      "message": "TypeError(\"can't concat NoneType to bytes\")",
+      "traceback": "Traceback (most recent call last):\n  File \"/tmp/it_arena_b0390_probe_20261110_v2.py\", line 183, in main\n    \"temperatures_c\": temperatures(),\n  File \"/tmp/it_arena_b0390_probe_20261110_v2.py\", line 121, in temperatures\n    int((zone / \"temp\").read_text()) / 1000)\n  File \"/usr/lib/python3.10/pathlib.py\", line 1135, in read_text\n    return f.read()\n  File \"/usr/lib/python3.10/codecs.py\", line 321, in decode\n    data = self.buffer + input\nTypeError: can't concat NoneType to bytes\n"
+    }
+  ],
+  "warnings": [],
+  "qos_messages": [],
+  "eos_received": false,
+  "state_null": true,
+  "process_cpu_s": 0.966310208,
+  "total_wall_s": 1.5634665690000134,
+  "telemetry": [],
+  "representative": [
+    {
+      "file": "first.png",
+      "pts_ns": 1307537223,
+      "shape": [
+        720,
+        1280,
+        3
+      ],
+      "bgr_mean": [
+        97.23824435763889,
+        95.49934353298612,
+        92.69393880208334
+      ],
+      "pixel_std": 43.504613760219975,
+      "sha256": "69f7dfad2d711080e0dbee693482a2d7bc37d4fff2bfa15dca08ff6060fdcdf6"
+    }
+  ],
+  "limits": [
+    "Gst source PTS is not verified sensor exposure time or capture ID",
+    "No videorate or intentional frame duplication/drop in pipeline",
+    "CRC32 inequality excludes byte-identical consecutive buffers, not every sensor fault",
+    "No optical clock, rolling-shutter, calibration or ROS timestamp validation"
+  ],
+  "basic_pass": false
+}

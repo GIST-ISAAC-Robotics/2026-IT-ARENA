@@ -8,15 +8,22 @@ import numpy as np
 def mask_scan(scan, rear_half_angle_deg=30.):
     """후방 60도는 장착 미확정 사각으로 취급. 빈 공간으로 채우지 않는다."""
     from arena_autonomy.local_scene import blind_spec
+    from arena_autonomy.measurement_scan import MeasurementScan
+    from arena_autonomy.scan_input import scan_angles
+    from dataclasses import replace
     rear, sectors = blind_spec(rear_half_angle_deg)
     result = copy.deepcopy(scan)
-    angles = scan.angle_min + np.arange(len(scan.ranges)) * scan.angle_increment
+    angles = scan_angles(scan)
+    if isinstance(scan,MeasurementScan):
+        angles=(angles+math.pi)%math.tau-math.pi
     ranges = np.asarray(scan.ranges, dtype=float).copy()
     ranges[np.abs(angles) > math.radians(180 - rear)] = np.nan
     # 시험 전용 장착 구조 각도. 거리 반환이 있어도 unknown으로 둔다.
     for center, width in sectors:
         offset = np.remainder(angles - math.radians(center) + math.pi, math.tau) - math.pi
         ranges[np.abs(offset) <= math.radians(width) + 1e-12] = np.nan
+    if isinstance(scan,MeasurementScan):
+        return replace(scan,ranges_m=tuple(ranges.tolist()))
     result.ranges = ranges.tolist()
     return result
 
@@ -104,6 +111,107 @@ def narrow_occluders(points, broken, max_points=6, max_extent=.04, min_depth=.03
     return mask, joins
 
 
+def _adjacent_cluster_candidates(idx, ranges, current_breaks, max_points, min_depth):
+    """원래 edge→count→오른쪽/왼쪽 순서에서 불가능한 묶음만 먼저 제외한다.
+
+    인접 원본 번호와 같은 방사 거리 차이만 묶어서 계산한다. 현 길이·폭·방사
+    길이의 최종 검사는 호출자에 그대로 남긴다. 큰 임의 입력은 원래 열거로 돌아간다.
+    """
+    edges = np.flatnonzero(current_breaks)
+    if not len(edges):
+        return ()
+    limit = min(max_points, len(idx)-2)
+    counts = range(1, limit+1)
+    candidates = ((lo, hi) for edge in edges for count in counts
+                  for lo, hi in ((edge+1, edge+1+count), (edge-count+1, edge+1))
+                  if lo >= 1 and hi < len(idx))
+    if limit <= 0 or limit > 16 or len(idx)*limit > 65536:
+        return candidates
+    pairs = np.asarray(list(candidates), dtype=int).reshape(-1, 2)
+    if not len(pairs):
+        return ()
+    lo, hi = pairs.T
+    breaks = np.r_[0, np.cumsum(np.diff(idx) != 1)]
+    keep = breaks[hi] == breaks[lo-1]
+    cluster_max = np.empty(len(pairs))
+    maxima = ranges
+    widths = hi-lo
+    for count in counts:
+        if count > 1:
+            maxima = np.maximum(maxima[:-1], ranges[count-1:])
+        rows = widths == count
+        cluster_max[rows] = maxima[lo[rows]]
+    # <=의 부정을 사용해 원 함수의 비교 의미(비유한 연산 포함)를 보존한다.
+    keep &= ~(np.minimum(ranges[lo-1], ranges[hi])-cluster_max <= min_depth)
+    return pairs[keep]
+
+
+def break_adjacent_occluders(points, broken, max_points=6, max_extent=.04,
+                            min_depth=.06, max_radial_extent=.10):
+    """단절 옆의 좁은 근거리 묶음을 선택형 벽 기준선에서만 분리한다.
+
+    짧고 잡음이 큰 두 벽점 현의 법선 대신 원점으로부터의 거리 차이를 쓴다.
+    한쪽 단절만 있어도 비교하지만 양쪽 실제 반환·기존 그림자 길이 한도는 필요하다.
+    호출자가 이미 연결한 경계는 다시 끊지 않는다. 반환은 원본 인덱스이며 원시
+    점유·보호 입력은 수정하지 않는다. 미관측 공간의 자유 판정이나 물체 식별이 아니다.
+    """
+    points = np.asarray(points, dtype=float)
+    broken = np.asarray(broken, dtype=bool)
+    if points.ndim != 2 or points.shape[1] != 2 or len(broken) != max(0, len(points)-1):
+        raise ValueError('invalid wall chain shape')
+    if not np.all(np.isfinite(points)):
+        raise ValueError('nonfinite wall chain')
+    alive = np.ones(len(points), dtype=bool)
+    # 반복의 상한은 복잡한 장면에서 이 국소 분리가 전체 계산을 지배하지 않게 한다.
+    for _ in range(12):
+        idx = np.flatnonzero(alive)
+        if len(idx) < 3:
+            break
+        p = points[idx]
+        adjacent = np.diff(idx) == 1
+        current_breaks = adjacent & broken[idx[:-1]]
+        ranges = np.linalg.norm(p, axis=1)
+        found = None
+        for lo, hi in _adjacent_cluster_candidates(idx, ranges, current_breaks, max_points, min_depth):
+            # 다른 제거 구간을 포함해 작은 물체 여러 개를 하나로 합치지 않는다.
+            if not np.all(np.diff(idx[lo-1:hi+1]) == 1):
+                continue
+            before, after, cluster = p[lo-1], p[hi], p[lo:hi]
+            if np.linalg.norm(after-before) > 2*(.10+.035*min(ranges[lo-1], ranges[hi])):
+                continue
+            if min(ranges[lo-1], ranges[hi])-np.max(ranges[lo:hi]) <= min_depth:
+                continue
+            center = cluster.mean(axis=0)
+            direction = center/max(1e-12, np.linalg.norm(center))
+            normal = np.array([-direction[1], direction[0]])
+            if (np.ptp(cluster @ normal) > max_extent
+                    or np.ptp(cluster @ direction) > max_radial_extent):
+                continue
+            found = (lo, hi)
+            break
+        if found is None:
+            break
+        lo, hi = found
+        alive[idx[lo:hi]] = False
+    idx = np.flatnonzero(alive)
+    joins = [(int(a), int(b)) for a, b in zip(idx[:-1], idx[1:]) if b-a > 1]
+    return ~alive, joins
+
+
+def _sample_count(first, last, spacing=.025):
+    """수치 반올림만으로 같은 호길이의 재표본 점 개수가 달라지지 않게 한다.
+
+    끝점 차감·나눗셈의 기계 정밀도 범위에서만 정수 격자에 맞춘다.
+    물리 간격·관측 끝·판정 허용량을 늘리지 않는다.
+    """
+    ratio = (last-first)/spacing
+    nearest = round(ratio)
+    roundoff = 16*math.ulp(1.)*max(1., abs(first/spacing), abs(last/spacing))
+    if abs(ratio-nearest) <= roundoff:
+        ratio = float(nearest)
+    return max(12, math.floor(ratio)+1)
+
+
 def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corner=False, minimum_radius=0.,
                narrow_occluder_bridge=False):
     """연결된 관측 벽의 호길이 매개곡선. 수직 벽/급커브도 y=f(x)로 강제하지 않는다.
@@ -132,7 +240,7 @@ def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corn
         broken &= ~ray_continuous_gaps(points, gaps, limits, np.asarray(rays)[finite][order], horizon)
     bridged = 0
     if narrow_occluder_bridge:
-        occluder, joins = narrow_occluders(points, broken)
+        occluder, joins = break_adjacent_occluders(points, broken)
         if joins:
             keep = ~occluder
             new_index = np.cumsum(keep)-1
@@ -186,7 +294,7 @@ def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corn
     # 구간 사이를 연결하거나 기둥 점을 보호층에서 제거하지 않는다.
     _, wall, arc, anchor, anchor_s, first, last = min(eligible, key=lambda item: item[0])
     # 같은 호길이 간격으로 재표본화하고 이웃 점으로 접선을 구한다. 관측 끝 밖으로 외삽하지 않는다.
-    sample_s = np.linspace(first, last, max(12, int((last-first)/.025)+1))
+    sample_s = np.linspace(first, last, _sample_count(first, last))
     samples = np.column_stack([np.interp(sample_s, arc, wall[:, axis]) for axis in (0, 1)])
     if piecewise_corner:
         from arena_autonomy.piecewise_wall import corner_path
@@ -199,7 +307,7 @@ def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corn
             ahead = _path_ahead(path)
             if ahead < horizon and arc[-1]-last > 1e-9:
                 extended = min(arc[-1], last+max(0., horizon-ahead)+.05)  # .05는 재표본화 여유
-                wider_s = np.linspace(first, extended, max(12, int((extended-first)/.025)+1))
+                wider_s = np.linspace(first, extended, _sample_count(first, extended))
                 wider = corner_path(np.column_stack([np.interp(wider_s, arc, wall[:, axis]) for axis in (0, 1)]),
                                     side, offset, minimum_radius)
                 # 두 번째 모서리·다른 면이 들어오면 corner_path가 거부한다. 기존 경로를 벽 적합

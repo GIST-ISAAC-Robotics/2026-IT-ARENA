@@ -15,6 +15,7 @@ from arena_autonomy.linear_observation import clip_halfplane
 from arena_autonomy.local_path import swept_limit
 from arena_autonomy.occupancy_timing import per_ray_padding
 from arena_autonomy.scan_topology import cyclic_count, adjacent_indices
+from arena_autonomy.measurement_scan import sampling_gaps, unknown_cell_directions
 
 
 def needs_recent_support(scene):
@@ -113,9 +114,21 @@ def depth_support(scene, queries, padding, *, cycle=None):
 
 
 def source_valid(scene):
+    count = len(scene.rays)
     if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
-            or not 0<=scene.t_ref_s-scene.source_first_s<.3 or len(scene.rays)!=500
-            or [r.source_index for r in scene.rays]!=list(range(500))):
+            or not 0<=scene.t_ref_s-scene.source_first_s<.3
+            or [r.source_index for r in scene.rays]!=list(range(count))):
+        return False
+    if scene.source_angles_rad is not None:
+        # 점 개수 대신 명시 원천 간격/순서를 검사한다. 재투영 yaw로 원천 회전을
+        # 추정하지 않으며, CW와 CCW 모두 허용하되 중복/역전 배열은 허용하지 않는다.
+        gaps = sampling_gaps(scene.source_angles_rad)
+        ordered = (all(0 < v <= math.radians(2) for v in gaps)
+                   or all(-math.radians(2) <= v < 0 for v in gaps))
+        return bool(gaps and ordered and 5.5 <= abs(sum(gaps)) <= 7.
+                    and .08 <= scene.source_last_s-scene.source_first_s <= .12
+                    and all(b.acquired_at_s > a.acquired_at_s for a,b in zip(scene.rays,scene.rays[1:])))
+    if count != 500:
         return False
     # 500점 C1 합성/적합 입력 전용. 회전 중 원주 끝 간격은 변할 수 있다.
     # 끝 간격을 0으로 맞추지 않고 내부 방향 순서와 실제 취득 시간 폭을 검사한다.
@@ -204,6 +217,9 @@ def sweep_queries(scene,steer,distance,config):
     directions=np.array([r.direction_xy for r in unknown]).reshape(-1,2)
     lower_all=directions@np.array([[co,-si],[si,co]])
     upper_all=directions@np.array([[co,si],[-si,co]])
+    if scene.source_angles_rad is not None:
+        lower_all, upper_all = (np.asarray(v).reshape(-1,2)
+                                for v in unknown_cell_directions(scene, unknown))
     polygons=[]; fragments=[]; owners=[]
     for travel in np.r_[np.arange(.02,distance,.02),distance]:
         yaw=curve*travel; c,s=math.cos(yaw),math.sin(yaw)

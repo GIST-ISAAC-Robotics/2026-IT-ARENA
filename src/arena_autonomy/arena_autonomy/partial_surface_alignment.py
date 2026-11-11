@@ -48,7 +48,10 @@ def surface_translation(previous_now, current, source_indices):
         residual=delta-np.clip(fraction,0,1)[:,:,None]*v[None,:,:]
         distance=np.linalg.norm(residual,axis=2)
         nearest=np.argmin(distance,axis=1);rows=np.arange(len(points))
-        good=(distance[rows,nearest]<.08)&(fraction[rows,nearest]>=0)&(fraction[rows,nearest]<=1)
+        # 관측 현의 정확한 끝점도 포함한다. 정합 뒤 1+부동소수 오차가 되면
+        # 실제 표본을 대량 배제할 수 있다. 이 오차는 최대12cm 현에서 0.12nm다.
+        along = fraction[rows,nearest]
+        good=(distance[rows,nearest]<.08)&(along>=-1e-9)&(along<=1+1e-9)
         rows=rows[good]
         if len(rows)<50 or len(rows)/len(old)<.65:
             return finish('few_surface_matches',steps=steps,matched_points=len(rows),
@@ -64,7 +67,12 @@ def surface_translation(previous_now, current, source_indices):
         steps.append(dict(matches=len(rows),fraction=len(rows)/len(old),normal_eigen_ratio=ratio,
                           residual_rms_m=rms,step_m=step.tolist()))
         if ratio<.02:return finish('translation_unobservable',steps=steps)
-        if np.linalg.norm(shift+step)>.06:
+        proposed = shift+step
+        # 모터축 이동과 실제 이동이 달라지는 감속 구간에서, 앞뒤 잔차만
+        # 기존 대응 검색 반경(8cm)까지 허용한다. 6cm를 넘는 횡/대각 이동은
+        # 계속 거절하며, 최종 대응에는 아래의 더 강한 공통 표면 근거를 요구한다.
+        if (np.linalg.norm(proposed)>.08 or
+                (np.linalg.norm(proposed)>.06 and abs(proposed[1])>.02)):
             return finish('translation_outside_bound',steps=steps)
         shift+=step
         if np.linalg.norm(step)<1e-5:
@@ -74,5 +82,10 @@ def surface_translation(previous_now, current, source_indices):
         return finish('unsettled_or_high_residual',steps=steps)
     if np.linalg.norm(shift)>.002 and steps[-1]['residual_rms_m']>steps[0]['residual_rms_m']*.6:
         return finish('weak_improvement',steps=steps)
+    longitudinal = bool(np.linalg.norm(shift)>.06)
+    if longitudinal and (steps[-1]['fraction']<.85 or
+            steps[-1]['normal_eigen_ratio']<.1 or steps[-1]['residual_rms_m']>.008):
+        return finish('longitudinal_support_insufficient',steps=steps)
     return finish('bounded_surface_correspondence',accepted=True,translation_m=shift.tolist(),
-                  steps=steps,observed_segments=len(a),sampled_previous_points=len(old))
+                  steps=steps,observed_segments=len(a),sampled_previous_points=len(old),
+                  longitudinal_residual=longitudinal)

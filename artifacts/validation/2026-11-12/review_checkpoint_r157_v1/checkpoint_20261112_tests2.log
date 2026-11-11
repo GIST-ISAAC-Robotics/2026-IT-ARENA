@@ -1,0 +1,89 @@
+........................................................................ [  6%]
+........................................................................ [ 12%]
+........................................................................ [ 19%]
+........................................................................ [ 25%]
+........................................................................ [ 31%]
+........................................................................ [ 38%]
+........................................................................ [ 44%]
+........................................................................ [ 50%]
+........................................................................ [ 57%]
+........................................................................ [ 63%]
+........................................................................ [ 70%]
+........................................................................ [ 76%]
+........................................................................ [ 82%]
+........................................................................ [ 89%]
+........................................................................ [ 95%]
+........F.F.......................................                       [100%]
+=================================== FAILURES ===================================
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[205] __
+
+index = 205
+
+    @pytest.mark.parametrize('index', [*range(10,18),
+        *range(M3_SUCCESSORS.index('config/tests/signed_forward_r1_sha256.json'),len(M3_SUCCESSORS))])
+    def test_registered_oct26_and_nov01_successors_have_preserved_source_chain(index):
+        child = load(M3_SUCCESSORS[index])
+        assert child['parent_contract'] == M3_SUCCESSORS[index-1]
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for group in GROUPS:
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(archive.read(path)) == row['before'] != row['after']
+                    assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+        for path, digest in child['new_dependencies'].items():
+>           assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == digest
+
+tests/test_source_provenance_r0_plus_b3.py:497: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'scripts/native_traffic_contract.py'
+newer_than = 'config/tests/native_traffic_r79_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert 'aa38b2946f3f...42e2f642482c9' == '0f2823710e37...c1903452492f9'
+E             - 0f2823710e37f336f192de089b70b706f15f10ba9326f073667c1903452492f9
+E             + aa38b2946f3f63f09a122b41ec11792a86a2053993ef6abe19242e2f642482c9
+
+tests/test_source_provenance_r0_plus_b3.py:310: AssertionError
+_ test_registered_oct26_and_nov01_successors_have_preserved_source_chain[207] __
+
+index = 207
+
+    @pytest.mark.parametrize('index', [*range(10,18),
+        *range(M3_SUCCESSORS.index('config/tests/signed_forward_r1_sha256.json'),len(M3_SUCCESSORS))])
+    def test_registered_oct26_and_nov01_successors_have_preserved_source_chain(index):
+        child = load(M3_SUCCESSORS[index])
+        assert child['parent_contract'] == M3_SUCCESSORS[index-1]
+        assert sha((ROOT/child['parent_contract']).read_bytes()) == child['parent_contract_sha256']
+        assert sha((ROOT/child['before_snapshot']).read_bytes()) == child['before_snapshot_sha256']
+        with zipfile.ZipFile(ROOT/child['before_snapshot']) as archive:
+            for group in GROUPS:
+                for path, row in child[group].items():
+                    assert row['reason'].strip()
+                    assert sha(archive.read(path)) == row['before'] != row['after']
+>                   assert m3_revision_digest(path, newer_than=M3_SUCCESSORS[index]) == row['after']
+E                   AssertionError: assert 'aa38b2946f3f...42e2f642482c9' == '0f2823710e37...c1903452492f9'
+E                     - 0f2823710e37f336f192de089b70b706f15f10ba9326f073667c1903452492f9
+E                     + aa38b2946f3f63f09a122b41ec11792a86a2053993ef6abe19242e2f642482c9
+
+tests/test_source_provenance_r0_plus_b3.py:495: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[205]
+FAILED tests/test_source_provenance_r0_plus_b3.py::test_registered_oct26_and_nov01_successors_have_preserved_source_chain[207]
+2 failed, 1128 passed in 282.34s (0:04:42)

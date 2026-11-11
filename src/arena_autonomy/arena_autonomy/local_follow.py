@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import math
 
 import numpy as np
+from arena_autonomy.scan_input import scan_first_stamp
 
 from arena_autonomy.lidar_motion import MotionUnavailable
 from arena_autonomy.local_path import local_path, braking_speed, swept_limit
@@ -275,16 +276,52 @@ def path_agrees_arc(candidate, reference, tolerance, lo=.05, hi=1.):
                     np.percentile(np.min(distances, axis=1), 80)) <= tolerance)
 
 
+def retained_forward_prefix(candidate, reference, details, config):
+    """현재 경로가 전방에서 시작한 경우를 횡방향 이탈과 구별한다.
+
+    현재 긴 직각 벽·유효 이력의 공통 구간은 그대로 요구한다. 시작점은 최소
+    추종 목표 거리(0.30m) 안에서 전방을 향하고, 원점의 접선 수직 오차는 기존
+    앵커 허용량 이내여야 한다. 경로를 뒤로 연장하거나 그 사이를 자유 공간으로
+    기록하지 않는다. 실제 조향/점유/부분 관측 검사는 별도로 유지한다.
+    초기 획득이나 TTL 만료 뒤에는 호출자가 유효 이력을 줄 수 없다.
+    """
+    if (not config.piecewise_wall_trial or candidate is None or reference is None
+            or details.get('wall_model') != 'piecewise_corner'
+            or details.get('boundary_observed_ahead_m', 0.) < config.boundary_min_ahead_m
+            or anchor_error(details, config) <= config.boundary_anchor_error_m):
+        return None
+    path = np.asarray(candidate, dtype=float)
+    if (path.ndim != 2 or path.shape[1] != 2 or len(path) < 5
+            or not np.all(np.isfinite(path))):
+        return None
+    start, tangent = path[0], path[1]-path[0]
+    norm = float(np.linalg.norm(tangent))
+    if norm <= 1e-9 or not 0. < start[0] or np.linalg.norm(start) > .30:
+        return None
+    tangent = tangent/norm
+    along = float(start @ tangent)
+    lateral = abs(float(start[0]*tangent[1]-start[1]*tangent[0]))
+    if (tangent[0] <= 0. or not 0. < along <= .30
+            or lateral > config.boundary_anchor_error_m
+            or int(np.argmin(np.linalg.norm(path, axis=1))) != 0
+            or not path_agrees(path, reference, config.boundary_agreement_m)):
+        return None
+    return dict(start_distance_m=float(np.linalg.norm(start)), along_tangent_m=along,
+                lateral_error_m=lateral, maximum_start_distance_m=.30,
+                observed_prefix_extended=False, unknown_filled=False)
+
+
 def retained_boundary_agreement(candidate, reference, details, config):
     """현재 긴 벽의 유지 비교. 직각 경로는 공통 호길이 구간도 대조한다.
 
     x 창만으로는 같은 x를 가진 코너 출구의 서로 다른 길이를 함께 비교할 수 있다.
-    선택형 교통·직각 경로에서만 기존 호길이 비교를 재사용한다. 허용 오차나
+    선택형 교통 또는 단독 호길이 옵션의 직각 경로에서 재사용한다. 허용 오차나
     관측 길이를 늘리지 않으며, 실제 점유/통과 검사는 호출자가 별도로 한다.
     """
     if path_agrees(candidate, reference, config.boundary_agreement_m):
         return 'shared_x'
-    if (config.traffic_boundary_refresh_trial and config.piecewise_wall_trial
+    enabled = config.traffic_boundary_refresh_trial or (config.solo_route_only and config.corridor_arc_agreement)
+    if (enabled and config.piecewise_wall_trial
             and details.get('wall_model') == 'piecewise_corner'
             and path_agrees_arc(candidate, reference, config.boundary_agreement_m)):
         return 'shared_arc'
@@ -574,7 +611,7 @@ class LocalFollow:
                 'passing_enabled':False,'relative_velocity_credit':False}
         if raw_scan is None:
             return self._hold('follow_partial_scan_missing',detail)
-        source=raw_scan.header.stamp.sec+raw_scan.header.stamp.nanosec*1e-9
+        source=scan_first_stamp(raw_scan)
         values=np.asarray(raw_scan.ranges,dtype=float)
         valid=np.isfinite(values)&(values>=raw_scan.range_min)&(values<=raw_scan.range_max)
         # 미관측/마스크를 유효점으로 바꾸지 않고 같은 입력의 scene만 받는다.
@@ -598,12 +635,21 @@ class LocalFollow:
         finally:
             self.structure_explained_now=None
         cfg=self.config
+        # 경로의 큰 요청을 관측 관문에서 거절한 뒤 대기/재출발을 반복하지 않도록
+        # 먼저 기존 저속 후보를 선택한다. 측정속도·기억·독립 보호 판정은 그대로다.
+        requested=self.partial_policy.requested_speed(raw_scan,history.config.lidar_yaw_rad,
+                                                     output[0],explained_now)
+        if requested!=output[0]:
+            output=(requested,output[1],{**output[2],
+                'partial_original_requested_speed_mps':output[0],
+                'partial_requested_speed_mps':requested})
         observation=self.partial_policy.evaluate(raw_scan,scene.occupied_endpoints_xy_m,history,
             scene.t_ref_s,max(output[0],abs(speed)),output[1],previous_steering,
             cfg.wheelbase_m,cfg.length_m,cfg.width_m)
         detail={**output[2],**detail,'partial_observation':observation}
         # raw 기준 밖 결측이 운동 변환 뒤 전방으로 들어온 경우를 몰래 허용하지 않는다.
-        angles=(raw_scan.angle_min+np.arange(len(values))*raw_scan.angle_increment+
+        from arena_autonomy.scan_input import scan_angles
+        angles=(scan_angles(raw_scan)+
                 history.config.lidar_yaw_rad+math.pi)%math.tau-math.pi
         covered=set(np.flatnonzero((~valid)&(np.abs(angles)<=math.radians(100)+1e-6)))
         # 설명된 구조 광선은 구조 정책이 운동 보정 방향으로 따로 판정했다. 기본은 빈 집합.
@@ -772,7 +818,15 @@ class LocalFollow:
                 eligible = sufficient(candidate, info)
                 detail['boundary_selection'] = 'unfiltered'
                 if carried is not None:
-                    eligible = eligible and path_agrees(candidate, carried, cfg.boundary_agreement_m)
+                    if eligible and cfg.solo_route_only and cfg.corridor_arc_agreement:
+                        # 현재 충분히 관측된 긴 벽만 비교한다. 코너 출구의 같은 x좌표 때문에
+                        # 이력이 거절되는 경우 기존 공통 호길이 비교를 재사용한다.
+                        match = retained_boundary_agreement(candidate, carried, info, cfg)
+                        eligible = match is not None
+                        if match == 'shared_arc':
+                            detail['boundary_history_agreement'] = 'current_corner_arc'
+                    else:
+                        eligible = eligible and path_agrees(candidate, carried, cfg.boundary_agreement_m)
                     if not eligible:
                         candidate, info, eligible, support = supported(carried, side)
                         detail.update(boundary_selection='observed_history_support', **support)
@@ -925,11 +979,16 @@ class LocalFollow:
                     # 짧은 선호 벽으로 경로 길이를 줄이기 전에, 승인 경로와 일치하는
                     # 긴 현재 반대 벽을 쓴다. 점유·제동·독립 보호 입력은 그대로 둔다.
                     opposite, other = opposite_wall()
-                    if sufficient(opposite, other) and path_agrees(opposite, carried, cfg.boundary_agreement_m):
+                    prefix_anchor = (retained_forward_prefix(opposite, carried, other, cfg)
+                                     if self.path_wall == other_side else None)
+                    if ((sufficient(opposite, other) and path_agrees(opposite, carried, cfg.boundary_agreement_m))
+                            or prefix_anchor is not None):
                         candidate, info, candidate_wall, eligible = opposite, other, other_side, True
                         detail.update(boundary_selection='junction_opposite_continuity',
                                       boundary_candidate_reason=info['reason'],
                                       boundary_candidate_ahead_m=info.get('boundary_observed_ahead_m'))
+                        if prefix_anchor is not None:
+                            detail['retained_forward_prefix'] = prefix_anchor
                 if (not eligible and cfg.boundary_bridge
                         and carried is not None and preferred is not None
                         and anchor_error(preferred_info, cfg) <= cfg.boundary_anchor_error_m
@@ -958,18 +1017,29 @@ class LocalFollow:
                             boundary_candidate_reason=info['reason'], boundary_candidate_ahead_m=None,
                             corner_supported_path_ahead_m=support_evidence['path_ahead_m'])
                 recent_confirmed = False
-                if not eligible and cfg.junction_continuity and carried is None:
+                if cfg.junction_continuity and carried is None:
                     # 갈림길 열림으로 한 스캔의 선호 벽이 짧아져 기억이 막 만료된 경우, 그 승인 경로를
                     # 운동 보정한 것과 가까운 전방에서 일치하는 현재 긴 관측(선호 벽 먼저)만 다시 받는다.
                     # 기억으로 주행하지 않고 미관측을 채우지 않는다. 양측 확인 없는 첫 재획득을 줄이는 대체다.
                     recent = None
-                    if (getattr(self, 'recent_path', None) is not None
-                            and now-self.recent_path[2] <= 2*cfg.memory_ttl_s):
-                        recent = transport_points(self.recent_path[0], history, self.recent_path[1], now)
+                    reference = getattr(self, 'recent_path', None)
+                    if (self.path is not None and self.path_source is not None
+                            and cfg.memory_ttl_s <= now-self.path_source <= 2*cfg.memory_ttl_s
+                            and (reference is None or self.path_source > reference[2])):
+                        # 막 만료된 승인 경로는 아래 HOLD 이후에야 recent_path로 옮겨졌다.
+                        # 주행 기억으로 되살리지 않고 이번의 충분한 현재 관측을 비교하는 데만
+                        # 즉시 쓴다. 계산 간격이 200ms일 때 반복되는 한 주기 정지를 막는다.
+                        reference = (self.path, self.path_ref, self.path_source)
+                    if reference is not None and 0 <= now-reference[2] <= 2*cfg.memory_ttl_s:
+                        recent = transport_points(reference[0], history, reference[1], now)
                         # 창을 TTL의 두 배로 둔 만큼 운동 보정 이동 한도도 같은 비율로만 늘린다.
-                        if np.max(np.linalg.norm(recent-self.recent_path[0], axis=1)) > 2*cfg.memory_motion_limit_m:
+                        if np.max(np.linalg.norm(recent-reference[0], axis=1)) > 2*cfg.memory_motion_limit_m:
                             recent = None
-                    if recent is not None:
+                    if (recent is not None and eligible and sufficient(candidate, info)
+                            and path_agrees(candidate, recent, cfg.boundary_agreement_m)):
+                        recent_confirmed = True
+                        detail['recent_boundary_confirmation'] = 'current_observation_after_memory_expiry'
+                    elif recent is not None and not eligible:
                         for path, details, wall_side in ((preferred, preferred_info, side), (*opposite_wall(), other_side)):
                             if sufficient(path, details) and path_agrees(path, recent, cfg.boundary_agreement_m):
                                 candidate, info, candidate_wall = path, details, wall_side

@@ -1,0 +1,83 @@
+{
+  "runs": {
+    "solo_run1": {
+      "passed": false,
+      "progress_m": 35.05000000000002,
+      "completed_laps": 0,
+      "peak_ground_speed_mps": 2.86136988083,
+      "collision_samples": 0,
+      "last_autonomy_reason": "follow_boundary_unconfirmed",
+      "last_safety_reason": "clear",
+      "motion_status_audit": {
+        "unique_status_samples": 142,
+        "rejected_samples": 0,
+        "coordinate_mode": "both",
+        "scope": "published status samples, not every control cycle"
+      },
+      "source_count": 7768,
+      "source_rate_hz": 200.0,
+      "bias_error_max_rad_s": 1.474514954580286e-16,
+      "motion_impairment_verified": true,
+      "historical_source_unchanged": true,
+      "current_source_hash_errors": [],
+      "stop_passed": true,
+      "stop_displacement_m": null,
+      "shutdown_clean": true,
+      "remaining_test_pids": [],
+      "surface_samples": 19416,
+      "body_outside_samples": 0,
+      "wheel_outside_max": {
+        "any": 0,
+        "center": 0,
+        "full": 0
+      }
+    },
+    "zero_bias_after_overlay": {
+      "passed": true,
+      "progress_m": 46.87000000000002,
+      "completed_laps": 1,
+      "peak_ground_speed_mps": 2.86482123151,
+      "collision_samples": 0,
+      "last_autonomy_reason": "local_follow",
+      "last_safety_reason": "clear",
+      "motion_status_audit": {
+        "unique_status_samples": 147,
+        "rejected_samples": 0,
+        "coordinate_mode": "both",
+        "scope": "published status samples, not every control cycle"
+      },
+      "source_count": 7990,
+      "source_rate_hz": 200.0,
+      "bias_error_max_rad_s": 0.0,
+      "motion_impairment_verified": true,
+      "historical_source_unchanged": true,
+      "current_source_hash_errors": [],
+      "stop_passed": true,
+      "stop_displacement_m": 1.121882641997058,
+      "shutdown_clean": true,
+      "remaining_test_pids": [],
+      "surface_samples": 19955,
+      "body_outside_samples": 0,
+      "wheel_outside_max": {
+        "any": 0,
+        "center": 0,
+        "full": 0
+      }
+    }
+  },
+  "same_configuration_except_bias": true,
+  "baseline_profile_copy_hash_verified": true,
+  "current_sensor_profile_sha256": "702dd70aeb06bc836437c5add1d6fbad7ad62606dcc0a07ab412c696bac00075",
+  "canonical_matches_trial_except_status": true,
+  "tests": {
+    "passed": 127,
+    "command": "pytest -q tests/test_imu_observed_profile.py tests/test_b0390_profile.py tests/test_local_sensor_profile.py tests/test_motion_impairment.py tests/test_lidar_motion_ros.py tests/test_lidar_motion.py"
+  },
+  "limitations": [
+    "single run per bias condition; uncontrolled Gazebo noise/scheduling",
+    "terminal-window bias removal is a saved-input counterfactual, not new driving",
+    "hardware calibration, acquisition clocks and native C1 operational adapter unverified",
+    "canonical profile uses zero-mean IMU simulation, not proven physical zero bias",
+    "first zero_bias_control was ROS-overlay launch failure with zero sensor samples"
+  ]
+}

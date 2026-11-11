@@ -23,7 +23,7 @@ def guard(monkeypatch):
                 'left': {'present': True, 'points': 4, 'rearmost_ds_m': -.1, 'frontmost_ds_m': .1},
                 'right': {'present': False, 'points': 0, 'rearmost_ds_m': None, 'frontmost_ds_m': None}}
 
-    def region(scene, speed, target, steering, previous, dt, *rest):
+    def region(scene, speed, target, steering, previous, dt, *rest, **kwargs):
         state['regions'].append((speed, target, steering, previous, dt))
         return state['region']
 
@@ -32,10 +32,13 @@ def guard(monkeypatch):
     ctl = ps.PassReleaseSelector(cfg)
 
     def call(t=1., *, baseline=.8, angle=-.1, p_speed=0., p_reason='parallel_hold_reference_not_straight',
-             b_reason='local_follow', speed=.2, previous=0., epoch=0, age=.1, current_path=False):
+             b_reason='local_follow', speed=.2, previous=0., epoch=0, age=.1, current_path=False,
+             partial=None):
         scene = SimpleNamespace(source_first_s=t-age, t_ref_s=t, source_epoch=epoch)
         path = [[0., state['offset']], [1., state['offset']]]
         b = (baseline, angle, {'reason': b_reason, 'path_points': path, 'behavior': 'FOLLOW'})
+        if partial is not None:
+            b[2]['partial_observation'] = partial
         if current_path:
             b[2].update(boundary_from_memory=False, path_source_s=scene.source_first_s)
         p = (p_speed, 0., {'reason': p_reason, 'behavior': 'HOLD'})
@@ -81,6 +84,30 @@ def test_gap_recovery_keeps_current_unknown_region_stop(guard):
     out=call(speed=0.,current_path=True,p_reason='parallel_hold_unchanged_gap_hold')
     assert out[0]==0. and len(state['regions'])==1
     assert not out[2]['selector_guard_candidate']['accepted']
+
+
+@pytest.mark.parametrize('current,recovery,expected', [(True, True, True), (False, True, False), (True, False, False)])
+def test_large_parallel_motion_rechecks_only_current_baseline_with_recovery(guard, current, recovery, expected):
+    ctl, state, call = guard
+    ctl.follow_config = replace(ctl.follow_config, traffic_recovery_trial=recovery)
+    out = call(speed=.8, current_path=current, angle=0., p_reason='parallel_hold_lateral_motion_not_small')
+    assert (out[0] > 0.) == expected
+    assert ctl.mode == 'GUARD' and ctl.sides['left']['present'] and not ctl.sides['left']['passed']
+    if expected:
+        assert out[0] == .35
+        assert out[2]['selector_guard_candidate']['prediction_speed_mps'] == .8
+        assert state['regions'][0][:2] == (.8, .35)
+    else:
+        assert not state['regions']
+
+
+def test_large_parallel_motion_does_not_bypass_unobserved_motion_region(guard):
+    ctl, state, call = guard
+    ctl.follow_config = replace(ctl.follow_config, traffic_recovery_trial=True)
+    state['region']['unobserved'] = 1
+    out = call(speed=.5, current_path=True, angle=0., p_reason='parallel_hold_lateral_motion_not_small')
+    assert out[0] == 0. and len(state['regions']) == 1
+    assert out[2]['selector_reason'] == 'guard_curve_rejected_large_motion_region_unobserved'
 
 
 @pytest.mark.parametrize('reason', ['parallel_hold_unchanged_gap_hold', 'parallel_hold_lateral_motion_not_small',
@@ -191,23 +218,24 @@ def test_explicit_cli_and_evidence_cannot_claim_release_from_guard():
 
 @pytest.mark.parametrize('sign', [-1., 1.])
 @pytest.mark.parametrize('side_y,allowed', [(.12, False), (.22, True)])
-@pytest.mark.parametrize('gap_recovery', [False, True])
-def test_real_ray_side_obstacle_blocks_motion_region_even_with_positive_baseline(sign, side_y, allowed, gap_recovery):
+@pytest.mark.parametrize('recovery', ['geometry', 'gap', 'lateral'])
+def test_real_ray_side_obstacle_blocks_motion_region_even_with_positive_baseline(sign, side_y, allowed, recovery):
     # 상태/관측 분류를 주입하지 않는다. 작은 직진도 가깝게 관측된 상자와 겹치는 여유 영역은 거절해야 한다.
     # 기존 G1의 정상 출력이라는 입력을 주되, 이 선택기의 독립적인 이동 영역 검사를 확인한다.
     from test_pass_release_trial import box_scene, baseline
     cfg = FollowConfig(partial_observation_policy='bounded_local_v4', parallel_hold_trial=True,
                        pass_release_trial=True, guard_curve_trial=True,
                        boundary_evidence_mode='corner_distance_candidate', occupancy_timing_mode='per_ray_candidate')
-    cfg = replace(cfg, standing_wall_reacquire=gap_recovery)
+    cfg = replace(cfg, standing_wall_reacquire=recovery == 'gap', traffic_recovery_trial=recovery == 'lateral')
     ctl = ps.PassReleaseSelector(cfg)
     y0, y1 = sorted((sign*side_y, sign*(side_y+.15)))
     scene = box_scene(1., [(-.05, .15, y0, y1)])
     b = baseline()
-    if gap_recovery:
+    if recovery != 'geometry':
         b[2].update(boundary_from_memory=False, path_source_s=scene.source_first_s)
-    why = 'parallel_hold_unchanged_gap_hold' if gap_recovery else 'parallel_hold_reference_not_straight'
-    out = ctl.select(scene, b, (0., 0., {'reason': why}), 0. if gap_recovery else .2, 0., .02)
+    why = {'gap': 'parallel_hold_unchanged_gap_hold', 'geometry': 'parallel_hold_reference_not_straight',
+           'lateral': 'parallel_hold_lateral_motion_not_small'}[recovery]
+    out = ctl.select(scene, b, (0., 0., {'reason': why}), 0. if recovery == 'gap' else .2, 0., .02)
     assert ctl.mode == 'GUARD'
     assert ctl.sides['left' if sign > 0 else 'right']['present']
     assert (out[0] > 0.) == allowed

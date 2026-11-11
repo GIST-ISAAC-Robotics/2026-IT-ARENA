@@ -37,6 +37,33 @@ TRACK_WORLDS = {DEMO_TRACK: DEMO_WORLD,
                 "official_v2026_11_06": REPO / "src/arena_gazebo/worlds/it_arena_official_v2026_11_06"}
 
 
+def audit_sensor_subscriptions(inputs, safety_inputs, *, mode, compensation,
+                               feedback_topic, native_sampling=False,
+                               disable_tof_safety=False):
+    """실행에서 선택한 센서 입력만 허용한다. 두 LiDAR 경로의 동시 구독도 실패다."""
+    if mode not in ('local_pursuit', 'lidar', 'stereo'):
+        raise ValueError('unknown autonomy mode')
+    if native_sampling and mode != 'local_pursuit':
+        raise ValueError('native sampling requires local_pursuit')
+    lidar_topic = '/scan/native' if native_sampling else '/scan'
+    required = ({lidar_topic, '/camera/color/image_raw'} if mode != 'stereo' else
+                {'/camera/depth/image_rect_raw', '/camera/depth/camera_info',
+                 '/camera/color/image_raw'})
+    if mode != 'stereo' and compensation != 'none':
+        required |= {feedback_topic, '/imu/data' if mode == 'local_pursuit' else '/camera/imu'}
+    incidental = {'/clock', '/parameter_events'}
+    sensor_only = required <= set(inputs) <= required | incidental
+    if mode == 'local_pursuit':
+        expected = {lidar_topic, '/imu/data', feedback_topic, '/drive'}
+    elif disable_tof_safety:
+        return sensor_only, None
+    else:
+        names = (('front', 'front_left', 'rear_left', 'rear', 'rear_right', 'front_right')
+                 if mode == 'lidar' else ('front_left', 'rear_left', 'rear_right', 'front_right'))
+        expected = {f'/tof/{name}/points' for name in names} | {'/drive', feedback_topic}
+    return sensor_only, expected <= set(safety_inputs) <= expected | incidental
+
+
 def imu_sample(message):
     """평가 진단 전용 최근 IMU 표본. 제어·보호 입력에는 쓰지 않는다."""
     if message is None:
@@ -187,6 +214,24 @@ def add_rate_metrics(report, trace, scans, scan, requested_rate_hz):
             }
     if scan is None:
         return
+    from arena_autonomy.measurement_scan import MeasurementScan
+    if isinstance(scan,MeasurementScan):
+        from arena_autonomy.scan_input import audit_scan_front
+        intervals=np.diff(np.asarray(scans,dtype=float))
+        rate=(len(scans)-1)/(scans[-1]-scans[0]) if len(scans)>1 and scans[-1]>scans[0] else 0.
+        report['lidar']=dict(frame_id=scan.source_frame_id,samples=len(scan.ranges),
+            representation='native_measurements_v1',range_min=scan.range_min,range_max=scan.range_max,
+            angle_increment_rad=None,time_increment=None,scan_time=None,
+            first_to_last_s=scan.acquired_at_s[-1]-scan.acquired_at_s[0],
+            measured_rate_sim_hz=rate,median_interval_sim_s=float(np.median(intervals)) if len(intervals) else None,
+            max_interval_sim_s=float(np.max(intervals)) if len(intervals) else None,
+            time_basis=scan.time_basis,hardware_timing_verified=False,idealized_snapshot_model=False)
+        report['lidar_rate_passed']=abs(rate-requested_rate_hz)<=max(.15,requested_rate_hz*.08)
+        report['lidar_nominal_interface_passed']=(scan.source_frame_id=='laser_frame'
+            and scan.time_basis=='simulation_acquisition' and audit_scan_front(scan,metadata_only=True).reason=='ok'
+            and math.isclose(scan.range_min,.05,abs_tol=1e-6) and math.isclose(scan.range_max,12.,abs_tol=1e-6)
+            and report['lidar_rate_passed'])
+        return
     intervals = np.diff(np.asarray(scans, dtype=float))
     measured_rate = (
         (len(scans) - 1) / (scans[-1] - scans[0])
@@ -322,6 +367,8 @@ def main():
     parser.add_argument('--lidar-test-profile', default='', help='합성 거리오차/지연 JSON; 기본은 비활성')
     parser.add_argument('--local-sensor-config', default=None,
                         help='시험 전용 local_pursuit 센서/장착 YAML. 기본은 패키지 b0183_c1.yaml')
+    parser.add_argument('--lidar-native-sampling-profile',default='',
+                        help='선택형 원천 C1 각도/가변 점수 모델. 시각은 회전주기/점수 합성값')
     parser.add_argument('--motion-test-profile', default='', help='시험용 IMU/엔코더 오류 JSON')
     parser.add_argument("--shutdown-mode", choices=("sigint", "service"), default="sigint",
                         help="service는 격리된 Gazebo 정상 종료 확인 후 ROS launch를 종료합니다.")
@@ -446,6 +493,10 @@ def main():
         if args.autonomy_mode != 'local_pursuit':
             raise ValueError('local sensor config requires local_pursuit')
         extra_arguments.append('local_sensor_config:='+str(Path(args.local_sensor_config).resolve(strict=True)))
+    if args.lidar_native_sampling_profile:
+        if args.autonomy_mode!='local_pursuit' or args.lidar_acquisition!='sequential' or args.lidar_compensation!='both':
+            raise ValueError('native sampling requires local_pursuit/sequential/both')
+        extra_arguments.append('lidar_native_sampling_profile:='+str(Path(args.lidar_native_sampling_profile).resolve(strict=True)))
     if args.course_marker_visibility != 'visible':
         # blank_20_30은 등록 G1 단독 구성에서도 갈림길 마커 누락 시 본선 유지를 보는 평가 주입이다.
         if args.autonomy_mode != 'local_pursuit' or (args.g1_follow and args.course_marker_visibility != 'blank_20_30'):
@@ -549,7 +600,8 @@ def main():
         initial = state.setdefault('initial_scan_audit', [])
         if len(initial) < 10:
             values = np.asarray(message.ranges, dtype=float)
-            angles = message.angle_min + np.arange(len(values)) * message.angle_increment
+            from arena_autonomy.scan_input import scan_angles
+            angles = scan_angles(message)
             forward_side = np.abs(np.arctan2(np.sin(angles), np.cos(angles))) < math.radians(150.)
             finite = forward_side & np.isfinite(values) & (values >= message.range_min)
             initial.append(dict(stamp_s=scans[-1], front_side_finite=int(np.sum(finite)),
@@ -568,7 +620,13 @@ def main():
     if args.autonomy_mode == 'local_pursuit':
         subscriptions.append(node.create_subscription(Imu, '/imu/data', lambda m: remember(m, 'imu'), qos_profile_sensor_data))
     if args.autonomy_mode != "stereo":
-        subscriptions.append(node.create_subscription(LaserScan, "/scan", receive_scan, qos_profile_sensor_data))
+        if args.lidar_native_sampling_profile:
+            from arena_autonomy.native_lidar_input import decode_measurements
+            subscriptions.append(node.create_subscription(String,'/scan/native',
+                lambda m:receive_scan(decode_measurements(m.data,expected_time_basis='simulation_acquisition')),
+                qos_profile_sensor_data))
+        else:
+            subscriptions.append(node.create_subscription(LaserScan, "/scan", receive_scan, qos_profile_sensor_data))
         if args.lidar_acquisition == "sequential":
             subscriptions.append(node.create_subscription(String, "/sim/lidar_acquisition",
                 lambda m: acquisition_records.append(json.loads(m.data)), 100))
@@ -754,6 +812,16 @@ def main():
         profile_bytes = Path(args.lidar_test_profile).read_bytes()
         (output/'lidar_test_profile.json').write_bytes(profile_bytes)
         report['lidar_test_profile_sha256'] = hashlib.sha256(profile_bytes).hexdigest()
+    if args.lidar_native_sampling_profile:
+        profile_path=Path(args.lidar_native_sampling_profile).resolve(strict=True)
+        relative=profile_path.relative_to(REPO).as_posix()
+        report['input_sha256'][relative]=hashlib.sha256(profile_path.read_bytes()).hexdigest()
+        (output/'native_sampling_profile.json').write_bytes(profile_path.read_bytes())
+        report['requested_native_sampling']=dict(profile=relative,time_model='period_divided_by_count',
+            source_rays=5000,source_angle_quantization_bound_deg=.0361,hardware_timing_verified=False)
+        for directory in ('src/arena_autonomy/arena_autonomy','src/arena_vehicle_interface/arena_vehicle_interface'):
+            for path in (REPO/directory).glob('*.py'):
+                report['input_sha256'][path.relative_to(REPO).as_posix()]=hashlib.sha256(path.read_bytes()).hexdigest()
     with zipfile.ZipFile(output / "source_snapshot.zip", "w", zipfile.ZIP_DEFLATED) as archive:
         for relative in report["input_sha256"]:
             archive.write(REPO / relative, relative)
@@ -1011,30 +1079,18 @@ def main():
                           for topic in ('/imu/data', configured_feedback_topic())}
             report['motion_relay_publishers'] = publishers
             report['motion_relay_exclusive'] = all(v == ['motion_fault_relay'] for v in publishers.values())
-        required_inputs = ({"/scan", "/camera/color/image_raw"} if args.autonomy_mode != "stereo" else
-                           {"/camera/depth/image_rect_raw", "/camera/depth/camera_info",
-                            "/camera/color/image_raw"})
-        if args.autonomy_mode != "stereo" and args.lidar_compensation != "none":
-            required_inputs |= {configured_feedback_topic(), "/imu/data" if args.autonomy_mode == "local_pursuit" else "/camera/imu"}
-        allowed_inputs = required_inputs | {"/clock", "/parameter_events"}
-        report["sensor_only_inputs"] = required_inputs.issubset(inputs) and inputs.issubset(allowed_inputs)
         if args.autonomy_mode == "local_pursuit":
             safety_inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node("lidar_safety", "/")}
-            expected = {"/scan", "/imu/data", configured_feedback_topic(), "/drive"}
-            report["safety_subscriptions"] = sorted(safety_inputs)
-            report["safety_sensor_only_inputs"] = expected.issubset(safety_inputs) and safety_inputs.issubset(expected | {"/clock", "/parameter_events"})
         elif args.disable_tof_safety:
-            report["safety_subscriptions"] = []
-            report["safety_sensor_only_inputs"] = None
+            safety_inputs = set()
         else:
             safety_inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node("tof_safety", "/")}
-            active_tof_names = (("front", "front_left", "rear_left", "rear", "rear_right", "front_right")
-                                if args.autonomy_mode == "lidar" else
-                                ("front_left", "rear_left", "rear_right", "front_right"))
-            tof_inputs = {f"/tof/{name}/points" for name in active_tof_names}
-            report["safety_subscriptions"] = sorted(safety_inputs)
-            report["safety_sensor_only_inputs"] = (tof_inputs | {"/drive", configured_feedback_topic()}).issubset(safety_inputs) and safety_inputs.issubset(
-                tof_inputs | {"/drive", configured_feedback_topic(), "/clock", "/parameter_events"})
+        report["safety_subscriptions"] = sorted(safety_inputs)
+        report["sensor_only_inputs"], report["safety_sensor_only_inputs"] = audit_sensor_subscriptions(
+            inputs, safety_inputs, mode=args.autonomy_mode, compensation=args.lidar_compensation,
+            feedback_topic=configured_feedback_topic(),
+            native_sampling=bool(args.lidar_native_sampling_profile),
+            disable_tof_safety=args.disable_tof_safety)
         add_rate_metrics(report, trace, scans, state.get("scan"), args.lidar_rate_hz)
         if args.autonomy_mode != "stereo":
             source_interface_passed = report["lidar_nominal_interface_passed"]
@@ -1270,6 +1326,17 @@ def main():
                 r["max_capture_time_error_s"] <= .0021001 and r["discarded_source_gaps"] == 0
                 for r in acquisition_records)
             report["passed"] = report["passed"] and report["sequential_acquisition_verified"]
+            if args.lidar_native_sampling_profile:
+                template=json.loads(Path(args.lidar_native_sampling_profile).read_text())['patterns_q14']
+                native_verified=bool(acquisition_records) and all(
+                    r.get('model')=='native_sequential_v1' and r.get('time_model')=='period_divided_by_count'
+                    and r.get('hardware_timing_verified') is False
+                    and r.get('samples')==len(template[r['template_index']])
+                    and r.get('max_source_angle_quantization_rad',math.inf)<=math.radians(.0361)
+                    for r in acquisition_records)
+                report['native_acquisition_verified']=native_verified
+                report['native_sample_counts']=sorted({r.get('samples') for r in acquisition_records})
+                report['passed']=report['passed'] and native_verified
             if test_profile_config is not None:
                 injected = [row for row in acquisition_records if 'impairment' in row]
                 verified = bool(injected) and len(injected) == len(acquisition_records) and all(
@@ -1289,7 +1356,13 @@ def main():
             cv2.imwrite(str(output / "last_rgb.png"), cv2.cvtColor(image_array(state["rgb"]), cv2.COLOR_RGB2BGR))
         if "scan" in state:
             scan = state["scan"]
-            (output / "last_scan.json").write_text(json.dumps({"ranges": [float(r) if math.isfinite(r) else None for r in scan.ranges], "angle_min": scan.angle_min,
+            from arena_autonomy.measurement_scan import MeasurementScan
+            if isinstance(scan,MeasurementScan):
+                from dataclasses import asdict
+                from arena_autonomy.follow_trace import freeze
+                (output/'last_scan.json').write_text(json.dumps(freeze(asdict(scan)),allow_nan=False))
+            else:
+                (output / "last_scan.json").write_text(json.dumps({"ranges": [float(r) if math.isfinite(r) else None for r in scan.ranges], "angle_min": scan.angle_min,
                 "angle_increment": scan.angle_increment, "range_min": scan.range_min, "range_max": scan.range_max,
                 "frame_id": scan.header.frame_id, "scan_time": scan.scan_time, "time_increment": scan.time_increment}))
         if "depth" in state:

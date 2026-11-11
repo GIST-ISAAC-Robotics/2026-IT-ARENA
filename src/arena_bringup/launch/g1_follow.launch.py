@@ -15,6 +15,10 @@ def generate_launch_description():
     # 종료 시 TimerAction도 하위 launch의 timeout 설정을 읽어야 한다.
     # 독립 진입점이므로 문맥을 조기에 pop하는 scoped group은 사용하지 않는다.
     return LaunchDescription([GroupAction(scoped=False, actions=[
+        DeclareLaunchArgument('g1_decision_execution', default_value='inline',
+                              choices=['inline', 'process_candidate'],
+                              description='G1/G2 별도 계산 후보. 기본 동기 실행 유지'),
+        SetParameter(name='g1_decision_execution', value=LaunchConfiguration('g1_decision_execution')),
         DeclareLaunchArgument('race_control_mode', default_value='legacy', choices=['legacy', 'b3_candidate'],
                               description='명시 선택형 경기 운영; 기본 legacy 유지'),
         SetParameter(name='race_control_mode', value=LaunchConfiguration('race_control_mode')),

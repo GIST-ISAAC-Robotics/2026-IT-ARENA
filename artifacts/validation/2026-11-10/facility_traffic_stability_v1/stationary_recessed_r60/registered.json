@@ -1,0 +1,79 @@
+{
+  "registered_at_utc": "2026-11-09T20:00:04.675895+00:00",
+  "base_commit": "70dfa9a62b5c72d0c8015136fdf4d9b57b2ddb2a",
+  "args": [
+    "scripts/validate_g1_traffic.py",
+    "--mode",
+    "g1g2",
+    "--handoff-reserve",
+    "paced",
+    "--handoff-yield-progress",
+    "--handoff-rear-sweep",
+    "--official-signal-course",
+    "--config",
+    "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-10/facility_traffic_stability_v1/stationary_recessed_r60/recessed_config.json",
+    "--case",
+    "persistent_block",
+    "--seed",
+    "0",
+    "--record-follow-decisions",
+    "--handoff-observed-motion",
+    "--side-departure-trial",
+    "--current-lane-preference-trial",
+    "--local-sensor-config",
+    "src/arena_description/config/b0390_c1_jr60p20_sim.yaml",
+    "--pilot-marker-z",
+    "0.140",
+    "--handoff-continuous-pace",
+    "--moving-pass-trial",
+    "--track",
+    "official_v2026_11_06",
+    "--output",
+    "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-10/facility_traffic_stability_v1/stationary_recessed_r60/run1",
+    "--grass-alignment",
+    "road_level",
+    "--g1-piecewise-wall",
+    "--handoff-wall-witness"
+  ],
+  "parent": "11/9 C5",
+  "added_launch_arguments": [
+    "signal_posts:=stl_61cm_provisional",
+    "g1_narrow_occluder_bridge:=true"
+  ],
+  "recessed_visual": true,
+  "extras": {
+    "artifacts/validation/2026-11-10/facility_traffic_stability_v1/stationary_run.py": "411a616eecab5723fcbf46eebb918962803415691e2188dc59ce318c79e18c57",
+    "artifacts/validation/2026-11-10/facility_traffic_stability_v1/stationary_run.sh": "ab3b6b2a0ba7e14f89f12a8e49dd1b3e70e55e4fffede0fb3b5f8c30cdc41027",
+    "artifacts/validation/2026-11-10/facility_traffic_stability_v1/analyze_continuity.py": "2db6793de1613686fee0229bc090538a160a99a5e9d49b298ec3722ca9d692b3",
+    "artifacts/validation/2026-11-09/signal_posts_markers_v1/stationary_goal_eval.py": "92a4cafeb61bd1febd4a8e262a1548a31163974f152b24a9e0be1fbd4746df0a",
+    "artifacts/validation/2026-11-09/signal_posts_markers_v1/evaluate_traffic_posts.py": "d24eecb36f28c5bc98df08f89b8a59ca57474b7af8ca2b0ab6f35e691cc2062a",
+    "artifacts/validation/2026-11-09/signal_posts_markers_v1/stationary_posts_assess.py": "b44acb17a3b66e633b0e687ebd75bf49ae46573e5ad802d573db5dad3cea57fa",
+    "artifacts/validation/2026-11-10/facility_traffic_stability_v1/audit_recessed.py": "98dcc27d4a08fb1fb1918968f1830661c6f7c6ca3ee2f7f2ed282361b7154579",
+    "artifacts/validation/2026-11-08/medium_recessed_pass_v1/outline_moving.py": "6b844c4b62fa546242fa06cb675b6f2a0a7bdf40e19ac181f05f31b2a58e4c1a",
+    "scripts/audit_actor_outline_returns.py": "f9dd4538c279b15c9d351f499834b57c8096a7ca4b60052fc95960fc9b1f96a0"
+  },
+  "scope": "same stationary C5 setup; current code; visual-only recessed shape if explicitly requested",
+  "gates": {
+    "original_report_preserved": true,
+    "original_C5_goal_preserved": true,
+    "required": [
+      "no_contact",
+      "facility_clear",
+      "source_unchanged",
+      "STOP",
+      "clean_shutdown"
+    ],
+    "continuity": "compare reason-aligned stop episodes; no post-hoc threshold replacement"
+  },
+  "shape_audit": {
+    "original_collision_box_preserved": true,
+    "recessed_center_returns_minimum": 2,
+    "unique_scans_minimum": 2,
+    "more_center_returns_than_old_box_side": true,
+    "time_shift_s": [
+      -0.01,
+      0.01
+    ],
+    "scope": "visual concavity at lidar plane only; not arbitrary vehicle shapes"
+  }
+}

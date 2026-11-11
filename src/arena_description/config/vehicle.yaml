@@ -115,18 +115,20 @@ vehicle:
         rated_rpm: 16474.0
         rated_current_a: 10.28
         rated_torque_nm: 0.1058
-      # 2026-11-01 구매 견적 Sheet1 D21/D31: 스퍼 61T / 피니언 17T.
-      # 내부 2.5:1은 사용자 전달 + LaTrax 계열 사양이며 실제 조립은 미확인.
+      # 2026-11-11 사용자 전달: 스퍼 61T→81T, 피니언 17T·기존 2.5:1 유지.
+      # 전달 이미지의 '디퍼렌셜 2.5:1'은 기존 내부 감속과 같은 단계로 해석한다.
+      # 추가 2.5단을 중복 곱하지 않는다. 실제 조립/치형 호환성은 미확인.
       # 모터 회전 / 평균 구동 바퀴 회전. 바퀴 지름은 감속비에 포함하지 않습니다.
-      gear_ratio: 8.970588235294118
-      gear_ratio_status: quote_61T_17T_internal_2p5_assembly_and_pitch_unverified
+      gear_ratio: 11.911764705882353
+      gear_ratio_status: user_81T_17T_same_2p5_stage_assembly_and_pitch_unverified
       gearing_reference:
-        spur_teeth: 61
+        spur_teeth: 81
         pinion_teeth: 17
         internal_reduction: 2.5
-        source: assets/hardware/procurement/2026-11-01/RC카 제작물품구매 견적_ISAAC.xlsx
-        source_cells: Sheet1!D21,Sheet1!D31
-        internal_reduction_source: user_and_latrax_family_spec_not_written_in_quote
+        source: assets/hardware/procurement/2026-11-11/spur_81t_user_notice.png
+        prior_quote: assets/hardware/procurement/2026-11-01/RC카 제작물품구매 견적_ISAAC.xlsx
+        prior_quote_cells: Sheet1!D21,Sheet1!D31
+        internal_reduction_source: user_2p5_differential_assumed_same_previous_stage
       torque_limit_nm: 0.060
       torque_limit_status: provisional_simulation_cap_not_stall_capability
       brake_torque_limit_nm: 0.045

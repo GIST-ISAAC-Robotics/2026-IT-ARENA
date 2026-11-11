@@ -1,0 +1,54 @@
+{
+  "revision": "v1",
+  "date": "2026-11-11",
+  "scope": "ESP32 주변 모듈 간 배선 설계. PCB 제작용 회로도나 전체 실차 검증 결과가 아님",
+  "board": "실측 ESP32-S3 / Flash 16 MB / PSRAM 8 MB, 호환 PCB 제조사·판본 미확인",
+  "gpio": [
+    {"net":"IMU_SCLK","gpio":12,"direction":"out","endpoint":"Adafruit 4438 하단 SCL","status":"SPI 실측"},
+    {"net":"IMU_MOSI","gpio":11,"direction":"out","endpoint":"Adafruit 4438 하단 SDA","status":"SPI 실측"},
+    {"net":"IMU_MISO","gpio":13,"direction":"in","endpoint":"Adafruit 4438 하단 DO","status":"SPI 실측"},
+    {"net":"IMU_CS_N","gpio":10,"direction":"out","endpoint":"Adafruit 4438 하단 CS","status":"SPI 실측"},
+    {"net":"IMU_INT1","gpio":9,"direction":"in","endpoint":"Adafruit 4438 하단 I1","status":"사용자 배선, IRQ 동작 미검증"},
+    {"net":"ENC_A_3V3","gpio":4,"direction":"in","endpoint":"CF-0108 저전압 채널 1 (TXS0108E 확인 시 A1)","status":"조건부 설계, 미접속"},
+    {"net":"ENC_B_3V3","gpio":5,"direction":"in","endpoint":"CF-0108 저전압 채널 2 (TXS0108E 확인 시 A2)","status":"조건부 설계, 미접속"},
+    {"net":"MOTOR_PWM","gpio":15,"direction":"out","endpoint":"MD20A PWM","status":"설계, 실물 구동 미검증"},
+    {"net":"MOTOR_DIR","gpio":6,"direction":"out","endpoint":"MD20A DIR","status":"설계, 실물 구동 미검증"},
+    {"net":"SERVO_TX","gpio":17,"direction":"out","endpoint":"Bus Servo Adapter (A) H2 TX/TXD","status":"공식 동일 이름 결선, 실물 미검증"},
+    {"net":"SERVO_RX","gpio":18,"direction":"in","endpoint":"Bus Servo Adapter (A) H2 RX/RXD","status":"공식 동일 이름 결선, 실물 미검증"}
+  ],
+  "onboard_reserved": {"43":"USB-UART UART0 TX","44":"USB-UART UART0 RX"},
+  "future_reserved": {"8":"STOP 상태 입력, 외부 회로 미정","21":"구동 허가 요청, 외부 회로 미정","47":"watchdog, 외부 회로 미정","1":"배터리 ADC, 분압·보호 회로 미정","2":"선택 고장 입력","14":"선택 CLEAR 입력"},
+  "excluded": [0,3,19,20,26,27,28,29,30,31,32,33,34,35,36,37,38,43,44,45,46,48],
+  "spare_candidates": [7,16,39,40,41,42],
+  "power_nets": {
+    "3V3_MCU": ["ESP32 3V3", "IMU 하단 VIN", "CF VCCA/LV (조건부)", "CF OE (조건부: TXS0108E 및 모듈 회로 확인 후 상시 enable)"],
+    "5V_ENCODER": ["J01 CH4 +", "PGE-213 XHP-4 pin 1 VCC", "CF VCCB/HV (조건부)"],
+    "12V_SERVO": ["M01 CH5 또는 CH6 중 한 채널 +", "Adapter A DC 입력 + / 중앙 +"],
+    "MOTOR_SUPPLY": ["M01 CH1 +", "MD20A VB+"],
+    "19V_JETSON": ["J01 CH1 +", "Jetson DC 입력 중앙 +"],
+    "GND": ["ESP32 GND", "IMU 하단 GND", "CF GND", "PGE-213 pin 2 GND", "MD20A Signal GND", "MD20A VB−", "Adapter A H2 GND", "Adapter A 전원 −", "J01/M01 해당 출력 −"]
+  },
+  "motor_output": [["MD20A MA","MB4266-24180 단자 6 (+), 최초 시험용 극성"],["MD20A MB","MB4266-24180 단자 5 (−), 최초 시험용 극성"]],
+  "encoder_conditional": [["PGE-213 pin 3 HA","CF B1/HV1","CF A1/LV1","ESP32 GPIO4"],["PGE-213 pin 4 HB","CF B2/HV2","CF A2/LV2","ESP32 GPIO5"]],
+  "servo_bus": [["Adapter A 서보 DATA/D","ST3215-HS D"],["Adapter A 서보 V+","ST3215-HS V+"],["Adapter A 서보 GND/G","ST3215-HS GND/G"]],
+  "assumptions": [
+    "GPIO 번호는 실제 헤더 위치 번호가 아니다. 호환 보드의 GPIO 실크로 찾는다.",
+    "CF의 A/B 명칭은 TXS0108E 표준 신호명이며, 실물 패드 이름이나 배열을 확정하지 않는다.",
+    "CF 실물 IC·전원·OE 회로 및 변환 파형 확인 전 엔코더 신호는 ESP32에 연결하지 않는다.",
+    "모터·서보 전류는 ESP32 GND 핀이나 점퍼선을 경유하지 않고 전력 귀환선으로 흐르게 한다.",
+    "전원 + 레일끼리는 합치지 않는다. 신호 기준 GND는 공통이며 실제 배선의 도통을 확인한다.",
+    "현재 IMU 진단 펌웨어는 MD20A PWM/DIR와 서보 정지 제어를 구현하지 않는다. 이번 작업은 통전·업로드를 포함하지 않는다."
+  ],
+  "sources": [
+    {"title":"승인 전장 구성","url":"../APPROVED_ELECTRICAL_LAYOUT.md"},
+    {"title":"ESP32·IMU 실측","url":"../../sensors/ESP32_LSM6DSOX_HARDWARE_2026_11_11.md"},
+    {"title":"Espressif GPIO 제약","url":"https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/gpio.html"},
+    {"title":"Adafruit 4438 핀","url":"https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts"},
+    {"title":"Waveshare UART 결선","url":"https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example"},
+    {"title":"Waveshare Adapter A 회로도","url":"https://files.waveshare.com/wiki/Bus_Servo_Adapter_A/Bus_Servo_Adapter_A.pdf"},
+    {"title":"Cytron MD20A 사양","url":"https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver"},
+    {"title":"Cytron 공식 연결 MD20A 데이터시트","url":"https://docs.google.com/document/d/1eKpt66z-1qLMJkaXrHU1AfKqSVeIpEnM43vECpkYuWA/edit"},
+    {"title":"TI TXS0108E 데이터시트","url":"https://www.ti.com/lit/ds/symlink/txs0108e.pdf"},
+    {"title":"PGE-213 제조사","url":"https://www.motorbank.kr/goods/goods_view.php?goodsNo=1000009561"}
+  ]
+}

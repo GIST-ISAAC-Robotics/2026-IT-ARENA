@@ -8,9 +8,12 @@
 import math
 
 import numpy as np
+from arena_autonomy.scan_input import scan_first_stamp
 
 from arena_autonomy.lidar_observation import audit_front_observation
 from arena_autonomy.scene_motion import relative_poses, transport_points
+from arena_autonomy.scan_input import scan_angles, scan_times, scan_cell_widths, scan_max_gap, audit_scan_front
+from arena_autonomy.measurement_scan import MeasurementScan
 
 
 def near_sweep(points, speed, age, steering, previous_steering, wheelbase, length, width, margin):
@@ -93,12 +96,40 @@ class PartialObservationPolicy:
         self.last_source = None
         self.surface_cache = None
 
+    def requested_speed(self, scan, yaw, requested, explained=None):
+        """넓은 결측에서는 기존 저속 후보를 먼저 요청한다. 관측 허가는 아니다.
+
+        상태·입력을 바꾸지 않는다. 호출자는 이 요청과 **실제 측정속도의 최댓값**으로
+        evaluate를 한 번 수행해야 한다. 구조로 설명된 광선은 해당 정책이 따로 검사한다.
+        """
+        if not self.lateral_metric_enabled or not math.isfinite(requested) or requested <= .2:
+            return requested
+        values = np.asarray(scan.ranges, dtype=float)
+        angles = (scan_angles(scan)+yaw+math.pi) % math.tau-math.pi
+        front = np.argsort(angles)
+        front = front[np.abs(angles[front]) <= math.radians(100)+1e-6]
+        missing = ~(np.isfinite(values)&(values>=scan.range_min)&(values<=scan.range_max))
+        if explained:
+            missing[list(explained)] = False
+        ids = np.flatnonzero(missing[front])
+        if not len(ids):
+            return requested
+        runs = np.split(ids, np.flatnonzero(np.diff(ids)>1)+1)
+        if isinstance(scan, MeasurementScan):
+            cells = scan_cell_widths(scan)
+            widest = max(float(sum(cells[front[run]])) for run in runs)
+        else:
+            widest = max(len(run)*scan_max_gap(scan) for run in runs)
+        front_metric=(self.oblique_metric_enabled and len(runs)==1
+            and widest>math.radians(1.5)+1e-7
+            and np.any(np.abs(angles[front[ids]])<=math.radians(30)+scan_max_gap(scan)/2))
+        return min(requested, .2) if widest > math.radians(3)+1e-7 or front_metric else requested
+
     def evaluate(self, scan, points, history, now, speed, steering=0., previous_steering=0.,
                  wheelbase=.135, length=.20, width=.15):
         yaw = history.config.lidar_yaw_rad
-        audit = audit_front_observation(scan.ranges, scan.angle_min,
-            scan.angle_increment, scan.range_min, scan.range_max, yaw)
-        source = scan.header.stamp.sec + scan.header.stamp.nanosec * 1e-9
+        audit = audit_scan_front(scan,yaw)
+        source = scan_first_stamp(scan)
         report = dict(allowed=False, reason='partial_invalid', unknown_filled=False,
                       residual_hidden_object_risk=True, speed_cap_mps=self.speed_cap_mps,
                       unknown_samples=audit.unknown_samples)
@@ -135,12 +166,12 @@ class PartialObservationPolicy:
             return {**report, 'reason':'partial_speed_outside_trial'}
         # 실제 배열의 범위 밖/무반환과 별개로 각도 메타데이터 이음부 누락은 허용하지 않는다.
         # 유효 상수 배열은 메타데이터 검사 전용이며 거리/점군으로 반환하지 않는다.
-        metadata = audit_front_observation(np.full(len(values),scan.range_min),
-            scan.angle_min,scan.angle_increment,scan.range_min,scan.range_max,yaw)
+        metadata = audit_scan_front(scan,yaw,metadata_only=True)
         if metadata.reason != 'ok':
             return {**report, 'reason':'angular_metadata_hole'}
-        step = float(scan.angle_increment)
-        angles = (scan.angle_min + np.arange(len(values))*step + yaw + math.pi) % math.tau - math.pi
+        cells=scan_cell_widths(scan)
+        step = scan_max_gap(scan)
+        angles = (scan_angles(scan) + yaw + math.pi) % math.tau - math.pi
         order = np.argsort(angles)
         front = order[np.abs(angles[order]) <= math.radians(100)+1e-6]
         # 최소거리 미만의 유한값/음의 무한대는 멀리 있는 벽의 무반환과 다르다.
@@ -156,15 +187,24 @@ class PartialObservationPolicy:
             return {**report, 'reason':'angular_metadata_hole'}
         runs = np.split(ids, np.flatnonzero(np.diff(ids)>1)+1)
         widest, total = max(len(run)*step for run in runs), len(ids)*step
+        if isinstance(scan,MeasurementScan):
+            widest=max(float(sum(cells[front[run]])) for run in runs)
+            total=float(sum(cells[front[ids]]))
         report.update(max_gap_deg=math.degrees(widest), total_gap_deg=math.degrees(total))
         if total > math.radians(6)+1e-7 or len(ids)/len(front) > .05:
             return {**report, 'reason':'wide_or_many_missing'}
         unknown = front[ids]
-        metric_gap=widest>math.radians(3)+1e-7
+        # 선택형 저속 정책의 단일 결측은 차량 x축30도 경계 대신 같은 이동 반경/
+        # 숨은 폭으로 비교한다. 정면의 여러 공백·넓은 공백을 모두 허용하지 않는다.
+        single_forward_metric=(self.oblique_metric_enabled and len(runs)==1)
+        metric_gap=(widest>math.radians(3)+1e-7 or (single_forward_metric
+            and widest>math.radians(1.5)+1e-7
+            and np.any(np.abs(angles[unknown])<=math.radians(30)+step/2)))
         if metric_gap and not self.lateral_metric_enabled:
             return {**report, 'reason':'wide_or_many_missing'}
-        # v4는 3도 초과 측방 공백만 별도 후보로 다룬다. 정면/전체 고장 완화가 아니다.
-        minimum_metric_angle = 30. if self.oblique_metric_enabled else 60.
+        # 기존 v4 범위는 유지. oblique 선택 시 단일 정면 공백까지 같은 폭을 재되,
+        # 요청은 .2 m/s로 제한하고 실제속도·근거리 반환·소실 위협은 그대로 검사한다.
+        minimum_metric_angle = 0. if single_forward_metric else (30. if self.oblique_metric_enabled else 60.)
         if metric_gap:
             # 사선 저속 후보: 원점 고정 반경 대신 감속 동안 차체가 닿을 수 있는 반경.
             # 후륜축 이동 D에 차체 중심 회전 이동 <= D*abs(tan(delta))/2를 더한다.
@@ -205,13 +245,27 @@ class PartialObservationPolicy:
                 self._remember(points, now, source, fresh)
                 return finished(reason='near_gap_boundary')
         # 각 무반환의 실제 취득 방향을 현재 차체로 옮긴다. 거리는 만들지 않는다.
-        stamps = source + unknown*float(scan.time_increment)
+        stamps = scan_times(scan)[unknown]
         poses = relative_poses(history, stamps, now)
         direction = angles[unknown] + poses[:,2]
         central_after = bool(np.any(np.abs((direction+math.pi)%math.tau-math.pi) <= math.radians(30)+step/2))
         if central_after and not self.allow_narrow_forward:
             return {**report, 'reason':'central_missing_after_motion'}
         central = central or central_after
+        # 전방 1.5도 제한에 별개의 측방 공백까지 더하면 각각 허용된 두 공백이
+        # 동시에 나타났다는 이유만으로 정지한다. v4는 취득/현재 방향 중 한쪽이라도
+        # 전방에 닿는 연속 공백의 전체 폭을 합산한다. 경계에서 한 공백을 잘라
+        # 작게 만들지 않으며, 전체6도/측방 폭/각 이웃/소실 위협 검사는 그대로다.
+        forward_total = total
+        if central and self.allow_narrow_forward and self.lateral_metric_enabled:
+            current_angles = (direction+math.pi)%math.tau-math.pi
+            forward_cells = ((np.abs(angles[unknown]) <= math.radians(30)+step/2)
+                             | (np.abs(current_angles) <= math.radians(30)+step/2))
+            forward_runs = [run for run in runs if np.any(forward_cells[np.searchsorted(ids, run)])]
+            forward_total = float(sum(sum(cells[front[run]]) for run in forward_runs))
+            report.update(forward_gap_deg=math.degrees(forward_total),
+                          forward_gap_scope='whole_runs_source_or_reference_v1',
+                          forward_gap_lidar_yaw_rad=yaw)
         if metric_gap:
             transported_angles=np.abs((direction+math.pi)%math.tau-math.pi)
             if (np.any(transported_angles<math.radians(minimum_metric_angle)) or
@@ -245,7 +299,7 @@ class PartialObservationPolicy:
                                   wheelbase,length,width,.03+2*max(0.,now-reference))
             threatening = (along >= 0) & (along <= required) & (across <= spread) & relevant[None,:]
             threatening = self._refine_threat(threatening, carried, previous, origins, direction,
-                source + unknown*scan.time_increment, now, step/2, required, speed,
+                stamps, now, step/2, required, speed,
                 now-source, steering, previous_steering, wheelbase, length, width, report)
             # 옛 점 위치를 현재 유효 반환이 다시 관측하면 '소실' 가설에서 제외한다.
             # 물체 신원/정지 증명은 아니며 모든 현재 점은 독립 충돌 검사에 남는다.
@@ -328,12 +382,13 @@ class PartialObservationPolicy:
         # 좁은 정면 예외라도 장애물 기억을 먼저 계산한다. 진행을 거절한 동안
         # 살아 있는 관측까지 갱신하지 않아 인위적으로 기억을 만료시키지 않는다.
         if central and not self.latched:
-            if total > math.radians(1.5)+1e-7:
+            if forward_total > math.radians(1.5)+1e-7 and not (metric_gap and single_forward_metric):
                 return finished(reason='forward_gap_too_wide')
             if min(boundary_ranges) < max(1.,required):
                 return finished(reason='forward_gap_near_boundary')
         return finished(allowed=not self.latched,
                 reason='known_obstacle_latched' if self.latched else
+                       'bounded_forward_metric_missing' if metric_gap and central and single_forward_metric else
                        'bounded_lateral_metric_missing' if metric_gap else
                        'bounded_forward_missing' if central else 'bounded_side_missing')
 
@@ -344,11 +399,10 @@ class PartialObservationPolicy:
         excused = np.asarray(excused, dtype=bool)
         if excused.shape != values.shape:
             return audit
-        metadata = audit_front_observation(np.full(len(values), scan.range_min), scan.angle_min,
-            scan.angle_increment, scan.range_min, scan.range_max, yaw)
+        metadata = audit_scan_front(scan,yaw,metadata_only=True)
         if metadata.reason != 'ok':
             return audit
-        angles = (scan.angle_min + np.arange(len(values))*float(scan.angle_increment) + yaw + math.pi) % math.tau - math.pi
+        angles = (scan_angles(scan) + yaw + math.pi) % math.tau - math.pi
         front = np.abs(angles) <= math.radians(100) + 1e-6
         valid = np.isfinite(values) & (values >= scan.range_min) & (values <= scan.range_max)
         if np.any(front & ~valid & ~excused) or np.any(values[front] < scan.range_min):

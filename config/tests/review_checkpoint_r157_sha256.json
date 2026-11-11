@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "scope": "11/12 현재 소스의 증거 사슬 정리. 기존 r130/r134/r138/r147 실행 등록 원문은 변경하지 않음. 주행 후보의 기본 채택이나 실차 검증 아님.",
+  "parent_contract": "config/tests/forward_gap_scope_r109_sha256.json",
+  "parent_contract_sha256": "c226833f76abda911099644df17d670d9b2bc450d160aad4ecdfe1279676a4bf",
+  "before_snapshot": "artifacts/validation/2026-11-12/review_checkpoint_r157_v1/before.zip",
+  "before_snapshot_sha256": "706297b8817bc0b9d6b2a562aa19cafcba65ef5d6bffc9840aebcdb5a8849e8e",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/follow_trace.py": {
+      "before": "dbcab3523c1dbb3dbdb61ab78b7dc3e9486326b3de42f260427736097981986c",
+      "after": "11ae59b5466c63f25b34f78edddb2fe85dd1439d074da0c3397c1d9dfe518fee",
+      "reason": "r138: 기록용 내장 자료 복사를 출력 동등성을 유지한 형태로 변경. 원시 기록과 원 판단은 보존."
+    },
+    "src/arena_autonomy/arena_autonomy/lidar_motion_ros.py": {
+      "before": "dd402dcba91d236534a1942fc582f4013b91bfb2796203a8ceb23294136ffe09",
+      "after": "2230c6ab91261fba78240bbbe385a3f0360de4778fb6cd9a842c98cfc31c64a2",
+      "reason": "r134:200 Hz IMU 이력 수신 큐를64로 늘려 executor 작업 중 표본 손실을 줄임. 취득 시각과 입력 거부 조건은 유지."
+    },
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "9c23ef525bdee63683fbde2ae659d2febc1ac36e6d4c4ffc8201916f2b0b633c",
+      "after": "9a0db82e05ea7b895084b324495fa9f3ae40c826a36f449af2375caa3265414f",
+      "reason": "r130: 막 만료된 이전 경로는 현재 관측의 일치 확인에만 사용. 만료 경로 주행이나 TTL 연장 아님."
+    },
+    "src/arena_autonomy/arena_autonomy/rear_fringe_trial.py": {
+      "before": "d9807d4a7dd6fe43b59a7aafec2a23c8c0a51e317c94d49e8295abb0aa6e9aee",
+      "after": "cd39ebe9659e83bcd4fe78812a26f8b9cb626a3750bf1d24e38d6773d8202943",
+      "reason": "r147: 원시 무반환 분류와 거절 순서를 유지하며 질의 배열 연산을32개씩 묶음."
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/native_traffic_contract.py": {
+      "before": "0f2823710e37f336f192de089b70b706f15f10ba9326f073667c1903452492f9",
+      "after": "aa38b2946f3f63f09a122b41ec11792a86a2053993ef6abe19242e2f642482c9",
+      "reason": "r123: 기존 취득 공백 실패를 유지하면서 완성 배열 대응을 별도 진단. 제어 입력과 기존 전체 verified 판정은 유지."
+    }
+  },
+  "new_dependencies": {},
+  "preserved_execution_contracts": [
+    "config/tests/recent_boundary_r130_sha256.json",
+    "config/tests/imu_history_queue_r134_sha256.json",
+    "config/tests/snapshot_copy_r138_sha256.json",
+    "config/tests/nonreturn_batch_r147_sha256.json"
+  ]
+}

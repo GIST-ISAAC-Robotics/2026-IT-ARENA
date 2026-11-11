@@ -1,0 +1,418 @@
+{
+  "schema": "it-arena-execution-sidecar-v1",
+  "trial": {
+    "run_report_passed": false,
+    "harness_valid": true,
+    "overall_assessment_passed": false,
+    "run_log": "build/facility_noise_r76_run.log",
+    "first_assess_log": "build/facility_noise_r76_assess.log",
+    "second_assess_log": "build/facility_noise_r76_assess_v2.log",
+    "surface_eval_log": "build/facility_noise_r76_surface.log",
+    "output": "artifacts/validation/2026-11-11/facility_noise_r76_v1/two_actor_run1"
+  },
+  "outcome": {
+    "gates": {
+      "progress": true,
+      "no_permanent_stall": false,
+      "final_gap": false,
+      "full_lap": false,
+      "two_wheel_surface": true,
+      "green_observed": true,
+      "data_coverage": true,
+      "sampled_gap": true,
+      "swept_gap": true,
+      "no_sampled_overlap": true,
+      "no_actor_contact": true,
+      "ego_stays_behind": true
+    },
+    "assessment_gates": {
+      "injection_state": true,
+      "added_delay_range": true,
+      "bounded_error": true,
+      "acquisition_received_one_to_one": true,
+      "decision_scans_acquired": true,
+      "decision_log_complete": true,
+      "facility_goal": false,
+      "actor_structure_unchanged": true,
+      "snapshot_unchanged": true
+    },
+    "progress_m": 9.93999999999994,
+    "lap_length_m": 44.64,
+    "full_course_progress": {
+      "valid": true,
+      "ego_stays_behind": true,
+      "progress_m": 9.93999999999994,
+      "projection_jumps": 0,
+      "ego_start_s_m": 41.66,
+      "ego_end_s_m": 51.59999999999994,
+      "actor_end_s_m": 91.25999999999934,
+      "paired_samples": 29978
+    },
+    "longest_stationary_while_lead_moves_s": 45.135999999999996,
+    "failed_motion_reasons": [
+      {
+        "sim_s": 19.46,
+        "state": "HANDOFF_FOLLOW",
+        "behavior": "HOLD",
+        "reason": "parallel_hold_reference_not_straight",
+        "selector_reason": "large_motion_region_unobserved"
+      },
+      {
+        "sim_s": 19.580000000000002,
+        "state": "HANDOFF_FOLLOW",
+        "behavior": "HOLD",
+        "reason": "parallel_hold_reference_not_straight",
+        "selector_reason": "large_motion_region_unobserved"
+      },
+      {
+        "sim_s": 19.8,
+        "state": "HANDOFF_FOLLOW",
+        "behavior": "HOLD",
+        "reason": "parallel_hold_release_wait",
+        "selector_reason": "large_motion_region_unobserved"
+      },
+      {
+        "sim_s": 19.96,
+        "state": "RUNNING",
+        "behavior": "FOLLOW",
+        "reason": "parallel_hold_follow",
+        "selector_reason": "large_motion_region_unobserved"
+      }
+    ],
+    "status_near_stall": [
+      {
+        "sim_s": 19.36,
+        "state": "RUNNING",
+        "behavior": "FOLLOW",
+        "reason": "local_follow",
+        "selector_reason": "released_observed_motion_small_masked_tail"
+      },
+      {
+        "sim_s": 19.46,
+        "state": "HANDOFF_FOLLOW",
+        "behavior": "HOLD",
+        "reason": "parallel_hold_reference_not_straight",
+        "selector_reason": "large_motion_region_unobserved"
+      },
+      {
+        "sim_s": 19.560000000000002,
+        "state": "RUNNING",
+        "behavior": "FOLLOW",
+        "reason": "local_follow",
+        "selector_reason": "released_observed_motion_small_masked_tail"
+      },
+      {
+        "sim_s": 19.580000000000002,
+        "state": "HANDOFF_FOLLOW",
+        "behavior": "HOLD",
+        "reason": "parallel_hold_reference_not_straight",
+        "selector_reason": "large_motion_region_unobserved"
+      },
+      {
+        "sim_s": 19.8,
+        "state": "HANDOFF_FOLLOW",
+        "behavior": "HOLD",
+        "reason": "parallel_hold_release_wait",
+        "selector_reason": "large_motion_region_unobserved"
+      },
+      {
+        "sim_s": 19.96,
+        "state": "RUNNING",
+        "behavior": "FOLLOW",
+        "reason": "parallel_hold_follow",
+        "selector_reason": "large_motion_region_unobserved"
+      }
+    ]
+  },
+  "contacts": {
+    "base_actor_events_with_ego": 0,
+    "additional_actor": "eval_second_lead",
+    "event_count": 1520,
+    "first_event_sim_s": 65.863,
+    "last_event_sim_s": 66.422,
+    "first_pair": [
+      "arena_car::chassis::collision",
+      "eval_second_lead::body::collision"
+    ],
+    "minimum_sampled_gap_m": 0.0,
+    "minimum_swept_lower_bound_m": -6.399343729791519e-05
+  },
+  "injection": {
+    "requested": {
+      "mode": "uniform",
+      "amplitude_m": 0.03,
+      "bias_m": 0.0,
+      "delay_s": 0.05,
+      "jitter_s": 0.02,
+      "seed": 23
+    },
+    "verified": true,
+    "acquisition_records": 682,
+    "received_scans": 682,
+    "minimum_added_delay_s": 0.031999999999996476,
+    "maximum_added_delay_s": 0.07000000000000739,
+    "error_statistics": {
+      "samples": 338134,
+      "scans": 682,
+      "mean_error_m": -2.2329937627075156e-05,
+      "rms_error_m": 0.017338313396765816,
+      "max_abs_error_m": 0.029999887548838047,
+      "invalidated": 1648,
+      "scope": "synthetic radial error; not manufacturer distribution or measured transport"
+    },
+    "limits": [
+      "synthetic bounded radial error and publish delay, not measured C1 noise or transport",
+      "both controller and safety must separately be checked to subscribe to the same /scan",
+      "received header/acquisition match does not prove every downstream callback processed each scan",
+      "not a driving, braking, real-time Jetson or hardware safety verdict"
+    ]
+  },
+  "runtime": {
+    "gear_ratio": 11.911764705882353,
+    "wheel_radius_m": 0.0325,
+    "requested_lidar_hz": 10.0,
+    "lidar_received_scans": 682,
+    "scope": "simulated timing and configured runtime vehicle model; no hardware timing",
+    "wall_elapsed_s": 774.9068401969998
+  },
+  "stop_and_shutdown": {
+    "stable": true,
+    "software_stop": "software_stop",
+    "dense_pose_evidence": {
+      "complete": true,
+      "passed": true,
+      "reason": "covered",
+      "required_first_s": 67.803,
+      "required_last_s": 68.303,
+      "covered_first_s": 67.803,
+      "covered_last_s": 68.303,
+      "segment_count": 250,
+      "maximum_gap_s": 0.0030000000000001137,
+      "maximum_allowed_gap_s": 0.05,
+      "maximum_speed_mps": 0.0
+    },
+    "stop_checks": {
+      "model_stop_stable": true,
+      "dense_pose_stop_evidence": true,
+      "explicit_mcu_stop": true,
+      "no_mcu_latch_before_stop": true,
+      "no_deadline_diagnostic": true,
+      "no_wall_collision": true
+    },
+    "shutdown_clean": true,
+    "shutdown_audit": {
+      "clean": true,
+      "launch_return_code": 0,
+      "forced_cleanup": null,
+      "started_child_count": 14,
+      "clean_child_count": 14,
+      "failed_children": {},
+      "unaccounted_child_pids": [],
+      "errors": [],
+      "errors_before_shutdown_count": 0,
+      "errors_after_shutdown_count": 0
+    },
+    "gazebo_stop_service": {
+      "method": "server_control",
+      "partition": "arena_autonomy_test_832",
+      "verified": true,
+      "server_processes_before": [
+        961
+      ],
+      "return_code": 0,
+      "stdout": "data: true\n\n",
+      "stderr": "",
+      "acknowledged": true,
+      "remaining_server_pids": [],
+      "elapsed_s": 0.8355764389998512
+    },
+    "postflight_process_query_file": "postflight_processes.txt",
+    "postflight_process_query_empty": true
+  },
+  "integrity": {
+    "report_source_unchanged": true,
+    "registered_extra_source_count": 983,
+    "changed_extra_sources": [],
+    "snapshot_unchanged": true,
+    "snapshot_sha256": "502493d0e18545f45149fac99e574d4caf0166b9d6cb077914deb5815a3ad2ef",
+    "registered_file_sha256": "5e8b00b2557fc39e7bad679dee4779867a163e7110d60567f2e2632e572899a3",
+    "run_file_sha256": "6520086aaf1d1a6b00017e6f9b906004c2e4509f12f3ec5c518cbb65d4185765",
+    "config_sha256": "355e2549cedf676c2cf0668a6217428b2da6bdec8c93d0dfb456ea8f26d29bcb",
+    "actor_sdf_sha256": "2a39cb54d7d26a86371b251ba802a35a197a80f86531bee93485a75525dee3d8"
+  },
+  "surface_contact_eval": {
+    "scope": "post-run truth-only surface evaluation; not a controller input, official judgement or retroactive pass",
+    "evaluator_version": "surface_contact_v1",
+    "pose_source": "ego_poses.jsonl",
+    "steering_source": "MCU target central steering (actuation_trace)",
+    "geometry": {
+      "body_length_m": 0.2,
+      "body_width_m": 0.15,
+      "wheelbase_m": 0.135,
+      "track_width_m": 0.135,
+      "wheel_radius_m": 0.0325,
+      "wheel_width_m": 0.012,
+      "contact_patch_length_m": 0.01,
+      "max_wheel_steering_rad": 0.45
+    },
+    "geometry_status": {
+      "body_length_m": "team design target 20 cm (registered regulation envelope)",
+      "body_width_m": "team design target 15 cm (registered regulation envelope)",
+      "wheelbase_m": "provisional fit to 200 mm length, real wheelbase unconfirmed",
+      "track_width_m": "provisional, unconfirmed",
+      "wheel_radius_m": "confirmed 65 mm outer diameter, loaded rolling radius unmeasured",
+      "wheel_width_m": "provisional 12 mm, tire width unconfirmed",
+      "contact_patch_length_m": "evaluation assumption, no measurement",
+      "max_wheel_steering_rad": "simulation joint limit; inspection steering state unconfirmed"
+    },
+    "world": "artifacts/validation/2026-11-11/facility_noise_r76_v1/two_actor_run1/run1/runtime_world.sdf",
+    "world_sha256": "95c828b676e23c2a23ceb9c3b536aa7cdf39104ad89939896e0b7aed109e1af9",
+    "samples": 34125,
+    "first_s": 0.002,
+    "last_s": 68.315,
+    "max_sample_gap_s": 0.0040000000000000036,
+    "sample_gaps_over_limit": 0,
+    "sample_gap_limit_s": 0.05,
+    "body_outside_samples_over_1e-6_m2": 0,
+    "body_outside_samples_over_1cm2": 0,
+    "max_body_outside_road_area_m2": 0.0,
+    "steering_footprint_outside_samples_over_1e-6_m2": 0,
+    "max_steering_footprint_outside_road_area_m2": 0.0,
+    "wall_wheel_samples": 0,
+    "merge_gap_s": 0.5,
+    "penalty_wheels_threshold": 3,
+    "interpretations": {
+      "any": {
+        "time_by_off_wheel_count_s": {
+          "0": 68.315,
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "samples_by_off_wheel_count": {
+          "0": 34125,
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "max_off_wheels": 0,
+        "penalty_state_raw_rising_edges": 0,
+        "penalty_state_transitions": 0,
+        "penalty_events_merged": 0,
+        "penalty_events": [],
+        "penalty_state_time_s": 0,
+        "any_off_time_s": 0,
+        "grass_contact_time_s": 0,
+        "other_ground_contact_time_s": 0,
+        "longest_continuous_grass_contact_s": 0.0,
+        "grass_contact_runs_over_s": {
+          "1.0": 0,
+          "3.0": 0,
+          "5.0": 0
+        },
+        "two_wheel_pair_kinds_samples": {},
+        "wheel_off_toggles": {
+          "front_left": 0,
+          "front_right": 0,
+          "rear_left": 0,
+          "rear_right": 0
+        }
+      },
+      "center": {
+        "time_by_off_wheel_count_s": {
+          "0": 68.315,
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "samples_by_off_wheel_count": {
+          "0": 34125,
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "max_off_wheels": 0,
+        "penalty_state_raw_rising_edges": 0,
+        "penalty_state_transitions": 0,
+        "penalty_events_merged": 0,
+        "penalty_events": [],
+        "penalty_state_time_s": 0,
+        "any_off_time_s": 0,
+        "grass_contact_time_s": 0,
+        "other_ground_contact_time_s": 0,
+        "longest_continuous_grass_contact_s": 0.0,
+        "grass_contact_runs_over_s": {
+          "1.0": 0,
+          "3.0": 0,
+          "5.0": 0
+        },
+        "two_wheel_pair_kinds_samples": {},
+        "wheel_off_toggles": {
+          "front_left": 0,
+          "front_right": 0,
+          "rear_left": 0,
+          "rear_right": 0
+        }
+      },
+      "full": {
+        "time_by_off_wheel_count_s": {
+          "0": 68.315,
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "samples_by_off_wheel_count": {
+          "0": 34125,
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 0
+        },
+        "max_off_wheels": 0,
+        "penalty_state_raw_rising_edges": 0,
+        "penalty_state_transitions": 0,
+        "penalty_events_merged": 0,
+        "penalty_events": [],
+        "penalty_state_time_s": 0,
+        "any_off_time_s": 0,
+        "grass_contact_time_s": 0,
+        "other_ground_contact_time_s": 0,
+        "longest_continuous_grass_contact_s": 0.0,
+        "grass_contact_runs_over_s": {
+          "1.0": 0,
+          "3.0": 0,
+          "5.0": 0
+        },
+        "two_wheel_pair_kinds_samples": {},
+        "wheel_off_toggles": {
+          "front_left": 0,
+          "front_right": 0,
+          "rear_left": 0,
+          "rear_right": 0
+        }
+      }
+    },
+    "run": "artifacts/validation/2026-11-11/facility_noise_r76_v1/two_actor_run1/run1",
+    "script_sha256": "0081768061865a5544711499cc28bc3351a31e95ccdcb25fbfc0c720cd8c9b76"
+  },
+  "assessment": {
+    "passed": false,
+    "longest_low_speed_s": 45.13599999999994,
+    "dense_samples": null,
+    "scope": null,
+    "first_assess_failure": "FileNotFoundError: surface.json was not present; preserved in first_assess_log",
+    "second_assess_completed": true
+  },
+  "limitations": [
+    "The case did not complete one lap and had a 45.136 s stationary interval while the scripted lead continued.",
+    "The additional eval_second_lead actor produced contact events; report gaps reached 0 m and the swept lower bound was slightly negative.",
+    "The other configured contact probe observed zero events; event-topic evidence is scoped to that actor and does not establish absence of all contact.",
+    "Injected radial noise and publish delay are synthetic; they do not model a manufacturer distribution or measured transport.",
+    "This is a single simulator trial, not a hardware or general-course safety result."
+  ]
+}

@@ -15,6 +15,8 @@ from arena_autonomy.lateral_intent import (
 from arena_autonomy.observation_support import depth_support, source_valid, outside_body
 from arena_autonomy.linear_observation import clip_halfplane
 from arena_autonomy.polygon_batch import clip_polygons, exterior_queries
+from arena_autonomy.measurement_scan import unknown_cell_directions
+from arena_autonomy.point_set import unique_xy
 
 
 def path_observation_queries(scene, poses, cfg):
@@ -38,6 +40,8 @@ def path_observation_queries(scene, poses, cfg):
         dx, dy = ray.direction_xy
         lowers.append((co*dx+si*dy, -si*dx+co*dy))
         uppers.append((co*dx-si*dy, si*dx+co*dy))
+    if scene.source_angles_rad is not None:
+        lowers, uppers = unknown_cell_directions(scene, unknown)
     if unknown:
         origins = np.asarray([r.ray_origin_xy_m for r in unknown])
         directions = np.asarray([r.direction_xy for r in unknown])
@@ -62,7 +66,7 @@ def path_observation_queries(scene, poses, cfg):
         queries.extend(extra)
     q = np.asarray(queries, dtype=float).reshape(-1, 2)
     outside = (abs(q[:, 0]) > lx+GEOMETRY_EPS_M) | (abs(q[:, 1]) > wy+GEOMETRY_EPS_M)
-    return np.unique(q[outside], axis=0), intersections
+    return unique_xy(q[outside]), intersections
 
 
 def observed_candidate(scene, candidate, context, cfg, speed):

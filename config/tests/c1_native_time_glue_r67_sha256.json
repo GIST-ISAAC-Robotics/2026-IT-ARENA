@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "scope": "r66 실주행 진입에서 발생한 native source stamp 반올림 불일치 수정 및 기록 비용 도구 호환; 보호 기준/물성 변경 없음",
+  "parent_contract": "config/tests/c1_native_sampling_r66_sha256.json",
+  "parent_contract_sha256": "b048fe45c1f24dd8e758e4355b46244129277e21aa460b9796e1f67ad47c7f6c",
+  "before_snapshot": "artifacts/validation/2026-11-11/c1_native_sampling_v1/before_r67.zip",
+  "before_snapshot_sha256": "70d5f06a637833a8ce6648998164e73cc33261faab016d08d44d388864f8c39a",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/scan_input.py": {
+      "before": "eb455bec976e85eeff192cbbe4bdf1f6a7a7df7b964c66dd02b83ad4b4943f2b",
+      "after": "e9dbd491f7107294229bb9fcb4521b1ec27bfafdbc482cd0932e7d3fc9881e4e",
+      "reason": "native 원시 최초시각을 반올림 ROS header와 섞지 않음; 기존 LaserScan 식은 동일 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/local_follow.py": {
+      "before": "54c49c608eaab5e6446a15d76c5e0e0dea16865de5b520530993a1ebc83cc171",
+      "after": "5a133d69f7fc1a4aae9ebae1c64d535835f3e4ef578197444d54a573bccef12e",
+      "reason": "native 원시 최초시각을 반올림 ROS header와 섞지 않음; 기존 LaserScan 식은 동일 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/known_structure.py": {
+      "before": "20cc926c3faec00b47da436eab8b21ed9aeadacf1e96ea10a43cab377f321539",
+      "after": "73f56a341bda798fe59cf9f17c781d2f8c48ec3adeee845bff328a8423a6228f",
+      "reason": "native 원시 최초시각을 반올림 ROS header와 섞지 않음; 기존 LaserScan 식은 동일 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/partial_observation.py": {
+      "before": "60bdc6fab124b03fdae17bb8dd321ed333afc2218a9d9dcb57bde6f2c35a3e8c",
+      "after": "6f7bc228e15ea25799460de46b9dcd75b6e652da46016c95f56a98f0211b5aac",
+      "reason": "native 원시 최초시각을 반올림 ROS header와 섞지 않음; 기존 LaserScan 식은 동일 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/rear_fringe_trial.py": {
+      "before": "2f3d1519c7019b95aae2fb03b263f7c55835b6e38e30cf897803f9ea07c0536a",
+      "after": "d9807d4a7dd6fe43b59a7aafec2a23c8c0a51e317c94d49e8295abb0aa6e9aee",
+      "reason": "native 원시 최초시각을 반올림 ROS header와 섞지 않음; 기존 LaserScan 식은 동일 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/traffic_recovery_trial.py": {
+      "before": "dfd304c40c18c180d1e08bdce82a0763e8288e5a4c68c8c6f8e273e47ea4006c",
+      "after": "ca2112dbdd05ff172ceb896866419ebc0458b3c9a741c05b84439de28ab8f941",
+      "reason": "native 원시 최초시각을 반올림 ROS header와 섞지 않음; 기존 LaserScan 식은 동일 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/rear_face_motion.py": {
+      "before": "5a50a5cddc3382c0426ccc7d6779856b5a8bff95c1e237a3114abae46cebdf41",
+      "after": "6f1cc1a7ca9d537ced0f8ec46676cd22e93dc4c3d5693d5af5cef30e76e5954e",
+      "reason": "native 원시 최초시각을 반올림 ROS header와 섞지 않음; 기존 LaserScan 식은 동일 유지"
+    }
+  },
+  "approved_evaluation_scripts": {
+    "scripts/profile_follow_trace.py": {
+      "before": "f3dbc219c99b31abc4a812aa5202df9919f2ef4473957e37d1eccc519d7b5b61",
+      "after": "7e0ff1a7f25d7adfacdd68b8294b8bdb6b4ee857dc9358a9fd3e12dee8dfef16",
+      "reason": "native 기록 비용 계측의 새 스캔 구분에 원시시각/세대 사용"
+    }
+  },
+  "new_dependencies": {}
+}

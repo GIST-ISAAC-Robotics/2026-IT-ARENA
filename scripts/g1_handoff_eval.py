@@ -2,7 +2,12 @@
 import json
 
 
-def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False, moving_profile='slow_v1', wall_witness=False, standing_reacquire=False, boundary_refresh=False):
+def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sweep=False, observed_motion=False, side_departure=False, current_lane=False, continuous_pace=False, moving_pass=False, moving_profile='slow_v1', wall_witness=False, standing_reacquire=False, boundary_refresh=False, control_rate_hz=50., decision_execution='inline'):
+    if decision_execution not in ('inline', 'process_candidate') or (decision_execution != 'inline' and
+            (mode != 'g1g2' or control_rate_hz != 50.)):
+        raise ValueError('decision process requires explicit G1/G2 and 50Hz receiving parent')
+    if control_rate_hz not in (10., 50.) or (mode != 'g1g2' and control_rate_hz != 50.):
+        raise ValueError('explicit G1/G2 cadence comparison supports only 10 or 50 Hz')
     if moving_profile not in ('slow_v1', 'medium_v1', 'faster_v1') or (moving_profile != 'slow_v1' and not moving_pass):
         raise ValueError('moving pass profile requires an explicit moving pass trial')
     if wall_witness and not observed_motion:
@@ -15,8 +20,8 @@ def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sw
             any(launch.get(k) != v for k,v in {
                 'actuation_mode':'virtual_mcu', 'autonomy_mode':'local_pursuit', 'speed_bump':False,
                 'lidar_rate_hz':10., 'lidar_compensation':'both', 'lidar_acquisition':'sequential',
-                'speed_profile':'g1_open_1p5', 'control_rate_hz':50.}.items())):
-        raise ValueError('G1/G2 pair requires an explicit reserve, recorded 1.5 m/s lap profile and sequential C1')
+                'speed_profile':'g1_open_1p5', 'control_rate_hz':control_rate_hz}.items())):
+        raise ValueError('G1/G2 pair requires an explicit reserve, recorded 1.5 m/s lap profile, sequential C1 and matching selected control rate')
     if current_lane and not (side_departure and observed_motion):
         raise ValueError('current lane preference requires side departure and observed motion')
     if continuous_pace and not (reserve == 'paced' and observed_motion):
@@ -24,6 +29,7 @@ def launch_arguments(mode, reserve, launch, recorded, *, progress=False, rear_sw
     if moving_pass and not continuous_pace:
         raise ValueError('moving pass requires continuous forward pace')
     extra = ['evaluation_handoff_yield_progress:=true'] if progress else []
+    if decision_execution != 'inline':extra.append('g1_decision_execution:='+decision_execution)
     if wall_witness:extra.append('evaluation_handoff_wall_witness:=true')
     if standing_reacquire:extra.append('g1_standing_wall_reacquire:=true')
     if boundary_refresh:extra.append('g1_traffic_boundary_refresh_trial:=true')

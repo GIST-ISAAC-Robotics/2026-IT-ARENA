@@ -4,7 +4,7 @@
 unknown이며 자유 공간 폴리곤을 만들지 않는다. 좌표 투영으로 취득 시각을
 갱신하지 않는다. 상대 물체의 자체 운동 보정은 이 계약에 포함하지 않는다.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 from typing import Literal
 
@@ -72,6 +72,8 @@ class LocalScene:
     source_epoch: int
     rays: tuple[SensorRay, ...]
     frame_id: str = 'base_link'
+    # 명시 원천 입력만 설정한다. 재투영 방향과 달리 취득 순서/간격을 보존한다.
+    source_angles_rad: tuple[float, ...] | None = None
 
     def __post_init__(self):
         t_ref = _finite(self.t_ref_s, 't_ref_s')
@@ -82,6 +84,11 @@ class LocalScene:
             raise ValueError('too many rays')
         rays = tuple(self.rays)
         object.__setattr__(self, 'rays', rays)
+        if self.source_angles_rad is not None:
+            angles = tuple(_finite(v, 'source_angles_rad') for v in self.source_angles_rad)
+            if len(angles) != len(rays):
+                raise ValueError('source angles/rays mismatch')
+            object.__setattr__(self, 'source_angles_rad', angles)
         if not rays:
             if self.source_first_s is not None or self.source_last_s is not None:
                 raise ValueError('empty input has no source observation times')
@@ -187,6 +194,50 @@ def scene_from_scan(ranges, *, angle_min, angle_increment, range_min, range_max,
     sx, sy = _xy(sensor_xy_m, 'sensor_xy_m')
     if minimum < 0 or maximum <= minimum or increment <= 0:
         raise ValueError('invalid scan metadata')
+    return _scene_from_angles(values, stamps, (start + i * increment for i in range(len(values))),
+        minimum, maximum, t_ref_s, source_frame_id, source_epoch, sx, sy, yaw,
+        acquisition_to_ref_se2, rear_half_angle_deg)
+
+
+def scene_from_measurements(ranges, *, angles_rad, range_min, range_max,
+                            acquired_at_s, t_ref_s, source_frame_id='laser_frame', source_epoch=0,
+                            sensor_xy_m=(.06, 0.), sensor_yaw_rad=0.,
+                            acquisition_to_ref_se2=None, rear_half_angle_deg=30.,
+                            preserve_sampling=False):
+    """가변 개수·비균일 각도의 원천 측정을 취득 순서 그대로 지역 장면으로 투영한다.
+
+    angles_rad는 센서 좌표의 +x에서 반시계 방향인 rad 값이다. 배열의 각도가
+    증가할 필요는 없으며 wrap·같은 각도의 별도 측정도 정렬/복제/삭제하지 않는다.
+    각도·거리·시각·SE(2)는 같은 원천 인덱스로 대응해야 한다. C1 SDK 좌표의
+    변환 및 품질 판정은 호출자의 책임이며, ROS 보간 칸의 복제를 복구하지 않는다.
+
+    시각은 호출자가 제공하며 추정 시각을 검증된 시각으로 승격하지 않는다.
+    None 변환은 고정 자차 가정이다. preserve_sampling은 원천 각도를 별도로
+    보존하며 시간 정확성/전체 회전/주행 가능을 인증하지 않는다. 기본값은 이전
+    생성부와 동일하며 기존 ROS 경로는 변경하지 않는다.
+    """
+    if (len(ranges) > MAX_RAYS or len(acquired_at_s) != len(ranges)
+            or len(angles_rad) != len(ranges)):
+        raise ValueError('measurement count/angles/timestamps mismatch')
+    values = tuple(ranges)
+    stamps = tuple(_finite(v, 'acquired_at_s') for v in acquired_at_s)
+    angles = tuple(_finite(v, 'angles_rad') for v in angles_rad)
+    minimum, maximum = _finite(range_min, 'range_min'), _finite(range_max, 'range_max')
+    yaw = _finite(sensor_yaw_rad, 'sensor_yaw_rad')
+    sx, sy = _xy(sensor_xy_m, 'sensor_xy_m')
+    if minimum < 0 or maximum <= minimum:
+        raise ValueError('invalid scan metadata')
+    if type(preserve_sampling) is not bool:
+        raise ValueError('preserve_sampling must be bool')
+    scene = _scene_from_angles(values, stamps, angles, minimum, maximum, t_ref_s,
+        source_frame_id, source_epoch, sx, sy, yaw, acquisition_to_ref_se2, rear_half_angle_deg)
+    return replace(scene, source_angles_rad=angles) if preserve_sampling else scene
+
+
+def _scene_from_angles(values, stamps, angles, minimum, maximum, t_ref_s,
+                       source_frame_id, source_epoch, sx, sy, yaw,
+                       acquisition_to_ref_se2, rear_half_angle_deg):
+    """균일 스캔과 명시 각도 입력의 같은 변환·마스크·출처 검사."""
     poses = ((0., 0., 0.),) * len(values) if acquisition_to_ref_se2 is None else tuple(acquisition_to_ref_se2)
     if len(poses) != len(values):
         raise ValueError('transform count mismatch')
@@ -194,13 +245,13 @@ def scene_from_scan(ranges, *, angle_min, angle_increment, range_min, range_max,
     # 마스크 spec은 첫 광선에서 한 번만 검증·파싱한다(광선 0개면 검증하지 않는 기존 동작, 같은 예외 순서 유지).
     limits = None
     reuse = _reusable_blind_spec(rear_half_angle_deg)
-    for index, (distance, stamp, pose) in enumerate(zip(values, stamps, poses)):
+    for index, (distance, stamp, pose, source_angle) in enumerate(zip(values, stamps, poses, angles)):
         if len(pose) != 3:
             raise ValueError('SE(2) transform must have three components')
         dx, dy, turn = (_finite(v, 'transform') for v in pose)
         c, s = math.cos(turn), math.sin(turn)
         origin = (dx + c * sx - s * sy, dy + s * sx + c * sy)
-        angle = math.remainder(start + index * increment, math.tau)
+        angle = math.remainder(source_angle, math.tau)
         if reuse:
             masked_angle = math.remainder(_finite(angle, 'angle_rad'), math.tau)
             if limits is None:

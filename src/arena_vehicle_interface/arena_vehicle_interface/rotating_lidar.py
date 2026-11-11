@@ -73,11 +73,23 @@ class RotatingLidar(Node):
         self.mode = str(self.declare_parameter("acquisition", "sequential").value)
         if self.mode not in ("sequential", "snapshot_matched"):
             raise ValueError("지원하지 않는 취득 방식")
-        self.assembler = RevolutionAssembler(rate, count)
+        native_path=str(self.declare_parameter('native_sampling_profile','').value)
+        self.native=bool(native_path)
+        if self.native:
+            from arena_vehicle_interface.native_lidar_sampling import NativeRevolutionAssembler
+            data=json.loads(Path(native_path).read_text())
+            if (self.mode!='sequential' or count<2048 or data.get('schema')!='c1_angular_templates_v1'
+                    or data.get('time_model')!='period_divided_by_count'
+                    or float(data.get('rotation_rate_hz',0.))!=rate):
+                raise ValueError('native profile/source/rate mismatch')
+            self.assembler=NativeRevolutionAssembler(data['patterns_q14'],rate_hz=rate)
+        else:
+            self.assembler = RevolutionAssembler(rate, count)
         profile = str(self.declare_parameter('test_impairment_profile', '').value)
         self.impairment = ScanImpairment(ImpairmentConfig(**json.loads(Path(profile).read_text()))) if profile else None
         qos = QoSProfile(depth=200, reliability=ReliabilityPolicy.RELIABLE)
-        self.publisher = self.create_publisher(LaserScan, "/scan", 10)
+        self.publisher = self.create_publisher(String if self.native else LaserScan,
+                                              '/scan/native' if self.native else '/scan', 10)
         self.audit = self.create_publisher(String, "/sim/lidar_acquisition", 10)
         self.create_subscription(LaserScan, "/sim/lidar_instantaneous", self.on_scan, qos)
 
@@ -85,6 +97,9 @@ class RotatingLidar(Node):
         stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
         if self.impairment:
             self.publish_ready(self.impairment.advance(stamp))
+        if getattr(self,'native',False):
+            self.on_native_frame(message,stamp)
+            return
         for first, ranges, error in self.assembler.feed(stamp, message.ranges):
             scan = copy.deepcopy(message)
             sequential = self.mode == "sequential"
@@ -107,6 +122,27 @@ class RotatingLidar(Node):
                 self.publish_ready(self.impairment.advance(stamp))
             else:
                 self.publisher.publish(scan)
+                self.audit.publish(String(data=json.dumps(audit)))
+
+    def on_native_frame(self,message,stamp):
+        from arena_vehicle_interface.native_lidar_sampling import encode_measurements
+        for sample in self.assembler.feed(stamp,message.ranges,message.angle_min,message.angle_increment):
+            times=sample['acquired_at_s']
+            audit=dict(first_ray_stamp_s=times[0],last_ray_stamp_s=times[-1],source_stamp_at_publish_s=stamp,
+                max_capture_time_error_s=sample['max_capture_time_error_s'],
+                discarded_source_gaps=self.assembler.discarded,model='native_sequential_v1',
+                samples=len(times),template_index=sample['template_index'],
+                max_source_angle_quantization_rad=sample['max_source_angle_quantization_rad'],
+                time_model='period_divided_by_count',hardware_timing_verified=False)
+            if self.impairment:
+                sample['ranges_m']=self.impairment.distort(sample['ranges_m'],message.range_min,message.range_max)
+            encoded=String(data=json.dumps(encode_measurements(sample,range_min=message.range_min,
+                range_max=message.range_max,frame_id=message.header.frame_id),allow_nan=False,separators=(',',':')))
+            if self.impairment:
+                self.impairment.enqueue(encoded,stamp,audit)
+                self.publish_ready(self.impairment.advance(stamp))
+            else:
+                self.publisher.publish(encoded)
                 self.audit.publish(String(data=json.dumps(audit)))
 
     def publish_ready(self, ready):

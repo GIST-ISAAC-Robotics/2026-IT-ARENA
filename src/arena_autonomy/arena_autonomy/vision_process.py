@@ -1,5 +1,6 @@
 """ROS를 소유하지 않는 영상 작업 프로세스와 단일 요청 공유 버퍼."""
 import copy
+import math
 import multiprocessing as mp
 import signal
 import time
@@ -67,6 +68,8 @@ def worker_main(buffer, connection):
             try:
                 data = np.frombuffer(buffer, dtype=np.uint8, count=request['size'])
                 result = recognize(request, data)
+                # 같은 호스트의 monotonic 시계. 부모의 늦은 poll 대기는 계산 시간과 구분한다.
+                result['completed_wall_s'] = time.monotonic()
             except Exception as error:
                 connection.send({'error': type(error).__name__+': '+str(error)})
                 break
@@ -206,12 +209,15 @@ class VisionPipeline:
         return 0 <= now-stamp < self.image_timeout and 0 <= wall_now-received < self.wall_timeout
 
     def pump(self, now, wall_now=None):
+        use_wall_clock = wall_now is None
         wall_now = time.monotonic() if wall_now is None else wall_now
         if self.fault:
             return None
         accepted = None
         try:
             result = self.worker.poll()
+            if use_wall_clock:
+                wall_now = time.monotonic()  # poll 도중 끝난 결과를 미래 완료로 오인하지 않는다.
             if result is not None:
                 request = self.inflight
                 self.inflight = None
@@ -224,10 +230,15 @@ class VisionPipeline:
                     raise RuntimeError('Vision result identity mismatch')
                 if result.get('signal_mode') != self.signal_mode:
                     raise RuntimeError('Vision signal mode mismatch')
+                # 구형 결과/검사 double은 기존 submission→poll 제한을 그대로 적용한다.
+                completed = result.get('completed_wall_s', wall_now)
+                if (type(completed) not in (int, float) or not math.isfinite(completed)
+                        or not request['submitted'] <= completed <= wall_now):
+                    raise RuntimeError('Vision completion time invalid')
                 if request['epoch'] != self.epoch:
                     self.stats['rejected_epoch'] += 1
                 elif (not self.fresh(request['stamp'], request['received'], now, wall_now)
-                      or wall_now-request['submitted'] >= self.work_timeout
+                      or completed-request['submitted'] >= self.work_timeout
                       or request['stamp'] <= self.last_accepted):
                     self.stats['rejected_stale'] += 1
                 else:
@@ -235,7 +246,8 @@ class VisionPipeline:
                     self.ids = result['ids']
                     self.last_accepted = request['stamp']
                     self.last_result = dict(stamp=request['stamp'], received=request['received'],
-                        processing_ms=result['duration_ms'], stages_ms=result['stages_ms'])
+                        processing_ms=result['duration_ms'], stages_ms=result['stages_ms'],
+                        completed_wall_s=completed, completion_wait_ms=(wall_now-completed)*1000.)
                     self.stats['accepted'] += 1
                     accepted = self.last_result
             if self.inflight is not None and wall_now-self.inflight['submitted'] >= self.work_timeout:

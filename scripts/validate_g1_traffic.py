@@ -33,6 +33,7 @@ from validate_facility_visibility import yaw_of
 import g1_traffic_eval as ev
 import g1_handoff_eval
 from g1_lidar_stress import load_test_profile, audit_injection, require_injection_evidence
+from native_traffic_contract import NativeSamplingAudit, native_received_row
 from g1_motion_stress import load_motion_profile, require_motion_evidence, motor_count_resolution
 from g1_partial_trial import (POLICIES, partial_trial_arguments, partial_trace_fields, partial_trial_evidence,
                               parallel_trial_arguments, parallel_trial_evidence,
@@ -56,7 +57,8 @@ SOURCE_FILES = [
     'scripts/g1_handoff_eval.py',
     'scripts/g1_partial_trial.py', 'config/tests/partial_observation_r0_sha256.json',
     'scripts/g1_motion_stress.py', 'scripts/motion_fault_audit.py',
-    'scripts/g1_lidar_stress.py', 'scripts/g1_course_eval.py',
+    'scripts/g1_lidar_stress.py', 'scripts/native_traffic_contract.py', 'scripts/g1_course_eval.py',
+    'src/arena_vehicle_interface/arena_vehicle_interface/native_lidar_sampling.py',
     'scripts/validate_g1_traffic.py', 'scripts/g1_traffic_eval.py', 'scripts/validate_basic_autonomy.py',
     'scripts/lidar_shutdown.py', 'scripts/audit_local_pursuit_road.py', 'scripts/probe_static_actor_contact.py',
     'scripts/traffic_actors.py', 'scripts/traffic_actor_runtime.py',
@@ -412,6 +414,8 @@ def piecewise_arguments(enabled, mode, recorded):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--case', required=True)
+    parser.add_argument('--diagnostic-stop-after-green-s', type=float,
+                        help='원인 진단 전용 관측 단축. 원 일정/판정은 유지하고 정상 STOP을 수행하며 전체 시험 통과로 판정하지 않는다.')
     parser.add_argument('--team-signal-course', action='store_true',
                         help='11/1 등록된 155초 앞차·옆차와 2×5 픽셀 출발을 사용한다.')
     parser.add_argument('--official-signal-course', action='store_true',
@@ -422,6 +426,10 @@ def main():
     parser.add_argument('--mode', choices=('g1', 'r0', 'r0plus', 'm3', 'g1g2'), required=True)
     parser.add_argument('--handoff-reserve', choices=('fixed','moving','closing','recent','low_motion','paced'),
                         help='G1/G2 앞차 비교: 고정 여유, 이동 속도 추종, 또는 이동 속도와 남은 거리로 접근.')
+    parser.add_argument('--handoff-control-rate-hz', type=float, choices=(10., 50.), default=50.,
+                        help='G1/G2 주기 비교 전용. 설정 파일의 control_rate_hz와 일치해야 하며 기본은50Hz다.')
+    parser.add_argument('--handoff-decision-execution', choices=('inline','process_candidate'), default='inline',
+                        help='기본 OFF 별도 판단 프로세스. 수신 부모50Hz·판단10Hz와 원 시각/독립 보호 유지')
     parser.add_argument('--handoff-rear-sweep', action='store_true', help='통과 후 저속 후반부 이동 시험')
     parser.add_argument('--current-lane-preference-trial', action='store_true', help='정지 측방 반환 뒤 현재 관측 직선의 차선 유지 선호')
     parser.add_argument('--side-departure-trial', action='store_true', help='완전 관측 직선의 측방 시차 겹침에서 비접근 저속 출발 후보')
@@ -462,6 +470,8 @@ def main():
                         help='고정 E3 G1 회랑 후보. corner-distance/per-ray/판단 기록 필요, 최근 관측 OFF')
     parser.add_argument('--lidar-test-profile', type=Path,
                         help='선택형 G1/M3 시험용 거리오차/추가 지연. 기본 무주입, 취득 시각 유지')
+    parser.add_argument('--lidar-native-sampling-profile', type=Path,
+                        help='선택형 C1 원천 가변 점/각도 입력. 기본 균일500점 유지, 시간은 시뮬 근사')
     parser.add_argument('--motion-test-profile', type=Path,
                         help='선택형 G1/M3 시험용 IMU/단일 모터축 오차·지연. 기본 무주입')
     parser.add_argument('--local-sensor-config', default=None,
@@ -566,6 +576,11 @@ def main():
     if args.actor_overlay:
         args.actor_overlay.resolve().relative_to(REPO)
     case = overlay_case(case_named(config, args.case), args.actor_overlay)
+    diagnostic_window = args.diagnostic_stop_after_green_s
+    if diagnostic_window is not None and (
+            not math.isfinite(diagnostic_window) or not 0 < diagnostic_window < case['duration_s']
+            or args.race_operation_test):
+        parser.error('diagnostic window must be shorter than the registered case and cannot truncate a race operation test')
     merge_profile = merge_profile_for_case(case)
     if (args.handoff_observed_motion or args.side_departure_trial or args.current_lane_preference_trial) and not args.official_signal_course:
         raise ValueError('관측 이동 후보는 공식 교통 경로에서만 선택한다')
@@ -578,7 +593,7 @@ def main():
         raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
     specs = actor_specs(config, case)
     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
-    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire, boundary_refresh=args.handoff_boundary_refresh)
+    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire, boundary_refresh=args.handoff_boundary_refresh, control_rate_hz=args.handoff_control_rate_hz, decision_execution=args.handoff_decision_execution)
     facility_sources = {}
     world_dir = DEMO_WORLD
     if args.team_signal_course:
@@ -617,6 +632,16 @@ def main():
         args.traffic_path_recovery_trial, args.traffic_recovery_trial, args.corridor_fallback)
     if lidar_profile and (launch['lidar_rate_hz'] != 10 or launch['lidar_acquisition'] != 'sequential'):
         raise ValueError('registered G1 lidar stress requires sequential 10 Hz')
+    native_path = native_profile = native_audit = None
+    if args.lidar_native_sampling_profile:
+        if (args.mode not in ('g1','m3','g1g2') or not args.record_follow_decisions
+                or launch['lidar_acquisition'] != 'sequential' or launch['lidar_compensation'] != 'both'):
+            raise ValueError('native traffic requires recorded G1/M3/G1G2, sequential and both compensation')
+        native_path = args.lidar_native_sampling_profile.resolve(strict=True)
+        native_path.relative_to(REPO)
+        native_profile = json.loads(native_path.read_text(encoding='utf-8'))
+        native_audit = NativeSamplingAudit(native_profile, launch['lidar_rate_hz'])
+    lidar_topic = '/scan/native' if native_audit else '/scan'
     output = args.output.resolve()
     if not output.is_relative_to(REPO/'artifacts'):
         raise ValueError('output must be under artifacts')
@@ -636,6 +661,11 @@ def main():
     actor_path.write_text(actor_text, encoding='utf-8')
     sources = {rel: sha256(REPO/rel) for rel in source_paths(args.config, lidar_profile, args.actor_overlay, motion_profile)}
     sources.update(facility_sources)
+    runtime_native_profile = None
+    if native_path:
+        sources[native_path.relative_to(REPO).as_posix()] = sha256(native_path)
+        runtime_native_profile = output/'native_sampling_profile.json'
+        runtime_native_profile.write_bytes(native_path.read_bytes())
     if handoff_arguments:
         for path in sorted((REPO/'src/arena_autonomy/arena_autonomy').glob('*.py')):
             sources[path.relative_to(REPO).as_posix()] = sha256(path)
@@ -651,6 +681,8 @@ def main():
         for rel in sources:
             bundle.write(REPO/rel, rel)
         bundle.write(actor_path, 'evaluation_actor.sdf')
+        if runtime_native_profile:
+            bundle.write(runtime_native_profile, 'evaluation_native_sampling_profile.json')
         if runtime_lidar_profile:
             bundle.write(runtime_lidar_profile, 'evaluation_lidar_test_profile.json')
         if runtime_motion_profile:
@@ -681,9 +713,16 @@ def main():
               'actor_visible_section': actor_cfg['visible_section'], 'started_wall_monotonic': time.monotonic()}
     if args.track != DEMO_TRACK:
         report['track'] = args.track
+    if diagnostic_window is not None:
+        report['diagnostic_window'] = dict(stop_after_green_s=diagnostic_window,
+            registered_duration_s=case['duration_s'], full_case_evidence=False)
     if args.local_sensor_config is not None:
         sensor_path = Path(args.local_sensor_config).resolve(strict=True)
         report['local_sensor_config'] = {'path': str(sensor_path), 'sha256': sha256(sensor_path)}
+    if runtime_native_profile:
+        report['native_sampling'] = dict(path=native_path.relative_to(REPO).as_posix(),
+            runtime_sha256=sha256(runtime_native_profile), selected_topic=lidar_topic,
+            time_model='period_divided_by_count', hardware_timing_verified=False)
     if args.pilot_marker_z is not None:
         report['pilot_marker_z_m'] = round(args.pilot_marker_z, 3)
     if args.actor_overlay:
@@ -753,10 +792,17 @@ def main():
     def receive_scan(message):
         state['scan'] = message
         scans.append(stamp(message.header.stamp))
+        if native_audit:
+            scan_stream.write(json.dumps(native_received_row(message), allow_nan=False)+'\n')
+            return
         # 사후 재현용 평가 기록. 제어 입력이 아니며 Git에는 해시만 남긴다.
         scan_stream.write(json.dumps({'stamp_s': scans[-1], 'time_increment': message.time_increment,
             'angle_min': message.angle_min, 'angle_increment': message.angle_increment,
             'ranges': [float(r) if math.isfinite(r) else None for r in message.ranges]})+'\n')
+
+    def receive_native(message):
+        from arena_autonomy.native_lidar_input import decode_measurements
+        receive_scan(decode_measurements(message.data, expected_time_basis='simulation_acquisition'))
 
     def receive_status(message):
         status = json.loads(message.data)
@@ -800,7 +846,8 @@ def main():
         node.create_subscription(String, '/safety/status', lambda m: remember(json.loads(m.data), 'safety'), 10),
         node.create_subscription(AckermannDriveStamped, '/drive/safe', lambda m: remember(m, 'safe_drive'), 10),
         node.create_subscription(Imu, '/imu/data', lambda m: remember(m, 'imu'), qos_profile_sensor_data),
-        node.create_subscription(LaserScan, '/scan', receive_scan, qos_profile_sensor_data),
+        (node.create_subscription(String, lidar_topic, receive_native, qos_profile_sensor_data)
+            if native_audit else node.create_subscription(LaserScan, lidar_topic, receive_scan, qos_profile_sensor_data)),
         node.create_subscription(String, '/sim/lidar_acquisition', lambda m: acquisition_records.append(json.loads(m.data)), 100),
         node.create_subscription(String, '/actuation/status', receive_actuation, 100),
         node.create_subscription(Clock, '/clock', receive_clock, QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)),
@@ -916,6 +963,8 @@ def main():
             extra.append('track:='+args.track)
         if args.pilot_marker_z is not None:
             extra.append(f'pilot_marker_z:={args.pilot_marker_z:.3f}')
+        if runtime_native_profile:
+            extra.append('lidar_native_sampling_profile:='+str(runtime_native_profile))
         processes.append(start_demo_process(
             log, launch['speed_profile'], launch['lidar_rate_hz'], True, launch['red_duration_s'],
             launch['autonomy_mode'], args.team_signal_course, launch['lidar_acquisition'], launch['lidar_compensation'],
@@ -1063,6 +1112,9 @@ def main():
             if wall_collision > 3 or error > .35:
                 outcome['abort'] = f'wall contact or route departure: samples={wall_collision}, error={error:.3f}'
                 break
+            if diagnostic_window is not None and t_green is not None and now-t_green >= diagnostic_window:
+                outcome['abort'] = 'diagnostic_window_complete'
+                break
             if t_green is not None and now-t_green >= case['duration_s']:
                 break
             if t_green is None and now-first_pose_time > limits['max_sim_after_green_margin_s']+30:
@@ -1079,14 +1131,14 @@ def main():
             extras.complete()
         controller = 'local_pursuit'
         inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node(controller, '/')}
-        required_inputs = {'/scan', '/camera/color/image_raw', configured_feedback_topic(), '/imu/data'}
+        required_inputs = {lidar_topic, '/camera/color/image_raw', configured_feedback_topic(), '/imu/data'}
         if operation_trial is not None:
             # 운영/MCU 상태만 추가 허용한다. 평가용 정답·신호 상태는 여전히 금지한다.
             required_inputs |= {'/race/command', '/actuation/status'}
         report['autonomy_subscriptions'] = sorted(inputs)
         report['sensor_only_inputs'] = required_inputs.issubset(inputs) and inputs.issubset(required_inputs | {'/clock', '/parameter_events'})
         safety_inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node('lidar_safety', '/')}
-        safety_expected = {'/scan', '/imu/data', configured_feedback_topic(), '/drive'}
+        safety_expected = {lidar_topic, '/imu/data', configured_feedback_topic(), '/drive'}
         report['safety_subscriptions'] = sorted(safety_inputs)
         report['safety_sensor_only_inputs'] = safety_expected.issubset(safety_inputs) and safety_inputs.issubset(safety_expected | {'/clock', '/parameter_events'})
         if runtime_motion_profile:
@@ -1341,11 +1393,26 @@ def main():
             report['passed'] = report['run_valid'] and (report['behavior_gates_passed'] if args.mode in ('g1', 'r0plus', 'm3', 'g1g2') else True)
             if args.mode == 'r0':
                 report['r0_meets_g1_gates'] = report['behavior_gates_passed']
+        if native_audit:
+            try:
+                received_native = [json.loads(line) for line in
+                    (output/'scans_received.jsonl').read_text(encoding='utf-8').splitlines() if line.strip()]
+                evidence = native_audit.audit(acquisition_records, received_native)
+                evidence['runtime_profile_unchanged'] = (
+                    sha256(runtime_native_profile) == report['native_sampling']['runtime_sha256'])
+                evidence['verified'] = evidence['verified'] and evidence['runtime_profile_unchanged']
+            except Exception as error:
+                evidence = dict(verified=False, error=f'{type(error).__name__}: {error}')
+            report['native_acquisition'] = evidence
+            report['integrity']['native_sampling_verified'] = evidence['verified']
+            report['run_valid'] = report['run_valid'] and evidence['verified']
+            report['passed'] = report['passed'] and evidence['verified']
         if runtime_lidar_profile:
             try:
                 with (output/'scans_received.jsonl').open(encoding='utf-8') as stream:
                     received_scans = [json.loads(line) for line in stream if line.strip()]
-                stress = audit_injection(acquisition_records, received_scans, lidar_requested)
+                stress = audit_injection(acquisition_records, received_scans, lidar_requested,
+                    native_profile=native_profile, rotation_rate_hz=launch['lidar_rate_hz'])
                 stress['runtime_profile_unchanged'] = (
                     sha256(runtime_lidar_profile) == report['lidar_test_profile']['runtime_sha256'])
                 stress['verified'] = stress['verified'] and stress['runtime_profile_unchanged']
@@ -1353,7 +1420,7 @@ def main():
                     ('acquisition.json', 'scans_received.jsonl', 'lidar_test_profile.json')}
             except Exception as error:
                 stress = {'verified': False, 'error': f'{type(error).__name__}: {error}'}
-            require_injection_evidence(report, stress)
+            require_injection_evidence(report, stress, lidar_topic=lidar_topic)
         if runtime_motion_profile:
             require_motion_evidence(report, output, motion_requested, report['motion_test_profile']['runtime_sha256'])
         if operation_trial is not None:
@@ -1408,6 +1475,9 @@ def main():
             report['harness_valid'] = report['harness_valid'] and evidence['passed']
             report['run_valid'] = report['run_valid'] and evidence['passed']
             report['passed'] = report['passed'] and evidence['passed']
+        if diagnostic_window is not None:
+            report['diagnostic_window']['untruncated_verdict'] = report['passed']
+            report['passed'] = False
         (output/'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
         print(json.dumps({k: report.get(k) for k in ('case', 'seed', 'mode', 'passed', 'harness_valid', 'error', 'abort')}
                          | {'gates': report.get('gates')}, ensure_ascii=False, indent=1), flush=True)

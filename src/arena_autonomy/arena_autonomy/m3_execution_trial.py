@@ -228,21 +228,70 @@ def masked_only(scene, queries, pad):
     status = np.array([r.status for r in scene.rays])
     indices = np.array([r.source_index for r in scene.rays])
     depth = np.array([math.dist(r.ray_origin_xy_m, r.hit_xy_m) if r.status == 'return' else -1. for r in scene.rays])
-    for k, point in enumerate(q):
-        d = point-origins
-        angle = np.arctan2(directions[:, 0]*d[:, 1]-directions[:, 1]*d[:, 0],
-                           directions[:, 0]*d[:, 0]+directions[:, 1]*d[:, 1])
-        radius = np.hypot(d[:, 0], d[:, 1])
-        low = np.where(angle >= -1e-10, np.maximum(angle, 0.), np.inf)
-        high = np.where(angle <= 1e-10, np.maximum(-angle, 0.), np.inf)
-        lo, hi = int(np.argmin(low)), int(np.argmin(high))
-        if (not np.isfinite(low[lo]) or not np.isfinite(high[hi]) or low[lo]+high[hi] > .025
-                or abs(int(indices[lo])-int(indices[hi])) > 1):
+    n = len(origins)
+    if not n:
+        raise ValueError('masked classification requires rays')
+    pad = np.asarray(pad)
+    # depth_support와 같은 원점 원의 각도 상계다. 허가 가능한 .025 rad
+    # 양옆 후보를 모두 포함하며, 원 안/수치 경계는 전체 광선으로 계산한다.
+    # 선택 번호를 정렬해 동률일 때 원 배열의 첫 광선을 고르는 순서도 보존한다.
+    center = origins.mean(axis=0)
+    origin_radius = float(np.max(np.linalg.norm(origins-center, axis=1)))+1e-12
+    theta = np.mod(np.arctan2(directions[:, 1], directions[:, 0]), math.tau)
+    order = np.argsort(theta, kind='stable')
+    bearings = np.concatenate((theta[order]-math.tau, theta[order], theta[order]+math.tau))
+    ray_order = np.tile(order, 3)
+
+    def evaluate(part, chosen):
+        present = chosen < n
+        take = np.minimum(chosen, n-1)
+        dx = part[:, 0, None]-origins[take, 0]
+        dy = part[:, 1, None]-origins[take, 1]
+        angle = np.arctan2(directions[take, 0]*dy-directions[take, 1]*dx,
+                           directions[take, 0]*dx+directions[take, 1]*dy)
+        low = np.where(present & (angle >= -1e-10), np.maximum(angle, 0.), np.inf)
+        high = np.where(present & (angle <= 1e-10), np.maximum(-angle, 0.), np.inf)
+        lo, hi = np.argmin(low, axis=1), np.argmin(high, axis=1)
+        rows = np.arange(len(part))
+        left, right = take[rows, lo], take[rows, hi]
+        valid = (np.isfinite(low[rows, lo]) & np.isfinite(high[rows, hi])
+                 & (low[rows, lo]+high[rows, hi] <= .025)
+                 & (np.abs(indices[left]-indices[right]) <= 1))
+        valid &= ((status[left] != 'unknown') & (status[right] != 'unknown')
+                  & ((status[left] == 'masked') | (status[right] == 'masked')))
+        for side, column in ((left, lo), (right, hi)):
+            radius = np.hypot(dx[rows, column], dy[rows, column])
+            valid &= (status[side] != 'return') | (depth[side]-radius-pad[side] > 0)
+        return valid
+
+    for start in range(0, len(q), 128):
+        part = q[start:start+128]
+        delta = part-center
+        distance = np.linalg.norm(delta, axis=1)
+        window = np.isfinite(distance) & (distance > origin_radius+1e-9)
+        fallback = np.flatnonzero(~window)
+        if len(fallback):
+            out[start+fallback] = evaluate(part[fallback], np.broadcast_to(np.arange(n), (len(fallback), n)))
+        rows = np.flatnonzero(window)
+        if not len(rows):
             continue
-        pair = (lo, hi)
-        if any(status[i] == 'unknown' for i in pair) or not any(status[i] == 'masked' for i in pair):
+        phi = np.mod(np.arctan2(delta[rows, 1], delta[rows, 0]), math.tau)
+        half = np.arcsin(np.minimum(1., origin_radius/distance[rows]))+.025+2e-10
+        low = np.searchsorted(bearings, phi-half, side='left')
+        high = np.searchsorted(bearings, phi+half, side='right')
+        width = high-low
+        nonempty = width > 0
+        rows, low, width = rows[nonempty], low[nonempty], width[nonempty]
+        if not len(rows):
             continue
-        out[k] = all(depth[i]-radius[i]-pad[i] > 0 for i in pair if status[i] == 'return')
+        maximum = int(width.max())
+        if maximum >= n*.75:
+            chosen = np.broadcast_to(np.arange(n), (len(rows), n))
+        else:
+            offsets = np.arange(maximum)
+            positions = np.minimum(low[:, None]+offsets, len(ray_order)-1)
+            chosen = np.sort(np.where(offsets < width[:, None], ray_order[positions], n), axis=1)
+        out[start+rows] = evaluate(part[rows], chosen)
     return out
 
 
@@ -332,7 +381,8 @@ def body_queries(scene, poses, steering, cfg):
     wheel = wheel_contact_corners(poses, steering, replace(cfg, contact_patch_length_m=2*cfg.wheel_radius_m))
     wheel = wheel.reshape(-1, 2)
     wheel = wheel[(abs(wheel[:, 0]) > cfg.length_m/2+GEOMETRY_EPS_M) | (abs(wheel[:, 1]) > cfg.width_m/2+GEOMETRY_EPS_M)]
-    return np.unique(np.vstack((q.reshape(-1, 2), wheel)), axis=0), thin
+    from arena_autonomy.point_set import unique_xy
+    return unique_xy(np.vstack((q.reshape(-1, 2), wheel))), thin
 
 
 def arc_checks(scene, frames, reference_path, angles, distance, cfg, execution):

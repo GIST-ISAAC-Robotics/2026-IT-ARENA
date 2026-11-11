@@ -4,13 +4,15 @@
 의존하며 동행 물체의 신원 구별이나 임의 속도의 cut-in 안전을 보장하지 않는다.
 """
 import copy
-import numpy as np
+import numpy as np
+from arena_autonomy.scan_input import scan_first_stamp
 from arena_autonomy.partial_observation import PartialObservationPolicy
 from arena_autonomy.lidar_motion import MotionUnavailable
 from arena_autonomy.recovery_geometry import timed_missing_sweep
 from arena_autonomy.surface_anchor_trial import SurfaceAnchorTrial
 from arena_autonomy.anchor_clearance_trial import RollingClearanceTrial
 from arena_autonomy.scene_motion import motion_scene
+from arena_autonomy.scan_input import project_scan, scan_times
 
 class TimedPolicy(PartialObservationPolicy):
     def reset(self):
@@ -22,14 +24,12 @@ class TimedPolicy(PartialObservationPolicy):
 
     def evaluate(self, scan, points, history, now, speed, steering=0., previous_steering=0.,
                  wheelbase=.135, length=.20, width=.15):
-        first = scan.header.stamp.sec + scan.header.stamp.nanosec*1e-9
-        expected, ids, _ = history.project(scan.ranges, scan.angle_min, scan.angle_increment,
-            scan.range_min, scan.range_max, first, scan.time_increment, now,
-            mode='both', timing_verified=True)
+        first = scan_first_stamp(scan)
+        expected, ids, _ = project_scan(scan,history,now,mode='both',timing_verified=True)
         points = np.asarray(points, dtype=float).reshape(-1,2)
         if expected.shape != points.shape or not np.allclose(expected, points, rtol=0., atol=1e-8):
             raise ValueError('point order/coordinate mismatch in timed trial')
-        self.current_times = first + ids*scan.time_increment
+        self.current_times = scan_times(scan)[ids]
         self.current_ids = ids
         return super().evaluate(scan, points, history, now, speed, steering,
                                 previous_steering, wheelbase, length, width)
@@ -71,7 +71,7 @@ class TimedPolicy(PartialObservationPolicy):
 class RecoveryPolicy(TimedPolicy):
     def evaluate(self, scan, *args, **kwargs):
         try:
-            source=scan.header.stamp.sec+scan.header.stamp.nanosec*1e-9
+            source=scan_first_stamp(scan)
             self.assessment_fresh=source!=self.last_source
             self.same_scan_wait=None
             result=self._evaluate(scan, *args, **kwargs)
@@ -145,9 +145,8 @@ class RecoveryPolicy(TimedPolicy):
         if (self.anchor_latch_time!=self.latch_time or self.anchor_threat_summary is None):
             # 과거 진단 예시를 전체 상태로 되살리지 않는다.
             return {**result,'anchor_diagnostic':dict(reason='incomplete_threat_set',released=False)}
-        first=scan.header.stamp.sec+scan.header.stamp.nanosec*1e-9
-        projected,ids,_=history.project(scan.ranges,scan.angle_min,scan.angle_increment,
-            scan.range_min,scan.range_max,first,scan.time_increment,now,mode='both',timing_verified=True)
+        first=scan_first_stamp(scan)
+        projected,ids,_=project_scan(scan,history,now,mode='both',timing_verified=True)
         if projected.shape != np.asarray(points).shape or not np.allclose(points,projected,rtol=0,atol=1e-8):
             raise ValueError('recovery coordinate mismatch')
         diagnostic=self.anchor_probe.observe(points,ids,history,now,first)

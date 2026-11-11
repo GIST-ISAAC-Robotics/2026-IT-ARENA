@@ -33,7 +33,11 @@ def corner_path(samples, side, offset, minimum_radius):
     vertices = _vertices(samples)
     noisy_split = len(vertices) != 3
     if noisy_split:
-        vertices = _noisy_corner_vertices(samples)
+        # 호길이 재표본화가 꼭짓점을 사이에 두면 한 모서리가 짧은 사선 둘로
+        # 표현될 수 있다. 관측 순서/모든 점/기존 두 직선 잔차를 그대로 검사한다.
+        vertices = _short_bevel_vertices(samples, vertices)
+        if vertices is None:
+            vertices = _noisy_corner_vertices(samples)
         if vertices is None:
             return None
     split = vertices[1]
@@ -89,6 +93,26 @@ def corner_path(samples, side, offset, minimum_radius):
                             for i in (0, 1)])
 
 
+def _short_bevel_vertices(points, vertices):
+    """두 긴 면 사이 6 cm 이하 단일 사선만 두 직선의 기존 3 cm 잔차로 대조.
+
+    6 cm는 양쪽 면의 잔차 예산 2×3 cm로 제한한 제안 범위다. 이 길이만으로
+    모서리를 채택하지 않으며 전체 점의 적합·면 길이·회전각 검사는 유지한다.
+    여러 돌출/역회전/긴 제3면은 이 경로에서 합치지 않는다.
+    """
+    if len(vertices) != 4:
+        return None
+    segments = np.diff(points[vertices], axis=0)
+    lengths = np.linalg.norm(segments, axis=1)
+    if lengths[0] < .15 or lengths[2] < .15 or not 0 < lengths[1] <= .06:
+        return None
+    angles = [math.atan2(float(np.cross(a,b)), float(a @ b))
+              for a,b in zip(segments, segments[1:])]
+    if angles[0]*angles[1] <= 0 or not math.radians(40) <= abs(sum(angles)) <= math.radians(135):
+        return None
+    return _fit_two_lines(points, range(max(4,vertices[1]), min(len(points)-5,vertices[2])+1))
+
+
 def _noisy_corner_vertices(points):
     """잡음이 있는 연결 구간에서 원 점의 두 직선 잔차로 모서리 위치를 고른다.
 
@@ -101,8 +125,13 @@ def _noisy_corner_vertices(points):
                           np.maximum(1e-9, np.linalg.norm(chord, axis=1)))
     if roughness <= .003:
         return None
+    return _fit_two_lines(points, range(4, len(points)-4))
+
+
+def _fit_two_lines(points, splits):
+    """제안된 분할만 검사하며 모든 관측점에 기존 최대 잔차 3 cm를 요구한다."""
     best = None
-    for split in range(4, len(points)-4):
+    for split in splits:
         lines = []
         loss = 0.
         for pts in (points[:split+1], points[split:]):

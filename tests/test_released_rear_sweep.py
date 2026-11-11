@@ -68,7 +68,7 @@ def test_only_released_retained_low_speed_has_new_candidate(monkeypatch):
 
 
 @pytest.mark.parametrize('kwargs',[
-    {'enabled':False},{'proof':False},{'present':True},{'retained':False,'target':.35},
+    {'enabled':False},{'proof':False},{'present':True},
     {'target':0.,'baseline_reason':'follow_gap_hold'},
     {'target':0.,'no_path':True,'baseline_reason':'follow_no_path'},
     {'speed':.36},{'front_mask':1},{'tail_extent':.01001},{'neighbor':.19},

@@ -41,6 +41,8 @@ GUARD 곡선 후보(`guard_curve_trial`, 기본 OFF·통과 선택기 필요)
 - GUARD에서 평행 후보가 알려진 기하 실패(`reference_not_straight`) 또는 이미 G1에서 허용한 부분 관측 때문에 정지하면 기존 G1 출력을 별도 저속 후보로
   검사한다. 평행 후보가 진행 가능하면 그대로 쓴다. 기존 G1이 정상 양수일 때만이며 전방 간격 정지·입력 거절·STOP은 따른다.
 - 부분 관측 승인은 검사된 G1 경로/조향에만 사용한다. 이동한 평행 경로로 복사하지 않으며 아래 실제 이동 영역 검사도 생략하지 않는다.
+- 선택형 교통 회복에서 평행 경로의 횡이동이 커서 거절된 경우도 현재 스캔으로 만든 원래 G1 경로를 별도로 검사한다.
+  평행 경로의 1 cm 제한을 완화하거나 측방 위협을 지우지 않는다. 아래 현재/직전 조향의 실제 영역·추가 접근 검사를 모두 거친다.
 - 목표는 min(G1, 0.35 m/s). 측정 속도가 더 크면 그 속도로 예측한다. 해제되지 않은 쪽마다 차체 모서리의 경로 횡위치가
   GUARD 진입 때보다 1 cm 넘게 그 쪽으로 더 접근하는 예측은 거절한다(누적 접근 포함). 이미 기준 밖이더라도 현재보다
   접근을 늘리지 않는 진행/회복은 후보로 남긴다. 현재/이전 조향의 이동 영역은 작은 이동에서도 검사한다.
@@ -213,7 +215,8 @@ def motion_queries(scene, speed, target, steering, previous, dt, follow_cfg, lat
         poses = extrema_arc(angle, max(distance, .01), lat_cfg)
         q, _ = mx.body_queries(scene, poses, np.full(len(poses), angle), lat_cfg)
         queries.append(q.reshape(-1, 2))
-    q = np.unique(np.vstack(queries), axis=0)
+    from arena_autonomy.point_set import unique_xy
+    q = unique_xy(np.vstack(queries))
     outside = (np.abs(q[:, 0]) > follow_cfg.length_m/2+1e-9) | (np.abs(q[:, 1]) > follow_cfg.width_m/2+1e-9)
     q = q[outside]
     return distance, q
@@ -345,10 +348,62 @@ class PassReleaseSelector:
 
     def select(self, scene, baseline, parallel, speed, previous, dt, *, raw_scan=None):
         out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+        if (self.follow_config.traffic_recovery_trial and self.follow_config.released_rear_sweep_trial
+                and out[2].get('selector_reason') == 'large_motion_region_unobserved'):
+            # 통과 확인이 더 진행됐다는 이유로 기존 후방 띠 검사를 잃지 않는다.
+            # 같은 G1/실제 속도의 저속 후보만 대조하며 현재 위협·STOP은 유지한다.
+            from arena_autonomy.released_rear_sweep import reconsider_confirmed_rear_fringe
+            refined = reconsider_confirmed_rear_fringe(self, scene, baseline, out, speed,
+                                                       previous, dt, raw_scan)
+            if refined is not None:
+                out = refined
         self.last_choice = out[2].get('selector_choice')
         return out
 
     def _guard_curve(self, scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan):
+        """GUARD의 가림 꼬리 초과는 같은 경로의 낮은 목표로 제한 재검사한다.
+
+        현재 측정속도와 두 조향은 그대로다. RELEASED에서 쓰는 .25/.15 m/s
+        후보만 비교하며 각 후보의 측방 누적 접근·점유/관측도 전부 다시 검사한다.
+        미관측/전면 가림·기존 G1 정지를 완화하지 않고 통과 증거도 바꾸지 않는다.
+        """
+        args = (scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan)
+        result = self._guard_curve_at_cap(*args)
+        if result is None or not self.follow_config.traffic_recovery_trial:
+            return result
+        info = result[2].get('selector_guard_candidate') or {}
+        region = info.get('region') or {}
+        partial = baseline[2].get('partial_observation') or {}
+        reason = result[2].get('selector_reason')
+        target = info.get('target_speed_mps', 0.)
+        if (reason not in ('guard_curve_rejected_large_motion_masked_toward_left',
+                           'guard_curve_rejected_large_motion_masked_toward_right')
+                or partial.get('allowed') is not True or partial.get('reason') != 'fully_observed'
+                or region.get('unobserved') != 0 or region.get('masked_front_samples') != 0
+                or target <= .15 or speed >= target):
+            return result
+        attempts = []
+        for cap in (.25, .15):
+            if cap >= target or cap > self.config.guard_speed_cap_mps:
+                continue
+            candidate = self._guard_curve_at_cap(*args, target_cap=cap)
+            if candidate is None:
+                continue
+            checked = candidate[2].get('selector_guard_candidate') or {}
+            accepted = candidate[0] > 0 and checked.get('accepted') is True
+            attempts.append({'target_mps': cap, 'accepted': accepted,
+                             'reason': candidate[2].get('selector_reason'),
+                             'region': checked.get('region')})
+            if accepted:
+                result = candidate
+                break
+        diagnostic = {'applied': result[0] > 0, 'original_target_mps': target,
+                      'original_region': region, 'attempts': attempts,
+                      'measured_motion_preserved': True, 'unknown_filled': False}
+        return result[0], result[1], {**result[2], 'selector_guard_speed_recheck': diagnostic}
+
+    def _guard_curve_at_cap(self, scene, view, baseline, parallel, speed, previous, dt, age, detail,
+                            raw_scan, *, target_cap=None):
         """GUARD 후보(선택형). 직선 적합 실패 또는 허용된 부분 관측에서 같은 G1 출력을 저속으로 검사한다.
 
         G1 경로·점유·팽창·조향 변화율·hysteresis는 기존 출력 그대로이며 속도만 min(G1, 0.35 m/s)로 낮춘다. 측정 속도가 더 크면
@@ -379,11 +434,21 @@ class PassReleaseSelector:
             and (abs(speed) <= .10 or self.last_choice == 'guard_baseline')
             and b_detail.get('boundary_from_memory') is False
             and b_detail.get('path_source_s') == scene.source_first_s)
-        if p_speed > 0 or not (trigger in GUARD_GEOMETRY_REASONS or continuing or partial_baseline or current_gap_recovery):
+        # 평행 이동한 경로의 횡이동 거절이 현재 관측 G1 경로의 점유를 뜻하지는 않는다.
+        # 원래 경로를 저속 후보로 검사하되, 실제 측정속도의 제동 영역과 측방 접근을
+        # 아래에서 그대로 검사한다. 과거 경로만 있거나 교통 회복이 꺼져 있으면 미적용이다.
+        current_lateral_recovery = (trigger == 'parallel_hold_lateral_motion_not_small'
+            and self.follow_config.traffic_recovery_trial
+            and b_detail.get('boundary_from_memory') is False
+            and b_detail.get('path_source_s') == scene.source_first_s)
+        if p_speed > 0 or not (trigger in GUARD_GEOMETRY_REASONS or continuing or partial_baseline
+                               or current_gap_recovery or current_lateral_recovery):
             return None
         if b_detail.get('reason') not in GUARD_BASELINE_REASONS or not b_speed > 0 or speed < 0:
             return None
         target = min(b_speed, self.config.guard_speed_cap_mps)
+        if target_cap is not None:
+            target = min(target, target_cap)
         v = max(speed, target)
         info = {'trigger': trigger, 'path': 'baseline_g1', 'baseline_reason': b_detail.get('reason'),
                 'baseline_speed_mps': b_speed, 'target_speed_mps': target, 'prediction_speed_mps': v,

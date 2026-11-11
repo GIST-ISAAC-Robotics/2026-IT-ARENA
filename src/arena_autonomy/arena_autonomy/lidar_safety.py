@@ -96,7 +96,8 @@ class LidarSafety(Node):
             self.create_subscription(String, '/race/input_boundary', self.on_input_boundary, 10)
         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive/safe", 10)
         self.status = self.create_publisher(String, "/safety/status", 10)
-        self.create_subscription(LaserScan, "/scan", self.timing.wrap('scan', self.on_scan), qos_profile_sensor_data)
+        from arena_autonomy.native_lidar_input import subscribe_scan
+        subscribe_scan(self,self.timing.wrap('scan',self.on_scan),qos_profile_sensor_data)
         self.create_subscription(AckermannDriveStamped, "/drive", self.timing.wrap('command', self.on_command), 10)
         self.create_timer(.02, self.timing.wrap('control', self.control))
 
@@ -152,10 +153,8 @@ class LidarSafety(Node):
                 raise MotionUnavailable("invalid_or_reverse_command")
             # Slamtec 드라이버의 +Inf는 raw 0/무응답도 포함한다. Gazebo의 광선
             # 미교차와 구별할 관측 증거가 없으면 어느 쪽도 자유 공간으로 쓰지 않는다.
-            observation = audit_front_observation(
-                self.scan.ranges, self.scan.angle_min, self.scan.angle_increment,
-                self.scan.range_min, self.scan.range_max,
-                self.motion.history.config.lidar_yaw_rad)
+            from arena_autonomy.scan_input import audit_scan_front
+            observation = audit_scan_front(self.scan,self.motion.history.config.lidar_yaw_rad)
             candidate = getattr(self,'recent_observation_enabled',False)
             partial_policy = getattr(self, 'partial_policy', None)
             if observation.reason != 'ok' and not ((candidate or partial_policy is not None) and observation.reason=='front_unobserved'):

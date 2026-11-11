@@ -12,7 +12,7 @@ def generate_launch_description():
                 "chase_camera": "false", "render_backend": "system", "collision_detector": "configured",
                 "sensor_wall_timeout_s": "3.0", "batch_static_visuals": "true",
                 "lidar_test_profile": "", "motion_test_profile": "", "local_sensor_config": "", "actuation_mode": "legacy",
-                "timing_probe": "false", "pilot_marker_z": ""}
+                "timing_probe": "false", "pilot_marker_z": "", "autonomy_control_rate_hz": "50.0"}
     demo = Path(get_package_share_directory("arena_bringup"))/"launch/demo.launch.py"
     return LaunchDescription([
         DeclareLaunchArgument('g1_parallel_hold_trial', default_value='false', choices=['true', 'false']),
@@ -34,6 +34,6 @@ def generate_launch_description():
             'evaluation_course_markers': LaunchConfiguration('evaluation_course_markers'),
             **{key: LaunchConfiguration(key) for key in defaults},
             "autonomy_mode": "local_pursuit", "lidar_acquisition": "sequential",
-            "lidar_compensation": "both", "autonomy_control_rate_hz": "50.0",
+            "lidar_compensation": "both",
             "depth_camera": "false", "lidar_rate_hz": "10.0",
         }.items())])

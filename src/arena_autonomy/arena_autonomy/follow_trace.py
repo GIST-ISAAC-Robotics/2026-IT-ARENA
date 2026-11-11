@@ -3,7 +3,7 @@
 스캔과 이미 변환된 MotionHistory를 판단 시점에 복사한다. 원시 센서 콜백이나
 RGB 허가·출력 제한·독립 보호층 전체의 재생은 아니다. 기본 실행에는 연결하지 않는다.
 """
-from dataclasses import asdict
+from dataclasses import asdict, fields
 import json
 import math
 from numbers import Real
@@ -14,10 +14,22 @@ from arena_autonomy.lidar_motion import MotionConfig, MotionHistory, MotionUnava
 from arena_autonomy.local_follow import FollowConfig, LocalFollow
 from arena_autonomy.scene_motion import motion_scene
 from arena_vehicle_interface.queued_log import QueuedLog
+from arena_autonomy.measurement_scan import MeasurementScan
 
 
 def freeze(value):
     """스레드 밖에서 공유 객체를 복사하고 NaN/+Inf/-Inf를 구별해 보존한다."""
+    kind = type(value)
+    if value is None or kind in (str, bool):
+        return value
+    if kind is int:
+        # 기존 Real 분기의 범위/예외 계약을 유지한다(과도하게 큰 정수 포함).
+        math.isfinite(value)
+        return value
+    if kind is float:
+        if math.isfinite(value):
+            return value
+        return {'nonfinite': 'nan' if math.isnan(value) else ('inf' if value > 0 else '-inf')}
     if value is None or isinstance(value, (str, bool)):
         return value
     if isinstance(value, Real):
@@ -45,11 +57,15 @@ def thaw(value):
 
 def snapshot_call(scan, history, reference_s, epoch, speed, side, steering, dt,
                   verified, rear_half_angle):
+    # frozen MeasurementScan의 중간 deepcopy를 생략하고 아래 freeze에서
+    # 최종 저장 사본을 만든다. 원시 배열/이력/비유한값을 줄이거나 공유하지 않는다.
+    raw=({'representation':'native_measurements_v1','measurements':{f.name:getattr(scan,f.name) for f in fields(scan)}}
+         if isinstance(scan,MeasurementScan) else {
+            'sec':scan.header.stamp.sec,'nanosec':scan.header.stamp.nanosec,
+            'frame_id':scan.header.frame_id,'ranges':list(scan.ranges),
+            **{k:getattr(scan,k) for k in ('angle_min','angle_increment','range_min','range_max','time_increment')}})
     return freeze({
-        'scan': {'sec': scan.header.stamp.sec, 'nanosec': scan.header.stamp.nanosec,
-                 'frame_id': scan.header.frame_id, 'ranges': list(scan.ranges),
-                 **{k: getattr(scan, k) for k in ('angle_min', 'angle_increment', 'range_min',
-                                                 'range_max', 'time_increment')}},
+        'scan': raw,
         # values는 반지름/기어비/바이어스 적용 뒤 값. 재생에서 중복 환산하지 않는다.
         'history': {k: {'times': list(getattr(history, k).times),
                         'values': list(getattr(history, k).values)} for k in ('wheels', 'gyro')},
@@ -167,9 +183,14 @@ class FollowTrace:
 def restore_call(data, motion_config):
     data = thaw(data)
     raw = dict(data['scan'])
-    header = SimpleNamespace(stamp=SimpleNamespace(sec=raw.pop('sec'), nanosec=raw.pop('nanosec')),
-                             frame_id=raw.pop('frame_id'))
-    scan = SimpleNamespace(header=header, **raw)
+    if raw.get('representation')=='native_measurements_v1':
+        if set(raw)!={'representation','measurements'}:
+            raise ValueError('unknown native trace fields')
+        scan=MeasurementScan(**raw['measurements'])
+    else:
+        header = SimpleNamespace(stamp=SimpleNamespace(sec=raw.pop('sec'), nanosec=raw.pop('nanosec')),
+                                 frame_id=raw.pop('frame_id'))
+        scan = SimpleNamespace(header=header, **raw)
     history = MotionHistory(motion_config)
     for name in ('wheels', 'gyro'):
         series = data['history'][name]

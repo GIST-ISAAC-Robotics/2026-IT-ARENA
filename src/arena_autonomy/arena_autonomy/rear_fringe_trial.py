@@ -6,8 +6,10 @@
 """
 import math
 import numpy as np
+from arena_autonomy.scan_input import scan_first_stamp
 
 from arena_autonomy.observation_support import source_valid
+from arena_autonomy.scan_input import scan_times
 
 
 def bounded_rear_fringe(scene, raw_scan, queries, padding, length, width):
@@ -35,6 +37,19 @@ def bounded_rear_fringe(scene, raw_scan, queries, padding, length, width):
     return _bounded_nonreturn(scene, raw_scan, q, pad, result)
 
 
+def _query_brackets(queries, origins, directions):
+    """원 질의 순서와 동률 선택을 유지하며 최대 32질의씩 계산한다."""
+    for start in range(0, len(queries), 32):
+        delta = queries[start:start+32, None, :]-origins[None, :, :]
+        radius = np.linalg.norm(delta, axis=2)
+        angles = np.arctan2(directions[None, :, 0]*delta[:, :, 1]-directions[None, :, 1]*delta[:, :, 0],
+                            np.sum(directions[None, :, :]*delta, axis=2))
+        lows = np.argmin(np.where(angles >= -1e-10, np.maximum(angles, 0.), np.inf), axis=1)
+        highs = np.argmin(np.where(angles <= 1e-10, np.maximum(-angles, 0.), np.inf), axis=1)
+        for i in range(len(delta)):
+            yield radius[i], angles[i], int(lows[i]), int(highs[i])
+
+
 def _bounded_nonreturn(scene, raw_scan, q, pad, result):
     """공통 실제 반환/좁은 무반환 검사. 허용할 이동 영역은 호출자가 검증한다."""
     def finish(reason, **values):
@@ -42,11 +57,12 @@ def _bounded_nonreturn(scene, raw_scan, q, pad, result):
 
     try:
         values = np.asarray(raw_scan.ranges, dtype=float)
-        first = raw_scan.header.stamp.sec+raw_scan.header.stamp.nanosec*1e-9
-        step = float(raw_scan.time_increment)
+        first = scan_first_stamp(raw_scan)
+        stamps=scan_times(raw_scan)
         if (raw_scan.header.frame_id != scene.source_frame_id or len(values) != len(scene.rays)
-                or abs(first-scene.source_first_s) > 1e-9 or not math.isfinite(step) or step <= 0
-                or any(abs(r.acquired_at_s-(first+i*step)) > 1e-9 for i, r in enumerate(scene.rays))):
+                or abs(first-scene.source_first_s) > 1e-9 or not np.all(np.isfinite(stamps))
+                or not np.all(np.diff(stamps)>0)
+                or any(abs(r.acquired_at_s-stamps[i]) > 1e-9 for i, r in enumerate(scene.rays))):
             return finish('raw_scene_mismatch')
     except (AttributeError, TypeError, ValueError):
         return finish('raw_scene_mismatch')
@@ -63,15 +79,9 @@ def _bounded_nonreturn(scene, raw_scan, q, pad, result):
                          for r in scene.rays])
     checked = set()
     groups = {}
-    for point in q:
-        delta = point-origins
-        radius = np.linalg.norm(delta, axis=1)
+    for radius, angles, lo, hi in _query_brackets(q, origins, directions):
         if np.any(radius <= 1e-9):
             return finish('query_at_sensor_origin')
-        angles = np.arctan2(directions[:, 0]*delta[:, 1]-directions[:, 1]*delta[:, 0],
-                            np.sum(directions*delta, axis=1))
-        lo = int(np.argmin(np.where(angles >= -1e-10, np.maximum(angles, 0.), np.inf)))
-        hi = int(np.argmin(np.where(angles <= 1e-10, np.maximum(-angles, 0.), np.inf)))
         if (angles[lo] < -1e-10 or angles[hi] > 1e-10 or abs(lo-hi) > 1
                 or abs(angles[lo])+abs(angles[hi]) > .025):
             return finish('unbracketed_query')

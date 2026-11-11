@@ -143,7 +143,9 @@ def _profile(event_source, repeats, warmups, clock, observation):
                 if not equal_output(comparable_decision(freeze(output)), comparable_decision(event['data']['output'])):
                     mismatches.append(dict(cycle=cycle, seq=event['seq']))
                 raw = event['data']['input']['scan']
-                source = (raw['sec'], raw['nanosec'])
+                source = ((raw['measurements']['source_epoch'],raw['measurements']['acquired_at_s'][0])
+                          if raw.get('representation')=='native_measurements_v1'
+                          else (raw['sec'], raw['nanosec']))
                 new_scan = source != previous_source
                 previous_source = source
                 if cycle >= warmups:

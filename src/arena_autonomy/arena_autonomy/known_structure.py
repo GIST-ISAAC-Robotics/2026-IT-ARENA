@@ -23,6 +23,7 @@ import json
 import math
 
 import numpy as np
+from arena_autonomy.scan_input import scan_first_stamp
 
 from arena_autonomy.lidar_motion import MotionUnavailable
 from arena_autonomy.local_path import braking_speed, swept_limit
@@ -55,9 +56,9 @@ def validate(policy, sectors_json):
     return parse_sectors(sectors_json)
 
 
-def sector_rays(angle_min, angle_increment, count, sectors):
+def sector_rays(angle_min, angle_increment, count, sectors, *, source_angles=None):
     """mask_scan과 같은 센서축 각도 규칙으로 구조 각도별 광선 번호를 찾는다."""
-    angles = angle_min + np.arange(count)*angle_increment
+    angles = angle_min + np.arange(count)*angle_increment if source_angles is None else source_angles
     rows = []
     for center, width in sectors:
         offset = np.remainder(angles - math.radians(center) + math.pi, math.tau) - math.pi
@@ -72,12 +73,19 @@ def classify(scan, sectors):
     valid = np.isfinite(values) & (values >= scan.range_min) & (values <= scan.range_max)
     excused = np.zeros(count, dtype=bool)
     rows = []
-    for (center, width), rays in zip(sectors, sector_rays(scan.angle_min, scan.angle_increment, count, sectors)):
+    from arena_autonomy.scan_input import scan_angles
+    from arena_autonomy.measurement_scan import MeasurementScan
+    native=isinstance(scan,MeasurementScan)
+    selected=sector_rays(0.,0.,count,sectors,source_angles=scan_angles(scan))
+    for (center, width), rays in zip(sectors, selected):
         if not len(rays):
             continue
         members = set(rays.tolist())
         flanks = sorted({(index + step) % count for index in members for step in (-1, 1)} - members)
         explained = bool(flanks) and bool(np.all(valid[flanks]))
+        if native and (0 in members or count-1 in members):
+            # 원천 회전 경계의 양끝을 자동으로 인접 반환으로 인정하지 않는다.
+            explained=False
         if explained:
             excused[rays] = True
         rows.append(dict(center_deg=center, half_deg=width, rays=rays, flanks=flanks, explained=explained))
@@ -103,6 +111,83 @@ class StructureAwareMixin:
         self.structure_previous = None
         self.structure_hidden = None
         self.structure_last_source = None
+        self.structure_active_call = None
+        self.structure_precomputed = None
+
+    def _refine_threat(self, threatening, carried, *args):
+        """이미 구조 기억에 보존한 뒤쪽 점은 그 기억의 이동 외곽 검사에 맡긴다.
+
+        설명된 차체 사각 안·차체 뒤끝 밖의 실제 기억만 다룬다.
+        2cm 안 기존 기억과 대응하거나, 유효한 옛 반환 자체를 추가해 재검사한다.
+        전방/일반 결측은 바꾸지 않고, 숨은 기억의 정지 가정 한계는 유지한다.
+        """
+        threat = super()._refine_threat(threatening, carried, *args)
+        active = self.structure_active_call
+        if active is None or not np.any(threat):
+            return threat
+        length = active[-2]
+        proposed = np.any(threat, axis=0) & (carried[:, 0] < -length/2-.025)
+        if not np.any(proposed):
+            return threat
+        scan, _, rows, _, history, now, source = active[:7]
+        try:
+            shadows = self._shadow(scan, rows, history, now, source)
+        except (MotionUnavailable, ValueError, FloatingPointError):
+            # 조기 계산 실패는 위협을 면제하지 않는다. evaluate의 기존 구조 오류
+            # 처리가 최종 거절을 기록하도록 원 위협을 유지한다.
+            return threat
+        proposed &= self._inside(carried, [s for s in shadows if s['explained']])
+        if not np.any(proposed):
+            return threat
+        # 같은 호출의 구조 판정은 여기서 한 번만 수행하고 evaluate에서 재사용한다.
+        try:
+            self.structure_precomputed = self._structure(*active, shadows=shadows)
+        except (MotionUnavailable, ValueError, FloatingPointError):
+            return threat
+        hidden, reference = self.structure_hidden
+        if abs(reference-now)>1e-9:
+            return threat
+        ids = np.flatnonzero(proposed)
+        distances = (np.min(np.linalg.norm(carried[ids, None, :]-hidden[None, :, :], axis=2), axis=1)
+                     if len(hidden) else np.full(len(ids), np.inf))
+        # 일반 소실 기억은 중간 스캔의 속도/관측 거절 때문에 구조 기억보다 한
+        # 회전 오래될 수 있다. 거리 허용치를 늘려 다른 점과 같다고 하지 않고,
+        # 실제 보관 중인 옛 반환 자체를 같은 후방 그림자의 장애물 기억에 더한다.
+        previous = args[0] if len(args) > 1 else None
+        retained = (previous is not None and
+                    (previous is self.previous or previous is self.previous_distinct))
+        extra = np.zeros(0, dtype=int)
+        if (retained and len(previous[0]) == len(carried) and
+                0 <= now-previous[1] <= .3 and previous[2] < source):
+            extra = ids[(distances > .02) & (np.linalg.norm(carried[ids], axis=1) <= MEMORY_RANGE_M)]
+        if len(extra) and len(hidden)+len(extra) <= MEMORY_LIMIT:
+            saved = self.structure_precomputed
+            self.structure_hidden = (np.vstack((hidden, carried[extra])), now)
+            try:
+                checked = self._structure(*active, shadows=shadows)
+            except (MotionUnavailable, ValueError, FloatingPointError):
+                self.structure_hidden = (hidden, reference)
+                self.structure_precomputed = saved
+                return threat
+            # 추가한 실제 점도 현재/직전 조향과 제동 외곽으로 반드시 다시 검사한다.
+            # 기억을 버리거나 새 점으로 기존 512개를 밀어내지는 않는다.
+            self.structure_precomputed = {**checked, 'fresh': saved['fresh'],
+                'hidden_memory_added': saved['hidden_memory_added']+len(extra),
+                'hidden_memory_released': saved['hidden_memory_released'],
+                'retained_previous_shadow_points': len(extra)}
+            hidden, reference = self.structure_hidden
+            distances = np.min(np.linalg.norm(carried[ids, None, :]-hidden[None, :, :], axis=2), axis=1)
+        delegated = ids[distances <= .02]
+        if not len(delegated):
+            return threat
+        threat = threat.copy()
+        threat[:, delegated] = False
+        report = args[-1]
+        report['structure_rear_memory_transfer'] = dict(points=len(delegated),
+            maximum_memory_match_m=float(np.max(distances[distances <= .02])),
+            scope='rear_known_structure_memory_not_free_space',
+            stationary_memory_assumption=True, unknown_filled=False)
+        return threat
 
     def evaluate(self, scan, points, history, now, speed, steering=0., previous_steering=0.,
                  wheelbase=.135, length=.20, width=.15):
@@ -113,18 +198,24 @@ class StructureAwareMixin:
         valid, excused, rows = classify(scan, self.structure_sectors)
         self.structure_excused = excused
         self.structure_excused_indices = frozenset(np.flatnonzero(excused).tolist())
+        source = scan_first_stamp(scan)
+        self.structure_precomputed = None
+        self.structure_active_call = (scan, valid, rows, points, history, now, source, speed,
+                                      steering, previous_steering, wheelbase, length, width)
         try:
             result = super().evaluate(scan, points, history, now, speed, steering, previous_steering,
                                       wheelbase, length, width)
         finally:
             self.structure_excused = None
-        source = scan.header.stamp.sec + scan.header.stamp.nanosec*1e-9
+            self.structure_active_call = None
         # 기반 정책의 시간·스캔 무결성 거절(또는 되감기 초기화)은 그대로 둔다.
         if result.get('reason') in ('partial_invalid', 'partial_time_reset'):
             return {**result, 'known_structure': dict(policy='structure_aware_v1', evaluated=False)}
         try:
-            structure = self._structure(scan, valid, rows, points, history, now, source, speed,
-                                        steering, previous_steering, wheelbase, length, width)
+            structure = self.structure_precomputed
+            if structure is None:
+                structure = self._structure(scan, valid, rows, points, history, now, source, speed,
+                                            steering, previous_steering, wheelbase, length, width)
         except (MotionUnavailable, ValueError, FloatingPointError) as error:
             return {**result, 'allowed': False, 'reason': 'structure_motion_unavailable',
                     'known_structure': dict(policy='structure_aware_v1', evaluated=False, error=str(error))}
@@ -145,13 +236,15 @@ class StructureAwareMixin:
         if not len(rays):
             return []
         sensor = history.config
-        stamps = source + rays*float(scan.time_increment)
+        from arena_autonomy.scan_input import scan_angles, scan_times, scan_max_gap
+        from arena_autonomy.measurement_scan import MeasurementScan
+        stamps = scan_times(scan)[rays]
         poses = relative_poses(history, stamps, now)
         c, s = np.cos(poses[:, 2]), np.sin(poses[:, 2])
         origins = poses[:, :2] + np.column_stack((c*sensor.lidar_x_m - s*sensor.lidar_y_m,
                                                   s*sensor.lidar_x_m + c*sensor.lidar_y_m))
-        directions = scan.angle_min + rays*scan.angle_increment + sensor.lidar_yaw_rad + poses[:, 2]
-        step = float(scan.angle_increment)
+        directions = scan_angles(scan)[rays] + sensor.lidar_yaw_rad + poses[:, 2]
+        step = scan_max_gap(scan)
         shadows, start = [], 0
         for row in rows:
             stop = start + len(row['rays'])
@@ -179,9 +272,10 @@ class StructureAwareMixin:
         return inside
 
     def _structure(self, scan, valid, rows, points, history, now, source, speed, steering,
-                   previous_steering, wheelbase, length, width):
+                   previous_steering, wheelbase, length, width, *, shadows=None):
         fresh = source != self.structure_last_source
-        shadows = self._shadow(scan, rows, history, now, source)
+        if shadows is None:
+            shadows = self._shadow(scan, rows, history, now, source)
         current = np.asarray(points, dtype=float).reshape(-1, 2)
         current = current[np.all(np.isfinite(current), axis=1)]
         added = released = 0

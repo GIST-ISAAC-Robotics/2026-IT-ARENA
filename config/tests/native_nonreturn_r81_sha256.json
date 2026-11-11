@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scope": "native JSON 전송의 +inf/NaN 구분만 보존. 미관측/유효하지 않은 실제 C1 반환의 정책·기어·물성·제어 판정선은 변경하지 않음.",
+  "parent_contract": "config/tests/native_traffic_r79_sha256.json",
+  "parent_contract_sha256": "3feb71cd27692eb4c80a19e079c2f79a866680e202b45c9a74c8774e66d4cadd",
+  "before_snapshot": "artifacts/validation/2026-11-11/native_nonreturn_r81_v1/before_r81.zip",
+  "before_snapshot_sha256": "1b615aa069ff18d0ffd6a23bdef9faf50da8db5e0897eb451cf18cdf912ffc43",
+  "approved_changes": {
+    "src/arena_vehicle_interface/arena_vehicle_interface/native_lidar_sampling.py": {
+      "before": "3948f6e7fc058a228613a9ed192944b143890c98a9d3a04ee2e17d7e3f5d6a94",
+      "after": "82f53d45963a2954c3d33334f38fb7805612ecc6b324a831e380587af0d2beba",
+      "reason": "원천 +inf와 NaN을 하나의 null로 합치지 않고 각각의 비유한 범주를 보존"
+    },
+    "src/arena_autonomy/arena_autonomy/native_lidar_input.py": {
+      "before": "5d030c9b0057e1562b7a550756e5f07fc21292765154277c6283b8ff1f9e1b32",
+      "after": "5049284e700093c4bb03f5cc0efb072b12f8d845b53f3fc7eb08c63620a40c6e",
+      "reason": "원천 +inf와 NaN을 하나의 null로 합치지 않고 각각의 비유한 범주를 보존"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {}
+}

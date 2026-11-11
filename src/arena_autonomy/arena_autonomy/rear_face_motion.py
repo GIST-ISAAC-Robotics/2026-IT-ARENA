@@ -1,6 +1,7 @@
 """현재 후방 짧은 면의 연속 관측. 정적 벽/자유 공간으로 분류하지 않는 선택형 보완."""
 from dataclasses import replace
 import numpy as np
+from arena_autonomy.scan_input import scan_first_stamp
 from arena_autonomy.bypass_corridor_trial import BoundaryMonitor,wall_frame
 from arena_autonomy.known_structure import classify
 from arena_autonomy.lidar_motion import MotionUnavailable
@@ -18,7 +19,7 @@ class RearFaceMotion:
         face=None;proof=None;indices=np.array([],dtype=int)
         rays=[r for r in scene.rays if r.status=='return']
         if (active and scan is not None and sectors and len(scan.ranges)==len(scene.rays)
-                and abs(scan.header.stamp.sec+scan.header.stamp.nanosec*1e-9-scene.source_first_s)<1e-8
+                and abs(scan_first_stamp(scan)-scene.source_first_s)<1e-8
                 and wall.get('reason')=='current_connected_straight_wall_fit'):
             _,_,rows=classify(scan,sectors)
             explained={frozenset(r['rays'].tolist()) for r in rows if r['explained']}

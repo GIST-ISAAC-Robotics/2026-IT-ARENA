@@ -41,6 +41,32 @@ def test_ordinary_controller_does_not_count_as_g2_or_the_reverse():
     assert not matches(ev.controller_mode_summary([status('g1_g2_handoff_trial')]),'g1g2')
 
 
+def test_cadence_comparison_is_explicit_and_retains_all_other_handoff_arguments():
+    launch = json.loads(CONFIG.read_text())['launch']
+    base = handoff.launch_arguments('g1g2', 'paced', launch, True)
+    slow = dict(launch, control_rate_hz=10.)
+    assert handoff.launch_arguments('g1g2', 'paced', slow, True, control_rate_hz=10.) == base
+    for config, recorded, selected in ((slow, True, 50.), (launch, True, 10.),
+                                       (slow, False, 10.), (slow, True, 20.)):
+        with pytest.raises(ValueError):
+            handoff.launch_arguments('g1g2', 'paced', config, recorded, control_rate_hz=selected)
+    with pytest.raises(ValueError):
+        handoff.launch_arguments('g1', None, slow, True, control_rate_hz=10.)
+    with pytest.raises(ValueError):
+        handoff.launch_arguments('g1g2', 'paced', dict(slow, lidar_acquisition='instant'), True, control_rate_hz=10.)
+
+
+def test_process_candidate_is_opt_in_and_keeps_parent_receiving_at_50hz():
+    launch = json.loads(CONFIG.read_text())['launch']
+    base = handoff.launch_arguments('g1g2', 'paced', launch, True)
+    candidate = handoff.launch_arguments('g1g2', 'paced', launch, True, decision_execution='process_candidate')
+    assert candidate == ['g1_decision_execution:=process_candidate'] + base
+    for mode, rate in [('g1',50.),('g1g2',10.)]:
+        with pytest.raises(ValueError):
+            handoff.launch_arguments(mode,'paced',dict(launch,control_rate_hz=rate),True,
+                control_rate_hz=rate, decision_execution='process_candidate')
+
+
 def test_claimed_mode_without_execution_header_is_not_evidence(tmp_path):
     first = {'kind':'header','data':{'controller_mode':'g1_g2_handoff_trial','follow_config':{},
              'execution_config':{'moving_follow_reserve':False}}}

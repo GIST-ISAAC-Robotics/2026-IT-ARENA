@@ -10,10 +10,18 @@ ROOT = Path(__file__).resolve().parents[1]
 PROFILE = ROOT/'src/arena_description/config/b0390_c1_jr60p20_sim.yaml'
 
 
-def test_camera_changes_without_changing_lidar_or_motion_configuration():
+def test_current_camera_and_measured_imu_preserve_mount_and_lidar():
     old = yaml.safe_load((PROFILE.parent/'b0183_c1_jr60p20_sim.yaml').read_text(encoding='utf8'))
     new = yaml.safe_load(PROFILE.read_text(encoding='utf8'))
-    assert new['lidar'] == old['lidar'] and new['imu'] == old['imu']
+    assert new['lidar'] == old['lidar']
+    # 11/11 후속 IMU 실측 반영. 옛 B0183 재현값208은 보존한다.
+    assert old['imu']['rate_hz'] == 208.
+    for key in ('model', 'xyz_m', 'gyro_full_scale_dps', 'accel_full_scale_g', 'mass_kg', 'source'):
+        assert new['imu'][key] == old['imu'][key]
+    assert new['imu']['nominal_rate_hz'] == 208.
+    assert new['imu']['rate_hz'] == 199.06850941348748
+    assert new['imu']['simulated_gyro_stddev_rad_s'] == .0011
+    assert new['imu']['simulated_accel_stddev_mps2'] == .0103
     c = new['camera']
     assert c['model'] == 'Arducam_B0390_IMX219'
     assert (c['width_px'], c['height_px'], c['rate_hz'], c['horizontal_fov_deg']) == (1280,720,60,62.2)

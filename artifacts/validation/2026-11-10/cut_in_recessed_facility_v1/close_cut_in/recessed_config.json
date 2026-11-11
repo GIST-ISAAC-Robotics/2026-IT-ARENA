@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "registered_at": "2026-11-08 v2: \uc0c8 \ucf54\uc2a4 \uc18d\ub3c4\uc5d0 \ub9de\ucd98 \uc804\ubc29 \ub07c\uc5b4\ub4e4\uae30",
+  "scope": "\uc624\ub978\ucabd \uc794\ub514\uc5d0\uc11c \uc911\uc559\uc73c\ub85c \ud569\ub958\ud558\ub294 \uc0c1\ub300 \ud55c \ub300. \uc6d0 \uac01\ubcf8\u00b7\uae30\uc900 \uc720\uc9c0, \uc2e4\uc81c \uc7a5\uba74 \uc131\ub9bd\uacfc \uc8fc\ud589\uc740 \ubcc4\ub3c4 \ud3c9\uac00.",
+  "ground_truth_allowlist_evaluation_only": [
+    "actor_schedule",
+    "actor_pose",
+    "ego_model_pose",
+    "centerline",
+    "road_polygon",
+    "wall_polygons",
+    "traffic_light_state_for_actor_anchor",
+    "contact_sensor"
+  ],
+  "launch": {
+    "entry_g1": "g1_follow.launch.py + explicit G1/G2 executable, no change to independent lidar_safety",
+    "entry_r0": "demo.launch.py (same arguments as the existing validator's local_pursuit path, g1_follow_enabled unset=false)",
+    "autonomy_mode": "local_pursuit",
+    "lidar_acquisition": "sequential",
+    "lidar_compensation": "both",
+    "control_rate_hz": 50.0,
+    "lidar_rate_hz": 10.0,
+    "render_backend": "wsl_nvidia",
+    "collision_detector": "configured",
+    "shutdown_mode": "service",
+    "sensor_wall_timeout_s": 30.0,
+    "speed_bump": false,
+    "red_duration_s": 1.0,
+    "grid_slot": 3,
+    "actuation_mode": "virtual_mcu",
+    "actuation_stop": "software_stop",
+    "speed_profile": "g1_open_1p5",
+    "speed_profile_note": "\uc2e4\uc81c \ub4f1\uc18d/\uc815\uc9c0 \uc55e\ucc28 \ube44\uad50\uc5d0\uc11c \uc0ac\uc6a9\ud55c 1.5 m/s. \ub2e8\ub3c5 10 km/h \uc124\uc815\uc740 \uc0ac\uc6a9\ud558\uc9c0 \uc54a\ub294\ub2e4.",
+    "temporary_traffic_light_trigger": "\uacf5\uc2dd 2\u00d75 \uc2e4\uc81c \ud53d\uc140 \ucd9c\ubc1c. \uc2dc\ud5d8 \ucd08\ub85d\uc740 \ucd9c\ubc1c \uc2e0\ud638 \uc544\ub2d8."
+  },
+  "vehicle_and_sensor_unchanged": "\ubaa8\ud130\ucd95 \ub2e8\uc77c 28\uce74\uc6b4\ud2b8\u00b78.970588:1\u00b765 mm, C1 10 Hz \uc21c\ucc28. \uc2e4\ubb3c \uc870\ub9bd\uac12 \uc544\ub2d8.",
+  "actor": {
+    "model_name": "eval_g1b_actor",
+    "length_m": 0.2,
+    "width_m": 0.15,
+    "height_m": 0.12,
+    "bottom_m": 0,
+    "lateral_offset_m": 0,
+    "visible_section": "JR60P20 C1 \uad11\ucd9575mm\uac00 \ub192\uc774120mm \uc0ac\uac01 \uc0c1\ub300\uc758 \ubab8\uccb4\ub97c \ud1b5\uacfc\ud55c\ub2e4. \ud3c9\uac00 \uc0c1\ub300 \ub2e8\uba74 \uac00\uc815.",
+    "physics": "static model moved by evaluator set_pose (teleport); collision geometry and contact sensor follow the commanded pose (g1b_contact_probe_v1). Infinite-mass blocker, not a vehicle dynamics model.",
+    "command_hz": 100,
+    "pose_publish_hz": 100,
+    "start_center_gap_m": 1.6,
+    "start_center_gap_note": "same as the G1-a synthetic suite; ego body front to actor rear is 1.40 m",
+    "visual_outline": "recessed_sides"
+  },
+  "seeds": {
+    "0": {
+      "actor_start_offset_m": 0
+    },
+    "1": {
+      "actor_start_offset_m": -0.1
+    },
+    "2": {
+      "actor_start_offset_m": 0.1
+    }
+  },
+  "seed_note": "Gazebo has no injected noise here; a seed fixes a deterministic actor start offset along the centerline so that scan/command phase differs between repetitions.",
+  "schedule_anchor": "sim time at which the evaluator first observes applied=green on /sim/traffic_light/state (evaluator only; the controller detects green from its own camera)",
+  "cases": [
+    {
+      "name": "close_cut_in",
+      "behavior_kind": "slow_lead",
+      "route_kind": "merge_straight",
+      "duration_s": 9.5,
+      "actor_start_center_gap_m": 3.25,
+      "actor_lateral_offset_m": -0.3,
+      "schedule": [
+        {
+          "from_s": 0.0,
+          "to_s": 2.4,
+          "speed_mps": 0.0
+        },
+        {
+          "from_s": 2.4,
+          "to_s": 9.5,
+          "speed_mps": 0.6
+        }
+      ],
+      "merge_profile": {
+        "start_distance_m": 0.0,
+        "transition_m": 0.9,
+        "final_offset_m": 0.0,
+        "wheelbase_m": 0.135,
+        "max_steering_rad": 0.37,
+        "maximum_initial_offset_m": 0.32
+      },
+      "expected": "\uc624\ub978\ucabd \uc794\ub514\uc758 \ucc28\uac00 \ubc14\ub85c \uc55e \uc911\uc559\uc73c\ub85c \ub07c\uc5b4\ub4e4\uba74 \uc644\ub9cc\ud788 \uac10\uc18d\ud574 \ub4a4\ub530\ub978\ub2e4."
+    }
+  ],
+  "straight_section_check": "\uc9c1\uc120/\uccab\ucf54\ub108 \uae30\uc874 \uac80\uc0ac\ub294 \ubd88\ubcc0. full_course\ub9cc \uc804\uccb4 \ub4f1\ub85d \uc55e\ucc28 \uacbd\ub85c\ub97c1cm\ub9c8\ub2e4 \ub3c4\ub85c/\ubcbd \ub300\uc870\ud558\uace0 1.2\ub7a9 \uc774\ub0b4\ub85c \uc81c\ud55c.",
+  "first_corner_s_m": 6.7,
+  "acceptance": {
+    "minimum_body_gap_m": 0.15,
+    "minimum_body_gap_basis": "G1-a pre-registered minimum body gap (config/tests/g1_follow_v1.json); applied to BOTH the sampled gap and the conservative swept lower bound",
+    "swept_max_curvature_per_m": 3,
+    "swept_note": "lower bound assumes rigid planar motion with monotonic yaw between ego pose samples and path curvature <= tan(0.37)/0.135 = 2.9 /m",
+    "actor_contact_messages_with_ego": 0,
+    "wall_collision_samples": 0,
+    "outside_road_samples": 0,
+    "outside_road_basis": "existing conservative 20x15 cm body-outside-SDF-road criterion; the 10/6 two-wheel grass relaxation memo is not adopted",
+    "stopped_center": {
+      "minimum_continuous_hold_s": 3,
+      "maximum_final_gap_m": 0.7,
+      "basis": "HOLD at G1 swept clearance <= 0.20 m (+ about 0.06-0.13 m padding) predicts a 0.2-0.45 m body gap (synthetic 0.405 m). 0.70 m is half of the 1.40 m initial gap: it separates an approach-and-hold from a stall near the start. 3.0 s of continuous zero speed within a 10 s window."
+    },
+    "slow_lead": {
+      "minimum_progress_m": 2.5,
+      "maximum_stationary_while_lead_moves_s": 2.5,
+      "maximum_final_gap_m": 1.2,
+      "basis": "lead travels 4.2 m; following must not degenerate into a permanent stall. 2.5 s reuses the G1-a restart limit. Final gap must be below the 1.40 m start gap."
+    },
+    "stationary_definition": "model ground speed < 0.01 m/s, /drive/safe speed == 0 and (G1) behavior HOLD; R0 has no behavior field",
+    "stop": {
+      "maximum_wait_sim_s": 6,
+      "stable_hold_sim_s": 0.5,
+      "mcu_reason": "software_stop",
+      "mcu_state": "ESTOP_LATCHED"
+    },
+    "harness": {
+      "actor_command_max_interval_s": 0.1,
+      "actor_moving_tracking_error_max_m": 0.035,
+      "actor_static_error_max_m": 0.005,
+      "basis": "G0 command interval limit; 0.035 m = about 0.1 s of 0.35 m/s lag. A harness failure invalidates the run instead of counting as a controller result."
+    },
+    "threshold_status": "pre-registered before execution; not measured real vehicle guarantees. Do not relax after results; a change needs a new config version and a rerun.",
+    "close_cut_in": {
+      "minimum_progress_m": 2.5,
+      "maximum_stationary_while_lead_moves_s": 2.5,
+      "maximum_final_gap_m": 1.2,
+      "basis": "\uae30\uc874 \uc55e\ucc28 \ucd94\uc885 \uae30\uc900. \uc0c1\ub300\ub294 \ucf54\ub108 1 m \uc804\uc5d0 \uba48\ucd98\ub2e4."
+    }
+  },
+  "matrix": {
+    "g1g2": {
+      "cases": [
+        "persistent_block",
+        "restart_during_bypass",
+        "close_cut_in"
+      ],
+      "seeds": [
+        0
+      ]
+    }
+  },
+  "timeouts": {
+    "max_sim_after_green_margin_s": 20,
+    "startup_wall_timeout_s": 150,
+    "wall_timeout_s": 1500,
+    "stop_wall_timeout_s": 120
+  },
+  "parent_config": {
+    "path": "config/tests/official_forward_v1.json"
+  },
+  "merge_acceptance": {
+    "minimum_lateral_change_m": 0.11,
+    "final_offset_error_max_m": 0.005,
+    "moving_heading_error_max_rad": 0.146,
+    "static_heading_error_max_rad": 0.005,
+    "basis": "0.6 m/s\u00b7\ucd5c\ub300 \uace1\ub960 \uc57d 2.14/m\uc758 yaw rate 1.28 rad/s \u00d7 \uae30\uc874 0.11 s \uc9c0\uc5f0 + 0.005 rad. \uc0c1\ub300 \uac01\ubcf8 \uc2e4\ud589 \ud655\uc778 \uc804\uc6a9."
+  },
+  "track": "official_v2026_11_06",
+  "first_corner_basis": "artifacts/validation/2026-11-07/traffic_course_migration_v1/geometry_probe.json: \uc0c8 \uc911\uc2ec\uc120 s=0 \uc9c1\uc120 \ub05d(\uccab \uc9c1\uac01 \uaf2d\uc9d3\uc810). \ud3c9\uac00 \uc804\uc6a9, \uc81c\uc5b4 \uc785\ub825 \uc544\ub2d8"
+}

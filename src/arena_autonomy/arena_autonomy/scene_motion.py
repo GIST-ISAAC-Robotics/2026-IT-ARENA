@@ -8,7 +8,8 @@ import math
 import numpy as np
 
 from arena_autonomy.lidar_motion import MotionUnavailable
-from arena_autonomy.local_scene import MAX_RAYS, scene_from_scan
+from arena_autonomy.local_scene import MAX_RAYS, scene_from_scan, scene_from_measurements
+from arena_autonomy.measurement_scan import MeasurementScan
 from arena_autonomy.lidar_observation import audit_front_observation
 
 
@@ -28,7 +29,63 @@ def transport_points(points, history, source_time, reference_time):
     return np.asarray(points, dtype=float) @ np.array([[c, s], [-s, c]]) + [dx, dy]
 
 
+def _measurement_transforms(scan, history, now, *, timing_verified, motion_epoch=0):
+    """원천 배열을 같은 점별 시각으로 보정한다. SDK 추정/미검증 시각은 실행 불가.
+
+    timing_verified는 기존 운영 관문과 별도 호출 증거다. simulation_acquisition은
+    시뮬의 광선 취득 시각이며 실물 시간 검증이 아니다. ROS 어댑터 자동 연결 없음.
+    """
+    if not isinstance(scan, MeasurementScan):
+        raise MotionUnavailable('measurement_scan_required')
+    if not timing_verified or scan.time_basis == 'unverified_estimate':
+        raise MotionUnavailable('scan_timing_unverified')
+    if scan.source_frame_id != 'laser_frame':
+        raise MotionUnavailable('scan_frame_mismatch')
+    if type(motion_epoch) is not int or motion_epoch<0:
+        raise MotionUnavailable('motion_epoch_invalid')
+    if not math.isfinite(now) or scan.acquired_at_s[-1] > now:
+        raise MotionUnavailable('scan_future')
+    if now-scan.acquired_at_s[0] >= min(.3, history.config.scan_timeout_s):
+        raise MotionUnavailable('scan_stale')
+    transforms = relative_poses(history, scan.acquired_at_s, now)
+    config = history.config
+    # 두 독립 세대의 충돌 없는 정수 쌍 부호화. 센서 재시작 또는 운동 이력 리셋
+    # 어느 쪽도 이전 관측 캐시와 같은 세대로 섞이지 않게 한다.
+    total=scan.source_epoch+motion_epoch
+    epoch=total*(total+1)//2+motion_epoch
+    return transforms, config, epoch
+
+
+def measurement_motion_scene(scan, history, now, *, timing_verified, rear_half_angle_deg=30., motion_epoch=0):
+    transforms, config, epoch = _measurement_transforms(
+        scan, history, now, timing_verified=timing_verified, motion_epoch=motion_epoch)
+    if type(scan) is MeasurementScan:
+        from arena_autonomy.native_geometry import native_motion_scene
+        return native_motion_scene(scan, transforms, now, config, epoch, rear_half_angle_deg)
+    # 공개 입력의 subclass 동작은 원래의 완전 검증 경로로 보존한다.
+    return scene_from_measurements(scan.ranges_m, angles_rad=scan.angles_rad,
+        acquired_at_s=scan.acquired_at_s, t_ref_s=now, range_min=scan.range_min_m,
+        range_max=scan.range_max_m, source_frame_id=scan.source_frame_id,
+        source_epoch=epoch, sensor_xy_m=(config.lidar_x_m, config.lidar_y_m),
+        sensor_yaw_rad=config.lidar_yaw_rad, acquisition_to_ref_se2=transforms.tolist(),
+        rear_half_angle_deg=rear_half_angle_deg, preserve_sampling=True)
+
+
+def measurement_motion_points(scan, history, now, *, timing_verified):
+    if type(scan) is not MeasurementScan:
+        scene = measurement_motion_scene(scan, history, now, timing_verified=timing_verified,
+                                         rear_half_angle_deg=0.)
+        return (np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1, 2),
+                np.asarray([r.source_index for r in scene.rays if r.status == 'return'], dtype=int))
+    transforms, config, epoch = _measurement_transforms(scan, history, now, timing_verified=timing_verified)
+    from arena_autonomy.native_geometry import native_motion_points
+    return native_motion_points(scan, transforms, now, config, epoch)
+
+
 def motion_scene(scan, history, now, *, timing_verified, epoch=0, rear_half_angle_deg=30.):
+    if isinstance(scan, MeasurementScan):
+        return measurement_motion_scene(scan,history,now,timing_verified=timing_verified,
+                                       rear_half_angle_deg=rear_half_angle_deg,motion_epoch=epoch)
     if not timing_verified:
         raise MotionUnavailable('scan_timing_unverified')
     if scan.header.frame_id != 'laser_frame':

@@ -54,6 +54,8 @@ class ForecastGuide(SignedHoldGuide):
 
     def reset(self):
         super().reset()
+        from arena_autonomy.bypass_observed_return import ObservedEntryReturn
+        self.observed_return = ObservedEntryReturn()
         self.rear_face_motion={}
         self.nearby_face_motion={}
         if self.rear_wall_witness_enabled:
@@ -65,6 +67,7 @@ class ForecastGuide(SignedHoldGuide):
     def evaluate(self,scene,history,speed,previous,dt):
         original_entry,original_registered=self.entry,self.registered_entry
         primary=super().evaluate(scene,history,speed,previous,dt)
+        primary=self.observed_return.evaluate(self,scene,speed,previous,dt,primary)
         if (self.path is None or primary.get('preview_alignment') or primary.get('reason')!='no_entry_command_candidate'
                 or primary.get('selected') is not None or speed<0):
             return primary

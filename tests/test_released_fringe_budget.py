@@ -63,8 +63,17 @@ def test_release_retained_history_keeps_curved_baseline_with_explicit_risk(monke
 
 
 @pytest.mark.parametrize('kwargs',[
-    {'enabled':False},{'present':True},{'retained':False,'target':.35},
+    {'enabled':False},{'present':True},
     {'target':0.,'baseline_reason':'follow_gap_hold'}, {'front_mask':1}, {'tail_extent':.01001},
 ])
 def test_stops_and_live_threat_are_not_changed(monkeypatch,kwargs):
     assert execute(monkeypatch,**kwargs)[0]==0.
+
+
+def test_confirmed_pass_keeps_same_submillimeter_budget(monkeypatch):
+    v,a,d=execute(monkeypatch,retained=False,target=.35)
+    assert v==.35 and a==.2
+    assert d['selector_reason']=='released_confirmed_rear_fringe'
+    assert d['selector_released_rear_sweep']['policy']=='released_low_speed_body_fringe_v2'
+    assert d['selector_released_rear_sweep']['maximum_exterior_m']==.001
+    assert d['selector_region']['unobserved']==1 and not d['selector_unknown_filled']

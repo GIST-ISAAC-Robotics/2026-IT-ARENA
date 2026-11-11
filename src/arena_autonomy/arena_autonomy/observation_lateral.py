@@ -4,6 +4,7 @@ import math
 import numpy as np
 
 from arena_autonomy.linear_observation import clip_halfplane
+from arena_autonomy.measurement_scan import unknown_cell_directions
 
 
 def protected_queries(queries, sensor_pose):
@@ -66,11 +67,13 @@ def reachable_from_unknown(scene, queries, config):
     rectangle = [(low[0], low[1]), (high[0], low[1]), (high[0], high[1]), (low[0], high[1])]
     rectangle = [tuple(map(float, p)) for p in rectangle]
     c, s = math.cos(math.pi/500), math.sin(math.pi/500)
-    for ray in scene.rays:
-        if ray.status == 'return':
-            continue
+    unknown = [r for r in scene.rays if r.status != 'return']
+    native = unknown_cell_directions(scene, unknown) if scene.source_angles_rad is not None else None
+    for index, ray in enumerate(unknown):
         dx, dy = ray.direction_xy
         lower, upper = (c*dx+s*dy, -s*dx+c*dy), (c*dx-s*dy, s*dx+c*dy)
+        if native is not None:
+            lower, upper = native[0][index], native[1][index]
         cut = clip_halfplane(clip_halfplane(rectangle, ray.ray_origin_xy_m, lower, 1),
                              ray.ray_origin_xy_m, upper, -1)
         if not cut:
