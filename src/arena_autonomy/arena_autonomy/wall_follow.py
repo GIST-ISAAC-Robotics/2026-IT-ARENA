@@ -185,6 +185,10 @@ class WallFollow(Node):
         self.command_was_published = emit_command
         if emit_command:
             speed = min(speed, self.last_speed + self.settings.get("acceleration_mps2", .5) * dt)
+            if getattr(getattr(self, 'race', None), 'development_speed_limit', None) is not None:
+                status['development_requested_speed_mps'] = speed
+                speed = self.race.limit_speed(speed)
+                status['development_speed_limited'] = speed != status['development_requested_speed_mps']
             steering = max(self.last_steering - 3 * dt, min(self.last_steering + 3 * dt, steering))
             self.last_speed, self.last_steering = speed, steering
             message = AckermannDriveStamped()

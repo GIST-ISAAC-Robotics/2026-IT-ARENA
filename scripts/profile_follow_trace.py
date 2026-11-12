@@ -121,6 +121,7 @@ def _profile(event_source, repeats, warmups, clock, observation):
     if not baseline['passed']:
         raise ValueError('recorded outputs do not match current source')
     matched = baseline['matched']
+    audit_metadata = baseline['audit_metadata']
     del baseline  # 전체 원래 출력/경로 목록을 계측 동안 붙잡아 두지 않는다.
     records, mismatches = [], []
     for cycle in range(warmups+repeats):
@@ -175,10 +176,12 @@ def _profile(event_source, repeats, warmups, clock, observation):
                 scope='decision_stage_offline_replay_cost_not_ros_deadline_or_closed_loop',
                 latency_limit_ms_reference_only=20., online_deadline_verified=False,
                 controller_scope=trace_scope,
+                recorded_execution_metadata=audit_metadata, execution_metadata_replayed=False,
                 timing_includes=['captured_history_restore', 'motion_scene_projection',
                     'bypass_handoff_command' if trace_scope == 'g1_g2_handoff_decision_stage_only' else 'local_follow_command'],
                 timing_excludes=['file_read', 'json_parse', 'output_compare', 'ros_dds_callbacks',
-                                 'vision', 'safety_node', 'actuator', 'real_sensor_arrival_and_clock_mapping'],
+                                 'vision', 'safety_node', 'actuator', 'real_sensor_arrival_and_clock_mapping',
+                                 'recorded_execution_delay', 'current_path_recheck'],
                 clock_note='wall includes scheduling; thread_time excludes waiting and other worker threads; serialized warm-cache replay',
                 gc_note='native GC observed only, never disabled or forced; overlap is correlation not proof of causality',
                 grouped_scan_note='new_source_stamp is evaluator grouping, not runtime freshness authorization')

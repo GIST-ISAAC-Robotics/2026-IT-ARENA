@@ -1,0 +1,26 @@
+.....F.................................................................. [ 27%]
+........................................................................ [ 54%]
+........................................................................ [ 81%]
+..................................................                       [100%]
+=================================== FAILURES ===================================
+_________ test_default_and_selected_instances_do_not_patch_each_other __________
+
+guard = (<arena_autonomy.pass_release_trial.PassReleaseSelector object at 0x7b311b6fb800>, {'heading': 0.0, 'offset': 0.0, 're...masked_left': 0, 'masked_right': 0, 'unobserved': 0}, 'regions': []}, <function guard.<locals>.call at 0x7b311b4ef420>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b311b6fa300>
+
+    def test_default_and_selected_instances_do_not_patch_each_other(guard, monkeypatch):
+        old, _, _ = guard
+        enabled = ps.PassReleaseSelector(replace(old.follow_config, traffic_recovery_trial=True,
+                                                 guard_observation_policy='selected_r181'))
+        guard_method, gap_function = ps.PassReleaseSelector._guard_curve, ps.same_path_risk
+        before, after = object(), object()
+        monkeypatch.setattr(ps.PassReleaseSelector, '_guard_curve_original', lambda *args: before)
+        monkeypatch.setattr(selected, 'guard_curve', lambda *args: after)
+        args = [None]*11
+>       assert old._guard_curve(*args) is before
+E       TypeError: PassReleaseSelector._guard_curve() takes 11 positional arguments but 12 were given
+
+tests/test_guard_observation_policy.py:28: TypeError
+=========================== short test summary info ============================
+FAILED tests/test_guard_observation_policy.py::test_default_and_selected_instances_do_not_patch_each_other
+1 failed, 265 passed in 6.50s

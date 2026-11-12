@@ -5,6 +5,7 @@
 차는 이동량과 어긋나므로 기존 측방 위협으로 남는다.
 """
 from dataclasses import dataclass
+import math
 
 
 @dataclass(frozen=True)
@@ -25,9 +26,31 @@ class StaticSideTracker:
     def reset(self):
         self.travel_m = 0.
         self.rows = []
+        self.reference_s = self.reference_speed = None
 
     def advance(self, speed, dt):
+        """이전 고정 간격 기록/순수 시험 호환. 실행 선택기는 advance_to를 사용한다."""
         self.travel_m += max(float(speed), 0.)*float(dt)
+
+    def advance_to(self, stamp, speed):
+        """판단 기준 시각 간격과 양 끝 측정 속도로 이동을 근사한다.
+
+        명령 예측 dt는 비동기 호출 간 실제 시간과 다를 수 있다. 같은 시각은
+        다시 적분하지 않으며 역행/긴 공백/음수 속도에는 정지 물체 근거만 비운다.
+        전체 운동 이력 적분이나 실제 물체 정지의 증명은 아니다.
+        """
+        if (not math.isfinite(stamp) or not math.isfinite(speed) or stamp < 0 or speed < 0):
+            self.reset()
+            return
+        if self.reference_s is not None:
+            elapsed = stamp-self.reference_s
+            if elapsed == 0:
+                return
+            if elapsed < 0 or elapsed > self.config.maximum_gap_s:
+                self.reset()
+            else:
+                self.travel_m += (self.reference_speed+speed)*.5*elapsed
+        self.reference_s, self.reference_speed = stamp, speed
 
     def observe(self, stamp, front_ds):
         """같은 위치에 남아 있는 앞끝을 누적한다. 어긋나면 새 근거부터 다시 모은다."""

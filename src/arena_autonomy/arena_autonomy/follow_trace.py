@@ -264,6 +264,7 @@ def replay_events(events):
     follow = motion = None
     scope = None
     outcomes = []
+    audit_metadata = []
     for event in events:
         if footer is not None or event.get('seq') != count:
             raise ValueError('trace gap, reorder, or trailing data')
@@ -301,6 +302,12 @@ def replay_events(events):
                     HandoffExecutionConfig.from_mapping(data['execution_config']), allow_simulation_trial=True)
             else:
                 follow = follow_type(FollowConfig(**data['follow_config']))
+        elif kind in ('decision_submission_policy', 'current_path_recheck_policy', 'delivery_delay_profile'):
+            # 실행 설정은 보존·보고만 한다. 재생기의 허가/시각/상태를 바꾸거나
+            # 기록된 대기를 다시 실행하지 않는다. 순번/완료 수 검사는 그대로다.
+            if scope != 'g1_g2_handoff_decision_stage_only' or not isinstance(data, dict):
+                raise ValueError('invalid execution audit metadata')
+            audit_metadata.append(freeze(event))
         elif kind == 'reset':
             follow.reset()
         elif kind == 'call':
@@ -321,4 +328,5 @@ def replay_events(events):
             or footer.get('written') != count-1 or footer.get('accepted') != count-1):
         raise ValueError('incomplete trace capture')
     return {'scope': scope, 'calls': calls, 'matched': calls-len(mismatches),
-            'mismatches': mismatches, 'passed': not mismatches, 'outcomes': outcomes}
+            'mismatches': mismatches, 'passed': not mismatches, 'outcomes': outcomes,
+            'audit_metadata': audit_metadata, 'execution_metadata_replayed': False}

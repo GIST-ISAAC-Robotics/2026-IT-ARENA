@@ -1,6 +1,6 @@
 """온보드 경기 운영 어댑터: 제한 HTTP API ↔ 기존 /race/command·MCU 서비스.
 
-제어 콜백과 다른 프로세스다. /drive, /drive/safe에 발행하지 않고 원격 조향·속도 입력이 없다.
+제어 콜백과 다른 프로세스다. /drive, /drive/safe에 발행하지 않는다. 개발 모드에는 정지 중 속도 상한 설정만 제공한다.
 HTTP 스레드는 큐에만 넣고 ROS 호출은 단일 실행기 타이머가 수행한다. 파일 기록은 별도 스레드다.
 """
 import hmac
@@ -124,7 +124,7 @@ class Handler(BaseHTTPRequestHandler):
                 or not token(body.get('client'))):
             return self.respond(400, json.dumps(dict(error='schema')))
         entry = self.server.ops.core.submit(body['op'], body['request'], body.get('view'), body['client'],
-                                            body.get('confirm'), time.monotonic())
+                                            body.get('confirm'), time.monotonic(), value=body.get('value'))
         return self.respond(200, json.dumps(entry, ensure_ascii=False, allow_nan=False, default=str))
 
 
@@ -280,6 +280,8 @@ class RaceOps(Node):
             self.call(entry, 'stop')
         elif op in ('recovery_reset', 'resume_start'):
             self.publish(self.bound(entry, op))
+        elif op == 'set_speed_limit':
+            self.publish({**self.bound(entry, op), 'speed_limit_mps': entry['value']})
         elif op == 'prepare_start':
             self.publish({**self.bound(entry, 'acknowledge'), 'hazards_cleared': True, 'operator_reviewed': True})
         elif op == 'restore_race':

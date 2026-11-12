@@ -29,7 +29,7 @@ class FollowConfig:
     piecewise_wall_trial: bool = False  # 연결 관측의 한 모서리를 두 직선+원호로 표현.
     solo_straight_budget_trial: bool = False  # 현재 양쪽 직선 벽을 속도 근거로만 쓴다.
     solo_corner_approach_trial: bool = False  # 단독 직각 접근 감속 후보
-    oblique_gap_trial: bool = False  # 기본 OFF. 사선 좁은 공백의 0.2 m/s 단독 시험.
+    oblique_gap_trial: bool = False  # 기본 OFF. 좁은 공백 저속; 교통은 현재 SOLO에 한정.
     partial_observation_policy: str = 'strict'
     # 센서 프로필의 알려진 구조 가림 선택(v4 필요). off는 기존 부분 관측 그대로.
     known_structure_policy: str = 'off'
@@ -40,8 +40,10 @@ class FollowConfig:
     side_departure_trial: bool = False  # 완전 관측 직선의 측방 시차 겹침에서 비접근 저속 진행.
     pass_release_trial: bool = False
     guard_curve_trial: bool = False
+    guard_observation_policy: str = 'original_v1'  # 명시 선택 selected_r181. 기본/기존 기록은 불변.
     traffic_recovery_trial: bool = False
     released_rear_sweep_trial: bool = False
+    released_body_gap_trial: bool = False  # 통과 뒤 저속 차체 옆 공백 후보. 기본 OFF.
     static_side_release_trial: bool = False
     traffic_path_recovery_trial: bool = False
     rear_lane_keep_trial: bool = False
@@ -71,6 +73,7 @@ class FollowConfig:
     # 11/9 마커 누락 대비(선택형): 선호 벽이 갈림길로 갈라져 확인되지 않으면 직전 승인 경로와
     # 일치하는 반대 벽의 긴 현재 관측으로 본선을 잇는다.
     junction_continuity: bool = False
+    expiry_route_reference_trial: bool = False  # 계산 만료 뒤 현재 관측 비교용 선택 벽 참조만 보존.
     lateral_acceleration_mps2: float = 3.5
     memory_ttl_s: float = .30
     memory_motion_limit_m: float = .45
@@ -87,6 +90,9 @@ class FollowConfig:
     confirmations: int = 2
 
     def __post_init__(self):
+        if (type(self.expiry_route_reference_trial) is not bool or
+                (self.expiry_route_reference_trial and not self.junction_continuity)):
+            raise ValueError('expiry route reference requires junction continuity')
         if type(self.piecewise_wall_trial) is not bool:
             raise ValueError('piecewise wall trial must be boolean')
         if (type(self.solo_corner_approach_trial) is not bool or
@@ -112,6 +118,13 @@ class FollowConfig:
             raise ValueError('ray wall continuity requires the solo observed route speed profile')
         if self.signed_motion_policy not in ('legacy_hold', 'forward_drive'):
             raise ValueError('unknown signed motion policy')
+        if (self.guard_observation_policy not in ('original_v1', 'selected_r181') or
+                (self.guard_observation_policy == 'selected_r181' and not (
+                    self.pass_release_trial and self.guard_curve_trial and self.traffic_recovery_trial))):
+            raise ValueError('selected guard observation requires explicit traffic guard profile')
+        if (type(self.released_body_gap_trial) is not bool or
+                (self.released_body_gap_trial and self.guard_observation_policy != 'selected_r181')):
+            raise ValueError('released body gap requires selected guard observation policy')
         if (self.rear_lane_keep_policy not in ('timed', 'observed', 'observed_measured_v1', 'observed_fresh_v2') or
                 (self.rear_lane_keep_policy != 'timed' and not self.rear_lane_keep_trial)):
             raise ValueError('observed lane preference requires explicit rear lane keep trial')
@@ -154,8 +167,9 @@ class FollowConfig:
                  self.boundary_evidence_mode != 'corner_distance_candidate'))):
             raise ValueError('parallel hold trial requires v4, corner-distance and per-ray candidates')
         if (type(self.oblique_gap_trial) is not bool or (self.oblique_gap_trial and not (
-                self.solo_route_only and self.partial_observation_policy == 'bounded_local_v4'))):
-            raise ValueError('oblique gap trial requires explicit solo v4')
+                self.partial_observation_policy == 'bounded_local_v4' and (self.solo_route_only or
+                (self.pass_release_trial and self.guard_curve_trial and self.traffic_recovery_trial))))):
+            raise ValueError('oblique gap trial requires solo v4 or explicit guarded traffic v4')
         if self.partial_observation_policy not in ('strict','bounded_local_v2','bounded_local_v3','bounded_local_v4'):
             raise ValueError('unsupported G1 partial observation policy')
         if self.partial_observation_policy != 'strict' and (self.recent_observation_enabled or self.max_speed_mps>1.):
@@ -193,7 +207,7 @@ class FollowConfig:
         if type(self.narrow_occluder_bridge) is not bool or type(self.junction_continuity) is not bool:
             raise ValueError('narrow occluder bridge and junction continuity must be bool')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('traffic_boundary_refresh_trial', 'solo_corner_approach_trial', 'oblique_gap_trial', 'piecewise_wall_trial', 'solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'narrow_occluder_bridge', 'junction_continuity', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+               if k not in ('expiry_route_reference_trial', 'released_body_gap_trial', 'guard_observation_policy', 'traffic_boundary_refresh_trial', 'solo_corner_approach_trial', 'oblique_gap_trial', 'piecewise_wall_trial', 'solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'narrow_occluder_bridge', 'junction_continuity', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
             raise ValueError('follow configuration must be finite and positive')
         if (type(self.corridor_fallback_enabled) is not bool or
                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
@@ -471,7 +485,7 @@ class LocalFollow:
             self.partial_policy = PartialObservationPolicy(allow_narrow_forward=True,
                 surface_translation_enabled=self.config.partial_observation_policy in ('bounded_local_v3','bounded_local_v4'),
                 lateral_metric_enabled=self.config.partial_observation_policy=='bounded_local_v4',
-                oblique_metric_enabled=self.config.oblique_gap_trial)
+                oblique_metric_enabled=self.config.oblique_gap_trial and self.config.solo_route_only)
         self.observation_cache = None
         if self.config.recent_observation_enabled:
             from arena_autonomy.observation_support import RecentScenes
@@ -637,15 +651,23 @@ class LocalFollow:
         cfg=self.config
         # 경로의 큰 요청을 관측 관문에서 거절한 뒤 대기/재출발을 반복하지 않도록
         # 먼저 기존 저속 후보를 선택한다. 측정속도·기억·독립 보호 판정은 그대로다.
-        requested=self.partial_policy.requested_speed(raw_scan,history.config.lidar_yaw_rad,
-                                                     output[0],explained_now)
-        if requested!=output[0]:
-            output=(requested,output[1],{**output[2],
-                'partial_original_requested_speed_mps':output[0],
-                'partial_requested_speed_mps':requested})
-        observation=self.partial_policy.evaluate(raw_scan,scene.occupied_endpoints_xy_m,history,
-            scene.t_ref_s,max(output[0],abs(speed)),output[1],previous_steering,
-            cfg.wheelbase_m,cfg.length_m,cfg.width_m)
+        original_oblique = self.partial_policy.oblique_metric_enabled
+        if cfg.oblique_gap_trial and not cfg.solo_route_only:
+            from arena_autonomy.traffic_solo_gap import eligible
+            self.partial_policy.oblique_metric_enabled = eligible(
+                self.pass_selector, scene, output, raw_scan, history.config.lidar_yaw_rad, explained_now)
+        try:
+            requested=self.partial_policy.requested_speed(raw_scan,history.config.lidar_yaw_rad,
+                                                         output[0],explained_now)
+            if requested!=output[0]:
+                output=(requested,output[1],{**output[2],
+                    'partial_original_requested_speed_mps':output[0],
+                    'partial_requested_speed_mps':requested})
+            observation=self.partial_policy.evaluate(raw_scan,scene.occupied_endpoints_xy_m,history,
+                scene.t_ref_s,max(output[0],abs(speed)),output[1],previous_steering,
+                cfg.wheelbase_m,cfg.length_m,cfg.width_m)
+        finally:
+            self.partial_policy.oblique_metric_enabled = original_oblique
         detail={**output[2],**detail,'partial_observation':observation}
         # raw 기준 밖 결측이 운동 변환 뒤 전방으로 들어온 경우를 몰래 허용하지 않는다.
         from arena_autonomy.scan_input import scan_angles
@@ -709,6 +731,10 @@ class LocalFollow:
         if cfg_short and proposal.get('short_prefix'):
             detail['boundary_selection'] = 'current_short_observed_prefix_candidate'
         return proposal['proposed_speed_mps'], proposal['steering_rad'], detail
+
+    def _recent_route_reference(self):
+        reference = (self.path, self.path_ref, self.path_source)
+        return reference+(self.path_wall,) if self.config.expiry_route_reference_trial else reference
 
     def _baseline_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, allow_partial=False):
         cfg, now = self.config, scene.t_ref_s
@@ -1029,19 +1055,28 @@ class LocalFollow:
                         # 막 만료된 승인 경로는 아래 HOLD 이후에야 recent_path로 옮겨졌다.
                         # 주행 기억으로 되살리지 않고 이번의 충분한 현재 관측을 비교하는 데만
                         # 즉시 쓴다. 계산 간격이 200ms일 때 반복되는 한 주기 정지를 막는다.
-                        reference = (self.path, self.path_ref, self.path_source)
+                        reference = self._recent_route_reference()
                     if reference is not None and 0 <= now-reference[2] <= 2*cfg.memory_ttl_s:
                         recent = transport_points(reference[0], history, reference[1], now)
                         # 창을 TTL의 두 배로 둔 만큼 운동 보정 이동 한도도 같은 비율로만 늘린다.
                         if np.max(np.linalg.norm(recent-reference[0], axis=1)) > 2*cfg.memory_motion_limit_m:
                             recent = None
+                    reference_wall = (reference[3] if cfg.expiry_route_reference_trial
+                                      and reference is not None and len(reference) == 4 else None)
+                    if (candidate is not None and recent is not None and reference_wall is not None
+                            and candidate_wall != reference_wall
+                            and not path_agrees_arc(candidate, recent, cfg.boundary_agreement_m)):
+                        eligible = False
+                        detail['expiry_route_switch_rejected'] = 'forward_path_diverges'
                     if (recent is not None and eligible and sufficient(candidate, info)
                             and path_agrees(candidate, recent, cfg.boundary_agreement_m)):
                         recent_confirmed = True
                         detail['recent_boundary_confirmation'] = 'current_observation_after_memory_expiry'
                     elif recent is not None and not eligible:
                         for path, details, wall_side in ((preferred, preferred_info, side), (*opposite_wall(), other_side)):
-                            if sufficient(path, details) and path_agrees(path, recent, cfg.boundary_agreement_m):
+                            if (sufficient(path, details) and path_agrees(path, recent, cfg.boundary_agreement_m)
+                                    and (reference_wall is None or wall_side == reference_wall
+                                         or path_agrees_arc(path, recent, cfg.boundary_agreement_m))):
                                 candidate, info, candidate_wall = path, details, wall_side
                                 eligible = recent_confirmed = True
                                 detail.update(boundary_selection='junction_recent_path_agreement',
@@ -1075,7 +1110,7 @@ class LocalFollow:
                 detail['fresh_boundary_accepted'] = bool(eligible and self.path_source == scene.source_first_s)
             if carried is None:
                 if cfg.junction_continuity and self.path is not None:
-                    self.recent_path = (self.path, self.path_ref, self.path_source)
+                    self.recent_path = self._recent_route_reference()
                 self.path = None
                 return self._hold('follow_boundary_unconfirmed', detail)
             memory_age = now-self.path_source

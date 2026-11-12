@@ -52,7 +52,7 @@ class Drawing:
             self.text(x, y+i*step, text, size, color)
 
     def save(self, name):
-        self.text(50, self.height-26, 'IT ARENA · 2026-11-11 · v1 | 단자 이름 기준 배선도 · 기판 핀의 물리적 순서/위치를 나타내지 않음', 16, GRAY)
+        self.text(50, self.height-26, 'IT ARENA · 2026-11-12 · v1 근거 갱신 | 단자 이름 기준 배선도 · 기판 핀의 물리적 순서/위치를 나타내지 않음', 16, GRAY)
         (OUT/name).write_text('\n'.join(self.parts+['</svg>'])+'\n', encoding='utf-8')
 
 
@@ -82,18 +82,18 @@ def signals():
         d.pin(980,y,gpio,'right',col);d.pin(1260,y,pin,'left',col)
     d.note(1280,873,['이 제품은 TX↔TX / RX↔RX','일반 UART처럼 교차하지 않음','ESP32에서 전원 공급하지 않음','서보는 D / V+ / GND 3선','12 V 전원·서보 결선: 시트 02'],size=17)
     d.box(50,710,235,325,'PGE-213','XHP-4 / 모터축 엔코더',AMBER,True)
-    d.note(70,810,['5 V 공급: 시트 02'],size=15)
-    d.box(395,710,175,325,'CF-0108','TXS 확인 전 보류',AMBER,True)
+    d.note(70,803,['NPN OC · 내부 풀업','5 V 공급: 시트 02'],size=14,step=23)
+    d.box(395,710,175,325,'CF-0108','TXS 마킹 식별',AMBER,True)
     for y,a,b,left,right,gpio,net in [(850,'3 HA','B1','A1','A상','GPIO4','ENC_A'),(910,'4 HB','B2','A2','B상','GPIO5','ENC_B')]:
         d.wire(285,395,y,AMBER,'5 V',1,True)
         d.pin(285,y,a,'right',AMBER,18); d.pin(395,y,b,'left',AMBER,18)
         d.wire(570,680,y,AMBER,'3.3 V',1,True)
         d.pin(570,y,left,'right',AMBER,18);d.pin(680,y,gpio,'left',AMBER,18)
     d.note(70,972,['1 VCC / 2 GND','커넥터 방향·선 색은 실물 확인'],size=14,step=24)
-    d.note(410,970,['전원·OE: 시트 02','A/B는 IC 기준 명칭'],size=13,step=24)
+    d.note(410,970,['신규 CF · 채널 1/2','실크 확인 · 도통 미검증'],size=13,step=24)
     d.note(705,970,['UART0 GPIO43/44','보드 내부 USB-UART 전용','외부 장치에 중복 배정 금지'],size=16)
     d.note(50,1080,['IMU: 3Vo, I2 및 상단 SCX / SDX / CS / DO / GND는 이번 배선에서 사용하지 않습니다.',
-                    'CF: IC·LV/HV·OE 회로와 5 V→3.3 V 파형 확인 전 연결 보류. 엔코더 HA/HB를 ESP32에 직접 연결하지 않습니다.',
+                    'CF: YF08E → TXS0108E 마킹 식별. 채널/OE·파형 확인 전 GPIO 연결 보류. 엔코더 HA/HB는 직접 연결하지 않습니다.',
                     '현재 펌웨어는 IMU 진단용입니다. 이 도면만으로 모터·서보의 부팅/리셋/통신 단절 시 정지가 구현되지는 않습니다.'],size=18,step=31)
     d.save('esp32_gpio_signals_v1.svg')
 
@@ -138,8 +138,8 @@ def power():
     d.box(670,1090,340,180,'PGE-213','XHP-4 커넥터 논리 핀 번호',AMBER)
     for y,a,b,col in [(1180,'+','1 VCC',RED),(1230,'−','2 GND',GRAY)]:
         d.wire(390,670,y,col);d.pin(390,y,a,'right',col);d.pin(670,y,b,'left',col)
-    d.box(1310,1090,340,180,'CF-0108 전원 / OE','TXS0108E·모듈 회로 확인 조건',AMBER,True)
-    for y,label,pin,col in [(1174,'ESP32 3V3','VCCA / LV',RED),(1202,'J01 CH4 +5 V','VCCB / HV',RED),(1230,'ESP32 3V3','OE *',AMBER),(1258,'공통 GND','GND',GRAY)]:
+    d.box(1310,1090,340,180,'CF-0108 전원 / OE','TXS 마킹 식별 · OE/파형 미검증',AMBER,True)
+    for y,label,pin,col in [(1174,'ESP32 3V3','VA / VCCA',RED),(1202,'J01 CH4 +5 V','VB / VCCB',RED),(1230,'ESP32 3V3','OE *',AMBER),(1258,'공통 GND','GND',GRAY)]:
         d.wire(1090,1310,y,col,label,0,True);d.pin(1310,y,pin,'left',col,16)
     d.note(50,1305,['공통 GND: ESP32·IMU·CF·엔코더·MD20A Signal GND·어댑터 H2 GND와 해당 전원 −. 전력 귀환을 점퍼선에 맡기지 않습니다.',
                     '* OE는 모듈 회로 확인 후 3.3 V HIGH 유지 안입니다. 5 V 연결 금지. 실물 OE 처리·파형 확인 전 CF 결선은 보류합니다.'],size=17,step=26)
@@ -167,8 +167,8 @@ def main():
     refs=''.join(f'<li><a href="{esc(s["url"],quote=True)}">{esc(s["title"])}</a></li>' for s in DATA['sources'])
     page='''<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IT ARENA · ESP32 배선도 v1</title>
 <style>body{margin:0;background:#eaf0f7;color:#14273d;font-family:"Malgun Gothic",sans-serif}main{max-width:1700px;margin:auto;padding:28px}h1{font-size:30px}h2{margin:0}p,li{line-height:1.7}section{margin:24px 0;background:white;border:1px solid #ccd6e4;border-radius:12px;padding:20px}.drawing{overflow:auto}.drawing svg{width:100%;height:auto;min-width:1050px}a{color:#2161ae}table{border-collapse:collapse;width:100%;font-size:15px}td,th{padding:12px;border-bottom:1px solid #d8e0e9;text-align:left}th{background:#eaf0f7}.notice{border-left:5px solid #a86800;padding:8px 18px;background:#fff5dd}@media print{@page{size:A3 landscape;margin:10mm}main{padding:0}section{break-before:page;padding:0;border:0}.drawing svg{min-width:0;max-height:255mm}section p{display:none}a{color:inherit}}</style>
-<main><h1>ESP32 주변 배선도 v1</h1><p>2026-11-11 · 현재 IMU 배선을 유지하고 모터 드라이버, 엔코더, 조향 서보까지 확장한 모듈 간 결선 설계입니다.</p>
-<p class="notice">실물 검증 완료 도면이 아닙니다. CF-0108의 칩·패드·OE 및 변환 파형은 미확인입니다. GPIO 번호는 물리 헤더 순번이 아닙니다. 현재 IMU 진단 펌웨어로는 모터·서보를 제어하지 않습니다.</p>
+<main><h1>ESP32 주변 배선도 v1</h1><p>2026-11-12 근거 갱신 · 현재 IMU 배선을 유지하고 모터 드라이버, 엔코더, 조향 서보까지 확장한 모듈 간 결선 설계입니다.</p>
+<p class="notice">실물 검증 완료 도면이 아닙니다. PGE-213의 NPN 오픈 컬렉터·내부 풀업 답변과 CF의 YF08E(TXS0108E) 마킹 식별을 반영했습니다. 패드/채널·OE·변환 파형은 미검증입니다. 신규 CF(헤더 미납땜, 21KG4/C2VN)의 채널 1/2 설계를 유지합니다. B2 인쇄 누락·1/7 대안은 별도 기존 헤더 보드(69KG4/CHQ7)의 정보입니다. GPIO 번호는 물리 헤더 순번이 아닙니다. 현재 IMU 진단 펌웨어로는 모터·서보를 제어하지 않습니다.</p>
 <p><a href="../ESP32_GPIO_WIRING_2026_11_11.md">설계 설명과 조립 조건</a> · <a href="esp32_gpio_v1.json">기계 판독 핀·전원 목록</a> · <a href="esp32_gpio_pin_table_v1.md">핀표</a></p>'''+images+'<section><h2>GPIO 연결표</h2><p>방향은 ESP32 기준입니다. 서보 어댑터는 TX→TX / RX←RX를 따릅니다.</p><table>'+th+trs+'</table></section><section><h2>근거</h2><ul>'+refs+'</ul></section></main></html>'
     (OUT/'esp32_gpio_wiring_v1.html').write_text(page,encoding='utf-8')
     print('Generated 2 SVG sheets, standalone HTML, pin table. 11 distinct GPIO; no excluded/reserved collisions.')

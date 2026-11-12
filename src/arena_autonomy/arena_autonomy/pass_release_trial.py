@@ -119,18 +119,14 @@ def threat_view(scene, path_points, cfg):
     state = mx.ego_state(frame, cfg)
     light = mx.ReturnGrid(scene, cfg)
     ds, masks = mx.side_return_masks(frame, state, light, cfg)
-    if any(np.any(m) for m in masks):
-        # 이 호출에서 만든 반환 요약의 compact 묶음만 재사용한다(같은 scene·cfg 객체·반환 확인, 호출 사이 캐시 없음).
-        grid = ObservationGrid(scene, cfg, _same_call_returns=(scene, cfg, light))
-        s, l = cell_coordinates(grid, frame)
-        observed = grid.observed_free()
-    else:
-        grid, s, l, observed = light, None, None, None
-    threats = side_threats(frame, state, grid, cfg, s, l, observed)
+    # 이 요약은 side_threats의 nearest 간격을 사용하지 않는다. 동일한 반환
+    # 마스크의 개수/양 끝만 구해 불필요한 관측 격자 생성을 생략한다.
+    # 실제 이동 영역/접근 방향의 자유 관측 검사는 호출부에서 그대로 수행한다.
     out = {'frame': frame, 'state': state}
     for (name, _), mask in zip(SIDES, masks):
         values = ds[mask] if len(ds) else np.zeros(0)
-        out[name] = {'present': bool(threats[name]['present']), 'points': int(threats[name]['points']),
+        count = int(np.count_nonzero(mask))
+        out[name] = {'present': count >= cfg.min_threat_points, 'points': count,
                      'rearmost_ds_m': float(np.min(values)) if len(values) else None,
                      'frontmost_ds_m': float(np.max(values)) if len(values) else None}
     return out
@@ -210,13 +206,15 @@ def motion_queries(scene, speed, target, steering, previous, dt, follow_cfg, lat
     age = scene.t_ref_s-scene.source_first_s
     v = max(abs(speed), abs(target))
     distance = mx.envelope_distance(v, age, dt, mx.ExecutionConfig())
-    queries = []
+    poses, angles = [], []
     for angle in sorted({float(steering), float(previous)}):
-        poses = extrema_arc(angle, max(distance, .01), lat_cfg)
-        q, _ = mx.body_queries(scene, poses, np.full(len(poses), angle), lat_cfg)
-        queries.append(q.reshape(-1, 2))
+        arc = extrema_arc(angle, max(distance, .01), lat_cfg)
+        poses.append(arc)
+        angles.append(np.full(len(arc), angle))
+    # 같은 두 원호의 자세를 한 묶음으로 처리한다. 외곽/unknown 교차/판정선은 같다.
+    q, _ = mx.body_queries(scene, np.vstack(poses), np.concatenate(angles), lat_cfg)
     from arena_autonomy.point_set import unique_xy
-    q = unique_xy(np.vstack(queries))
+    q = unique_xy(q.reshape(-1, 2))
     outside = (np.abs(q[:, 0]) > follow_cfg.length_m/2+1e-9) | (np.abs(q[:, 1]) > follow_cfg.width_m/2+1e-9)
     q = q[outside]
     return distance, q
@@ -271,6 +269,13 @@ def side_extent(frame, poses, sign, cfg):
 
 
 def same_path_risk(owner, scene, raw_scan, region, context, speed, target, steer, previous, baseline):
+    if owner.follow_config.guard_observation_policy == 'selected_r181':
+        from arena_autonomy.guard_observation_policy import same_path_risk as selected
+        return selected(owner, scene, raw_scan, region, context, speed, target, steer, previous, baseline)
+    return _same_path_risk_original(owner, scene, raw_scan, region, context, speed, target, steer, previous, baseline)
+
+
+def _same_path_risk_original(owner, scene, raw_scan, region, context, speed, target, steer, previous, baseline):
     from arena_autonomy.same_path_gap_trial import bounded_same_path_gap
     rejected = dict(accepted=False, reason='not_needed', unknown_filled=False)
     if not region['unobserved'] or raw_scan is None or not context:
@@ -361,6 +366,12 @@ class PassReleaseSelector:
         return out
 
     def _guard_curve(self, scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan):
+        if self.follow_config.guard_observation_policy == 'selected_r181':
+            from arena_autonomy.guard_observation_policy import guard_curve
+            return guard_curve(self, scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan)
+        return self._guard_curve_original(scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan)
+
+    def _guard_curve_original(self, scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan):
         """GUARD의 가림 꼬리 초과는 같은 경로의 낮은 목표로 제한 재검사한다.
 
         현재 측정속도와 두 조향은 그대로다. RELEASED에서 쓰는 .25/.15 m/s
@@ -572,7 +583,7 @@ class PassReleaseSelector:
             return self._hold(previous, detail, self.invalidate('scene_age_out_of_range'))
         fresh = self.last_source is None or source > self.last_source
         for tracker in (self.static_side or {}).values():
-            tracker.advance(speed, dt)
+            tracker.advance_to(now, speed)
         self.epoch, self.last_source, self.last_ref = scene.source_epoch, source, now
         b_speed, b_steer, b_detail = baseline
         view = threat_view(scene, b_detail.get('path_points'), self.lat)
@@ -754,4 +765,12 @@ class PassReleaseSelector:
                                   'released_observed_motion_small_masked_tail' if small_tail
                                   else 'released_large_motion_observed'}
         p_speed, p_steer, p_detail = parallel
+        if self.follow_config.released_body_gap_trial and blocked == 'large_motion_region_unobserved':
+            from arena_autonomy.released_body_gap import propose
+            candidate = propose(self, scene, raw_scan, baseline, speed, previous, dt, b_speed)
+            if candidate is not None:
+                return candidate['target_mps'], candidate['steering_rad'], {
+                    **b_detail, **detail, 'selector_choice': 'baseline',
+                    'selector_reason': 'released_bounded_low_speed_body_gap',
+                    'selector_released_body_gap': candidate}
         return p_speed, p_steer, {**p_detail, **detail, 'selector_choice': 'parallel', 'selector_reason': blocked}

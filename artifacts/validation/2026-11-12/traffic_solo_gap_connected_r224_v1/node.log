@@ -1,0 +1,61 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________ test_explicit_traffic_option_keeps_independent_guard_and_stop _________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-1/test_explicit_traffic_option_k0')
+
+    def test_explicit_traffic_option_keeps_independent_guard_and_stop(tmp_path):
+        trace=tmp_path/'trace.jsonl'
+        values=dict(use_sim_time='true',lidar_compensation='both',motion_scan_timing_verified='true',
+            control_rate_hz='50.0',g1_follow_enabled='true',g1_g2_simulation_trial='true',
+            g1_trace_path=str(trace),g1_decision_execution='process_candidate',
+            g1_current_path_recheck='"selected_v1"',g1_submission_policy='fresh_native_v1',
+            lidar_input_representation='native_simulation_v1',
+            g1_boundary_evidence_mode='corner_distance_candidate',g1_occupancy_timing_mode='per_ray_candidate',
+            partial_observation_policy='bounded_local_v4',g1_parallel_hold_trial='true',
+            g1_pass_release_trial='true',g1_guard_curve_trial='true',g1_traffic_recovery_trial='true',
+            g1_oblique_gap_trial='true',vision_execution='inline')
+        rclpy.init(args=['--ros-args']+[item for k,v in values.items() for item in ('-p',f'{k}:={v}')])
+        node=guard=None
+        try:
+>           node=G1G2Node();guard=LidarSafety()
+
+tests/test_traffic_solo_gap_node.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/g1_g2_node.py:52: in __init__
+    super().__init__()
+src/arena_autonomy/arena_autonomy/local_pursuit.py:127: in __init__
+    self.follow = follow_type(FollowConfig(
+src/arena_autonomy/arena_autonomy/local_follow.py:525: in __init__
+    self.pass_selector = PassReleaseSelector(self.config)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:301: in __init__
+    self.lat = lateral_config(follow_config)
+src/arena_autonomy/arena_autonomy/pass_release_trial.py:105: in lateral_config
+    return LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', wheelbase_m=c.wheelbase_m,
+<string>:44: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', budget=LateralBudget(range_bias_m=0.03, grass_widt... recenter_hidden_policy='hard', max_vehicle_width_m=0.15, max_vehicle_length_m=0.2, compact_point_motion_bound_mps=0.5)
+
+    def __post_init__(self):
+        if self.surface_policy not in ('road_only', 'two_wheel_grass'):
+            raise ValueError('invalid surface policy')
+        if self.recenter_hidden_policy != 'hard':
+            raise ValueError('invalid recenter hidden policy')
+        if type(self.enabled) is not bool:
+            raise ValueError('enabled must be bool')
+        numbers = {k: v for k, v in asdict(self).items()
+                   if k not in ('enabled', 'surface_policy', 'budget', 'grid_x_m', 'grid_y_m', 'recenter_hidden_policy')}
+        if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for v in numbers.values()):
+            raise ValueError('lateral intent configuration must be finite and positive')
+        if self.track_m+self.wheel_width_m > self.width_m or self.wheelbase_m+2*self.wheel_radius_m > self.length_m+1e-9:
+>           raise ValueError('wheels must fit inside the registered body footprint')
+E           ValueError: wheels must fit inside the registered body footprint
+
+src/arena_autonomy/arena_autonomy/lateral_intent.py:130: ValueError
+----------------------------- Captured stderr call -----------------------------
+[INFO] [1794448807.024692703] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=both; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+=========================== short test summary info ============================
+FAILED tests/test_traffic_solo_gap_node.py::test_explicit_traffic_option_keeps_independent_guard_and_stop
+1 failed in 3.18s

@@ -6,9 +6,10 @@ target_speed_mps, 모터축 환산은 MCU 상태의 mean_wheel_mps(단일 모터
 """
 from collections import deque
 import copy
+import math
 import threading
 
-OPERATIONS = ('stop', 'recovery_reset', 'resume_start', 'prepare_start', 'new_race', 'restore_race')
+OPERATIONS = ('stop', 'recovery_reset', 'resume_start', 'prepare_start', 'new_race', 'restore_race', 'set_speed_limit')
 BOUND = tuple(op for op in OPERATIONS if op != 'stop')
 PHYSICAL_STOP = '미확인'
 MAX_COMMANDS = 32
@@ -119,9 +120,9 @@ class OpsCore:
         race = status.get('race') or {}
         keys = dict(state=status.get('state'), reason=status.get('reason'), behavior=status.get('behavior'),
                     handoff=status.get('handoff_state'), side=side_of(status), latch=race.get('latch'),
-                    started=race.get('started'))
+                    started=race.get('started'), speed_limit=(race.get('development') or {}).get('limit_mps'))
         names = dict(state='상태', reason='이유', behavior='거동', handoff='전환', side='기준 벽',
-                     latch='래치', started='출발 사실')
+                    latch='래치', started='출발 사실', speed_limit='시험 속도 상한 m/s')
         for key, value in keys.items():
             if self.previous.get(key, value) != value:
                 self._event(wall, key, f"{names[key]}: {self.previous[key]} → {value}", source='autonomy')
@@ -150,7 +151,9 @@ class OpsCore:
                     clearance_m=None if self.safety is None else self.safety.get('swept_clearance_m'),
                     input_age_s=inputs.get('age_s'), before_boundary=inputs.get('before_boundary'),
                     latch=race.get('latch'), race_id=race.get('race_id'),
-                    intervention=race.get('intervention'))
+                    intervention=race.get('intervention'),
+                    development_limit_mps=(race.get('development') or {}).get('limit_mps'),
+                    development_speed_limited=status.get('development_speed_limited'))
 
     # 명령 ---------------------------------------------------------------
     def _status_stale(self, wall):
@@ -172,17 +175,23 @@ class OpsCore:
             prepare_start=(bool(latch and not started), 'race_already_started' if started else 'no_active_intervention'),
             new_race=(bool(latch), 'stop_required'),
             restore_race=(offer is not None, 'no_restorable_record'))
+        development = race.get('development') or {}
+        stopped = bool(latch and not race.get('resume'))
+        result['set_speed_limit'] = (development.get('enabled') is True and stopped,
+                                    'stop_required' if development.get('enabled') else 'development_mode_disabled')
         return result
 
-    def submit(self, op, request, view, client, confirm, wall):
+    def submit(self, op, request, view, client, confirm, wall, value=None):
         """HTTP 스레드에서 호출. 같은 요청 번호는 다시 실행하지 않고 기존 기록을 돌려준다."""
         with self.lock:
             if request in self.commands:
                 return copy.deepcopy(self.commands[request])
-            reason = self._refuse(op, view, confirm, wall)
+            reason = self._refuse(op, view, confirm, wall, value)
             entry = dict(request=request, op=op, client=client, view=view, received_wall=wall, sent_wall=None,
                          stage='rejected_by_adapter' if reason else 'queued', adapter_reason=reason, policy=None,
                          mcu=None, mcu_steps=[], physical_stop=PHYSICAL_STOP if op == 'stop' else None)
+            if op == 'set_speed_limit':
+                entry['value'] = value if type(value) in (int, float) and math.isfinite(value) else None
             self.commands[request] = entry
             self.order.append(request)
             while len(self.order) > MAX_COMMANDS:
@@ -193,7 +202,7 @@ class OpsCore:
                         (f' 거절: {reason}' if reason else ''), source='operator', request=request)
             return copy.deepcopy(entry)
 
-    def _refuse(self, op, view, confirm, wall):
+    def _refuse(self, op, view, confirm, wall, value=None):
         if op not in OPERATIONS:
             return 'unknown_operation'
         if op == 'stop':
@@ -209,6 +218,11 @@ class OpsCore:
         if op == 'restore_race' and confirm != 'SAME_RACE':
             return 'same_race_confirmation_required'
         allowed, reason = self._controls(wall)[op]
+        if allowed and op == 'set_speed_limit':
+            ceiling = (race.get('development') or {}).get('maximum_mps')
+            if (type(value) not in (int, float) or not math.isfinite(value)
+                    or type(ceiling) not in (int, float) or not .05 <= value <= ceiling):
+                return 'speed_limit_out_of_range'
         return None if allowed else reason
 
     def next_action(self):
@@ -229,6 +243,8 @@ class OpsCore:
                 return None
             accepted = payload.get('accepted') is True
             entry['policy'] = dict(accepted=accepted, reason=payload.get('reason'), wall_s=wall)
+            if 'speed_limit_mps' in payload:
+                entry['policy']['speed_limit_mps'] = payload['speed_limit_mps']
             entry['stage'] = 'policy_accepted' if accepted else 'policy_rejected'
             self._event(wall, 'operator', f"{entry['op']} {entry['request'][:8]}: "
                         f"{'정책 수락' if accepted else '정책 거절'} {payload.get('reason')}",
@@ -314,6 +330,7 @@ class OpsCore:
                 race={key: race.get(key) for key in ('latch', 'started', 'start_source', 'recovery_ready', 'resume_start_ready', 'resume',
                     'last_resume', 'policy_reason', 'actuator_reason', 'rearm_required', 'input_boundary_s',
                     'visual_start_fact')},
+                development=copy.deepcopy(race.get('development')),
                 speeds=dict(plan_mps=None if plan is None else plan[0], plan_age_s=None if plan is None else age(plan[2]),
                             protected_mps=None if safe is None else safe[0],
                             protected_age_s=None if safe is None else age(safe[2]),

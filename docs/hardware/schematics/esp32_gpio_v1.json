@@ -9,8 +9,8 @@
     {"net":"IMU_MISO","gpio":13,"direction":"in","endpoint":"Adafruit 4438 하단 DO","status":"SPI 실측"},
     {"net":"IMU_CS_N","gpio":10,"direction":"out","endpoint":"Adafruit 4438 하단 CS","status":"SPI 실측"},
     {"net":"IMU_INT1","gpio":9,"direction":"in","endpoint":"Adafruit 4438 하단 I1","status":"사용자 배선, IRQ 동작 미검증"},
-    {"net":"ENC_A_3V3","gpio":4,"direction":"in","endpoint":"CF-0108 저전압 채널 1 (TXS0108E 확인 시 A1)","status":"조건부 설계, 미접속"},
-    {"net":"ENC_B_3V3","gpio":5,"direction":"in","endpoint":"CF-0108 저전압 채널 2 (TXS0108E 확인 시 A2)","status":"조건부 설계, 미접속"},
+    {"net":"ENC_A_3V3","gpio":4,"direction":"in","endpoint":"신규 CF-0108 A1 (실크 확인, 도통 미검증)","status":"신규 CF 실크 확인, 도통/OE·파형 미검증"},
+    {"net":"ENC_B_3V3","gpio":5,"direction":"in","endpoint":"신규 CF-0108 A2 (실크 확인, 도통 미검증)","status":"신규 CF 실크 확인, 도통/OE·파형 미검증"},
     {"net":"MOTOR_PWM","gpio":15,"direction":"out","endpoint":"MD20A PWM","status":"설계, 실물 구동 미검증"},
     {"net":"MOTOR_DIR","gpio":6,"direction":"out","endpoint":"MD20A DIR","status":"설계, 실물 구동 미검증"},
     {"net":"SERVO_TX","gpio":17,"direction":"out","endpoint":"Bus Servo Adapter (A) H2 TX/TXD","status":"공식 동일 이름 결선, 실물 미검증"},
@@ -21,20 +21,20 @@
   "excluded": [0,3,19,20,26,27,28,29,30,31,32,33,34,35,36,37,38,43,44,45,46,48],
   "spare_candidates": [7,16,39,40,41,42],
   "power_nets": {
-    "3V3_MCU": ["ESP32 3V3", "IMU 하단 VIN", "CF VCCA/LV (조건부)", "CF OE (조건부: TXS0108E 및 모듈 회로 확인 후 상시 enable)"],
-    "5V_ENCODER": ["J01 CH4 +", "PGE-213 XHP-4 pin 1 VCC", "CF VCCB/HV (조건부)"],
-    "12V_SERVO": ["M01 CH5 또는 CH6 중 한 채널 +", "Adapter A DC 입력 + / 중앙 +"],
-    "MOTOR_SUPPLY": ["M01 CH1 +", "MD20A VB+"],
-    "19V_JETSON": ["J01 CH1 +", "Jetson DC 입력 중앙 +"],
-    "GND": ["ESP32 GND", "IMU 하단 GND", "CF GND", "PGE-213 pin 2 GND", "MD20A Signal GND", "MD20A VB−", "Adapter A H2 GND", "Adapter A 전원 −", "J01/M01 해당 출력 −"]
+    "3V3_MCU": ["ESP32 3V3","IMU 하단 VIN","CF VCCA/LV (조건부)","CF OE (조건부: 모듈 회로 확인 후 상시 enable)"],
+    "5V_ENCODER": ["J01 CH4 +","PGE-213 XHP-4 pin 1 VCC","CF VCCB/HV (조건부)"],
+    "12V_SERVO": ["M01 CH5 또는 CH6 중 한 채널 +","Adapter A DC 입력 + / 중앙 +"],
+    "MOTOR_SUPPLY": ["M01 CH1 +","MD20A VB+"],
+    "19V_JETSON": ["J01 CH1 +","Jetson DC 입력 중앙 +"],
+    "GND": ["ESP32 GND","IMU 하단 GND","CF GND","PGE-213 pin 2 GND","MD20A Signal GND","MD20A VB−","Adapter A H2 GND","Adapter A 전원 −","J01/M01 해당 출력 −"]
   },
   "motor_output": [["MD20A MA","MB4266-24180 단자 6 (+), 최초 시험용 극성"],["MD20A MB","MB4266-24180 단자 5 (−), 최초 시험용 극성"]],
   "encoder_conditional": [["PGE-213 pin 3 HA","CF B1/HV1","CF A1/LV1","ESP32 GPIO4"],["PGE-213 pin 4 HB","CF B2/HV2","CF A2/LV2","ESP32 GPIO5"]],
   "servo_bus": [["Adapter A 서보 DATA/D","ST3215-HS D"],["Adapter A 서보 V+","ST3215-HS V+"],["Adapter A 서보 GND/G","ST3215-HS GND/G"]],
   "assumptions": [
     "GPIO 번호는 실제 헤더 위치 번호가 아니다. 호환 보드의 GPIO 실크로 찾는다.",
-    "CF의 A/B 명칭은 TXS0108E 표준 신호명이며, 실물 패드 이름이나 배열을 확정하지 않는다.",
-    "CF 실물 IC·전원·OE 회로 및 변환 파형 확인 전 엔코더 신호는 ESP32에 연결하지 않는다.",
+    "신규 CF 사진에서 VA/VB·A1/B1·A2/B2 실크 확인. 기존 헤더 보드의 B채널 오인쇄와 구분하며 전기적 도통은 미검증.",
+    "CF 패드 단락·전원/OE·채널 도통 확인 후 GPIO를 분리해 파형 시험. 파형 확인 전 GPIO4/5 연결 보류.",
     "모터·서보 전류는 ESP32 GND 핀이나 점퍼선을 경유하지 않고 전력 귀환선으로 흐르게 한다.",
     "전원 + 레일끼리는 합치지 않는다. 신호 기준 GND는 공통이며 실제 배선의 도통을 확인한다.",
     "현재 IMU 진단 펌웨어는 MD20A PWM/DIR와 서보 정지 제어를 구현하지 않는다. 이번 작업은 통전·업로드를 포함하지 않는다."
@@ -50,5 +50,22 @@
     {"title":"Cytron 공식 연결 MD20A 데이터시트","url":"https://docs.google.com/document/d/1eKpt66z-1qLMJkaXrHU1AfKqSVeIpEnM43vECpkYuWA/edit"},
     {"title":"TI TXS0108E 데이터시트","url":"https://www.ti.com/lit/ds/symlink/txs0108e.pdf"},
     {"title":"PGE-213 제조사","url":"https://www.motorbank.kr/goods/goods_view.php?goodsNo=1000009561"}
-  ]
+  ],
+  "updated": "2026-11-12",
+  "evidence_update": {
+    "date": "2026-11-12",
+    "source": "모터뱅크 답변은 사용자 전달 요약. 보드 식별은 후속 사용자 정정 및 신규/기존 실물 사진 두 장 직접 판독.",
+    "encoder_manufacturer_reply": "NPN 오픈 컬렉터, 출력 풀업 내장",
+    "cf_marking": "신규 CF-0108, 헤더 미납땜: TI 로고 / YF08E / 21KG4 / C2VN",
+    "cf_identification": "TI 공식 마킹표와 일치하는 TXS0108E. 정품성/정상 동작 검증과 구분.",
+    "board_report": "신규 CF의 상단 VB B1 B2 B3 B4 B5 B6 B7 B8 GND, 하단 VA A1 A2 A3 A4 A5 A6 A7 A8 OE. 패드 도통/OE·파형 미검증.",
+    "alternate_channels": [1,7],
+    "alternate_channels_adopted": false,
+    "gpio_assignment_changed": false,
+    "physical_waveform_verified": false,
+    "existing_headered_board": {"retail_model":"미확인, CF-0108로 확정하지 않음","marking":"YF08E / 69KG4 / CHQ7","top_silkscreen":"VB B1 B3 B4 B4 B5 B6 B7 B8 GND","interpretation":"TXS0108E 마킹 일치. B2 누락/B4 중복은 인쇄 오류 의심, 채널 부재나 실제 패드 대응은 미확정."},
+    "correction": "최초 웹 전달문에서 기존 헤더 보드 정보가 신규 CF에 혼합됨. 사용자 정정·사진으로 분리.",
+    "alternate_channels_scope": "기존 모델 미상 헤더 보드에 대한 이전 웹 후보. 신규 CF는 설계 채널1/2 유지.",
+    "photo_sha256": {"new_cf0108_unheadered.png":"06efe113a60b66b1985adf905100545e45f25e5727552735c73f24ea68d5f3ea","existing_headered_unknown_model.png":"ecebb41dda6cba0ec649c809ebcbd2eb460fd52f312c4bf4a65e10b03145bc9c"}
+  }
 }

@@ -1,7 +1,7 @@
 <!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IT ARENA · ESP32 배선도 v1</title>
 <style>body{margin:0;background:#eaf0f7;color:#14273d;font-family:"Malgun Gothic",sans-serif}main{max-width:1700px;margin:auto;padding:28px}h1{font-size:30px}h2{margin:0}p,li{line-height:1.7}section{margin:24px 0;background:white;border:1px solid #ccd6e4;border-radius:12px;padding:20px}.drawing{overflow:auto}.drawing svg{width:100%;height:auto;min-width:1050px}a{color:#2161ae}table{border-collapse:collapse;width:100%;font-size:15px}td,th{padding:12px;border-bottom:1px solid #d8e0e9;text-align:left}th{background:#eaf0f7}.notice{border-left:5px solid #a86800;padding:8px 18px;background:#fff5dd}@media print{@page{size:A3 landscape;margin:10mm}main{padding:0}section{break-before:page;padding:0;border:0}.drawing svg{min-width:0;max-height:255mm}section p{display:none}a{color:inherit}}</style>
-<main><h1>ESP32 주변 배선도 v1</h1><p>2026-11-11 · 현재 IMU 배선을 유지하고 모터 드라이버, 엔코더, 조향 서보까지 확장한 모듈 간 결선 설계입니다.</p>
-<p class="notice">실물 검증 완료 도면이 아닙니다. CF-0108의 칩·패드·OE 및 변환 파형은 미확인입니다. GPIO 번호는 물리 헤더 순번이 아닙니다. 현재 IMU 진단 펌웨어로는 모터·서보를 제어하지 않습니다.</p>
+<main><h1>ESP32 주변 배선도 v1</h1><p>2026-11-12 근거 갱신 · 현재 IMU 배선을 유지하고 모터 드라이버, 엔코더, 조향 서보까지 확장한 모듈 간 결선 설계입니다.</p>
+<p class="notice">실물 검증 완료 도면이 아닙니다. PGE-213의 NPN 오픈 컬렉터·내부 풀업 답변과 CF의 YF08E(TXS0108E) 마킹 식별을 반영했습니다. 패드/채널·OE·변환 파형은 미검증입니다. 신규 CF(헤더 미납땜, 21KG4/C2VN)의 채널 1/2 설계를 유지합니다. B2 인쇄 누락·1/7 대안은 별도 기존 헤더 보드(69KG4/CHQ7)의 정보입니다. GPIO 번호는 물리 헤더 순번이 아닙니다. 현재 IMU 진단 펌웨어로는 모터·서보를 제어하지 않습니다.</p>
 <p><a href="../ESP32_GPIO_WIRING_2026_11_11.md">설계 설명과 조립 조건</a> · <a href="esp32_gpio_v1.json">기계 판독 핀·전원 목록</a> · <a href="esp32_gpio_pin_table_v1.md">핀표</a></p><section><h2>01 · 신호 배선</h2><p><a href="esp32_gpio_signals_v1.svg">SVG 원본</a> · <a href="esp32_gpio_signals_v1.png">PNG 이미지</a></p><div class="drawing"><svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1230" viewBox="0 0 1700 1230" role="img" aria-label="ESP32 GPIO 배선도">
 <style>text{font-family:"Malgun Gothic","Noto Sans KR",sans-serif;fill:#14273d} .small{font-size:17px}</style>
 <rect width="1700" height="1230" fill="#f6f8fc"/>
@@ -123,10 +123,11 @@
 <rect x="50" y="710" width="235" height="325" rx="9" fill="white" stroke="#a86800" stroke-width="2" stroke-dasharray="9 6"/>
 <text x="68" y="744" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">PGE-213</text>
 <text x="68" y="772" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">XHP-4 / 모터축 엔코더</text>
-<text x="70" y="810" font-size="15" style="fill:#576579" font-weight="400" text-anchor="start">5 V 공급: 시트 02</text>
+<text x="70" y="803" font-size="14" style="fill:#576579" font-weight="400" text-anchor="start">NPN OC · 내부 풀업</text>
+<text x="70" y="826" font-size="14" style="fill:#576579" font-weight="400" text-anchor="start">5 V 공급: 시트 02</text>
 <rect x="395" y="710" width="175" height="325" rx="9" fill="white" stroke="#a86800" stroke-width="2" stroke-dasharray="9 6"/>
 <text x="413" y="744" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">CF-0108</text>
-<text x="413" y="772" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">TXS 확인 전 보류</text>
+<text x="413" y="772" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">TXS 마킹 식별</text>
 <path d="M285,850 L395,850" fill="none" stroke="#a86800" stroke-width="3" stroke-dasharray="9 6"/>
 <text x="340.0" y="840" font-size="15" style="fill:#a86800" font-weight="400" text-anchor="middle">5 V</text>
 <path d="M333.0,845 L343.0,850 L333.0,855" fill="none" stroke="#a86800" stroke-width="2"/>
@@ -157,15 +158,15 @@
 <text x="694" y="917" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="start">GPIO5</text>
 <text x="70" y="972" font-size="14" style="fill:#576579" font-weight="400" text-anchor="start">1 VCC / 2 GND</text>
 <text x="70" y="996" font-size="14" style="fill:#576579" font-weight="400" text-anchor="start">커넥터 방향·선 색은 실물 확인</text>
-<text x="410" y="970" font-size="13" style="fill:#576579" font-weight="400" text-anchor="start">전원·OE: 시트 02</text>
-<text x="410" y="994" font-size="13" style="fill:#576579" font-weight="400" text-anchor="start">A/B는 IC 기준 명칭</text>
+<text x="410" y="970" font-size="13" style="fill:#576579" font-weight="400" text-anchor="start">신규 CF · 채널 1/2</text>
+<text x="410" y="994" font-size="13" style="fill:#576579" font-weight="400" text-anchor="start">실크 확인 · 도통 미검증</text>
 <text x="705" y="970" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">UART0 GPIO43/44</text>
 <text x="705" y="997" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">보드 내부 USB-UART 전용</text>
 <text x="705" y="1024" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">외부 장치에 중복 배정 금지</text>
 <text x="50" y="1080" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">IMU: 3Vo, I2 및 상단 SCX / SDX / CS / DO / GND는 이번 배선에서 사용하지 않습니다.</text>
-<text x="50" y="1111" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">CF: IC·LV/HV·OE 회로와 5 V→3.3 V 파형 확인 전 연결 보류. 엔코더 HA/HB를 ESP32에 직접 연결하지 않습니다.</text>
+<text x="50" y="1111" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">CF: YF08E → TXS0108E 마킹 식별. 채널/OE·파형 확인 전 GPIO 연결 보류. 엔코더 HA/HB는 직접 연결하지 않습니다.</text>
 <text x="50" y="1142" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">현재 펌웨어는 IMU 진단용입니다. 이 도면만으로 모터·서보의 부팅/리셋/통신 단절 시 정지가 구현되지는 않습니다.</text>
-<text x="50" y="1204" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">IT ARENA · 2026-11-11 · v1 | 단자 이름 기준 배선도 · 기판 핀의 물리적 순서/위치를 나타내지 않음</text>
+<text x="50" y="1204" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">IT ARENA · 2026-11-12 · v1 근거 갱신 | 단자 이름 기준 배선도 · 기판 핀의 물리적 순서/위치를 나타내지 않음</text>
 </svg>
 </div></section><section><h2>02 · 전원과 모터·서보 결선</h2><p><a href="esp32_gpio_power_v1.svg">SVG 원본</a> · <a href="esp32_gpio_power_v1.png">PNG 이미지</a></p><div class="drawing"><svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1390" viewBox="0 0 1700 1390" role="img" aria-label="ESP32 주변 전원·모터·서보 결선도">
 <style>text{font-family:"Malgun Gothic","Noto Sans KR",sans-serif;fill:#14273d} .small{font-size:17px}</style>
@@ -308,15 +309,15 @@
 <text x="684" y="1237" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">2 GND</text>
 <rect x="1310" y="1090" width="340" height="180" rx="9" fill="white" stroke="#a86800" stroke-width="2" stroke-dasharray="9 6"/>
 <text x="1328" y="1124" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">CF-0108 전원 / OE</text>
-<text x="1328" y="1152" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">TXS0108E·모듈 회로 확인 조건</text>
+<text x="1328" y="1152" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">TXS 마킹 식별 · OE/파형 미검증</text>
 <path d="M1090,1174 L1310,1174" fill="none" stroke="#ba3c36" stroke-width="3" stroke-dasharray="9 6"/>
 <text x="1200.0" y="1164" font-size="15" style="fill:#ba3c36" font-weight="400" text-anchor="middle">ESP32 3V3</text>
 <circle cx="1310" cy="1174" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="1324" y="1181" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="start">VCCA / LV</text>
+<text x="1324" y="1181" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="start">VA / VCCA</text>
 <path d="M1090,1202 L1310,1202" fill="none" stroke="#ba3c36" stroke-width="3" stroke-dasharray="9 6"/>
 <text x="1200.0" y="1192" font-size="15" style="fill:#ba3c36" font-weight="400" text-anchor="middle">J01 CH4 +5 V</text>
 <circle cx="1310" cy="1202" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="1324" y="1209" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="start">VCCB / HV</text>
+<text x="1324" y="1209" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="start">VB / VCCB</text>
 <path d="M1090,1230 L1310,1230" fill="none" stroke="#a86800" stroke-width="3" stroke-dasharray="9 6"/>
 <text x="1200.0" y="1220" font-size="15" style="fill:#a86800" font-weight="400" text-anchor="middle">ESP32 3V3</text>
 <circle cx="1310" cy="1230" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
@@ -327,6 +328,6 @@
 <text x="1324" y="1265" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">GND</text>
 <text x="50" y="1305" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">공통 GND: ESP32·IMU·CF·엔코더·MD20A Signal GND·어댑터 H2 GND와 해당 전원 −. 전력 귀환을 점퍼선에 맡기지 않습니다.</text>
 <text x="50" y="1331" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">* OE는 모듈 회로 확인 후 3.3 V HIGH 유지 안입니다. 5 V 연결 금지. 실물 OE 처리·파형 확인 전 CF 결선은 보류합니다.</text>
-<text x="50" y="1364" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">IT ARENA · 2026-11-11 · v1 | 단자 이름 기준 배선도 · 기판 핀의 물리적 순서/위치를 나타내지 않음</text>
+<text x="50" y="1364" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">IT ARENA · 2026-11-12 · v1 근거 갱신 | 단자 이름 기준 배선도 · 기판 핀의 물리적 순서/위치를 나타내지 않음</text>
 </svg>
-</div></section><section><h2>GPIO 연결표</h2><p>방향은 ESP32 기준입니다. 서보 어댑터는 TX→TX / RX←RX를 따릅니다.</p><table><tr><th>기능</th><th>ESP32</th><th>연결 대상</th><th>상태</th></tr><tr><td>IMU_SCLK</td><td>GPIO12</td><td>Adafruit 4438 하단 SCL</td><td>SPI 실측</td></tr><tr><td>IMU_MOSI</td><td>GPIO11</td><td>Adafruit 4438 하단 SDA</td><td>SPI 실측</td></tr><tr><td>IMU_MISO</td><td>GPIO13</td><td>Adafruit 4438 하단 DO</td><td>SPI 실측</td></tr><tr><td>IMU_CS_N</td><td>GPIO10</td><td>Adafruit 4438 하단 CS</td><td>SPI 실측</td></tr><tr><td>IMU_INT1</td><td>GPIO9</td><td>Adafruit 4438 하단 I1</td><td>사용자 배선, IRQ 동작 미검증</td></tr><tr><td>ENC_A_3V3</td><td>GPIO4</td><td>CF-0108 저전압 채널 1 (TXS0108E 확인 시 A1)</td><td>조건부 설계, 미접속</td></tr><tr><td>ENC_B_3V3</td><td>GPIO5</td><td>CF-0108 저전압 채널 2 (TXS0108E 확인 시 A2)</td><td>조건부 설계, 미접속</td></tr><tr><td>MOTOR_PWM</td><td>GPIO15</td><td>MD20A PWM</td><td>설계, 실물 구동 미검증</td></tr><tr><td>MOTOR_DIR</td><td>GPIO6</td><td>MD20A DIR</td><td>설계, 실물 구동 미검증</td></tr><tr><td>SERVO_TX</td><td>GPIO17</td><td>Bus Servo Adapter (A) H2 TX/TXD</td><td>공식 동일 이름 결선, 실물 미검증</td></tr><tr><td>SERVO_RX</td><td>GPIO18</td><td>Bus Servo Adapter (A) H2 RX/RXD</td><td>공식 동일 이름 결선, 실물 미검증</td></tr></table></section><section><h2>근거</h2><ul><li><a href="../APPROVED_ELECTRICAL_LAYOUT.md">승인 전장 구성</a></li><li><a href="../../sensors/ESP32_LSM6DSOX_HARDWARE_2026_11_11.md">ESP32·IMU 실측</a></li><li><a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/gpio.html">Espressif GPIO 제약</a></li><li><a href="https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts">Adafruit 4438 핀</a></li><li><a href="https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example">Waveshare UART 결선</a></li><li><a href="https://files.waveshare.com/wiki/Bus_Servo_Adapter_A/Bus_Servo_Adapter_A.pdf">Waveshare Adapter A 회로도</a></li><li><a href="https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver">Cytron MD20A 사양</a></li><li><a href="https://docs.google.com/document/d/1eKpt66z-1qLMJkaXrHU1AfKqSVeIpEnM43vECpkYuWA/edit">Cytron 공식 연결 MD20A 데이터시트</a></li><li><a href="https://www.ti.com/lit/ds/symlink/txs0108e.pdf">TI TXS0108E 데이터시트</a></li><li><a href="https://www.motorbank.kr/goods/goods_view.php?goodsNo=1000009561">PGE-213 제조사</a></li></ul></section></main></html>
+</div></section><section><h2>GPIO 연결표</h2><p>방향은 ESP32 기준입니다. 서보 어댑터는 TX→TX / RX←RX를 따릅니다.</p><table><tr><th>기능</th><th>ESP32</th><th>연결 대상</th><th>상태</th></tr><tr><td>IMU_SCLK</td><td>GPIO12</td><td>Adafruit 4438 하단 SCL</td><td>SPI 실측</td></tr><tr><td>IMU_MOSI</td><td>GPIO11</td><td>Adafruit 4438 하단 SDA</td><td>SPI 실측</td></tr><tr><td>IMU_MISO</td><td>GPIO13</td><td>Adafruit 4438 하단 DO</td><td>SPI 실측</td></tr><tr><td>IMU_CS_N</td><td>GPIO10</td><td>Adafruit 4438 하단 CS</td><td>SPI 실측</td></tr><tr><td>IMU_INT1</td><td>GPIO9</td><td>Adafruit 4438 하단 I1</td><td>사용자 배선, IRQ 동작 미검증</td></tr><tr><td>ENC_A_3V3</td><td>GPIO4</td><td>신규 CF-0108 A1 (실크 확인, 도통 미검증)</td><td>신규 CF 실크 확인, 도통/OE·파형 미검증</td></tr><tr><td>ENC_B_3V3</td><td>GPIO5</td><td>신규 CF-0108 A2 (실크 확인, 도통 미검증)</td><td>신규 CF 실크 확인, 도통/OE·파형 미검증</td></tr><tr><td>MOTOR_PWM</td><td>GPIO15</td><td>MD20A PWM</td><td>설계, 실물 구동 미검증</td></tr><tr><td>MOTOR_DIR</td><td>GPIO6</td><td>MD20A DIR</td><td>설계, 실물 구동 미검증</td></tr><tr><td>SERVO_TX</td><td>GPIO17</td><td>Bus Servo Adapter (A) H2 TX/TXD</td><td>공식 동일 이름 결선, 실물 미검증</td></tr><tr><td>SERVO_RX</td><td>GPIO18</td><td>Bus Servo Adapter (A) H2 RX/RXD</td><td>공식 동일 이름 결선, 실물 미검증</td></tr></table></section><section><h2>근거</h2><ul><li><a href="../APPROVED_ELECTRICAL_LAYOUT.md">승인 전장 구성</a></li><li><a href="../../sensors/ESP32_LSM6DSOX_HARDWARE_2026_11_11.md">ESP32·IMU 실측</a></li><li><a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/gpio.html">Espressif GPIO 제약</a></li><li><a href="https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts">Adafruit 4438 핀</a></li><li><a href="https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example">Waveshare UART 결선</a></li><li><a href="https://files.waveshare.com/wiki/Bus_Servo_Adapter_A/Bus_Servo_Adapter_A.pdf">Waveshare Adapter A 회로도</a></li><li><a href="https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver">Cytron MD20A 사양</a></li><li><a href="https://docs.google.com/document/d/1eKpt66z-1qLMJkaXrHU1AfKqSVeIpEnM43vECpkYuWA/edit">Cytron 공식 연결 MD20A 데이터시트</a></li><li><a href="https://www.ti.com/lit/ds/symlink/txs0108e.pdf">TI TXS0108E 데이터시트</a></li><li><a href="https://www.motorbank.kr/goods/goods_view.php?goodsNo=1000009561">PGE-213 제조사</a></li></ul></section></main></html>

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scope": "측방 정지 반환의 이동 근거에 실제 판단 기준 시각 간격 사용. 정지 판정 상한/물성/속도 상한 불변; 양 끝 속도 적분은 근사.",
+  "parent_contract": "config/tests/released_mount_gap_r202_sha256.json",
+  "parent_contract_sha256": "91e1678f4d956b82bdb87adb32a9a0714245f87a53776bfa51d478b442759bce",
+  "before_snapshot": "artifacts/validation/2026-11-12/static_side_elapsed_connected_r209_v1/before_sources.zip",
+  "before_snapshot_sha256": "9c2ffa5fbe6ce28a3cb991a29e0cbb06486419146c582261bbf6b0a0974d84f3",
+  "approved_changes": {
+    "src/arena_autonomy/arena_autonomy/static_side_return.py": {
+      "before": "30a295fd22f9c034d50a4ea66d040252d8db17f1c9de311afdf63e2fe965ca7f",
+      "after": "e678285be8a7883f7696097913c5aa5b3b2d8bccbfa7cb2713d5ce4dee3f1ec3",
+      "reason": "명령 예측 dt 대신 관측 기준 시각 간격 적분; 중복 시각·역행·긴 공백·음수 속도의 정지 물체 근거 초기화"
+    },
+    "src/arena_autonomy/arena_autonomy/pass_release_trial.py": {
+      "before": "4bee514028cb07503e83308ec9c467b785ff5031edbfff3f300c6aa9c1869524",
+      "after": "5ea2d3cbc6bec16d9371c6072f42d158e005789d1a9a8573238d5a4543c61895",
+      "reason": "명령 예측 dt 대신 관측 기준 시각 간격 적분; 중복 시각·역행·긴 공백·음수 속도의 정지 물체 근거 초기화"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {}
+}

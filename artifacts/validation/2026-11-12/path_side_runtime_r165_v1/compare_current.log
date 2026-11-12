@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-12/path_side_runtime_r165_v1/compare_current.py", line 32, in <module>
+    scene = motion_scene(scan, history, data['reference_s'], timing_verified=data['timing_verified'],
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/scene_motion.py", line 87, in motion_scene
+    return measurement_motion_scene(scan,history,now,timing_verified=timing_verified,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/scene_motion.py", line 60, in measurement_motion_scene
+    transforms, config, epoch = _measurement_transforms(
+                                ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/scene_motion.py", line 50, in _measurement_transforms
+    transforms = relative_poses(history, scan.acquired_at_s, now)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/scene_motion.py", line 18, in relative_poses
+    poses, _ = history.poses(np.r_[source_times, reference_time], reference_time)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/lidar_motion.py", line 123, in poses
+    raise MotionUnavailable("motion_stale")
+arena_autonomy.lidar_motion.MotionUnavailable: motion_stale

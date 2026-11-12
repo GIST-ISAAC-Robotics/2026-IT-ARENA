@@ -37,6 +37,25 @@ ros2 run arena_autonomy race_ops --ros-args -p vehicle_id:=car1 -p host:=0.0.0.0
 
 `scripts/race_operator.py`는 **이미 실행 중인 B3 후보**를 사람이 조회·조작하는 도구다. 기본 제어 모드를 바꾸거나 시뮬레이션을 시작하지 않는다. 신호를 대신 켜 주거나 앞차의 움직임으로 출발을 추측하지도 않는다.
 
+## 0.1 개발 시험용 속도 상한
+
+11/12 추가한 선택 기능이다. 기존 G1 실행 인자에 `development_speed_limit_enabled:=true development_speed_limit_mps:=0.3`을 명시한다. `race_control_mode:=b3_candidate`가 필요하고 초기값은0.05 m/s 이상·현재 `max_speed_mps` 이하여야 한다. 기본 경기 모드에서는 기능/화면이 꺼져 있으며 수동 조향 입력을 추가하지 않는다.
+
+웹의 **개발 시험 상한**에서 m/s 값을 입력하고 적용한다. 기존 STOP과 MCU의 비ARM 상태를 확인한 동안만 변경된다. 같은 세션/경기/개입의 최신 상태를 대조하고 실제 명령 수신 시에도 재검사한다. 적용 후에는 기존 출발 준비 또는 재개 START를 사용한다. 상한 적용 자체는 출발·래치 해제·MCU ARM을 수행하지 않는다.
+
+- 상한은 `/drive` 발행 직전에 계획 목표의 크기를 제한한다. 가속 제한·조향·독립 보호·MCU를 유지한다. 브라우저 종료/연결 상실·STOP/같은 프로세스의 경기 초기화로 상한을 자동 해제하지 않는다.
+- 실제 차체 속도/제동 거리의 보증이 아니다. 구동계가 연결되면0.2–0.3 m/s 등 낮은 상한부터 실제 모터축 환산·정지·방향을 확인한다. 시험 시작값은 현장 판단이며 자동 실차 구동을 의미하지 않는다.
+- 주행 중 상한 변경은 이번 범위에 넣지 않았다. 갑작스러운 목표 변경을 피하려면 STOP 뒤 값을 바꾸고 START한다. 상한 요청·적용값·상한으로 제한된 목표는 기존 운영 기록에 남긴다.
+- WASD/짧은 전진·좌우 개발 조작은 **아직 미구현**이다. 자율 모드에 수동 제어 루프/주기 통신을 넣지 않는다.
+
+CLI는 기존 `status`로 현재 번호를 확인한 뒤 다음 형식을 쓴다. `--send` 없이는 전송하지 않는다.
+
+```bash
+python3 scripts/race_operator.py set-speed-limit --session 확인한_SESSION --race-epoch 0 --intervention 1 --speed-limit-mps 0.3
+```
+
+[구현·검사 범위](../../artifacts/validation/2026-11-12/development_speed_limit_r162_v1/README.md). ROS 출력/상태 연결과 Gazebo/실차 저속 주행을 구분한다.
+
 ## 1. 적용 범위와 주의
 
 - 대상 노드는 `local_pursuit`의 `race_control_mode=b3_candidate`, `vision_execution=process`로 명시 선택한 경우다. 공식 출발 검출은 별도 `start_signal_mode=official_4red_candidate` 매개변수이며 두 선택은 서로를 자동 활성화하지 않는다. 현재 launch 기본값은 유지한다.
@@ -110,3 +129,10 @@ python3 scripts/race_operator.py acknowledge --session 확인한_SESSION --race-
 [v3 검증 묶음](../../artifacts/validation/2026-10-24/b3_operator_v3/README.md)은 관련 84회귀(새 도구 32·기존 B3 52)·정상 종료·소스 불변·잔존 0을 확인했다. 순수 검사와 격리 ROS의 실제 `LocalPursuit` 연결로 상태·해제·새 경기·STOP·옛 번호 거절·응답 유실(서버 수신 정확히 1회)을 검사했다. 센서·MCU·Gazebo를 실행하지 않으므로 물리 정지/재출발 증명은 아니다. 현재 출발 주행을 막는 간격·시야 문제도 그대로다.
 
 v1의 실패 2개(단위 시험 전제 누락·ROS 전용 context와 전역 executor 혼용)와 v2의 응답 유실 시험 전송 전 timeout은 각각 보존한다. v2의 정확한 discovery 지연 원인은 미확정이며 v3에서는 기존 도구 기본 대기 5초로만 비교했다. 이 짧은 결과가 장시간 운용·무선 네트워크·실물 인증/비상 정지를 보장하지 않는다.
+
+
+## 개발 전용 짧은 조작 준비 — 11/12
+
+[조작 도구 r169](../../artifacts/validation/2026-11-12/development_jog_r169_v1/README.md)는 자율 제어기를 끈 별도 시험용이다. `python3 scripts/development_jog.py forward --speed .15 --seconds .5 --speed-limit .2`는 미리보기이고 `--send`를 붙여야 발행한다. `left/right`는 전진하며±0.2rad 조향한다. 자동 ARM/CLEAR/RESET·후진·WASD는 없으며 기존 독립 보호층을 거친다. 출발 전 이미 ARM된0목표 MCU가 필요하고 종료 때 명시 STOP/새 ESTOP0목표를 확인한다. 별도 스크립트라 자율 모드의 입력 루프에 추가하지 않았다.
+
+노트북의 실제 ROS/보호층과 가짜 MCU endpoint6사례까지 확인했다. 실제 차량 조작·방향·제동·전체MCU전송은 미검증이다. r162 자율 시험 상한과 수동 도구의 상한은 각 모드에서 명시하며 하나의 화면에서 공유하는 전환은 아직 없다. **현재 사용자 모터 시험 동안 Jetson 접근은 별도 재허용 전까지 금지한다.**

@@ -1,0 +1,100 @@
+F....................................................................... [ 36%]
+........................................................................ [ 73%]
+.....................................................                    [100%]
+=================================== FAILURES ===================================
+_______ test_node_disable_reset_and_cleanup_invalidate_real_worker[off] ________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-1/test_node_disable_reset_and_cl0')
+recheck = 'off'
+
+    @pytest.mark.parametrize('recheck', ['off', 'selected_v1'])
+    def test_node_disable_reset_and_cleanup_invalidate_real_worker(tmp_path, recheck):
+        trace=tmp_path/'node.jsonl'
+        values=dict(use_sim_time='true',wheelbase_m='.135',lidar_compensation='both',motion_scan_timing_verified='true',
+            control_rate_hz='50.0',g1_follow_enabled='true',g1_g2_simulation_trial='true',
+            g1_trace_path=str(trace),g1_decision_execution='process_candidate',
+            g1_current_path_recheck=recheck,
+            g1_boundary_evidence_mode='corner_distance_candidate',g1_occupancy_timing_mode='per_ray_candidate',
+            partial_observation_policy='bounded_local_v4',g1_corridor_fallback_enabled='true',
+            g1_parallel_hold_trial='true',g1_pass_release_trial='true',g1_guard_curve_trial='true',
+            g1_traffic_recovery_trial='true',g1_traffic_path_recovery_trial='true',vision_execution='inline')
+        args=['--ros-args']+[a for k,v in values.items() for a in ('-p',f'{k}:={v}')]
+        rclpy.init(args=args)
+        node=None
+        try:
+>           node=G1G2Node();worker=node.decision_delivery.worker
+
+tests/test_decision_node_boundary.py:31: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/g1_g2_node.py:56: in __init__
+    recheck = self.declare_parameter('g1_current_path_recheck', 'off').value
+/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/node.py:389: in declare_parameter
+    return self.declare_parameters('', [args], ignore_override)[0]
+/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/node.py:528: in declare_parameters
+    self._declare_parameter_common(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.g1_g2_node.G1G2Node object at 0x75b2dff1a630>
+parameter_list = [<rclpy.parameter.Parameter object at 0x75b2c1783e00>]
+descriptors = {'g1_current_path_recheck': rcl_interfaces.msg.ParameterDescriptor(name='g1_current_path_recheck', type=4, description='', additional_constraints='', read_only=False, dynamic_typing=False, floating_point_range=[], integer_range=[])}
+
+    def _declare_parameter_common(
+        self,
+        parameter_list: List[Parameter],
+        descriptors: Optional[Dict[str, ParameterDescriptor]] = None
+    ) -> List[SetParametersResult]:
+        """
+        Declare parameters for the node, and return the result for the declare action.
+    
+        Method for internal usage; applies a setter method for each parameters in the list.
+        By default, it checks if the parameters were declared, raising an exception if at least
+        one of them was not.
+    
+        This method will result in any callback registered with
+        :func:`add_on_set_parameters_callback` and :func:`add_post_set_parameters_callback`
+        to be called once for each parameter.
+    
+        If a callback was registered previously with :func:`add_on_set_parameters_callback`, it
+        will be called prior to setting the parameters for the node, once for each parameter.
+        If the callback doesn't succeed for a given parameter an exception will be raised.
+    
+        If a callback was registered previously with :func:`add_post_set_parameters_callback`,
+        it will be called after setting the parameters successfully for the node,
+        once for each parameter.
+    
+        This method will `not` result in any callbacks registered with
+        :func:`add_pre_set_parameters_callback` to be called.
+    
+        :param parameter_list: List of parameters to set.
+        :param descriptors: Descriptors to set to the given parameters.
+           If descriptors are given, each parameter in the list must have a corresponding one.
+        :return: The result for each set action as a list.
+        :raises: InvalidParameterValueException if the user-defined callback rejects the
+            parameter value.
+        :raises: ParameterNotDeclaredException if undeclared parameters are not allowed in this
+            method and at least one parameter in the list hadn't been declared beforehand.`
+        """
+        if descriptors is not None:
+            assert all(parameter.name in descriptors for parameter in parameter_list)
+    
+        results = []
+        for param in parameter_list:
+            # If undeclared parameters are allowed, parameters with type NOT_SET shall be stored.
+            result = self._set_parameters_atomically_common(
+                [param],
+                descriptors,
+                allow_not_set_type=True
+            )
+            if not result.successful:
+                if result.reason.startswith('Wrong parameter type'):
+>                   raise InvalidParameterTypeException(
+                        param, Parameter.Type(descriptors[param._name].type).name)
+E                   rclpy.exceptions.InvalidParameterTypeException: Trying to set parameter 'g1_current_path_recheck' to 'False' of type 'BOOL', expecting type 'STRING': g1_current_path_recheck
+
+/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/node.py:584: InvalidParameterTypeException
+----------------------------- Captured stderr call -----------------------------
+[INFO] [1794429563.893871227] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=both; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+[INFO] [1794429563.972819831] [local_pursuit]: G1/G2 sensor handoff trial (preparation front_patch_v0); /drive through independent safety
+=========================== short test summary info ============================
+FAILED tests/test_decision_node_boundary.py::test_node_disable_reset_and_cleanup_invalidate_real_worker[off]
+1 failed, 196 passed in 244.04s (0:04:04)

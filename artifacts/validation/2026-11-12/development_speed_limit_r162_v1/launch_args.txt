@@ -1,0 +1,253 @@
+Arguments (pass arguments as '<name>:=<value>'):
+
+    'g1_decision_execution':
+        G1/G2 별도 계산 후보. 기본 동기 실행 유지. Valid choices are: ['inline', 'process_candidate']
+        (default: 'inline')
+
+    'race_control_mode':
+        명시 선택형 경기 운영; 기본 legacy 유지. Valid choices are: ['legacy', 'b3_candidate']
+        (default: 'legacy')
+
+    'development_speed_limit_enabled':
+        개발 시험 전용 속도 상한; B3 정지 중 변경, 경기 기본 OFF. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'development_speed_limit_mps':
+        개발 모드 초기 상한 m/s; configured max_speed_mps 이하
+        (default: '0.3')
+
+    'g1_marker_late_start_trial':
+        B3 준비 뒤 현재 ID45/0과 두 녹색 광원으로 늦은 출발 확인. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_solo_straight_budget_trial':
+        단독 직선 시험: 양쪽 벽을 현재 조향의 속도 거리 근거로만 사용. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_solo_corner_approach_trial':
+        현재 횡단면 거리로 단독 코너 진입 감속을 앞당기는 시험. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_oblique_gap_trial':
+        단독 사선 공백 저속 후보. 계획기와 독립 보호층에서 각각 검사. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_piecewise_wall_trial':
+        선택형 관측 벽 두 직선+원호 경로; 점유·독립 보호 유지. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_standing_wall_reacquire':
+        재개 후보: 기억 없는 낮은 속도에서 선호 벽의 긴 현재 관측으로 재획득; 기본 비활성. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_narrow_occluder_bridge':
+        11/9 신호 지주 대비 후보: 벽 앞 좁은 가림체가 벽 연결만 끊지 않게 함; 점유·보호 유지. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_junction_continuity':
+        11/9 마커 누락 대비 후보: 갈림길에서 직전 승인 경로와 일치하는 현재 관측으로 본선 유지. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_traffic_boundary_refresh_trial':
+        교통 선택형: 가려진 벽 조각 경로와 이미 승인한 벽의 현재 관측 갱신. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_boundary_evidence_mode':
+        One of: ['connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate']
+        (default: 'connected')
+
+    'g1_occupancy_timing_mode':
+        One of: ['oldest', 'per_ray_candidate']
+        (default: 'oldest')
+
+    'g1_corridor_fallback_enabled':
+        명시 선택형 회랑 후보; 기본 비활성, 거리/점별 시각 후보 필요. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_short_boundary_prefix_enabled':
+        저속의 짧은 관측 경로 후보; 기본 비활성, 회랑/기록 필요. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_recent_observation_enabled':
+        선택형 측방 관측 보완; 계획기와 독립 보호 모두 별도 검사. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_m3_execution_trial':
+        M3 제한 시뮬레이션 후보; per-ray 및 판단 기록 필수, 기본 비활성. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_m3_command_fallback':
+        선택형 M3 실제 명령 검사 뒤 다음 후보 비교; 기본 비활성. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_m3_release_to_baseline':
+        선택형 M3 옆차가 앞으로 지나간 뒤 기본 G1 복귀 비교; 기본 비활성. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_m3_small_center_straight':
+        선택형 M3 작은 중앙 보정 대신 직진 먼저 검사(관측 복귀 필요); 기본 비활성. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_m3_straight_surface_commitment':
+        선택형 M3 직진 노면 검사를 확약/정지 구간에 맞춤; 기본 비활성. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_m3_rounded_occupancy':
+        선택형 M3 고정 차체 여유와 원판 불확실성 점유; 기본 비활성. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_m3_straight_with_threat':
+        선택형 M3 가능한 양보 우선, 평행 직진은 hold 전에 검사; 관측/간격 검사 유지. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_m3_defer_center_on_straight':
+        선택형 M3 위협 부재 확인/복귀 중 평행 직진 먼저 검사; 기본 비활성. Valid choices are: ['true', 'false']
+        (default: 'false')
+
+    'g1_trace_path':
+        선택형 판단 단계 JSONL 기록; 기본 꺼짐
+        (default: '')
+
+    'pilot_marker_z':
+        파일럿 전용 ID49 판 중심 높이 덮어쓰기
+        (default: '')
+
+    'g1_parallel_hold_trial':
+        One of: ['true', 'false']
+        (default: 'false')
+
+    'g1_pass_release_trial':
+        One of: ['true', 'false']
+        (default: 'false')
+
+    'g1_guard_curve_trial':
+        One of: ['true', 'false']
+        (default: 'false')
+
+    'g1_traffic_recovery_trial':
+        One of: ['true', 'false']
+        (default: 'false')
+
+    'g1_traffic_path_recovery_trial':
+        One of: ['true', 'false']
+        (default: 'false')
+
+    'partial_observation_policy':
+        One of: ['strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4']
+        (default: 'strict')
+
+    'evaluation_course_markers':
+        One of: ['visible', 'blank_30', 'blank_all', 'blank_20_30']
+        (default: 'visible')
+
+    'headless':
+        no description given
+        (default: 'false')
+
+    'speed_profile':
+        no description given
+        (default: 'local_fast')
+
+    'speed_bump':
+        no description given
+        (default: 'false')
+
+    'chase_camera':
+        no description given
+        (default: 'false')
+
+    'render_backend':
+        no description given
+        (default: 'system')
+
+    'collision_detector':
+        no description given
+        (default: 'configured')
+
+    'sensor_wall_timeout_s':
+        no description given
+        (default: '3.0')
+
+    'batch_static_visuals':
+        no description given
+        (default: 'true')
+
+    'lidar_test_profile':
+        no description given
+        (default: '')
+
+    'motion_test_profile':
+        no description given
+        (default: '')
+
+    'local_sensor_config':
+        no description given
+        (default: '')
+
+    'actuation_mode':
+        no description given
+        (default: 'legacy')
+
+    'timing_probe':
+        no description given
+        (default: 'false')
+
+    'autonomy_control_rate_hz':
+        no description given
+        (default: '50.0')
+
+    'scene_broadcaster':
+        no description given
+        (default: 'true')
+
+    'grid_slot':
+        no description given
+        (default: '0')
+
+    'red_duration_s':
+        no description given
+        (default: '8.0')
+
+    'track':
+        공식 2×5 신호 팀 파생 월드. 기본은 기존 v2026.11.01 파생본. Valid choices are: ['official', 'official_v2026_11_06']
+        (default: 'official')
+
+    'autonomy_mode':
+        lidar=C1+ToF6, stereo=전방 D435i 깊이+측면 ToF4. Valid choices are: ['lidar', 'stereo', 'local_pursuit']
+        (default: 'lidar')
+
+    'depth_camera':
+        auto는 stereo에서 켜고 lidar에서 끕니다. Valid choices are: ['auto', 'true', 'false']
+        (default: 'auto')
+
+    'tof_profile':
+        하부 ToF 영역·주기 프로필
+        (default: 'configured')
+
+    'lidar_rate_hz':
+        라이다 주기 비교용 실행 덮어쓰기
+        (default: 'configured')
+
+    'lidar_acquisition':
+        One of: ['snapshot', 'sequential']
+        (default: 'snapshot')
+
+    'lidar_compensation':
+        One of: ['none', 'deskew', 'shift', 'both']
+        (default: 'none')
+
+    'differential_profile':
+        no description given
+        (default: 'configured')
+
+    'tof_safety':
+        no description given
+        (default: 'true')
+
+    'drive_mode':
+        no description given
+        (default: 'configured')
+
+    'runtime_artifacts':
+        no description given
+        (default: '')

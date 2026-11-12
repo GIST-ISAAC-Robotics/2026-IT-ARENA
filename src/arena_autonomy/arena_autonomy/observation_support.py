@@ -82,8 +82,9 @@ def depth_support(scene, queries, padding, *, cycle=None):
             & (low_radius > 1e-9) & (high_radius > 1e-9)
             & (depth[lo]-low_radius-pad[lo] > 0) & (depth[hi]-high_radius-pad[hi] > 0))
 
-    for start in range(0, len(q), 128):
-        part = q[start:start+128]
+    # 광선/질의는 그대로 두고 작은 NumPy 호출의 반복 비용만 줄인다.
+    for start in range(0, len(q), 512):
+        part = q[start:start+512]
         delta = part-center
         distance = np.linalg.norm(delta, axis=1)
         window = np.isfinite(distance) & (distance > radius+1e-9)

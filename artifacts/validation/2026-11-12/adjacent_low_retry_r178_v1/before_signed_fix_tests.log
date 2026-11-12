@@ -1,0 +1,48 @@
+F......F...                                                              [100%]
+================================== FAILURES ===================================
+__ test_retry_only_calls_existing_full_guard_and_never_reuses_old_permission __
+
+example = (namespace(mode='GUARD', follow_config=FollowConfig(signed_motion_policy='forward_drive', solo_route_only=False, corri...02139396451813913, 0.00030068808318139435, 0.00026856570488164287, ...]}}, 'reference_s': 33.42, 'epoch': 0, ...}, ...)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000029FD565F2F0>
+
+    def test_retry_only_calls_existing_full_guard_and_never_reuses_old_permission(example, monkeypatch):
+        owner, scene, base, old, out, now, scan, history, cfg = example
+        original = old['output'][:2]+[old['output'][2]['normal']]
+>       assert candidate.eligible(owner, scene, base, now['speed_mps'], original)
+E       AssertionError: assert False
+E        +  where False = <function eligible at 0x0000029FD5446980>(namespace(mode='GUARD', follow_config=FollowConfig(signed_motion_policy='forward_drive', solo_route_only=False, corrid...lse, 'vanish': 'unknown'}, 'right': {'seen': True, 'present': False, 'clear': 7, 'passed': True, 'vanish': 'unknown'}}), LocalScene(t_ref_s=33.42, source_first_s=33.3030000000002, source_last_s=33.402803149606505, source_frame_id='laser_fr...3.022212221985683, -3.034778592409566, -3.046088325791061, -3.058654696214944, -3.069964429596439, -3.082530800020322)), [0.6, 0.2848374739111723, {'mode': 'g1_follow', 'source_first_s': 33.3030000000002, 'source_last_s': 33.402803149606505, 'source_epoch': 0, ...}], -0.061225042014404256, [0.0, 0.29457635260735315, {'mode': 'g1_follow', 'source_first_s': 33.3030000000002, 'source_last_s': 33.402803149606505, 'source_epoch': 0, ...}])
+E        +    where <function eligible at 0x0000029FD5446980> = candidate.eligible
+
+artifacts\validation\2026-11-12\adjacent_low_retry_r178_v1\test_candidate.py:41: AssertionError
+______ test_new_low_output_still_requires_current_obstacle_checks[clear] ______
+
+example = (namespace(mode='GUARD', follow_config=FollowConfig(signed_motion_policy='forward_drive', solo_route_only=False, corri...02139396451813913, 0.00030068808318139435, 0.00026856570488164287, ...]}}, 'reference_s': 33.42, 'epoch': 0, ...}, ...)
+kind = 'clear'
+
+    @pytest.mark.parametrize('kind', ['clear','near_front','near_side','missing_front'])
+    def test_new_low_output_still_requires_current_obstacle_checks(example, kind):
+        owner, scene, base, old, out, now, scan, history, cfg = example
+        if kind != 'clear':
+            values = list(scan.ranges_m)
+            angles = scan_angles(scan)+history.config.lidar_yaw_rad
+            if kind == 'near_side':
+                for i,a in enumerate(angles):
+                    a = math.remainder(a, math.tau)
+                    if math.radians(70)<a<math.radians(130):values[i]=.10/math.sin(a)
+            else:
+                i = min(range(len(angles)), key=lambda i:abs(math.remainder(angles[i],math.tau)))
+                values[i] = .05 if kind == 'near_front' else math.inf
+            scan = replace(scan, ranges_m=tuple(values)); now['scan']['measurements']['ranges_m'] = values
+            scene = motion_scene(scan, history, now['reference_s'], timing_verified=True, epoch=now['epoch'],
+                                 rear_half_angle_deg=now['rear_half_angle_deg'])
+        result = current_check.rebase(out, old['input'], now, scene, history, cfg)
+        assert result is not None
+>       if kind == 'clear': assert 0 < result['speed_mps'] <= .15
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       assert 0 < 0.0
+
+artifacts\validation\2026-11-12\adjacent_low_retry_r178_v1\test_candidate.py:84: AssertionError
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-12/adjacent_low_retry_r178_v1/test_candidate.py::test_retry_only_calls_existing_full_guard_and_never_reuses_old_permission
+FAILED artifacts/validation/2026-11-12/adjacent_low_retry_r178_v1/test_candidate.py::test_new_low_output_still_requires_current_obstacle_checks[clear]
+2 failed, 9 passed in 2.36s

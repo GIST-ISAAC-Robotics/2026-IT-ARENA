@@ -9,8 +9,8 @@
 | IMU_MISO | GPIO13 | Adafruit 4438 하단 DO | SPI 실측 |
 | IMU_CS_N | GPIO10 | Adafruit 4438 하단 CS | SPI 실측 |
 | IMU_INT1 | GPIO9 | Adafruit 4438 하단 I1 | 사용자 배선, IRQ 동작 미검증 |
-| ENC_A_3V3 | GPIO4 | CF-0108 저전압 채널 1 (TXS0108E 확인 시 A1) | 조건부 설계, 미접속 |
-| ENC_B_3V3 | GPIO5 | CF-0108 저전압 채널 2 (TXS0108E 확인 시 A2) | 조건부 설계, 미접속 |
+| ENC_A_3V3 | GPIO4 | 신규 CF-0108 A1 (실크 확인, 도통 미검증) | 신규 CF 실크 확인, 도통/OE·파형 미검증 |
+| ENC_B_3V3 | GPIO5 | 신규 CF-0108 A2 (실크 확인, 도통 미검증) | 신규 CF 실크 확인, 도통/OE·파형 미검증 |
 | MOTOR_PWM | GPIO15 | MD20A PWM | 설계, 실물 구동 미검증 |
 | MOTOR_DIR | GPIO6 | MD20A DIR | 설계, 실물 구동 미검증 |
 | SERVO_TX | GPIO17 | Bus Servo Adapter (A) H2 TX/TXD | 공식 동일 이름 결선, 실물 미검증 |

@@ -39,13 +39,20 @@ def _worker(input_buffer, output_buffer, connection, header, capacity):
         from arena_autonomy.follow_trace import freeze, replay_call
         follow, motion = make_controller(header)
         generation = None
+        retained_reference = False
         connection.send({'ready': True})
         while True:
             request = connection.recv()
             if request is None:
                 break
             if generation != request['generation']:
-                follow.reset()
+                retained_reference = False
+                if (follow.config.expiry_route_reference_trial
+                        and request.get('reset_reason') == 'decision_source_expired'):
+                    from arena_autonomy.expiry_reference import reset_after_source_expiry
+                    retained_reference = reset_after_source_expiry(follow)
+                else:
+                    follow.reset()
                 generation = request['generation']
             began = time.monotonic()
             data = json.loads(bytes(np.frombuffer(input_buffer, np.uint8, count=request['size'])))
@@ -53,7 +60,9 @@ def _worker(input_buffer, output_buffer, connection, header, capacity):
             payload = _encode(output, capacity)
             np.frombuffer(output_buffer, np.uint8, count=len(payload))[:] = np.frombuffer(payload, np.uint8)
             connection.send(dict(generation=generation, sequence=request['sequence'], size=len(payload),
-                                 began_wall_s=began, completed_wall_s=time.monotonic()))
+                                 began_wall_s=began, completed_wall_s=time.monotonic(),
+                                 **({'expiry_reference_retained': retained_reference}
+                                    if follow.config.expiry_route_reference_trial else {})))
     except (EOFError, BrokenPipeError):
         pass
     except Exception as error:
@@ -83,6 +92,8 @@ class DecisionProcess:
         self.output_buffer = context.RawArray('B', capacity)
         self.connection, child = context.Pipe()
         self.generation = self.sequence = 0
+        self.expiry_reference_trial = header.get('follow_config', {}).get('expiry_route_reference_trial') is True
+        self.expiry_generation = None
         self.inflight = self.pending = self.fault = None
         self.closed = False
         self.stats = {key: 0 for key in ('offered', 'replaced', 'submitted', 'completed', 'old_generation', 'invalidated')}
@@ -105,10 +116,16 @@ class DecisionProcess:
         self.pending = payload
 
     def invalidate(self):
+        self.expiry_generation = None
         self.generation += 1
         self.pending = None
         self.stats['invalidated'] += 1
         # 진행 중 버퍼를 재사용하지 않는다. 완료는 pump에서 세대 불일치로 폐기한다.
+
+    def mark_source_expiry(self):
+        """폐기한 세대의 다음 첫 요청에만 원인을 전달한다. 이후 STOP은 이를 지운다."""
+        if self.expiry_reference_trial:
+            self.expiry_generation = self.generation
 
     def pump(self):
         if self.closed or self.fault:
@@ -155,6 +172,9 @@ class DecisionProcess:
                 self.sequence += 1
                 request = dict(sequence=self.sequence, generation=self.generation, size=len(payload),
                                reference_s=reference, submitted_wall_s=time.monotonic())
+                if self.expiry_generation == self.generation:
+                    request['reset_reason'] = 'decision_source_expired'
+                    self.expiry_generation = None
                 self.connection.send(request)
                 self.inflight = request
                 self.stats['submitted'] += 1

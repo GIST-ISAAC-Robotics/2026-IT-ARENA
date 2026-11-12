@@ -20,6 +20,7 @@ ARMED_STATES = ('ARMED', 'ACTIVE')
 LATCHED_STATES = ('ESTOP_LATCHED', 'FAULT_LATCHED')
 KNOWN_STATES = ('DISARMED',) + ARMED_STATES + LATCHED_STATES
 COMMAND_KEYS = {
+    'set_speed_limit': {'v', 'request', 'op', 'session', 'race_epoch', 'intervention', 'speed_limit_mps'},
     'new_race': {'v', 'request', 'op', 'session', 'race_epoch'},
     'acknowledge': {'v', 'request', 'op', 'session', 'race_epoch', 'intervention',
                     'hazards_cleared', 'operator_reviewed'},
@@ -140,6 +141,7 @@ class RaceSupervisor:
         self.stop_requests = OrderedDict()
         self.history = history
         self.last_command = None
+        self.development_speed_limit = None
         self.events = deque(maxlen=32)
         self.counts = dict(visual_rejected_epoch=0, visual_accepted=0, commands=0, duplicates=0, rejected=0,
                            rearm_ignored_before_fence=0)
@@ -397,6 +399,41 @@ class RaceSupervisor:
         if request not in self.processed:
             self.processed.append(request)
 
+    def configure_development_speed_limit(self, maximum_mps, initial_mps):
+        """명시 개발 모드에서만 사용. 경기 초기화/재개로 상한을 해제하지 않는다."""
+        if not all(_finite(v) for v in (maximum_mps, initial_mps)) or not .05 <= initial_mps <= maximum_mps:
+            raise ValueError('development speed limit must be within 0.05..configured maximum')
+        self.development_speed_limit = dict(enabled=True, limit_mps=float(initial_mps),
+                                             maximum_mps=float(maximum_mps), change_requires_stop=True)
+
+    def limit_speed(self, speed):
+        if self.development_speed_limit is None:
+            return speed
+        # 상한은 가속/출발 명령이 아니다. 기존 0/역방향 의미와 조향은 바꾸지 않는다.
+        if not math.isfinite(speed):
+            return 0.
+        return math.copysign(min(abs(speed), self.development_speed_limit['limit_mps']), speed)
+
+    def _set_speed_limit(self, request, payload, now_s, wall_s):
+        setting = self.development_speed_limit
+        if setting is None:
+            return self._result(request, 'set_speed_limit', False, 'development_mode_disabled')
+        value = payload['speed_limit_mps']
+        if not _finite(value) or not .05 <= value <= setting['maximum_mps']:
+            return self._result(request, 'set_speed_limit', False, 'speed_limit_out_of_range')
+        if type(payload['intervention']) is not int or payload['intervention'] != self.permission.intervention:
+            return self._result(request, 'set_speed_limit', False, 'intervention_mismatch')
+        if self.permission.latch is None or self.resume is not None:
+            return self._result(request, 'set_speed_limit', False, 'stop_required')
+        if not (_finite(now_s) and _finite(wall_s) and self.mcu.fresh(now_s, wall_s)):
+            return self._result(request, 'set_speed_limit', False, 'mcu_status_missing')
+        if self.mcu.latest['state'] in ARMED_STATES:
+            return self._result(request, 'set_speed_limit', False, 'mcu_stop_required')
+        previous = setting['limit_mps']
+        setting['limit_mps'] = float(value)
+        self._event('development_speed_limit', previous_mps=previous, limit_mps=float(value))
+        return self._result(request, 'set_speed_limit', True, 'speed_limit_set_held', speed_limit_mps=float(value))
+
     def handle_command(self, payload, now_s=None, wall_s=None):
         """명령 결과를 반환한다. STOP은 형식이 불완전하거나 요청 번호가 다른 명령과 겹쳐도 적용한다."""
         self.counts['commands'] += 1
@@ -430,6 +467,8 @@ class RaceSupervisor:
             return self._result(request, op, False, 'session_mismatch')
         if type(payload['race_epoch']) is not int or payload['race_epoch'] != self.permission.race_epoch:
             return self._result(request, op, False, 'race_epoch_mismatch')
+        if op == 'set_speed_limit':
+            return self._set_speed_limit(request, payload, now_s, wall_s)
         if op == 'cancel_start':
             if self.resume is None or payload['start_request'] != self.resume['request']:
                 return self._result(request, op, False, 'no_matching_pending_start')
@@ -476,6 +515,7 @@ class RaceSupervisor:
         decision = self.decide(sensors_ready=True, now_s=now_s, wall_s=wall_s)
         latest, resume = self.mcu.latest, self.resume
         return dict(mode='b3_candidate', session=self.session, race_id=self.race_id,
+            **({'development': dict(self.development_speed_limit)} if self.development_speed_limit is not None else {}),
             race_epoch=self.permission.race_epoch,
             vision_epoch=self.bound_vision_epoch, intervention=self.permission.intervention,
             latch=self.permission.latch, started=self.permission.started, start_source=self.start_source,

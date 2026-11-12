@@ -1,0 +1,38 @@
+...........F............................................................ [ 92%]
+......                                                                   [100%]
+=================================== FAILURES ===================================
+________ test_unselected_structure_policy_does_not_use_declared_shadow _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a8a571d1b50>
+
+    def test_unselected_structure_policy_does_not_use_declared_shadow(monkeypatch):
+>       assert not execute(monkeypatch,mode='off')['accepted']
+
+tests/test_released_mount_gap.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_released_mount_gap.py:18: in execute
+    cfg=replace(owner.config,guard_observation_policy='selected_r181',released_body_gap_trial=True,
+/usr/lib/python3.12/dataclasses.py:1581: in replace
+    return obj.__class__(**changes)
+<string>:63: in __init__
+    ???
+src/arena_autonomy/arena_autonomy/local_follow.py:173: in __post_init__
+    validate_structure(self.known_structure_policy, self.known_structure_sectors_json)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+policy = 'off'
+sectors_json = '[[122.82854179141253, 3.2189087149813984], [-122.82854179141253, 3.2189087149813984], [159.62356478616363, 1.84288573...2356478616363, 1.8428857367730667], [159.62354546444973, 4.109394262120039], [-159.62354546444973, 4.109394262120039]]'
+
+    def validate(policy, sectors_json):
+        """두 노드가 같은 규칙으로 검사한다. off에서는 각도 문자열을 받지 않는다."""
+        if policy not in POLICIES:
+            raise ValueError('unknown known structure policy')
+        if policy == 'off':
+            if sectors_json:
+>               raise ValueError('structure sectors require an explicit structure policy')
+E               ValueError: structure sectors require an explicit structure policy
+
+src/arena_autonomy/arena_autonomy/known_structure.py:54: ValueError
+=========================== short test summary info ============================
+FAILED tests/test_released_mount_gap.py::test_unselected_structure_policy_does_not_use_declared_shadow
+1 failed, 77 passed in 3.22s

@@ -249,6 +249,22 @@ M3_SUCCESSORS += ('config/tests/forward_gap_scope_r109_sha256.json',)
 # 실행 등록의 누적 목록과 선형 변경 사슬을 구분한다. 원 등록 파일을 고치지
 # 않고 r126 보존 바이트와 현재 네 파일의 정확한 차이를 한 단계로 연결한다.
 M3_SUCCESSORS += ('config/tests/review_checkpoint_r157_sha256.json',)
+M3_SUCCESSORS += ('config/tests/development_speed_limit_r162_sha256.json',)
+M3_SUCCESSORS += ('config/tests/side_view_cost_r172_sha256.json',)
+M3_SUCCESSORS += ('config/tests/current_path_recheck_r177_sha256.json',)
+M3_SUCCESSORS += ('config/tests/absent_guard_signed_r179_sha256.json',)
+M3_SUCCESSORS += ('config/tests/fresh_submission_r184_sha256.json',)
+M3_SUCCESSORS += ('config/tests/guard_policy_r190_sha256.json',)
+M3_SUCCESSORS += ('config/tests/guard_policy_node_r191_sha256.json',)
+M3_SUCCESSORS += ('config/tests/execution_trace_metadata_r193_sha256.json',)
+M3_SUCCESSORS += ('config/tests/depth_batch_r197_sha256.json',)
+M3_SUCCESSORS += ('config/tests/released_body_gap_r199_sha256.json',)
+M3_SUCCESSORS += ('config/tests/released_mount_gap_r202_sha256.json',)
+M3_SUCCESSORS += ('config/tests/static_side_elapsed_r209_sha256.json',)
+M3_SUCCESSORS += ('config/tests/expiry_reference_r218_sha256.json',)
+M3_SUCCESSORS += ('config/tests/traffic_solo_gap_r224_sha256.json',)
+M3_SUCCESSORS += ('config/tests/motion_query_batch_r227_sha256.json',)
+M3_SUCCESSORS += ('config/tests/stale_command_observation_r229_sha256.json',)
 
 
 def test_moving_pass_revisions_link_registered_sources_and_before_bytes():

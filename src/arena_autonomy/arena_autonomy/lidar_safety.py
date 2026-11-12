@@ -141,12 +141,16 @@ class LidarSafety(Node):
         observation = None
         recent = None
         partial = None
+        command_stale = None
         try:
             if self.scan is None or self.command is None:
                 raise MotionUnavailable("missing_input")
-            if (not 0 <= now - seconds(self.command.header.stamp) <= .2 or
-                not 0 <= now - seconds(self.scan.header.stamp) <= .3 or
-                max(time.monotonic() - self.scan_wall, time.monotonic() - self.command_wall) > self.wall_timeout):
+            command_age = now - seconds(self.command.header.stamp)
+            if (command_age < 0 or not 0 <= now - seconds(self.scan.header.stamp) <= .3 or
+                time.monotonic() - self.scan_wall > self.wall_timeout):
+                raise MotionUnavailable("stale_input")
+            command_stale = command_age > .2 or time.monotonic() - self.command_wall > self.wall_timeout
+            if command_stale and getattr(self, 'partial_policy', None) is None:
                 raise MotionUnavailable("stale_input")
             speed, steering = self.command.drive.speed, self.command.drive.steering_angle
             if not all(math.isfinite(v) for v in (speed, steering)) or speed < 0:
@@ -179,6 +183,11 @@ class LidarSafety(Node):
                     raise MotionUnavailable('invalid_or_reverse_feedback')
                 partial = {**partial, 'measured_speed_mps': measured,
                     'forward_planning_speed_mps': abs(measured), 'signed_history_preserved': True}
+                # 명령 만료 중에도 유효한 센서의 관측 기억은 갱신한다. 이전 유한
+                # 명령은 위 관측 외곽 검사에만 쓰며 아래 차단 전에 구동 출력은 없다.
+                # 센서/운동 자체의 공백과 이미 보인 장애물의 래치는 그대로 유지한다.
+                if command_stale:
+                    raise MotionUnavailable('stale_input')
                 if not partial['allowed']:
                     raise MotionUnavailable(partial['reason'])
                 if partial['speed_cap_mps'] is not None:
@@ -224,6 +233,7 @@ class LidarSafety(Node):
             self.previous_safe_steering = output.drive.steering_angle
         self.publisher.publish(output)
         self.status.publish(String(data=json.dumps({"reason": reason, "safe_speed_mps": output.drive.speed,
+                                                    "reference_s": now, "command_stale": command_stale,
                                                     "swept_clearance_m": clearance, "sensor": "C1",
                                                     "no_return_policy": "unknown",
                                                     "front_observation": vars(observation) if observation else None,

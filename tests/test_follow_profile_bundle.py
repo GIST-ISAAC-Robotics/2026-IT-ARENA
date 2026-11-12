@@ -16,14 +16,18 @@ def test_minimal_bundle_has_all_static_internal_dependencies_and_no_ros_node():
         imports = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module]
         for imported in imports:
             if imported.startswith(('arena_autonomy.', 'arena_vehicle_interface.')):
-                package, module = imported.split('.')
-                assert f'src/{package}/{package}/{module}.py' in paths
+                parts = imported.split('.')
+                stem = f'src/{parts[0]}/'+'/'.join(parts)
+                assert {stem+'.py', stem+'/__init__.py'} & paths, (name, imported)
+                for depth in range(1, len(parts)):
+                    assert f'src/{parts[0]}/'+('/'.join(parts[:depth]))+'/__init__.py' in paths
         assert not any(imported.startswith(('rclpy', 'rosbag2_py')) for imported in imports)
     # 고정 목록이 빠뜨렸던 최근 보조 모듈(r38-r41)과 계측 도구 자신의 의존성.
     for module in ('piecewise_wall', 'moving_pass', 'masked_motion_speed', 'short_entry_transition',
                    'adaptive_corridor_offset', 'corner_boundary_support'):
         assert f'src/arena_autonomy/arena_autonomy/{module}.py' in paths
     assert 'scripts/python_dependency_closure.py' in tools
+    assert 'src/arena_autonomy/arena_autonomy/current_path_recheck/_gaps.py' in paths
     assert set(bundle.third_party(closure)) <= set(bundle.FOLLOW_PROFILE_THIRD_PARTY)
     assert all((bundle.ROOT/name).is_file() for name in tools)
 

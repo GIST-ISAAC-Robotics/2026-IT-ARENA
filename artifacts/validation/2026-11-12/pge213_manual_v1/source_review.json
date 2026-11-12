@@ -1,0 +1,144 @@
+{
+  "date": "2026-11-12",
+  "product_pages": [
+    {
+      "url": "https://www.motorbank.kr/goods/goods_view.php?goodsNo=1000009561",
+      "read": "product_name_body_detail_image",
+      "title_label": "13CPR",
+      "body_and_drawing_label": "7PPR",
+      "ppr_verified_by_hardware": false
+    },
+    {
+      "url": "https://www.motorbank.kr/goods/goods_view.php?goodsNo=1000034088",
+      "read": "rear_shaft_option_and_drawing"
+    }
+  ],
+  "images": [
+    {
+      "file": "pge213-product-original.jpg",
+      "url": "https://cdn-saas-web-219-166.cdn-nhncommerce.com/motorbank36_godomall_com/data/editor/goods/261002/1bfa4923828f928523b05cd446e21a61_121847.jpg",
+      "bytes": 826986,
+      "sha256": "89b3c6131972e622be877c2c39d8a606942f7b4941ffff8311a4b4ab9a3e78c5"
+    },
+    {
+      "file": "mb4266-product-original.jpg",
+      "url": "https://cdn-saas-web-219-166.cdn-nhncommerce.com/motorbank36_godomall_com/data/editor/goods/260826/9c5394b1b2a8e1cd6bf0b974ece6df40_131018.jpg",
+      "bytes": 854121,
+      "sha256": "6cef7f16c15f29227f5a34467ced7e2d8ba12bbf5bb13e17795c8c48723a470d"
+    }
+  ],
+  "seller_reply": {
+    "source": "user_supplied_screenshot",
+    "sha256": "319f8e1b33b18d258335c9752c38d5dcb037a2e0ee935774475a33e42f777354",
+    "text_visually_reviewed": true,
+    "npn_open_collector_confirmed_by_seller": true,
+    "internal_pullup_confirmed_by_seller": true,
+    "pullup_value_confirmed_by_reply": false
+  },
+  "assembly": {
+    "seller_assembled_motor_and_encoder_user_confirmed": true,
+    "magnet_coupling_directly_inspected": false
+  },
+  "power_and_pinout_from_image": {
+    "vcc_min_v": 4.5,
+    "vcc_max_v": 24,
+    "max_input_ma": 20,
+    "connector": "XHP-4 P=2.5-4P",
+    "pin1": "VCC",
+    "pin2": "GND",
+    "pin3": "HA",
+    "pin4": "HB",
+    "pin5": "motor_minus",
+    "pin6": "motor_plus"
+  },
+  "output_schematic_labels": {
+    "pullup_ohm": 4700,
+    "series_ohm": 470,
+    "shunt_capacitance_nf": 10,
+    "other_labels": [
+      "10ohm",
+      "100nF",
+      "SMAJ26A"
+    ],
+    "individual_board_component_population_verified": false
+  },
+  "cf_primary_source": "https://www.ti.com/lit/ds/symlink/txs0108e.pdf",
+  "conclusion": "Original board VB-to-ground 0 V and older replacement 0.01 V (B1/B2 both 0); expected supply not established across board rails. Common power/ground path remains first check; neither board has been proven faulty or functional.",
+  "no_additional_hardware_manipulation_during_review": true,
+  "later_user_meter_observation": {
+    "motor_ch1_disconnected": true,
+    "all_other_connections_restored_user_reported": true,
+    "shaft_moving": true,
+    "b1_display_range_v": [
+      -0.15,
+      0
+    ],
+    "b2_display_range_v": [
+      -0.1,
+      0
+    ],
+    "not_continuous_waveform_measurement": true,
+    "negative_display_cause": "undetermined",
+    "same_ground_vb_recheck": {
+      "volts": 4.72,
+      "mode_requested": "DC",
+      "shaft_stopped_requested": true,
+      "reference": "CF_GND"
+    }
+  },
+  "next_isolation": {
+    "request": "Disconnect A1 A2 B1 B2 signal wires while both MCU and sensor supplies are off, then repower rails and measure CF board B1 B2 against CF GND. Keep motor CH1 disconnected.",
+    "result": {
+      "source": "user_reply_to_explicit_four_signal_disconnect_instructions",
+      "b1_v": 0,
+      "b2_v": 0,
+      "rails_and_unused_b6_recheck": {
+        "va_v": 3.19,
+        "vb_v": 0,
+        "oe_v": 3.19,
+        "b6_v": 0
+      },
+      "normal_power_cf_failure_established": false
+    },
+    "next_request": "Wait for technician to complete the planned common-ground branch with supplies off, then remeasure VB/B1/B2 before reconnecting signal wires.",
+    "after_reseat_request": {
+      "vb_v": 0,
+      "b1_v": 0,
+      "b2_v": 0,
+      "reference": "CF_GND",
+      "user_ground_question": "CF GND connected to ESP32 GND?"
+    },
+    "ground_branch_completion_confirmed": false
+  },
+  "ground_net_design": [
+    "CH4_negative",
+    "encoder_GND",
+    "CF_GND",
+    "ESP32_GND"
+  ],
+  "reported_power_topology": {
+    "CH4_positive": [
+      "encoder_VCC",
+      "CF_VB"
+    ],
+    "CH4_negative_direct": [
+      "encoder_GND"
+    ],
+    "CF_GND_direct": [
+      "ESP32_GND"
+    ],
+    "CH4_negative_to_ESP32_ground_indirect_connection_verified": false
+  },
+  "older_board_swap_user_report": {
+    "performed": true,
+    "board_description": "older_level_shifter_board",
+    "exact_model_or_prior_photo_match_verified": false,
+    "vb_v": 0.01,
+    "vb_display_stable": true,
+    "b1_v": 0,
+    "b2_v": 0,
+    "reference_expected": "board_GND",
+    "ground_branch_added": false,
+    "reason_ground_work_pending": "waiting_for_technician_user_does_not_solder"
+  }
+}

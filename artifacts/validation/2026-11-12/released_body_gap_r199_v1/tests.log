@@ -1,0 +1,151 @@
+...........FFFFFFFF..................................................... [ 39%]
+........................................................................ [ 78%]
+............F..........................                                  [100%]
+=================================== FAILURES ===================================
+___________ test_proposal_requires_current_path_and_no_new_side[off] ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70613140deb0>
+fault = 'off'
+
+    @pytest.mark.parametrize('fault',['off','mode','side','memory','old_source','front','speed'])
+    def test_proposal_requires_current_path_and_no_new_side(monkeypatch,fault):
+>       cfg=config();owner=ps.PassReleaseSelector(cfg);owner.mode='RELEASED'
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+tests/test_released_body_gap.py:56: AttributeError
+__________ test_proposal_requires_current_path_and_no_new_side[mode] ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70613140e540>
+fault = 'mode'
+
+    @pytest.mark.parametrize('fault',['off','mode','side','memory','old_source','front','speed'])
+    def test_proposal_requires_current_path_and_no_new_side(monkeypatch,fault):
+>       cfg=config();owner=ps.PassReleaseSelector(cfg);owner.mode='RELEASED'
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+tests/test_released_body_gap.py:56: AttributeError
+__________ test_proposal_requires_current_path_and_no_new_side[side] ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70613140e3c0>
+fault = 'side'
+
+    @pytest.mark.parametrize('fault',['off','mode','side','memory','old_source','front','speed'])
+    def test_proposal_requires_current_path_and_no_new_side(monkeypatch,fault):
+>       cfg=config();owner=ps.PassReleaseSelector(cfg);owner.mode='RELEASED'
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+tests/test_released_body_gap.py:56: AttributeError
+_________ test_proposal_requires_current_path_and_no_new_side[memory] __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70613140f230>
+fault = 'memory'
+
+    @pytest.mark.parametrize('fault',['off','mode','side','memory','old_source','front','speed'])
+    def test_proposal_requires_current_path_and_no_new_side(monkeypatch,fault):
+>       cfg=config();owner=ps.PassReleaseSelector(cfg);owner.mode='RELEASED'
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+tests/test_released_body_gap.py:56: AttributeError
+_______ test_proposal_requires_current_path_and_no_new_side[old_source] ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7061314128a0>
+fault = 'old_source'
+
+    @pytest.mark.parametrize('fault',['off','mode','side','memory','old_source','front','speed'])
+    def test_proposal_requires_current_path_and_no_new_side(monkeypatch,fault):
+>       cfg=config();owner=ps.PassReleaseSelector(cfg);owner.mode='RELEASED'
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+tests/test_released_body_gap.py:56: AttributeError
+__________ test_proposal_requires_current_path_and_no_new_side[front] __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x706131412ae0>
+fault = 'front'
+
+    @pytest.mark.parametrize('fault',['off','mode','side','memory','old_source','front','speed'])
+    def test_proposal_requires_current_path_and_no_new_side(monkeypatch,fault):
+>       cfg=config();owner=ps.PassReleaseSelector(cfg);owner.mode='RELEASED'
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+tests/test_released_body_gap.py:56: AttributeError
+__________ test_proposal_requires_current_path_and_no_new_side[speed] __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7061314134a0>
+fault = 'speed'
+
+    @pytest.mark.parametrize('fault',['off','mode','side','memory','old_source','front','speed'])
+    def test_proposal_requires_current_path_and_no_new_side(monkeypatch,fault):
+>       cfg=config();owner=ps.PassReleaseSelector(cfg);owner.mode='RELEASED'
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+tests/test_released_body_gap.py:56: AttributeError
+_________ test_proposal_preserves_side_state_and_original_command_cap __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x706131413ef0>
+
+    def test_proposal_preserves_side_state_and_original_command_cap(monkeypatch):
+>       owner=ps.PassReleaseSelector(config());owner.mode='RELEASED'
+E       AttributeError: property 'mode' of 'PassReleaseSelector' object has no setter
+
+tests/test_released_body_gap.py:74: AttributeError
+________ test_successor_preserves_failed_run_code_and_previous_contract ________
+
+    def test_successor_preserves_failed_run_code_and_previous_contract():
+        import hashlib
+        import json
+        from pathlib import Path
+        import zipfile
+        from test_source_provenance_r0_plus_b3 import m3_revision_digest
+        root = Path(__file__).resolve().parents[1]
+        name = 'config/tests/traffic_recovery_release_fringe_r1_sha256.json'
+        contract = json.loads((root/name).read_text(encoding='utf-8'))
+        sha = lambda data: hashlib.sha256(data).hexdigest()
+        assert contract['parent_contract'] == 'config/tests/traffic_recovery_trial_r0_sha256.json'
+        parent = (root/contract['parent_contract']).read_bytes()
+        assert sha(parent) == contract['parent_contract_sha256']
+        assert not contract['approved_evaluation_scripts'] and not contract['new_dependencies']
+        snapshot = root/contract['before_snapshot']
+        assert sha(snapshot.read_bytes()) == contract['before_snapshot_sha256']
+        assert set(contract['approved_changes']) == {'src/arena_autonomy/arena_autonomy/pass_release_trial.py'}
+        with zipfile.ZipFile(snapshot) as archive:
+            for path, row in contract['approved_changes'].items():
+                assert sha(archive.read(path)) == row['before'] == json.loads(parent)['approved_changes'][path]['after']
+>               assert row['before'] != row['after'] == m3_revision_digest(path, newer_than=name)
+
+tests/test_traffic_release_fringe.py:104: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+path = 'src/arena_autonomy/arena_autonomy/pass_release_trial.py'
+newer_than = 'config/tests/traffic_recovery_release_fringe_r1_sha256.json'
+
+    def m3_revision_digest(path, newer_than=None):
+        """현재 바이트를 M3 후속 계약 사슬(최신→과거)로 되돌린 해시. 각 단계의 실행 사본 바이트도 대조한다.
+    
+        newer_than를 주면 그 계약보다 나중 계약만 되돌린다(그 계약의 after 시점).
+        """
+        digest = sha((ROOT/path).read_bytes())
+        for name in reversed(M3_SUCCESSORS):
+            if name == newer_than:
+                break
+            successor = load(name)
+            rows = {**successor['approved_changes'], **successor['approved_evaluation_scripts']}
+            if path not in rows:
+                continue
+            row = rows[path]
+>           assert digest == row['after']
+E           AssertionError: assert '4bee514028cb...c6aa9c1869524' == '1ae51faff34b...b38871ea09b59'
+E             - 1ae51faff34b32705bc1ba0c639252c0d48b74af07fcbe7eec8b38871ea09b59
+E             + 4bee514028cb07503e83308ec9c467b785ff5031edbfff3f300c6aa9c1869524
+
+tests/test_source_provenance_r0_plus_b3.py:319: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_released_body_gap.py::test_proposal_requires_current_path_and_no_new_side[off]
+FAILED tests/test_released_body_gap.py::test_proposal_requires_current_path_and_no_new_side[mode]
+FAILED tests/test_released_body_gap.py::test_proposal_requires_current_path_and_no_new_side[side]
+FAILED tests/test_released_body_gap.py::test_proposal_requires_current_path_and_no_new_side[memory]
+FAILED tests/test_released_body_gap.py::test_proposal_requires_current_path_and_no_new_side[old_source]
+FAILED tests/test_released_body_gap.py::test_proposal_requires_current_path_and_no_new_side[front]
+FAILED tests/test_released_body_gap.py::test_proposal_requires_current_path_and_no_new_side[speed]
+FAILED tests/test_released_body_gap.py::test_proposal_preserves_side_state_and_original_command_cap
+FAILED tests/test_traffic_release_fringe.py::test_successor_preserves_failed_run_code_and_previous_contract
+9 failed, 174 passed in 3.96s

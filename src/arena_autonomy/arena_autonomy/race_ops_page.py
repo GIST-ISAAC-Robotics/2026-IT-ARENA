@@ -1,4 +1,4 @@
-"""운영 화면 한 장. 속도·조향 입력 없이 상태와 네 가지 명령만 다룬다."""
+"""운영 화면. 개발 모드의 정지 중 속도 상한 외 원격 주행 입력은 없다."""
 PAGE = r"""<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IT ARENA 운영</title>
@@ -27,11 +27,12 @@ input{font:inherit;background:#0e1114;color:#eee;border:1px solid #444;padding:3
 <div id="auth">차량 <input id="vehicle" placeholder="차량 이름"> 토큰 <input id="token" type="password" placeholder="토큰"> <button id="login">연결</button> <span id="authmsg" class="muted"></span></div>
 <header><span id="badge">연결 전</span><b id="vid">-</b><span id="conn">-</span><span id="race" class="muted"></span></header>
 <main>
-<section><h2>조작 <span class="muted">(속도·조향 입력 없음, Wi-Fi STOP은 HW 정지 대체 아님)</span></h2>
+<section><h2>조작 <span class="muted">(Wi-Fi STOP은 HW 정지 대체 아님)</span></h2>
 <button id="stop">STOP</button>
 <div class="row"><button id="reset">복구 RESET</button><button id="start">재개 START</button></div>
 <p class="muted" style="margin:4px 0">잠깐 정지했다면 START로 재개합니다. 차량 재배치·상태 초기화가 필요하면 먼저 RESET을 사용합니다. RESET만으로 출발하지 않습니다.</p>
 <div id="why"></div>
+<div id="speedlimitbox" hidden><p>개발 시험 상한: <b id="speedlimitcurrent">-</b> m/s</p><input id="speedlimit" type="number" min="0.05" step="0.05" value="0.3" aria-label="시험 속도 상한 m/s"> <button id="setspeedlimit">상한 적용</button><p class="muted">STOP과 MCU 정지 상태에서 변경합니다. 적용만으로 출발하지 않으며 실제 차체 속도를 보장하지 않습니다.</p></div>
 <div class="row" style="margin-top:4px"><button id="prepare">최초 출발 준비(해제·ARM)</button></div>
 <div id="restorebox" hidden><p class="muted" id="restoretext"></p><label><input type="checkbox" id="restoreok" style="width:auto"> 이 기록이 현재 경기임을 확인합니다</label> <button id="restore">같은 경기 복구</button></div>
 <details><summary>새 경기(출발 사실 삭제)</summary><label><input type="checkbox" id="newok" style="width:auto"> 기존 출발 사실을 지우고 새 신호를 기다립니다</label> <button id="newrace">새 경기 시작</button></details>
@@ -53,7 +54,7 @@ const fmt=(v,d=2)=>v===null||v===undefined?'-':typeof v==='number'?v.toFixed(d):
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const headers=()=>({'X-Arena-Token':auth.token,'X-Arena-Vehicle':auth.vehicle,'Content-Type':'application/json'});
 const STAGE={queued:'접수',sent:'전송, 응답 대기',policy_accepted:'정책 수락',policy_rejected:'정책 거절',rejected_by_adapter:'어댑터 거절',unknown_after_send:'결과 미확인',preparing:'준비 중',permitted:'주행 허가',cancelled:'취소'};
-const OPS={stop:'STOP',recovery_reset:'복구 RESET',resume_start:'재개 START',prepare_start:'출발 준비',new_race:'새 경기',restore_race:'같은 경기 복구'};
+const OPS={stop:'STOP',recovery_reset:'복구 RESET',resume_start:'재개 START',prepare_start:'출발 준비',new_race:'새 경기',restore_race:'같은 경기 복구',set_speed_limit:'시험 속도 상한'};
 function rows(id,list){$(id).innerHTML=list.map(r=>'<tr>'+r.map(c=>c).join('')+'</tr>').join('')}
 function setStale(text){$('conn').textContent=text;$('conn').className='stale'}
 function render(s){
@@ -70,6 +71,8 @@ function render(s){
  const c=s.controls,unknown=s.commands.some(x=>x.stage==='queued'||x.stage==='sent'),off=k=>!c[k].allowed||unknown||busy||auth.readonly;
  $('reset').disabled=off('recovery_reset');$('start').disabled=off('resume_start');$('prepare').disabled=off('prepare_start');
  $('newrace').disabled=off('new_race')||!$('newok').checked;$('stop').disabled=auth.readonly;
+ const dev=s.development;$('speedlimitbox').hidden=!(dev&&dev.enabled);
+ if(dev&&dev.enabled){$('speedlimitcurrent').textContent=fmt(dev.limit_mps);$('speedlimit').max=dev.maximum_mps;$('setspeedlimit').disabled=!c.set_speed_limit?.allowed||unknown||busy||auth.readonly}
  $('why').textContent=auth.readonly?'읽기 전용 접속입니다.':s.connection.status_stale?'상태가 오래되어 STOP 외 명령을 막았습니다.':s.race.resume?'START 처리 중: 아직 주행 허가가 아닙니다.':(!c.resume_start.allowed&&s.race.latch?'START 불가: '+c.resume_start.reason:'');
  const o=s.restore_offer;$('restorebox').hidden=!o;
  if(o){$('restoretext').textContent='저장된 경기 '+o.race_id.slice(0,8)+' · 기준 벽 '+o.side+' · 저장 '+new Date(o.saved_wall_time*1000).toLocaleTimeString()+'. 출발 신호를 새로 본 것이 아닙니다.';$('restore').disabled=off('restore_race')||!$('restoreok').checked}
@@ -80,17 +83,19 @@ async function poll(){
   if(r.status===401||r.status===409){setStale('인증/차량 불일치 '+r.status);return}
   const s=await r.json();auth.readonly=r.headers.get('X-Arena-Role')==='view';lastOk=performance.now();render(s)
  }catch(e){setStale('연결 끊김: 상태·명령 결과 미확인 '+fmt((performance.now()-lastOk)/1000,1)+'s');
-  ['reset','start','prepare','newrace','restore'].forEach(k=>$(k).disabled=true)}
+  ['reset','start','prepare','newrace','restore','setspeedlimit'].forEach(k=>$(k).disabled=true)}
 }
-async function send(op,confirm){
+async function send(op,confirm,value){
  const stale=!last||performance.now()-lastOk>1500;
  if(op!=='stop'&&stale)return;
  busy=op!=='stop';const body={op,request:rid(),client,view:last?last.binding:null,confirm:confirm||null};
+ if(op==='set_speed_limit')body.value=value;
  try{const r=await fetch('/api/command',{method:'POST',headers:headers(),body:JSON.stringify(body)});if(!r.ok)$('why').textContent='요청 거절 '+r.status}
  catch(e){$('why').textContent='응답 없음: 결과 미확인. 상태를 다시 확인하십시오. 자동 재전송하지 않습니다.'}
  busy=false;poll()
 }
 $('stop').onclick=()=>send('stop');$('reset').onclick=()=>send('recovery_reset');$('start').onclick=()=>send('resume_start');$('prepare').onclick=()=>send('prepare_start');
+$('setspeedlimit').onclick=()=>{const v=Number($('speedlimit').value);if(Number.isFinite(v)&&v>=.05&&v<=last.development.maximum_mps)send('set_speed_limit',null,v);else $('why').textContent='표시된 범위 안의 m/s 값을 입력하십시오.'};
 $('newrace').onclick=()=>{send('new_race','NEW_RACE');$('newok').checked=false};$('restore').onclick=()=>{send('restore_race','SAME_RACE');$('restoreok').checked=false};
 function exportLink(id,kind){$(id).onclick=async e=>{e.preventDefault();const r=await fetch('/api/export.'+kind+'?seconds=120',{headers:headers()});const u=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=u;a.download='arena_events.'+kind;a.click();URL.revokeObjectURL(u)}}
 exportLink('csv','csv');exportLink('html','html');

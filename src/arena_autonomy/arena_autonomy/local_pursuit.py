@@ -85,6 +85,8 @@ class LocalPursuit(WallFollow):
         if pass_release and not parallel_hold:
             raise ValueError('pass release requires explicit parallel hold trial')
         guard_curve = bool(self.declare_parameter('g1_guard_curve_trial', False).value)
+        guard_policy = str(self.declare_parameter('g1_guard_observation_policy', 'original_v1').value)
+        released_body_gap = bool(self.declare_parameter('g1_released_body_gap_trial', False).value)
         traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
         traffic_path_recovery = bool(self.declare_parameter('g1_traffic_path_recovery_trial', False).value)
         if traffic_path_recovery and (not traffic_recovery or not corridor_fallback):
@@ -138,6 +140,8 @@ class LocalPursuit(WallFollow):
             parallel_hold_trial=parallel_hold,
             pass_release_trial=pass_release,
             guard_curve_trial=guard_curve,
+            guard_observation_policy=guard_policy,
+            released_body_gap_trial=released_body_gap,
             traffic_recovery_trial=traffic_recovery,
             traffic_path_recovery_trial=traffic_path_recovery,
             rear_lane_keep_trial=rear_lane_keep,
@@ -159,6 +163,7 @@ class LocalPursuit(WallFollow):
             standing_wall_reacquire=bool(self.declare_parameter('g1_standing_wall_reacquire',False).value),
             narrow_occluder_bridge=bool(self.declare_parameter('g1_narrow_occluder_bridge',False).value),
             junction_continuity=bool(self.declare_parameter('g1_junction_continuity',False).value),
+            expiry_route_reference_trial=bool(self.declare_parameter('g1_expiry_route_reference_trial',False).value),
             traffic_boundary_refresh_trial=bool(self.declare_parameter('g1_traffic_boundary_refresh_trial',False).value),
             lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),
             wall_offset_m=float(self.settings['target_wall_distance_m']),
@@ -182,6 +187,10 @@ class LocalPursuit(WallFollow):
         self.race_control_mode = str(self.declare_parameter('race_control_mode', 'legacy').value)
         if self.race_control_mode not in ('legacy', 'b3_candidate'):
             raise ValueError('unsupported race_control_mode')
+        development = bool(self.declare_parameter('development_speed_limit_enabled', False).value)
+        initial_limit = float(self.declare_parameter('development_speed_limit_mps', .3).value)
+        if development and self.race_control_mode != 'b3_candidate':
+            raise ValueError('development speed limit requires B3 operator state')
         if bool(self.declare_parameter('g1_marker_late_start_trial', False).value):
             if self.start_signal_mode != 'official_4red_local_candidate':
                 raise ValueError('marker late start trial requires the official local signal')
@@ -203,6 +212,8 @@ class LocalPursuit(WallFollow):
             self.race = RaceSupervisor(self.vision_pipeline, image_max_age_s=self.settings['image_timeout_s'],
                 mcu=McuObserver(wall_timeout_s=self.settings['sensor_wall_timeout_s']), now_s=self.now_s(),
                 resume_wall_timeout_s=3*self.settings['sensor_wall_timeout_s'])
+            if development:
+                self.race.configure_development_speed_limit(float(self.settings['max_speed_mps']), initial_limit)
             self.race_result_publisher = self.create_publisher(String, '/race/command_result', 10)
             self.create_subscription(String, '/actuation/status', self.on_mcu_status, 10)
             self.create_subscription(String, '/race/command', self.on_race_command, 10)

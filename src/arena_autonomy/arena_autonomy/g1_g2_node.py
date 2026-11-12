@@ -2,6 +2,7 @@
 from pathlib import Path
 from dataclasses import asdict, replace
 import math
+import time
 
 from arena_autonomy.local_pursuit import LocalPursuit
 from arena_autonomy.bypass_entry_follow import BypassExecutionConfig, CORRIDOR_POLICIES
@@ -47,22 +48,58 @@ def status_detail(detail):
 class G1G2Node(LocalPursuit):
     def __init__(self):
         self.decision_delivery = None
+        self.current_path_recheck = None
         super().__init__()
         execution = self.declare_parameter('g1_decision_execution', 'inline').value
         if execution not in ('inline', 'process_candidate'):
             raise ValueError('registered decision execution required')
+        submission = self.declare_parameter('g1_submission_policy', 'original_v1').value
+        if submission not in ('original_v1', 'fresh_native_v1'):
+            raise ValueError('registered decision submission policy required')
+        if submission == 'fresh_native_v1' and (execution != 'process_candidate'
+                or self.get_parameter('lidar_input_representation').value != 'native_simulation_v1'):
+            raise ValueError('fresh submission requires process_candidate and native_simulation_v1')
+        retain_reference = self.follow.config.expiry_route_reference_trial
+        if retain_reference and (execution != 'process_candidate' or submission != 'fresh_native_v1'):
+            raise ValueError('expiry reference requires process_candidate and fresh_native_v1')
+        recheck = self.declare_parameter('g1_current_path_recheck', 'off').value
+        if recheck not in ('off', 'selected_v1') or (recheck != 'off' and execution != 'process_candidate'):
+            raise ValueError('current path recheck requires registered process_candidate selection')
+        if recheck == 'selected_v1':
+            from arena_autonomy import current_path_recheck
+            self.current_path_recheck = current_path_recheck
+            if self.follow.config.guard_observation_policy == 'selected_r181':
+                from arena_autonomy import guard_observation_policy
+                self.current_path_recheck = guard_observation_policy
         if execution == 'process_candidate':
             if self.get_parameter('use_sim_time').value is not True or self.settings['control_rate_hz'] != 50.:
                 raise ValueError('process candidate requires simulation and a 50Hz receiving parent')
             from arena_autonomy.decision_process import DecisionProcess
             from arena_autonomy.decision_delivery import DecisionDelivery
+            delivery_type = DecisionDelivery
+            if submission == 'fresh_native_v1':
+                from arena_autonomy.fresh_submission import FreshStartDelivery
+                delivery_type = FreshStartDelivery
             header = dict(schema=5, controller_mode='g1_g2_handoff_trial',
                 motion_config=asdict(self.motion.history.config), follow_config=asdict(self.follow.config),
                 execution_config=asdict(self.follow.execution))
-            self.decision_delivery = DecisionDelivery(DecisionProcess(header), align_first_source=True)
+            delivery_options = dict(align_first_source=True)
+            if retain_reference:
+                delivery_options['retain_expired_reference'] = True
+            self.decision_delivery = delivery_type(DecisionProcess(header), **delivery_options)
             self.last_request_time_s = -math.inf
             self.follow_trace.emit('reset', dict(reason='process_candidate_start',
                 execution=execution, decision_dt_s=.1, receive_rate_hz=50., align_first_source=True))
+            if submission == 'fresh_native_v1':
+                self.follow_trace.emit('decision_submission_policy', dict(policy=submission,
+                    completion_window_s=FreshStartDelivery.completion_window_s,
+                    evaluation_delay_injection=False, source_timestamps_preserved=True))
+            if self.current_path_recheck is not None:
+                self.follow_trace.emit('current_path_recheck_policy', dict(policy=recheck,
+                    independent_guard_required=True, evaluation_delay_injection=False))
+            if retain_reference:
+                self.follow_trace.emit('expiry_reference_policy', dict(policy='selected_wall_recent_v3',
+                    command_retained=False, evaluation_delay_injection=False))
 
     def reset_follow(self, reason):
         if self.decision_delivery is not None:
@@ -195,18 +232,60 @@ class G1G2Node(LocalPursuit):
             if item['kind'] == 'fault':
                 return 0., self.last_steering, dict(reason='decision_process_fault', input_error=item['reason'])
             # 출력과 적용 여부를 분리한다. 버린 결과도 실제 계산/재생 증거로 보존한다.
-            self.follow_trace.emit('call', dict(input=item['input'], output=item['result']['output'],
+            evidence = dict(input=item['input'], output=item['result']['output'],
                 delivery={k:v for k,v in item.items() if k not in ('input','result','output')},
-                compute={k:v for k,v in item['result'].items() if k != 'output'}))
+                compute={k:v for k,v in item['result'].items() if k != 'output'})
             if item['kind'] == 'discarded':
+                self.follow_trace.emit('call', evidence)
                 self.follow.reset()
                 self.follow_trace.emit('reset', dict(reason=item['reason']))
                 return None
-            self.decision_command_stamp_s = item['reference_s']
-            target, steering, detail = self.prepared_output(item['output'])
-            return target, steering, {**status_detail(detail), 'decision_delivery': {
+            output = item['output']
+            reference = item['reference_s']
+            current_result = None
+            recheck = getattr(self, 'current_path_recheck', None)
+            if recheck is not None and recheck.supported(output):
+                from arena_autonomy.follow_trace import snapshot_call
+                from arena_autonomy.lidar_motion import MotionUnavailable
+                from arena_autonomy.scene_motion import motion_scene
+                began = time.perf_counter()
+                now = self.motion.last_meta['reference_stamp_s']
+                speed = self.motion.history.wheels.values[-1] if self.motion.history.wheels.values else 0.
+                current = snapshot_call(self.scan, self.motion.history, now, self.motion.counts['resets'],
+                    speed, self.side, self.last_steering, self.decision_output_dt_s,
+                    self.motion.verified, self.rear_blind_half_angle)
+                try:
+                    scene = motion_scene(self.scan, self.motion.history, now,
+                        timing_verified=self.motion.verified, epoch=self.motion.counts['resets'],
+                        rear_half_angle_deg=self.rear_blind_half_angle)
+                    current_result = recheck.rebase(output, item['input'], current, scene,
+                                                   self.motion.history, self.follow.config)
+                except (MotionUnavailable, ValueError) as error:
+                    current_result = dict(speed_mps=0., steering_rad=self.last_steering,
+                        reference_s=now, reason='rebase_input_stop', input_error=str(error),
+                        independent_guard_required=True, runtime_authorized=False)
+                if current_result is None:
+                    raise RuntimeError('supported current recheck returned no result')
+                detail = {**output[2], 'current_rebase': {
+                    k:v for k,v in current_result.items() if k != 'path_points'}}
+                if current_result['speed_mps'] <= 0:
+                    detail['reason'] = current_result['reason']
+                output = (current_result['speed_mps'], current_result['steering_rad'], detail)
+                reference = current_result['reference_s']
+                evidence['current_rebase'] = dict(input=current, output=freeze(current_result),
+                    computation_wall_ms=1000*(time.perf_counter()-began))
+            self.follow_trace.emit('call', evidence)
+            self.decision_command_stamp_s = reference
+            target, steering, detail = self.prepared_output(output)
+            compact = status_detail(detail)
+            if current_result is not None:
+                compact['current_rebase'] = detail['current_rebase']
+            delivery_detail = {
                 **self.decision_delivery.counts, 'source_age_s': item['source_age_s'],
-                'reference_s': item['reference_s']}}
+                'reference_s': item['reference_s']}
+            if current_result is not None:
+                delivery_detail['command_reference_s'] = reference
+            return target, steering, {**compact, 'decision_delivery': delivery_detail}
         target, steering, detail = super().command(points)
         return target, steering, status_detail(detail)
 

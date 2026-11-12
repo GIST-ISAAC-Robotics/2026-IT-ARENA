@@ -114,12 +114,14 @@ def test_portable_hash_does_not_require_python_311(tmp_path, monkeypatch):
 
 def test_snapshot_covers_transitive_internal_imports_including_per_ray_timing():
     import ast
-    from profile_follow_trace import ROOT, SNAPSHOT_MODULES
-    manifest = {f'{package}.{name}' for package, names in SNAPSHOT_MODULES.items() for name in names}
+    from profile_follow_trace import ROOT, SNAPSHOT_CLOSURE
+    manifest = set(SNAPSHOT_CLOSURE['modules'])
     assert 'arena_autonomy.occupancy_timing' in manifest
-    for module in manifest:
-        package, name = module.split('.')
-        tree = ast.parse((ROOT/'src'/package/package/f'{name}.py').read_text(encoding='utf-8'))
+    assert 'arena_autonomy.current_path_recheck._gaps' in manifest
+    assert SNAPSHOT_CLOSURE['modules']['arena_autonomy.current_path_recheck'].endswith('/__init__.py')
+    for module, source in SNAPSHOT_CLOSURE['modules'].items():
+        assert source in SNAPSHOT_CLOSURE['files']
+        tree = ast.parse((ROOT/source).read_text(encoding='utf-8'))
         imports = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module]
         imports += [alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names]
         required = {name for name in imports if name.startswith(('arena_autonomy.', 'arena_vehicle_interface.'))}

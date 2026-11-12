@@ -1,0 +1,65 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________ test_explicit_traffic_option_keeps_independent_guard_and_stop _________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-2/test_explicit_traffic_option_k0')
+
+    def test_explicit_traffic_option_keeps_independent_guard_and_stop(tmp_path):
+        trace=tmp_path/'trace.jsonl'
+        values=dict(use_sim_time='true',wheelbase_m='.135',lidar_compensation='both',motion_scan_timing_verified='true',
+            control_rate_hz='50.0',g1_follow_enabled='true',g1_g2_simulation_trial='true',
+            g1_trace_path=str(trace),g1_decision_execution='process_candidate',
+            g1_current_path_recheck='"selected_v1"',g1_submission_policy='fresh_native_v1',
+            lidar_input_representation='native_simulation_v1',
+            g1_boundary_evidence_mode='corner_distance_candidate',g1_occupancy_timing_mode='per_ray_candidate',
+            partial_observation_policy='bounded_local_v4',g1_parallel_hold_trial='true',
+            g1_pass_release_trial='true',g1_guard_curve_trial='true',g1_traffic_recovery_trial='true',
+            g1_oblique_gap_trial='true',vision_execution='inline')
+        rclpy.init(args=['--ros-args']+[item for k,v in values.items() for item in ('-p',f'{k}:={v}')])
+        node=guard=None
+        try:
+>           node=G1G2Node();guard=LidarSafety()
+
+tests/test_traffic_solo_gap_node.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/arena_autonomy/arena_autonomy/g1_g2_node.py:52: in __init__
+    super().__init__()
+src/arena_autonomy/arena_autonomy/local_pursuit.py:223: in __init__
+    self.follow_trace = self.create_follow_trace(trace_path)
+src/arena_autonomy/arena_autonomy/g1_g2_node.py:205: in create_follow_trace
+    self.follow = BypassHandoffFollow(config,HandoffExecutionConfig(preparation_policy=policy,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.bypass_handoff.BypassHandoffFollow object at 0x75d636ba7f20>
+config = FollowConfig(signed_motion_policy='forward_drive', solo_route_only=False, corridor_arc_agreement=False, ray_wall_conti...on_bound_mps=0.5, standstill_gap_m=0.16, hold_clearance_m=0.2, resume_clearance_m=0.28, headway_s=0.8, confirmations=2)
+execution = HandoffExecutionConfig(bypass=BypassExecutionConfig(stationary_outer_boundary=True, wall_reanchor=True, tracked_wall_f...ff', relative_yield_policy='off', entry_motion_gate=False, stopped_entry_centering=False, adaptive_entry_preview=False)
+
+    def __init__(self, config=None, execution=None, *, allow_simulation_trial=False):
+        if allow_simulation_trial is not True:
+            raise ValueError('handoff requires explicit simulation trial')
+        self.config = config or handoff_baseline()
+        self.execution = execution or HandoffExecutionConfig()
+        if not isinstance(self.execution, HandoffExecutionConfig):
+            raise ValueError('typed handoff execution configuration required')
+        if self.execution.moving_pass_profile == 'faster_v1':
+            from arena_autonomy.moving_pass import moving_pass_profile
+            bound = moving_pass_profile(self.execution.moving_pass_profile).object_motion_bound_mps
+            # 명시 빠른 상대 후보는 일반 추종/진입/복귀에서 같은 시차 운동 예산을 쓴다.
+            self.config = replace(self.config, object_motion_bound_mps=max(bound, self.config.object_motion_bound_mps))
+        required = ('parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial',
+                    'traffic_recovery_trial', 'traffic_path_recovery_trial', 'corridor_fallback_enabled')
+        if (self.config.partial_observation_policy != 'bounded_local_v4'
+                or self.config.boundary_evidence_mode != 'corner_distance_candidate'
+                or self.config.occupancy_timing_mode != 'per_ray_candidate'
+                or not all(getattr(self.config, key) for key in required)
+                or self.config.recent_observation_enabled
+                or type(self.config.short_boundary_prefix_enabled) is not bool):
+>           raise ValueError('handoff requires the recorded integrated G1 baseline')
+E           ValueError: handoff requires the recorded integrated G1 baseline
+
+src/arena_autonomy/arena_autonomy/bypass_handoff.py:342: ValueError
+----------------------------- Captured stderr call -----------------------------
+[INFO] [1794448829.643527073] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=both; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+=========================== short test summary info ============================
+FAILED tests/test_traffic_solo_gap_node.py::test_explicit_traffic_option_keeps_independent_guard_and_stop
+1 failed in 2.47s
