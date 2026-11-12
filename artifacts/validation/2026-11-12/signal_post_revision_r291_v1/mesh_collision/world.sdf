@@ -1,0 +1,93 @@
+<?xml version='1.0' encoding='utf8'?>
+<sdf version="1.10">
+  <world name="new_support_probe">
+    <gravity>0 0 0</gravity>
+    <physics name="p" type="ode">
+      <max_step_size>.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+    </physics>
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics" />
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands" />
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact" />
+    <model name="frame">
+      <static>true</static>
+      <link name="structure">
+        <collision name="support">
+          <geometry>
+            <mesh>
+              <uri>/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-12/signal_post_revision_r291_v1/support_frame_m.stl</uri>
+            </mesh>
+          </geometry>
+        </collision>
+        <sensor name="contacts" type="contact">
+          <always_on>true</always_on>
+          <update_rate>200</update_rate>
+          <contact>
+            <collision>support</collision>
+            <topic>/new_support_probe/contact</topic>
+          </contact>
+        </sensor>
+      </link>
+    </model>
+    <model name="central_clear">
+      <pose>0 0 0.1346 0 0 0</pose>
+      <link name="body">
+        <inertial>
+          <mass>.1</mass>
+          <inertia>
+            <ixx>.001</ixx>
+            <iyy>.001</iyy>
+            <izz>.001</izz>
+          </inertia>
+        </inertial>
+        <collision name="test">
+          <geometry>
+            <box>
+              <size>0.2 0.15 0.06</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+    <model name="brace_gap">
+      <pose>0.07499999999999998 0.344137598118507 0.1346 0 0 0</pose>
+      <link name="body">
+        <inertial>
+          <mass>.1</mass>
+          <inertia>
+            <ixx>.001</ixx>
+            <iyy>.001</iyy>
+            <izz>.001</izz>
+          </inertia>
+        </inertial>
+        <collision name="test">
+          <geometry>
+            <box>
+              <size>0.006 0.006 0.006</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+    <model name="post_overlap">
+      <pose>5.356971485415674e-09 0.344137598118507 0.1346 0 0 0</pose>
+      <link name="body">
+        <inertial>
+          <mass>.1</mass>
+          <inertia>
+            <ixx>.001</ixx>
+            <iyy>.001</iyy>
+            <izz>.001</izz>
+          </inertia>
+        </inertial>
+        <collision name="test">
+          <geometry>
+            <box>
+              <size>0.03 0.03 0.03</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+  </world>
+</sdf>

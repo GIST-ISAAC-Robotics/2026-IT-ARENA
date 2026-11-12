@@ -7,21 +7,26 @@ import numpy as np
 
 def mask_scan(scan, rear_half_angle_deg=30.):
     """후방 60도는 장착 미확정 사각으로 취급. 빈 공간으로 채우지 않는다."""
-    from arena_autonomy.local_scene import blind_spec
+    from arena_autonomy.local_scene import blind_spec,range_bands
     from arena_autonomy.measurement_scan import MeasurementScan
     from arena_autonomy.scan_input import scan_angles
     from dataclasses import replace
     rear, sectors = blind_spec(rear_half_angle_deg)
+    bands=range_bands(rear_half_angle_deg,len(sectors))
     result = copy.deepcopy(scan)
     angles = scan_angles(scan)
     if isinstance(scan,MeasurementScan):
         angles=(angles+math.pi)%math.tau-math.pi
     ranges = np.asarray(scan.ranges, dtype=float).copy()
     ranges[np.abs(angles) > math.radians(180 - rear)] = np.nan
-    # 시험 전용 장착 구조 각도. 거리 반환이 있어도 unknown으로 둔다.
-    for center, width in sectors:
+    # 기존 각도 전용은 unknown, CAD 거리 범위가 있으면 자기 반환에만 한정한다.
+    for index,(center, width) in enumerate(sectors):
         offset = np.remainder(angles - math.radians(center) + math.pi, math.tau) - math.pi
-        ranges[np.abs(offset) <= math.radians(width) + 1e-12] = np.nan
+        selected=np.abs(offset) <= math.radians(width) + 1e-12
+        if bands is not None:
+            lo,hi=bands[index]
+            selected &= ~np.isfinite(ranges) | ((ranges>=lo)&(ranges<=hi))
+        ranges[selected] = np.nan
     if isinstance(scan,MeasurementScan):
         return replace(scan,ranges_m=tuple(ranges.tolist()))
     result.ranges = ranges.tolist()

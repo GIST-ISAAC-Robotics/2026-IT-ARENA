@@ -13,7 +13,7 @@ import zipfile
 
 import numpy as np
 
-from arena_autonomy.follow_trace import comparable_decision, controller_mode, equal_output, freeze, replay_events, restore_call
+from arena_autonomy.follow_trace import comparable_decision, controller_mode, equal_output, freeze, replay_events, replay_reset, restore_call
 from arena_autonomy.lidar_motion import MotionConfig, MotionUnavailable
 from arena_autonomy.local_follow import FollowConfig, LocalFollow
 from arena_autonomy.scene_motion import motion_scene
@@ -137,7 +137,7 @@ def _profile(event_source, repeats, warmups, clock, observation):
         previous_source = None
         for event in iterator:
             if event['kind'] == 'reset':
-                follow.reset()
+                replay_reset(follow, event['data'])
                 previous_source = None
             elif event['kind'] == 'call':
                 output, costs = timed_call(follow, event['data']['input'], motion, clock, observation)

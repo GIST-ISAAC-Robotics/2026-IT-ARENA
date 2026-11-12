@@ -56,7 +56,8 @@ def thaw(value):
 
 
 def snapshot_call(scan, history, reference_s, epoch, speed, side, steering, dt,
-                  verified, rear_half_angle):
+                  verified, rear_half_angle, *, timing_policy=None):
+    timing_policy = history.scan_time_policy if timing_policy is None else timing_policy
     # frozen MeasurementScan의 중간 deepcopy를 생략하고 아래 freeze에서
     # 최종 저장 사본을 만든다. 원시 배열/이력/비유한값을 줄이거나 공유하지 않는다.
     raw=({'representation':'native_measurements_v1','measurements':{f.name:getattr(scan,f.name) for f in fields(scan)}}
@@ -71,7 +72,8 @@ def snapshot_call(scan, history, reference_s, epoch, speed, side, steering, dt,
                         'values': list(getattr(history, k).values)} for k in ('wheels', 'gyro')},
         'reference_s': reference_s, 'epoch': epoch, 'speed_mps': speed, 'side': side,
         'previous_steering_rad': steering, 'dt_s': dt, 'timing_verified': verified,
-        'rear_half_angle_deg': rear_half_angle})
+        'rear_half_angle_deg': rear_half_angle,
+        **({'timing_policy':timing_policy} if timing_policy!='verified_only' else {})})
 
 
 def controller_mode(follow):
@@ -158,10 +160,10 @@ class FollowTrace:
             self.capture_errors += 1
 
     def record_call(self, scan, history, reference_s, epoch, speed, side, steering, dt,
-                    verified, rear_half_angle, output):
+                    verified, rear_half_angle, output, *, timing_policy=None):
         try:
             inputs = snapshot_call(scan, history, reference_s, epoch, speed, side, steering,
-                                   dt, verified, rear_half_angle)
+                                   dt, verified, rear_half_angle, timing_policy=timing_policy)
             self.emit('call', {'input': inputs, 'output': output})
         except Exception:
             self.capture_errors += 1
@@ -191,7 +193,7 @@ def restore_call(data, motion_config):
         header = SimpleNamespace(stamp=SimpleNamespace(sec=raw.pop('sec'), nanosec=raw.pop('nanosec')),
                                  frame_id=raw.pop('frame_id'))
         scan = SimpleNamespace(header=header, **raw)
-    history = MotionHistory(motion_config)
+    history = MotionHistory(motion_config, scan_time_policy=data.get('timing_policy','verified_only'))
     for name in ('wheels', 'gyro'):
         series = data['history'][name]
         times, values = series['times'], series['values']
@@ -210,7 +212,8 @@ def replay_call(follow, data, motion_config):
     data, scan, history = restore_call(data, motion_config)
     try:
         scene = motion_scene(scan, history, data['reference_s'], timing_verified=data['timing_verified'],
-                             epoch=data['epoch'], rear_half_angle_deg=data['rear_half_angle_deg'])
+                             epoch=data['epoch'], rear_half_angle_deg=data['rear_half_angle_deg'],
+                             timing_policy=data.get('timing_policy','verified_only'))
         return follow.command(scene, history, data['speed_mps'], data['side'],
                               data['previous_steering_rad'], data['dt_s'],
                               **({'raw_scan':scan} if follow.config.partial_observation_policy!='strict' else {}))
@@ -259,6 +262,16 @@ def comparable_decision(output):
     return result
 
 
+def replay_reset(follow, data):
+    """기록된 만료 초기화만 재현한다. STOP 등은 전체 상태를 지운다."""
+    if (follow.config.expiry_route_reference_trial
+            and data.get('reason') == 'decision_source_expired'):
+        from arena_autonomy.expiry_reference import reset_after_source_expiry
+        reset_after_source_expiry(follow)
+    else:
+        follow.reset()
+
+
 def replay_events(events):
     count, calls, mismatches, footer = 0, 0, [], None
     follow = motion = None
@@ -302,14 +315,15 @@ def replay_events(events):
                     HandoffExecutionConfig.from_mapping(data['execution_config']), allow_simulation_trial=True)
             else:
                 follow = follow_type(FollowConfig(**data['follow_config']))
-        elif kind in ('decision_submission_policy', 'current_path_recheck_policy', 'delivery_delay_profile'):
+        elif kind in ('decision_submission_policy', 'current_path_recheck_policy', 'delivery_delay_profile',
+                      'expiry_reference_policy'):
             # 실행 설정은 보존·보고만 한다. 재생기의 허가/시각/상태를 바꾸거나
             # 기록된 대기를 다시 실행하지 않는다. 순번/완료 수 검사는 그대로다.
             if scope != 'g1_g2_handoff_decision_stage_only' or not isinstance(data, dict):
                 raise ValueError('invalid execution audit metadata')
             audit_metadata.append(freeze(event))
         elif kind == 'reset':
-            follow.reset()
+            replay_reset(follow, data)
         elif kind == 'call':
             actual = freeze(replay_call(follow, data['input'], motion))
             if not equal_output(comparable_decision(actual), comparable_decision(data['output'])):

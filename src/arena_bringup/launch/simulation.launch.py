@@ -443,10 +443,10 @@ def _evaluation_course_markers(world, mode):
 
 
 def _evaluation_grass_alignment(world, mode):
-    """새 코스의 1 mm 잔디 단차만 제거하는 대조. 원본·마찰·벽·도로는 보존한다."""
+    """평탄화 또는11/13 사용자 전달 +3mm 잔디. 원본·마찰·벽·도로는 보존한다."""
     if mode == 'original':
         return None
-    if mode != 'road_level':
+    if mode not in ('road_level','grass_above_3mm'):
         raise ValueError('unknown grass alignment mode')
     grass = world.find("model[@name='it_arena_track_static']/link[@name='grass']")
     if grass is None:
@@ -469,10 +469,16 @@ def _evaluation_grass_alignment(world, mode):
     for pose, values in parsed:
         # 다른 좌표/각도의 문자열도 보존한다.
         fields = pose.text.split()
-        fields[2] = '0.0020'
+        fields[2] = '0.0020' if mode=='road_level' else '0.0050'
         pose.text = ' '.join(fields)
-    return dict(mode=mode, shifted_shapes=len(parsed), shift_z_m=.001,
-                before_top_m=.002, after_top_m=.003, friction_unchanged=True)
+    if mode=='road_level':
+        return dict(mode=mode, shifted_shapes=len(parsed), shift_z_m=.001,
+                    before_top_m=.002, after_top_m=.003, friction_unchanged=True)
+    return dict(mode=mode, shifted_shapes=len(parsed), shift_z_m=.004,
+                before_top_m=.002, after_top_m=.006, road_top_m=.003,
+                grass_above_road_m=.003, friction_unchanged=True,
+                source='user_reported_2026_11_13',
+                compliance='rigid geometric step; grass and tire compression not calibrated')
 
 
 # 11/9 사용자 최신 정보: 신호등 양옆 지주가 실제로 설치된다(11/3 기둥 없는 파생본은 당시 정보로 보존).
@@ -757,7 +763,7 @@ def _b0183_model(model_xml, profile):
     return ET.tostring(root, encoding="unicode")
 
 
-MOUNT_TRIAL_KEYS = ("scan_plane_posts", "scan_plane_wires", "chassis_visual_top_m", "known_structure_mask", "known_structure_margin_deg")
+MOUNT_TRIAL_KEYS = ("scan_plane_posts", "scan_plane_wires", "scan_plane_sections", "chassis_visual_top_m", "known_structure_mask", "known_structure_margin_deg")
 
 
 def _mount_trial(model_xml, profile, wheel_radius, body_height, marker_xyz, marker_size, marker_enabled):
@@ -768,6 +774,9 @@ def _mount_trial(model_xml, profile, wheel_radius, body_height, marker_xyz, mark
     known_structure_mask='unknown'이면 지주·뒤 마커 각도를 계산해 반환해도 unknown으로 둔다.
     """
     lidar = profile["lidar"]
+    if 'scan_plane_sections' in lidar:
+        from arena_autonomy.cad_mount import mount
+        return mount(model_xml,profile,wheel_radius,body_height,marker_xyz,marker_size,marker_enabled)
     if not any(key in lidar for key in MOUNT_TRIAL_KEYS):
         return model_xml, ""
     sx, sy, sz = (float(v) for v in lidar["xyz_m"])
@@ -842,7 +851,29 @@ def _local_sensor_profile(description_share, override, local_mode):
     profile = yaml.safe_load(path.read_text(encoding='utf-8'))
     if not isinstance(profile, dict) or any(not isinstance(profile.get(key), dict) for key in ('camera', 'lidar', 'imu')):
         raise ValueError('local_sensor_config requires camera, lidar and imu mappings')
+    if 'scan_plane_meshes' in profile['lidar']:
+        profile['lidar']['scan_plane_meshes']=[str((path.parent/uri).resolve(strict=True))
+                                              for uri in profile['lidar']['scan_plane_meshes']]
     return profile
+
+
+def _vehicle_geometry_settings(config):
+    """축간 중점 원점을 유지하며 물리 상자와 대칭 계획 외곽을 구별한다."""
+    body, drive, footprint = config['body'], config['drivetrain'], config['footprint']
+    values = [body['length_m'], body['width_m'], footprint['length_m'], footprint['width_m'],
+              drive['wheelbase_m'], drive['track_width_m'], drive['wheel_radius_m'], drive['wheel_width_m']]
+    if any(isinstance(v, bool) or not math.isfinite(float(v)) or float(v) <= 0 for v in values):
+        raise ValueError('vehicle dimensions must be finite and positive')
+    offset = float(body.get('geometry_center_x_m', 0.))
+    if not math.isfinite(offset):
+        raise ValueError('body geometry offset must be finite')
+    if (2*abs(offset)+float(body['length_m']) > float(footprint['length_m'])+1e-9
+            or float(body['width_m']) > float(footprint['width_m'])+1e-9
+            or float(drive['wheelbase_m'])+2*float(drive['wheel_radius_m']) > float(footprint['length_m'])+1e-9
+            or float(drive['track_width_m'])+float(drive['wheel_width_m']) > float(footprint['width_m'])+1e-9):
+        raise ValueError('planning envelope must contain body and straight wheels')
+    return ({'body_geometry_x': str(offset)},
+            {'vehicle_length_m': float(footprint['length_m']), 'vehicle_width_m': float(footprint['width_m'])})
 
 
 def _launch_setup(context):
@@ -855,6 +886,7 @@ def _launch_setup(context):
 
     body = config["body"]
     drivetrain = config["drivetrain"]
+    geometry_mappings, planning_geometry = _vehicle_geometry_settings(config)
     rear_marker = config["identification_marker"]
     rear_marker_xyz = [float(value) for value in rear_marker["xyz_m"]]
     pilot_marker_z = LaunchConfiguration("pilot_marker_z").perform(context)
@@ -967,6 +999,7 @@ def _launch_setup(context):
         str(xacro_path),
         mappings={
             **drive_mappings,
+            **geometry_mappings,
             "render_sensors": str(render_sensors).lower(),
             "body_length": str(body["length_m"]),
             "body_width": str(body["width_m"]),
@@ -1471,8 +1504,7 @@ def _launch_setup(context):
             "motion_gyro_abs_limit_rad_s": math.radians(float(profile['imu']['gyro_full_scale_dps'])),
             "sensor_wall_timeout_s": sensor_wall_timeout, "max_steering_angle_rad": equivalent_steering,
             "wheelbase_m": float(drivetrain["wheelbase_m"]),
-            "vehicle_length_m": float(config['footprint']['length_m']),
-            "vehicle_width_m": float(config['footprint']['width_m']),
+            **planning_geometry,
             "rear_blind_half_angle_deg": float(profile['lidar']['masked_rear_half_angle_deg']),
             **({"lidar_blind_sectors_json": blind_sectors_json} if blind_sectors_json else {}),
             **({"known_structure_policy": "structure_aware_v1"}
@@ -1522,6 +1554,7 @@ def _launch_setup(context):
                                           actor=evaluation_actor,evidence=runtime_artifacts,track=track,
                                           p22_entry_trial=p22_trial)
         controller_parameters = {
+            **planning_geometry,
             "use_sim_time": True,
             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
             **speed_profile,
@@ -1755,7 +1788,7 @@ def generate_launch_description() -> LaunchDescription:
                                   description="평가 전용 정적 actor SDF 조각. official local_pursuit 실행 사본에만 삽입"),
             DeclareLaunchArgument('signal_posts', default_value='none', choices=['none', *SIGNAL_POST_FACILITIES],
                                  description='v11.06 실행 사본의 신호등 양지주(제작측 STL 단면·610 mm 간격 임시값). none은 11/3 기둥 없는 파생본'),
-            DeclareLaunchArgument('evaluation_grass_alignment', default_value='original', choices=['original', 'road_level'],
+            DeclareLaunchArgument('evaluation_grass_alignment', default_value='original', choices=['original', 'road_level', 'grass_above_3mm'],
                                  description='v11.06 평가 사본의 잔디를 1 mm 높이는 단차 원인 대조. 기본 원본 유지'),
             DeclareLaunchArgument("evaluation_wheel_contacts", default_value="false", choices=["true", "false"],
                                   description="실행 사본의 평가 전용 바퀴 접촉 계측. 제어 입력 아님"),

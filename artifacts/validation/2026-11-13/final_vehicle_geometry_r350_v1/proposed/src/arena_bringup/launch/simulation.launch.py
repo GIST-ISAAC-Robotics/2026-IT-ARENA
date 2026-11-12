@@ -1,0 +1,1803 @@
+from __future__ import annotations
+
+import json
+import copy
+import math
+import struct
+import tempfile
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+import xacro
+import yaml
+from ament_index_python.packages import get_package_share_directory, get_package_prefix
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, LogInfo, OpaqueFunction, SetEnvironmentVariable, TimerAction
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
+from launch_ros.actions import Node
+from launch.actions import RegisterEventHandler
+from launch.event_handlers import OnShutdown
+
+
+TRACK_DIRECTORIES = {
+    "official": "it_arena_official",
+    "original": "it_arena_track",
+    "experimental": "it_arena_experimental",
+    "official_v2026_11_06": "it_arena_official_v2026_11_06",
+}
+# 공식 2×5 광원 링크가 있는 팀 파생 월드. 기본 track:=official(v2026.11.01 파생)은 그대로 유지합니다.
+OFFICIAL_2X5_TRACKS = ("official", "official_v2026_11_06")
+# 공식 본선 단면 치수만 전달한다. 지도/위치/코너 순서/자유 공간은 제어 입력이 아니다.
+# 이전 track은 기존 기본값을 그대로 사용한다. 지름길 단면 선택은 별도 주행 정책이다.
+COURSE_SECTION_PARAMETERS = {
+    "official_v2026_11_06": {"target_wall_distance_m": .505, "g1_road_half_m": .305},
+}
+D435I_STREAM_PROFILES = ("high_speed_async", "synchronized_60", "low_load_30")
+TOF_PROFILES = ("low_latency_4x4_60", "tracking_8x8_15")
+TOF_MODULE_NAMES = {"front", "front_left", "rear_left", "rear", "rear_right", "front_right"}
+AUTONOMY_MODES = ("lidar", "stereo", "local_pursuit")
+SENSOR_LAYOUT_BY_MODE = {"lidar": "lidar_tof6", "stereo": "stereo_tof4", "local_pursuit": "none"}
+DIFFERENTIAL_PROFILES = ("ideal_open", "lossy_open", "viscous_lsd")
+# arena_vehicle_interface.drive_feedback와 같은 문자열. launch는 그 패키지를 import하지 않는다.
+DRIVE_FEEDBACK_MODES = ("drive_motor_shaft", "rear_wheel_pair_legacy")
+DRIVE_FEEDBACK_TOPICS = {"drive_motor_shaft": "/drive_motor/encoder", "rear_wheel_pair_legacy": "/wheel_states"}
+DRIVE_FEEDBACK_RAW_TEST_TOPICS = {"drive_motor_shaft": "/test/raw_drive_motor",
+                                  "rear_wheel_pair_legacy": "/test/raw_wheels"}
+SPEED_PROFILES = {
+    "local_fast": {"max_speed_mps": 2.5, "min_speed_mps": .2, "acceleration_mps2": 1.5,
+                   "lateral_acceleration_limit_mps2": 3.5},
+    "cautious": {"max_speed_mps": .35, "min_speed_mps": .14, "acceleration_mps2": .5},
+    "brisk": {"max_speed_mps": .70, "min_speed_mps": .18, "acceleration_mps2": .8},
+    "exploratory": {"max_speed_mps": 1.40, "min_speed_mps": .20, "acceleration_mps2": 1.0},
+    # G1-b 비교 전용: exploratory와 같고 명령 상한만 G1 시험 상한 1.0 m/s로 맞춘다.
+    "g1_compare_1mps": {"max_speed_mps": 1.0, "min_speed_mps": .20, "acceleration_mps2": 1.0},
+    # 같은 증속률·기본 G1. 현재 관측 경로에서만 상한을 다르게 비교한다.
+    **{name: {"max_speed_mps": cap, "g1_open_route_speed_mps": cap, "min_speed_mps": .20,
+              "acceleration_mps2": 1.0} for name, cap in (
+              ("g1_open_1p5",1.5), ("g1_open_2p0",2.0), ("g1_open_10kmh",10/3.6))},
+    **{name: {"max_speed_mps": cap, "g1_open_route_speed_mps": cap, "min_speed_mps": .20,
+              "g1_blend_open_speed_by_length": True, "acceleration_mps2": 1.0}
+       for name, cap in (("g1_open_2p0_approach",2.0), ("g1_open_10kmh_approach",10/3.6))},
+    "g1_open_2p0_turn": {"max_speed_mps": 2., "g1_open_route_speed_mps": 2., "min_speed_mps": .20,
+                         "g1_blend_open_speed_by_length": True, "g1_preview_turn_speed": True, "acceleration_mps2": 1.0},
+    "g1_open_10kmh_rise15": {"max_speed_mps": 10/3.6, "g1_open_route_speed_mps": 10/3.6, "min_speed_mps": .20,
+                             "g1_blend_open_speed_by_length": True, "acceleration_mps2": 1.5},
+    "hardware_target": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 1.5},
+    # 라이다 주기 비교용 목표 속도 상한입니다. 20 km/h 실측 도달을 보장하지 않습니다.
+    # 전방 거리·곡률 감속이 남아 있으며 실제 모터 가속도나 안전 속도도 아닙니다.
+    "lidar_rate_stress": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 4.0},
+    # 입력 급상승 비교 이력을 재현하기 위해 보존합니다. 공식 코스 실측은 약 12~13 km/h였습니다.
+    # 단일 모터 3 m/s^2 제한은 그대로입니다. 고정 20 km/h 검사는 별도 LiDAR lab을 씁니다.
+    "lidar_20kmh_straight": {"max_speed_mps": 5.5555555556, "min_speed_mps": .20, "acceleration_mps2": 10.0},
+}
+
+
+SPEED_PROFILES["g1_open_10kmh_turn15"] = {
+    **SPEED_PROFILES["g1_open_10kmh_rise15"], "g1_preview_turn_speed": True}
+# 위 프로필에 낮은 측정 속도 재획득 선택만 더한 단독 시험. 교통 구성에는 연결하지 않는다.
+SPEED_PROFILES["g1_open_10kmh_turn15_arc"] = {
+    **SPEED_PROFILES["g1_open_10kmh_turn15"], "g1_low_speed_arc_reacquire": True}
+# 단독 프리랩의 측방 교통 선택만 제외. 관측/점유·독립 보호 설정은 그대로 유지한다.
+SPEED_PROFILES["g1_open_10kmh_solo"] = {
+    **SPEED_PROFILES["g1_open_10kmh_turn15_arc"], "g1_solo_route_only": True}
+SPEED_PROFILES["g1_open_10kmh_solo_gap05"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo"], "g1_solo_headway_s": .5}
+SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo_gap05"], "g1_corridor_arc_agreement": True}
+SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_ray"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"], "g1_ray_wall_continuity": True}
+SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc"], "g1_preview_above_base_speed": True}
+SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview_bridge"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview"], "g1_boundary_bridge": True}
+# 기존 먼 벽 연결을 현재 단독 구성과 비교하는 명시 후보. 가속률·기본 구성은 유지한다.
+SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview_bridge_ray"] = {
+    **SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview_bridge"], "g1_ray_wall_continuity": True}
+
+
+def _float32_limit_not_above(limit):
+    """Ackermann float32 반올림으로 물리/MCU 상한을 넘지 않는 송신 상한."""
+    if not math.isfinite(limit) or limit <= 0:
+        raise ValueError('Command limit must be finite and positive')
+    try:
+        packed = struct.pack('<f', limit)
+    except OverflowError as error:
+        raise ValueError('Command limit cannot be represented as float32') from error
+    rounded = struct.unpack('<f', packed)[0]
+    if rounded > limit:
+        bits = struct.unpack('<I', packed)[0]
+        rounded = struct.unpack('<f', struct.pack('<I', bits-1))[0]
+    if rounded <= 0:
+        raise ValueError('Command limit is below positive float32 range')
+    return rounded
+
+
+def _dynamics_mappings(config, drive_mode="configured", differential="configured"):
+    drive = config["drivetrain"]
+    mode = drive["simulation_drive_mode"] if drive_mode == "configured" else drive_mode
+    if mode not in {"single_motor", "legacy_velocity"}:
+        raise ValueError("알 수 없는 구동 모드입니다.")
+    diff = drive["mechanical_differential"]
+    profile = diff["active_profile"] if differential == "configured" else differential
+    if profile not in diff["profiles"]:
+        raise ValueError("알 수 없는 차동 프로필입니다.")
+    selected, motor, servo, tire = diff["profiles"][profile], drive["motor"], drive["steering_servo"], drive["tire_contact"]
+    values = {
+        "body_cg_z_offset": config["body"].get("center_of_mass_z_offset_m", 0),
+        "gear_ratio": motor["gear_ratio"], "gear_efficiency": selected["gear_efficiency"],
+        "motor_torque_limit": motor["torque_limit_nm"], "motor_brake_torque_limit": motor["brake_torque_limit_nm"],
+        "motor_free_speed": motor["free_speed_rad_s"], "motor_response_time": motor["response_time_s"],
+        "motor_speed_kp": motor["speed_kp"], "motor_speed_ki": motor["speed_ki"],
+        "motor_acceleration": motor["acceleration_limit_mps2"], "motor_timeout": motor["command_timeout_s"],
+        "carrier_drag": selected["carrier_drag_nm_per_rad_s"],
+        "differential_viscosity": selected["coupling_nm_per_rad_s"],
+        "differential_torque_limit": selected["coupling_limit_nm"],
+        "servo_position_gain": servo["position_gain"], "servo_velocity_gain": servo["velocity_gain"],
+        "servo_integral_gain": servo["integral_gain"],
+        "servo_torque_limit": servo["torque_limit_nm"], "servo_rate_limit": servo["rate_limit_rad_s"],
+        "tire_mu_lateral": tire["friction_lateral"], "tire_mu_longitudinal": tire["friction_longitudinal"],
+        "tire_slip_lateral": tire["slip_compliance_lateral"],
+        "tire_slip_longitudinal": tire["slip_compliance_longitudinal"],
+        "tire_normal_force": tire["nominal_wheel_normal_force_n"],
+        "wheel_damping": tire["joint_viscous_damping_nm_per_rad_s"],
+        "rear_left_friction_scale": tire.get("rear_left_friction_scale", 1.0),
+    }
+    for name, value in values.items():
+        if not math.isfinite(float(value)) or (name != "body_cg_z_offset" and float(value) < 0):
+            raise ValueError(f"잘못된 구동 매개변수: {name}")
+    if not 0 < float(values["gear_efficiency"]) <= 1:
+        raise ValueError("기어 효율은 (0, 1] 범위여야 합니다.")
+    return {"drive_mode": mode, **{key: str(value) for key, value in values.items()}}
+
+
+def _positive(value, name):
+    value = float(value)
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError(f"{name} must be finite and positive")
+    return value
+
+
+def _drive_feedback(config, requested="configured"):
+    """구동 피드백 표현과 소비자별 매개변수.
+
+    drive_motor_shaft: 모터축 PGE-213 한 채널. 평균 바퀴 운동만 관측하며 좌우 독립
+    측정을 만들지 않는다. rear_wheel_pair_legacy: 이전 좌우 후륜 2개 계약의 명시 비교용.
+    표본율·지연·누락은 MCU 미구현 상태의 임시값이며 모델 분해능과 별개다.
+    """
+    feedback = config["sensors"]["drive_feedback"]
+    mode = feedback["mode"] if requested == "configured" else requested
+    if mode not in DRIVE_FEEDBACK_MODES:
+        raise ValueError(f"drive_feedback_mode must be one of {DRIVE_FEEDBACK_MODES}")
+    drive = config["drivetrain"]
+    radius = _positive(drive["wheel_radius_m"], "wheel_radius_m")
+    ratio = _positive(drive["motor"]["gear_ratio"], "gear_ratio")
+    if mode == "drive_motor_shaft":
+        encoder = feedback["drive_motor_encoder"]
+        counts = int(encoder["counts_per_motor_revolution"])
+        if counts <= 0 or counts != (int(encoder["pulses_per_revolution_per_channel"])
+                                     * int(encoder["quadrature_edges_per_pulse"])):
+            raise ValueError("모터축 카운트는 채널 PPR × 4체배 에지 수와 같아야 합니다.")
+        left, right = encoder["simulation_source_joints"]
+        node = {"feedback_mode": mode, "left_joint_name": str(left), "right_joint_name": str(right),
+                "counts_per_motor_revolution": counts, "gear_ratio": ratio, "wheel_radius_m": radius}
+        mcu = {"feedback_mode": mode, "wheel_radius_m": radius, "ticks_per_revolution": counts,
+               "gear_ratio": ratio}
+        resolution = {"counts_per_motor_revolution": counts, "counts_per_mean_wheel_revolution": counts * ratio,
+                      "mean_wheel_travel_m_per_count": 2 * math.pi * radius / (counts * ratio)}
+    else:
+        encoder = feedback["legacy_rear_wheel_encoders"]
+        ticks = int(encoder["ticks_per_revolution"])
+        if ticks <= 0:
+            raise ValueError("legacy ticks_per_revolution must be positive")
+        node = {"feedback_mode": mode, "left_joint_name": str(encoder["left_joint_name"]),
+                "right_joint_name": str(encoder["right_joint_name"]), "ticks_per_revolution": ticks}
+        mcu = {"feedback_mode": mode, "wheel_radius_m": radius, "ticks_per_revolution": ticks, "gear_ratio": 1.0}
+        resolution = {"ticks_per_wheel_revolution": ticks, "wheel_travel_m_per_tick": 2 * math.pi * radius / ticks}
+    rate = _positive(encoder["sample_rate_hz"], "sample_rate_hz")
+    latency = float(encoder["latency_ms"])
+    dropout = float(encoder["dropout_probability"])
+    if not math.isfinite(latency) or latency < 0 or not 0 <= dropout <= 1:
+        raise ValueError("encoder latency/dropout invalid")
+    node.update(sample_rate_hz=rate, latency_ms=latency, dropout_probability=dropout)
+    return {"mode": mode, "enabled": bool(feedback["enabled"]), "topic": DRIVE_FEEDBACK_TOPICS[mode],
+            "raw_test_topic": DRIVE_FEEDBACK_RAW_TEST_TOPICS[mode], "encoder_node": node, "mcu": mcu,
+            "motion": {"motion_feedback_mode": mode, "motion_gear_ratio": ratio, "motion_wheel_radius_m": radius},
+            "resolution": resolution}
+
+
+def virtual_command_limit(profile_name):
+    # 새 G1 고속 프로필만 가상 수신 범위를 확장한다. 기본/과거 설정은 2.5 m/s.
+    return max(2.5, SPEED_PROFILES[profile_name].get('g1_open_route_speed_mps', 0.))
+
+
+def _autonomy_executable(mode, reserve, *, guarded, actor, evidence, track, p22_entry_trial=False):
+    if p22_entry_trial:
+        if (mode != 'local_pursuit' or reserve != 'off' or not guarded or actor or not evidence
+                or track != 'official_v2026_11_06'):
+            raise ValueError('P22 entry requires guarded, recorded v11.06 solo without handoff actor')
+        return 'p22_entry_trial'
+    if reserve == 'off':
+        return {'local_pursuit':'local_pursuit', 'lidar':'wall_follow', 'stereo':'stereo_wall_follow'}[mode]
+    if (reserve not in ('fixed','moving','closing','recent','low_motion','paced') or mode != 'local_pursuit' or not guarded
+            or not actor or not evidence or track not in OFFICIAL_2X5_TRACKS):
+        raise ValueError('G1/G2 comparison requires a guarded official track, actor and recorded trial')
+    return 'g1_g2_handoff_trial'
+
+
+def _as_bool(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _nominal_intrinsics(stream: dict) -> dict[str, float]:
+    width = int(stream["width_px"])
+    height = int(stream["height_px"])
+    horizontal_fov = math.radians(float(stream["horizontal_fov_deg"]))
+    vertical_fov = math.radians(float(stream["vertical_fov_deg"]))
+    if width <= 0 or height <= 0 or not 0 < horizontal_fov < math.pi or not 0 < vertical_fov < math.pi:
+        raise RuntimeError(f"Invalid D435i nominal stream geometry: {stream}")
+    return {
+        "horizontal_fov_rad": horizontal_fov,
+        "fx_px": (width / 2.0) / math.tan(horizontal_fov / 2.0),
+        "fy_px": (height / 2.0) / math.tan(vertical_fov / 2.0),
+        # 실제 principal point와 RGB-깊이 외부 파라미터는 카메라 개체별 보정값으로 교체합니다.
+        "cx_px": width / 2.0,
+        "cy_px": height / 2.0,
+    }
+
+
+def _resolve_d435i_profile(config: dict, requested: str) -> tuple[str, dict]:
+    name = config["active_stream_profile"] if requested == "configured" else requested
+    if name not in config["stream_profiles"]:
+        raise RuntimeError(f"d435i_profile must be one of {sorted(config['stream_profiles'])}")
+    profile = config["stream_profiles"][name]
+    color_rate = float(profile["color_rate_hz"])
+    depth_rate = float(profile["depth_rate_hz"])
+    if not math.isfinite(color_rate) or not math.isfinite(depth_rate) or min(color_rate, depth_rate) <= 0:
+        raise RuntimeError("D435i stream rates must be finite and positive")
+    if profile["hardware_sync_compatible"] and color_rate != depth_rate:
+        raise RuntimeError("A hardware-sync-compatible D435i profile must use equal RGB and depth rates")
+    return name, profile
+
+
+def _resolve_tof_profile(config: dict, requested: str) -> tuple[str, dict]:
+    name = config["active_profile"] if requested == "configured" else requested
+    if name not in config["profiles"]:
+        raise RuntimeError(f"tof_profile must be one of {sorted(config['profiles'])}")
+    profile = config["profiles"][name]
+    horizontal = profile["horizontal_zones"]
+    vertical = profile["vertical_zones"]
+    rate = float(profile["update_rate_hz"])
+    if horizontal not in {4, 8} or vertical not in {4, 8}:
+        raise RuntimeError("VL53L7CX ToF profile zones must be 4 or 8")
+    if horizontal != vertical:
+        raise RuntimeError("VL53L7CX ToF simulation requires a square zone grid")
+    maximum_rate = 60.0 if horizontal == 4 else 15.0
+    if not math.isfinite(rate) or not 0 < rate <= maximum_rate:
+        raise RuntimeError(
+            f"VL53L7CX {horizontal}x{vertical} profile rate must be in (0, {maximum_rate}] Hz"
+        )
+    return name, profile
+
+
+def _resolve_lidar_rate(config: dict, requested: str) -> float:
+    rate = float(config["scan_rate_hz"] if requested == "configured" else requested)
+    if not math.isfinite(rate) or not .5 <= rate <= 100.0:
+        raise RuntimeError("lidar_rate_hz는 configured 또는 0.5~100 Hz의 유한한 값이어야 합니다.")
+    return rate
+
+
+def _validate_tof_ring(config: dict, body: dict, layout_name: str | None = None) -> list[dict]:
+    modules = config["modules"]
+    if len(modules) != 6 or {module["name"] for module in modules} != TOF_MODULE_NAMES:
+        raise RuntimeError(f"ToF ring requires these six module names: {sorted(TOF_MODULE_NAMES)}")
+    for key in ("frame_id", "topic"):
+        if len({module[key] for module in modules}) != len(modules):
+            raise RuntimeError(f"ToF modules require unique {key} values")
+    for key in ("horizontal_fov_deg", "vertical_fov_deg"):
+        value = float(config[key])
+        if not math.isfinite(value) or not 0 < value < 180:
+            raise RuntimeError(f"Invalid ToF {key}: {value}")
+    minimum, maximum = float(config["range_min_m"]), float(config["range_max_m"])
+    if not math.isfinite(minimum) or not math.isfinite(maximum) or not 0 < minimum < maximum:
+        raise RuntimeError("Invalid ToF range limits")
+    half_length = float(body["length_m"]) / 2.0
+    half_width = float(body["width_m"]) / 2.0
+    by_name = {module["name"]: module for module in modules}
+    for module in modules:
+        xyz = [float(value) for value in module["xyz_m"]]
+        rpy = [float(value) for value in module["rpy_rad"]]
+        if len(xyz) != 3 or len(rpy) != 3 or not all(math.isfinite(value) for value in [*xyz, *rpy]):
+            raise RuntimeError(f"Invalid ToF module pose: {module}")
+        if abs(xyz[0]) > half_length or abs(xyz[1]) > half_width or xyz[2] <= 0:
+            raise RuntimeError(f"ToF optical center is outside the vehicle envelope: {module['name']}")
+    layouts = config.get("layouts", {})
+    selected_layout = layout_name or config.get("active_layout")
+    if selected_layout not in layouts:
+        raise RuntimeError(f"ToF layout must be one of {sorted(layouts)}")
+    names = layouts[selected_layout].get("modules", [])
+    if not names or len(names) != len(set(names)) or any(name not in by_name for name in names):
+        raise RuntimeError(f"Invalid ToF module list for layout {selected_layout}")
+    selected = [by_name[name] for name in names]
+    yaws = sorted(module["rpy_rad"][2] % (2.0 * math.pi) for module in selected)
+    yaws.sort()
+    gaps = [
+        (yaws[(index + 1) % len(yaws)] - yaws[index]) % (2.0 * math.pi)
+        for index in range(len(yaws))
+    ]
+    horizontal_fov = math.radians(float(config["horizontal_fov_deg"]))
+    coverage = str(layouts[selected_layout].get("nominal_coverage", ""))
+    if coverage.startswith("full_azimuth"):
+        if max(gaps) > horizontal_fov + 1e-6:
+            raise RuntimeError("Nominal ToF ring has an angular coverage gap")
+    elif coverage == "front_camera_plus_both_side_arcs_rear_blind":
+        expected = {"front_left", "rear_left", "rear_right", "front_right"}
+        if set(names) != expected:
+            raise RuntimeError("Stereo ToF layout must use two modules on each side")
+        # +60/+120도와 -60/-120도의 60도 시야가 양쪽 정측면에서 맞닿습니다.
+        actual = {module["name"]: module["rpy_rad"][2] % (2 * math.pi) for module in selected}
+        for first, second in (("front_left", "rear_left"), ("rear_right", "front_right")):
+            if abs((actual[second] - actual[first]) % (2 * math.pi) - horizontal_fov) > 1e-6:
+                raise RuntimeError("Stereo ToF side arcs do not join at the side bearing")
+    else:
+        raise RuntimeError(f"Unknown ToF coverage declaration: {coverage}")
+    return selected
+
+
+def _batch_static_visuals(world, destination):
+    """상자 꼭짓점/면/재질은 유지하고 정적 draw call만 묶는다. 충돌체 불변."""
+    face_indices = ((0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4),
+                    (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7))
+    normals = ((0, 0, -1), (0, 0, 1), (0, -1, 0), (1, 0, 0), (0, 1, 0), (-1, 0, 0))
+    total = 0
+    for name in ("track_surface", "grass", "walls"):
+        link = world.find(f"model[@name='it_arena_track_static']/link[@name='{name}']")
+        if link is None:
+            continue
+        groups = {}
+        for visual in link.findall("visual"):
+            box, pose, material = visual.find("geometry/box/size"), visual.find("pose"), visual.find("material")
+            if box is None or pose is None or material is None or pose.get("relative_to"):
+                continue
+            values = list(map(float, pose.text.split()))
+            if len(values) != 6 or abs(values[3]) + abs(values[4]) > 1e-10:
+                continue
+            key = ET.tostring(material, encoding="unicode").strip()
+            groups.setdefault(key, []).append((visual, values, list(map(float, box.text.split()))))
+        for group_index, boxes in enumerate(groups.values()):
+            if len(boxes) < 2:
+                continue
+            lines = ["# exact static box batching; collisions unchanged", "s off"]
+            for index, (visual, pose, size) in enumerate(boxes):
+                px, py, pz, _, _, yaw = pose
+                c, s = math.cos(yaw), math.sin(yaw)
+                sx, sy, sz = (v/2 for v in size)
+                corners = ((-sx,-sy,-sz),(sx,-sy,-sz),(sx,sy,-sz),(-sx,sy,-sz),
+                           (-sx,-sy,sz),(sx,-sy,sz),(sx,sy,sz),(-sx,sy,sz))
+                for x, y, z in corners:
+                    lines.append(f"v {px+c*x-s*y:.12g} {py+s*x+c*y:.12g} {pz+z:.12g}")
+                for nx, ny, nz in normals:
+                    lines.append(f"vn {c*nx-s*ny:.12g} {s*nx+c*ny:.12g} {nz}")
+                for fi, face in enumerate(face_indices):
+                    # 명시적 삼각형과 면 법선: 엔진의 자동 삼각화/평활화에 맡기지 않음.
+                    for tri in ((face[0],face[1],face[2]), (face[0],face[2],face[3])):
+                        lines.append("f " + " ".join(f"{8*index+v+1}//{6*index+fi+1}" for v in tri))
+            path = destination.parent / f"batched_{name}_{group_index}.obj"
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            merged = ET.SubElement(link, "visual", name=f"batched_{name}_{group_index}")
+            geometry = ET.SubElement(merged, "geometry")
+            ET.SubElement(ET.SubElement(geometry, "mesh"), "uri").text = str(path)
+            merged.append(copy.deepcopy(boxes[0][0].find("material")))
+            for visual, _, _ in boxes:
+                link.remove(visual)
+            total += len(boxes)
+    return total
+
+
+EVALUATION_WORLD_PLUGINS = {"gz-sim-contact-system": "gz::sim::systems::Contact"}
+
+
+def _evaluation_models(path, world):
+    """평가 전용 정적 actor 조각을 검사한다. 제어 입력이 아니며 원본 월드는 바꾸지 않는다."""
+    root = ET.parse(path).getroot()
+    if root.tag != "sdf":
+        raise RuntimeError("evaluation_actor_sdf의 최상위 요소는 sdf여야 합니다.")
+    existing = {model.get("name") for model in world.findall("model")}
+    models, plugins = [], []
+    for child in root:
+        if child.tag == "model":
+            name = child.get("name", "")
+            if not name.startswith("eval_") or name in existing or child.findtext("static") != "true":
+                raise RuntimeError(f"평가 actor는 이름 eval_*·정적·기존 이름과 비중복이어야 합니다: {name}")
+            existing.add(name)
+            models.append(child)
+        elif child.tag == "plugin" and EVALUATION_WORLD_PLUGINS.get(child.get("filename")) == child.get("name"):
+            plugins.append(child)
+        else:
+            raise RuntimeError(f"허용되지 않은 평가 월드 요소: {child.tag} {child.attrib}")
+    if not models:
+        raise RuntimeError("evaluation_actor_sdf에 평가 actor 모델이 없습니다.")
+    return models, plugins
+
+
+def _evaluation_course_markers(world, mode):
+    """시각 누락 시험: 공식 판의 재질만 바꾸고 자세·형상·충돌·신호는 보존한다."""
+    # blank_20_30: 갈림길 마커만 가려 앞차 가림·검출 실패를 평가 주입한다(신호 좌우 0/45는 유지).
+    choices = {'visible': (), 'blank_30': (30,), 'blank_20_30': (20, 30), 'blank_all': (0, 20, 30, 45)}
+    if mode not in choices:
+        raise ValueError('unknown evaluation course marker mode')
+    selected = choices[mode]
+    for marker in selected:
+        links = [link for link in world.iter('link') if link.get('name') == f'aruco_{marker}']
+        if len(links) != 1 or len(links[0].findall('visual')) != 1:
+            raise ValueError('expected exactly one course marker link and visual')
+        material = links[0].find('visual/material')
+        if material is None or material.find('.//albedo_map') is None:
+            raise ValueError('expected textured course marker material')
+        for child in list(material):
+            material.remove(child)
+        for field, color in (('ambient', '.4 .4 .4 1'), ('diffuse', '.4 .4 .4 1'),
+                             ('specular', '0 0 0 1'), ('emissive', '0 0 0 1')):
+            ET.SubElement(material, field).text = color
+    return {'mode': mode, 'hidden_ids': list(selected),
+            'scope': 'course marker visual materials only; collisions and poses unchanged'}
+
+
+def _evaluation_grass_alignment(world, mode):
+    """평탄화 또는11/13 사용자 전달 +3mm 잔디. 원본·마찰·벽·도로는 보존한다."""
+    if mode == 'original':
+        return None
+    if mode not in ('road_level','grass_above_3mm'):
+        raise ValueError('unknown grass alignment mode')
+    grass = world.find("model[@name='it_arena_track_static']/link[@name='grass']")
+    if grass is None:
+        raise ValueError('registered grass link missing')
+    shapes = grass.findall('collision') + grass.findall('visual')
+    if not shapes:
+        raise ValueError('registered grass shapes missing')
+    # 등록된 v11.06 형상만 허용: 임의 모델의 높이를 추측해서 바꾸지 않는다.
+    parsed = []
+    for shape in shapes:
+        pose = shape.find('pose')
+        size = shape.findtext('geometry/box/size')
+        values = list(map(float, pose.text.split())) if pose is not None else []
+        dimensions = list(map(float, size.split())) if size else []
+        if (len(values) != 6 or len(dimensions) != 3 or
+                abs(values[2] - .001) > 1e-9 or abs(dimensions[2] - .002) > 1e-9 or
+                any(abs(v) > 1e-9 for v in values[3:5])):
+            raise ValueError('grass shape does not match registered 2 mm flat boxes')
+        parsed.append((pose, values))
+    for pose, values in parsed:
+        # 다른 좌표/각도의 문자열도 보존한다.
+        fields = pose.text.split()
+        fields[2] = '0.0020' if mode=='road_level' else '0.0050'
+        pose.text = ' '.join(fields)
+    if mode=='road_level':
+        return dict(mode=mode, shifted_shapes=len(parsed), shift_z_m=.001,
+                    before_top_m=.002, after_top_m=.003, friction_unchanged=True)
+    return dict(mode=mode, shifted_shapes=len(parsed), shift_z_m=.004,
+                before_top_m=.002, after_top_m=.006, road_top_m=.003,
+                grass_above_road_m=.003, friction_unchanged=True,
+                source='user_reported_2026_11_13',
+                compliance='rigid geometric step; grass and tire compression not calibrated')
+
+
+# 11/9 사용자 최신 정보: 신호등 양옆 지주가 실제로 설치된다(11/3 기둥 없는 파생본은 당시 정보로 보존).
+# 형상은 제작측 STL(issue #3 2026-10-09 공유 'STadium starting light.stl', 도로 0.45 m 당시)의
+# 지주·발판 단면을 그대로 쓰고, 0.61 m 도로에 맞춰 지주 간격만 (0.61-0.45)/2씩 넓힌 임시값이다.
+# 제작측이 '기둥 및 고정 부분은 트랙 규격에 맞추어 수정 예정'이라 밝혀 실물 확정치가 아니다.
+# 시설 표현일 뿐 제어 입력이 아니며, 공식 가로대·패널·광원·마커 링크는 바꾸지 않는다.
+SIGNAL_POST_FACILITIES = {
+    "stl_61cm_provisional": {
+        "source_sha256": "955addee8f1640902f34cf7a49924335aa4d641219d1cdcfa1537fac426c7d57",
+        "track": "official_v2026_11_06",
+        # 공식 가로대 중심에서 길이 방향으로 지주 중심까지: STL 0.2925 m + 0.08 m
+        "post_center_offset_m": .3725,
+        # 길이 방향(도로 횡방향) × 진행 방향 × 높이, 바닥 기준 하단
+        "post_size_m": (.015, .01462, .455), "post_bottom_m": .010,
+        "foot_size_m": (.040, .050, .010), "foot_bottom_m": 0.,
+    },
+}
+
+
+def _signal_posts(world, mode, track):
+    """실행 사본에만 양지주·발판을 추가한다. 기본 none은 아무것도 바꾸지 않는다."""
+    if mode == 'none':
+        return None
+    spec = SIGNAL_POST_FACILITIES.get(mode)
+    if spec is None:
+        raise ValueError('unknown signal post facility')
+    if track != spec['track']:
+        raise ValueError('signal post facility is registered only for the v11.06 610 mm derivative')
+    model = world.find("model[@name='it_arena_track_static']")
+    if model is None or model.find("link[@name='tl_post']") is not None:
+        raise ValueError('signal posts require the team derivative without the official single tl_post')
+    beams = [link for link in model.findall('link') if link.get('name') == 'tl_beam']
+    if len(beams) != 1 or beams[0].find('collision/pose') is None:
+        raise ValueError('expected exactly one official tl_beam collision')
+    if any(model.find(f"link[@name='{name}']") is not None for name in
+           ('tl_post_left', 'tl_post_right', 'tl_foot_left', 'tl_foot_right')):
+        raise ValueError('signal posts already present')
+    x, y, _, roll, pitch, yaw = map(float, beams[0].findtext('collision/pose').split())
+    if abs(roll) > 1e-9 or abs(pitch) > 1e-9:
+        raise ValueError('official tl_beam must be level')
+    material = beams[0].find('visual/material')
+    # 가로대 상자의 길이 축(로컬 y)을 세계 좌표로: yaw=pi/2이면 -x, 즉 +y 진행 방향의 왼쪽이다.
+    axis = (-math.sin(yaw), math.cos(yaw))
+    placed = []
+    for side, sign in (('left', 1.), ('right', -1.)):
+        cx, cy = x+sign*spec['post_center_offset_m']*axis[0], y+sign*spec['post_center_offset_m']*axis[1]
+        for part, (across, along, height), bottom in (
+                ('post', spec['post_size_m'], spec['post_bottom_m']),
+                ('foot', spec['foot_size_m'], spec['foot_bottom_m'])):
+            name = f'tl_{part}_{side}'
+            link = ET.SubElement(model, 'link', name=name)
+            pose = f'{cx:.4f} {cy:.4f} {bottom+height/2:.4f} 0 0 {yaw:.5f}'
+            size = f'{along:.5f} {across:.4f} {height:.4f}'
+            for tag in ('collision', 'visual'):
+                element = ET.SubElement(link, tag, name=f'{name}_{tag[:3] if tag == "visual" else "col"}')
+                ET.SubElement(element, 'pose').text = pose
+                ET.SubElement(ET.SubElement(ET.SubElement(element, 'geometry'), 'box'), 'size').text = size
+                if tag == 'visual' and material is not None:
+                    element.append(copy.deepcopy(material))
+            placed.append(dict(name=name, center_xy_m=[round(cx, 4), round(cy, 4)],
+                               bottom_m=bottom, top_m=round(bottom+height, 4),
+                               across_m=across, along_m=along))
+    return dict(mode=mode, source_sha256=spec['source_sha256'], beam_center_xy_m=[x, y], beam_yaw_rad=yaw,
+                links=placed, official_links_unchanged=['tl_beam', 'tl_panel', 'lamps', 'aruco_0..45'],
+                scope='provisional STL-derived 610 mm spacing; not confirmed physical dimensions; not a controller input')
+
+
+def _runtime_world_overrides(source, destination, detector, scene_broadcaster, speed_bump=True, batch_visuals=False,
+                             evaluation_models=None, evaluation_wheel_contacts=False, evaluation_physics_step="",
+                             evaluation_course_markers="visible", evaluation_grass_alignment='original',
+                             signal_posts='none', track=None):
+    """선택형 런타임 설정만 사본에 적용. 명시적 단차 대조 외 형상·물성은 보존한다."""
+    tree = ET.parse(source)
+    world = tree.getroot().find("world")
+    marker_report = _evaluation_course_markers(world, evaluation_course_markers)
+    alignment = _evaluation_grass_alignment(world, evaluation_grass_alignment)
+    if alignment is not None:
+        marker_report['grass_alignment'] = alignment
+    posts = _signal_posts(world, signal_posts, track)
+    if posts is not None:
+        marker_report['signal_posts'] = posts
+    _evaluation_physics_step(world, evaluation_physics_step)
+    if evaluation_wheel_contacts and world.find("plugin[@name='gz::sim::systems::Contact']") is None:
+        ET.SubElement(world, "plugin", filename="gz-sim-contact-system", name="gz::sim::systems::Contact")
+    if evaluation_models:
+        models, plugins = _evaluation_models(evaluation_models, world)
+        present = {plugin.get("filename") for plugin in world.findall("plugin")}
+        world.extend(plugin for plugin in plugins if plugin.get("filename") not in present)
+        world.extend(models)
+    if not speed_bump:
+        for parent in world.iter():
+            for child in list(parent):
+                if child.tag == "link" and child.get("name", "").startswith("safety_bump_"):
+                    parent.remove(child)
+    if detector != "configured":
+        physics = world.find("physics")
+        dart = physics.find("dart")
+        if dart is None:
+            dart = ET.SubElement(physics, "dart")
+        field = dart.find("collision_detector")
+        if field is None:
+            field = ET.SubElement(dart, "collision_detector")
+        field.text = detector
+    if not scene_broadcaster:
+        for plugin in list(world.findall("plugin")):
+            if plugin.get("name") == "gz::sim::systems::SceneBroadcaster":
+                world.remove(plugin)
+    for tag in ("uri", "albedo_map", "normal_map", "roughness_map", "metalness_map", "environment_map", "emissive_map"):
+        for value in world.findall(f".//{tag}"):
+            if value.text and "://" not in value.text and not Path(value.text).is_absolute():
+                value.text = str((source.parent / value.text).resolve())
+    if batch_visuals:
+        _batch_static_visuals(world, destination)
+    tree.write(destination, encoding="utf-8", xml_declaration=True)
+    return marker_report
+
+
+ZERO_SPEED_MODES = ("legacy", "reset_integral", "no_lag", "passive_damping")
+# 평가 전용 물리 step 민감도. 빈 값이 기본이며 월드 원본/기본 실행 사본은 바꾸지 않습니다.
+BASELINE_PHYSICS_STEP = "0.001"
+EVALUATION_PHYSICS_STEPS = ("0.0005", "0.00025")
+
+
+def _check_evaluation_physics_step(step, evidence_path):
+    if not step:
+        return
+    if step not in EVALUATION_PHYSICS_STEPS:
+        raise ValueError("허용되지 않은 평가용 물리 step")
+    if not evidence_path:
+        raise ValueError("평가용 물리 step에는 runtime_artifacts 경로가 필요합니다.")
+
+
+def _evaluation_physics_step(world, step):
+    """기준 1 ms 월드의 max_step_size 하나만 바꿉니다. 실시간 비율·센서 주기·물성은 유지합니다."""
+    if not step:
+        return
+    if step not in EVALUATION_PHYSICS_STEPS:
+        raise ValueError("허용되지 않은 평가용 물리 step")
+    physics = world.findall("physics")
+    fields = physics[0].findall("max_step_size") if len(physics) == 1 else []
+    if len(fields) != 1 or (fields[0].text or "").strip() != BASELINE_PHYSICS_STEP:
+        raise ValueError("기준 1 ms 물리 step 하나를 가진 월드에서만 평가용 step을 바꿉니다.")
+    fields[0].text = step
+
+
+def _check_evaluation_startup(mode, evidence_path, headless, local_mode, guarded, autonomy):
+    if mode == "service":
+        return
+    if mode != "embedded_paused" or not evidence_path or not headless or not local_mode or not guarded or autonomy:
+        raise ValueError("embedded_paused는 증거 경로가 있는 headless local_pursuit 가상 MCU 평가 전용입니다(autonomy=false).")
+
+
+def _embed_evaluation_vehicle(world_path, model_xml, x, y, yaw):
+    """이미 생성한 실행 사본에만 모델을 삽입한다. 기존 월드 노드는 변경하지 않는다."""
+    if not all(math.isfinite(v) for v in (x, y, yaw)):
+        raise ValueError("initial pose must be finite")
+    tree = ET.parse(world_path)
+    world = tree.getroot().find("world")
+    model_root = ET.fromstring(model_xml)
+    models = model_root.findall("model")
+    if world is None or len(models) != 1 or models[0].get("name") != "arena_car":
+        raise ValueError("expected one arena_car SDF model and one world")
+    if world.find("model[@name='arena_car']") is not None or world.findall("include"):
+        raise ValueError("existing vehicle/include is not allowed in evaluation world")
+    model = copy.deepcopy(models[0])
+    if model.find("pose") is not None:
+        raise ValueError("model pose must be supplied only by the evaluation spawn")
+    ET.SubElement(model, "pose").text = f"{x} {y} 0.01 0 0 {yaw}"
+    world.append(model)
+    tree.write(world_path, encoding="utf-8", xml_declaration=True)
+
+
+def _evaluation_server_flags(startup):
+    return [] if startup == "embedded_paused" else ["-r"]
+
+
+def _evaluation_zero_speed_mode(model_xml, mode, evidence_path):
+    """기본 모델 불변. 명시적 평가 출력 경로가 있을 때만 실험용 플러그인 설정 추가."""
+    if mode not in ZERO_SPEED_MODES:
+        raise ValueError("알 수 없는 평가용 0속도 모드")
+    if mode == "legacy":
+        return model_xml
+    if not evidence_path:
+        raise ValueError("평가용 0속도 모드에는 runtime_artifacts 경로가 필요합니다.")
+    root = ET.fromstring(model_xml)
+    plugin = root.find("model/plugin[@name='arena::SingleMotorDrive']")
+    if plugin is None or plugin.find('evaluation_zero_speed_mode') is not None:
+        raise ValueError("단일 모터 플러그인 누락 또는 평가 모드 중복")
+    ET.SubElement(plugin, 'evaluation_zero_speed_mode').text = mode
+    return ET.tostring(root, encoding='unicode')
+
+
+def _evaluation_command_trace(model_xml, enabled, evidence_path):
+    """기본 모델 불변. 명시적 평가 출력 경로가 있을 때만 플러그인 명령 전환 이벤트 계측을 켠다."""
+    if not enabled:
+        return model_xml
+    if not evidence_path:
+        raise ValueError("평가용 명령 전환 계측에는 runtime_artifacts 경로가 필요합니다.")
+    root = ET.fromstring(model_xml)
+    plugin = root.find("model/plugin[@name='arena::SingleMotorDrive']")
+    if plugin is None or plugin.find('evaluation_command_trace') is not None:
+        raise ValueError("단일 모터 플러그인 누락 또는 명령 전환 계측 중복")
+    ET.SubElement(plugin, 'evaluation_command_trace').text = 'true'
+    return ET.tostring(root, encoding='unicode')
+
+
+def _evaluation_scheduled_apply(model_xml, enabled, evidence, startup, headless, local, guarded, autonomy, wall_timeout):
+    if not enabled:
+        return model_xml
+    if not evidence or startup!='embedded_paused' or not headless or not local or not guarded or autonomy:
+        raise ValueError('scheduled apply requires isolated headless embedded_paused virtual_mcu evaluation')
+    root=ET.fromstring(model_xml)
+    plugin=root.find("model/plugin[@name='arena::SingleMotorDrive']")
+    if plugin is None or plugin.findtext('evaluation_command_trace')!='true' or plugin.find('evaluation_scheduled_apply') is not None:
+        raise ValueError('scheduled apply requires unique traced single motor plugin')
+    ET.SubElement(plugin,'evaluation_scheduled_apply').text='true'
+    ET.SubElement(plugin,'evaluation_wall_timeout').text=str(wall_timeout)
+    return ET.tostring(root,encoding='unicode')
+
+
+def _evaluation_wheel_contacts(model_xml):
+    """실행 사본에만 평가 접촉 센서 추가. 형상/물성/제어 피드백은 유지한다."""
+    root = ET.fromstring(model_xml)
+    for wheel in ("front_left_wheel", "front_right_wheel", "rear_left_wheel", "rear_right_wheel"):
+        link = root.find(f"model/link[@name='{wheel}']")
+        if link is None or link.find("collision[@name='collision']") is None:
+            raise ValueError(f"평가 바퀴 충돌체를 찾을 수 없습니다: {wheel}")
+        if link.find("sensor[@name='eval_wheel_contact']") is not None:
+            raise ValueError("평가 접촉 센서 중복")
+        sensor = ET.SubElement(link, "sensor", name="eval_wheel_contact", type="contact")
+        ET.SubElement(sensor, "always_on").text = "true"
+        ET.SubElement(sensor, "update_rate").text = "200"
+        contact = ET.SubElement(sensor, "contact")
+        ET.SubElement(contact, "collision").text = "collision"
+        ET.SubElement(contact, "topic").text = "/eval/wheels/contact"
+    return ET.tostring(root, encoding="unicode")
+
+
+def _b0183_model(model_xml, profile):
+    """레거시 카메라 링크를 RGB 모듈과 독립 6축 IMU로 교체한 실행 사본."""
+    root = ET.fromstring(model_xml)
+    model = root.find("model")
+    camera = model.find("link[@name='d435i_link']")
+    camera.set("name", "b0183_link")
+    camera.find("sensor[@type='camera']").set("name", "b0183_rgb")
+    camera.remove(camera.find("sensor[@type='imu']"))
+    camera.find("inertial/mass").text = str(profile["camera"]["mass_kg"])
+    camera.find("visual/geometry/box/size").text = " ".join(map(str, profile["camera"]["proxy_size_m"]))
+    # 표시 형상에 맞춘 직육면체 관성. 모듈 질량/형상은 실측 전 가정.
+    x, y, z = profile["camera"]["proxy_size_m"]
+    mass = profile["camera"]["mass_kg"]
+    for key, value in {"ixx": mass*(y*y+z*z)/12, "iyy": mass*(x*x+z*z)/12,
+                       "izz": mass*(x*x+y*y)/12}.items():
+        camera.find("inertial/inertia/" + key).text = str(value)
+    joint = model.find("joint[@name='d435i_fixed_joint']")
+    joint.set("name", "b0183_fixed_joint")
+    joint.find("child").text = "b0183_link"
+    imu = profile["imu"]
+    link = ET.SubElement(model, "link", name="lsm6dsox_link")
+    ET.SubElement(link, "pose").text = " ".join(map(str, [*imu["xyz_m"], 0, 0, 0]))
+    inertial = ET.SubElement(link, "inertial")
+    ET.SubElement(inertial, "mass").text = str(imu["mass_kg"])
+    tensor = ET.SubElement(inertial, "inertia")
+    for key in ("ixx", "iyy", "izz"):
+        ET.SubElement(tensor, key).text = "0.0000001"
+    sensor = ET.SubElement(link, "sensor", name="lsm6dsox_imu", type="imu")
+    ET.SubElement(sensor, "topic").text = "/imu/data"
+    ET.SubElement(sensor, "update_rate").text = str(imu["rate_hz"])
+    ET.SubElement(sensor, "always_on").text = "true"
+    settings = ET.SubElement(sensor, "imu")
+    for kind, sigma in (("angular_velocity", imu["simulated_gyro_stddev_rad_s"]),
+                        ("linear_acceleration", imu["simulated_accel_stddev_mps2"])):
+        axes = ET.SubElement(settings, kind)
+        for axis in ("x", "y", "z"):
+            noise = ET.SubElement(ET.SubElement(axes, axis), "noise", type="gaussian")
+            ET.SubElement(noise, "mean").text = "0"
+            ET.SubElement(noise, "stddev").text = str(sigma)
+    joint = ET.SubElement(model, "joint", name="lsm6dsox_fixed_joint", type="fixed")
+    ET.SubElement(joint, "parent").text = "chassis"
+    ET.SubElement(joint, "child").text = "lsm6dsox_link"
+    return ET.tostring(root, encoding="unicode")
+
+
+MOUNT_TRIAL_KEYS = ("scan_plane_posts", "scan_plane_wires", "scan_plane_sections", "chassis_visual_top_m", "known_structure_mask", "known_structure_margin_deg")
+
+
+def _mount_trial(model_xml, profile, wheel_radius, body_height, marker_xyz, marker_size, marker_enabled):
+    """시험 전용 C1 장착 구조. 키가 없으면 모델과 마스크를 바꾸지 않는다.
+
+    지주는 표시 형상(광선 자기반환)만 추가하고 질량·충돌체는 바꾸지 않는다.
+    chassis_visual_top_m은 단순 차체 표시 상자가 낮춘 스캔면을 덮지 않게 위면만 낮춘다.
+    known_structure_mask='unknown'이면 지주·뒤 마커 각도를 계산해 반환해도 unknown으로 둔다.
+    """
+    lidar = profile["lidar"]
+    if 'scan_plane_sections' in lidar:
+        from arena_autonomy.cad_mount import mount
+        return mount(model_xml,profile,wheel_radius,body_height,marker_xyz,marker_size,marker_enabled)
+    if not any(key in lidar for key in MOUNT_TRIAL_KEYS):
+        return model_xml, ""
+    sx, sy, sz = (float(v) for v in lidar["xyz_m"])
+    posts = [tuple(float(v) for v in post) for post in lidar.get("scan_plane_posts", [])]
+    if any(len(post) != 3 or not all(math.isfinite(v) for v in post) or post[2] <= 0 for post in posts):
+        raise ValueError("scan_plane_posts는 [x, y, 지름] m 목록이어야 합니다.")
+    policy = lidar.get("known_structure_mask", "none")
+    if policy not in ("none", "unknown", "structure_aware"):
+        raise ValueError("known_structure_mask must be none, unknown or structure_aware")
+    margin = float(lidar.get("known_structure_margin_deg", 0.5))
+    if not 0 <= margin <= 5:
+        raise ValueError("known_structure_margin_deg must be within 0..5")
+    root = ET.fromstring(model_xml)
+    chassis = root.find("model/link[@name='chassis']")
+    chassis_z = wheel_radius + body_height / 2
+    top = lidar.get("chassis_visual_top_m")
+    if top is not None:
+        top = float(top)
+        if not wheel_radius < top < wheel_radius + body_height:
+            raise ValueError("chassis_visual_top_m must be inside the body box")
+        box = chassis.find("visual[@name='visual']")
+        size = box.find("geometry/box/size")
+        x, y, _ = size.text.split()
+        size.text = f"{x} {y} {top - wheel_radius}"
+        ET.SubElement(box, "pose").text = f"0 0 {(wheel_radius + top) / 2 - chassis_z} 0 0 0"
+    for index, (x, y, diameter) in enumerate(posts):
+        visual = ET.SubElement(chassis, "visual", name=f"c1_mount_post_{index}")
+        ET.SubElement(visual, "pose").text = f"{x} {y} {sz - chassis_z} 0 0 0"
+        cylinder = ET.SubElement(ET.SubElement(visual, "geometry"), "cylinder")
+        ET.SubElement(cylinder, "radius").text = str(diameter / 2)
+        ET.SubElement(cylinder, "length").text = "0.06"
+        material = ET.SubElement(visual, "material")
+        ET.SubElement(material, "ambient").text = "0.6 0.6 0.6 1"
+        ET.SubElement(material, "diffuse").text = "0.7 0.7 0.7 1"
+    wires = [tuple(float(v) for v in wire) for wire in lidar.get("scan_plane_wires", [])]
+    if any(len(wire) != 3 or not all(math.isfinite(v) for v in wire) or wire[2] <= 0 for wire in wires):
+        raise ValueError("scan_plane_wires는 [x, y, 합성 지름] m 목록이어야 합니다.")
+    for index, (x, y, diameter) in enumerate(wires):
+        visual = ET.SubElement(chassis, "visual", name=f"c1_mount_wire_{index}")
+        ET.SubElement(visual, "pose").text = f"{x} {y} {sz - chassis_z} 0 0 0"
+        cylinder = ET.SubElement(ET.SubElement(visual, "geometry"), "cylinder")
+        ET.SubElement(cylinder, "radius").text = str(diameter / 2)
+        ET.SubElement(cylinder, "length").text = "0.06"
+        material = ET.SubElement(visual, "material")
+        ET.SubElement(material, "ambient").text = "0.3 0.3 0.3 1"
+        ET.SubElement(material, "diffuse").text = "0.3 0.3 0.3 1"
+    sectors = []
+    if policy in ("unknown", "structure_aware"):
+        for x, y, diameter in [*posts, *wires]:
+            distance = math.hypot(x - sx, y - sy)
+            if distance <= diameter / 2:
+                raise ValueError("post overlaps the sensor axis")
+            sectors.append([math.degrees(math.atan2(y - sy, x - sx)),
+                            math.degrees(math.asin(diameter / 2 / distance)) + margin])
+        mx, my, mz = marker_xyz
+        if marker_enabled and abs(mz - sz) <= marker_size / 2:
+            first = math.atan2(my + marker_size / 2 - sy, mx - sx)
+            second = math.atan2(my - marker_size / 2 - sy, mx - sx)
+            spread = abs(math.remainder(first - second, math.tau)) / 2
+            center = math.remainder(second + math.remainder(first - second, math.tau) / 2, math.tau)
+            sectors.append([math.degrees(center), math.degrees(spread) + margin])
+    return ET.tostring(root, encoding="unicode"), (json.dumps(sectors) if sectors else "")
+
+
+def _local_sensor_profile(description_share, override, local_mode):
+    """local 구성의 센서/장착 YAML을 명시 선택한다. 기본 구매/가정 파일은 보존한다."""
+    if not local_mode:
+        if override:
+            raise ValueError('local_sensor_config requires local_pursuit mode')
+        return None
+    path = Path(override).expanduser() if override else description_share / 'config/b0183_c1.yaml'
+    profile = yaml.safe_load(path.read_text(encoding='utf-8'))
+    if not isinstance(profile, dict) or any(not isinstance(profile.get(key), dict) for key in ('camera', 'lidar', 'imu')):
+        raise ValueError('local_sensor_config requires camera, lidar and imu mappings')
+    if 'scan_plane_meshes' in profile['lidar']:
+        profile['lidar']['scan_plane_meshes']=[str((path.parent/uri).resolve(strict=True))
+                                              for uri in profile['lidar']['scan_plane_meshes']]
+    return profile
+
+
+def _vehicle_geometry_settings(config):
+    """축간 중점 원점을 유지하며 물리 상자와 대칭 계획 외곽을 구별한다."""
+    body, drive, footprint = config['body'], config['drivetrain'], config['footprint']
+    values = [body['length_m'], body['width_m'], footprint['length_m'], footprint['width_m'],
+              drive['wheelbase_m'], drive['track_width_m'], drive['wheel_radius_m'], drive['wheel_width_m']]
+    if any(isinstance(v, bool) or not math.isfinite(float(v)) or float(v) <= 0 for v in values):
+        raise ValueError('vehicle dimensions must be finite and positive')
+    offset = float(body.get('geometry_center_x_m', 0.))
+    if not math.isfinite(offset):
+        raise ValueError('body geometry offset must be finite')
+    if (2*abs(offset)+float(body['length_m']) > float(footprint['length_m'])+1e-9
+            or float(body['width_m']) > float(footprint['width_m'])+1e-9
+            or float(drive['wheelbase_m'])+2*float(drive['wheel_radius_m']) > float(footprint['length_m'])+1e-9
+            or float(drive['track_width_m'])+float(drive['wheel_width_m']) > float(footprint['width_m'])+1e-9):
+        raise ValueError('planning envelope must contain body and straight wheels')
+    return ({'body_geometry_x': str(offset)},
+            {'vehicle_length_m': float(footprint['length_m']), 'vehicle_width_m': float(footprint['width_m'])})
+
+
+def _launch_setup(context):
+    bringup_share = Path(get_package_share_directory("arena_bringup"))
+    description_share = Path(get_package_share_directory("arena_description"))
+    gazebo_share = Path(get_package_share_directory("arena_gazebo"))
+    config_path = Path(LaunchConfiguration("vehicle_config").perform(context))
+    with config_path.open("r", encoding="utf-8") as stream:
+        config = yaml.safe_load(stream)["vehicle"]
+
+    body = config["body"]
+    drivetrain = config["drivetrain"]
+    geometry_mappings, planning_geometry = _vehicle_geometry_settings(config)
+    rear_marker = config["identification_marker"]
+    rear_marker_xyz = [float(value) for value in rear_marker["xyz_m"]]
+    pilot_marker_z = LaunchConfiguration("pilot_marker_z").perform(context)
+    if pilot_marker_z:
+        value = float(pilot_marker_z)
+        if not math.isfinite(value) or value < .115:
+            raise ValueError("pilot_marker_z must place the bottom of the 50 mm board above the 75 mm scan plane")
+        rear_marker_xyz[2] = value
+    rear_marker_rpy = [float(value) for value in rear_marker["rpy_rad"]]
+    if (
+        rear_marker["dictionary"] != "DICT_4X4_50"
+        or int(rear_marker["id"]) != 49
+        or not math.isclose(float(rear_marker["printed_board_size_m"]), .05, abs_tol=1e-9)
+        or not math.isclose(
+            float(rear_marker["black_code_size_m"])
+            + 2 * float(rear_marker["quiet_zone_each_side_m"]),
+            float(rear_marker["printed_board_size_m"]),
+            abs_tol=1e-9,
+        )
+        or any(not math.isfinite(value) for value in [*rear_marker_xyz, *rear_marker_rpy])
+        or not math.isclose(rear_marker_rpy[0], 0.0, abs_tol=1e-9)
+        or not math.isclose(rear_marker_rpy[1], 0.0, abs_tol=1e-9)
+    ):
+        raise RuntimeError("현재 차량 형상은 5 cm DICT_4X4_50 ID 49 후면 마커 설정만 지원합니다.")
+    d435i = config["sensors"]["d435i"]
+    feedback = _drive_feedback(config, LaunchConfiguration("drive_feedback_mode").perform(context))
+    autonomy_mode = LaunchConfiguration("autonomy_mode").perform(context)
+    if autonomy_mode not in AUTONOMY_MODES:
+        raise RuntimeError(f"autonomy_mode must be one of {AUTONOMY_MODES}")
+    local_mode = autonomy_mode == "local_pursuit"
+    guarded_actuation = LaunchConfiguration('actuation_mode').perform(context) == 'virtual_mcu'
+    # 이 두 수신 한도는 같은 명령 사슬에 있다. 새 고속 모의 실험에서만 함께
+    # 명시한다. 기존 프로필·실물 펌웨어·STOP·출력 유효 시간은 바뀌지 않는다.
+    virtual_limit = virtual_command_limit(LaunchConfiguration('speed_profile').perform(context))
+    if guarded_actuation and not local_mode:
+        raise RuntimeError('virtual_mcu는 독립 LiDAR 보호층이 있는 local_pursuit 시험 전용입니다.')
+    motion_test = LaunchConfiguration('motion_test_profile').perform(context)
+    if motion_test and not local_mode:
+        raise RuntimeError('IMU/엔코더 오류 시험은 local_pursuit 전용입니다.')
+    test_profile = LaunchConfiguration('lidar_test_profile').perform(context)
+    native_sampling=LaunchConfiguration('lidar_native_sampling_profile').perform(context)
+    if native_sampling:
+        if (not local_mode or LaunchConfiguration('lidar_acquisition').perform(context)!='sequential'
+                or LaunchConfiguration('lidar_compensation').perform(context)!='both'):
+            raise ValueError('native sampling requires local_pursuit, sequential and both compensation')
+        native_sampling=str(Path(native_sampling).resolve(strict=True))
+    if test_profile and LaunchConfiguration('lidar_acquisition').perform(context) != 'sequential':
+        raise RuntimeError('LiDAR 오차/지연 시험은 sequential 취득에서만 허용합니다.')
+    profile = _local_sensor_profile(description_share,
+        LaunchConfiguration("local_sensor_config").perform(context), local_mode)
+    if local_mode:
+        camera = profile["camera"]
+        d435i["xyz_m"], d435i["rpy_rad"] = camera["xyz_m"], camera["rpy_rad"]
+        d435i["color"].update({key: camera[key] for key in ("width_px", "height_px", "horizontal_fov_deg")})
+        d435i["color"]["vertical_fov_deg"] = math.degrees(2 * math.atan(
+            math.tan(math.radians(camera["horizontal_fov_deg"])/2) * camera["height_px"]/camera["width_px"]))
+        for stream in d435i["stream_profiles"].values():
+            stream.update(color_rate_hz=camera["rate_hz"], depth_rate_hz=camera["rate_hz"])
+        config["sensors"]["tof_ring"]["enabled"] = False
+        config["sensors"]["lidar_2d"]["xyz_m"] = profile["lidar"]["xyz_m"]
+        if LaunchConfiguration("lidar_compensation").perform(context) != "both":
+            raise RuntimeError("새 구성은 lidar_compensation:=both로 실행하십시오.")
+    tof_layout_name = SENSOR_LAYOUT_BY_MODE[autonomy_mode]
+    drive_mappings = _dynamics_mappings(config, LaunchConfiguration("drive_mode").perform(context),
+                                       LaunchConfiguration("differential_profile").perform(context))
+    safety_enabled = local_mode or _as_bool(LaunchConfiguration("tof_safety").perform(context))
+    sensor_wall_timeout = float(LaunchConfiguration("sensor_wall_timeout_s").perform(context))
+    if not math.isfinite(sensor_wall_timeout) or not 3 <= sensor_wall_timeout <= 60:
+        raise ValueError("sensor_wall_timeout_s must be finite and within 3..60")
+    render_sensors = _as_bool(LaunchConfiguration("render_sensors").perform(context))
+    if safety_enabled and not render_sensors:
+        raise RuntimeError("광학 센서를 끈 동역학 전용 시험에서는 tof_safety:=false를 명시해야 합니다.")
+    lidar = config["sensors"]["lidar_2d"]
+    tof = config["sensors"]["tof_ring"]
+    lidar_enabled = bool(lidar["enabled"] and autonomy_mode in {"lidar", "local_pursuit"})
+    if lidar_enabled:
+        if int(lidar["samples_per_scan"]) < 10 or not math.isclose(float(lidar["field_of_view_deg"]), 360.0):
+            raise RuntimeError("기초 C1 모델은 360도 스캔과 10개 이상의 표본을 요구합니다.")
+        if not 0 < float(lidar["range_min_m"]) < float(lidar["range_max_m"]) or float(lidar["scan_rate_hz"]) <= 0:
+            raise RuntimeError("라이다 거리·주기 설정이 올바르지 않습니다.")
+    lidar_rate_hz = _resolve_lidar_rate(
+        lidar, LaunchConfiguration("lidar_rate_hz").perform(context)
+    )
+    d435i_xyz = d435i["xyz_m"]
+    d435i_rpy = d435i["rpy_rad"]
+    d435i_profile_name, d435i_profile = _resolve_d435i_profile(
+        d435i, LaunchConfiguration("d435i_profile").perform(context)
+    )
+    tof_profile_name, tof_profile = _resolve_tof_profile(
+        tof, LaunchConfiguration("tof_profile").perform(context)
+    )
+    active_tof_modules = _validate_tof_ring(tof, body, tof_layout_name) if tof["enabled"] else []
+    # 두 인지 방식의 조향 성능만 비교할 때 센서 제거로 차량 질량까지 달라지면
+    # 결과를 공정하게 해석할 수 없습니다. 빠진 C1과 ToF 캐리어 질량은 충돌체나
+    # 시각 형상이 없는 중앙 차체 질량으로 보충합니다. 이는 실차 부품 배치가
+    # 아니라 알고리즘 A/B 시험용 비교 ballast입니다.
+    comparison_ballast_kg = (
+        (0.0 if lidar_enabled else float(lidar["mass_kg"]))
+        + (len(tof["modules"]) - len(active_tof_modules)) * float(tof["carrier_mass_kg"])
+    )
+    if local_mode:
+        comparison_ballast_kg += .072 - profile["camera"]["mass_kg"] - profile["imu"]["mass_kg"]
+    color = d435i["color"]
+    depth = d435i["depth"]
+    depth_enabled = not local_mode and _as_bool(LaunchConfiguration("depth_camera").perform(context))
+    color_intrinsics = _nominal_intrinsics(color)
+    depth_intrinsics = _nominal_intrinsics(depth)
+    xacro_path = description_share / "models" / "arena_car" / "model.sdf.xacro"
+    model_xml = xacro.process_file(
+        str(xacro_path),
+        mappings={
+            **drive_mappings,
+            **geometry_mappings,
+            "render_sensors": str(render_sensors).lower(),
+            "body_length": str(body["length_m"]),
+            "body_width": str(body["width_m"]),
+            "body_height": str(body["height_m"]),
+            "body_mass": str(float(body["mass_kg"]) + comparison_ballast_kg),
+            "rear_marker_enabled": str(rear_marker["enabled"]).lower(),
+            "rear_marker_x": str(rear_marker_xyz[0]),
+            "rear_marker_y": str(rear_marker_xyz[1]),
+            "rear_marker_z": str(rear_marker_xyz[2]),
+            "rear_marker_yaw": str(rear_marker_rpy[2]),
+            "rear_marker_board_size": str(rear_marker["printed_board_size_m"]),
+            "rear_marker_code_size": str(rear_marker["black_code_size_m"]),
+            "wheelbase": str(drivetrain["wheelbase_m"]),
+            "track_width": str(drivetrain["track_width_m"]),
+            "wheel_radius": str(drivetrain["wheel_radius_m"]),
+            "wheel_width": str(drivetrain["wheel_width_m"]),
+            "max_steering_angle": str(drivetrain["max_steering_angle_rad"]),
+            "max_speed": str(drivetrain["max_speed_mps"]),
+            "steering_p_gain": str(drivetrain.get("simulation_steering_p_gain", 12.0)),
+            "acceleration_limit": str(drivetrain.get("simulation_acceleration_limit_mps2", 4.0)),
+            "lidar_enabled": str(lidar_enabled).lower(),
+            **{f"lidar_{axis}": str(value) for axis, value in zip(("x", "y", "z"), lidar["xyz_m"])},
+            **{f"lidar_{axis}": str(value) for axis, value in zip(("roll", "pitch", "yaw"), lidar["rpy_rad"])},
+            "lidar_rate": str(float(LaunchConfiguration("lidar_source_rate_hz").perform(context)) if LaunchConfiguration("lidar_acquisition").perform(context) != "snapshot" else lidar_rate_hz),
+            "lidar_topic": "/sim/lidar_instantaneous" if LaunchConfiguration("lidar_acquisition").perform(context) != "snapshot" else "/scan",
+            "lidar_samples": '5000' if native_sampling else str(lidar["samples_per_scan"]),
+            "lidar_min": str(lidar["range_min_m"]),
+            "lidar_max": str(lidar["range_max_m"]),
+            "lidar_resolution": str(lidar["nominal_range_resolution_m"]),
+            "lidar_noise": str(lidar["simulated_noise_stddev_m"]),
+            "lidar_mass": str(lidar["mass_kg"]),
+            "lidar_radius": str(lidar["proxy_radius_m"]),
+            "lidar_height": str(lidar["proxy_height_m"]),
+            "tof_enabled": str(tof["enabled"]).lower(),
+            "tof_rate": str(tof_profile["update_rate_hz"]),
+            "tof_horizontal_zones": str(tof_profile["horizontal_zones"]),
+            "tof_vertical_zones": str(tof_profile["vertical_zones"]),
+            "tof_horizontal_fov": str(math.radians(float(tof["horizontal_fov_deg"]))),
+            "tof_vertical_fov": str(math.radians(float(tof["vertical_fov_deg"]))),
+            "tof_min": str(tof["range_min_m"]),
+            "tof_max": str(tof["range_max_m"]),
+            "tof_resolution": str(tof["nominal_depth_resolution_m"]),
+            "tof_noise": str(tof["simulated_noise_stddev_m"]),
+            "tof_carrier_size_x": str(tof["carrier_size_m"][0]),
+            "tof_carrier_size_y": str(tof["carrier_size_m"][1]),
+            "tof_carrier_size_z": str(tof["carrier_size_m"][2]),
+            "tof_carrier_mass": str(tof["carrier_mass_kg"]),
+            **{
+                f"tof_{module['name']}_pose": " ".join(
+                    str(value) for value in [*module["xyz_m"], *module["rpy_rad"]]
+                )
+                for module in tof["modules"]
+            },
+            **{f"tof_{module['name']}_topic": str(module["topic"]) for module in tof["modules"]},
+            **{
+                f"tof_{module['name']}_enabled": str(module in active_tof_modules).lower()
+                for module in tof["modules"]
+            },
+            "d435i_x": str(d435i_xyz[0]),
+            "d435i_y": str(d435i_xyz[1]),
+            "d435i_z": str(d435i_xyz[2]),
+            "d435i_roll": str(d435i_rpy[0]),
+            "d435i_pitch": str(d435i_rpy[1]),
+            "d435i_yaw": str(d435i_rpy[2]),
+            "d435i_color_horizontal_fov": str(color_intrinsics["horizontal_fov_rad"]),
+            "d435i_color_width": str(color["width_px"]),
+            "d435i_color_height": str(color["height_px"]),
+            "d435i_color_rate": str(d435i_profile["color_rate_hz"]),
+            "d435i_color_near": str(color["render_near_clip_m"]),
+            "d435i_color_far": str(color["render_far_clip_m"]),
+            "d435i_color_fx": str(color_intrinsics["fx_px"]),
+            "d435i_color_fy": str(color_intrinsics["fy_px"]),
+            "d435i_color_cx": str(color_intrinsics["cx_px"]),
+            "d435i_color_cy": str(color_intrinsics["cy_px"]),
+            "d435i_depth_horizontal_fov": str(depth_intrinsics["horizontal_fov_rad"]),
+            "d435i_depth_enabled": str(depth_enabled).lower(),
+            "d435i_depth_width": str(depth["width_px"]),
+            "d435i_depth_height": str(depth["height_px"]),
+            "d435i_depth_rate": str(d435i_profile["depth_rate_hz"]),
+            "d435i_depth_near": str(depth["minimum_depth_m"]),
+            "d435i_depth_far": str(depth["simulation_far_clip_m"]),
+            "d435i_depth_fx": str(depth_intrinsics["fx_px"]),
+            "d435i_depth_fy": str(depth_intrinsics["fy_px"]),
+            "d435i_depth_cx": str(depth_intrinsics["cx_px"]),
+            "d435i_depth_cy": str(depth_intrinsics["cy_px"]),
+            "d435i_imu_rate": str(d435i["imu"]["update_rate_hz"]),
+            "chase_camera_enabled": str(_as_bool(LaunchConfiguration("chase_camera").perform(context))).lower(),
+        },
+    ).toxml()
+    blind_sectors_json = ""
+    if local_mode:
+        model_xml = _b0183_model(model_xml, profile)
+        model_xml, blind_sectors_json = _mount_trial(model_xml, profile, float(drivetrain["wheel_radius_m"]),
+            float(body["height_m"]), rear_marker_xyz, float(rear_marker["printed_board_size_m"]),
+            bool(rear_marker["enabled"]))
+    runtime_artifacts = LaunchConfiguration("runtime_artifacts").perform(context)
+    model_xml = _evaluation_zero_speed_mode(model_xml,
+        LaunchConfiguration("evaluation_zero_speed_mode").perform(context), runtime_artifacts)
+    model_xml = _evaluation_command_trace(model_xml,
+        _as_bool(LaunchConfiguration("evaluation_command_trace").perform(context)), runtime_artifacts)
+    scheduled_apply=_as_bool(LaunchConfiguration('evaluation_scheduled_apply').perform(context))
+    model_xml=_evaluation_scheduled_apply(model_xml,scheduled_apply,runtime_artifacts,
+        LaunchConfiguration('evaluation_startup').perform(context),
+        _as_bool(LaunchConfiguration('headless').perform(context)),local_mode,guarded_actuation,
+        _as_bool(LaunchConfiguration('autonomy').perform(context)),sensor_wall_timeout)
+    evaluation_wheel_contacts = _as_bool(LaunchConfiguration("evaluation_wheel_contacts").perform(context))
+    if evaluation_wheel_contacts:
+        if not runtime_artifacts:
+            raise ValueError("평가 접촉 계측에는 runtime_artifacts 보존 경로가 필요합니다.")
+        model_xml = _evaluation_wheel_contacts(model_xml)
+    if runtime_artifacts:
+        evidence = Path(runtime_artifacts).resolve()
+        evidence.mkdir(parents=True, exist_ok=True)
+        (evidence / "runtime_vehicle.sdf").write_text(model_xml, encoding="utf-8")
+        if profile is not None:
+            (evidence / "runtime_local_sensors.yaml").write_text(
+                yaml.safe_dump(profile, allow_unicode=True, sort_keys=False), encoding="utf-8")
+        if blind_sectors_json:
+            (evidence / "lidar_blind_sectors.json").write_text(blind_sectors_json + "\n", encoding="utf-8")
+
+    track = LaunchConfiguration("track").perform(context)
+    if track not in TRACK_DIRECTORIES:
+        raise RuntimeError(f"track must be one of {sorted(TRACK_DIRECTORIES)}")
+    world_directory = gazebo_share / "worlds" / TRACK_DIRECTORIES[track]
+    scene = json.loads((world_directory / "scene.json").read_text(encoding="utf-8"))
+    slots = {int(slot["index"]): slot for slot in scene["starting_grid"]["slots"]}
+    slot_index = int(LaunchConfiguration("grid_slot").perform(context))
+    if slot_index not in slots:
+        raise RuntimeError(f"grid_slot must be one of {sorted(slots)}")
+    slot = slots[slot_index]
+    spawn_x, spawn_y, spawn_yaw = slot["x"], slot["y"], slot["yaw_rad"]
+
+    world_path = world_directory / "world.sdf"
+    world_override = LaunchConfiguration("world_override").perform(context)
+    if world_override:
+        world_path = Path(world_override).resolve()
+        if not world_path.is_file():
+            raise RuntimeError(f"시험 월드를 찾을 수 없습니다: {world_path}")
+        spawn_x = float(LaunchConfiguration("test_spawn_x").perform(context))
+        spawn_y = float(LaunchConfiguration("test_spawn_y").perform(context))
+        spawn_yaw = float(LaunchConfiguration("test_spawn_yaw").perform(context))
+        if not all(math.isfinite(v) for v in (spawn_x, spawn_y, spawn_yaw)):
+            raise ValueError("시험 시작 위치는 유한한 수여야 합니다.")
+    headless = _as_bool(LaunchConfiguration("headless").perform(context))
+    startup = LaunchConfiguration("evaluation_startup").perform(context)
+    _check_evaluation_startup(startup, runtime_artifacts, headless, local_mode, guarded_actuation,
+                             _as_bool(LaunchConfiguration("autonomy").perform(context)))
+    collision_detector = LaunchConfiguration("collision_detector").perform(context)
+    scene_broadcaster = _as_bool(LaunchConfiguration("scene_broadcaster").perform(context))
+    if not scene_broadcaster and not headless:
+        raise RuntimeError("scene_broadcaster:=false는 headless:=true에서만 사용하십시오.")
+    temporary_world = None
+    speed_bump = _as_bool(LaunchConfiguration("speed_bump").perform(context))
+    batch_visuals = _as_bool(LaunchConfiguration("batch_static_visuals").perform(context))
+    evaluation_actor = LaunchConfiguration("evaluation_actor_sdf").perform(context)
+    physics_step = LaunchConfiguration("evaluation_physics_step").perform(context)
+    marker_visibility = LaunchConfiguration('evaluation_course_markers').perform(context)
+    grass_alignment = LaunchConfiguration('evaluation_grass_alignment').perform(context)
+    if grass_alignment != 'original' and (not runtime_artifacts or not local_mode or
+            track != 'official_v2026_11_06' or world_override):
+        raise ValueError('grass alignment comparison requires recorded v11.06 local_pursuit')
+    if marker_visibility != 'visible' and (not runtime_artifacts or not local_mode or track not in OFFICIAL_2X5_TRACKS or world_override):
+        raise ValueError('course marker visual test requires official local_pursuit and runtime evidence')
+    signal_posts = LaunchConfiguration('signal_posts').perform(context)
+    if signal_posts != 'none' and (track != 'official_v2026_11_06' or world_override):
+        raise ValueError('signal post facility is registered only for the v11.06 derivative without world_override')
+    _check_evaluation_physics_step(physics_step, runtime_artifacts)
+    if evaluation_actor:
+        # 평가기가 정답 자세를 움직이는 표적. 공식 원본은 그대로 두고 실행 사본에만 넣는다.
+        evaluation_actor = Path(evaluation_actor).resolve()
+        if not local_mode or track not in OFFICIAL_2X5_TRACKS or world_override or not evaluation_actor.is_file():
+            raise RuntimeError("evaluation_actor_sdf는 official local_pursuit 실행 사본에서만 사용합니다.")
+    if (collision_detector != "configured" or not scene_broadcaster or not speed_bump or batch_visuals
+            or evaluation_actor or evaluation_wheel_contacts or physics_step or startup == "embedded_paused"
+            or marker_visibility != 'visible' or grass_alignment != 'original' or signal_posts != 'none'):
+        temporary_world = tempfile.TemporaryDirectory(prefix="arena_world_")
+        runtime_path = Path(temporary_world.name) / "world.sdf"
+        marker_report = _runtime_world_overrides(world_path, runtime_path, collision_detector, scene_broadcaster, speed_bump, batch_visuals,
+                                 evaluation_actor or None, evaluation_wheel_contacts, physics_step, marker_visibility,
+                                 grass_alignment, signal_posts, track)
+        if signal_posts != 'none' and runtime_artifacts:
+            (evidence/'signal_posts.json').write_text(json.dumps(marker_report['signal_posts'], indent=2), encoding='utf-8')
+        if grass_alignment != 'original':
+            (evidence/'grass_alignment.json').write_text(json.dumps(marker_report['grass_alignment'], indent=2), encoding='utf-8')
+        if marker_visibility != 'visible':
+            (evidence/'course_marker_render.json').write_text(json.dumps(marker_report, indent=2), encoding='utf-8')
+        world_path = runtime_path
+    if startup == "embedded_paused":
+        _embed_evaluation_vehicle(world_path, model_xml, spawn_x, spawn_y, spawn_yaw)
+    if runtime_artifacts:
+        (evidence / "runtime_world.sdf").write_bytes(world_path.read_bytes())
+        for mesh in world_path.parent.glob("batched_*.obj"):
+            (evidence / mesh.name).write_bytes(mesh.read_bytes())
+    render_backend = LaunchConfiguration("render_backend").perform(context)
+    render_env = {}
+    if render_backend == "software":
+        render_env = {"GALLIUM_DRIVER": "llvmpipe", "LIBGL_ALWAYS_SOFTWARE": "true"}
+    elif render_backend == "wsl_nvidia" or (render_backend == "auto" and Path("/dev/dxg").exists()):
+        # WSLg의 자동 선택이 llvmpipe로 떨어지는 환경에서 D3D12를 명시합니다.
+        # auto는 사용자가 명시한 드라이버/소프트웨어 설정을 존중합니다.
+        if render_backend == "wsl_nvidia" or not any(
+            context.environment.get(key) for key in ("GALLIUM_DRIVER", "LIBGL_ALWAYS_SOFTWARE", "MESA_LOADER_DRIVER_OVERRIDE")
+        ):
+            render_env = {"GALLIUM_DRIVER": "d3d12", "LIBGL_ALWAYS_SOFTWARE": "false",
+                          "MESA_D3D12_DEFAULT_ADAPTER_NAME": context.environment.get("MESA_D3D12_DEFAULT_ADAPTER_NAME", "NVIDIA")}
+            library_dir = Path(get_package_prefix("arena_gazebo")) / "lib"
+            library_name = "libarena-wsl-d3d12-lifetime.so"
+            if not (library_dir / library_name).exists():
+                raise RuntimeError("WSL GPU 지원 라이브러리가 없습니다. colcon build --symlink-install --packages-select arena_gazebo 실행 후 다시 시작하십시오.")
+            # LD_PRELOAD는 공백도 구분자로 쓰므로 파일명과 검색 경로를 분리합니다.
+            render_env["LD_LIBRARY_PATH"] = str(library_dir) + ":" + context.environment.get("LD_LIBRARY_PATH", "")
+            render_env["LD_PRELOAD"] = library_name + (":" + context.environment["LD_PRELOAD"]
+                                                       if context.environment.get("LD_PRELOAD") else "")
+    # Keep the server and GUI as direct child processes. The upstream combined
+    # launcher uses a shell wrapper, which can leave the actual Gazebo process
+    # orphaned when ROS launch is interrupted.
+    gazebo_server = ExecuteProcess(
+        cmd=["gz", "sim", *_evaluation_server_flags(startup), "-s", "-v", "3", *(["--headless-rendering"] if local_mode and headless else []), str(world_path)],
+        additional_env=render_env,
+        sigterm_timeout=LaunchConfiguration("gazebo_sigterm_timeout"),
+        output="screen",
+    )
+    gazebo_gui = ExecuteProcess(
+        cmd=["gz", "sim", "-g", "-v", "3"],
+        additional_env=render_env,
+        output="screen",
+    )
+
+    spawn_vehicle = Node(
+        package="ros_gz_sim",
+        executable="create",
+        output="screen",
+        arguments=[
+            "-world",
+            "it_arena_track",
+            "-name",
+            "arena_car",
+            "-allow_renaming",
+            "false",
+            "-string",
+            model_xml,
+            "-x",
+            str(spawn_x),
+            "-y",
+            str(spawn_y),
+            "-z",
+            "0.01",
+            "-Y",
+            str(spawn_yaw),
+        ],
+    )
+
+    bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        output="screen",
+        arguments=[
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+            "/model/arena_car/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist",
+            "/model/arena_car/steer_angle@std_msgs/msg/Float64]gz.msgs.Double",
+            "/model/arena_car/drivetrain@std_msgs/msg/String[gz.msgs.StringMsg",
+            "/model/arena_car/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry",
+            "/model/arena_car/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V",
+            "/model/arena_car/joint_state@sensor_msgs/msg/JointState@gz.msgs.Model",
+        ] + ([
+            '/model/arena_car/eval/scheduled_command@std_msgs/msg/String]gz.msgs.StringMsg',
+            '/model/arena_car/eval/scheduled_events@std_msgs/msg/String[gz.msgs.StringMsg',
+        ] if scheduled_apply else []),
+        remappings=[
+            ("/model/arena_car/cmd_vel", "/sim/cmd_vel"),
+            ("/model/arena_car/steer_angle", "/sim/steering_angle"),
+            ("/model/arena_car/drivetrain", "/sim/drivetrain"),
+            ("/model/arena_car/odometry", "/odom"),
+            ("/model/arena_car/tf", "/tf"),
+            ("/model/arena_car/joint_state", "/sim/joint_states_raw"),
+        ],
+    )
+
+    sensor_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="d435i_sensor_bridge",
+        output="screen",
+        remappings=[('/imu/data', '/test/raw_imu')] if motion_test else [],
+        parameters=[{"config_file": str(bringup_share / "config" /
+                                        ("b0183_imu_bridge.yaml" if local_mode else
+                                         "d435i_sensor_bridge.yaml" if depth_enabled else "d435i_rgb_imu_bridge.yaml"))}],
+    )
+
+    # 대용량 포인트 클라우드가 RGB/깊이 영상 브리지를 지연시키지 않게 분리하고,
+    # 실제 ROS 구독자가 있을 때만 ROS 변환·전송합니다. 토픽 이름은 유지합니다.
+    pointcloud_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        name="d435i_pointcloud_bridge",
+        output="screen",
+        parameters=[{"config_file": str(bringup_share / "config" / "d435i_pointcloud_bridge.yaml")}],
+    )
+
+    vehicle_interface = Node(
+        package="arena_vehicle_interface",
+        executable="scheduled_sim_actuator" if scheduled_apply else "guarded_sim_actuator" if guarded_actuation else "ackermann_to_twist",
+        output="screen",
+        remappings=[("/drive", "/drive/safe")] if safety_enabled else [],
+        parameters=[
+            {
+                "wheelbase_m": float(drivetrain["wheelbase_m"]),
+                "max_speed_mps": float(drivetrain["max_speed_mps"]),
+                "max_steering_angle_rad": float(
+                    drivetrain["max_steering_angle_rad"]
+                ),
+                "use_sim_time": True,
+                **({"wall_timeout_s": sensor_wall_timeout, "applied_max_speed_mps": virtual_limit}
+                   if guarded_actuation else {}),
+            }
+        ],
+    )
+
+    actions = [
+        LogInfo(msg=f"Collision detector: {collision_detector}; SceneBroadcaster: {scene_broadcaster}"),
+        LogInfo(msg=f"Gazebo rendering request: {render_backend}; driver={render_env.get('GALLIUM_DRIVER', 'inherited')}; "
+                    f"D3D12 lifetime guard={'LD_PRELOAD' in render_env}. Verify actual GL_RENDERER in Ogre2 log."),
+        SetEnvironmentVariable("GZ_SIM_SYSTEM_PLUGIN_PATH", [
+            str(Path(get_package_prefix("arena_gazebo")) / "lib"), ":",
+            EnvironmentVariable("GZ_SIM_SYSTEM_PLUGIN_PATH", default_value="")]),
+        LogInfo(msg=f"Drive: {drive_mappings['drive_mode']}; differential: "
+                    f"{LaunchConfiguration('differential_profile').perform(context)}; "
+                    f"safety={'LiDAR' if local_mode else 'ToF'} enabled={safety_enabled}. Motor/tire properties are provisional."),
+        LogInfo(msg=f"Drive feedback: {feedback['mode']} on {feedback['topic']}; resolution={feedback['resolution']}; "
+                    f"rate/latency provisional. "
+                    + ("Single motor-shaft channel: mean wheel motion only; left/right difference, slip, "
+                       "backlash and opposite rotation unobservable; yaw from IMU."
+                       if feedback['mode'] == 'drive_motor_shaft' else
+                       "LEGACY rear wheel pair selected explicitly; not the selected hardware.")),
+        LogInfo(msg=f"Track: {track}; main width: {scene['track']['width_m']} m; "
+                    f"shortcut widths: {[branch['width_m'] for branch in scene['branches']]} m. "
+                    + ("Official v2026.10.24 colors and complete gantry markers are preserved; "
+                     "signal and checker finish are provisional; bump uses published STL visuals with approximate collision."
+                     if track == "official" else
+                     "Official v2026.11.06 610 mm right-angle course; team derivative without tl_post, lamps start dark."
+                     if track == "official_v2026_11_06" else "Historical reproduction / experimental course.")),
+        LogInfo(msg=f"Rear identification marker: enabled={rear_marker['enabled']}; "
+                    f"{rear_marker['dictionary']} ID {rear_marker['id']}; "
+                    f"board={rear_marker['printed_board_size_m']} m (team registered; mount provisional)."),
+        LogInfo(msg=f"Camera: {profile['camera']['model'] + ' + independent IMU ' + profile['imu']['model'] if local_mode else 'D435i ' + d435i_profile_name}; "
+                    f"RGB {color['width_px']}x{color['height_px']} @ "
+                    f"{d435i_profile['color_rate_hz']} Hz; depth "
+                    f"{depth['width_px']}x{depth['height_px']} @ "
+                    f"{d435i_profile['depth_rate_hz']} Hz (enabled={depth_enabled})."),
+        LogInfo(msg=f"Sensor mode: {autonomy_mode}; ToF layout={tof_layout_name} "
+                    f"(mount provisional); speed_bump={speed_bump}; batch_visuals={batch_visuals}; comparison ballast="
+                    f"{comparison_ballast_kg:.3f} kg."),
+        LogInfo(msg=f"ToF ring: enabled={tof['enabled']}; profile={tof_profile_name}; "
+                    f"{tof_profile['horizontal_zones']}x{tof_profile['vertical_zones']} @ "
+                    f"{tof_profile['update_rate_hz']} Hz; "
+                    f"modules={[module['name'] for module in active_tof_modules]}."),
+        LogInfo(msg=f"2D LiDAR: enabled={lidar_enabled}; {lidar_rate_hz:g} Hz, "
+                    f"{lidar['samples_per_scan']} samples/scan. "
+                    f"acquisition={LaunchConfiguration('lidar_acquisition').perform(context)}; source={LaunchConfiguration('lidar_source_rate_hz').perform(context)} Hz; capture quantization <=2.1 ms; raw scan uncorrected, controller compensation={LaunchConfiguration('lidar_compensation').perform(context)}."),
+        gazebo_server,
+        bridge,
+        sensor_bridge,
+        vehicle_interface,
+        *([TimerAction(period=2.0, actions=[spawn_vehicle])] if startup == "service" else []),
+    ]
+    if not render_sensors:
+        actions.remove(sensor_bridge)
+    if guarded_actuation:
+        actions.extend([
+            LogInfo(msg='A1-2 virtual MCU: explicit /actuation/arm required; no automatic restart. '
+                        f'MCU feedback={feedback["mode"]} (motor-shaft stationary check is mean-only). '
+                        'Gazebo inner motor PI still uses ideal joint velocities.'),
+            Node(package='arena_vehicle_interface', executable='actuation_host', output='screen',
+                 parameters=[{'use_sim_time': True, 'wall_timeout_s': sensor_wall_timeout}]),
+            Node(package='arena_vehicle_interface', executable='virtual_mcu', output='screen', parameters=[{
+                'use_sim_time': True, 'wall_timeout_s': sensor_wall_timeout,
+                **feedback['mcu'],
+                'max_speed_mps': virtual_limit,
+                'max_steering_angle_rad': math.atan(float(drivetrain['wheelbase_m']) /
+                    (float(drivetrain['wheelbase_m']) / math.tan(float(drivetrain['max_steering_angle_rad'])) +
+                     float(drivetrain['track_width_m']) / 2)),
+            }]),
+        ])
+    if depth_enabled and render_sensors:
+        actions.append(pointcloud_bridge)
+    if temporary_world is not None:
+        def cleanup_world(context, *args, **kwargs):
+            temporary_world.cleanup()
+            return []
+        actions.append(RegisterEventHandler(OnShutdown(on_shutdown=[OpaqueFunction(function=cleanup_world)])))
+    if not headless:
+        actions.append(gazebo_gui)
+
+    if safety_enabled and not local_mode:
+        if not active_tof_modules or not feedback["enabled"]:
+            raise RuntimeError("ToF 안전층은 ToF 링과 구동 엔코더가 필요합니다.")
+        actions.append(Node(package="arena_autonomy", executable="tof_safety", output="screen",
+                            parameters=[str(bringup_share / "config/tof_safety.yaml"),
+                                        {"use_sim_time": True, "vehicle_config": str(config_path),
+                                         "sensor_wall_timeout_s": sensor_wall_timeout,
+                                         "drive_feedback_mode": feedback["mode"],
+                                         "active_modules": [module["name"] for module in active_tof_modules]}]))
+
+    if lidar_enabled and render_sensors:
+        sequential = LaunchConfiguration("lidar_acquisition").perform(context) != "snapshot"
+        lidar_topic = "/sim/lidar_instantaneous" if sequential else "/scan"
+        if sequential:
+            actions.append(Node(package="arena_vehicle_interface", executable="rotating_lidar",
+                                parameters=[{"use_sim_time": True, "rotation_rate_hz": lidar_rate_hz,
+                                             "samples_per_scan": 5000 if native_sampling else int(lidar["samples_per_scan"]),
+                                             "native_sampling_profile": native_sampling,
+                                             "acquisition": LaunchConfiguration("lidar_acquisition").perform(context),
+                                             "test_impairment_profile": test_profile}],
+                                output="screen"))
+        actions.extend([
+            Node(package="ros_gz_bridge", executable="parameter_bridge", name="lidar_bridge",
+                 arguments=[f"{lidar_topic}@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan"],
+                 parameters=[{"override_frame_id": str(lidar["frame_id"])}], output="screen"),
+            Node(package="tf2_ros", executable="static_transform_publisher", name="lidar_transform",
+                 arguments=["--x", str(lidar["xyz_m"][0]), "--y", str(lidar["xyz_m"][1]),
+                            "--z", str(lidar["xyz_m"][2]), "--roll", str(lidar["rpy_rad"][0]),
+                            "--pitch", str(lidar["rpy_rad"][1]), "--yaw", str(lidar["rpy_rad"][2]),
+                            "--frame-id", "base_link", "--child-frame-id", str(lidar["frame_id"])],
+                 parameters=[{"use_sim_time": True}], output="screen"),
+        ])
+
+    if tof["enabled"] and render_sensors:
+        for module in active_tof_modules:
+            name = str(module["name"])
+            topic = str(module["topic"])
+            xyz = module["xyz_m"]
+            rpy = module["rpy_rad"]
+            actions.extend([
+                Node(
+                    package="ros_gz_bridge",
+                    executable="parameter_bridge",
+                    name=f"tof_{name}_pointcloud_bridge",
+                    arguments=[
+                        f"{topic}/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked"
+                    ],
+                    parameters=[{"override_frame_id": str(module["frame_id"])}],
+                    output="screen",
+                ),
+                Node(
+                    package="tf2_ros",
+                    executable="static_transform_publisher",
+                    name=f"tof_{name}_transform",
+                    arguments=[
+                        "--x", str(xyz[0]), "--y", str(xyz[1]), "--z", str(xyz[2]),
+                        "--roll", str(rpy[0]), "--pitch", str(rpy[1]), "--yaw", str(rpy[2]),
+                        "--frame-id", "base_link", "--child-frame-id", str(module["frame_id"]),
+                    ],
+                    parameters=[{"use_sim_time": True}],
+                    output="screen",
+                ),
+            ])
+
+    chase_camera = _as_bool(LaunchConfiguration("chase_camera").perform(context))
+    if chase_camera and render_sensors:
+        actions.append(Node(
+            package="ros_gz_bridge",
+            executable="parameter_bridge",
+            name="chase_camera_bridge",
+            arguments=["/sim/chase/image@sensor_msgs/msg/Image[gz.msgs.Image"],
+            output="screen",
+        ))
+
+    autonomy = _as_bool(LaunchConfiguration("autonomy").perform(context))
+    traffic = _as_bool(LaunchConfiguration("traffic_light").perform(context))
+    if (autonomy or traffic) and (world_override or not render_sensors):
+        raise RuntimeError("시험 월드/광학 센서 비활성화는 본선 자율주행·신호등과 함께 쓰지 않습니다.")
+    if (autonomy or traffic) and track not in {*OFFICIAL_2X5_TRACKS, "experimental"}:
+        raise RuntimeError("신호등·본선 벽 추종 데모는 official/experimental 지도에서만 지원합니다.")
+    if traffic and track not in OFFICIAL_2X5_TRACKS:
+        raise RuntimeError("신호 제어기는 공식 2×5 광원 링크가 있는 official 월드 전용입니다.")
+    if autonomy and autonomy_mode in {"lidar", "local_pursuit"} and not lidar_enabled:
+        raise RuntimeError("LiDAR 벽 추종에는 lidar_2d.enabled=true가 필요합니다.")
+    if autonomy and autonomy_mode == "stereo" and not depth_enabled:
+        raise RuntimeError("스테레오 벽 추종에는 depth_camera:=true가 필요합니다.")
+    if traffic:
+        actions.append(Node(package="arena_gazebo", executable="traffic_light_controller.py",
+                            parameters=[{"use_sim_time": True,
+                                         "red_duration_s": float(LaunchConfiguration("red_duration_s").perform(context)),
+                                         "require_armed": guarded_actuation,
+                                         "audit_path": str(evidence/"signal_sequence.jsonl") if runtime_artifacts else ""}],
+                            output="screen"))
+    if local_mode:
+        if not lidar_enabled or not feedback["enabled"]:
+            raise RuntimeError("새 보호층은 C1과 구동 엔코더가 필요합니다.")
+        # 수신 MCU는 원래 물리 상한을 엄격히 검사한다. 송신 상한만 안쪽으로
+        # 표현해 /drive와 /drive/safe의 float32 직렬화가 이를 넘지 않게 한다.
+        equivalent_steering = _float32_limit_not_above(math.atan(float(drivetrain["wheelbase_m"]) /
+            (float(drivetrain["wheelbase_m"])/math.tan(float(drivetrain["max_steering_angle_rad"])) + float(drivetrain["track_width_m"])/2)))
+        actions.append(Node(package="arena_autonomy", executable="lidar_safety", parameters=[{
+            "lidar_input_representation": 'native_simulation_v1' if native_sampling else 'laser_scan',
+            "use_sim_time": True, "lidar_compensation": "both", "motion_scan_timing_verified": True,
+            "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
+            **feedback["motion"],
+            "motion_rear_axle_x_m": -float(drivetrain["wheelbase_m"])/2,
+            "motion_lidar_x_m": float(lidar["xyz_m"][0]), "motion_lidar_y_m": float(lidar["xyz_m"][1]),
+            "motion_lidar_yaw_rad": float(lidar["rpy_rad"][2]), "motion_imu_topic": "/imu/data",
+            "motion_gyro_abs_limit_rad_s": math.radians(float(profile['imu']['gyro_full_scale_dps'])),
+            "sensor_wall_timeout_s": sensor_wall_timeout, "max_steering_angle_rad": equivalent_steering,
+            "wheelbase_m": float(drivetrain["wheelbase_m"]),
+            **planning_geometry,
+            "rear_blind_half_angle_deg": float(profile['lidar']['masked_rear_half_angle_deg']),
+            **({"lidar_blind_sectors_json": blind_sectors_json} if blind_sectors_json else {}),
+            **({"known_structure_policy": "structure_aware_v1"}
+               if profile['lidar'].get('known_structure_mask') == 'structure_aware' else {}),
+        }], output="screen"))
+    if autonomy:
+        speed_profile = SPEED_PROFILES[LaunchConfiguration("speed_profile").perform(context)]
+        control_rate = float(LaunchConfiguration("autonomy_control_rate_hz").perform(context))
+        if not math.isfinite(control_rate) or not 5 <= control_rate <= 200:
+            raise ValueError("autonomy_control_rate_hz must be finite and within 5..200")
+        reserve = LaunchConfiguration("evaluation_handoff_reserve").perform(context)
+        yield_progress = LaunchConfiguration("evaluation_handoff_yield_progress").perform(context) == "true"
+        rear_sweep = LaunchConfiguration("evaluation_handoff_rear_sweep").perform(context) == "true"
+        observed_motion = LaunchConfiguration("evaluation_handoff_observed_motion").perform(context) == "true"
+        continuous_pace = LaunchConfiguration("evaluation_handoff_continuous_pace").perform(context) == "true"
+        moving_pass = LaunchConfiguration("evaluation_moving_pass_trial").perform(context) == "true"
+        wall_witness = LaunchConfiguration("evaluation_handoff_wall_witness").perform(context) == "true"
+        center_stopped = LaunchConfiguration("evaluation_stopped_entry_centering").perform(context) == "true"
+        adaptive_preview = LaunchConfiguration("evaluation_adaptive_entry_preview").perform(context) == "true"
+        if adaptive_preview and reserve == "off":
+            raise ValueError("adaptive entry preview requires an explicit corridor handoff trial")
+        if center_stopped and (reserve != "paced" or not observed_motion or feedback["mode"] != "drive_motor_shaft"):
+            raise ValueError("stopped entry centering requires explicit paced motion trial and motor-shaft feedback")
+        if wall_witness and not observed_motion:
+            raise ValueError("wall witness requires explicit observed handoff motion")
+        moving_profile = LaunchConfiguration("evaluation_moving_pass_profile").perform(context)
+        if moving_profile not in ("slow_v1", "medium_v1", "faster_v1") or (moving_profile != "slow_v1" and not moving_pass):
+            raise ValueError("moving pass profile requires an explicit moving pass trial")
+        if moving_pass and not continuous_pace:
+            raise ValueError("moving pass requires continuous forward pace")
+        if continuous_pace and (reserve != "paced" or not observed_motion):
+            raise ValueError("continuous forward pace requires paced reserve and observed motion")
+        side_departure = LaunchConfiguration("evaluation_side_departure_trial").perform(context) == "true"
+        current_lane = LaunchConfiguration("evaluation_current_lane_preference_trial").perform(context) == "true"
+        if current_lane and (not side_departure or not observed_motion or reserve == "off"
+                             or feedback["mode"] != "drive_motor_shaft"):
+            raise ValueError("current lane preference requires explicit side departure, observed motion and motor feedback")
+        if side_departure and reserve == "off":
+            raise ValueError("side departure requires an explicit handoff trial")
+        if (yield_progress or rear_sweep) and reserve == "off":
+            raise ValueError("observed yield progress requires an explicit handoff trial")
+        p22_trial = _as_bool(LaunchConfiguration('p22_entry_trial').perform(context))
+        p22_route = _as_bool(LaunchConfiguration('p22_route_trial').perform(context))
+        if p22_route and not p22_trial:
+            raise ValueError('P22 route requires the recorded solo entry trial')
+        executable = _autonomy_executable(autonomy_mode,reserve,guarded=guarded_actuation,
+                                          actor=evaluation_actor,evidence=runtime_artifacts,track=track,
+                                          p22_entry_trial=p22_trial)
+        controller_parameters = {
+            **planning_geometry,
+            "use_sim_time": True,
+            "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
+            **speed_profile,
+            "control_rate_hz": control_rate,
+            "wheelbase_m": float(drivetrain["wheelbase_m"]),
+            "max_steering_angle_rad": float(drivetrain["max_steering_angle_rad"]),
+        }
+        if local_mode and track in OFFICIAL_2X5_TRACKS:
+            # 공식 월드에는 임시 3등이 없다. 출발은 2×5 RGB 판독만 사용한다.
+            controller_parameters["start_signal_mode"] = "official_4red_local_candidate"
+            controller_parameters.update(COURSE_SECTION_PARAMETERS.get(track, {}))
+        if p22_trial:
+            controller_parameters['p22_entry_simulation_trial'] = True
+            controller_parameters['p22_route_simulation_trial'] = p22_route
+        if reserve != 'off':
+            controller_parameters.update(g1_g2_simulation_trial=True, g1_g2_entry_policy='corridor_local_v1',
+                g1_g2_corridor_policy='corridor_v2_signed_hold', g1_g2_preparation_policy='observed_entry_space_v1',
+                g1_g2_persistence_window='trim_before_compare_v1', g1_g2_follow_entry_space=True,
+                g1_g2_moving_follow_reserve=reserve in ('moving','closing','recent','low_motion','paced'),
+                g1_g2_closing_follow_reserve=reserve in ('closing','recent','low_motion','paced'),
+                g1_g2_recent_forward_reserve=reserve=='recent', g1_g2_low_motion_reserve=reserve in ('low_motion','paced'),
+                g1_g2_moving_pace_floor=reserve=='paced',
+                g1_g2_released_rear_sweep_trial=rear_sweep,
+                g1_g2_observed_motion_gates=observed_motion,
+                g1_g2_continuous_forward_pace=continuous_pace,
+                g1_g2_moving_pass_trial=moving_pass,
+                g1_g2_moving_pass_profile=moving_profile,
+                g1_g2_rear_wall_witness=wall_witness, g1_g2_stopped_entry_centering=center_stopped,
+                g1_g2_adaptive_entry_preview=adaptive_preview,
+                g1_g2_side_departure_trial=side_departure,
+                g1_g2_current_lane_preference_trial=current_lane,
+                g1_g2_current_lane_headroom_mps=(feedback["resolution"]["mean_wheel_travel_m_per_count"]
+                    * feedback["encoder_node"]["sample_rate_hz"] if current_lane else 0.),
+                g1_g2_reacquire_policy='observed_rejoin_v2' if observed_motion else 'known_hold_v1',
+                g1_g2_preparation_hold='bounded_hold_v1', g1_g2_initial_reference='ready_directional_pair_v2',
+                g1_g2_motion_pause_policy='bounded_motion_pause_v1',
+                g1_g2_relative_yield_policy='observed_progress_yield_v3' if yield_progress else 'bounded_relative_yield_v2')
+        if autonomy_mode in {"lidar", "local_pursuit"}:
+            controller_parameters["lidar_x_m"] = float(lidar["xyz_m"][0])
+            controller_parameters.update(
+                lidar_input_representation='native_simulation_v1' if native_sampling else 'laser_scan',
+                lidar_compensation=LaunchConfiguration("lidar_compensation").perform(context),
+                motion_scan_timing_verified=True,  # 이 launch의 시뮬레이션 어댑터에 한정
+                **feedback["motion"],
+                motion_rear_axle_x_m=-float(drivetrain["wheelbase_m"]) / 2,
+                motion_lidar_x_m=float(lidar["xyz_m"][0]),
+                motion_lidar_y_m=float(lidar["xyz_m"][1]),
+                motion_lidar_yaw_rad=float(lidar["rpy_rad"][2]),
+                motion_imu_roll_rad=float(d435i["rpy_rad"][0]),
+                motion_imu_pitch_rad=float(d435i["rpy_rad"][1]),
+                sensor_wall_timeout_s=sensor_wall_timeout,
+            )
+            if local_mode:
+                controller_parameters["motion_imu_topic"] = "/imu/data"
+                controller_parameters["motion_gyro_abs_limit_rad_s"] = math.radians(float(profile['imu']['gyro_full_scale_dps']))
+                # 새 IMU는 카메라와 독립이며 현재 차체 축과 나란히 고정한다.
+                controller_parameters['motion_imu_roll_rad'] = 0.
+                controller_parameters['motion_imu_pitch_rad'] = 0.
+                controller_parameters['rear_blind_half_angle_deg'] = float(profile['lidar']['masked_rear_half_angle_deg'])
+                if blind_sectors_json:
+                    controller_parameters['lidar_blind_sectors_json'] = blind_sectors_json
+                if profile['lidar'].get('known_structure_mask') == 'structure_aware':
+                    controller_parameters['known_structure_policy'] = 'structure_aware_v1'
+                # 안쪽 조향 바퀴 0.45 rad 제한을 후륜축 자전거 등가각으로 환산.
+                controller_parameters["max_steering_angle_rad"] = equivalent_steering
+        else:
+            controller_parameters.update(
+                camera_x_m=float(d435i_xyz[0]),
+                camera_y_m=float(d435i_xyz[1]),
+                camera_z_m=float(d435i_xyz[2]),
+                color_fx_px=float(color_intrinsics["fx_px"]),
+                color_fy_px=float(color_intrinsics["fy_px"]),
+                color_cx_px=float(color_intrinsics["cx_px"]),
+                color_cy_px=float(color_intrinsics["cy_px"]),
+            )
+        actions.append(Node(package="arena_autonomy", executable=executable,
+                            parameters=[str(bringup_share / "config" / "wall_follow.yaml"),
+                                        controller_parameters],
+                            output="screen"))
+
+    if feedback["enabled"]:
+        actions.append(
+            Node(
+                package="arena_vehicle_interface",
+                executable="sim_wheel_encoder",
+                output="screen",
+                remappings=[(feedback["topic"], feedback["raw_test_topic"])] if motion_test else [],
+                parameters=[{**feedback["encoder_node"], "use_sim_time": True}],
+            )
+        )
+
+    if motion_test:
+        actions.append(Node(package='arena_vehicle_interface', executable='motion_fault_relay',
+                            parameters=[{'use_sim_time': True, 'profile': str(Path(motion_test).resolve()),
+                                         'feedback_mode': feedback['mode'],
+                                         'counts_per_motor_revolution': feedback['encoder_node'].get('counts_per_motor_revolution', 0),
+                                         'audit_path': str(Path(runtime_artifacts).resolve()/'motion_injection.jsonl') if runtime_artifacts else ''}],
+                            output='screen'))
+    return actions
+
+
+def generate_launch_description() -> LaunchDescription:
+    description_share = Path(get_package_share_directory("arena_description"))
+    return LaunchDescription(
+        [
+            DeclareLaunchArgument("lidar_compensation", default_value="none", choices=["none", "deskew", "shift", "both"]),
+            DeclareLaunchArgument('actuation_mode', default_value='legacy', choices=['legacy', 'virtual_mcu'], description='가상 MCU 계약 시험. 새 모드는 명시적 ARM 필요'),
+            DeclareLaunchArgument('timing_probe', default_value='false', choices=['true', 'false']),
+            DeclareLaunchArgument('drive_feedback_mode', default_value='configured',
+                                  choices=['configured', *DRIVE_FEEDBACK_MODES],
+                                  description='configured=vehicle_config 모터축 1채널. rear_wheel_pair_legacy는 이전 2개 계약 명시 비교'),
+            DeclareLaunchArgument("autonomy_control_rate_hz", default_value="20.0", description="자율주행 제어 주기; 센서 주기와 독립"),
+            DeclareLaunchArgument("sensor_wall_timeout_s", default_value="3.0", description="오프라인 감시 벽시계 한도. 센서의 시뮬레이션 시각 제한은 유지"),
+            # 이번 launch의 ROS 하위 프로세스에만 적용합니다. 별도 수신 터미널도
+            # 같은 모드를 사용해야 하며, 기존 사용자 지정 환경변수는 덮어쓰지 않습니다.
+            SetEnvironmentVariable(
+                "FASTDDS_BUILTIN_TRANSPORTS",
+                EnvironmentVariable("FASTDDS_BUILTIN_TRANSPORTS", default_value="LARGE_DATA"),
+            ),
+            DeclareLaunchArgument(
+                "track",
+                default_value="official",
+                choices=list(TRACK_DIRECTORIES),
+                description="official: v2026.11.01 derivative, 45/20 cm unchanged gantry markers; official_v2026_11_06: 61/20 cm right-angle derivative (explicit); experimental: legacy 45/25 cm test; original: preserved 35/12 cm.",
+            ),
+            DeclareLaunchArgument(
+                "vehicle_config",
+                default_value=str(description_share / "config" / "vehicle.yaml"),
+                description="Vehicle parameter YAML file.",
+            ),
+            DeclareLaunchArgument("local_sensor_config", default_value="",
+                                  description="local_pursuit 센서/장착 YAML. 빈 값은 기존 b0183_c1.yaml 유지"),
+            DeclareLaunchArgument("pilot_marker_z", default_value="",
+                                  description="파일럿 전용 ID49 판 중심 높이 덮어쓰기; 빈 값은 기본 설정"),
+            DeclareLaunchArgument(
+                "d435i_profile",
+                default_value="configured",
+                choices=["configured", *D435I_STREAM_PROFILES],
+                description="D435i stream profile. configured follows active_stream_profile in vehicle_config.",
+            ),
+            DeclareLaunchArgument(
+                "tof_profile",
+                default_value="configured",
+                choices=["configured", *TOF_PROFILES],
+                description="ToF zone/rate profile. configured follows active_profile in vehicle_config.",
+            ),
+            DeclareLaunchArgument(
+                "lidar_rate_hz",
+                default_value="configured",
+                description="configured 또는 시험용 0.5~100 Hz. C1 하드웨어 사양을 바꾸는 설정이 아닙니다.",
+            ),
+            DeclareLaunchArgument(
+                "grid_slot",
+                default_value="0",
+                description="Starting grid slot index (0-5).",
+            ),
+            DeclareLaunchArgument(
+                "headless",
+                default_value="false",
+                description="Run the Gazebo server without its GUI.",
+            ),
+            DeclareLaunchArgument("lidar_acquisition", default_value="snapshot", choices=["snapshot", "snapshot_matched", "sequential"],
+                                  description="순간 스캔 또는 물리 프레임 누적 회전 스캔"),
+            DeclareLaunchArgument('lidar_native_sampling_profile',default_value='',
+                                  description='선택형 C1 원천 각도/가변 점수 JSON. dense 5000광선에서 순차 취득; 시간은 합성 근사'),
+            DeclareLaunchArgument("render_backend", default_value="system", choices=["auto", "system", "wsl_nvidia", "software"],
+                                  description="auto: WSL GPU 연결 시 D3D12 선택, system: 기존 환경, software: CPU 비교"),
+            DeclareLaunchArgument("collision_detector", default_value="configured", choices=["configured", "ode", "bullet", "fcl"],
+                                  description="DART 충돌 검출만 선택하는 비교 옵션. 기본 물성/형상 유지"),
+            DeclareLaunchArgument("scene_broadcaster", default_value="true", description="false는 GUI·정답 pose 발행이 필요 없는 headless 검사 전용"),
+            DeclareLaunchArgument("gazebo_sigterm_timeout", default_value="5", description="종료 진단용 SIGINT 대기 초. 기본 ROS launch와 같은 5초"),
+            DeclareLaunchArgument("lidar_source_rate_hz", default_value="500", choices=["500", "1000"],
+                                  description="순차 취득의 내부 광선 계산 주기; C1 회전 주기 아님"),
+            DeclareLaunchArgument("autonomy", default_value="false", description="RGB 출발 신호 + 선택한 센서의 본선 벽 추종"),
+            DeclareLaunchArgument(
+                "autonomy_mode", default_value="lidar", choices=list(AUTONOMY_MODES),
+                description="lidar: C1+ToF6, stereo: 전방 D435i 깊이+측면 ToF4 개인 비교안",
+            ),
+            DeclareLaunchArgument("render_sensors", default_value="true", description="동역학 전용 시험에서 광학 센서만 끕니다. 링크·질량은 유지합니다."),
+            DeclareLaunchArgument("world_override", default_value="", description="시험 전용 SDF. 원본/실험 트랙 파일은 덮어쓰지 않습니다."),
+            DeclareLaunchArgument("test_spawn_x", default_value="0"),
+            DeclareLaunchArgument("test_spawn_y", default_value="0"),
+            DeclareLaunchArgument("test_spawn_yaw", default_value="0"),
+            DeclareLaunchArgument("drive_mode", default_value="configured", choices=["configured", "single_motor", "legacy_velocity"]),
+            DeclareLaunchArgument("differential_profile", default_value="configured", choices=["configured", *DIFFERENTIAL_PROFILES]),
+            DeclareLaunchArgument("tof_safety", default_value="true", description="/drive를 ToF 안전층에서 제한하여 /drive/safe로 전달"),
+            DeclareLaunchArgument("speed_profile", default_value="cautious", choices=list(SPEED_PROFILES),
+                                  description="명령 속도 상한이며 실제 속도/완주 보증이 아닙니다. ToF 안전층이 추가 제한합니다."),
+            DeclareLaunchArgument("depth_camera", default_value="true", description="깊이 센서와 점군을 켭니다. RGB·IMU는 유지합니다."),
+            DeclareLaunchArgument("speed_bump", default_value="true", description="false는 실행 사본에서만 임시 방지턱 제거"),
+            DeclareLaunchArgument("runtime_artifacts", default_value="", description="검증 실행 입력 보관 폴더"),
+            DeclareLaunchArgument('p22_entry_trial', default_value='false', choices=['false','true'],
+                                  description='단독 P22 입구만 보는 별도 시험 실행점; 기본 본선 유지'),
+            DeclareLaunchArgument('p22_route_trial', default_value='false', choices=['false','true'],
+                                  description='P22 입구 시험에 관측 출구와 본선 복귀를 추가; 단독 전용'),
+            DeclareLaunchArgument("evaluation_handoff_rear_sweep", default_value="false", choices=["false", "true"],
+                                  description="평가 전용 통과 후 저속 후반부 이동 후보"),
+            DeclareLaunchArgument("evaluation_current_lane_preference_trial", default_value="false", choices=["false", "true"],
+                                  description="정지 측방 반환 뒤 현재 관측 직선의 차선 유지 선호 시험"),
+            DeclareLaunchArgument("evaluation_side_departure_trial", default_value="false", choices=["false", "true"],
+                                  description="측방 시차 겹침에서 비접근 저속 출발 시험 후보"),
+            DeclareLaunchArgument("evaluation_handoff_observed_motion", default_value="false", choices=["false", "true"],
+                                  description="세계 고정 측방 반환과 전진 시작 조각을 구별하는 시험 후보"),
+            DeclareLaunchArgument("evaluation_handoff_continuous_pace", default_value="false", choices=["false", "true"],
+                                  description="paced+관측 이동 후보에서 연속 전진율로 고정 우회 여유만 보완하는 시험 후보"),
+            DeclareLaunchArgument("evaluation_stopped_entry_centering", default_value="false", choices=["false","true"]),
+            DeclareLaunchArgument("evaluation_adaptive_entry_preview", default_value="false", choices=["false","true"],
+                                  description="정지차 우회 경로가 점유 원호로만 막힐 때 짧은 목표점과 정지 정렬을 비교하는 시험 후보"),
+            DeclareLaunchArgument("evaluation_handoff_wall_witness", default_value="false", choices=["false","true"]),
+            DeclareLaunchArgument("evaluation_moving_pass_profile", default_value="slow_v1",
+                                  choices=["slow_v1", "medium_v1", "faster_v1"]),
+            DeclareLaunchArgument("evaluation_moving_pass_trial", default_value="false", choices=["false", "true"],
+                                  description="현재 관측으로 진입·후방 확인·복귀하는 직선 저속 이동차 추월 시험"),
+            DeclareLaunchArgument("evaluation_handoff_yield_progress", default_value="false", choices=["false", "true"],
+                                  description="현재 면이 전진할 때만 양보 예산을 갱신하는 시험 후보"),
+            DeclareLaunchArgument("evaluation_handoff_reserve", default_value="off", choices=["off","fixed","moving","closing","recent","low_motion","paced"],
+                                  description="상대차 평가 전용: G1/G2의 우회 준비 여유 비교"),
+            DeclareLaunchArgument('evaluation_course_markers', default_value='visible',
+                                 choices=['visible','blank_30','blank_20_30','blank_all'], description='평가 전용 코스 마커 무늬 가림; 형상 불변'),
+            DeclareLaunchArgument("evaluation_scheduled_apply", default_value="false", choices=["true", "false"],
+                                 description="Evaluation-only paired command deadline/ack; native default unchanged"),
+            DeclareLaunchArgument("evaluation_startup", default_value="service", choices=["service", "embedded_paused"],
+                                  description="평가 전용 초기 차량 포함·paused 시작. 별도 평가기가 준비 확인 후 재생해야 함"),
+            DeclareLaunchArgument("evaluation_zero_speed_mode", default_value="legacy", choices=ZERO_SPEED_MODES,
+                                  description="평가 전용 0속도 구동 특성 대조. 실물 제동 모드 아님"),
+            DeclareLaunchArgument("evaluation_physics_step", default_value="", choices=["", *EVALUATION_PHYSICS_STEPS],
+                                  description="평가 전용 물리 step 민감도. 빈 값은 월드 기본 1 ms; 증거 경로 필요"),
+            DeclareLaunchArgument("evaluation_command_trace", default_value="false", choices=["true", "false"],
+                                  description="평가 전용 플러그인 명령 수신/적용 전환 이벤트. 제어 입력 아님; 증거 경로 필요"),
+            DeclareLaunchArgument("evaluation_actor_sdf", default_value="",
+                                  description="평가 전용 정적 actor SDF 조각. official local_pursuit 실행 사본에만 삽입"),
+            DeclareLaunchArgument('signal_posts', default_value='none', choices=['none', *SIGNAL_POST_FACILITIES],
+                                 description='v11.06 실행 사본의 신호등 양지주(제작측 STL 단면·610 mm 간격 임시값). none은 11/3 기둥 없는 파생본'),
+            DeclareLaunchArgument('evaluation_grass_alignment', default_value='original', choices=['original', 'road_level', 'grass_above_3mm'],
+                                 description='v11.06 평가 사본의 잔디를 1 mm 높이는 단차 원인 대조. 기본 원본 유지'),
+            DeclareLaunchArgument("evaluation_wheel_contacts", default_value="false", choices=["true", "false"],
+                                  description="실행 사본의 평가 전용 바퀴 접촉 계측. 제어 입력 아님"),
+            DeclareLaunchArgument("lidar_test_profile", default_value="", description="시험용 거리오차/지연 JSON; 빈 값은 기존 동작"),
+            DeclareLaunchArgument("motion_test_profile", default_value="", description="시험용 IMU/엔코더 오류 JSON; 기본 비활성"),
+            DeclareLaunchArgument("batch_static_visuals", default_value="false", description="정적 상자 표시만 동일 꼭짓점/재질의 메시로 묶음; 충돌체 불변"),
+            DeclareLaunchArgument("chase_camera", default_value="false", description="영상 검증 전용 차량 추적 3인칭 카메라"),
+            DeclareLaunchArgument("traffic_light", default_value="false", description="공식 2×5 광원 점등 순서와 수동 제어"),
+            DeclareLaunchArgument("red_duration_s", default_value="8.0", description="영상 준비 이후 빨간 신호 유지 시간"),
+            OpaqueFunction(function=_launch_setup),
+        ]
+    )

@@ -74,8 +74,12 @@ def advance_local(v, w, dt):
 
 
 class MotionHistory:
-    def __init__(self, config=None):
+    def __init__(self, config=None, *, scan_time_policy='verified_only'):
         self.config = config or MotionConfig()
+        if scan_time_policy not in ('verified_only', 'host_estimated_v1'):
+            raise ValueError('unknown scan time policy')
+        # 호출자가 선택한 시각 사용 계약. 센서 표본의 검증 상태를 바꾸지 않는다.
+        self.scan_time_policy = scan_time_policy
         self.reset()
 
     def reset(self):

@@ -1,0 +1,45 @@
+1495- * the minimum free stack space there has been in bytes (as opposed to words
+1496- * in the standard FreeRTOS documentation) since the task started.  The smaller
+1497- * the returned number the closer the task has come to overflowing its stack.
+1498- *
+1499: * uxTaskGetStackHighWaterMark() and uxTaskGetStackHighWaterMark2() are the
+1500- * same except for their return type.  Using configSTACK_DEPTH_TYPE allows the
+1501- * user to determine the return type.  It gets around the problem of the value
+1502- * overflowing on 8-bit types without breaking backward compatibility for
+1503- * applications that expect an 8-bit return type.
+1504- *
+1505- * @param xTask Handle of the task associated with the stack to be checked.
+1506- * Set xTask to NULL to check the stack of the calling task.
+1507- *
+1508- * @return The smallest amount of free stack space there has been in bytes
+1509- * (as opposed to words in the standard FreeRTOS documentation) since the task
+1510- * referenced by xTask was created.
+1511- */
+1512:UBaseType_t uxTaskGetStackHighWaterMark( TaskHandle_t xTask ) PRIVILEGED_FUNCTION;
+1513-
+1514-/**
+1515- *
+1516- * INCLUDE_uxTaskGetStackHighWaterMark2 must be set to 1 in FreeRTOSConfig.h for
+1517- * this function to be available.
+1518- *
+1519- * Returns the high water mark of the stack associated with xTask.  That is,
+1520- * the minimum free stack space there has been in bytes (as opposed to words in
+1521- * the standard FreeRTOS documentation) since the task started.  The smaller the
+1522- * returned number the closer the task has come to overflowing its stack.
+1523- *
+1524: * uxTaskGetStackHighWaterMark() and uxTaskGetStackHighWaterMark2() are the
+1525- * same except for their return type.  Using configSTACK_DEPTH_TYPE allows the
+1526- * user to determine the return type.  It gets around the problem of the value
+1527- * overflowing on 8-bit types without breaking backward compatibility for
+1528- * applications that expect an 8-bit return type.
+1529- *
+1530- * @param xTask Handle of the task associated with the stack to be checked.
+1531- * Set xTask to NULL to check the stack of the calling task.
+1532- *
+1533- * @return The smallest amount of free stack space there has been in bytes
+1534- * (as opposed to words in the standard FreeRTOS documentation) since the task
+1535- * referenced by xTask was created.
+1536- */
+1537-configSTACK_DEPTH_TYPE uxTaskGetStackHighWaterMark2( TaskHandle_t xTask ) PRIVILEGED_FUNCTION;
+1538-
+1539-/* When using trace macros it is sometimes necessary to include task.h before

@@ -1,0 +1,721 @@
+FFFFFFFFFFFFFF                                                           [100%]
+=================================== FAILURES ===================================
+________ test_same_positive_plan_keeps_one_current_result_then_new_plan ________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+
+    def test_same_positive_plan_keeps_one_current_result_then_new_plan(records):
+        old,new,current=records;w=worker(old)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080280956160'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad6c08620>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d4180>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+_____________ test_changed_intent_or_input_boundary_preempts[zero] _____________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+change = 'zero'
+
+    @pytest.mark.parametrize('change', ['zero','slower','handoff','selector','wall','epoch','source','side','earlier','nan'])
+    def test_changed_intent_or_input_boundary_preempts(records,change):
+        old,new,current=records;w=worker(old)
+        if change=='zero':new['output'][0]=0
+        if change=='slower':new['output'][0]=old['output'][0]/2
+        if change=='handoff':new['output'][2]['handoff_state']='BYPASS'
+        if change=='selector':new['output'][2]['normal']['selector_mode']='GUARD'
+        if change=='wall':new['output'][2]['normal']['path_wall']='right'
+        if change=='epoch':new['input']['epoch']+=1
+        if change=='source':new['input']['scan']['measurements']['source_epoch']+=1
+        if change=='side':new['input']['side']='right'
+        if change=='earlier':new['input']['reference_s']=old['input']['reference_s']-.1
+        if change=='nan':new['output'][0]=float('nan')
+        assert not may_finish_current(old,new)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080279408512'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad411fc80>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d62a0>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+____________ test_changed_intent_or_input_boundary_preempts[slower] ____________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+change = 'slower'
+
+    @pytest.mark.parametrize('change', ['zero','slower','handoff','selector','wall','epoch','source','side','earlier','nan'])
+    def test_changed_intent_or_input_boundary_preempts(records,change):
+        old,new,current=records;w=worker(old)
+        if change=='zero':new['output'][0]=0
+        if change=='slower':new['output'][0]=old['output'][0]/2
+        if change=='handoff':new['output'][2]['handoff_state']='BYPASS'
+        if change=='selector':new['output'][2]['normal']['selector_mode']='GUARD'
+        if change=='wall':new['output'][2]['normal']['path_wall']='right'
+        if change=='epoch':new['input']['epoch']+=1
+        if change=='source':new['input']['scan']['measurements']['source_epoch']+=1
+        if change=='side':new['input']['side']='right'
+        if change=='earlier':new['input']['reference_s']=old['input']['reference_s']-.1
+        if change=='nan':new['output'][0]=float('nan')
+        assert not may_finish_current(old,new)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080281210080'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad42d7e60>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d6340>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+___________ test_changed_intent_or_input_boundary_preempts[handoff] ____________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+change = 'handoff'
+
+    @pytest.mark.parametrize('change', ['zero','slower','handoff','selector','wall','epoch','source','side','earlier','nan'])
+    def test_changed_intent_or_input_boundary_preempts(records,change):
+        old,new,current=records;w=worker(old)
+        if change=='zero':new['output'][0]=0
+        if change=='slower':new['output'][0]=old['output'][0]/2
+        if change=='handoff':new['output'][2]['handoff_state']='BYPASS'
+        if change=='selector':new['output'][2]['normal']['selector_mode']='GUARD'
+        if change=='wall':new['output'][2]['normal']['path_wall']='right'
+        if change=='epoch':new['input']['epoch']+=1
+        if change=='source':new['input']['scan']['measurements']['source_epoch']+=1
+        if change=='side':new['input']['side']='right'
+        if change=='earlier':new['input']['reference_s']=old['input']['reference_s']-.1
+        if change=='nan':new['output'][0]=float('nan')
+        assert not may_finish_current(old,new)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080279577840'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad4149340>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d63e0>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+___________ test_changed_intent_or_input_boundary_preempts[selector] ___________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+change = 'selector'
+
+    @pytest.mark.parametrize('change', ['zero','slower','handoff','selector','wall','epoch','source','side','earlier','nan'])
+    def test_changed_intent_or_input_boundary_preempts(records,change):
+        old,new,current=records;w=worker(old)
+        if change=='zero':new['output'][0]=0
+        if change=='slower':new['output'][0]=old['output'][0]/2
+        if change=='handoff':new['output'][2]['handoff_state']='BYPASS'
+        if change=='selector':new['output'][2]['normal']['selector_mode']='GUARD'
+        if change=='wall':new['output'][2]['normal']['path_wall']='right'
+        if change=='epoch':new['input']['epoch']+=1
+        if change=='source':new['input']['scan']['measurements']['source_epoch']+=1
+        if change=='side':new['input']['side']='right'
+        if change=='earlier':new['input']['reference_s']=old['input']['reference_s']-.1
+        if change=='nan':new['output'][0]=float('nan')
+        assert not may_finish_current(old,new)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080281210176'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad42d7fb0>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d40e0>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+_____________ test_changed_intent_or_input_boundary_preempts[wall] _____________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+change = 'wall'
+
+    @pytest.mark.parametrize('change', ['zero','slower','handoff','selector','wall','epoch','source','side','earlier','nan'])
+    def test_changed_intent_or_input_boundary_preempts(records,change):
+        old,new,current=records;w=worker(old)
+        if change=='zero':new['output'][0]=0
+        if change=='slower':new['output'][0]=old['output'][0]/2
+        if change=='handoff':new['output'][2]['handoff_state']='BYPASS'
+        if change=='selector':new['output'][2]['normal']['selector_mode']='GUARD'
+        if change=='wall':new['output'][2]['normal']['path_wall']='right'
+        if change=='epoch':new['input']['epoch']+=1
+        if change=='source':new['input']['scan']['measurements']['source_epoch']+=1
+        if change=='side':new['input']['side']='right'
+        if change=='earlier':new['input']['reference_s']=old['input']['reference_s']-.1
+        if change=='nan':new['output'][0]=float('nan')
+        assert not may_finish_current(old,new)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080279404864'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad411fc50>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d6b60>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+____________ test_changed_intent_or_input_boundary_preempts[epoch] _____________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+change = 'epoch'
+
+    @pytest.mark.parametrize('change', ['zero','slower','handoff','selector','wall','epoch','source','side','earlier','nan'])
+    def test_changed_intent_or_input_boundary_preempts(records,change):
+        old,new,current=records;w=worker(old)
+        if change=='zero':new['output'][0]=0
+        if change=='slower':new['output'][0]=old['output'][0]/2
+        if change=='handoff':new['output'][2]['handoff_state']='BYPASS'
+        if change=='selector':new['output'][2]['normal']['selector_mode']='GUARD'
+        if change=='wall':new['output'][2]['normal']['path_wall']='right'
+        if change=='epoch':new['input']['epoch']+=1
+        if change=='source':new['input']['scan']['measurements']['source_epoch']+=1
+        if change=='side':new['input']['side']='right'
+        if change=='earlier':new['input']['reference_s']=old['input']['reference_s']-.1
+        if change=='nan':new['output'][0]=float('nan')
+        assert not may_finish_current(old,new)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080279559920'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad4144d40>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d6d40>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+____________ test_changed_intent_or_input_boundary_preempts[source] ____________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+change = 'source'
+
+    @pytest.mark.parametrize('change', ['zero','slower','handoff','selector','wall','epoch','source','side','earlier','nan'])
+    def test_changed_intent_or_input_boundary_preempts(records,change):
+        old,new,current=records;w=worker(old)
+        if change=='zero':new['output'][0]=0
+        if change=='slower':new['output'][0]=old['output'][0]/2
+        if change=='handoff':new['output'][2]['handoff_state']='BYPASS'
+        if change=='selector':new['output'][2]['normal']['selector_mode']='GUARD'
+        if change=='wall':new['output'][2]['normal']['path_wall']='right'
+        if change=='epoch':new['input']['epoch']+=1
+        if change=='source':new['input']['scan']['measurements']['source_epoch']+=1
+        if change=='side':new['input']['side']='right'
+        if change=='earlier':new['input']['reference_s']=old['input']['reference_s']-.1
+        if change=='nan':new['output'][0]=float('nan')
+        assert not may_finish_current(old,new)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080281210464'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad42d4c80>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d6980>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+_____________ test_changed_intent_or_input_boundary_preempts[side] _____________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+change = 'side'
+
+    @pytest.mark.parametrize('change', ['zero','slower','handoff','selector','wall','epoch','source','side','earlier','nan'])
+    def test_changed_intent_or_input_boundary_preempts(records,change):
+        old,new,current=records;w=worker(old)
+        if change=='zero':new['output'][0]=0
+        if change=='slower':new['output'][0]=old['output'][0]/2
+        if change=='handoff':new['output'][2]['handoff_state']='BYPASS'
+        if change=='selector':new['output'][2]['normal']['selector_mode']='GUARD'
+        if change=='wall':new['output'][2]['normal']['path_wall']='right'
+        if change=='epoch':new['input']['epoch']+=1
+        if change=='source':new['input']['scan']['measurements']['source_epoch']+=1
+        if change=='side':new['input']['side']='right'
+        if change=='earlier':new['input']['reference_s']=old['input']['reference_s']-.1
+        if change=='nan':new['output'][0]=float('nan')
+        assert not may_finish_current(old,new)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080279405776'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad411d8b0>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d6f20>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+___________ test_changed_intent_or_input_boundary_preempts[earlier] ____________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+change = 'earlier'
+
+    @pytest.mark.parametrize('change', ['zero','slower','handoff','selector','wall','epoch','source','side','earlier','nan'])
+    def test_changed_intent_or_input_boundary_preempts(records,change):
+        old,new,current=records;w=worker(old)
+        if change=='zero':new['output'][0]=0
+        if change=='slower':new['output'][0]=old['output'][0]/2
+        if change=='handoff':new['output'][2]['handoff_state']='BYPASS'
+        if change=='selector':new['output'][2]['normal']['selector_mode']='GUARD'
+        if change=='wall':new['output'][2]['normal']['path_wall']='right'
+        if change=='epoch':new['input']['epoch']+=1
+        if change=='source':new['input']['scan']['measurements']['source_epoch']+=1
+        if change=='side':new['input']['side']='right'
+        if change=='earlier':new['input']['reference_s']=old['input']['reference_s']-.1
+        if change=='nan':new['output'][0]=float('nan')
+        assert not may_finish_current(old,new)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080279408816'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad4121580>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d7100>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+_____________ test_changed_intent_or_input_boundary_preempts[nan] ______________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+change = 'nan'
+
+    @pytest.mark.parametrize('change', ['zero','slower','handoff','selector','wall','epoch','source','side','earlier','nan'])
+    def test_changed_intent_or_input_boundary_preempts(records,change):
+        old,new,current=records;w=worker(old)
+        if change=='zero':new['output'][0]=0
+        if change=='slower':new['output'][0]=old['output'][0]/2
+        if change=='handoff':new['output'][2]['handoff_state']='BYPASS'
+        if change=='selector':new['output'][2]['normal']['selector_mode']='GUARD'
+        if change=='wall':new['output'][2]['normal']['path_wall']='right'
+        if change=='epoch':new['input']['epoch']+=1
+        if change=='source':new['input']['scan']['measurements']['source_epoch']+=1
+        if change=='side':new['input']['side']='right'
+        if change=='earlier':new['input']['reference_s']=old['input']['reference_s']-.1
+        if change=='nan':new['output'][0]=float('nan')
+        assert not may_finish_current(old,new)
+>       rows=collect(w,[current,new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080279915696'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad4198ef0>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d42c0>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+____________ test_stop_between_deferred_plan_and_apply_clears_both _____________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+
+    def test_stop_between_deferred_plan_and_apply_clears_both(records):
+>       old,new,current=records;w=worker(old);collect(w,[new,current])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:72: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080279413712'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad4123650>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d6980>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+____________________ test_no_active_check_uses_new_revision ____________________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+
+    def test_no_active_check_uses_new_revision(records):
+        old,new,_=records;w=worker(old);w.current_input=None
+>       collect(w,[new])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:79: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080281208448'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad42d7bf0>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d7240>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+___________ test_inflight_retained_failure_never_becomes_permission ____________
+
+records = ({'generation': 0, 'input': {'dt_s': 0.1, 'epoch': 0, 'history': {'gyro': {'times': [18.065, 18.07, 18.075, 18.08, 18....onfirmed_front_patch'}, 'handoff_state': 'FOLLOW', ...}], 'route_check': {'retained': True, 'revision': 8}, ...}, ...})
+
+    def test_inflight_retained_failure_never_becomes_permission(records):
+        old,new,current=records;w=worker(old);current['output']['speed_mps']=0
+>       rows=collect(w,[new,current])
+
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:85: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py:43: in collect
+    return w.collect()
+artifacts/validation/2026-11-12/current_priority_r286_v1/priority.py:44: in collect
+    rows=OverlapProcess.collect(self)
+/usr/lib/python3.12/unittest/mock.py:1134: in __call__
+    return self._mock_call(*args, **kwargs)
+/usr/lib/python3.12/unittest/mock.py:1138: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='collect' id='135080279588160'>
+args = (<priority.CurrentPriorityProcess object at 0x7adad414bf80>,)
+kwargs = {}, effect = <function collect.<locals>.base at 0x7adad41d42c0>
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                result = next(effect)
+                if _is_exception(result):
+                    raise result
+            else:
+>               result = effect(*args, **kwargs)
+E               TypeError: collect.<locals>.base() takes 0 positional arguments but 1 was given
+
+/usr/lib/python3.12/unittest/mock.py:1199: TypeError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_same_positive_plan_keeps_one_current_result_then_new_plan
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_changed_intent_or_input_boundary_preempts[zero]
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_changed_intent_or_input_boundary_preempts[slower]
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_changed_intent_or_input_boundary_preempts[handoff]
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_changed_intent_or_input_boundary_preempts[selector]
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_changed_intent_or_input_boundary_preempts[wall]
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_changed_intent_or_input_boundary_preempts[epoch]
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_changed_intent_or_input_boundary_preempts[source]
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_changed_intent_or_input_boundary_preempts[side]
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_changed_intent_or_input_boundary_preempts[earlier]
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_changed_intent_or_input_boundary_preempts[nan]
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_stop_between_deferred_plan_and_apply_clears_both
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_no_active_check_uses_new_revision
+FAILED artifacts/validation/2026-11-12/current_priority_r286_v1/test_priority.py::test_inflight_retained_failure_never_becomes_permission
+14 failed in 11.43s

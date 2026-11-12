@@ -32,6 +32,7 @@ def recognize(request, data):
     rgb = image_rgb(SimpleNamespace(data=data, **request['image']))
     decoded = time.perf_counter_ns()
     signal_mode = request.get('signal_mode', 'temporary_3light')
+    vehicle_ids = request.get('vehicle_marker_ids', ())
     start = make_start_signal(signal_mode)
     start.__dict__.update(copy.deepcopy(request['signal']))
     if signal_mode == 'official_marker_late_candidate':
@@ -47,13 +48,22 @@ def recognize(request, data):
         else:
             start.update(rgb)
         signaled = time.perf_counter_ns()
-        ids = sorted(set(marker_ids(rgb, .02)))
+        if vehicle_ids:
+            observations = marker_observations(rgb, .02)
+            ids = sorted({identity for identity, _ in observations})
+        else:
+            ids = sorted(set(marker_ids(rgb, .02)))
         ended = time.perf_counter_ns()
         signal_ms, markers_ms = (signaled-decoded)/1e6, (ended-signaled)/1e6
+    extra = {}
+    if vehicle_ids:
+        from arena_autonomy.vehicle_markers import summarize_markers
+        extra['vehicle_markers'] = summarize_markers(observations, rgb.shape[1], rgb.shape[0], vehicle_ids)
+        ended = time.perf_counter_ns()
     return dict(epoch=request['epoch'], sequence=request['sequence'], stamp=request['stamp'],
         signal=vars(start), signal_mode=signal_mode, ids=ids, stages_ms=dict(decode=(decoded-began)/1e6,
         signal=signal_ms, markers=markers_ms),
-        duration_ms=(ended-began)/1e6)
+        duration_ms=(ended-began)/1e6, **extra)
 
 
 def worker_main(buffer, connection):
@@ -141,7 +151,8 @@ class VisionProcess:
 
 class VisionPipeline:
     """부모 단일 executor 전용. 결과의 세대·촬영 시각·수신 후 나이를 함께 검사한다."""
-    def __init__(self, worker, image_timeout=1., wall_timeout=3., work_timeout=1., signal_mode='temporary_3light'):
+    def __init__(self, worker, image_timeout=1., wall_timeout=3., work_timeout=1., signal_mode='temporary_3light',
+                 vehicle_marker_ids=()):
         if min(image_timeout, wall_timeout, work_timeout) <= 0:
             raise ValueError('Vision timeouts must be positive')
         self.worker = worker
@@ -153,6 +164,10 @@ class VisionPipeline:
         self.signal_mode = signal_mode
         self.signal = make_start_signal(signal_mode)
         self.ids = []
+        self.vehicle_observer = None
+        if vehicle_marker_ids:
+            from arena_autonomy.vehicle_markers import VehicleMarkerObserver
+            self.vehicle_observer = VehicleMarkerObserver(vehicle_marker_ids)
         self.last_submitted = float('-inf')
         self.last_received = float('-inf')
         self.last_accepted = float('-inf')
@@ -168,6 +183,8 @@ class VisionPipeline:
         self.pending = None
         self.signal = make_start_signal(self.signal_mode)
         self.ids = []
+        if self.vehicle_observer is not None:
+            self.vehicle_observer.reset()
         self.last_submitted = self.last_received = self.last_accepted = float('-inf')
         self.input_floor_s = float('-inf')
         self.last_result = None
@@ -182,6 +199,8 @@ class VisionPipeline:
         self.epoch += 1
         self.pending = None
         self.ids = []
+        if self.vehicle_observer is not None:
+            self.vehicle_observer.reset()
         self.last_submitted = self.last_received = self.last_accepted = float('-inf')
         self.input_floor_s = boundary_s
         self.last_result = None
@@ -244,6 +263,9 @@ class VisionPipeline:
                 else:
                     self.signal.__dict__.update(result['signal'])
                     self.ids = result['ids']
+                    if self.vehicle_observer is not None:
+                        self.vehicle_observer.update(request['stamp'], result['vehicle_markers'],
+                            (request['image']['height'], request['image']['width']))
                     self.last_accepted = request['stamp']
                     self.last_result = dict(stamp=request['stamp'], received=request['received'],
                         processing_ms=result['duration_ms'], stages_ms=result['stages_ms'],
@@ -269,6 +291,8 @@ class VisionPipeline:
                         received=received, submitted=wall_now, image=image,
                         signal_mode=self.signal_mode,
                         signal=copy.deepcopy(vars(self.signal)))
+                    if self.vehicle_observer is not None:
+                        request['vehicle_marker_ids'] = self.vehicle_observer.ids
                     self.worker.submit(request, message.data)
                     self.inflight = request
                     self.last_submitted = stamp

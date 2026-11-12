@@ -1,4 +1,5 @@
 """JR60P20 임시 채택 프로필: 좌표·배선 예약 외곽·구조 각도·마커·실행 인자 정적 불변. 주행 없음."""
+import ast
 import json
 import math
 from pathlib import Path
@@ -194,6 +195,10 @@ def test_traffic_validator_marker_flag_is_opt_in_and_forwarded():
     follow = (ROOT/'src/arena_bringup/launch/g1_follow.launch.py').read_text(encoding='utf-8')
     assert "launch_arguments={'pilot_marker_z': LaunchConfiguration('pilot_marker_z')}" in follow
     pursuit = (ROOT/'src/arena_bringup/launch/local_pursuit.launch.py').read_text(encoding='utf-8')
-    assert '"pilot_marker_z": ""}' in pursuit and '**{key: LaunchConfiguration(key) for key in defaults}' in pursuit
+    defaults = next(node.value for node in ast.walk(ast.parse(pursuit))
+                    if isinstance(node, ast.Assign) and any(
+                        isinstance(target, ast.Name) and target.id == 'defaults' for target in node.targets))
+    assert ast.literal_eval(defaults)['pilot_marker_z'] == ''
+    assert '**{key: LaunchConfiguration(key) for key in defaults}' in pursuit
     demo = (ROOT/'src/arena_bringup/launch/demo.launch.py').read_text(encoding='utf-8')
     assert '"pilot_marker_z": LaunchConfiguration("pilot_marker_z")' in demo

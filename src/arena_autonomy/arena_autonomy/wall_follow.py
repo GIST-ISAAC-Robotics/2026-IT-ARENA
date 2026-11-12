@@ -26,6 +26,13 @@ def stamp_seconds(stamp):
 class WallFollow(Node):
     def __init__(self, node_name="wall_follow"):
         super().__init__(node_name)
+        environment = self.declare_parameter('execution_environment', 'default').value
+        if environment not in ('default', 'hardware_shadow_v1'):
+            raise ValueError('unknown execution environment')
+        self.hardware_shadow = environment == 'hardware_shadow_v1'
+        if self.hardware_shadow and self.get_parameter('use_sim_time').value:
+            raise ValueError('hardware shadow requires the real ROS clock')
+        self.execution_environment = environment
         self.timing = TimingProbe(self)
         defaults = {"wheelbase_m": .145, "lidar_x_m": -.03, "max_steering_angle_rad": .43,
                     "target_wall_distance_m": .425, "max_speed_mps": .35, "min_speed_mps": .14,
@@ -58,13 +65,16 @@ class WallFollow(Node):
         self.last_speed = 0.0
         self.last_control_time = -math.inf
         self.state_log = QueuedLog(self.get_logger().info)
-        self.publisher = self.create_publisher(AckermannDriveStamped, "/drive", 10)
-        self.status_publisher = self.create_publisher(String, "/autonomy/status", 10)
+        prefix = '/hardware_preview' if self.hardware_shadow else ''
+        self.publisher = self.create_publisher(AckermannDriveStamped, prefix+"/drive", 10)
+        if self.hardware_shadow and self.publisher.topic_name != prefix+'/drive':
+            raise ValueError('hardware shadow output must remain on its diagnostic topic')
+        self.status_publisher = self.create_publisher(String, prefix+"/autonomy/status", 10)
         from arena_autonomy.native_lidar_input import subscribe_scan
         subscribe_scan(self,self.timing.wrap('scan',self.on_scan),qos_profile_sensor_data)
         self.create_subscription(Image, "/camera/color/image_raw", self.timing.wrap('image', self.on_image), QoSProfile(depth=2))
-        self.create_service(SetBool, "/autonomy/enable", self.on_enable)
-        self.create_service(Trigger, "/autonomy/reset", self.on_reset)
+        self.create_service(SetBool, prefix+"/autonomy/enable", self.on_enable)
+        self.create_service(Trigger, prefix+"/autonomy/reset", self.on_reset)
         self.create_timer(1 / self.settings["control_rate_hz"], self.timing.wrap('control', self.control))
         self.get_logger().info(f"RGB 빨강→초록 대기. lidar_compensation={motion_mode}; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.")
 
@@ -199,9 +209,17 @@ class WallFollow(Node):
             message.drive.speed, message.drive.steering_angle = float(speed), float(steering)
             self.timing.call('command_publish', self.publisher.publish, message)
         status.update(speed_command_mps=speed, steering_command_rad=steering)
+        if getattr(self, 'hardware_shadow', False):
+            status.update(execution_environment='hardware_shadow_v1', drive_output=False,
+                          motion_timing_verified=bool(self.motion and self.motion.verified),
+                          **({'motion_time_policy': self.motion.timing_policy}
+                             if self.motion and getattr(self.motion,'timing_policy','verified_only')!='verified_only' else {}))
         status['text_log'] = self.state_log.snapshot()
         if getattr(self, 'vision_pipeline', None) is not None:
             status['vision'] = self.vision_pipeline.snapshot()
+            observer = getattr(self.vision_pipeline, 'vehicle_observer', None)
+            if observer is not None:
+                status['vehicle_markers'] = observer.snapshot(now)
         if getattr(self, 'race', None) is not None:
             status['race'] = self.race.snapshot(now, time.monotonic())
             status['inputs'] = self.input_snapshot(now)

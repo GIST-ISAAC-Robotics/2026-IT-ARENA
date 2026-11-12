@@ -63,7 +63,7 @@
     "individual_board_component_population_verified": false
   },
   "cf_primary_source": "https://www.ti.com/lit/ds/symlink/txs0108e.pdf",
-  "conclusion": "Original board VB-to-ground 0 V and older replacement 0.01 V (B1/B2 both 0); expected supply not established across board rails. Common power/ground path remains first check; neither board has been proven faulty or functional.",
+  "conclusion": "공통 GND 연결·보드 교체 후 B측 네 상태를 확인했고, 후속 사용자 요청으로 A1/A2를 GPIO4/5에 연결하여 손 회전−30/+34계수와 방향 판별을 확인했다. PCNT/software 일치·64에지·invalid/drop/CRC/순번 공백0이다. 기존 보드/접속 경로 문제라는 근거가 강하며 저속 디지털 경로는 동작한다. A측 전압/파형·정확한 회전당 계수·고속 품질은 미검증이다.",
   "no_additional_hardware_manipulation_during_review": true,
   "later_user_meter_observation": {
     "motor_ch1_disconnected": true,
@@ -100,7 +100,7 @@
       },
       "normal_power_cf_failure_established": false
     },
-    "next_request": "Wait for technician to complete the planned common-ground branch with supplies off, then remeasure VB/B1/B2 before reconnecting signal wires.",
+    "next_request": "사용자 종료 요청에 따라 시험 종료·원 IMU 앱 복구를 완료했다. GND 제거 비교는 수행하지 않았다. 후속 회전당 계수·고속/실장 신호 검증은 별도 요청 시 진행한다.",
     "after_reseat_request": {
       "vb_v": 0,
       "b1_v": 0,
@@ -108,7 +108,8 @@
       "reference": "CF_GND",
       "user_ground_question": "CF GND connected to ESP32 GND?"
     },
-    "ground_branch_completion_confirmed": false
+    "ground_branch_completion_confirmed": true,
+    "ground_branch_completion_evidence": "user_report_and_followup_header_voltage_measurements_no_power_off_continuity_test"
   },
   "ground_net_design": [
     "CH4_negative",
@@ -127,7 +128,10 @@
     "CF_GND_direct": [
       "ESP32_GND"
     ],
-    "CH4_negative_to_ESP32_ground_indirect_connection_verified": false
+    "CH4_negative_to_ESP32_ground_indirect_connection_verified": false,
+    "bench_jetson_source_user_report": "wall_adapter",
+    "bench_esp32_source_user_report": "Jetson_USB",
+    "bench_encoder_cf_vb_source_user_report": "battery_CH4_5V"
   },
   "older_board_swap_user_report": {
     "performed": true,
@@ -140,5 +144,119 @@
     "reference_expected": "board_GND",
     "ground_branch_added": false,
     "reason_ground_work_pending": "waiting_for_technician_user_does_not_solder"
+  },
+  "after_ground_branch_user_report": {
+    "branch_to_ESP32_GND_connected": true,
+    "AB_1_2_signal_wires_disconnected": true,
+    "continuity_verified": false,
+    "new_voltage_measurements": {
+      "source": "user_report_after_explicit_board_pin_measurement_request",
+      "reference": "CF_GND",
+      "vb_v": 4.95,
+      "b1_v": 0.01,
+      "b2_v": 0.0,
+      "va_v": 3.18,
+      "oe_v": 3.18,
+      "b6_v": 0.0,
+      "chip_supply_continuity_verified": false
+    },
+    "remote_device_actions_performed": false
+  },
+  "reprovided_board_photo": {
+    "source": "user_attachment",
+    "private_file": "build/encoder_analysis_20261112/older-board-user-reference.png",
+    "sha256": "ecebb41dda6cba0ec649c809ebcbd2eb460fd52f312c4bf4a65e10b03145bc9c",
+    "marking": [
+      "YF08E",
+      "69KG4",
+      "CHQ7"
+    ],
+    "matches_prior_headered_unknown_model_photo": true,
+    "b2_silkscreen_absent_b4_duplicated": true,
+    "user_reports_soldering_ok": true,
+    "electrical_continuity_verified": false,
+    "specific_solder_fault_identified": false
+  },
+  "replacement_board_after_ground_branch_user_report": {
+    "source": "user_reply_to_replacement_board_VA_VB_OE_B6_measurement_request_with_additional_B1_B2_readings",
+    "reference": "CF_GND",
+    "common_ground_retained_per_instructions": true,
+    "AB_1_2_signal_wires_disconnected_per_instructions": true,
+    "motor_CH1_disconnected_per_instructions": true,
+    "voltage_measurements": {
+      "va_v": 3.19,
+      "vb_v": 4.95,
+      "oe_v": 3.19,
+      "b6_v": 4.95,
+      "b1_v": 4.94,
+      "b2_v": 4.94
+    },
+    "static_B_side_pullup_consistent_with_expected": true,
+    "prior_board_or_connection_path_problem_strongly_indicated": true,
+    "IC_itself_failure_confirmed": false,
+    "signal_translation_verified": false,
+    "encoder_function_verified": false,
+    "remote_device_actions_performed": false
+  },
+  "encoder_B_side_hand_rotation_after_board_replacement": {
+    "source": "user_report_following_HA_HB_only_reconnection_and_manual_rotation_instructions",
+    "reference": "CF_GND",
+    "reported_voltage_pairs_B1_B2_v": [
+      [
+        4.95,
+        0
+      ],
+      [
+        0,
+        4.95
+      ],
+      [
+        0,
+        0
+      ],
+      [
+        4.95,
+        4.95
+      ]
+    ],
+    "pair_list_is_confirmed_continuous_transition_order": false,
+    "all_four_logic_combinations_observed": true,
+    "both_channels_low_and_high_observed": true,
+    "A_side_to_MCU_disconnected_per_instructions": true,
+    "motor_CH1_disconnected_per_instructions": true,
+    "A_side_translation_verified": false,
+    "quadrature_phase_order_verified": false,
+    "MCU_counts_verified": false,
+    "pulses_per_revolution_verified": false,
+    "high_speed_waveform_verified": false,
+    "remote_device_actions_performed": false
+  },
+  "subsequent_MCU_manual_test": {
+    "user_requested_direct_test_and_connected_A1_A2": true,
+    "A_side_analog_measurement_skipped": true,
+    "artifact": "../pge213_after_cf_swap_v1/README.md",
+    "first_direction_counts": -30,
+    "reverse_direction_counts": 34,
+    "pcnt_software_match_at_rest": true,
+    "invalid_transitions": 0,
+    "final_rest_seconds": 40.64,
+    "final_rest_edge_change": 0,
+    "original_app_restored_byte_exact": true,
+    "counts_per_revolution_adopted": null,
+    "next_requested_test": "CH1 저출력 결합 시험 완료; subsequent_powered_test 참조"
+  },
+  "subsequent_powered_test": {
+    "artifact": "../md20a_encoder_after_cf_swap_v1/README.md",
+    "counts": [
+      -116,
+      -120,
+      -123,
+      -124
+    ],
+    "powered_window_invalid_and_drop": 0,
+    "later_idle_anomaly_retained": true,
+    "user_reports_encoder_and_motor_side_disconnected_ESP_side_retained": true,
+    "original_app_restored_byte_exact": true,
+    "intentional_ground_branch_removal_comparison_performed": false
   }
 }

@@ -2,7 +2,7 @@
 
 - 기준: f3a2f7c031a52a52b4166c2df91d4377066c3654
 - 전장 배치 기준: [APPROVED_ELECTRICAL_LAYOUT.md](APPROVED_ELECTRICAL_LAYOUT.md)
-- 핀별 조립 기준: [ESP32 주변 통합 배선도 v1](ESP32_GPIO_WIRING_2026_11_11.md). IMU 배선 설계를 유지하며 CF 부분은 조건부다. [11/12 서보 제한 실측](../sensors/ST3215_HS_HARDWARE_2026_11_12.md)은 완료했고 모터·엔코더·서보 실장 교정은 후속이다. 현재 물리 IMU는 사용자가 분리해 두었다. 보유 ESP32는 제조사 미확인 호환 보드이므로 아래 구매명 VND018/CH343P를 실물 판본 확정으로 읽지 않는다.
+- 핀별 조립 기준: [ESP32 주변 통합 배선도 v1](ESP32_GPIO_WIRING_2026_11_11.md). IMU 배선 설계를 유지하며 CF 부분은 조건부다. [11/12 서보 제한 실측](../sensors/ST3215_HS_HARDWARE_2026_11_12.md)은 완료했고 모터·엔코더·서보 실장 교정은 후속이다. 서보 단독 시험 당시에는 IMU가 분리돼 있었으나, 11/12 후속 r249/r251에서 실제 IMU와 C1·카메라의 공통 노드 수신을 확인했다([현행 통합 상태](../reports/RUNTIME_SENSOR_INTEGRATION_2026_11_12.md)). 당시 분리 기록을 현재 연결 상태로 적용하지 않는다. 보유 ESP32는 제조사 미확인 호환 보드이므로 아래 구매명 VND018/CH343P를 실물 판본 확정으로 읽지 않는다.
 - 목적: 보유/선정 부품을 그대로 사용해 전원 연결, 센서 연결, ESP32 프로그램 이관, Jetson 통합 및 교정을 진행한다.
 - 이 절차는 추가 회로 제작을 전제로 하지 않는다. 실물에서 확인되지 않은 핀·전압·신호 방식을 추측해 연결하지 않는다.
 
@@ -140,6 +140,24 @@
 - Adapter A UART 커넥터의 실제 보드 실크와 서보 케이블 핀 배열
 - 6S 배터리 전압이 24 V 아래일 때 M01의 안정 동작
 - 실제 서보 조향 전류와 전압 강하
-- 별도 하드웨어 STOP 버튼/회로
+- 물리 STOP의 펌웨어 구현·실물 동작·규정 인정. **11/13 사용자 지시의 결선 설계는 GPIO8↔2선 유지형 스위치↔TGND로 반영 완료**했으며 [통합 배선도](schematics/esp32_gpio_wiring_v1.html)를 따른다.
 
 위 항목은 임의 회로를 추가해 덮지 않는다. 제조사 자료나 실물 측정으로 확인한 뒤 필요한 최소한의 연결만 추가한다.
+
+## 조립 전 관측 실행
+
+`scripts/run_hardware_sensor_preview.py`는 실제 C1·IMU·선택 B0390을 공통 비구동 노드에 연결하고 기록/종료를 묶는다. 펌웨어 업로드·ARM·DRIVE·가상 엔코더 입력은 하지 않는다. 원 `imu_probe` 앱은 `--imu-source probe`(기본), 출력 없는 통합 센서 앱은 `--imu-source sensor-link`를 명시한다. 앱 종류를 자동 변경하지 않는다. 카메라 미선택 시 영상 발행/처리 프로세스는 실행하지 않는다.
+
+Jetson의 해당 소스 묶음 루트에서 ROS Humble 및 Python 의존성을 불러온 뒤 다음처럼 실행한다. 포트는 `ls -l /dev/serial/by-id/`로 확인한 현재 장치 경로, SDK 경로/해시는 검증한 실행 파일로 지정한다. 아래 대괄호 부분은 실제 값으로 바꾼다.
+
+```bash
+export ROS_LOCALHOST_ONLY=1 ROS_DOMAIN_ID=216
+export PYTHONPATH="$PWD/src/arena_autonomy:$PWD/src/arena_vehicle_interface:$PWD/scripts:${PYTHONPATH:-}"
+python3 scripts/run_hardware_sensor_preview.py \
+  --output /tmp/arena-input-check-new \
+  --imu-port '[IMU의 by-id 경로]' --c1-port '[C1의 by-id 경로]' \
+  --c1-executable '[검증한 SDK 실행 파일]' --c1-sha256 '[해당 SHA256]' \
+  --seconds 20 --camera --plan-only
+```
+
+`--plan-only`는 장치/ROS를 열지 않고 명령만 출력한다. 확인 후 이를 빼면 실제 관측을 시작한다. 출력 폴더가 이미 존재하거나 포트가 점유된 경우 중단하며 다른 작업을 강제 종료하지 않는다. 최초 검증은 [r280 결과](../../artifacts/validation/2026-11-12/reusable_preview_r280_v1/README.md)에 있다. FIFO/tracking 시각은 미교정 추정이며 엔코더·장착 축·구동 HAL·조향/제동 교정은 여전히 별도로 필요하다.

@@ -1,0 +1,305 @@
+{
+  "revision": "v1-20261113-upper-y",
+  "scope": "케이블 상하 이동을 보는 층별 배치 개념도. STEP 부품 층은 유지하며 정확한 XY/길이/외경/통로 수용 검증은 아님.",
+  "source": {
+    "step_file": "11.12 RC카_패키징_작업본 확인용.step",
+    "step_sha256": "37890b25fc69c5c56e400b6236872ab480dc96016211055842722d52769a98a4",
+    "step_hash_rechecked": true,
+    "geometry_json": "outputs/cad_review_2026_11_12/geometry.json",
+    "geometry_sha256": "5bdb779eaaa70f31c538dc02baa219fcde222fe669134cc1b5e08e0d0de37257",
+    "report": "../PACKAGING_STEP_REVIEW_2026_11_12.md"
+  },
+  "scan_plane_mm": 134.6,
+  "scan_plane_status": "STEP C1 mount plus nominal optical offset; not installed measurement",
+  "parts": [
+    {
+      "part": "Motor",
+      "step_id": 1,
+      "z_mm": [
+        39.142,
+        96.428
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "Encoder",
+      "step_id": 2,
+      "z_mm": [
+        55.714,
+        100.752
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "Battery",
+      "step_id": 13,
+      "z_mm": [
+        67.7,
+        101.7
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "Jetson",
+      "step_id": 14,
+      "z_mm": [
+        153.213,
+        187.979
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "J01",
+      "step_id": 1795,
+      "z_mm": [
+        153.22,
+        183.72
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "M01",
+      "step_id": 1818,
+      "z_mm": [
+        193.29,
+        223.79
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "C1 (lead included)",
+      "step_id": 1858,
+      "z_mm": [
+        102.964,
+        146.1
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "ESP32",
+      "step_id": 1859,
+      "z_mm": [
+        14.21,
+        26.12
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "IMU",
+      "step_id": 2087,
+      "z_mm": [
+        37.2,
+        41.935
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "Camera B0183 proxy for B0390",
+      "step_id": 2093,
+      "z_mm": [
+        190.2,
+        215.475
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "Servo Adapter A",
+      "step_id": 2097,
+      "z_mm": [
+        91.2,
+        105.8
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    },
+    {
+      "part": "MD20A",
+      "step_id": 2315,
+      "z_mm": [
+        97.5,
+        119.3
+      ],
+      "source": "STEP transformed B-rep bounding box"
+    }
+  ],
+  "layers": [
+    {
+      "id": "upper_2",
+      "label": "상부 2단",
+      "parts": [
+        "M01",
+        "B0390 camera (STEP proxy B0183)"
+      ]
+    },
+    {
+      "id": "upper_1",
+      "label": "상부 1단",
+      "parts": [
+        "Jetson",
+        "J01",
+        "Battery Y split (near J01)"
+      ]
+    },
+    {
+      "id": "lidar",
+      "label": "중간 LiDAR 층",
+      "parts": [
+        "C1",
+        "C1 USB adapter (proposed below scan plane)"
+      ]
+    },
+    {
+      "id": "lower",
+      "label": "광축 아래 하부 공간",
+      "parts": [
+        "ESP32",
+        "IMU",
+        "Battery",
+        "Motor",
+        "Encoder",
+        "MD20A",
+        "Servo Adapter A",
+        "ST3215-HS",
+        "CF-0108 (added)",
+        "STOP switch (added)",
+        "T3V3/T5V/TGND"
+      ]
+    }
+  ],
+  "added_placements": [
+    {
+      "part": "CF-0108",
+      "placement": "하부 ESP32 인근의 절연 고정면",
+      "status": "사용자 위임에 따른 하부 배정, 정확 XY/간섭 미검증"
+    },
+    {
+      "part": "STOP switch",
+      "placement": "하부 차체 측면, 배터리/기어/바퀴 간섭 없는 접근 위치",
+      "status": "사용자 위임에 따른 하부 배정, 정확 구멍/스위치 외형 미확인"
+    },
+    {
+      "part": "C1 USB adapter",
+      "placement": "C1 기본 리드 끝 근처, 광축 아래 고정; USB만 위층으로",
+      "status": "STEP 누락 부품의 배치안, 실물 리드 길이/외형 수용 미검증"
+    },
+    {
+      "part": "Battery Y split",
+      "placement": "상부 1단 J01 근처. 배터리의 공통 +/− 한 쌍을 올린 뒤 두 PDB로 분기.",
+      "status": "2026-11-13 사용자 지정 배치안; 실제 케이블 길이/고정 미검증"
+    }
+  ],
+  "harnesses": [
+    {
+      "id": "P1",
+      "label": "배터리 → 상부 Y 분기",
+      "direction": "위로",
+      "conductors": 2,
+      "cable_count": 1,
+      "route_zone": "후방 오른쪽",
+      "from": "battery",
+      "to": "battery_y_split",
+      "color": "#be4146",
+      "crosses_scan_plane": true,
+      "kind": "power_pair"
+    },
+    {
+      "id": "P2",
+      "label": "Y 분기 → M01 CN1",
+      "direction": "위로",
+      "conductors": 2,
+      "cable_count": 1,
+      "route_zone": "상부 1단 → 상부 2단",
+      "from": "battery_y_split",
+      "to": "m01",
+      "color": "#8f3748",
+      "crosses_scan_plane": false,
+      "kind": "power_pair"
+    },
+    {
+      "id": "P3",
+      "label": "M01 CN2(CH1) → MD20A",
+      "direction": "아래로",
+      "conductors": 2,
+      "cable_count": 1,
+      "route_zone": "전방 오른쪽",
+      "from": "m01",
+      "to": "md20a",
+      "color": "#bf6b25",
+      "crosses_scan_plane": true,
+      "kind": "power_pair"
+    },
+    {
+      "id": "P4",
+      "label": "M01 CN6(CH5) → 서보 어댑터",
+      "direction": "아래로",
+      "conductors": 2,
+      "cable_count": 1,
+      "route_zone": "전방 왼쪽",
+      "from": "m01",
+      "to": "servo_adapter",
+      "color": "#8051ab",
+      "crosses_scan_plane": true,
+      "kind": "power_pair"
+    },
+    {
+      "id": "P5",
+      "label": "J01 CN5(CH4) → T5V/TGND",
+      "direction": "아래로",
+      "conductors": 2,
+      "cable_count": 1,
+      "route_zone": "후방 오른쪽",
+      "from": "j01",
+      "to": "sensor_distribution",
+      "color": "#237d50",
+      "crosses_scan_plane": true,
+      "kind": "power_pair"
+    },
+    {
+      "id": "U1",
+      "label": "Jetson ↔ ESP32",
+      "direction": "상하 연결",
+      "conductors": null,
+      "cable_count": 1,
+      "route_zone": "후방 왼쪽",
+      "from": "jetson",
+      "to": "esp32",
+      "color": "#2161ae",
+      "crosses_scan_plane": true,
+      "kind": "usb"
+    },
+    {
+      "id": "U2",
+      "label": "Jetson ↔ C1 USB 어댑터",
+      "direction": "상하 연결",
+      "conductors": null,
+      "cable_count": 1,
+      "route_zone": "후방 왼쪽",
+      "from": "jetson",
+      "to": "c1_usb_adapter",
+      "color": "#087f96",
+      "crosses_scan_plane": true,
+      "kind": "usb"
+    }
+  ],
+  "local_only": [
+    "Y 분기→J01 CN1: 상부 1단; P2 Y 분기→M01 CN1: 상부 1단→2단, 광축 통과 없음",
+    "J01→Jetson 19 V 배럴 케이블: 상부 1단",
+    "B0390→Jetson 22↔22 FPC: 상부 두 단 사이, 광축 통과 없음",
+    "ESP32→IMU/CF/STOP/MD20A/Servo Adapter: 광축 아래",
+    "MD20A→모터 및 Adapter→서보 전용 3선: 광축 아래",
+    "C1→USB adapter 기본 리드: 광축 아래 고정"
+  ],
+  "counts": {
+    "power_pairs_crossing_scan": 4,
+    "power_conductors_crossing_scan": 8,
+    "usb_cables_crossing_scan": 2,
+    "physical_cable_runs_crossing_scan": 6,
+    "additional_crossings_due_to_cf_or_stop": 0
+  },
+  "assumptions": [
+    "배터리 Y 분기는 사용자 지정으로 상부 1단 J01 근처에 둔다. 배터리에서 공통 +/− 한 쌍이 올라온 뒤 갈라진다.",
+    "케이블 1본/전원 1쌍은 내부 도체 수와 다르며 광축 통과 6묶음의 직경이 같다는 뜻이 아니다.",
+    "기둥 배정은 앞/안쪽 면으로 나란히 고정하는 초안이다. 기존 4×4.2 mm 홈에 모두 들어간다고 보증하지 않는다.",
+    "상판 아래 횡단은 광축 위에서, C1 몸체/회전부와 팬을 피해 경로를 확인한다.",
+    "기존 STEP 부품 이동·기구 수정·원본 덮어쓰기·실물 조작·시뮬 성능 시험은 하지 않는다."
+  ]
+}

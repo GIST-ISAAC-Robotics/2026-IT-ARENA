@@ -12,7 +12,8 @@ def attach(events):
     extra=[dict(kind=kind,data=data) for kind,data in (
         ('decision_submission_policy',dict(policy='fresh_native_v1',completion_window_s=.025)),
         ('current_path_recheck_policy',dict(policy='selected_v1',independent_guard_required=True)),
-        ('delivery_delay_profile',dict(profile_sha256='a'*64,samples=598,delay_s=99999.)))]
+        ('delivery_delay_profile',dict(profile_sha256='a'*64,samples=598,delay_s=99999.)),
+        ('expiry_reference_policy',dict(policy='selected_wall_recent_v3',command_retained=False)))]
     out[1:1]=extra
     for index,row in enumerate(out):row['seq']=index
     out[-1]['data']['written']+=len(extra);out[-1]['data']['accepted']+=len(extra)
@@ -26,11 +27,11 @@ def test_known_metadata_is_preserved_without_affecting_outputs_or_input(tmp_path
     assert actual['passed'] and actual['matched']==expected['matched']
     assert equal_output([row['details'] for row in expected['outcomes']],
                         [row['details'] for row in actual['outcomes']])
-    assert actual['audit_metadata']==events[1:4]
+    assert actual['audit_metadata']==events[1:5]
     assert actual['execution_metadata_replayed'] is False and events==before
     measured=profile(events,repeats=1,warmups=0)
     assert measured['passed'] and measured['timed_calls']==expected['calls']
-    assert measured['recorded_execution_metadata']==events[1:4]
+    assert measured['recorded_execution_metadata']==events[1:5]
     assert measured['execution_metadata_replayed'] is False
     assert 'recorded_execution_delay' in measured['timing_excludes']
 

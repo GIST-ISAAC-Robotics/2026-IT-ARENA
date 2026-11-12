@@ -2,6 +2,7 @@
 <sdf version="1.10" xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:arg name="body_length" default="0.20"/>
   <xacro:arg name="body_width" default="0.15"/>
+  <xacro:arg name="body_geometry_x" default="0.0"/>
   <xacro:arg name="body_height" default="0.06"/>
   <xacro:arg name="body_mass" default="1.635"/>
   <xacro:arg name="body_cg_z_offset" default="0.0"/>
@@ -350,6 +351,7 @@
       <pose>0 0 ${wheel_radius + body_height / 2.0} 0 0 0</pose>
       <xacro:box_inertial mass="${body_mass}" x="${body_length}" y="${body_width}" z="${body_height}" cg_z="$(arg body_cg_z_offset)"/>
       <visual name="visual">
+        <pose>$(arg body_geometry_x) 0 0 0 0 0</pose>
         <geometry>
           <!-- 센서 보드가 파묻히지 않게 표시용 상자만 안쪽으로 넣습니다.
                아래 충돌체와 20x15 cm 설계 외형·관성은 줄이지 않습니다. -->
@@ -390,6 +392,7 @@
         <xacro:rear_marker_id49_cell row="5" col="4"/><xacro:rear_marker_id49_cell row="5" col="5"/>
       </xacro:if>
       <collision name="collision">
+        <pose>$(arg body_geometry_x) 0 0 0 0 0</pose>
         <geometry>
           <box><size>${body_length} ${body_width} ${body_height}</size></box>
         </geometry>

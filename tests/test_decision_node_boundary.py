@@ -23,7 +23,7 @@ from test_decision_process import fixture
     ('selected_v1','original_v1','selected_r181',True,False),
     ('selected_v1','fresh_native_v1','selected_r181',True,False),
     ('selected_v1','fresh_native_v1','selected_r181',True,True)])
-def test_node_disable_reset_and_cleanup_invalidate_real_worker(tmp_path, recheck, submission, guard_policy, body_gap, expiry):
+def test_node_disable_reset_and_cleanup_invalidate_real_worker(tmp_path, recheck, submission, guard_policy, body_gap, expiry, recheck_execution='parent'):
     trace=tmp_path/'node.jsonl'
     values=dict(use_sim_time='true',wheelbase_m='.135',lidar_compensation='both',motion_scan_timing_verified='true',
         control_rate_hz='50.0',g1_follow_enabled='true',g1_g2_simulation_trial='true',
@@ -31,6 +31,7 @@ def test_node_disable_reset_and_cleanup_invalidate_real_worker(tmp_path, recheck
         # ROS CLI는 따옴표 없는 off를 YAML bool False로 해석한다.
         g1_current_path_recheck='"'+recheck+'"',
         g1_submission_policy=submission,
+        g1_current_recheck_execution=recheck_execution,
         g1_guard_observation_policy=guard_policy,
         g1_boundary_evidence_mode='corner_distance_candidate',g1_occupancy_timing_mode='per_ray_candidate',
         partial_observation_policy='bounded_local_v4',g1_corridor_fallback_enabled='true',
@@ -79,6 +80,7 @@ def test_node_disable_reset_and_cleanup_invalidate_real_worker(tmp_path, recheck
         if node is not None:node.destroy_node()
         rclpy.shutdown()
     assert not worker.process.is_alive()
+    assert node.decision_notice is None and node.decision_guard is None
     rows=[json.loads(line) for line in trace.read_text('utf8').splitlines()]
     assert rows[-1]['kind']=='footer' and rows[-1]['data']['capture_errors']==0
     assert rows[0]['data']['follow_config']['guard_observation_policy'] == guard_policy
@@ -98,3 +100,8 @@ def test_node_disable_reset_and_cleanup_invalidate_real_worker(tmp_path, recheck
     if submissions:
         assert submissions[0]['data']['evaluation_delay_injection'] is False
         assert submissions[0]['data']['completion_window_s'] == .025
+
+
+def test_two_stage_node_disable_reset_and_cleanup(tmp_path):
+    test_node_disable_reset_and_cleanup_invalidate_real_worker(tmp_path, 'selected_v1',
+        'fresh_native_v1', 'selected_r181', True, True, 'worker_event_v1')

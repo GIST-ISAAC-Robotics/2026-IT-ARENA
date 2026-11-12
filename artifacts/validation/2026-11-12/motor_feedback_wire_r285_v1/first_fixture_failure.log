@@ -1,0 +1,29 @@
+....F....F.............................................................. [ 72%]
+...........................                                              [100%]
+=================================== FAILURES ===================================
+______ test_partial_write_never_refreshes_materialized_capture[optimized] ______
+
+binary = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/motor-feedback0/fixture')
+
+    def test_partial_write_never_refreshes_materialized_capture(binary):
+        fault, worst, offers = run(binary, 4)
+        assert fault == 0 and worst <= 1536 and len(offers)>=2
+>       assert offers[0]['status_now_us']==0
+E       assert 21000 == 0
+
+tests/test_motor_feedback_wire.py:92: AssertionError
+______ test_partial_write_never_refreshes_materialized_capture[sanitized] ______
+
+binary = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/motor-feedback1/fixture')
+
+    def test_partial_write_never_refreshes_materialized_capture(binary):
+        fault, worst, offers = run(binary, 4)
+        assert fault == 0 and worst <= 1536 and len(offers)>=2
+>       assert offers[0]['status_now_us']==0
+E       assert 21000 == 0
+
+tests/test_motor_feedback_wire.py:92: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_motor_feedback_wire.py::test_partial_write_never_refreshes_materialized_capture[optimized]
+FAILED tests/test_motor_feedback_wire.py::test_partial_write_never_refreshes_materialized_capture[sanitized]
+2 failed, 97 passed in 24.58s

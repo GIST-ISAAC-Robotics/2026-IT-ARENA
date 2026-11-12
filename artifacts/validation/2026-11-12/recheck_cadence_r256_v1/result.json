@@ -1,0 +1,78 @@
+{
+  "assumed_stage_seconds": {
+    "plan": 0.147,
+    "current": 0.034
+  },
+  "serial": {
+    "compute_only_period_s": 0.181,
+    "minimum_next_command_age_s": 0.215
+  },
+  "overlapped": {
+    "compute_only_period_s": 0.147,
+    "minimum_next_command_age_s": 0.181
+  },
+  "notes": [
+    "Periodic 50Hz and new-scan phase waits are omitted from the lower-bound arithmetic.",
+    "Overlapping cannot use old stateful outputs without steering/state/epoch validation.",
+    "Repeated checking cannot renew path_source_s. A future current-observation proof would be a new policy."
+  ],
+  "traces": [
+    {
+      "trace": "artifacts/validation/2026-11-12/recheck_delivery_runtime_r243_v1/two_actor_run1/run1/follow_decisions.jsonl",
+      "sha256": "5741c58a41986b85380ca043825c79e806acde4beb3b1f1f765aaf398b72e159",
+      "calls": 810,
+      "eligible_path_outputs": 794,
+      "prerequisites": {
+        "path_expired steering_changed": 783,
+        "side_or_epoch_changed": 0,
+        "path_expired steering_same": 11
+      },
+      "examples": {
+        "path_expired steering_changed": {
+          "original_reference_s": 8.020000000000001,
+          "path_source_s": 7.901999999999989,
+          "requested_current_s": 8.267000000000001,
+          "actual_stored_current_s": 8.32,
+          "path_age_s": 0.4180000000000117,
+          "previous_steering_old": 0.2682375654706114,
+          "previous_steering_current": 0.2626362271780147,
+          "mode": "SOLO"
+        },
+        "path_expired steering_same": {
+          "original_reference_s": 32.92,
+          "path_source_s": 32.8020000000002,
+          "requested_current_s": 33.167,
+          "actual_stored_current_s": 33.22,
+          "path_age_s": 0.4179999999998003,
+          "previous_steering_old": 0.14728821524077224,
+          "previous_steering_current": 0.14728821524077224,
+          "mode": "GUARD"
+        }
+      },
+      "limitation": "later snapshots belong to original closed loop; not the proposed schedule; no command permission or driving inference"
+    },
+    {
+      "trace": "artifacts/validation/2026-11-12/staged_event_runtime_r253_v1/two_actor_run1/run1/follow_decisions.jsonl",
+      "sha256": "dd0055c5c42622fccaf7b5b23db32f5c260fa20c4fa30a85e61e63efbca8a078",
+      "calls": 403,
+      "eligible_path_outputs": 301,
+      "prerequisites": {
+        "path_expired steering_changed": 301,
+        "side_or_epoch_changed": 0
+      },
+      "examples": {
+        "path_expired steering_changed": {
+          "original_reference_s": 8.14,
+          "path_source_s": 8.035999999999989,
+          "requested_current_s": 8.387,
+          "actual_stored_current_s": 8.540000000000001,
+          "path_age_s": 0.504000000000012,
+          "previous_steering_old": 0.26824481246854504,
+          "previous_steering_current": 0.26193704437862475,
+          "mode": "SOLO"
+        }
+      },
+      "limitation": "later snapshots belong to original closed loop; not the proposed schedule; no command permission or driving inference"
+    }
+  ]
+}

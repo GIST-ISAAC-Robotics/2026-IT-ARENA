@@ -1,9 +1,12 @@
-from setuptools import find_packages, setup
+from setuptools import Extension, find_packages, setup
 
 setup(name="arena_autonomy", version="0.1.0", packages=find_packages(),
       data_files=[("share/ament_index/resource_index/packages", ["resource/arena_autonomy"]),
                   ("share/arena_autonomy", ["package.xml"])],
       install_requires=["setuptools"], zip_safe=True,
+      ext_modules=[Extension('arena_autonomy._numeric_kernels',
+          sources=['arena_autonomy/_native/python_module.cpp','arena_autonomy/_native/depth_kernel.cpp','arena_autonomy/_native/polygon_kernel.cpp'],
+          language='c++',extra_compile_args=['-O3','-std=c++17','-ffp-contract=off','-fno-fast-math'],optional=True)],
       maintainer="GIST ISAAC Robotics", maintainer_email="leejinh0225@users.noreply.github.com",
       description="Sensor-only baseline wall following for IT ARENA.", license="Apache-2.0",
       entry_points={"console_scripts": ["wall_follow = arena_autonomy.wall_follow:main",

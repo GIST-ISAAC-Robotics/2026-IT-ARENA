@@ -7,6 +7,7 @@ import zipfile
 
 import numpy as np
 import pytest
+from arena_autonomy import numeric_kernels
 
 from arena_autonomy.m3_execution_trial import masked_only
 from arena_autonomy.local_scene import SensorRay, scene_from_measurements
@@ -18,6 +19,16 @@ node = next(n for n in ast.parse(source).body if isinstance(n, ast.FunctionDef) 
 scope = dict(np=np, math=math)
 exec(compile(ast.Module(body=[node], type_ignores=[]), '<frozen_masked_only>', 'exec'), scope)
 reference = scope['masked_only']
+
+
+@pytest.fixture(autouse=True, params=['python','native_v1'])
+def numeric_mode(request):
+    if request.param=='native_v1':
+        module=pytest.importorskip('arena_autonomy._numeric_kernels')
+        assert hasattr(module,'masked'), 'native regression requires rebuilt masked kernel'
+    numeric_kernels.configure(request.param)
+    yield
+    numeric_kernels.configure('python')
 
 
 @pytest.mark.parametrize('count,sign', [(504,1), (508,-1), (512,1), (500,-1)])

@@ -1,0 +1,44 @@
+..................FF                                                     [100%]
+=================================== FAILURES ===================================
+_______ test_source_seam_depth_equality_ties_and_changed_indices[False] ________
+
+cycle_enabled = False
+
+    @pytest.mark.parametrize('cycle_enabled',[False,True])
+    def test_source_seam_depth_equality_ties_and_changed_indices(cycle_enabled):
+        scene=motion_scene(scan(.5),history(0.,0.),.635,timing_verified=True)
+        rays=list(scene.rays)
+        # 동일 방향과 부적합 반환이 겹쳐도 첫 argmin 후보가 바뀌면 안 된다.
+        rays[2]=replace(rays[2],direction_xy=rays[1].direction_xy,hit_xy_m=rays[1].hit_xy_m)
+        scene=replace(scene,rays=tuple(rays))
+        cycle=ScanCycle(scene,-math.pi,math.tau/500,500,True,None) if cycle_enabled else None
+        q=[]
+        for ray in (rays[0],rays[1],rays[2],rays[-1]):
+            o,d=np.array(ray.ray_origin_xy_m),np.array(ray.direction_xy)
+>           depth=math.dist(ray.ray_origin_xy_m,ray.hit_xy_m)
+E           TypeError: 'NoneType' object is not iterable
+
+artifacts/validation/2026-11-12/depth_kernel_r245_v1/test_candidate.py:60: TypeError
+________ test_source_seam_depth_equality_ties_and_changed_indices[True] ________
+
+cycle_enabled = True
+
+    @pytest.mark.parametrize('cycle_enabled',[False,True])
+    def test_source_seam_depth_equality_ties_and_changed_indices(cycle_enabled):
+        scene=motion_scene(scan(.5),history(0.,0.),.635,timing_verified=True)
+        rays=list(scene.rays)
+        # 동일 방향과 부적합 반환이 겹쳐도 첫 argmin 후보가 바뀌면 안 된다.
+        rays[2]=replace(rays[2],direction_xy=rays[1].direction_xy,hit_xy_m=rays[1].hit_xy_m)
+        scene=replace(scene,rays=tuple(rays))
+        cycle=ScanCycle(scene,-math.pi,math.tau/500,500,True,None) if cycle_enabled else None
+        q=[]
+        for ray in (rays[0],rays[1],rays[2],rays[-1]):
+            o,d=np.array(ray.ray_origin_xy_m),np.array(ray.direction_xy)
+>           depth=math.dist(ray.ray_origin_xy_m,ray.hit_xy_m)
+E           TypeError: 'NoneType' object is not iterable
+
+artifacts/validation/2026-11-12/depth_kernel_r245_v1/test_candidate.py:60: TypeError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-12/depth_kernel_r245_v1/test_candidate.py::test_source_seam_depth_equality_ties_and_changed_indices[False]
+FAILED artifacts/validation/2026-11-12/depth_kernel_r245_v1/test_candidate.py::test_source_seam_depth_equality_ties_and_changed_indices[True]
+2 failed, 18 passed in 0.89s

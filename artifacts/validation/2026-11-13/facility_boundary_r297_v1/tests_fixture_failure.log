@@ -1,0 +1,36 @@
+FFF.......................................                               [100%]
+=================================== FAILURES ===================================
+__________________ test_clear_then_front_obstacle_still_stops __________________
+
+    def test_clear_then_front_obstacle_still_stops():
+>       c=controller();h=history();assert settle(c,h)[0]>0
+E       assert 0.0 > 0
+
+artifacts/validation/2026-11-13/facility_boundary_r297_v1/test_candidate.py:22: AssertionError
+_______________ test_unknown_front_and_expired_input_still_stop ________________
+
+    def test_unknown_front_and_expired_input_still_stop():
+        for kind in ('unknown','stale'):
+>           c=controller();h=history();assert settle(c,h)[0]>0
+E           assert 0.0 > 0
+
+artifacts/validation/2026-11-13/facility_boundary_r297_v1/test_candidate.py:29: AssertionError
+____________ test_option_off_does_not_invoke_extra_fragment_solver _____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70b7eca57410>
+
+    def test_option_off_does_not_invoke_extra_fragment_solver(monkeypatch):
+        from arena_autonomy import fragmented_wall_hypothesis as module
+        def unexpected(*a,**k):raise AssertionError('option OFF fragment query')
+        monkeypatch.setattr(module,'propose',unexpected)
+        for changes in ({'solo_route_only':False},{'narrow_occluder_bridge':False}):
+            cfg=replace(controller().config,**changes);c=LocalFollow(cfg)
+>           assert settle(c,history())[0]>0
+E           assert 0.0 > 0
+
+artifacts/validation/2026-11-13/facility_boundary_r297_v1/test_candidate.py:42: AssertionError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-13/facility_boundary_r297_v1/test_candidate.py::test_clear_then_front_obstacle_still_stops
+FAILED artifacts/validation/2026-11-13/facility_boundary_r297_v1/test_candidate.py::test_unknown_front_and_expired_input_still_stop
+FAILED artifacts/validation/2026-11-13/facility_boundary_r297_v1/test_candidate.py::test_option_off_does_not_invoke_extra_fragment_solver
+3 failed, 39 passed in 2.02s

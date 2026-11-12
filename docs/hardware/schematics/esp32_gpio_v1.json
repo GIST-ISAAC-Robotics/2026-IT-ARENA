@@ -1,57 +1,265 @@
 {
-  "revision": "v1",
+  "revision": "v1-20261113-upper-y-balanced",
   "date": "2026-11-11",
-  "scope": "ESP32 주변 모듈 간 배선 설계. PCB 제작용 회로도나 전체 실차 검증 결과가 아님",
+  "scope": "하드웨어팀 조립용 모듈 간 배선도. GPIO와 전원 헤더는 실크 기준이며 실제 핀 위치·전선 길이/굵기·PCB 회로도를 뜻하지 않음.",
   "board": "실측 ESP32-S3 / Flash 16 MB / PSRAM 8 MB, 호환 PCB 제조사·판본 미확인",
   "gpio": [
-    {"net":"IMU_SCLK","gpio":12,"direction":"out","endpoint":"Adafruit 4438 하단 SCL","status":"SPI 실측"},
-    {"net":"IMU_MOSI","gpio":11,"direction":"out","endpoint":"Adafruit 4438 하단 SDA","status":"SPI 실측"},
-    {"net":"IMU_MISO","gpio":13,"direction":"in","endpoint":"Adafruit 4438 하단 DO","status":"SPI 실측"},
-    {"net":"IMU_CS_N","gpio":10,"direction":"out","endpoint":"Adafruit 4438 하단 CS","status":"SPI 실측"},
-    {"net":"IMU_INT1","gpio":9,"direction":"in","endpoint":"Adafruit 4438 하단 I1","status":"사용자 배선, IRQ 동작 미검증"},
-    {"net":"ENC_A_3V3","gpio":4,"direction":"in","endpoint":"신규 CF-0108 A1 (실크 확인, 도통 미검증)","status":"신규 CF 실크 확인, 도통/OE·파형 미검증"},
-    {"net":"ENC_B_3V3","gpio":5,"direction":"in","endpoint":"신규 CF-0108 A2 (실크 확인, 도통 미검증)","status":"신규 CF 실크 확인, 도통/OE·파형 미검증"},
-    {"net":"MOTOR_PWM","gpio":15,"direction":"out","endpoint":"MD20A PWM","status":"설계, 실물 구동 미검증"},
-    {"net":"MOTOR_DIR","gpio":6,"direction":"out","endpoint":"MD20A DIR","status":"설계, 실물 구동 미검증"},
-    {"net":"SERVO_TX","gpio":17,"direction":"out","endpoint":"Bus Servo Adapter (A) H2 TX/TXD","status":"공식 동일 이름 결선, 실물 미검증"},
-    {"net":"SERVO_RX","gpio":18,"direction":"in","endpoint":"Bus Servo Adapter (A) H2 RX/RXD","status":"공식 동일 이름 결선, 실물 미검증"}
+    {
+      "net": "IMU_SCLK",
+      "gpio": 12,
+      "direction": "out",
+      "endpoint": "Adafruit 4438 하단 SCL",
+      "status": "SPI 실측"
+    },
+    {
+      "net": "IMU_MOSI",
+      "gpio": 11,
+      "direction": "out",
+      "endpoint": "Adafruit 4438 하단 SDA",
+      "status": "SPI 실측"
+    },
+    {
+      "net": "IMU_MISO",
+      "gpio": 13,
+      "direction": "in",
+      "endpoint": "Adafruit 4438 하단 DO",
+      "status": "SPI 실측"
+    },
+    {
+      "net": "IMU_CS_N",
+      "gpio": 10,
+      "direction": "out",
+      "endpoint": "Adafruit 4438 하단 CS",
+      "status": "SPI 실측"
+    },
+    {
+      "net": "IMU_INT1",
+      "gpio": 9,
+      "direction": "in",
+      "endpoint": "Adafruit 4438 하단 I1",
+      "status": "사용자 배선, IRQ 동작 미검증"
+    },
+    {
+      "net": "ENC_A_3V3",
+      "gpio": 4,
+      "direction": "in",
+      "endpoint": "CF-0108 A1",
+      "status": "공통 GND·CF 교체 후 손 회전 및 약5% 모터 계수 확인; 고속/파형 미검증"
+    },
+    {
+      "net": "ENC_B_3V3",
+      "gpio": 5,
+      "direction": "in",
+      "endpoint": "CF-0108 A2",
+      "status": "공통 GND·CF 교체 후 손 회전 및 약5% 모터 계수 확인; 고속/파형 미검증"
+    },
+    {
+      "net": "MOTOR_PWM",
+      "gpio": 15,
+      "direction": "out",
+      "endpoint": "MD20A PWM",
+      "status": "20 kHz·약5% 단발 구동/PWM0 정지 확인; 운영 제어 미채택"
+    },
+    {
+      "net": "MOTOR_DIR",
+      "gpio": 6,
+      "direction": "out",
+      "endpoint": "MD20A DIR",
+      "status": "20 kHz·약5% 단발 구동/PWM0 정지 확인; 운영 제어 미채택"
+    },
+    {
+      "net": "SERVO_TX",
+      "gpio": 17,
+      "direction": "out",
+      "endpoint": "Bus Servo Adapter (A) H2 TX/TXD",
+      "status": "점퍼 두 개 A, ID1/1 Mbps 왕복 실측"
+    },
+    {
+      "net": "SERVO_RX",
+      "gpio": 18,
+      "direction": "in",
+      "endpoint": "Bus Servo Adapter (A) H2 RX/RXD",
+      "status": "점퍼 두 개 A, ID1/1 Mbps 왕복 실측"
+    },
+    {
+      "net": "STOP_REQUEST",
+      "gpio": 8,
+      "direction": "in",
+      "endpoint": "STOP 스위치 선 1 (선 2 → TGND)",
+      "status": "조립 배정; 내부 풀업, O/개방=HIGH 정지·I/도통=LOW 허가 조건; 펌웨어/실물 미검증"
+    }
   ],
-  "onboard_reserved": {"43":"USB-UART UART0 TX","44":"USB-UART UART0 RX"},
-  "future_reserved": {"8":"STOP 상태 입력, 외부 회로 미정","21":"구동 허가 요청, 외부 회로 미정","47":"watchdog, 외부 회로 미정","1":"배터리 ADC, 분압·보호 회로 미정","2":"선택 고장 입력","14":"선택 CLEAR 입력"},
-  "excluded": [0,3,19,20,26,27,28,29,30,31,32,33,34,35,36,37,38,43,44,45,46,48],
-  "spare_candidates": [7,16,39,40,41,42],
-  "power_nets": {
-    "3V3_MCU": ["ESP32 3V3","IMU 하단 VIN","CF VCCA/LV (조건부)","CF OE (조건부: 모듈 회로 확인 후 상시 enable)"],
-    "5V_ENCODER": ["J01 CH4 +","PGE-213 XHP-4 pin 1 VCC","CF VCCB/HV (조건부)"],
-    "12V_SERVO": ["M01 CH5 또는 CH6 중 한 채널 +","Adapter A DC 입력 + / 중앙 +"],
-    "MOTOR_SUPPLY": ["M01 CH1 +","MD20A VB+"],
-    "19V_JETSON": ["J01 CH1 +","Jetson DC 입력 중앙 +"],
-    "GND": ["ESP32 GND","IMU 하단 GND","CF GND","PGE-213 pin 2 GND","MD20A Signal GND","MD20A VB−","Adapter A H2 GND","Adapter A 전원 −","J01/M01 해당 출력 −"]
+  "onboard_reserved": {
+    "43": "USB-UART UART0 TX",
+    "44": "USB-UART UART0 RX"
   },
-  "motor_output": [["MD20A MA","MB4266-24180 단자 6 (+), 최초 시험용 극성"],["MD20A MB","MB4266-24180 단자 5 (−), 최초 시험용 극성"]],
-  "encoder_conditional": [["PGE-213 pin 3 HA","CF B1/HV1","CF A1/LV1","ESP32 GPIO4"],["PGE-213 pin 4 HB","CF B2/HV2","CF A2/LV2","ESP32 GPIO5"]],
-  "servo_bus": [["Adapter A 서보 DATA/D","ST3215-HS D"],["Adapter A 서보 V+","ST3215-HS V+"],["Adapter A 서보 GND/G","ST3215-HS GND/G"]],
+  "future_reserved": {
+    "21": "구동 허가 요청, 외부 회로 미정",
+    "47": "watchdog, 외부 회로 미정",
+    "1": "배터리 ADC, 분압·보호 회로 미정",
+    "2": "선택 고장 입력",
+    "14": "선택 CLEAR 입력"
+  },
+  "excluded": [
+    0,
+    3,
+    19,
+    20,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    43,
+    44,
+    45,
+    46,
+    48
+  ],
+  "spare_candidates": [
+    7,
+    16,
+    39,
+    40,
+    41,
+    42
+  ],
+  "power_nets": {
+    "3V3_MCU": [
+      "ESP32 3V3① → IMU VIN",
+      "ESP32 3V3② → T3V3 → CF VA/OE"
+    ],
+    "5V_ENCODER": [
+      "J01 CN5(CH4)+ → T5V → 엔코더 VCC/CF VB"
+    ],
+    "12V_SERVO": [
+      "M01 CN6(CH5)+ → Adapter A 전원 +"
+    ],
+    "MOTOR_SUPPLY": [
+      "M01 CN2(CH1)+ → MD20A VB+"
+    ],
+    "19V_JETSON": [
+      "J01 CN2(CH1)+ → Jetson DC 중앙 +"
+    ],
+    "GND": [
+      "ESP32 GND① → IMU GND",
+      "ESP32 GND② → TGND (CF GND, 엔코더 pin 2, J01 CN5−, STOP 스위치 선 2)",
+      "ESP32 GND③ → MD20A Signal GND",
+      "ESP32 GND④ → Adapter A H2 GND",
+      "모터 전력 귀환: MD20A VB− → M01 CN2−",
+      "서보 전력 귀환: Adapter 전원 − → M01 CN6−"
+    ]
+  },
+  "motor_output": [
+    [
+      "MD20A MA",
+      "MB4266-24180 단자 6 (+), 최초 시험용 극성"
+    ],
+    [
+      "MD20A MB",
+      "MB4266-24180 단자 5 (−), 최초 시험용 극성"
+    ]
+  ],
+  "servo_bus": [
+    [
+      "Adapter A 서보 DATA/D",
+      "ST3215-HS D"
+    ],
+    [
+      "Adapter A 서보 V+",
+      "ST3215-HS V+"
+    ],
+    [
+      "Adapter A 서보 GND/G",
+      "ST3215-HS GND/G"
+    ]
+  ],
   "assumptions": [
-    "GPIO 번호는 실제 헤더 위치 번호가 아니다. 호환 보드의 GPIO 실크로 찾는다.",
-    "신규 CF 사진에서 VA/VB·A1/B1·A2/B2 실크 확인. 기존 헤더 보드의 B채널 오인쇄와 구분하며 전기적 도통은 미검증.",
-    "CF 패드 단락·전원/OE·채널 도통 확인 후 GPIO를 분리해 파형 시험. 파형 확인 전 GPIO4/5 연결 보류.",
-    "모터·서보 전류는 ESP32 GND 핀이나 점퍼선을 경유하지 않고 전력 귀환선으로 흐르게 한다.",
-    "전원 + 레일끼리는 합치지 않는다. 신호 기준 GND는 공통이며 실제 배선의 도통을 확인한다.",
-    "현재 IMU 진단 펌웨어는 MD20A PWM/DIR와 서보 정지 제어를 구현하지 않는다. 이번 작업은 통전·업로드를 포함하지 않는다."
+    "GPIO와 3V3①/②·GND①~④는 물리 순번이 아니다. 실물 실크로 연결하고 팀이 사용 위치를 표시한다.",
+    "T3V3/T5V/TGND는 전선의 공통 분기점이며 추가 DC-DC/버퍼/저항 회로가 아니다.",
+    "모터·서보 전류는 ESP32 GND 핀이나 센서 점퍼선을 경유하지 않고 해당 전력 귀환선으로 흐르게 한다.",
+    "각기 다른 + 전원 레일은 합치지 않는다. 특히 PDB 3.3 V 출력과 ESP32 3V3를 병렬 연결하지 않는다.",
+    "CF VA=3.3 V, VB=5 V, OE=VA와 같은3.3 V. 엔코더 HA/HB는 B1/B2, ESP32 GPIO4/5는 A1/A2.",
+    "최신 진단은 구동4회 정상과 전원/신호 해체 구간 추가 신호를 구분한다. 고속·장착 정확도·운영 제어는 미검증.",
+    "현재 복구된 IMU 앱은 이 전체 구동 기능을 구현하지 않는다. 이번 배선도 갱신은 장치 조작을 포함하지 않는다.",
+    "서보 전원은 조립 기준으로 M01 CH5(CN6)를 선택한다. CH6(CN7)은 예비이고 두 출력을 병렬 연결하지 않는다.",
+    "STOP은 GPIO8 내부 풀업과 TGND 접점으로 처리하며 별도 3V3선을 쓰지 않는다. I=도통/O=개방을 실물에서 확인하고 개방은 STOP, 복귀는 자동 출발 금지로 구현한다."
   ],
   "sources": [
-    {"title":"승인 전장 구성","url":"../APPROVED_ELECTRICAL_LAYOUT.md"},
-    {"title":"ESP32·IMU 실측","url":"../../sensors/ESP32_LSM6DSOX_HARDWARE_2026_11_11.md"},
-    {"title":"Espressif GPIO 제약","url":"https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/gpio.html"},
-    {"title":"Adafruit 4438 핀","url":"https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts"},
-    {"title":"Waveshare UART 결선","url":"https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example"},
-    {"title":"Waveshare Adapter A 회로도","url":"https://files.waveshare.com/wiki/Bus_Servo_Adapter_A/Bus_Servo_Adapter_A.pdf"},
-    {"title":"Cytron MD20A 사양","url":"https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver"},
-    {"title":"Cytron 공식 연결 MD20A 데이터시트","url":"https://docs.google.com/document/d/1eKpt66z-1qLMJkaXrHU1AfKqSVeIpEnM43vECpkYuWA/edit"},
-    {"title":"TI TXS0108E 데이터시트","url":"https://www.ti.com/lit/ds/symlink/txs0108e.pdf"},
-    {"title":"PGE-213 제조사","url":"https://www.motorbank.kr/goods/goods_view.php?goodsNo=1000009561"}
+    {
+      "title": "승인 전장 구성",
+      "url": "../APPROVED_ELECTRICAL_LAYOUT.md"
+    },
+    {
+      "title": "ESP32·IMU 실측",
+      "url": "../../sensors/ESP32_LSM6DSOX_HARDWARE_2026_11_11.md"
+    },
+    {
+      "title": "Espressif GPIO 제약",
+      "url": "https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/gpio.html"
+    },
+    {
+      "title": "Adafruit 4438 핀",
+      "url": "https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts"
+    },
+    {
+      "title": "Waveshare UART 결선",
+      "url": "https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example"
+    },
+    {
+      "title": "Waveshare Adapter A 회로도",
+      "url": "https://files.waveshare.com/wiki/Bus_Servo_Adapter_A/Bus_Servo_Adapter_A.pdf"
+    },
+    {
+      "title": "Cytron MD20A 사양",
+      "url": "https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver"
+    },
+    {
+      "title": "Cytron 공식 연결 MD20A 데이터시트",
+      "url": "https://docs.google.com/document/d/1eKpt66z-1qLMJkaXrHU1AfKqSVeIpEnM43vECpkYuWA/edit"
+    },
+    {
+      "title": "TI TXS0108E 데이터시트",
+      "url": "https://www.ti.com/lit/ds/symlink/txs0108e.pdf"
+    },
+    {
+      "title": "PGE-213 제조사",
+      "url": "https://www.motorbank.kr/goods/goods_view.php?goodsNo=1000009561"
+    },
+    {
+      "title": "공식 배포 제조사 J01 Preliminary p.3 CN/CH 및 정격",
+      "url": "https://github.com/MOSW626/istech-it-arena/blob/main/docs/hardware/PM_KAIST-MR-J01_Preliminary.pdf"
+    },
+    {
+      "title": "공식 배포 제조사 M01 Preliminary p.3 CN/CH 및 정격",
+      "url": "https://github.com/MOSW626/istech-it-arena/blob/main/docs/hardware/PM_KAIST-MR-M01_Preliminary.pdf"
+    },
+    {
+      "title": "엔코더 후속 실측",
+      "url": "../../sensors/PGE213_ENCODER_HARDWARE_2026_11_12.md"
+    },
+    {
+      "title": "모터 결합 시험과 종료",
+      "url": "../../sensors/MD20A_MOTOR_HARDWARE_2026_11_12.md"
+    },
+    {
+      "title": "서보 실측",
+      "url": "../../sensors/ST3215_HS_HARDWARE_2026_11_12.md"
+    },
+    {
+      "title": "대회 MANUAL §5 원격 비상정지 (2026-11-13 조회, 고정 커밋)",
+      "url": "https://github.com/MOSW626/istech-it-arena/blob/2e41f5674a4c8a611bb65e966ea8827d41611017/MANUAL.md#L193-L199"
+    }
   ],
-  "updated": "2026-11-12",
+  "updated": "2026-11-13",
   "evidence_update": {
     "date": "2026-11-12",
     "source": "모터뱅크 답변은 사용자 전달 요약. 보드 식별은 후속 사용자 정정 및 신규/기존 실물 사진 두 장 직접 판독.",
@@ -59,13 +267,330 @@
     "cf_marking": "신규 CF-0108, 헤더 미납땜: TI 로고 / YF08E / 21KG4 / C2VN",
     "cf_identification": "TI 공식 마킹표와 일치하는 TXS0108E. 정품성/정상 동작 검증과 구분.",
     "board_report": "신규 CF의 상단 VB B1 B2 B3 B4 B5 B6 B7 B8 GND, 하단 VA A1 A2 A3 A4 A5 A6 A7 A8 OE. 패드 도통/OE·파형 미검증.",
-    "alternate_channels": [1,7],
+    "alternate_channels": [
+      1,
+      7
+    ],
     "alternate_channels_adopted": false,
     "gpio_assignment_changed": false,
     "physical_waveform_verified": false,
-    "existing_headered_board": {"retail_model":"미확인, CF-0108로 확정하지 않음","marking":"YF08E / 69KG4 / CHQ7","top_silkscreen":"VB B1 B3 B4 B4 B5 B6 B7 B8 GND","interpretation":"TXS0108E 마킹 일치. B2 누락/B4 중복은 인쇄 오류 의심, 채널 부재나 실제 패드 대응은 미확정."},
+    "existing_headered_board": {
+      "retail_model": "미확인, CF-0108로 확정하지 않음",
+      "marking": "YF08E / 69KG4 / CHQ7",
+      "top_silkscreen": "VB B1 B3 B4 B4 B5 B6 B7 B8 GND",
+      "interpretation": "TXS0108E 마킹 일치. B2 누락/B4 중복은 인쇄 오류 의심, 채널 부재나 실제 패드 대응은 미확정."
+    },
     "correction": "최초 웹 전달문에서 기존 헤더 보드 정보가 신규 CF에 혼합됨. 사용자 정정·사진으로 분리.",
     "alternate_channels_scope": "기존 모델 미상 헤더 보드에 대한 이전 웹 후보. 신규 CF는 설계 채널1/2 유지.",
-    "photo_sha256": {"new_cf0108_unheadered.png":"06efe113a60b66b1985adf905100545e45f25e5727552735c73f24ea68d5f3ea","existing_headered_unknown_model.png":"ecebb41dda6cba0ec649c809ebcbd2eb460fd52f312c4bf4a65e10b03145bc9c"}
-  }
+    "photo_sha256": {
+      "new_cf0108_unheadered.png": "06efe113a60b66b1985adf905100545e45f25e5727552735c73f24ea68d5f3ea",
+      "existing_headered_unknown_model.png": "ecebb41dda6cba0ec649c809ebcbd2eb460fd52f312c4bf4a65e10b03145bc9c"
+    },
+    "scope": "초기 사진 식별의 이력. 이후 교체 보드의 기능 시험은 gpio.status 및 연결된 11/12 시험 보고서를 따른다."
+  },
+  "header_inventory": {
+    "source": "2026-11-12~13 사용자 실물 보고",
+    "3V3": 2,
+    "GND": 4,
+    "physical_location_verified": false,
+    "labels_note": "①~④는 이 문서의 배선 관리명이며 보드 핀 순번/위치가 아님. 해당 실크 핀 중 하나씩 배정."
+  },
+  "header_allocation": [
+    {
+      "pin": "3V3①",
+      "destination": "Adafruit 4438 하단 VIN",
+      "role": "IMU 전원"
+    },
+    {
+      "pin": "3V3②",
+      "destination": "T3V3 분배점 → CF VA + OE",
+      "role": "한 3V3 핀을 두 갈래로 분기"
+    },
+    {
+      "pin": "GND①",
+      "destination": "Adafruit 4438 하단 GND",
+      "role": "IMU 접지"
+    },
+    {
+      "pin": "GND②",
+      "destination": "TGND 분배점 → CF GND + 엔코더 pin 2 + J01 CN5(CH4)− + STOP 스위치 선 2",
+      "role": "센서/CF/STOP의 명시적 공통 접지"
+    },
+    {
+      "pin": "GND③",
+      "destination": "MD20A Signal GND",
+      "role": "PWM/DIR 신호 기준"
+    },
+    {
+      "pin": "GND④",
+      "destination": "Adapter A H2 GND",
+      "role": "UART 신호 기준"
+    }
+  ],
+  "junctions": [
+    {
+      "id": "T3V3",
+      "net": "3V3_MCU",
+      "members": [
+        "ESP32 3V3②",
+        "CF VA",
+        "CF OE"
+      ],
+      "implementation": "3접점 공통 분기: 기존 선의 납땜+절연 또는 체결 가능한 단자대. 별도 전원 모듈 아님."
+    },
+    {
+      "id": "T5V",
+      "net": "5V_ENCODER",
+      "members": [
+        "J01 CN5(CH4)+",
+        "PGE-213 pin 1 VCC",
+        "CF VB"
+      ],
+      "implementation": "기존 CH4 +5 V 분기선 유지"
+    },
+    {
+      "id": "TGND",
+      "net": "SIGNAL_GND",
+      "members": [
+        "ESP32 GND②",
+        "J01 CN5(CH4)−",
+        "PGE-213 pin 2 GND",
+        "CF GND",
+        "STOP 스위치 선 2"
+      ],
+      "implementation": "5접점 공통 접지. 기존 엔코더/CF GND 분배점에 STOP 선 2를 추가한다. ESP32 GND② 하나로 연결하며 기존 4개 GND 핀 배정을 유지한다."
+    }
+  ],
+  "pdb_boards": {
+    "J01": {
+      "model": "KAIST-MR-J01",
+      "input": {
+        "connector": "CN1",
+        "voltage": "21–36 V DC",
+        "role": "배터리 입력"
+      },
+      "outputs": [
+        {
+          "ch": 1,
+          "cn": 2,
+          "voltage": "19 V",
+          "current": "최대 2.3 A",
+          "load": "Jetson DC 입력",
+          "used": true
+        },
+        {
+          "ch": 2,
+          "cn": 3,
+          "voltage": "5 V",
+          "current": "CH2+CH3 합계 최대 1.5 A",
+          "load": "미사용 / 예비",
+          "used": false
+        },
+        {
+          "ch": 3,
+          "cn": 4,
+          "voltage": "5 V",
+          "current": "CH2+CH3 합계 최대 1.5 A",
+          "load": "미사용 / 예비",
+          "used": false
+        },
+        {
+          "ch": 4,
+          "cn": 5,
+          "voltage": "5 V",
+          "current": "최대 0.5 A",
+          "load": "T5V → 엔코더 VCC + CF VB",
+          "used": true
+        },
+        {
+          "ch": 5,
+          "cn": 6,
+          "voltage": "3.3 V",
+          "current": "CH5+CH6 합계 최대 0.6 A",
+          "load": "미사용 / 예비",
+          "used": false
+        },
+        {
+          "ch": 6,
+          "cn": 7,
+          "voltage": "3.3 V",
+          "current": "CH5+CH6 합계 최대 0.6 A",
+          "load": "미사용 / 예비",
+          "used": false
+        }
+      ]
+    },
+    "M01": {
+      "model": "KAIST-MR-M01",
+      "input": {
+        "connector": "CN1",
+        "voltage": "24–36 V DC",
+        "role": "배터리 입력"
+      },
+      "outputs": [
+        {
+          "ch": 1,
+          "cn": 2,
+          "voltage": "입력 전압 그대로",
+          "current": "입력 전류 공급 능력에 따름; 고정 A 정격 미제시",
+          "load": "MD20A VB+ / VB−",
+          "used": true
+        },
+        {
+          "ch": 2,
+          "cn": 3,
+          "voltage": "입력 전압 그대로",
+          "current": "입력 전류 공급 능력에 따름",
+          "load": "미사용 / 예비",
+          "used": false
+        },
+        {
+          "ch": 3,
+          "cn": 4,
+          "voltage": "입력 전압 그대로",
+          "current": "입력 전류 공급 능력에 따름",
+          "load": "미사용 / 예비",
+          "used": false
+        },
+        {
+          "ch": 4,
+          "cn": 5,
+          "voltage": "입력 전압 그대로",
+          "current": "입력 전류 공급 능력에 따름",
+          "load": "미사용 / 예비",
+          "used": false
+        },
+        {
+          "ch": 5,
+          "cn": 6,
+          "voltage": "12 V",
+          "current": "이 채널 최대 2.0 A",
+          "load": "Adapter A 전원 입력 → 서보 1개",
+          "used": true
+        },
+        {
+          "ch": 6,
+          "cn": 7,
+          "voltage": "12 V",
+          "current": "이 채널 최대 2.0 A",
+          "load": "예비; CH5와 병렬 금지",
+          "used": false
+        }
+      ]
+    }
+  },
+  "servo_power_channel": "M01 CN6(CH5)",
+  "servo_cable": {
+    "type": "서보용 3선 전용 케이블",
+    "from": "Adapter A의 서보 3핀 포트 하나",
+    "to": "ST3215-HS의 서보 3핀 포트 하나",
+    "signals": [
+      "D / DATA",
+      "V+",
+      "G / GND"
+    ],
+    "note": "별도 점퍼선 3개로 대체하지 않고 보유 전용 케이블 사용. 3선은 기능 표기이며 커넥터 좌우 순서가 아님. D/V/G 실크·키 방향을 확인하고 선 색만으로 판단하지 않음."
+  },
+  "assembly_update": {
+    "date": "2026-11-13",
+    "CN_mapping": "both boards CN1=input; CHn=CN(n+1), n=1..6",
+    "verification": "제조사 Preliminary PDF p.3 포트 표와 보드 CN 실크 그림 직접 대조",
+    "pdb_pdf_sha256": {
+      "J01": "f1e388344b43b3b253fa44cc5cb0d1215a4ebb9cc06a1719b25a7189b2a5c2df",
+      "M01": "8293959485e7e29574e53a782f013cb7f9eda9dc134564f5775a50b127edb80d"
+    },
+    "firmware_or_hardware_changed": false,
+    "supply_pin_reallocation_is_assembly_plan_not_as_built_verification": true
+  },
+  "encoder_channels": [
+    [
+      "PGE-213 pin 3 HA",
+      "CF B1/HV1",
+      "CF A1/LV1",
+      "ESP32 GPIO4"
+    ],
+    [
+      "PGE-213 pin 4 HB",
+      "CF B2/HV2",
+      "CF A2/LV2",
+      "ESP32 GPIO5"
+    ]
+  ],
+  "drawing_layout": {
+    "sheet_count": 1,
+    "sheets": [
+      "all_signals_power_and_distribution"
+    ],
+    "electrical_connections_changed": false,
+    "one_box_per_component": true,
+    "change_scope": "기존 전기적 연결 유지. Y 케이블 명시와 상부 1단 배치, 부품 열/간격 및 배선 통로 정리.",
+    "battery_y_placement": "상부 1단 J01 근처; 배터리 공통 2심 후 J01/M01로 Y 분기"
+  },
+  "hardware_stop": {
+    "purpose": "사용자 보유 2선 유지형 I/O 스위치의 물리 STOP 입력 추가",
+    "wire_count": 2,
+    "switch_model": null,
+    "contact_NO_NC": null,
+    "dc_rating": "표시 없음(사용자 확인)",
+    "latching": true,
+    "stop_scope": "ESP32 GPIO8 입력을 프로그램이 처리하는 물리 STOP; 구동 명령 차단 및 PWM0 정지, 전력선 차단 아님",
+    "status": "2026-11-13 사용자 지시로 결선 설계 확정·도면 연결 완료; 펌웨어/실물 시험 및 규정 인정은 별도",
+    "gpio8": "STOP 스위치 선 1 → GPIO8, 선 2 → TGND(공통 GND)",
+    "schematic_connected": true,
+    "form_factor": "I/O 표시의 2선 유지형 ON/OFF 스위치(사용자 설명)",
+    "rule_source": "https://github.com/MOSW626/istech-it-arena/blob/2e41f5674a4c8a611bb65e966ea8827d41611017/MANUAL.md#L193-L199",
+    "rule_acceptance_confirmed": false,
+    "input_mode": "GPIO input with internal pull-up",
+    "closed_state": "I/도통: LOW, 구동 허가의 필요조건이며 출발 명령 아님",
+    "open_state": "O/개방 또는 해당 스위치선 단선: HIGH, STOP 요청(내부 풀업 활성화·MCU 정상 실행 전제)",
+    "restart": "STOP 해제만으로 재출발하지 않음; 기존 CLEAR → DISARMED → ARM 절차 적용",
+    "firmware_implemented": false,
+    "physical_verified": false,
+    "wires": [
+      [
+        "STOP 스위치 선 1",
+        "ESP32 GPIO8"
+      ],
+      [
+        "STOP 스위치 선 2",
+        "TGND"
+      ]
+    ],
+    "contact_verification": "실물 I=도통/O=개방 여부는 무전원 도통 검사로 확인; 선 1/2는 조립용 관리명",
+    "extra_3v3_wire": false,
+    "additional_esp32_gnd_header": false
+  },
+  "cable_links": [
+    {
+      "id": "JETSON_DC",
+      "from": "J01 CN2(CH1) +/−",
+      "to": "Jetson DC IN",
+      "cable_count": 1,
+      "conductors": 2,
+      "connector": "DC barrel 5.5×2.5 mm, center positive"
+    },
+    {
+      "id": "SERVO_BUS",
+      "from": "Adapter A servo port",
+      "to": "ST3215-HS",
+      "cable_count": 1,
+      "conductors": 3,
+      "connector": "Dedicated D/V+/GND servo cable"
+    },
+    {
+      "id": "CAMERA_CSI",
+      "from": "B0390",
+      "to": "Jetson CSI",
+      "cable_count": 1,
+      "conductors": 22,
+      "connector": "22↔22 FPC; user-confirmed actual connection"
+    },
+    {
+      "id": "LIDAR_USB",
+      "from": "C1 via supplied USB adapter",
+      "to": "Jetson USB-A",
+      "cable_count": 1,
+      "connector": "USB data and power cable; C1 fixed lead is within the sensor+adapter assembly"
+    }
+  ]
 }

@@ -43,8 +43,11 @@ def rebase(output, submitted, current, scene, history, cfg):
     if (current['epoch']!=submitted['epoch'] or current['side']!=submitted['side']
             or raw['measurements']['source_epoch']!=old['measurements']['source_epoch']):
         return stop('rebase_epoch_or_side_changed')
+    estimated = (current.get('timing_policy') == 'host_estimated_v1'
+                 and history.scan_time_policy == 'host_estimated_v1'
+                 and raw['measurements']['time_basis'] == 'unverified_estimate')
     if (current['previous_steering_rad']!=submitted['previous_steering_rad']
-            or not current['timing_verified'] or not source_valid(scene)
+            or not (current['timing_verified'] or estimated) or not source_valid(scene)
             or abs(scene.t_ref_s-now)>1e-9):
         return stop('rebase_current_input_invalid')
     dt=current['dt_s']; measured=current['speed_mps']; previous=current['previous_steering_rad']

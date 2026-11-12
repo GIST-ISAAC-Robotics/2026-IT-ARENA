@@ -118,6 +118,8 @@ class ExtraActors:
     def save_and_evaluate(self, *, ego, green, duration, config, runtime_world, known_contact_source, digest):
         if not self.specs:
             return None
+        geometry = ev.ego_geometry(config)
+        ego_length, ego_width = geometry['length_m'], geometry['width_m']
         raw = self.output/'additional_actors.json'
         raw.write_text(json.dumps({'poses': self.records.poses, 'commands': self.records.commands,
             'contacts': self.contacts}, ensure_ascii=False), encoding='utf-8')
@@ -147,9 +149,11 @@ class ExtraActors:
             audit['valid'] = all(audit['checks'].values())
             sampled, swept = [], []
             if poses and ev._pose_rows_valid(poses) and ev._pose_rows_valid(span):
-                sampled = ev.sampled_gaps(span, poses, spec['length_m'], spec['width_m'], ev.POSE_MAX_GAP_S)
+                sampled = ev.sampled_gaps(span, poses, spec['length_m'], spec['width_m'], ev.POSE_MAX_GAP_S,
+                    ego_length=ego_length, ego_width=ego_width)
                 swept = ev.swept_gap_lower_bounds(span, poses, spec['length_m'], spec['width_m'],
-                    1/spec['pose_publish_hz'], config['acceptance']['swept_max_curvature_per_m'], ev.POSE_MAX_GAP_S)
+                    1/spec['pose_publish_hz'], config['acceptance']['swept_max_curvature_per_m'], ev.POSE_MAX_GAP_S,
+                    ego_length=ego_length, ego_width=ego_width)
             distances = [r['gap_m'] for r in sampled if r['gap_m'] is not None]
             lower = [r['lower_bound_m'] for r in swept if r['lower_bound_m'] is not None]
             threshold = spec.get('minimum_body_gap_m')
@@ -168,8 +172,8 @@ class ExtraActors:
                 'command_count': len(commands), 'contact_connection': self.connections.get(name)}
             if spec.get('route_kind') == 'side_road_straight':
                 from traffic_encounter import encounter_metrics
-                if spec['length_m'] != .20 or spec['width_m'] != .15:
-                    raise ValueError('encounter diagnosis currently requires 20x15 cm actor')
+                if spec['length_m'] != .20 or spec['width_m'] != .15 or ego_length != .20 or ego_width != .15:
+                    raise ValueError('encounter diagnosis currently requires 20x15 cm actor and ego')
                 encounter = encounter_metrics(ego, poses, self.line, green, end, minimum_gap_m=threshold)
                 result['actors'][name]['encounter'] = encounter
                 audit['checks']['encounter_stream'] = encounter['valid']

@@ -1,333 +1,373 @@
-<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IT ARENA · ESP32 배선도 v1</title>
-<style>body{margin:0;background:#eaf0f7;color:#14273d;font-family:"Malgun Gothic",sans-serif}main{max-width:1700px;margin:auto;padding:28px}h1{font-size:30px}h2{margin:0}p,li{line-height:1.7}section{margin:24px 0;background:white;border:1px solid #ccd6e4;border-radius:12px;padding:20px}.drawing{overflow:auto}.drawing svg{width:100%;height:auto;min-width:1050px}a{color:#2161ae}table{border-collapse:collapse;width:100%;font-size:15px}td,th{padding:12px;border-bottom:1px solid #d8e0e9;text-align:left}th{background:#eaf0f7}.notice{border-left:5px solid #a86800;padding:8px 18px;background:#fff5dd}@media print{@page{size:A3 landscape;margin:10mm}main{padding:0}section{break-before:page;padding:0;border:0}.drawing svg{min-width:0;max-height:255mm}section p{display:none}a{color:inherit}}</style>
-<main><h1>ESP32 주변 배선도 v1</h1><p>2026-11-12 근거 갱신 · 현재 IMU 배선을 유지하고 모터 드라이버, 엔코더, 조향 서보까지 확장한 모듈 간 결선 설계입니다.</p>
-<p class="notice">실물 검증 완료 도면이 아닙니다. PGE-213의 NPN 오픈 컬렉터·내부 풀업 답변과 CF의 YF08E(TXS0108E) 마킹 식별을 반영했습니다. 패드/채널·OE·변환 파형은 미검증입니다. 신규 CF(헤더 미납땜, 21KG4/C2VN)의 채널 1/2 설계를 유지합니다. B2 인쇄 누락·1/7 대안은 별도 기존 헤더 보드(69KG4/CHQ7)의 정보입니다. GPIO 번호는 물리 헤더 순번이 아닙니다. 현재 IMU 진단 펌웨어로는 모터·서보를 제어하지 않습니다.</p>
-<p><a href="../ESP32_GPIO_WIRING_2026_11_11.md">설계 설명과 조립 조건</a> · <a href="esp32_gpio_v1.json">기계 판독 핀·전원 목록</a> · <a href="esp32_gpio_pin_table_v1.md">핀표</a></p><section><h2>01 · 신호 배선</h2><p><a href="esp32_gpio_signals_v1.svg">SVG 원본</a> · <a href="esp32_gpio_signals_v1.png">PNG 이미지</a></p><div class="drawing"><svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1230" viewBox="0 0 1700 1230" role="img" aria-label="ESP32 GPIO 배선도">
+<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IT ARENA · ESP32 배선도 v1</title><style>body{margin:0;background:#eaf0f7;color:#14273d;font-family:"Malgun Gothic",sans-serif}main{max-width:2740px;margin:auto;padding:28px}h1{font-size:30px}h2{margin:0}p,li{line-height:1.7}section{margin:24px 0;background:white;border:1px solid #ccd6e4;border-radius:12px;padding:20px}.drawing,.table-wrap{overflow:auto}.drawing svg{width:100%;height:auto;min-width:1200px}.toolbar{display:flex;gap:8px;align-items:center;margin:12px 0}summary{cursor:pointer;padding:10px 0}button{padding:8px 14px;border:1px solid #b7c8da;border-radius:6px;background:white;cursor:pointer}a{color:#2161ae}table{border-collapse:collapse;width:100%;font-size:15px}td,th{padding:12px;border-bottom:1px solid #d8e0e9;text-align:left}th{background:#eaf0f7}.notice{border-left:5px solid #a86800;padding:8px 18px;background:#fff5dd}@media print{@page{size:A3 landscape;margin:10mm}main{padding:0}section{break-before:page;padding:0;border:0}.drawing svg{min-width:0;max-height:245mm}section p{display:none}a{color:inherit}}</style><main><h1>ESP32 주변 배선도 v1 · 하드웨어팀 조립용</h1><p>2026-11-13 갱신 · 신호·전원·분기를 부품별로 연결한 한 장 · 3V3 2개와 GND 4개를 사용합니다.</p><details><summary>조립 표기와 확인 범위</summary><p class="notice">①~④는 배선 관리명이며 보드의 물리적 위치·핀 순번이 아닙니다. T3V3는 CF VA·OE용 3.3 V 분기, T5V는 엔코더·CF VB용 5 V 분기, TGND는 센서·STOP 공통 접지입니다. STOP 선 1은 GPIO8, 선 2는 TGND에 연결합니다. GPIO8 내부 풀업을 사용하므로 별도 3V3선은 없고, ESP32 GND는 기존 4핀 그대로입니다. 각 단자의 실크를 찾아 연결하고 사용 위치에 라벨을 붙이십시오.</p><p>STOP 설계 동작: O/개방=HIGH=정지, I/도통=LOW=허가 조건. I 복귀만으로 자동 출발하지 않습니다. 접점은 무전원에서 확인하며 펌웨어 구현·실물 STOP 시험과 규정상 인정 여부는 별도입니다.</p><p>IMU SPI·서보 무부하 왕복·엔코더 손 회전 및 약5% 모터 구동 중 계수를 확인했습니다. 전원 헤더 재분배와 서보 CH5 선택은 이번 조립 기준이며 전체 하네스 실물 검증이 아닙니다. 고속 파형·장착 교정·부하 전류·운영 제어는 별도입니다. 과거 실패와 종료 후 해체 구간 신호는 각 시험 보고서에 보존했습니다.</p></details><p><a href="../ESP32_GPIO_WIRING_2026_11_11.md">설계 설명</a> · <a href="esp32_gpio_v1.json">핀·전원 JSON</a> · <a href="esp32_gpio_pin_table_v1.md">연결표 Markdown</a> · <a href="vehicle_wiring_layers_v1.html">층별 케이블 배치도</a></p><section><h2>전체 배선 · 한 장</h2><p><a href="esp32_gpio_all_v1.svg">SVG 원본</a> · <a href="esp32_gpio_all_v1.png">PNG 이미지</a></p><div class="toolbar"><button onclick="zoomDiagram(0)">전체 보기</button><button onclick="zoomDiagram(1)">원본 크기</button><span>선 교차의 ●만 연결점입니다.</span></div><div class="drawing"><svg xmlns="http://www.w3.org/2000/svg" width="2740" height="2290" viewBox="0 0 2740 2290" role="img" aria-label="ESP32 전체 배선도 · 신호 + 전원 + 분기">
 <style>text{font-family:"Malgun Gothic","Noto Sans KR",sans-serif;fill:#14273d} .small{font-size:17px}</style>
-<rect width="1700" height="1230" fill="#f6f8fc"/>
-<text x="50" y="54" font-size="31" style="fill:#14273d" font-weight="700" text-anchor="start">ESP32 GPIO 배선도</text>
-<text x="50" y="90" font-size="19" style="fill:#576579" font-weight="400" text-anchor="start">01 / 신호 · 현재 IMU 배선 유지 · 총 11 GPIO + 보드 내부 USB-UART 2핀 예약</text>
-<path d="M50,113 L1650,113" fill="none" stroke="#cad4e0" stroke-width="1"/>
-<text x="50" y="150" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">실선: 설계 결선 (실측 여부는 각 상자 참고)     주황 점선: 실물 확인 전 연결 보류     화살표: 신호 방향</text>
-<rect x="680" y="200" width="300" height="835" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="698" y="234" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">ESP32-S3</text>
-<text x="698" y="262" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">Flash 16 MB / PSRAM 8 MB</text>
-<rect x="50" y="200" width="370" height="435" rx="9" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="68" y="234" font-size="22" style="fill:#08776d" font-weight="700" text-anchor="start">Adafruit 4438 · LSM6DSOX</text>
-<text x="68" y="262" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">현재 연결 유지 / 하단 긴 핀열</text>
-<path d="M420,300 L680,300" fill="none" stroke="#ba3c36" stroke-width="3"/>
-<text x="550.0" y="290" font-size="15" style="fill:#ba3c36" font-weight="400" text-anchor="middle">3.3 V</text>
-<circle cx="420" cy="300" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="406" y="307" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">VIN</text>
-<circle cx="680" cy="300" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="694" y="307" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">3V3</text>
-<path d="M420,345 L680,345" fill="none" stroke="#576579" stroke-width="3"/>
-<text x="550.0" y="335" font-size="15" style="fill:#576579" font-weight="400" text-anchor="middle">GND</text>
-<circle cx="420" cy="345" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="406" y="352" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">GND</text>
-<circle cx="680" cy="345" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="694" y="352" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">GND</text>
-<path d="M420,390 L680,390" fill="none" stroke="#08776d" stroke-width="3"/>
-<text x="550.0" y="380" font-size="15" style="fill:#08776d" font-weight="400" text-anchor="middle">SPI SCLK</text>
-<path d="M557.0,385 L547.0,390 L557.0,395" fill="none" stroke="#08776d" stroke-width="2"/>
-<circle cx="420" cy="390" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="406" y="397" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end">SCL</text>
-<circle cx="680" cy="390" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="694" y="397" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">GPIO12</text>
-<path d="M420,435 L680,435" fill="none" stroke="#08776d" stroke-width="3"/>
-<text x="550.0" y="425" font-size="15" style="fill:#08776d" font-weight="400" text-anchor="middle">SPI MOSI</text>
-<path d="M557.0,430 L547.0,435 L557.0,440" fill="none" stroke="#08776d" stroke-width="2"/>
-<circle cx="420" cy="435" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="406" y="442" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end">SDA</text>
-<circle cx="680" cy="435" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="694" y="442" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">GPIO11</text>
-<path d="M420,480 L680,480" fill="none" stroke="#08776d" stroke-width="3"/>
-<text x="550.0" y="470" font-size="15" style="fill:#08776d" font-weight="400" text-anchor="middle">SPI MISO</text>
-<path d="M543.0,475 L553.0,480 L543.0,485" fill="none" stroke="#08776d" stroke-width="2"/>
-<circle cx="420" cy="480" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="406" y="487" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end">DO</text>
-<circle cx="680" cy="480" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="694" y="487" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">GPIO13</text>
-<path d="M420,525 L680,525" fill="none" stroke="#08776d" stroke-width="3"/>
-<text x="550.0" y="515" font-size="15" style="fill:#08776d" font-weight="400" text-anchor="middle">SPI CS (LOW 유효)</text>
-<path d="M557.0,520 L547.0,525 L557.0,530" fill="none" stroke="#08776d" stroke-width="2"/>
-<circle cx="420" cy="525" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="406" y="532" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end">CS</text>
-<circle cx="680" cy="525" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="694" y="532" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">GPIO10</text>
-<path d="M420,570 L680,570" fill="none" stroke="#08776d" stroke-width="3"/>
-<text x="550.0" y="560" font-size="15" style="fill:#08776d" font-weight="400" text-anchor="middle">INT1</text>
-<path d="M543.0,565 L553.0,570 L543.0,575" fill="none" stroke="#08776d" stroke-width="2"/>
-<circle cx="420" cy="570" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="406" y="577" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end">I1</text>
-<circle cx="680" cy="570" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="694" y="577" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">GPIO9</text>
-<text x="70" y="610" font-size="16" style="fill:#08776d" font-weight="400" text-anchor="start">SPI 실측 / I1 IRQ 동작은 미검증</text>
-<rect x="1260" y="200" width="390" height="330" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="1278" y="234" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">Cytron MD20A</text>
-<text x="1278" y="262" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">설계 배정 / 구동 시험 전</text>
-<path d="M980,300 L1260,300" fill="none" stroke="#2161ae" stroke-width="3"/>
-<text x="1120.0" y="290" font-size="15" style="fill:#2161ae" font-weight="400" text-anchor="middle">MOTOR_PWM</text>
-<path d="M1113.0,295 L1123.0,300 L1113.0,305" fill="none" stroke="#2161ae" stroke-width="2"/>
-<circle cx="980" cy="300" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="966" y="307" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="end">GPIO15</text>
-<circle cx="1260" cy="300" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="1274" y="307" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="start">PWM</text>
-<path d="M980,350 L1260,350" fill="none" stroke="#2161ae" stroke-width="3"/>
-<text x="1120.0" y="340" font-size="15" style="fill:#2161ae" font-weight="400" text-anchor="middle">MOTOR_DIR</text>
-<path d="M1113.0,345 L1123.0,350 L1113.0,355" fill="none" stroke="#2161ae" stroke-width="2"/>
-<circle cx="980" cy="350" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="966" y="357" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="end">GPIO6</text>
-<circle cx="1260" cy="350" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="1274" y="357" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="start">DIR</text>
-<path d="M980,400 L1260,400" fill="none" stroke="#576579" stroke-width="3"/>
-<text x="1120.0" y="390" font-size="15" style="fill:#576579" font-weight="400" text-anchor="middle">Signal GND</text>
-<circle cx="980" cy="400" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="966" y="407" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">GND</text>
-<circle cx="1260" cy="400" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="1274" y="407" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">GND</text>
-<text x="1280" y="451" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">3.3 V PWM/DIR 직접 입력</text>
-<text x="1280" y="478" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">PWM LOW = brake</text>
-<text x="1280" y="505" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">VB+/VB− · MA/MB는 시트 02</text>
-<text x="705" y="635" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">호환 PCB 제조사·판본 미확인</text>
-<text x="705" y="662" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">GPIO 실크로 찾아 연결</text>
-<text x="705" y="689" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">헤더 P1/P2 순번은 미지정</text>
-<rect x="1260" y="640" width="390" height="395" rx="9" fill="white" stroke="#7641a7" stroke-width="2"/>
-<text x="1278" y="674" font-size="22" style="fill:#7641a7" font-weight="700" text-anchor="start">Bus Servo Adapter (A)</text>
-<text x="1278" y="702" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">설계 배정 / UART 점퍼 A</text>
-<path d="M980,720 L1260,720" fill="none" stroke="#7641a7" stroke-width="3"/>
-<text x="1120.0" y="710" font-size="15" style="fill:#7641a7" font-weight="400" text-anchor="middle">UART1 TX → TX</text>
-<path d="M1113.0,715 L1123.0,720 L1113.0,725" fill="none" stroke="#7641a7" stroke-width="2"/>
-<circle cx="980" cy="720" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
-<text x="966" y="727" font-size="20" style="fill:#7641a7" font-weight="400" text-anchor="end">GPIO17</text>
-<circle cx="1260" cy="720" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
-<text x="1274" y="727" font-size="20" style="fill:#7641a7" font-weight="400" text-anchor="start">TX / TXD</text>
-<path d="M980,770 L1260,770" fill="none" stroke="#7641a7" stroke-width="3"/>
-<text x="1120.0" y="760" font-size="15" style="fill:#7641a7" font-weight="400" text-anchor="middle">UART1 RX ← RX</text>
-<path d="M1127.0,765 L1117.0,770 L1127.0,775" fill="none" stroke="#7641a7" stroke-width="2"/>
-<circle cx="980" cy="770" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
-<text x="966" y="777" font-size="20" style="fill:#7641a7" font-weight="400" text-anchor="end">GPIO18</text>
-<circle cx="1260" cy="770" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
-<text x="1274" y="777" font-size="20" style="fill:#7641a7" font-weight="400" text-anchor="start">RX / RXD</text>
-<path d="M980,820 L1260,820" fill="none" stroke="#576579" stroke-width="3"/>
-<text x="1120.0" y="810" font-size="15" style="fill:#576579" font-weight="400" text-anchor="middle">H2 GND</text>
-<circle cx="980" cy="820" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="966" y="827" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">GND</text>
-<circle cx="1260" cy="820" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="1274" y="827" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">GND</text>
-<text x="1280" y="873" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">이 제품은 TX↔TX / RX↔RX</text>
-<text x="1280" y="900" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">일반 UART처럼 교차하지 않음</text>
-<text x="1280" y="927" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">ESP32에서 전원 공급하지 않음</text>
-<text x="1280" y="954" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">서보는 D / V+ / GND 3선</text>
-<text x="1280" y="981" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">12 V 전원·서보 결선: 시트 02</text>
-<rect x="50" y="710" width="235" height="325" rx="9" fill="white" stroke="#a86800" stroke-width="2" stroke-dasharray="9 6"/>
-<text x="68" y="744" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">PGE-213</text>
-<text x="68" y="772" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">XHP-4 / 모터축 엔코더</text>
-<text x="70" y="803" font-size="14" style="fill:#576579" font-weight="400" text-anchor="start">NPN OC · 내부 풀업</text>
-<text x="70" y="826" font-size="14" style="fill:#576579" font-weight="400" text-anchor="start">5 V 공급: 시트 02</text>
-<rect x="395" y="710" width="175" height="325" rx="9" fill="white" stroke="#a86800" stroke-width="2" stroke-dasharray="9 6"/>
-<text x="413" y="744" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">CF-0108</text>
-<text x="413" y="772" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">TXS 마킹 식별</text>
-<path d="M285,850 L395,850" fill="none" stroke="#a86800" stroke-width="3" stroke-dasharray="9 6"/>
-<text x="340.0" y="840" font-size="15" style="fill:#a86800" font-weight="400" text-anchor="middle">5 V</text>
-<path d="M333.0,845 L343.0,850 L333.0,855" fill="none" stroke="#a86800" stroke-width="2"/>
-<circle cx="285" cy="850" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
-<text x="271" y="857" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="end">3 HA</text>
-<circle cx="395" cy="850" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
-<text x="409" y="857" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="start">B1</text>
-<path d="M570,850 L680,850" fill="none" stroke="#a86800" stroke-width="3" stroke-dasharray="9 6"/>
-<text x="625.0" y="840" font-size="15" style="fill:#a86800" font-weight="400" text-anchor="middle">3.3 V</text>
-<path d="M618.0,845 L628.0,850 L618.0,855" fill="none" stroke="#a86800" stroke-width="2"/>
-<circle cx="570" cy="850" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
-<text x="556" y="857" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="end">A1</text>
-<circle cx="680" cy="850" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
-<text x="694" y="857" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="start">GPIO4</text>
-<path d="M285,910 L395,910" fill="none" stroke="#a86800" stroke-width="3" stroke-dasharray="9 6"/>
-<text x="340.0" y="900" font-size="15" style="fill:#a86800" font-weight="400" text-anchor="middle">5 V</text>
-<path d="M333.0,905 L343.0,910 L333.0,915" fill="none" stroke="#a86800" stroke-width="2"/>
-<circle cx="285" cy="910" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
-<text x="271" y="917" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="end">4 HB</text>
-<circle cx="395" cy="910" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
-<text x="409" y="917" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="start">B2</text>
-<path d="M570,910 L680,910" fill="none" stroke="#a86800" stroke-width="3" stroke-dasharray="9 6"/>
-<text x="625.0" y="900" font-size="15" style="fill:#a86800" font-weight="400" text-anchor="middle">3.3 V</text>
-<path d="M618.0,905 L628.0,910 L618.0,915" fill="none" stroke="#a86800" stroke-width="2"/>
-<circle cx="570" cy="910" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
-<text x="556" y="917" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="end">A2</text>
-<circle cx="680" cy="910" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
-<text x="694" y="917" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="start">GPIO5</text>
-<text x="70" y="972" font-size="14" style="fill:#576579" font-weight="400" text-anchor="start">1 VCC / 2 GND</text>
-<text x="70" y="996" font-size="14" style="fill:#576579" font-weight="400" text-anchor="start">커넥터 방향·선 색은 실물 확인</text>
-<text x="410" y="970" font-size="13" style="fill:#576579" font-weight="400" text-anchor="start">신규 CF · 채널 1/2</text>
-<text x="410" y="994" font-size="13" style="fill:#576579" font-weight="400" text-anchor="start">실크 확인 · 도통 미검증</text>
-<text x="705" y="970" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">UART0 GPIO43/44</text>
-<text x="705" y="997" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">보드 내부 USB-UART 전용</text>
-<text x="705" y="1024" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">외부 장치에 중복 배정 금지</text>
-<text x="50" y="1080" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">IMU: 3Vo, I2 및 상단 SCX / SDX / CS / DO / GND는 이번 배선에서 사용하지 않습니다.</text>
-<text x="50" y="1111" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">CF: YF08E → TXS0108E 마킹 식별. 채널/OE·파형 확인 전 GPIO 연결 보류. 엔코더 HA/HB는 직접 연결하지 않습니다.</text>
-<text x="50" y="1142" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">현재 펌웨어는 IMU 진단용입니다. 이 도면만으로 모터·서보의 부팅/리셋/통신 단절 시 정지가 구현되지는 않습니다.</text>
-<text x="50" y="1204" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">IT ARENA · 2026-11-12 · v1 근거 갱신 | 단자 이름 기준 배선도 · 기판 핀의 물리적 순서/위치를 나타내지 않음</text>
+<rect width="2740" height="2290" fill="#f6f8fc"/>
+<text x="50" y="54" font-size="31" style="fill:#14273d" font-weight="700" text-anchor="start">ESP32 전체 배선도 · 신호 + 전원 + 분기</text>
+<text x="50" y="90" font-size="19" style="fill:#576579" font-weight="400" text-anchor="start">부품별 한 번만 표시 · 단자 이름 기준 · 실제 보드 핀 위치/순서와 배선 길이는 나타내지 않음</text>
+<path d="M50,113 L2690,113" fill="none" stroke="#cad4e0" stroke-width="1"/>
+<text x="50" y="140" font-size="19" style="fill:#576579" font-weight="400" text-anchor="start">빨강 +  |  회색 GND/−  |  초록 SPI  |  파랑 GPIO/USB  |  보라 UART/서보  |  주황 엔코더</text>
+<text x="1950" y="140" font-size="20" style="fill:#14273d" font-weight="700" text-anchor="start">● 접속점 · 흰 틈의 교차는 미접속</text>
+<text x="1510" y="90" font-size="18" style="fill:#2161ae" font-weight="400" text-anchor="start">굵은 선 = 케이블 1개 · 내부 도체는 서로 분리</text>
+<rect x="1130" y="165" width="340" height="115" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="1148" y="199" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">6S 배터리</text>
+<text x="1148" y="227" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">22.2 V 공칭 / 25.2 V 완충</text>
+<rect x="60" y="340" width="660" height="300" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="78" y="374" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">PDB · J01</text>
+<text x="78" y="402" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">CN1 입력 21–36 V DC</text>
+<rect x="1880" y="340" width="660" height="300" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="1898" y="374" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">PDB · M01</text>
+<text x="1898" y="402" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">CN1 입력 24–36 V DC</text>
+<rect x="1050" y="520" width="500" height="280" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1068" y="554" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">Jetson Orin Nano</text>
+<rect x="340" y="690" width="380" height="120" rx="9" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="358" y="724" font-size="22" style="fill:#08776d" font-weight="700" text-anchor="start">B0390 카메라</text>
+<text x="358" y="752" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">CSI · 실물 22↔22핀 FPC</text>
+<rect x="1880" y="690" width="380" height="120" rx="9" fill="white" stroke="#087f96" stroke-width="2"/>
+<text x="1898" y="724" font-size="22" style="fill:#087f96" font-weight="700" text-anchor="start">RPLIDAR C1</text>
+<text x="1898" y="752" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">지급 USB 어댑터 경유</text>
+<rect x="1050" y="880" width="500" height="1000" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1068" y="914" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">ESP32-S3 호환 보드</text>
+<text x="1068" y="942" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">Flash 16 MB / PSRAM 8 MB</text>
+<rect x="340" y="880" width="380" height="450" rx="9" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="358" y="914" font-size="22" style="fill:#08776d" font-weight="700" text-anchor="start">Adafruit 4438</text>
+<text x="358" y="942" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">LSM6DSOX · 하단 긴 핀열</text>
+<rect x="340" y="1400" width="380" height="340" rx="9" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="358" y="1434" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">CF-0108</text>
+<text x="358" y="1462" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">기능 확인한 교체 보드 · 채널 1/2</text>
+<rect x="340" y="1840" width="380" height="240" rx="9" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="358" y="1874" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">PGE-213</text>
+<text x="358" y="1902" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">모터 뒤 장착 · NPN OC / 내부 풀업</text>
+<rect x="1050" y="1950" width="500" height="130" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1068" y="1984" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">STOP 스위치</text>
+<text x="1068" y="2012" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">2선 · I/O 유지형</text>
+<rect x="1880" y="880" width="380" height="130" rx="9" fill="white" stroke="#14273d" stroke-width="2"/>
+<text x="1898" y="914" font-size="22" style="fill:#14273d" font-weight="700" text-anchor="start">MB4266-24180</text>
+<text x="1898" y="942" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">브러시 DC 모터</text>
+<rect x="1880" y="1070" width="380" height="280" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1898" y="1104" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">Cytron MD20A</text>
+<text x="1898" y="1132" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">3.3 V PWM/DIR 직접 입력</text>
+<rect x="1880" y="1420" width="380" height="120" rx="9" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="1898" y="1454" font-size="22" style="fill:#7641a7" font-weight="700" text-anchor="start">ST3215-HS × 1</text>
+<text x="1898" y="1482" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">서보혼·링크 장착 교정은 후속</text>
+<rect x="1880" y="1590" width="380" height="280" rx="9" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="1898" y="1624" font-size="22" style="fill:#7641a7" font-weight="700" text-anchor="start">Bus Servo Adapter (A)</text>
+<text x="1898" y="1652" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">점퍼 두 개 모두 A · H2 사용</text>
+<circle cx="1260" cy="280" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="1260" y="262" font-size="18" style="fill:#ba3c36" font-weight="400" text-anchor="middle">+</text>
+<path d="M1260,280 L1260,300" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1260,280 L1260,300" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1340" cy="280" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1340" y="262" font-size="18" style="fill:#576579" font-weight="400" text-anchor="middle">−</text>
+<path d="M1340,280 L1340,300" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1340,280 L1340,300" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<rect x="1240" y="300" width="120" height="35" rx="8" fill="#e8eef7" stroke="#576579" stroke-width="2"/>
+<text x="1300.0" y="323.5" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">2심</text>
+<path d="M1300,335 L1300,370" fill="none" stroke="#f6f8fc" stroke-width="15" stroke-linejoin="round"/>
+<path d="M1300,335 L1300,370" fill="none" stroke="#14273d" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1300,370 L1160,445 L840,445" fill="none" stroke="#f6f8fc" stroke-width="15" stroke-linejoin="round"/>
+<path d="M1300,370 L1160,445 L840,445" fill="none" stroke="#14273d" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1300,370 L1440,445 L1760,445" fill="none" stroke="#f6f8fc" stroke-width="15" stroke-linejoin="round"/>
+<path d="M1300,370 L1440,445 L1760,445" fill="none" stroke="#14273d" stroke-width="9" stroke-linejoin="round"/>
+<circle cx="1300" cy="370" r="7" fill="#14273d"/>
+<rect x="800" y="410" width="40" height="70" rx="8" fill="#e8eef7" stroke="#576579" stroke-width="2"/>
+<text x="820.0" y="451.0" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">2심</text>
+<rect x="1760" y="410" width="40" height="70" rx="8" fill="#e8eef7" stroke="#576579" stroke-width="2"/>
+<text x="1780.0" y="451.0" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">2심</text>
+<path d="M720,430 L800,430" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,430 L800,430" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="430" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="706" y="437" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">CN1 +</text>
+<path d="M1800,430 L1880,430" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1800,430 L1880,430" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1880" cy="430" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="1894" y="437" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">CN1 +</text>
+<path d="M720,465 L800,465" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,465 L800,465" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="465" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="706" y="472" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">CN1 −</text>
+<path d="M1800,465 L1880,465" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1800,465 L1880,465" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1880" cy="465" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1894" y="472" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">CN1 −</text>
+<text x="1400" y="325" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">기존 XT60↔XT30 + Y 케이블</text>
+<text x="1300" y="490" font-size="22" style="fill:#14273d" font-weight="700" text-anchor="middle">Y 분기 · 상부 1단 / J01 근처</text>
+<text x="940" y="415" font-size="18" style="fill:#ba3c36" font-weight="400" text-anchor="middle">J01행 · +/− 2심</text>
+<text x="1660" y="415" font-size="18" style="fill:#ba3c36" font-weight="400" text-anchor="middle">M01행 · +/− 2심</text>
+<path d="M720,550 L820,550" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,550 L820,550" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="550" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="706" y="557" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">CN2(CH1) +</text>
+<path d="M720,600 L820,600" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,600 L820,600" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="600" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="706" y="607" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">CN2(CH1) −</text>
+<rect x="820" y="535" width="70" height="80" rx="8" fill="#e8eef7" stroke="#576579" stroke-width="2"/>
+<text x="855.0" y="581.0" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">2심</text>
+<path d="M890,575 L1050,575" fill="none" stroke="#f6f8fc" stroke-width="14" stroke-linejoin="round"/>
+<path d="M890,575 L1050,575" fill="none" stroke="#576579" stroke-width="8" stroke-linejoin="round"/>
+<circle cx="1050" cy="575" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1064" y="582" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">DC IN · 배럴잭</text>
+<text x="855" y="520" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="middle">19 V / 최대2.3 A</text>
+<text x="855" y="640" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">배럴 전원 케이블 1개</text>
+<text x="1070" y="620" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">5.5×2.5 mm · 중앙 + / 외곽 −</text>
+<text x="1070" y="686" font-size="19" style="fill:#576579" font-weight="400" text-anchor="start">카메라·LiDAR·ESP32 연결</text>
+<path d="M720,765 L1050,765" fill="none" stroke="#f6f8fc" stroke-width="13" stroke-linejoin="round"/>
+<path d="M720,765 L1050,765" fill="none" stroke="#08776d" stroke-width="7" stroke-linejoin="round"/>
+<circle cx="720" cy="765" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="706" y="772" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end"></text>
+<circle cx="1050" cy="765" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="1064" y="772" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">CSI</text>
+<text x="885" y="750" font-size="17" style="fill:#08776d" font-weight="400" text-anchor="middle">FPC 1개 · 영상/전원</text>
+<path d="M1550,765 L1880,765" fill="none" stroke="#f6f8fc" stroke-width="13" stroke-linejoin="round"/>
+<path d="M1550,765 L1880,765" fill="none" stroke="#087f96" stroke-width="7" stroke-linejoin="round"/>
+<circle cx="1550" cy="765" r="4" fill="white" stroke="#087f96" stroke-width="2"/>
+<text x="1536" y="772" font-size="20" style="fill:#087f96" font-weight="400" text-anchor="end">USB-A</text>
+<circle cx="1880" cy="765" r="4" fill="white" stroke="#087f96" stroke-width="2"/>
+<text x="1894" y="772" font-size="20" style="fill:#087f96" font-weight="400" text-anchor="start"></text>
+<text x="1715" y="750" font-size="17" style="fill:#087f96" font-weight="400" text-anchor="middle">USB 1개 · 데이터/전원</text>
+<path d="M1300,800 L1300,880" fill="none" stroke="#f6f8fc" stroke-width="13" stroke-linejoin="round"/>
+<path d="M1300,800 L1300,880" fill="none" stroke="#2161ae" stroke-width="7" stroke-linejoin="round"/>
+<text x="1340" y="847" font-size="18" style="fill:#2161ae" font-weight="400" text-anchor="start">USB-A → USB-C · 데이터 / 5 V / GND</text>
+<text x="1070" y="975" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">USB-UART 포트 사용</text>
+<text x="80" y="445" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">CN5(CH4): 5 V / 최대0.5 A → 엔코더·CF</text>
+<text x="80" y="476" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">예비 CH2+3: 합계1.5 A</text>
+<text x="80" y="507" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">예비 CH5+6: 합계0.6 A</text>
+<circle cx="160" cy="640" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="160" y="622" font-size="18" style="fill:#ba3c36" font-weight="400" text-anchor="middle">CN5 +</text>
+<circle cx="240" cy="640" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="240" y="622" font-size="18" style="fill:#576579" font-weight="400" text-anchor="middle">CN5 −</text>
+<path d="M160,640 L160,1940" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M160,640 L160,1940" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<path d="M240,640 L240,2010" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M240,640 L240,2010" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<path d="M160,1495 L340,1495" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M160,1495 L340,1495" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="340" cy="1495" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="354" y="1502" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">VB</text>
+<path d="M160,1940 L340,1940" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M160,1940 L340,1940" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="340" cy="1940" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="354" y="1947" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">1 VCC</text>
+<path d="M240,1530 L340,1530" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M240,1530 L340,1530" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="340" cy="1530" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="354" y="1537" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">GND</text>
+<path d="M240,2010 L340,2010" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M240,2010 L340,2010" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="340" cy="2010" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="354" y="2017" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">2 GND</text>
+<path d="M240,1790 L1050,1790" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M240,1790 L1050,1790" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1050" cy="1790" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1064" y="1797" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">GND②</text>
+<text x="50" y="1470" font-size="18" style="fill:#ba3c36" font-weight="700" text-anchor="start">T5V · 5 V</text>
+<text x="260" y="1770" font-size="18" style="fill:#576579" font-weight="700" text-anchor="start">TGND</text>
+<path d="M720,1010 L1050,1010" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1010 L1050,1010" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1010" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="706" y="1017" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">VIN</text>
+<circle cx="1050" cy="1010" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="1064" y="1017" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">3V3①</text>
+<text x="885.0" y="998" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="middle">3.3 V</text>
+<path d="M720,1055 L1050,1055" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1055 L1050,1055" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1055" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="706" y="1062" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">GND</text>
+<circle cx="1050" cy="1055" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1064" y="1062" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">GND①</text>
+<path d="M720,1100 L1050,1100" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1100 L1050,1100" fill="none" stroke="#08776d" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1100" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="706" y="1107" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end">SCL</text>
+<circle cx="1050" cy="1100" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="1064" y="1107" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">GPIO12</text>
+<text x="885.0" y="1088" font-size="16" style="fill:#08776d" font-weight="400" text-anchor="middle">SCLK</text>
+<path d="M720,1145 L1050,1145" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1145 L1050,1145" fill="none" stroke="#08776d" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1145" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="706" y="1152" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end">SDA</text>
+<circle cx="1050" cy="1145" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="1064" y="1152" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">GPIO11</text>
+<text x="885.0" y="1133" font-size="16" style="fill:#08776d" font-weight="400" text-anchor="middle">MOSI</text>
+<path d="M720,1190 L1050,1190" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1190 L1050,1190" fill="none" stroke="#08776d" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1190" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="706" y="1197" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end">DO</text>
+<circle cx="1050" cy="1190" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="1064" y="1197" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">GPIO13</text>
+<text x="885.0" y="1178" font-size="16" style="fill:#08776d" font-weight="400" text-anchor="middle">MISO</text>
+<path d="M720,1235 L1050,1235" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1235 L1050,1235" fill="none" stroke="#08776d" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1235" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="706" y="1242" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end">CS</text>
+<circle cx="1050" cy="1235" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="1064" y="1242" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">GPIO10</text>
+<text x="885.0" y="1223" font-size="16" style="fill:#08776d" font-weight="400" text-anchor="middle">CS</text>
+<path d="M720,1280 L1050,1280" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1280 L1050,1280" fill="none" stroke="#08776d" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1280" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="706" y="1287" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="end">I1</text>
+<circle cx="1050" cy="1280" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="1064" y="1287" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">GPIO9</text>
+<text x="885.0" y="1268" font-size="16" style="fill:#08776d" font-weight="400" text-anchor="middle">INT1</text>
+<path d="M720,1470 L1050,1470" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1470 L1050,1470" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1470" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="706" y="1477" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">VA</text>
+<circle cx="1050" cy="1470" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="1064" y="1477" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">3V3②</text>
+<path d="M720,1515 L875,1515 L875,1470" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1515 L875,1515 L875,1470" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1515" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="706" y="1522" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">OE</text>
+<text x="875" y="1445" font-size="20" style="fill:#ba3c36" font-weight="700" text-anchor="middle">T3V3</text>
+<path d="M720,1595 L1050,1595" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1595 L1050,1595" fill="none" stroke="#a86800" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1595" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="706" y="1602" font-size="20" style="fill:#a86800" font-weight="400" text-anchor="end">A1</text>
+<circle cx="1050" cy="1595" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="1064" y="1602" font-size="20" style="fill:#a86800" font-weight="400" text-anchor="start">GPIO4</text>
+<text x="885.0" y="1583" font-size="16" style="fill:#a86800" font-weight="400" text-anchor="middle">ENC A · 3.3 V</text>
+<path d="M720,1655 L1050,1655" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1655 L1050,1655" fill="none" stroke="#a86800" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1655" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="706" y="1662" font-size="20" style="fill:#a86800" font-weight="400" text-anchor="end">A2</text>
+<circle cx="1050" cy="1655" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="1064" y="1662" font-size="20" style="fill:#a86800" font-weight="400" text-anchor="start">GPIO5</text>
+<text x="885.0" y="1643" font-size="16" style="fill:#a86800" font-weight="400" text-anchor="middle">ENC B · 3.3 V</text>
+<path d="M510,1740 L510,1840" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M510,1740 L510,1840" fill="none" stroke="#a86800" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="510" cy="1740" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="510" y="1722" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="middle">B1</text>
+<circle cx="510" cy="1840" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="510" y="1870" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="middle">3 HA</text>
+<path d="M625,1740 L625,1840" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M625,1740 L625,1840" fill="none" stroke="#a86800" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="625" cy="1740" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="625" y="1722" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="middle">B2</text>
+<circle cx="625" cy="1840" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="625" y="1870" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="middle">4 HB</text>
+<text x="360" y="1575" font-size="17" style="fill:#a86800" font-weight="400" text-anchor="start">VA/OE=3.3 V · VB=5 V</text>
+<text x="1070" y="1370" font-size="19" style="fill:#576579" font-weight="400" text-anchor="start">3V3 2핀 / GND 4핀 사용</text>
+<text x="1070" y="1399" font-size="19" style="fill:#576579" font-weight="400" text-anchor="start">①~④는 배선 관리명</text>
+<text x="1070" y="1825" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">GPIO43/44: 보드 내부 USB-UART 예약</text>
+<path d="M1400,1880 L1400,1950" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1400,1880 L1400,1950" fill="none" stroke="#2161ae" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1400" cy="1880" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1400" y="1862" font-size="18" style="fill:#2161ae" font-weight="400" text-anchor="middle">GPIO8 · 내부 풀업</text>
+<circle cx="1400" cy="1950" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1400" y="1980" font-size="18" style="fill:#2161ae" font-weight="400" text-anchor="middle">선 1</text>
+<path d="M900,1790 L900,2045 L1050,2045" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M900,1790 L900,2045 L1050,2045" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1050" cy="2045" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1064" y="2052" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">선 2 · GND</text>
+<text x="1300" y="2025" font-size="17" style="fill:#2161ae" font-weight="400" text-anchor="start">O/개방 = STOP</text>
+<text x="1260" y="2058" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">I 복귀만으로 출발 안 함</text>
+<path d="M1550,1170 L1880,1170" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1550,1170 L1880,1170" fill="none" stroke="#2161ae" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1550" cy="1170" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1536" y="1177" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="end">GPIO15</text>
+<circle cx="1880" cy="1170" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1894" y="1177" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="start">PWM</text>
+<text x="1715.0" y="1158" font-size="16" style="fill:#2161ae" font-weight="400" text-anchor="middle">PWM</text>
+<path d="M1550,1220 L1880,1220" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1550,1220 L1880,1220" fill="none" stroke="#2161ae" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1550" cy="1220" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1536" y="1227" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="end">GPIO6</text>
+<circle cx="1880" cy="1220" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1894" y="1227" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="start">DIR</text>
+<text x="1715.0" y="1208" font-size="16" style="fill:#2161ae" font-weight="400" text-anchor="middle">방향</text>
+<path d="M1550,1270 L1880,1270" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1550,1270 L1880,1270" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1550" cy="1270" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1536" y="1277" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">GND③</text>
+<circle cx="1880" cy="1270" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1894" y="1277" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">GND</text>
+<text x="1715.0" y="1258" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">신호 GND</text>
+<path d="M1980,1010 L1980,1070" fill="none" stroke="#f6f8fc" stroke-width="11" stroke-linejoin="round"/>
+<path d="M1980,1010 L1980,1070" fill="none" stroke="#14273d" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="1980" cy="1010" r="4" fill="white" stroke="#14273d" stroke-width="2"/>
+<text x="1980" y="992" font-size="18" style="fill:#14273d" font-weight="400" text-anchor="middle">6 (+)</text>
+<circle cx="1980" cy="1070" r="4" fill="white" stroke="#14273d" stroke-width="2"/>
+<text x="1995" y="1048" font-size="17" style="fill:#14273d" font-weight="400" text-anchor="start">MA</text>
+<path d="M2160,1010 L2160,1070" fill="none" stroke="#f6f8fc" stroke-width="11" stroke-linejoin="round"/>
+<path d="M2160,1010 L2160,1070" fill="none" stroke="#14273d" stroke-width="5" stroke-linejoin="round"/>
+<circle cx="2160" cy="1010" r="4" fill="white" stroke="#14273d" stroke-width="2"/>
+<text x="2160" y="992" font-size="18" style="fill:#14273d" font-weight="400" text-anchor="middle">5 (−)</text>
+<circle cx="2160" cy="1070" r="4" fill="white" stroke="#14273d" stroke-width="2"/>
+<text x="2175" y="1048" font-size="17" style="fill:#14273d" font-weight="400" text-anchor="start">MB</text>
+<text x="1900" y="1325" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">PWM LOW = brake · MA/MB ≠ GND</text>
+<path d="M2540,430 L2660,430 L2660,1170 L2260,1170" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M2540,430 L2660,430 L2660,1170 L2260,1170" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="2540" cy="430" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="2526" y="437" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">CN2(CH1) +</text>
+<circle cx="2260" cy="1170" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="2246" y="1177" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">VB+</text>
+<text x="2410" y="1156" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="middle">배터리 전압</text>
+<path d="M2540,480 L2700,480 L2700,1220 L2260,1220" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M2540,480 L2700,480 L2700,1220 L2260,1220" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="2540" cy="480" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="2526" y="487" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">CN2(CH1) −</text>
+<circle cx="2260" cy="1220" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="2246" y="1227" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">VB−</text>
+<text x="2410" y="1206" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">전력 귀환</text>
+<path d="M2540,550 L2580,550 L2580,1700 L2260,1700" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M2540,550 L2580,550 L2580,1700 L2260,1700" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="2540" cy="550" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="2526" y="557" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">CN6(CH5) +</text>
+<circle cx="2260" cy="1700" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="2246" y="1707" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">전원 +</text>
+<text x="2410" y="1686" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="middle">12 V / 최대2 A</text>
+<path d="M2540,600 L2620,600 L2620,1755 L2260,1755" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M2540,600 L2620,600 L2620,1755 L2260,1755" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="2540" cy="600" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="2526" y="607" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">CN6(CH5) −</text>
+<circle cx="2260" cy="1755" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="2246" y="1762" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">전원 −</text>
+<text x="2410" y="1741" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">전력 귀환</text>
+<text x="2040" y="445" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">CH1~4: 입력 전압 그대로</text>
+<text x="2040" y="491" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">고정 A 정격 미제시</text>
+<text x="2040" y="537" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">CH5/6: 각 12 V / 최대2 A</text>
+<text x="2040" y="583" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">CH2~4·CH6은 예비</text>
+<path d="M1550,1700 L1880,1700" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1550,1700 L1880,1700" fill="none" stroke="#7641a7" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1550" cy="1700" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="1536" y="1707" font-size="20" style="fill:#7641a7" font-weight="400" text-anchor="end">GPIO17</text>
+<circle cx="1880" cy="1700" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="1894" y="1707" font-size="20" style="fill:#7641a7" font-weight="400" text-anchor="start">TX / TXD</text>
+<text x="1715.0" y="1688" font-size="16" style="fill:#7641a7" font-weight="400" text-anchor="middle">TX → TX</text>
+<path d="M1550,1755 L1880,1755" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1550,1755 L1880,1755" fill="none" stroke="#7641a7" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1550" cy="1755" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="1536" y="1762" font-size="20" style="fill:#7641a7" font-weight="400" text-anchor="end">GPIO18</text>
+<circle cx="1880" cy="1755" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="1894" y="1762" font-size="20" style="fill:#7641a7" font-weight="400" text-anchor="start">RX / RXD</text>
+<text x="1715.0" y="1743" font-size="16" style="fill:#7641a7" font-weight="400" text-anchor="middle">RX ← RX</text>
+<path d="M1550,1810 L1880,1810" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1550,1810 L1880,1810" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1550" cy="1810" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1536" y="1817" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">GND④</text>
+<circle cx="1880" cy="1810" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1894" y="1817" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">H2 GND</text>
+<text x="1715.0" y="1798" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">신호 GND</text>
+<path d="M2070,1540 L2070,1590" fill="none" stroke="#f6f8fc" stroke-width="15" stroke-linejoin="round"/>
+<path d="M2070,1540 L2070,1590" fill="none" stroke="#7641a7" stroke-width="9" stroke-linejoin="round"/>
+<circle cx="2070" cy="1540" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="2070" y="1522" font-size="18" style="fill:#7641a7" font-weight="400" text-anchor="middle">서보 3핀</text>
+<circle cx="2070" cy="1590" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="2100" y="1575" font-size="17" style="fill:#7641a7" font-weight="400" text-anchor="start">전용 3선 케이블 1개</text>
+<text x="1900" y="1844" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">전원: DC 5.5×2.1 또는 전원 단자</text>
+<text x="1900" y="1965" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">모터·서보 전력 −는 PDB로 직접 귀환</text>
+<text x="1900" y="1997" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">신호 GND로 부하 전류를 흘리지 않음</text>
+<text x="1900" y="2029" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">M01 CH5/6 병렬 연결 금지</text>
+<circle cx="160" cy="1495" r="6" fill="#ba3c36"/>
+<circle cx="240" cy="1530" r="6" fill="#576579"/>
+<circle cx="240" cy="1790" r="6" fill="#576579"/>
+<circle cx="900" cy="1790" r="6" fill="#576579"/>
+<circle cx="875" cy="1470" r="6" fill="#ba3c36"/>
+<text x="50" y="2140" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">TGND = J01 CN5− + 엔코더 GND + CF GND + ESP32 GND② + STOP 선 2 (총 5접점)</text>
+<text x="50" y="2169" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">CN1=배터리 입력 · CH1~6 ↔ CN2~7 · 분기점은 절연 납땜 또는 공통 단자대로 제작</text>
+<text x="50" y="2198" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">Y선의 굵은 가지는 각각 +/− 2심입니다. +끼리, −끼리 분기하며 +와 −를 서로 연결하지 않습니다.</text>
+<text x="50" y="2227" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">기존 정격 제한: 6S 운용 중 M01 입력24 V 미만 가능. 전체 하네스 통전·부하 검증은 별도입니다.</text>
+<text x="50" y="2264" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">IT ARENA · 2026-11-13 · v1 조립 인계 | 단자 이름 기준 · ①~④는 관리명이며 실제 핀 위치/순번이 아님</text>
 </svg>
-</div></section><section><h2>02 · 전원과 모터·서보 결선</h2><p><a href="esp32_gpio_power_v1.svg">SVG 원본</a> · <a href="esp32_gpio_power_v1.png">PNG 이미지</a></p><div class="drawing"><svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1390" viewBox="0 0 1700 1390" role="img" aria-label="ESP32 주변 전원·모터·서보 결선도">
-<style>text{font-family:"Malgun Gothic","Noto Sans KR",sans-serif;fill:#14273d} .small{font-size:17px}</style>
-<rect width="1700" height="1390" fill="#f6f8fc"/>
-<text x="50" y="54" font-size="31" style="fill:#14273d" font-weight="700" text-anchor="start">ESP32 주변 전원·모터·서보 결선도</text>
-<text x="50" y="90" font-size="19" style="fill:#576579" font-weight="400" text-anchor="start">02 / 승인된 전원 구성 유지 · 각 + 전원 레일 분리 · 공통 GND와 전력 귀환선 구분</text>
-<path d="M50,113 L1650,113" fill="none" stroke="#cad4e0" stroke-width="1"/>
-<text x="50" y="150" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">빨강: 전원 +     회색: GND/전력 귀환     파랑: 모터 출력     보라: 서보 데이터     주황 점선: CF 조건부</text>
-<rect x="50" y="190" width="340" height="175" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="68" y="224" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">J01 CH1</text>
-<text x="68" y="252" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">19 V / 2.3 A</text>
-<rect x="670" y="190" width="340" height="175" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="688" y="224" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">Jetson Orin Nano</text>
-<text x="688" y="252" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">DC 5.5×2.5 mm</text>
-<path d="M390,275 L670,275" fill="none" stroke="#ba3c36" stroke-width="3"/>
-<text x="530.0" y="265" font-size="15" style="fill:#ba3c36" font-weight="400" text-anchor="middle">19 V</text>
-<circle cx="390" cy="275" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="376" y="282" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">+</text>
-<circle cx="670" cy="275" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="684" y="282" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">중앙 +</text>
-<path d="M390,325 L670,325" fill="none" stroke="#576579" stroke-width="3"/>
-<text x="530.0" y="315" font-size="15" style="fill:#576579" font-weight="400" text-anchor="middle">전원 귀환</text>
-<circle cx="390" cy="325" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="376" y="332" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">−</text>
-<circle cx="670" cy="325" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="684" y="332" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">외곽 −</text>
-<rect x="1310" y="190" width="340" height="175" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="1328" y="224" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">ESP32-S3</text>
-<text x="1328" y="252" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">현재 확인한 USB-UART 포트</text>
-<path d="M1010,290 L1310,290" fill="none" stroke="#2161ae" stroke-width="3"/>
-<text x="1160.0" y="280" font-size="15" style="fill:#2161ae" font-weight="400" text-anchor="middle">USB-A ↔ USB-C</text>
-<path d="M1153.0,285 L1163.0,290 L1153.0,295" fill="none" stroke="#2161ae" stroke-width="2"/>
-<text x="1060" y="322" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">데이터 + 5 V + GND</text>
-<text x="1330" y="300" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">단일 USB로 전원/통신</text>
-<text x="1330" y="327" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">다른 5 V 전원 중복 공급 금지</text>
-<rect x="50" y="405" width="340" height="165" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="68" y="439" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">ESP32 3V3 / GND</text>
-<text x="68" y="467" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">IMU 전원: 기존 연결</text>
-<rect x="670" y="405" width="340" height="165" rx="9" fill="white" stroke="#08776d" stroke-width="2"/>
-<text x="688" y="439" font-size="22" style="fill:#08776d" font-weight="700" text-anchor="start">Adafruit 4438</text>
-<text x="688" y="467" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">하단 핀열</text>
-<path d="M390,485 L670,485" fill="none" stroke="#ba3c36" stroke-width="3"/>
-<circle cx="390" cy="485" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="376" y="492" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">3V3</text>
-<circle cx="670" cy="485" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="684" y="492" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">VIN</text>
-<path d="M390,535 L670,535" fill="none" stroke="#576579" stroke-width="3"/>
-<circle cx="390" cy="535" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="376" y="542" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">GND</text>
-<circle cx="670" cy="535" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="684" y="542" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">GND</text>
-<text x="1060" y="458" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">3Vo는 전원 입력으로 쓰지 않음</text>
-<text x="1060" y="487" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">CF의 3.3 V도 같은 ESP32 3V3에서 분기</text>
-<text x="1060" y="516" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">카메라·LiDAR는 Jetson 연결</text>
-<text x="1060" y="545" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">ESP32 GPIO를 쓰지 않음</text>
-<rect x="50" y="610" width="340" height="175" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="68" y="644" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">M01 CH1</text>
-<text x="68" y="672" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">배터리 전압 출력</text>
-<rect x="670" y="610" width="340" height="175" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="688" y="644" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">MD20A</text>
-<text x="688" y="672" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">신호 PWM/DIR/GND: 시트 01</text>
-<rect x="1310" y="610" width="340" height="175" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="1328" y="644" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">MB4266-24180</text>
-<text x="1328" y="672" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">브러시 DC 모터</text>
-<path d="M390,695 L670,695" fill="none" stroke="#ba3c36" stroke-width="3"/>
-<text x="530.0" y="685" font-size="15" style="fill:#ba3c36" font-weight="400" text-anchor="middle">전력선</text>
-<circle cx="390" cy="695" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="376" y="702" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">+</text>
-<circle cx="670" cy="695" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="684" y="702" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">VB+</text>
-<path d="M390,745 L670,745" fill="none" stroke="#576579" stroke-width="3"/>
-<text x="530.0" y="735" font-size="15" style="fill:#576579" font-weight="400" text-anchor="middle">전력선</text>
-<circle cx="390" cy="745" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="376" y="752" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">−</text>
-<circle cx="670" cy="745" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="684" y="752" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">VB−</text>
-<path d="M1010,695 L1310,695" fill="none" stroke="#2161ae" stroke-width="3"/>
-<text x="1160.0" y="685" font-size="15" style="fill:#2161ae" font-weight="400" text-anchor="middle">모터선</text>
-<circle cx="1010" cy="695" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="996" y="702" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="end">MA</text>
-<circle cx="1310" cy="695" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="1324" y="702" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="start">6 (+)</text>
-<path d="M1010,745 L1310,745" fill="none" stroke="#2161ae" stroke-width="3"/>
-<text x="1160.0" y="735" font-size="15" style="fill:#2161ae" font-weight="400" text-anchor="middle">모터선</text>
-<circle cx="1010" cy="745" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="996" y="752" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="end">MB</text>
-<circle cx="1310" cy="745" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
-<text x="1324" y="752" font-size="20" style="fill:#2161ae" font-weight="400" text-anchor="start">5 (−)</text>
-<text x="50" y="812" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">MA→6 / MB→5는 최초 시험 극성입니다. 차량 전진 방향은 실측 후 부호를 확정하며, MA/MB는 GND가 아닙니다.</text>
-<rect x="50" y="845" width="340" height="180" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="68" y="879" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">M01 CH5 또는 CH6</text>
-<text x="68" y="907" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">12 V / 2 A 한 채널만</text>
-<rect x="670" y="845" width="340" height="180" rx="9" fill="white" stroke="#7641a7" stroke-width="2"/>
-<text x="688" y="879" font-size="22" style="fill:#7641a7" font-weight="700" text-anchor="start">Bus Servo Adapter (A)</text>
-<text x="688" y="907" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">DC 5.5×2.1 또는 전원 단자</text>
-<rect x="1310" y="845" width="340" height="180" rx="9" fill="white" stroke="#7641a7" stroke-width="2"/>
-<text x="1328" y="879" font-size="22" style="fill:#7641a7" font-weight="700" text-anchor="start">ST3215-HS × 1</text>
-<text x="1328" y="907" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">3선 버스 서보</text>
-<path d="M390,935 L670,935" fill="none" stroke="#ba3c36" stroke-width="3"/>
-<circle cx="390" cy="935" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="376" y="942" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">+</text>
-<circle cx="670" cy="935" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="684" y="942" font-size="17" style="fill:#ba3c36" font-weight="400" text-anchor="start">전원 + / 중앙 +</text>
-<path d="M390,985 L670,985" fill="none" stroke="#576579" stroke-width="3"/>
-<circle cx="390" cy="985" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="376" y="992" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">−</text>
-<circle cx="670" cy="985" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="684" y="992" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">전원 − / GND</text>
-<path d="M1010,925 L1310,925" fill="none" stroke="#7641a7" stroke-width="3"/>
-<circle cx="1010" cy="925" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
-<text x="996" y="932" font-size="17" style="fill:#7641a7" font-weight="400" text-anchor="end">D</text>
-<circle cx="1310" cy="925" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
-<text x="1324" y="932" font-size="17" style="fill:#7641a7" font-weight="400" text-anchor="start">D / DATA</text>
-<path d="M1010,965 L1310,965" fill="none" stroke="#ba3c36" stroke-width="3"/>
-<circle cx="1010" cy="965" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="996" y="972" font-size="17" style="fill:#ba3c36" font-weight="400" text-anchor="end">V+</text>
-<circle cx="1310" cy="965" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="1324" y="972" font-size="17" style="fill:#ba3c36" font-weight="400" text-anchor="start">V+</text>
-<path d="M1010,1005 L1310,1005" fill="none" stroke="#576579" stroke-width="3"/>
-<circle cx="1010" cy="1005" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="996" y="1012" font-size="17" style="fill:#576579" font-weight="400" text-anchor="end">GND</text>
-<circle cx="1310" cy="1005" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="1324" y="1012" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">G / GND</text>
-<text x="50" y="1055" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">CH5/CH6 출력 병렬 연결 금지. 어댑터 USB는 이번 구성에서 비워 둡니다. 서보 케이블 D/V/G 위치·극성을 대조합니다.</text>
-<rect x="50" y="1090" width="340" height="180" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="68" y="1124" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">J01 CH4</text>
-<text x="68" y="1152" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">5 V / 0.5 A · XT30</text>
-<rect x="670" y="1090" width="340" height="180" rx="9" fill="white" stroke="#a86800" stroke-width="2"/>
-<text x="688" y="1124" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">PGE-213</text>
-<text x="688" y="1152" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">XHP-4 커넥터 논리 핀 번호</text>
-<path d="M390,1180 L670,1180" fill="none" stroke="#ba3c36" stroke-width="3"/>
-<circle cx="390" cy="1180" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="376" y="1187" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">+</text>
-<circle cx="670" cy="1180" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="684" y="1187" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">1 VCC</text>
-<path d="M390,1230 L670,1230" fill="none" stroke="#576579" stroke-width="3"/>
-<circle cx="390" cy="1230" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="376" y="1237" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">−</text>
-<circle cx="670" cy="1230" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="684" y="1237" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">2 GND</text>
-<rect x="1310" y="1090" width="340" height="180" rx="9" fill="white" stroke="#a86800" stroke-width="2" stroke-dasharray="9 6"/>
-<text x="1328" y="1124" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">CF-0108 전원 / OE</text>
-<text x="1328" y="1152" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">TXS 마킹 식별 · OE/파형 미검증</text>
-<path d="M1090,1174 L1310,1174" fill="none" stroke="#ba3c36" stroke-width="3" stroke-dasharray="9 6"/>
-<text x="1200.0" y="1164" font-size="15" style="fill:#ba3c36" font-weight="400" text-anchor="middle">ESP32 3V3</text>
-<circle cx="1310" cy="1174" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="1324" y="1181" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="start">VA / VCCA</text>
-<path d="M1090,1202 L1310,1202" fill="none" stroke="#ba3c36" stroke-width="3" stroke-dasharray="9 6"/>
-<text x="1200.0" y="1192" font-size="15" style="fill:#ba3c36" font-weight="400" text-anchor="middle">J01 CH4 +5 V</text>
-<circle cx="1310" cy="1202" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
-<text x="1324" y="1209" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="start">VB / VCCB</text>
-<path d="M1090,1230 L1310,1230" fill="none" stroke="#a86800" stroke-width="3" stroke-dasharray="9 6"/>
-<text x="1200.0" y="1220" font-size="15" style="fill:#a86800" font-weight="400" text-anchor="middle">ESP32 3V3</text>
-<circle cx="1310" cy="1230" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
-<text x="1324" y="1237" font-size="16" style="fill:#a86800" font-weight="400" text-anchor="start">OE *</text>
-<path d="M1090,1258 L1310,1258" fill="none" stroke="#576579" stroke-width="3" stroke-dasharray="9 6"/>
-<text x="1200.0" y="1248" font-size="15" style="fill:#576579" font-weight="400" text-anchor="middle">공통 GND</text>
-<circle cx="1310" cy="1258" r="4" fill="white" stroke="#576579" stroke-width="2"/>
-<text x="1324" y="1265" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">GND</text>
-<text x="50" y="1305" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">공통 GND: ESP32·IMU·CF·엔코더·MD20A Signal GND·어댑터 H2 GND와 해당 전원 −. 전력 귀환을 점퍼선에 맡기지 않습니다.</text>
-<text x="50" y="1331" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">* OE는 모듈 회로 확인 후 3.3 V HIGH 유지 안입니다. 5 V 연결 금지. 실물 OE 처리·파형 확인 전 CF 결선은 보류합니다.</text>
-<text x="50" y="1364" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">IT ARENA · 2026-11-12 · v1 근거 갱신 | 단자 이름 기준 배선도 · 기판 핀의 물리적 순서/위치를 나타내지 않음</text>
-</svg>
-</div></section><section><h2>GPIO 연결표</h2><p>방향은 ESP32 기준입니다. 서보 어댑터는 TX→TX / RX←RX를 따릅니다.</p><table><tr><th>기능</th><th>ESP32</th><th>연결 대상</th><th>상태</th></tr><tr><td>IMU_SCLK</td><td>GPIO12</td><td>Adafruit 4438 하단 SCL</td><td>SPI 실측</td></tr><tr><td>IMU_MOSI</td><td>GPIO11</td><td>Adafruit 4438 하단 SDA</td><td>SPI 실측</td></tr><tr><td>IMU_MISO</td><td>GPIO13</td><td>Adafruit 4438 하단 DO</td><td>SPI 실측</td></tr><tr><td>IMU_CS_N</td><td>GPIO10</td><td>Adafruit 4438 하단 CS</td><td>SPI 실측</td></tr><tr><td>IMU_INT1</td><td>GPIO9</td><td>Adafruit 4438 하단 I1</td><td>사용자 배선, IRQ 동작 미검증</td></tr><tr><td>ENC_A_3V3</td><td>GPIO4</td><td>신규 CF-0108 A1 (실크 확인, 도통 미검증)</td><td>신규 CF 실크 확인, 도통/OE·파형 미검증</td></tr><tr><td>ENC_B_3V3</td><td>GPIO5</td><td>신규 CF-0108 A2 (실크 확인, 도통 미검증)</td><td>신규 CF 실크 확인, 도통/OE·파형 미검증</td></tr><tr><td>MOTOR_PWM</td><td>GPIO15</td><td>MD20A PWM</td><td>설계, 실물 구동 미검증</td></tr><tr><td>MOTOR_DIR</td><td>GPIO6</td><td>MD20A DIR</td><td>설계, 실물 구동 미검증</td></tr><tr><td>SERVO_TX</td><td>GPIO17</td><td>Bus Servo Adapter (A) H2 TX/TXD</td><td>공식 동일 이름 결선, 실물 미검증</td></tr><tr><td>SERVO_RX</td><td>GPIO18</td><td>Bus Servo Adapter (A) H2 RX/RXD</td><td>공식 동일 이름 결선, 실물 미검증</td></tr></table></section><section><h2>근거</h2><ul><li><a href="../APPROVED_ELECTRICAL_LAYOUT.md">승인 전장 구성</a></li><li><a href="../../sensors/ESP32_LSM6DSOX_HARDWARE_2026_11_11.md">ESP32·IMU 실측</a></li><li><a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/gpio.html">Espressif GPIO 제약</a></li><li><a href="https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts">Adafruit 4438 핀</a></li><li><a href="https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example">Waveshare UART 결선</a></li><li><a href="https://files.waveshare.com/wiki/Bus_Servo_Adapter_A/Bus_Servo_Adapter_A.pdf">Waveshare Adapter A 회로도</a></li><li><a href="https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver">Cytron MD20A 사양</a></li><li><a href="https://docs.google.com/document/d/1eKpt66z-1qLMJkaXrHU1AfKqSVeIpEnM43vECpkYuWA/edit">Cytron 공식 연결 MD20A 데이터시트</a></li><li><a href="https://www.ti.com/lit/ds/symlink/txs0108e.pdf">TI TXS0108E 데이터시트</a></li><li><a href="https://www.motorbank.kr/goods/goods_view.php?goodsNo=1000009561">PGE-213 제조사</a></li></ul></section></main></html>
+</div></section><section><h2>PDB 전체 채널과 정격</h2><p>두 보드 모두 CN1=배터리 입력, CHn=CN(n+1). 제조사 Preliminary PDF p.3을 대조했습니다. 최대 전류는 소비 전류가 아닙니다. J01의 공유 채널 합계 한도와 M01의 채널별 한도를 구분하십시오.</p><div class="table-wrap"><table><thead><tr><th>보드</th><th>채널</th><th>커넥터</th><th>전압</th><th>출력 전류 한도</th><th>조립 기준 연결</th></tr></thead><tbody><tr><td>J01</td><td>입력</td><td>CN1</td><td>21–36 V DC</td><td>—</td><td>배터리 + / −</td></tr><tr><td>J01</td><td>CH1</td><td>CN2</td><td>19 V</td><td>최대 2.3 A</td><td>Jetson DC 입력</td></tr><tr><td>J01</td><td>CH2</td><td>CN3</td><td>5 V</td><td>CH2+CH3 합계 최대 1.5 A</td><td>미사용 / 예비</td></tr><tr><td>J01</td><td>CH3</td><td>CN4</td><td>5 V</td><td>CH2+CH3 합계 최대 1.5 A</td><td>미사용 / 예비</td></tr><tr><td>J01</td><td>CH4</td><td>CN5</td><td>5 V</td><td>최대 0.5 A</td><td>T5V → 엔코더 VCC + CF VB</td></tr><tr><td>J01</td><td>CH5</td><td>CN6</td><td>3.3 V</td><td>CH5+CH6 합계 최대 0.6 A</td><td>미사용 / 예비</td></tr><tr><td>J01</td><td>CH6</td><td>CN7</td><td>3.3 V</td><td>CH5+CH6 합계 최대 0.6 A</td><td>미사용 / 예비</td></tr><tr><td>M01</td><td>입력</td><td>CN1</td><td>24–36 V DC</td><td>—</td><td>배터리 + / −</td></tr><tr><td>M01</td><td>CH1</td><td>CN2</td><td>입력 전압 그대로</td><td>입력 전류 공급 능력에 따름; 고정 A 정격 미제시</td><td>MD20A VB+ / VB−</td></tr><tr><td>M01</td><td>CH2</td><td>CN3</td><td>입력 전압 그대로</td><td>입력 전류 공급 능력에 따름</td><td>미사용 / 예비</td></tr><tr><td>M01</td><td>CH3</td><td>CN4</td><td>입력 전압 그대로</td><td>입력 전류 공급 능력에 따름</td><td>미사용 / 예비</td></tr><tr><td>M01</td><td>CH4</td><td>CN5</td><td>입력 전압 그대로</td><td>입력 전류 공급 능력에 따름</td><td>미사용 / 예비</td></tr><tr><td>M01</td><td>CH5</td><td>CN6</td><td>12 V</td><td>이 채널 최대 2.0 A</td><td>Adapter A 전원 입력 → 서보 1개</td></tr><tr><td>M01</td><td>CH6</td><td>CN7</td><td>12 V</td><td>이 채널 최대 2.0 A</td><td>예비; CH5와 병렬 금지</td></tr></tbody></table></div></section><section><h2>전원 헤더와 분배점</h2><p>모터·서보 전류는 각 전원 −로 직접 귀환합니다. ESP32 GND와 센서 점퍼선을 전력 귀환 경로로 사용하지 않습니다.</p><div class="table-wrap"><table><thead><tr><th>ESP32 관리명</th><th>연결 대상</th><th>역할</th></tr></thead><tbody><tr><td>3V3①</td><td>Adafruit 4438 하단 VIN</td><td>IMU 전원</td></tr><tr><td>3V3②</td><td>T3V3 분배점 → CF VA + OE</td><td>한 3V3 핀을 두 갈래로 분기</td></tr><tr><td>GND①</td><td>Adafruit 4438 하단 GND</td><td>IMU 접지</td></tr><tr><td>GND②</td><td>TGND 분배점 → CF GND + 엔코더 pin 2 + J01 CN5(CH4)− + STOP 스위치 선 2</td><td>센서/CF/STOP의 명시적 공통 접지</td></tr><tr><td>GND③</td><td>MD20A Signal GND</td><td>PWM/DIR 신호 기준</td></tr><tr><td>GND④</td><td>Adapter A H2 GND</td><td>UART 신호 기준</td></tr></tbody></table></div><div class="table-wrap"><table><thead><tr><th>분배점</th><th>공통으로 연결할 단자</th><th>제작</th></tr></thead><tbody><tr><td>T3V3</td><td>ESP32 3V3② ↔ CF VA ↔ CF OE</td><td>3접점 공통 분기: 기존 선의 납땜+절연 또는 체결 가능한 단자대. 별도 전원 모듈 아님.</td></tr><tr><td>T5V</td><td>J01 CN5(CH4)+ ↔ PGE-213 pin 1 VCC ↔ CF VB</td><td>기존 CH4 +5 V 분기선 유지</td></tr><tr><td>TGND</td><td>ESP32 GND② ↔ J01 CN5(CH4)− ↔ PGE-213 pin 2 GND ↔ CF GND ↔ STOP 스위치 선 2</td><td>5접점 공통 접지. 기존 엔코더/CF GND 분배점에 STOP 선 2를 추가한다. ESP32 GND② 하나로 연결하며 기존 4개 GND 핀 배정을 유지한다.</td></tr></tbody></table></div></section><section><h2>GPIO 신호 연결표</h2><p>서보 어댑터 H2는 TX→TX / RX←RX. 어댑터와 서보 사이는 보유한 3선 전용 케이블 1개를 사용합니다.</p><div class="table-wrap"><table><thead><tr><th>기능 / net</th><th>ESP32</th><th>연결 대상</th><th>확인 범위</th></tr></thead><tbody><tr><td>IMU_SCLK</td><td>GPIO12</td><td>Adafruit 4438 하단 SCL</td><td>SPI 실측</td></tr><tr><td>IMU_MOSI</td><td>GPIO11</td><td>Adafruit 4438 하단 SDA</td><td>SPI 실측</td></tr><tr><td>IMU_MISO</td><td>GPIO13</td><td>Adafruit 4438 하단 DO</td><td>SPI 실측</td></tr><tr><td>IMU_CS_N</td><td>GPIO10</td><td>Adafruit 4438 하단 CS</td><td>SPI 실측</td></tr><tr><td>IMU_INT1</td><td>GPIO9</td><td>Adafruit 4438 하단 I1</td><td>사용자 배선, IRQ 동작 미검증</td></tr><tr><td>ENC_A_3V3</td><td>GPIO4</td><td>CF-0108 A1</td><td>공통 GND·CF 교체 후 손 회전 및 약5% 모터 계수 확인; 고속/파형 미검증</td></tr><tr><td>ENC_B_3V3</td><td>GPIO5</td><td>CF-0108 A2</td><td>공통 GND·CF 교체 후 손 회전 및 약5% 모터 계수 확인; 고속/파형 미검증</td></tr><tr><td>MOTOR_PWM</td><td>GPIO15</td><td>MD20A PWM</td><td>20 kHz·약5% 단발 구동/PWM0 정지 확인; 운영 제어 미채택</td></tr><tr><td>MOTOR_DIR</td><td>GPIO6</td><td>MD20A DIR</td><td>20 kHz·약5% 단발 구동/PWM0 정지 확인; 운영 제어 미채택</td></tr><tr><td>SERVO_TX</td><td>GPIO17</td><td>Bus Servo Adapter (A) H2 TX/TXD</td><td>점퍼 두 개 A, ID1/1 Mbps 왕복 실측</td></tr><tr><td>SERVO_RX</td><td>GPIO18</td><td>Bus Servo Adapter (A) H2 RX/RXD</td><td>점퍼 두 개 A, ID1/1 Mbps 왕복 실측</td></tr><tr><td>STOP_REQUEST</td><td>GPIO8</td><td>STOP 스위치 선 1 (선 2 → TGND)</td><td>조립 배정; 내부 풀업, O/개방=HIGH 정지·I/도통=LOW 허가 조건; 펌웨어/실물 미검증</td></tr></tbody></table></div></section><section><h2>근거</h2><ul><li><a href="../APPROVED_ELECTRICAL_LAYOUT.md">승인 전장 구성</a></li><li><a href="../../sensors/ESP32_LSM6DSOX_HARDWARE_2026_11_11.md">ESP32·IMU 실측</a></li><li><a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/gpio.html">Espressif GPIO 제약</a></li><li><a href="https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts">Adafruit 4438 핀</a></li><li><a href="https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example">Waveshare UART 결선</a></li><li><a href="https://files.waveshare.com/wiki/Bus_Servo_Adapter_A/Bus_Servo_Adapter_A.pdf">Waveshare Adapter A 회로도</a></li><li><a href="https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver">Cytron MD20A 사양</a></li><li><a href="https://docs.google.com/document/d/1eKpt66z-1qLMJkaXrHU1AfKqSVeIpEnM43vECpkYuWA/edit">Cytron 공식 연결 MD20A 데이터시트</a></li><li><a href="https://www.ti.com/lit/ds/symlink/txs0108e.pdf">TI TXS0108E 데이터시트</a></li><li><a href="https://www.motorbank.kr/goods/goods_view.php?goodsNo=1000009561">PGE-213 제조사</a></li><li><a href="https://github.com/MOSW626/istech-it-arena/blob/main/docs/hardware/PM_KAIST-MR-J01_Preliminary.pdf">공식 배포 제조사 J01 Preliminary p.3 CN/CH 및 정격</a></li><li><a href="https://github.com/MOSW626/istech-it-arena/blob/main/docs/hardware/PM_KAIST-MR-M01_Preliminary.pdf">공식 배포 제조사 M01 Preliminary p.3 CN/CH 및 정격</a></li><li><a href="../../sensors/PGE213_ENCODER_HARDWARE_2026_11_12.md">엔코더 후속 실측</a></li><li><a href="../../sensors/MD20A_MOTOR_HARDWARE_2026_11_12.md">모터 결합 시험과 종료</a></li><li><a href="../../sensors/ST3215_HS_HARDWARE_2026_11_12.md">서보 실측</a></li><li><a href="https://github.com/MOSW626/istech-it-arena/blob/2e41f5674a4c8a611bb65e966ea8827d41611017/MANUAL.md#L193-L199">대회 MANUAL §5 원격 비상정지 (2026-11-13 조회, 고정 커밋)</a></li></ul></section></main><script>function zoomDiagram(full){const svg=document.querySelector(".drawing svg");svg.style.width=full?"2740px":"100%";}</script></html>

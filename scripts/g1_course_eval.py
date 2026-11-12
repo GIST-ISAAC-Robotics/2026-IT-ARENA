@@ -40,7 +40,7 @@ def continuous_course_positions(line, poses, reference):
     return [(p['t'],first_s+p['progress_m']) for p in values],jumps
 
 
-def full_course_progress(line, ego, actor, reference, actor_length):
+def full_course_progress(line, ego, actor, reference, actor_length, *, ego_length=ev.EGO_LENGTH_M):
     from bisect import bisect_right
     own,j1=continuous_course_positions(line,ego,reference)
     lead,j2=continuous_course_positions(line,actor,reference)
@@ -55,7 +55,7 @@ def full_course_progress(line, ego, actor, reference, actor_length):
             behind=False
             continue
         pairs+=1
-        behind &= s <= lead[i][1]-(ev.EGO_LENGTH_M+actor_length)/2
+        behind &= s <= lead[i][1]-(ego_length+actor_length)/2
     return dict(valid=j1+j2==0 and pairs==len(own),ego_stays_behind=bool(behind),
         progress_m=own[-1][1]-own[0][1],projection_jumps=j1+j2,
         ego_start_s_m=own[0][1],ego_end_s_m=own[-1][1],actor_end_s_m=lead[-1][1],paired_samples=pairs)

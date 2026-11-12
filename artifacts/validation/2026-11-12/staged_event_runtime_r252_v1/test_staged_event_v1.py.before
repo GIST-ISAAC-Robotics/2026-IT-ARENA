@@ -1,0 +1,76 @@
+import math
+from types import SimpleNamespace
+import pytest
+from staged_delay import EventStagedDelay
+
+
+class Worker:
+    generation=0
+    def __init__(self):self.answer=None
+    def offer(self,data):pass
+    def offer_recheck(self,data,plan):pass
+    def pump(self):r=self.answer;self.answer=None;return r
+    def invalidate(self):self.generation+=1;self.answer=None
+    def close(self):return {'exitcode':0}
+
+
+@pytest.mark.parametrize('stage,delay',[('plan',.14674551065327245),('recheck',.03356308554721181)])
+def test_single_wakeup_at_same_minimum_age_without_20ms_rounding(stage,delay):
+    w=Worker();now=SimpleNamespace(t=1.);arms=[];cancels=[]
+    p=EventStagedDelay(w,lambda:now.t,.14674551065327245,.03356308554721181,arms.append,lambda:cancels.append(True))
+    if stage=='plan':p.offer({'reference_s':1.})
+    else:p.offer_recheck({'reference_s':1.},{})
+    assert p.pump() is None and not arms
+    w.answer={'stage':stage,'generation':0,'output':[.3,.1,{}]}
+    now.t=1.01;assert p.pump() is None
+    assert len(arms)==1 and math.isclose(arms[0],delay-.01)
+    now.t=1.02;assert p.pump() is None and len(arms)==1
+    p.notified();now.t=1.+delay
+    out=p.pump();assert out['released_sim_s']==now.t and out['injected_delay_s']==delay
+    assert out['output']==[.3,.1,{}] and not p.wake_deadline
+
+
+def test_stop_cancels_registered_timer_and_no_stale_completion():
+    w=Worker();arms=[];cancels=[];p=EventStagedDelay(w,lambda:1.,.15,.04,arms.append,lambda:cancels.append(True))
+    p.offer({'reference_s':1.});w.answer={'stage':'plan','generation':0}
+    assert p.pump() is None and arms==[pytest.approx(.15)]
+    p.invalidate();assert cancels==[True] and p.pump() is None and p.wake_deadline is None
+
+
+def test_actual_result_later_than_deadline_has_no_extra_timer_delay():
+    w=Worker();arms=[];p=EventStagedDelay(w,lambda:1.4,.15,.04,arms.append,lambda:None)
+    p.offer({'reference_s':1.});assert p.pump() is None
+    w.answer={'stage':'plan','generation':0};out=p.pump()
+    assert out['released_sim_s']==1.4 and not arms
+
+
+def test_ros_one_shot_simulated_clock_notice():
+    rclpy=pytest.importorskip('rclpy')
+    from rclpy.parameter import Parameter
+    from rosgraph_msgs.msg import Clock
+    from builtin_interfaces.msg import Time
+    import time
+    context=rclpy.context.Context();rclpy.init(args=[],context=context)
+    node=rclpy.create_node('staged_event_clock_test',context=context,
+        parameter_overrides=[Parameter('use_sim_time',value=True)])
+    pub=node.create_publisher(Clock,'/clock',10);seen=[]
+    timer=None
+    def tick():
+        timer.cancel();seen.append(node.get_clock().now().nanoseconds)
+    timer=node.create_timer(.146745511,tick);timer.cancel()
+    def advance(ns):
+        deadline=time.monotonic()+2
+        while node.get_clock().now().nanoseconds<ns:
+            pub.publish(Clock(clock=Time(sec=ns//10**9,nanosec=ns%10**9)))
+            rclpy.spin_once(node,timeout_sec=.01)
+            assert time.monotonic()<deadline
+    try:
+        advance(1_000_000_000);timer.reset()
+        advance(1_140_000_000);rclpy.spin_once(node,timeout_sec=.01);assert seen==[]
+        advance(1_147_000_000)
+        deadline=time.monotonic()+1
+        while not seen and time.monotonic()<deadline:rclpy.spin_once(node,timeout_sec=.01)
+        assert seen==[1_147_000_000]
+        advance(1_300_000_000);rclpy.spin_once(node,timeout_sec=.01);assert len(seen)==1
+    finally:
+        node.destroy_node();rclpy.shutdown(context=context)

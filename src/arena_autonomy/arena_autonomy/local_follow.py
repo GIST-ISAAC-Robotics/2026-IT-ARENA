@@ -873,7 +873,10 @@ class LocalFollow:
                                  or not path_agrees_arc(preferred, opposite, cfg.boundary_agreement_m))):
                         candidate, info, candidate_wall, eligible = opposite, other, other_side, True
                         detail['boundary_selection'] = 'junction_retained_wall_refresh'
-                if (not eligible and cfg.traffic_boundary_refresh_trial and carried is not None
+                # 단독 호길이 비교도 이미 선택한 반대 벽 갱신에 연결한다. 현재 긴 벽과
+                # 유효한 같은 벽의 이력만 비교하며, 신규 벽 선택이나 관측 만료는 허용하지 않는다.
+                if (not eligible and (cfg.traffic_boundary_refresh_trial
+                                      or (cfg.solo_route_only and cfg.corridor_arc_agreement)) and carried is not None
                         and self.path_wall == other_side):
                     opposite, other = opposite_wall()
                     retained_match = (retained_boundary_agreement(opposite, carried, other, cfg)

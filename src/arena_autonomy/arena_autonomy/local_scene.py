@@ -118,12 +118,13 @@ class LocalScene:
 def blind_spec(value):
     """후방 반각(실수) 또는 시험 전용 {'rear_half_angle_deg', 'sectors_deg': [[중심, 반폭], ...]}.
 
-    sectors_deg는 장착 구조처럼 위치를 아는 차체 고정 가림이다. 해당 광선은
-    반환이 있어도 masked로 바꾸고 자유 공간으로 채우지 않는다. 실수 입력은 기존과 같다.
+    sectors_deg는 장착 구조처럼 위치를 아는 차체 고정 가림이다. 선택형 range_limits_m이
+    있으면 자기 구조 거리의 반환만 가리고 다른 유효 반환은 보존한다. 무반환은 자유 공간으로
+    채우지 않는다. 거리 범위가 없는 기존 각도/실수 입력은 기존과 같다.
     """
     if not isinstance(value, dict):
         return _finite(value, 'rear_half_angle_deg'), ()
-    if set(value) - {'rear_half_angle_deg', 'sectors_deg'}:
+    if set(value) - {'rear_half_angle_deg', 'sectors_deg', 'range_limits_m'}:
         raise ValueError('unknown blind spec key')
     rear = _finite(value.get('rear_half_angle_deg', 0.), 'rear_half_angle_deg')
     sectors = []
@@ -134,7 +135,23 @@ def blind_spec(value):
         if not 0 < half < 90:
             raise ValueError('invalid blind sector width')
         sectors.append((center, half))
+    if 'range_limits_m' in value:
+        range_bands(value,len(sectors))
     return rear, tuple(sectors)
+
+
+def range_bands(value,count):
+    """선택형 자기 반환 거리 범위. 없는 기존 프로필은 각도 전체 마스크를 유지한다."""
+    if not isinstance(value,dict) or 'range_limits_m' not in value:return None
+    rows=value['range_limits_m']
+    if not isinstance(rows,(tuple,list)) or len(rows)!=count:raise ValueError('range bands/sector count mismatch')
+    result=[]
+    for row in rows:
+        if len(row)!=2:raise ValueError('range band needs minimum and maximum')
+        lo,hi=(_finite(v,'range_limits_m') for v in row)
+        if not 0<=lo<hi:raise ValueError('invalid range band')
+        result.append((lo,hi))
+    return tuple(result)
 
 
 def blind_parameter(rear_half_angle_deg, sectors_json=''):
@@ -142,7 +159,12 @@ def blind_parameter(rear_half_angle_deg, sectors_json=''):
     if not sectors_json:
         return rear_half_angle_deg
     import json
-    value = {'rear_half_angle_deg': rear_half_angle_deg, 'sectors_deg': json.loads(sectors_json)}
+    decoded=json.loads(sectors_json)
+    if isinstance(decoded,dict):
+        if set(decoded)!={'sectors_deg','range_limits_m'}:raise ValueError('invalid ranged structure contract')
+        value={'rear_half_angle_deg':rear_half_angle_deg,**decoded}
+    else:
+        value = {'rear_half_angle_deg': rear_half_angle_deg, 'sectors_deg': decoded}
     blind_spec(value)
     return value
 
@@ -152,16 +174,23 @@ def _blind_limits(rear_half_angle_deg):
     half, sectors = blind_spec(rear_half_angle_deg)
     if not 0 <= half < 180:
         raise ValueError('invalid rear mask angle')
-    return (math.radians(180 - half) + 1e-12,
+    limits=(math.radians(180 - half) + 1e-12,
             tuple((math.radians(center), math.radians(width) + 1e-12) for center, width in sectors))
+    bands=range_bands(rear_half_angle_deg,len(sectors))
+    return limits if bands is None else (*limits,bands)
 
 
-def _masked_by(angle, limits):
-    rear, sectors = limits
+def _masked_by(angle, limits, distance=None):
+    rear, sectors = limits[:2]
     # 센서 축 기준. ±150° 경계의 표본은 현행 mask_scan과 같이 관측한다.
     if abs(angle) > rear:
         return True
-    return any(abs(math.remainder(angle - center, math.tau)) <= width for center, width in sectors)
+    if len(limits)==2 or distance is None:
+        return any(abs(math.remainder(angle - center, math.tau)) <= width for center, width in sectors)
+    finite=isinstance(distance,(float,int)) and not isinstance(distance,bool) and math.isfinite(distance)
+    return any(abs(math.remainder(angle-center,math.tau))<=width and
+               (not finite or lo<=distance<=hi)
+               for (center,width),(lo,hi) in zip(sectors,limits[2]))
 
 
 def _reusable_blind_spec(value):
@@ -169,9 +198,9 @@ def _reusable_blind_spec(value):
     return not isinstance(value, dict) or isinstance(value.get('sectors_deg', ()), (list, tuple))
 
 
-def rear_masked(angle_rad, rear_half_angle_deg=30.):
+def rear_masked(angle_rad, rear_half_angle_deg=30., distance=None):
     angle = math.remainder(_finite(angle_rad, 'angle_rad'), math.tau)
-    return _masked_by(angle, _blind_limits(rear_half_angle_deg))
+    return _masked_by(angle, _blind_limits(rear_half_angle_deg),distance)
 
 
 def scene_from_scan(ranges, *, angle_min, angle_increment, range_min, range_max,
@@ -256,9 +285,9 @@ def _scene_from_angles(values, stamps, angles, minimum, maximum, t_ref_s,
             masked_angle = math.remainder(_finite(angle, 'angle_rad'), math.tau)
             if limits is None:
                 limits = _blind_limits(rear_half_angle_deg)
-            masked = _masked_by(masked_angle, limits)
+            masked = _masked_by(masked_angle, limits,distance)
         else:
-            masked = rear_masked(angle, rear_half_angle_deg)
+            masked = rear_masked(angle, rear_half_angle_deg,distance)
         valid = (not isinstance(distance, bool) and isinstance(distance, (int, float))
                  and math.isfinite(distance) and minimum <= distance <= maximum)
         status = 'masked' if masked else ('return' if valid else 'unknown')

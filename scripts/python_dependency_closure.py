@@ -14,7 +14,14 @@ INTERNAL_PACKAGES = ('arena_autonomy', 'arena_vehicle_interface')
 PACKAGE_ROOTS = tuple(f'src/{name}' for name in INTERNAL_PACKAGES)
 SCRIPT_ROOTS = ('scripts',)
 TEST_ROOTS = ('tests',)
-CLOSURE_VERSION = 1
+CLOSURE_VERSION = 2
+# 명시 등록한 선택형 C++ 확장은 플랫폼 .so 대신 재빌드 소스를 보존한다.
+# 이름만 보고 없는 내부 Python 모듈을 허용하지 않는다.
+NATIVE_MODULES = {'arena_autonomy._numeric_kernels': (
+    'src/arena_autonomy/setup.py',
+    'src/arena_autonomy/arena_autonomy/_native/python_module.cpp',
+    'src/arena_autonomy/arena_autonomy/_native/depth_kernel.cpp',
+    'src/arena_autonomy/arena_autonomy/_native/polygon_kernel.cpp')}
 
 
 class MissingInternalDependency(ImportError):
@@ -114,6 +121,7 @@ def collect(entries, base=ROOT, roots=PACKAGE_ROOTS+SCRIPT_ROOTS, internal_packa
         raise MissingInternalDependency(f'entry outside module roots: {rel}')
 
     files, modules, external, pending = set(), {}, {}, []
+    native = {}
     for entry in entries:
         entry = Path(entry).as_posix()
         if not source.is_file(entry):
@@ -138,6 +146,14 @@ def collect(entries, base=ROOT, roots=PACKAGE_ROOTS+SCRIPT_ROOTS, internal_packa
                 continue
             found = find(name)
             if found is None:
+                if name in NATIVE_MODULES:
+                    sources = NATIVE_MODULES[name]
+                    missing = [p for p in sources if not source.is_file(p)]
+                    if missing:
+                        raise MissingInternalDependency(f'{name} missing native build sources: {missing}')
+                    files.update(sources)
+                    native[name] = list(sources)
+                    continue
                 # from 모듈 import 함수/클래스는 속성이다. 패키지 __init__이면 실제 정의된 이름인지 본다.
                 parent = find(name.rsplit('.', 1)[0]) if from_list else None
                 if parent is not None:
@@ -158,7 +174,8 @@ def collect(entries, base=ROOT, roots=PACKAGE_ROOTS+SCRIPT_ROOTS, internal_packa
     if clash:
         raise ValueError(f'project module shadows standard library: {clash}')
     return dict(files=sorted(files), modules=dict(sorted(modules.items())),
-                external=dict(sorted(external.items())))
+                external=dict(sorted(external.items())),
+                **({'native_modules':native} if native else {}))
 
 
 def third_party(closure):

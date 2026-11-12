@@ -1,0 +1,361 @@
+--- src/arena_description/models/arena_car/model.sdf.xacro
++++ src/arena_description/models/arena_car/model.sdf.xacro
+@@ -2,6 +2,7 @@
+ <sdf version="1.10" xmlns:xacro="http://www.ros.org/wiki/xacro">
+   <xacro:arg name="body_length" default="0.20"/>
+   <xacro:arg name="body_width" default="0.15"/>
++  <xacro:arg name="body_geometry_x" default="0.0"/>
+   <xacro:arg name="body_height" default="0.06"/>
+   <xacro:arg name="body_mass" default="1.635"/>
+   <xacro:arg name="body_cg_z_offset" default="0.0"/>
+@@ -350,6 +351,7 @@
+       <pose>0 0 ${wheel_radius + body_height / 2.0} 0 0 0</pose>
+       <xacro:box_inertial mass="${body_mass}" x="${body_length}" y="${body_width}" z="${body_height}" cg_z="$(arg body_cg_z_offset)"/>
+       <visual name="visual">
++        <pose>$(arg body_geometry_x) 0 0 0 0 0</pose>
+         <geometry>
+           <!-- 센서 보드가 파묻히지 않게 표시용 상자만 안쪽으로 넣습니다.
+                아래 충돌체와 20x15 cm 설계 외형·관성은 줄이지 않습니다. -->
+@@ -390,6 +392,7 @@
+         <xacro:rear_marker_id49_cell row="5" col="4"/><xacro:rear_marker_id49_cell row="5" col="5"/>
+       </xacro:if>
+       <collision name="collision">
++        <pose>$(arg body_geometry_x) 0 0 0 0 0</pose>
+         <geometry>
+           <box><size>${body_length} ${body_width} ${body_height}</size></box>
+         </geometry>
+--- src/arena_bringup/launch/simulation.launch.py
++++ src/arena_bringup/launch/simulation.launch.py
+@@ -857,6 +857,25 @@
+     return profile
+ 
+ 
++def _vehicle_geometry_settings(config):
++    """축간 중점 원점을 유지하며 물리 상자와 대칭 계획 외곽을 구별한다."""
++    body, drive, footprint = config['body'], config['drivetrain'], config['footprint']
++    values = [body['length_m'], body['width_m'], footprint['length_m'], footprint['width_m'],
++              drive['wheelbase_m'], drive['track_width_m'], drive['wheel_radius_m'], drive['wheel_width_m']]
++    if any(isinstance(v, bool) or not math.isfinite(float(v)) or float(v) <= 0 for v in values):
++        raise ValueError('vehicle dimensions must be finite and positive')
++    offset = float(body.get('geometry_center_x_m', 0.))
++    if not math.isfinite(offset):
++        raise ValueError('body geometry offset must be finite')
++    if (2*abs(offset)+float(body['length_m']) > float(footprint['length_m'])+1e-9
++            or float(body['width_m']) > float(footprint['width_m'])+1e-9
++            or float(drive['wheelbase_m'])+2*float(drive['wheel_radius_m']) > float(footprint['length_m'])+1e-9
++            or float(drive['track_width_m'])+float(drive['wheel_width_m']) > float(footprint['width_m'])+1e-9):
++        raise ValueError('planning envelope must contain body and straight wheels')
++    return ({'body_geometry_x': str(offset)},
++            {'vehicle_length_m': float(footprint['length_m']), 'vehicle_width_m': float(footprint['width_m'])})
++
++
+ def _launch_setup(context):
+     bringup_share = Path(get_package_share_directory("arena_bringup"))
+     description_share = Path(get_package_share_directory("arena_description"))
+@@ -867,6 +886,7 @@
+ 
+     body = config["body"]
+     drivetrain = config["drivetrain"]
++    geometry_mappings, planning_geometry = _vehicle_geometry_settings(config)
+     rear_marker = config["identification_marker"]
+     rear_marker_xyz = [float(value) for value in rear_marker["xyz_m"]]
+     pilot_marker_z = LaunchConfiguration("pilot_marker_z").perform(context)
+@@ -979,6 +999,7 @@
+         str(xacro_path),
+         mappings={
+             **drive_mappings,
++            **geometry_mappings,
+             "render_sensors": str(render_sensors).lower(),
+             "body_length": str(body["length_m"]),
+             "body_width": str(body["width_m"]),
+@@ -1483,8 +1504,7 @@
+             "motion_gyro_abs_limit_rad_s": math.radians(float(profile['imu']['gyro_full_scale_dps'])),
+             "sensor_wall_timeout_s": sensor_wall_timeout, "max_steering_angle_rad": equivalent_steering,
+             "wheelbase_m": float(drivetrain["wheelbase_m"]),
+-            "vehicle_length_m": float(config['footprint']['length_m']),
+-            "vehicle_width_m": float(config['footprint']['width_m']),
++            **planning_geometry,
+             "rear_blind_half_angle_deg": float(profile['lidar']['masked_rear_half_angle_deg']),
+             **({"lidar_blind_sectors_json": blind_sectors_json} if blind_sectors_json else {}),
+             **({"known_structure_policy": "structure_aware_v1"}
+@@ -1534,6 +1554,7 @@
+                                           actor=evaluation_actor,evidence=runtime_artifacts,track=track,
+                                           p22_entry_trial=p22_trial)
+         controller_parameters = {
++            **planning_geometry,
+             "use_sim_time": True,
+             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
+             **speed_profile,
+--- src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -126,7 +126,12 @@
+         if self.r0_plus_enabled:
+             from arena_autonomy.r0_plus import R0Plus
+             follow_type = R0Plus
++        length = float(self.declare_parameter('vehicle_length_m', .20).value)
++        width = float(self.declare_parameter('vehicle_width_m', .15).value)
++        if not all(math.isfinite(v) and v > 0 for v in (length, width)):
++            raise ValueError('planning vehicle dimensions must be finite and positive')
+         self.follow = follow_type(FollowConfig(
++            length_m=length, width_m=width,
+             signed_motion_policy=signed_motion,
+             solo_route_only=solo_route,
+             corridor_arc_agreement=bool(self.declare_parameter('g1_corridor_arc_agreement',False).value),
+--- scripts/g1_traffic_eval.py
++++ scripts/g1_traffic_eval.py
+@@ -20,6 +20,19 @@
+ 
+ def _finite(value):
+     return not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value)
++
++
++def ego_geometry(config):
++    """선택한 실행 차량과 평가의 대칭 외곽/바퀴 중심을 일치시킨다."""
++    defaults = dict(length_m=EGO_LENGTH_M, width_m=EGO_WIDTH_M, wheelbase_m=.135, track_width_m=.135)
++    value = config.get('ego_geometry', defaults)
++    if not isinstance(value, dict) or set(value) != set(defaults):
++        raise ValueError('complete registered ego geometry required')
++    if any(not _finite(v) or v <= 0 for v in value.values()):
++        raise ValueError('ego dimensions must be finite and positive')
++    if value['wheelbase_m'] >= value['length_m'] or value['track_width_m'] >= value['width_m']:
++        raise ValueError('wheel centers must be within registered footprint')
++    return dict(value)
+ 
+ 
+ def kinematic_speed_segments(ego):
+@@ -219,7 +232,8 @@
+     return bisect_right(times, t)-1
+ 
+ 
+-def sampled_gaps(ego, actor, actor_length, actor_width, max_actor_age_s=None):
++def sampled_gaps(ego, actor, actor_length, actor_width, max_actor_age_s=None, *,
++                 ego_length=EGO_LENGTH_M, ego_width=EGO_WIDTH_M):
+     """각 ego 표본 시각의 최신 actor 자세와의 차체 간 최소 거리."""
+     times = [row[0] for row in actor]
+     rows = []
+@@ -231,7 +245,7 @@
+                          'reason': 'actor_pose_missing' if index < 0 else 'actor_pose_stale'})
+             continue
+         _, ax, ay, ayaw = actor[index]
+-        e = rectangle(x, y, yaw, EGO_LENGTH_M, EGO_WIDTH_M)
++        e = rectangle(x, y, yaw, ego_length, ego_width)
+         a = rectangle(ax, ay, ayaw, actor_length, actor_width)
+         rows.append({'t': t, 'gap_m': e.distance(a), 'overlap_area_m2': e.intersection(a).area,
+                      'actor_pose_age_s': t-actor[index][0]})
+@@ -239,7 +253,7 @@
+ 
+ 
+ def swept_gap_lower_bounds(ego, actor, actor_length, actor_width, actor_pose_period_s, max_curvature_per_m,
+-                           max_actor_age_s=None):
++                           max_actor_age_s=None, *, ego_length=EGO_LENGTH_M, ego_width=EGO_WIDTH_M):
+     """연속 ego 두 표본 사이의 차체 점유 외곽과 그 시간창의 모든 actor 자세 외곽의 거리 하한.
+ 
+     가정: 표본 사이 ego는 강체 평면 운동이며 yaw가 단조 변화하고 경로 곡률이
+@@ -249,7 +263,7 @@
+     물리 접촉 기록이 아니다.
+     """
+     times = [row[0] for row in actor]
+-    half_diagonal = math.hypot(EGO_LENGTH_M, EGO_WIDTH_M)/2
++    half_diagonal = math.hypot(ego_length, ego_width)/2
+     out = []
+     for (t0, x0, y0, a0), (t1, x1, y1, a1) in zip(ego, ego[1:]):
+         if t1 <= t0:
+@@ -266,8 +280,8 @@
+             out.append({'t0': t0, 't1': t1, 'lower_bound_m': None,
+                         'reason': 'actor_pose_stale' if stale else 'actor_pose_missing'})
+             continue
+-        ego_hull = MultiPoint(list(rectangle(x0, y0, a0, EGO_LENGTH_M, EGO_WIDTH_M).exterior.coords)
+-                              + list(rectangle(x1, y1, a1, EGO_LENGTH_M, EGO_WIDTH_M).exterior.coords)).convex_hull
++        ego_hull = MultiPoint(list(rectangle(x0, y0, a0, ego_length, ego_width).exterior.coords)
++                              + list(rectangle(x1, y1, a1, ego_length, ego_width).exterior.coords)).convex_hull
+         actor_points = []
+         for _, ax, ay, ayaw in poses:
+             actor_points += list(rectangle(ax, ay, ayaw, actor_length, actor_width).exterior.coords)
+@@ -377,9 +391,13 @@
+ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, commands, stop_start,
+                  schedule_pose, centerline, s0, road, runtime_world, contact_evidence=None):
+     """기록을 사전 등록 판정선과 대조한다. 결과 해석은 판정 항목별로 분리한다."""
++    geometry = ego_geometry(config)
++    ego_length, ego_width = geometry['length_m'], geometry['width_m']
+     acceptance, actor_cfg = config['acceptance'], config['actor']
+     harness = config['acceptance']['harness']
+     result = {'t_green': t_green, 'evaluator_version': EVALUATOR_VERSION}
++    if 'ego_geometry' in config:
++        result['ego_geometry'] = geometry
+     if t_green is None or not _finite(t_green):
+         result['gates'] = {'green_observed': False}
+         return result
+@@ -446,9 +464,11 @@
+         'max_actor_pose_gap_s': float(np.max(np.diff(pose_times))) if len(pose_times) > 1 else None}
+     # --- 간격·접촉: 출발 전부터 정지 확인 끝까지 ---
+     span = window_tuples(ego, t_green-1., last_time)
+-    sampled = sampled_gaps(span, actor, actor_cfg['length_m'], actor_cfg['width_m'], POSE_MAX_GAP_S)
++    sampled = sampled_gaps(span, actor, actor_cfg['length_m'], actor_cfg['width_m'], POSE_MAX_GAP_S,
++                           ego_length=ego_length, ego_width=ego_width)
+     swept = swept_gap_lower_bounds(span, actor, actor_cfg['length_m'], actor_cfg['width_m'],
+-                                   1/actor_cfg['pose_publish_hz'], acceptance['swept_max_curvature_per_m'], POSE_MAX_GAP_S)
++                                   1/actor_cfg['pose_publish_hz'], acceptance['swept_max_curvature_per_m'], POSE_MAX_GAP_S,
++                                   ego_length=ego_length, ego_width=ego_width)
+     lower = [row['lower_bound_m'] for row in swept if row['lower_bound_m'] is not None]
+     hits = interval_contacts(contacts)
+     result['gap'] = {
+@@ -471,7 +491,7 @@
+     # --- 노면: 기존 보수적 차체 외곽 기준 ---
+     outside = None
+     if road is not None:
+-        outside = sum(rectangle(x, y, yaw, EGO_LENGTH_M, EGO_WIDTH_M).difference(road).area > 1e-6
++        outside = sum(rectangle(x, y, yaw, ego_length, ego_width).difference(road).area > 1e-6
+                       for _, x, y, yaw in window_tuples(ego, t_green, last_time))
+     result['road'] = {'outside_samples': outside, 'scope': '20x15 cm body vs SDF road union, every ego pose sample'}
+     # --- 진행·뒤따름 ---
+@@ -490,7 +510,7 @@
+             continue
+         behind_samples += 1
+         s, _ = centerline.nearest_s(x, y)
+-        behind &= centerline.unwrap(s, s0) <= actor_s[index][1]-(EGO_LENGTH_M+actor_cfg['length_m'])/2
++        behind &= centerline.unwrap(s, s0) <= actor_s[index][1]-(ego_length+actor_cfg['length_m'])/2
+     def progress_at(t):
+         value = _value_at(progress, t, 'progress_m')
+         return value if value is not None else 0.
+@@ -581,8 +601,9 @@
+         # 전체 랩에서 초기 s0 근처로 매번 감으면 반 랩 뒤 앞뒤 순서가 뒤집힌다.
+         # 명시 전체 코스 시험에서만 밀집 자세의 연속 호길이를 사용한다. 기존 판정은 그대로다.
+         course=full_course_progress(centerline,window_tuples(ego,t_green,t_end),
+-            window_tuples(actor,t_green-POSE_MAX_GAP_S,t_end),s0,actor_cfg['length_m'])
+-        wheels=wheel_center_surface(road,window_tuples(ego,t_green,last_time))
++            window_tuples(actor,t_green-POSE_MAX_GAP_S,t_end),s0,actor_cfg['length_m'],ego_length=ego_length)
++        wheels=wheel_center_surface(road,window_tuples(ego,t_green,last_time),
++            wheelbase=geometry['wheelbase_m'],track=geometry['track_width_m'])
+         result['full_course_progress'],result['wheel_centers']=course,wheels
+         result['progress']['ego_stays_behind_actor']=course['ego_stays_behind']
+         behind=course['valid'] and course['ego_stays_behind']
+--- scripts/g1_course_eval.py
++++ scripts/g1_course_eval.py
+@@ -40,7 +40,7 @@
+     return [(p['t'],first_s+p['progress_m']) for p in values],jumps
+ 
+ 
+-def full_course_progress(line, ego, actor, reference, actor_length):
++def full_course_progress(line, ego, actor, reference, actor_length, *, ego_length=ev.EGO_LENGTH_M):
+     from bisect import bisect_right
+     own,j1=continuous_course_positions(line,ego,reference)
+     lead,j2=continuous_course_positions(line,actor,reference)
+@@ -55,7 +55,7 @@
+             behind=False
+             continue
+         pairs+=1
+-        behind &= s <= lead[i][1]-(ev.EGO_LENGTH_M+actor_length)/2
++        behind &= s <= lead[i][1]-(ego_length+actor_length)/2
+     return dict(valid=j1+j2==0 and pairs==len(own),ego_stays_behind=bool(behind),
+         progress_m=own[-1][1]-own[0][1],projection_jumps=j1+j2,
+         ego_start_s_m=own[0][1],ego_end_s_m=own[-1][1],actor_end_s_m=lead[-1][1],paired_samples=pairs)
+--- scripts/traffic_actor_runtime.py
++++ scripts/traffic_actor_runtime.py
+@@ -118,6 +118,8 @@
+     def save_and_evaluate(self, *, ego, green, duration, config, runtime_world, known_contact_source, digest):
+         if not self.specs:
+             return None
++        geometry = ev.ego_geometry(config)
++        ego_length, ego_width = geometry['length_m'], geometry['width_m']
+         raw = self.output/'additional_actors.json'
+         raw.write_text(json.dumps({'poses': self.records.poses, 'commands': self.records.commands,
+             'contacts': self.contacts}, ensure_ascii=False), encoding='utf-8')
+@@ -147,9 +149,11 @@
+             audit['valid'] = all(audit['checks'].values())
+             sampled, swept = [], []
+             if poses and ev._pose_rows_valid(poses) and ev._pose_rows_valid(span):
+-                sampled = ev.sampled_gaps(span, poses, spec['length_m'], spec['width_m'], ev.POSE_MAX_GAP_S)
++                sampled = ev.sampled_gaps(span, poses, spec['length_m'], spec['width_m'], ev.POSE_MAX_GAP_S,
++                    ego_length=ego_length, ego_width=ego_width)
+                 swept = ev.swept_gap_lower_bounds(span, poses, spec['length_m'], spec['width_m'],
+-                    1/spec['pose_publish_hz'], config['acceptance']['swept_max_curvature_per_m'], ev.POSE_MAX_GAP_S)
++                    1/spec['pose_publish_hz'], config['acceptance']['swept_max_curvature_per_m'], ev.POSE_MAX_GAP_S,
++                    ego_length=ego_length, ego_width=ego_width)
+             distances = [r['gap_m'] for r in sampled if r['gap_m'] is not None]
+             lower = [r['lower_bound_m'] for r in swept if r['lower_bound_m'] is not None]
+             threshold = spec.get('minimum_body_gap_m')
+@@ -168,8 +172,8 @@
+                 'command_count': len(commands), 'contact_connection': self.connections.get(name)}
+             if spec.get('route_kind') == 'side_road_straight':
+                 from traffic_encounter import encounter_metrics
+-                if spec['length_m'] != .20 or spec['width_m'] != .15:
+-                    raise ValueError('encounter diagnosis currently requires 20x15 cm actor')
++                if spec['length_m'] != .20 or spec['width_m'] != .15 or ego_length != .20 or ego_width != .15:
++                    raise ValueError('encounter diagnosis currently requires 20x15 cm actor and ego')
+                 encounter = encounter_metrics(ego, poses, self.line, green, end, minimum_gap_m=threshold)
+                 result['actors'][name]['encounter'] = encounter
+                 audit['checks']['encounter_stream'] = encounter['valid']
+--- scripts/validate_g1_traffic.py
++++ scripts/validate_g1_traffic.py
+@@ -488,6 +488,8 @@
+                         help='선택형 C1 원천 가변 점/각도 입력. 기본 균일500점 유지, 시간은 시뮬 근사')
+     parser.add_argument('--motion-test-profile', type=Path,
+                         help='선택형 G1/M3 시험용 IMU/단일 모터축 오차·지연. 기본 무주입')
++    parser.add_argument('--vehicle-config', type=Path, default=None,
++                        help='선택형 차량 기하/구동 YAML. 시뮬·제어·보호·평가에 함께 전달')
+     parser.add_argument('--local-sensor-config', default=None,
+                         help='시험 전용 local_pursuit 센서/장착 YAML. 기본은 패키지 b0183_c1.yaml')
+     parser.add_argument('--pilot-marker-z', type=float, default=None,
+@@ -587,6 +589,17 @@
+         parser.error('grass alignment requires recorded v11.06 official signal course')
+     corner_arguments = piecewise_arguments(args.g1_piecewise_wall, args.mode, args.record_follow_decisions)
+     config = load_config(args.config)
++    vehicle_path = None
++    if args.vehicle_config is not None:
++        import yaml
++        vehicle_path = args.vehicle_config.resolve(strict=True)
++        vehicle_path.relative_to(REPO)
++        vehicle = yaml.safe_load(vehicle_path.read_text(encoding='utf-8'))['vehicle']
++        config['ego_geometry'] = dict(length_m=vehicle['footprint']['length_m'],
++            width_m=vehicle['footprint']['width_m'],wheelbase_m=vehicle['drivetrain']['wheelbase_m'],
++            track_width_m=vehicle['drivetrain']['track_width_m'])
++    ego_geometry = ev.ego_geometry(config)
++    ego_length, ego_width = ego_geometry['length_m'], ego_geometry['width_m']
+     if args.actor_overlay:
+         args.actor_overlay.resolve().relative_to(REPO)
+     case = overlay_case(case_named(config, args.case), args.actor_overlay)
+@@ -675,6 +688,8 @@
+     actor_path.write_text(actor_text, encoding='utf-8')
+     sources = {rel: sha256(REPO/rel) for rel in source_paths(args.config, lidar_profile, args.actor_overlay, motion_profile)}
+     sources.update(facility_sources)
++    if vehicle_path is not None:
++        sources[vehicle_path.relative_to(REPO).as_posix()] = sha256(vehicle_path)
+     runtime_native_profile = None
+     if native_path:
+         sources[native_path.relative_to(REPO).as_posix()] = sha256(native_path)
+@@ -730,6 +745,8 @@
+     if diagnostic_window is not None:
+         report['diagnostic_window'] = dict(stop_after_green_s=diagnostic_window,
+             registered_duration_s=case['duration_s'], full_case_evidence=False)
++    if vehicle_path is not None:
++        report['vehicle_config'] = dict(path=str(vehicle_path),sha256=sha256(vehicle_path),ego_geometry=ego_geometry)
+     if args.local_sensor_config is not None:
+         sensor_path = Path(args.local_sensor_config).resolve(strict=True)
+         report['local_sensor_config'] = {'path': str(sensor_path), 'sha256': sha256(sensor_path)}
+@@ -971,6 +988,8 @@
+         extra += drivetrain_evaluation_arguments(args.zero_speed_mode, args.physics_step)
+         if args.grass_alignment != 'original':
+             extra.append('evaluation_grass_alignment:='+args.grass_alignment)
++        if vehicle_path is not None:
++            extra.append('vehicle_config:='+str(vehicle_path))
+         if args.local_sensor_config is not None:
+             extra.append('local_sensor_config:='+str(Path(args.local_sensor_config).resolve(strict=True)))
+         if args.track != DEMO_TRACK:
+@@ -1087,7 +1106,7 @@
+                 delta = (s-last_s+centerline.lap/2) % centerline.lap-centerline.lap/2
+                 progress += delta if abs(delta) <= 1 else 0.
+             last_s = s
+-            footprint = rectangle(position['x'], position['y'], yaw_of(pose['orientation']), .20, .15)
++            footprint = rectangle(position['x'], position['y'], yaw_of(pose['orientation']), ego_length, ego_width)
+             hit = any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))
+             wall_collision += int(hit)
+             autonomy = state['autonomy']
+@@ -1196,7 +1215,7 @@
+             if now > last_stop:
+                 p = {axis: float(state['pose']['position'].get(axis, 0.)) for axis in ('x', 'y')}
+                 yaw = yaw_of(state['pose']['orientation'])
+-                footprint = rectangle(p['x'], p['y'], yaw, .20, .15)
++                footprint = rectangle(p['x'], p['y'], yaw, ego_length, ego_width)
+                 hit = any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))
+                 stop_trace.append({'time': now, 'x': p['x'], 'y': p['y'], 'yaw': yaw, 'collision': hit,
+                                    'ground_speed_mps': math.hypot(state['dynamics']['truth_longitudinal_mps'],

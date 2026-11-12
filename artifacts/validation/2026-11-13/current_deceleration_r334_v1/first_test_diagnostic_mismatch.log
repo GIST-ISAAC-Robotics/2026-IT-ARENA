@@ -1,0 +1,25 @@
+F.................                                                       [100%]
+=================================== FAILURES ===================================
+____ test_smaller_positive_target_caps_completed_check_without_retimestamp _____
+
+    def test_smaller_positive_target_caps_completed_check_without_retimestamp():
+        old, new, current = records(); w = worker(old)
+        untouched = copy.deepcopy(current)
+        collect(w, [current, new])
+        assert w.ready['output']['speed_mps'] == .45
+        assert w.ready['output']['steering_rad'] == .22
+        assert w.ready['output']['reference_s'] == 1.1
+        assert w.ready['plan'] == untouched['plan']
+        assert w.ready['input'] == untouched['input']
+        assert current['output'] == untouched['output']
+>       assert w.saved_plan == new and w.revision == 8
+E       AssertionError: assert ({'generation'...ion': 8}, ...} == {'deferred_po...ollow'}], ...}
+E         Omitting 6 identical items, use -vv to show
+E         Right contains 1 more item:
+E         {'deferred_positive_transition': True}
+E         Use -v to get more diff)
+
+artifacts/validation/2026-11-13/current_deceleration_r334_v1/test_deceleration.py:56: AssertionError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-13/current_deceleration_r334_v1/test_deceleration.py::test_smaller_positive_target_caps_completed_check_without_retimestamp
+1 failed, 17 passed in 1.53s

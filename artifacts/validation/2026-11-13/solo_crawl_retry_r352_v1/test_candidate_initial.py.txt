@@ -1,0 +1,69 @@
+import copy
+from types import SimpleNamespace
+import pytest
+import candidate
+
+
+def setup(monkeypatch):
+    output=[.6,-.37,dict(handoff_state='FOLLOW',normal=dict(selector_mode='SOLO',boundary_from_memory=False,
+        partial_observation=dict(allowed=True,reason='fully_observed')))]
+    current=dict(speed_mps=0.,reference_s=10.)
+    before=dict(speed_mps=0.,steering_rad=-.37,reference_s=10.,reason='route_current_large_motion_masked_toward_right',
+        current_solo_low_retry=dict(applied=False,cap_mps=.15),
+        current_route_proof=dict(accepted=False,region=dict(queries=100,unobserved=0,masked_front_samples=0)))
+    after=dict(speed_mps=.1,steering_rad=-.37,reference_s=10.,reason='rebase_current_follow',
+        current_route_proof=dict(accepted=True,region=dict(unobserved=0)))
+    calls=[]
+    monkeypatch.setattr(candidate.prior,'rebase',lambda *a,**k:before)
+    def checked(*args,**kwargs):calls.append((copy.deepcopy(args[0]),args[2] is current,kwargs));return after
+    monkeypatch.setattr(candidate.prior.prior.base,'rebase',checked)
+    return output,current,before,after,calls
+
+
+def run(out,current):return candidate.rebase(out,{},current,None,None,SimpleNamespace(),require_current_region=True)
+
+
+def test_unchanged_current_motion_and_complete_check(monkeypatch):
+    out,current,before,after,calls=setup(monkeypatch)
+    saved=copy.deepcopy((out,current,before))
+    result=run(out,current)
+    assert result['speed_mps']==.1 and result['current_solo_crawl_retry']['applied']
+    assert calls==[((.1,out[1],out[2]),True,dict(require_current_region=True))]
+    assert (out,current,before)==saved
+    assert result['reference_s']==10. and result['steering_rad']==-.37
+
+
+@pytest.mark.parametrize('kind',['left','right'])
+def test_both_sides_and_small_real_overshoot_use_actual_speed(monkeypatch,kind):
+    out,current,before,after,calls=setup(monkeypatch)
+    current['speed_mps']=.12
+    before['reason']='route_current_large_motion_masked_toward_'+kind
+    result=run(out,current)
+    assert result['current_solo_crawl_retry']['measured_speed_mps']==.12 and calls[0][1]
+
+
+@pytest.mark.parametrize('kind',['positive','obstacle','guard','hold','memory','partial','front','unknown','empty',
+                                 'fast','reverse','nan','low','no_prior_retry','prior_accepted'])
+def test_other_rejections_are_not_overridden(monkeypatch,kind):
+    out,current,before,after,calls=setup(monkeypatch)
+    if kind=='positive':before['speed_mps']=.4
+    if kind=='obstacle':before['reason']='rebase_current_collision'
+    if kind=='guard':out[2]['normal']['selector_mode']='GUARD'
+    if kind=='hold':out[2]['handoff_state']='HOLD'
+    if kind=='memory':out[2]['normal']['boundary_from_memory']=True
+    if kind=='partial':out[2]['normal']['partial_observation']['allowed']=False
+    if kind=='front':before['current_route_proof']['region']['masked_front_samples']=1
+    if kind=='unknown':before['current_route_proof']['region']['unobserved']=1
+    if kind=='empty':before['current_route_proof']['region']['queries']=0
+    if kind in ('fast','reverse','nan'):current['speed_mps']={'fast':.16,'reverse':-.01,'nan':float('nan')}[kind]
+    if kind=='low':out[0]=.15
+    if kind=='no_prior_retry':before.pop('current_solo_low_retry')
+    if kind=='prior_accepted':before['current_solo_low_retry']['applied']=True
+    assert run(out,current) is before and not calls
+
+
+@pytest.mark.parametrize('change',[dict(speed_mps=0.),dict(speed_mps=.15),dict(reference_s=10.1),dict(steering_rad=-.3),dict(current_route_proof=dict(accepted=False))])
+def test_low_candidate_rejection_or_changed_steer_time_remains_stop(monkeypatch,change):
+    out,current,before,after,calls=setup(monkeypatch);after.update(change)
+    result=run(out,current)
+    assert result['speed_mps']==0 and not result['current_solo_crawl_retry']['applied']

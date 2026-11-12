@@ -38,8 +38,8 @@ SAMPLE_STEP_M = .03
 
 def parse_sectors(text):
     """lidar_blind_sectors_json → ((중심°, 반폭°), ...). 비어 있으면 거절한다."""
-    from arena_autonomy.local_scene import blind_spec
-    _, sectors = blind_spec({'rear_half_angle_deg': 0., 'sectors_deg': json.loads(text)})
+    from arena_autonomy.local_scene import blind_spec,blind_parameter
+    _, sectors = blind_spec(blind_parameter(0.,text))
     if not sectors:
         raise ValueError('structure policy requires known structure sectors')
     return sectors

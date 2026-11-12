@@ -1,0 +1,3 @@
+cfab15ee38c0e0a4ee317263ba0aa58eaec88dcf43c325954e3e1743ef347d31  results.zip
+  20703 bash -c set -e cd /home/q/it_arena_two_stage_r235_20261112 python3 - <<'PY' from pathlib import Path import zipfile root=Path('worktree/artifacts/validation/2026-11-12/two_stage_recheck_r235_v1') with zipfile.ZipFile('results.zip','x',zipfile.ZIP_DEFLATED) as z:  for mode in ('parent','two_stage'):   for p in (root/('jetson_'+mode)).rglob('*'):    if p.is_file():z.write(p,p.relative_to(root))   for n in ('run_'+mode+'.log','load_'+mode+'.log'):z.write(n,n) PY sha256sum results.zip ps -eo pid,args | grep -E '[r]235|[a]rena_probe_r235' || true
+  20707 grep -E [r]235|[a]rena_probe_r235

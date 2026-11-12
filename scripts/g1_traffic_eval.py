@@ -22,6 +22,19 @@ def _finite(value):
     return not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value)
 
 
+def ego_geometry(config):
+    """선택한 실행 차량과 평가의 대칭 외곽/바퀴 중심을 일치시킨다."""
+    defaults = dict(length_m=EGO_LENGTH_M, width_m=EGO_WIDTH_M, wheelbase_m=.135, track_width_m=.135)
+    value = config.get('ego_geometry', defaults)
+    if not isinstance(value, dict) or set(value) != set(defaults):
+        raise ValueError('complete registered ego geometry required')
+    if any(not _finite(v) or v <= 0 for v in value.values()):
+        raise ValueError('ego dimensions must be finite and positive')
+    if value['wheelbase_m'] >= value['length_m'] or value['track_width_m'] >= value['width_m']:
+        raise ValueError('wheel centers must be within registered footprint')
+    return dict(value)
+
+
 def kinematic_speed_segments(ego):
     """평가용 실제 pose의 평면 구간 평균속도. 센서/순간 속도 추정값은 아니다."""
     if not all(len(row) == 4 and all(_finite(v) for v in row) for row in ego):
@@ -219,7 +232,8 @@ def _latest_index(times, t):
     return bisect_right(times, t)-1
 
 
-def sampled_gaps(ego, actor, actor_length, actor_width, max_actor_age_s=None):
+def sampled_gaps(ego, actor, actor_length, actor_width, max_actor_age_s=None, *,
+                 ego_length=EGO_LENGTH_M, ego_width=EGO_WIDTH_M):
     """각 ego 표본 시각의 최신 actor 자세와의 차체 간 최소 거리."""
     times = [row[0] for row in actor]
     rows = []
@@ -231,7 +245,7 @@ def sampled_gaps(ego, actor, actor_length, actor_width, max_actor_age_s=None):
                          'reason': 'actor_pose_missing' if index < 0 else 'actor_pose_stale'})
             continue
         _, ax, ay, ayaw = actor[index]
-        e = rectangle(x, y, yaw, EGO_LENGTH_M, EGO_WIDTH_M)
+        e = rectangle(x, y, yaw, ego_length, ego_width)
         a = rectangle(ax, ay, ayaw, actor_length, actor_width)
         rows.append({'t': t, 'gap_m': e.distance(a), 'overlap_area_m2': e.intersection(a).area,
                      'actor_pose_age_s': t-actor[index][0]})
@@ -239,7 +253,7 @@ def sampled_gaps(ego, actor, actor_length, actor_width, max_actor_age_s=None):
 
 
 def swept_gap_lower_bounds(ego, actor, actor_length, actor_width, actor_pose_period_s, max_curvature_per_m,
-                           max_actor_age_s=None):
+                           max_actor_age_s=None, *, ego_length=EGO_LENGTH_M, ego_width=EGO_WIDTH_M):
     """연속 ego 두 표본 사이의 차체 점유 외곽과 그 시간창의 모든 actor 자세 외곽의 거리 하한.
 
     가정: 표본 사이 ego는 강체 평면 운동이며 yaw가 단조 변화하고 경로 곡률이
@@ -249,7 +263,7 @@ def swept_gap_lower_bounds(ego, actor, actor_length, actor_width, actor_pose_per
     물리 접촉 기록이 아니다.
     """
     times = [row[0] for row in actor]
-    half_diagonal = math.hypot(EGO_LENGTH_M, EGO_WIDTH_M)/2
+    half_diagonal = math.hypot(ego_length, ego_width)/2
     out = []
     for (t0, x0, y0, a0), (t1, x1, y1, a1) in zip(ego, ego[1:]):
         if t1 <= t0:
@@ -266,8 +280,8 @@ def swept_gap_lower_bounds(ego, actor, actor_length, actor_width, actor_pose_per
             out.append({'t0': t0, 't1': t1, 'lower_bound_m': None,
                         'reason': 'actor_pose_stale' if stale else 'actor_pose_missing'})
             continue
-        ego_hull = MultiPoint(list(rectangle(x0, y0, a0, EGO_LENGTH_M, EGO_WIDTH_M).exterior.coords)
-                              + list(rectangle(x1, y1, a1, EGO_LENGTH_M, EGO_WIDTH_M).exterior.coords)).convex_hull
+        ego_hull = MultiPoint(list(rectangle(x0, y0, a0, ego_length, ego_width).exterior.coords)
+                              + list(rectangle(x1, y1, a1, ego_length, ego_width).exterior.coords)).convex_hull
         actor_points = []
         for _, ax, ay, ayaw in poses:
             actor_points += list(rectangle(ax, ay, ayaw, actor_length, actor_width).exterior.coords)
@@ -377,9 +391,13 @@ def controller_mode_summary(statuses):
 def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, commands, stop_start,
                  schedule_pose, centerline, s0, road, runtime_world, contact_evidence=None):
     """기록을 사전 등록 판정선과 대조한다. 결과 해석은 판정 항목별로 분리한다."""
+    geometry = ego_geometry(config)
+    ego_length, ego_width = geometry['length_m'], geometry['width_m']
     acceptance, actor_cfg = config['acceptance'], config['actor']
     harness = config['acceptance']['harness']
     result = {'t_green': t_green, 'evaluator_version': EVALUATOR_VERSION}
+    if 'ego_geometry' in config:
+        result['ego_geometry'] = geometry
     if t_green is None or not _finite(t_green):
         result['gates'] = {'green_observed': False}
         return result
@@ -446,9 +464,11 @@ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, co
         'max_actor_pose_gap_s': float(np.max(np.diff(pose_times))) if len(pose_times) > 1 else None}
     # --- 간격·접촉: 출발 전부터 정지 확인 끝까지 ---
     span = window_tuples(ego, t_green-1., last_time)
-    sampled = sampled_gaps(span, actor, actor_cfg['length_m'], actor_cfg['width_m'], POSE_MAX_GAP_S)
+    sampled = sampled_gaps(span, actor, actor_cfg['length_m'], actor_cfg['width_m'], POSE_MAX_GAP_S,
+                           ego_length=ego_length, ego_width=ego_width)
     swept = swept_gap_lower_bounds(span, actor, actor_cfg['length_m'], actor_cfg['width_m'],
-                                   1/actor_cfg['pose_publish_hz'], acceptance['swept_max_curvature_per_m'], POSE_MAX_GAP_S)
+                                   1/actor_cfg['pose_publish_hz'], acceptance['swept_max_curvature_per_m'], POSE_MAX_GAP_S,
+                                   ego_length=ego_length, ego_width=ego_width)
     lower = [row['lower_bound_m'] for row in swept if row['lower_bound_m'] is not None]
     hits = interval_contacts(contacts)
     result['gap'] = {
@@ -471,7 +491,7 @@ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, co
     # --- 노면: 기존 보수적 차체 외곽 기준 ---
     outside = None
     if road is not None:
-        outside = sum(rectangle(x, y, yaw, EGO_LENGTH_M, EGO_WIDTH_M).difference(road).area > 1e-6
+        outside = sum(rectangle(x, y, yaw, ego_length, ego_width).difference(road).area > 1e-6
                       for _, x, y, yaw in window_tuples(ego, t_green, last_time))
     result['road'] = {'outside_samples': outside, 'scope': '20x15 cm body vs SDF road union, every ego pose sample'}
     # --- 진행·뒤따름 ---
@@ -490,7 +510,7 @@ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, co
             continue
         behind_samples += 1
         s, _ = centerline.nearest_s(x, y)
-        behind &= centerline.unwrap(s, s0) <= actor_s[index][1]-(EGO_LENGTH_M+actor_cfg['length_m'])/2
+        behind &= centerline.unwrap(s, s0) <= actor_s[index][1]-(ego_length+actor_cfg['length_m'])/2
     def progress_at(t):
         value = _value_at(progress, t, 'progress_m')
         return value if value is not None else 0.
@@ -581,8 +601,9 @@ def evaluate_run(*, config, case, mode, t_green, trace, ego, actor, contacts, co
         # 전체 랩에서 초기 s0 근처로 매번 감으면 반 랩 뒤 앞뒤 순서가 뒤집힌다.
         # 명시 전체 코스 시험에서만 밀집 자세의 연속 호길이를 사용한다. 기존 판정은 그대로다.
         course=full_course_progress(centerline,window_tuples(ego,t_green,t_end),
-            window_tuples(actor,t_green-POSE_MAX_GAP_S,t_end),s0,actor_cfg['length_m'])
-        wheels=wheel_center_surface(road,window_tuples(ego,t_green,last_time))
+            window_tuples(actor,t_green-POSE_MAX_GAP_S,t_end),s0,actor_cfg['length_m'],ego_length=ego_length)
+        wheels=wheel_center_surface(road,window_tuples(ego,t_green,last_time),
+            wheelbase=geometry['wheelbase_m'],track=geometry['track_width_m'])
         result['full_course_progress'],result['wheel_centers']=course,wheels
         result['progress']['ego_stays_behind_actor']=course['ego_stays_behind']
         behind=course['valid'] and course['ego_stays_behind']

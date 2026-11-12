@@ -1,5 +1,8 @@
 # MCU 이관용 보드 독립 구동 계약 코어
 
+**11/13 현재 연결:** [`firmware_runtime_preview`](../firmware_runtime_preview/README.md)에 IMU/PCNT/읽기 전용 서보/STOP 입력을 모은 출력 비활성 소스를 준비했습니다. `actuation_motor_endpoint.hpp`는 단일 소유 계약/PI 연결, `st3215_transaction.hpp`는 비차단 RAM 거래, `steering_mapping.hpp`는 미입력 실측 조향표의 보간 준비물입니다. 실제 구동 허가/조향 교정은 미완료입니다. 아래 날짜별 항목은 각 당시 검증 범위를 보존합니다.
+
+
 `actuation_wire.hpp`는 기존 `IA + uint16 length + payload + CRC32`의 **바이트 경계만** C++로 옮긴 준비물이다. ROS 런타임·실제 MCU에는 연결하지 않았다.
 
 - payload 1~1536 B, CRC/헤더 포함 최대 1544 B. 코어 자체는 고정 배열을 사용하며 동적 메모리를 할당하지 않는다.

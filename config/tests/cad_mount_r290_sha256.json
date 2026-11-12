@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "scope": "r290 사용자 전달 CAD의 선택형 지주/배선/센서 좌표. 전체 차량/실물 채택 승인 아님",
+  "parent_contract": "config/tests/motor_feedback_r285_sha256.json",
+  "parent_contract_sha256": "31b22b9805a489b757547d4e85c5328c08f5f7b641d9e4ff3c2eebfe03708554",
+  "before_snapshot": "artifacts/validation/2026-11-12/cad_mount_r290_v1/before_sources.zip",
+  "before_snapshot_sha256": "4d8b8c71567f02dd8f5901c2ca18052535163a05ad9d785c7275051f6d27c248",
+  "approved_changes": {
+    "src/arena_bringup/launch/simulation.launch.py": {
+      "before": "c51d3636fd7b71abd364e4d0af5fbf1f43b3a38120a34411c9b43b15d4e8b481",
+      "after": "55029b7fea8abc37ecd7dff0146022f494dff33fe22533416265fb78f910a730",
+      "reason": "선택형 CAD mesh/단면 프로필과 경로 해석; 기존 프로필·충돌체·물성 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/local_scene.py": {
+      "before": "d1b6d23d92e38d0692de15827e4b3359bfa755fca6cd389577e10a9b0c5a4f67",
+      "after": "93367c56a16beedbd37561ce3d9258db23c20bf2a281f841a8a6d08cb3522d4a",
+      "reason": "선택형 자기 구조 각도+거리 계약; 다른 유효 반환과 unknown 보존"
+    },
+    "src/arena_autonomy/arena_autonomy/local_path.py": {
+      "before": "f586af94bcbff8d14300b1fe3878a1959e1d2176654c80a5a1ec46b7848382b9",
+      "after": "b0f2a45256382db68e7c29652ab3eda843e14412de759ab07802d7a15b882eeb",
+      "reason": "관측 경로 마스크의 CAD 자기 반환 거리 한정; 기존 각도 계약 유지"
+    },
+    "src/arena_autonomy/arena_autonomy/native_geometry.py": {
+      "before": "93294037751d1f6ff3de575b019b5e1c8b05a7f889bd2c9bd20f06c8d87fc612",
+      "after": "358baa16a2d9e7440e081a3e838dec2e2789eae351c5003994b3def76f4a42d0",
+      "reason": "원시 점별 입력에도 동일 자기 반환 거리 계약 적용"
+    },
+    "src/arena_autonomy/arena_autonomy/known_structure.py": {
+      "before": "289430d3cf3d12bf5d1425b780e2236f460bfc66ae097aa02d2be521bbc81f36",
+      "after": "b03ad61b003703ee71d5c50ace4625c433e37b7ce40b54a7762747c32a69fcff",
+      "reason": "선택형 거리 계약 파싱과 기존 구조 그림자 각도 연결"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {
+    "src/arena_autonomy/arena_autonomy/cad_mount.py": "5e29bb9275e06c22e2b3f1c20db46379f4db33b9651ef8e3206df899ea84434f",
+    "scripts/build_cad_sensor_profile.py": "6ee99ed841c120a0d5f03f13db9203d9928b9c958943a7cd9eae3ba2e423c4ef",
+    "src/arena_description/config/b0390_c1_cad_20261112_frontwire_2mm.yaml": "ddbb1a53d49ac59aabdb9312528809ddb40e483b2bafa013419216e0043a5d2a",
+    "src/arena_description/config/b0390_c1_cad_20261112_frontwire_4mm.yaml": "2c0ccb85baa3c899bad3c1943176dea71415382916751a3cf420368f79d7bb03",
+    "src/arena_description/config/b0390_c1_cad_20261112_frontwire_6mm.yaml": "5f0847c7dc07996f593e97f5b4fae6070126dfcc96d94804e9c1b2fbd869eab2",
+    "src/arena_description/config/b0390_c1_cad_20261112_inboardwire_4mm.yaml": "7ebd8c7e542475a827e7ced385da551a266b0b9e8b406a1ed1dc6699673845c5",
+    "src/arena_description/config/b0390_c1_cad_20261112_nowire.yaml": "54470d6eb381c4c48e3d8c7b22fb15eb8b880da308e65df3b6efc441ca9ad0ce",
+    "src/arena_description/models/arena_car/meshes/cad_20261112/part_2372.stl": "1ef7ad9ff61278a9328b94af0c2aa76a4159d5edb92d24ebc7021ae19fc6a08a",
+    "src/arena_description/models/arena_car/meshes/cad_20261112/part_2373.stl": "3ff0c0090097580a49575e3554dd9a040b69b714065f85c357c5213eabdda513",
+    "src/arena_description/models/arena_car/meshes/cad_20261112/wire_front_2mm.stl": "0069e02544e6a312317bdf590e21005b27b538744b5d3d11da389af90f91417c",
+    "src/arena_description/models/arena_car/meshes/cad_20261112/wire_front_4mm.stl": "cc76b00bef589dd20d01a4f58a159b13fb96a2c5e1639c64a510d47d06b6add6",
+    "src/arena_description/models/arena_car/meshes/cad_20261112/wire_front_6mm.stl": "fb6e1e5bf6171d2673e0ad8c9bd77c31e4c8db4a03747c26fb21a5347a18cf92",
+    "src/arena_description/models/arena_car/meshes/cad_20261112/wire_inboard_4mm.stl": "027423edc8505c07aa4974932ec638f7c1f2a1cc95d139f325522d225f61e0f8"
+  }
+}

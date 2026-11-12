@@ -34,13 +34,17 @@ struct TxConfig {
   std::uint8_t max_consecutive_events = 0;  // ack/state 연속 상한. offer 대기 시 그 뒤 offer를 먼저 보낸다
   // 실제 설정한 선로의 바이트당 시간(8N1이면 10/baud 초). 0이면 모름: 진단을 주기만으로 보낸다.
   // 0이 아니면 진단 프레임은 다음 offer 기한 전에 직렬화가 끝날 때만 시작한다(긴 진단이 offer를 가리지 않게).
+  bool offer_status_v1 = false;  // 명시 센서 연결에서만 원 MCU 상태/시각 포함
   std::int64_t line_ns_per_byte = 0;
+  // 선택형 모터축 피드백. 원 취득 시각/정수 카운트만 보내며 출력 허가를 만들지 않는다.
+  bool offer_motor_feedback_v1 = false;
 
   bool valid() const {
     const auto in = [](std::int64_t v) { return v >= 1 && v <= kMaxConfigUs; };
     return in(offer_period_us) && (diag_period_us == 0 || in(diag_period_us)) &&
            max_consecutive_events >= 1 && max_consecutive_events <= kTxAckCapacity &&
-           line_ns_per_byte >= 0 && line_ns_per_byte <= 1'000'000;
+           line_ns_per_byte >= 0 && line_ns_per_byte <= 1'000'000 &&
+           (!offer_motor_feedback_v1 || offer_status_v1);
   }
 };
 
@@ -207,7 +211,8 @@ class ActuationTxScheduler {
   // offer 임대 발행 때문에 receiver를 변경하므로 비상수 참조를 받는다(같은 소유자 안에서만 호출).
   ActuationTxScheduler(const TxConfig& config, ActuationReceiverCore& receiver)
       : config_(config), receiver_(receiver) {
-    if (!config_.valid() || !tx_detail::printable_boot(receiver_.boot())) fault_ = TxFault::kInvalidConfig;
+    if (!config_.valid() || !tx_detail::printable_boot(receiver_.boot()) ||
+        (config_.offer_motor_feedback_v1 && !receiver_.motor_mode())) fault_ = TxFault::kInvalidConfig;
     seen_generation_ = receiver_.generation();
     seen_state_ = receiver_.state();
     seen_reason_ = receiver_.reason();
@@ -323,7 +328,7 @@ class ActuationTxScheduler {
     switch (kind) {
       case TxKind::kAck: write_ack(w, ack); break;
       case TxKind::kState: write_state_fields(w, nullptr, 0, 0, ReceiverState::kDisarmed, "", 0); break;
-      case TxKind::kOffer: write_offer_fields(w, nullptr, 0, 0, ReceiverState::kDisarmed, nullptr, Lease{}, false); break;
+      case TxKind::kOffer: write_offer_fields(w, nullptr, 0, 0, ReceiverState::kDisarmed, nullptr, Lease{}, false, config_.offer_status_v1, false, "", 0); break;
       case TxKind::kDiagnostic: write_diag_fields(w, 0); break;
       case TxKind::kNone: return 0;
     }
@@ -434,7 +439,7 @@ class ActuationTxScheduler {
     tx_detail::JsonWriter w(frame_.data() + 4, kMaxPayload);
     const auto& boot = receiver_.boot();
     write_offer_fields(w, boot.code_points.data(), boot.length, receiver_.generation(), receiver_.state(),
-                       receiver_.has_owner() ? &receiver_.owner() : nullptr, lease.lease, output_ready_);
+                       receiver_.has_owner() ? &receiver_.owner() : nullptr, lease.lease, output_ready_, config_.offer_status_v1, receiver_.estop_held(), receiver_.reason(), now);
     TxFrameRecord record;
     record.kind = TxKind::kOffer;
     record.trigger_us = trigger;
@@ -519,8 +524,8 @@ class ActuationTxScheduler {
   }
   // 호스트(ActuationHost.on_rx, CommandProducer)가 읽는 필드만. 진단 필드는 diag로 분리한다.
   template<class W>
-  static void write_offer_fields(W& w, const std::uint32_t* boot, std::size_t boot_length, std::int64_t generation,
-                                 ReceiverState state, const StoredString* owner, const Lease& lease, bool output_ready) {
+  void write_offer_fields(W& w, const std::uint32_t* boot, std::size_t boot_length, std::int64_t generation,
+                                 ReceiverState state, const StoredString* owner, const Lease& lease, bool output_ready, bool with_status, bool estop_held, const char* reason, std::int64_t now) const {
     w.lit("{\"type\":\"offer\",\"v\":1,\"boot\":");
     w.code_points(boot, boot_length);
     w.lit(",\"generation\":");
@@ -537,6 +542,25 @@ class ActuationTxScheduler {
     w.i64(lease.expires_us);
     w.lit(",\"output_ready\":");
     w.boolean(output_ready);
+    if (with_status) {
+      w.lit(",\"status_now_us\":");
+      w.i64(lease.issued_us);
+      w.lit(",\"estop_held\":");
+      w.boolean(estop_held);
+      w.lit(",\"reason\":");
+      w.text(reason);
+    }
+    if (config_.offer_motor_feedback_v1) {
+      w.lit(",\"motor_feedback_v1\":{\"valid\":");
+      w.boolean(receiver_.fresh_feedback(now));
+      w.lit(",\"sequence\":");
+      w.opt_i64(receiver_.has_feedback(), receiver_.feedback_seq());
+      w.lit(",\"capture_us\":");
+      w.opt_i64(receiver_.has_feedback(), receiver_.feedback_capture());
+      w.lit(",\"counts\":");
+      w.opt_i64(receiver_.has_feedback(), receiver_.feedback_count(0));
+      w.lit("}");
+    }
     w.lit("}");
   }
   template<class W>

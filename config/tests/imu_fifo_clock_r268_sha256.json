@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "scope": "r268 IMU FIFO 시각의 선택형 진단 연결. 기본 MCU-read 유지, 실물 운영 시각/구동 승인 아님.",
+  "parent_contract": "config/tests/mcu_status_r254_sha256.json",
+  "parent_contract_sha256": "32fbbd37d4be83e8eefb48214cde206e491f8c7e570b1a7c87a783de86b877cb",
+  "before_snapshot": "artifacts/validation/2026-11-12/imu_fifo_runtime_r268_v1/before_sources.zip",
+  "before_snapshot_sha256": "7251ff5d22c0f3cb7d9ffddaabd465db11240b37d405e64ae6732c46a996743d",
+  "approved_changes": {
+    "scripts/bridge_esp32_imu_preview.py": {
+      "before": "5304b2a2dd4136be680049aa2f2736a7aa8f5b32310aaefd33c0487a7d4bea6e",
+      "after": "119e23caf99cad9a433578b37c95b20d75cf539b917f4e3a0c1fe887f5a91488",
+      "reason": "명시 fifo_tick 선택에서만 인과적 FIFO/register 시각 추정. 기본 읽기 시각 경로/출력 비활성 유지"
+    },
+    "scripts/bridge_sensor_link_preview.py": {
+      "before": "0a3a1037f165fef8ad31b5e7ccddeda8f1ddfc8588decb3fde49d311ee8c3dcc",
+      "after": "eed4c46ddb5cae4677bbee4d9bc78ec3b7d503be6e8926ade464913a87aaff34",
+      "reason": "명시 fifo_tick 선택에서만 인과적 FIFO/register 시각 추정. 기본 읽기 시각 경로/출력 비활성 유지"
+    }
+  },
+  "approved_evaluation_scripts": {},
+  "new_dependencies": {
+    "src/arena_vehicle_interface/arena_vehicle_interface/imu_fifo_time.py": "df1fe3199b3e82ba373fb9a131f42bf17b3437323a31c9f747d735e08cf6d84f",
+    "src/arena_vehicle_interface/arena_vehicle_interface/imu_fifo_clock.py": "390d5334a633c8bb2bcc792c3f253758f5a1855b7c6756d89bd7cf30b9c2f649"
+  }
+}

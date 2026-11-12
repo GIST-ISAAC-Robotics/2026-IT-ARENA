@@ -1,0 +1,61 @@
+....F                                                                    [100%]
+=================================== FAILURES ===================================
+___________________ test_ros_one_shot_simulated_clock_notice ___________________
+
+    def test_ros_one_shot_simulated_clock_notice():
+        rclpy=pytest.importorskip('rclpy')
+        from rclpy.parameter import Parameter
+        from rosgraph_msgs.msg import Clock
+        from builtin_interfaces.msg import Time
+        import time
+        context=rclpy.context.Context();rclpy.init(args=[],context=context)
+        node=rclpy.create_node('staged_event_clock_test',context=context,
+            parameter_overrides=[Parameter('use_sim_time',value=True)])
+        pub=node.create_publisher(Clock,'/clock',10);seen=[]
+        timer=None
+        def tick():
+            timer.cancel();seen.append(node.get_clock().now().nanoseconds)
+        timer=node.create_timer(.146745511,tick);timer.cancel()
+        def advance(ns):
+            deadline=time.monotonic()+2
+            while node.get_clock().now().nanoseconds<ns:
+                pub.publish(Clock(clock=Time(sec=ns//10**9,nanosec=ns%10**9)))
+                rclpy.spin_once(node,timeout_sec=.01)
+                assert time.monotonic()<deadline
+        try:
+>           advance(1_000_000_000);timer.reset()
+
+artifacts/validation/2026-11-12/staged_event_runtime_r252_v1/test_staged_event.py:68: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/validation/2026-11-12/staged_event_runtime_r252_v1/test_staged_event.py:65: in advance
+    rclpy.spin_once(node,timeout_sec=.01)
+/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/__init__.py:221: in spin_once
+    executor = get_global_executor() if executor is None else executor
+/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/__init__.py:106: in get_global_executor
+    __executor = SingleThreadedExecutor()
+/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py:899: in __init__
+    super().__init__(context=context)
+/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py:198: in __init__
+    self._guard = GuardCondition(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <rclpy.guard_condition.GuardCondition object at 0x73da6cf20a40>
+callback = None, callback_group = None
+context = <rclpy.context.Context object at 0x73da6ddcfbc0>
+
+    def __init__(self, callback, callback_group, context=None):
+        self._context = get_default_context() if context is None else context
+>       with self._context.handle:
+E       TypeError: 'NoneType' object does not support the context manager protocol
+
+/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/guard_condition.py:23: TypeError
+----------------------------- Captured stderr call -----------------------------
+[WARN] [1794466663.878901228] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1794466663.878931374] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-12/staged_event_runtime_r252_v1/test_staged_event.py::test_ros_one_shot_simulated_clock_notice
+1 failed, 4 passed in 0.62s
+Exception ignored in: <function Executor.__del__ at 0x73da6cbb5ee0>
+Traceback (most recent call last):
+  File "/opt/ros/jazzy/lib/python3.12/site-packages/rclpy/executors.py", line 305, in __del__
+AttributeError: 'SingleThreadedExecutor' object has no attribute '_sigint_gc'

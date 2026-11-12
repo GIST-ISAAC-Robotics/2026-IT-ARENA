@@ -1,6 +1,7 @@
 """선택형 점 취득 시각 기반 위협 교집합. 2 m/s 가정이며 자유 공간 증명이 아니다."""
 import math
 import numpy as np
+from arena_autonomy import numeric_kernels
 
 
 def clip_polygon(polygon, normal, limit):
@@ -25,6 +26,8 @@ def polygon_distance(points, polygon):
         return np.full(len(points), math.inf)
     if len(polygon) == 1:
         return np.linalg.norm(points - polygon[0], axis=1)
+    native=numeric_kernels.polygon(points,polygon)
+    if native is not None:return native
     edges = np.roll(polygon, -1, axis=0) - polygon
     delta = points[:, None, :] - polygon[None, :, :]
     projection = np.sum(delta * edges, axis=2) / np.maximum(np.sum(edges**2, axis=1), 1e-30)

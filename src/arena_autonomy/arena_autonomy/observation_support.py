@@ -16,6 +16,7 @@ from arena_autonomy.local_path import swept_limit
 from arena_autonomy.occupancy_timing import per_ray_padding
 from arena_autonomy.scan_topology import cyclic_count, adjacent_indices
 from arena_autonomy.measurement_scan import sampling_gaps, unknown_cell_directions
+from arena_autonomy import numeric_kernels
 
 
 def needs_recent_support(scene):
@@ -30,7 +31,7 @@ def side_missing_candidate(scene):
         if abs(math.atan2(r.direction_xy[1],r.direction_xy[0]))<=math.radians(60))
 
 
-def depth_support(scene, queries, padding, *, cycle=None):
+def depth_support(scene, queries, padding, *, cycle=None, _masked_out=None):
     """가능한 양옆 광선을 포함하는 각도 상계. 결측/동률/반환 조건은 불변.
 
     원점 원 내부는 전체 광선으로 계산한다. 어느 광선 원점과든 기존 반경
@@ -50,6 +51,9 @@ def depth_support(scene, queries, padding, *, cycle=None):
     directions = np.array([r.direction_xy for r in scene.rays])
     indices = np.array([r.source_index for r in scene.rays])
     valid = np.array([r.status == 'return' for r in scene.rays])
+    status_code = (None if _masked_out is None else np.array([
+        0 if r.status=='unknown' else 1 if r.status=='return' else 2 if r.status=='masked' else 3
+        for r in scene.rays],dtype=np.uint8))
     depth = np.array([math.dist(r.ray_origin_xy_m, r.hit_xy_m) if r.status == 'return' else -1. for r in scene.rays])
     pad = np.asarray(padding)
     n = len(origins)
@@ -61,6 +65,10 @@ def depth_support(scene, queries, padding, *, cycle=None):
     ray_order = np.tile(order, 3)
 
     def evaluate(part, chosen):
+        if _masked_out is not None:
+            return numeric_kernels.support_classes(part,chosen,origins,directions,indices,status_code,depth,pad,cycle_count)
+        native=numeric_kernels.depth(part,chosen,origins,directions,indices,valid,depth,pad,cycle_count)
+        if native is not None:return native
         present = chosen < n
         take = np.minimum(chosen, n-1)
         dx = part[:, 0, None]-origins[take, 0]
@@ -82,6 +90,12 @@ def depth_support(scene, queries, padding, *, cycle=None):
             & (low_radius > 1e-9) & (high_radius > 1e-9)
             & (depth[lo]-low_radius-pad[lo] > 0) & (depth[hi]-high_radius-pad[hi] > 0))
 
+    def store(rows, values):
+        if _masked_out is None:result[rows]=values
+        else:
+            result[rows]=(values & 1)!=0
+            _masked_out[rows]=(values & 2)!=0
+
     # 광선/질의는 그대로 두고 작은 NumPy 호출의 반복 비용만 줄인다.
     for start in range(0, len(q), 512):
         part = q[start:start+512]
@@ -90,7 +104,7 @@ def depth_support(scene, queries, padding, *, cycle=None):
         window = np.isfinite(distance) & (distance > radius+1e-9)
         fallback = np.flatnonzero(~window)
         if len(fallback):
-            result[start+fallback] = evaluate(part[fallback], np.broadcast_to(np.arange(n), (len(fallback), n)))
+            store(start+fallback, evaluate(part[fallback], np.broadcast_to(np.arange(n), (len(fallback), n))))
         rows = np.flatnonzero(window)
         if not len(rows):
             continue
@@ -110,8 +124,17 @@ def depth_support(scene, queries, padding, *, cycle=None):
             offsets = np.arange(maximum)
             positions = np.minimum(low[:, None]+offsets, len(ray_order)-1)
             chosen = np.sort(np.where(offsets < width[:, None], ray_order[positions], n), axis=1)
-        result[start+rows] = evaluate(part[rows], chosen)
+        store(start+rows, evaluate(part[rows], chosen))
     return result
+
+
+def depth_and_masked_support(scene, queries, padding, *, cycle=None):
+    """명시 native에서 각도 탐색만 공유한다. 미관측을 자유로 채우지 않는다."""
+    if not numeric_kernels.classification_enabled():return None
+    q=np.asarray(queries,dtype=float).reshape(-1,2)
+    masked=np.zeros(len(q),dtype=bool)
+    free=depth_support(scene,q,padding,cycle=cycle,_masked_out=masked)
+    return free,masked
 
 
 def source_valid(scene):

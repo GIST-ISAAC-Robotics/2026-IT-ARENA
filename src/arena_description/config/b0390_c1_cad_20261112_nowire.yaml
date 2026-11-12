@@ -1,0 +1,158 @@
+# 선택형 CAD 추정 프로필. 전체 차량/실물 교정 승인 아님.
+camera:
+  model: Arducam_B0390_IMX219
+  status: B0390_with_old_camera_CAD_axis_height_only_X_provisional
+  xyz_m:
+  - 0.055
+  - 0.0
+  - 0.198363
+  rpy_rad:
+  - 0.0
+  - 0.0
+  - 0.0
+  width_px: 1280
+  height_px: 720
+  rate_hz: 60.0
+  horizontal_fov_deg: 62.2
+  mass_kg: 0.003
+  proxy_size_m:
+  - 0.009
+  - 0.025
+  - 0.024
+  source: https://www.arducam.com/90524.html
+  manufacturer_manual_mirror: https://download.kamami.pl/p1178777-B0390_Manual.pdf
+lidar:
+  model: RPLIDAR_C1
+  status: cad_20261112_axis_estimate_not_measured
+  xyz_m:
+  - 0.0754
+  - 0.0
+  - 0.1346
+  masked_rear_half_angle_deg: 0.0
+  known_structure_mask: structure_aware
+  known_structure_margin_deg: 0.5
+  rate_hz: 10.0
+  scan_plane_sections:
+  - part_id: 2372
+    side: left
+    polygon_xy_m:
+    - - -0.08603326646487369
+      - 0.03676236830775055
+    - - -0.09445708208596228
+      - 0.03849422580243782
+    - - -0.09473901237579509
+      - 0.03712290698040013
+    - - -0.09082095859854458
+      - 0.036317391866592094
+    - - -0.09166674946804301
+      - 0.032203435400479076
+    - - -0.09558480324529352
+      - 0.0330089505142871
+    - - -0.09586673353512631
+      - 0.031637631692249465
+    - - -0.0874429179140378
+      - 0.029905774197562195
+    wire_polygons_xy_m: []
+  - part_id: 2372
+    side: right
+    polygon_xy_m:
+    - - -0.09587556506724157
+      - -0.03225464957847259
+    - - -0.09558889430302916
+      - -0.03362498525740169
+    - - -0.09167364950608908
+      - -0.03280592593108055
+    - - -0.09081363721345193
+      - -0.03691693296786761
+    - - -0.09472888201039198
+      - -0.037735992294188746
+    - - -0.09444221124617963
+      - -0.0391063279731178
+    - - -0.0860244349327584
+      - -0.037345350421527417
+    - - -0.08745778875382036
+      - -0.03049367202688219
+    wire_polygons_xy_m: []
+  - part_id: 2373
+    side: left
+    polygon_xy_m:
+    - - 0.03861188988719139
+      - 0.05525984631691
+    - - 0.03495031770592504
+      - 0.06010211481096005
+    - - 0.03474180082510512
+      - 0.05995449224046809
+    - - 0.03321614574957756
+      - 0.061972104112988986
+    - - 0.03029690941810081
+      - 0.05990538812610279
+    - - 0.03182256449362846
+      - 0.057887776253581893
+    - - 0.031614047612808636
+      - 0.05774015368309006
+    - - 0.03527561979407497
+      - 0.05289788518903997
+    wire_polygons_xy_m: []
+  - part_id: 2373
+    side: right
+    polygon_xy_m:
+    - - 0.03474180082510512
+      - -0.05995449224046809
+    - - 0.03495031770592504
+      - -0.060102114810960075
+    - - 0.03861188988719139
+      - -0.055259846316910013
+    - - 0.03527561979407497
+      - -0.052897885189039984
+    - - 0.03161404761280865
+      - -0.05774015368308998
+    - - 0.03182256449362845
+      - -0.05788777625358196
+    - - 0.03029690941810074
+      - -0.059905388126102764
+    - - 0.03321614574957752
+      - -0.06197210411298904
+    wire_polygons_xy_m: []
+  scan_plane_meshes:
+  - ../models/arena_car/meshes/cad_20261112/part_2372.stl
+  - ../models/arena_car/meshes/cad_20261112/part_2373.stl
+  self_return_distance_margin_m: 0.002
+imu:
+  model: LSM6DSOX
+  status: hardware_identified_mount_uncalibrated
+  xyz_m:
+  - 0.0
+  - 0.0
+  - 0.06
+  nominal_rate_hz: 208.0
+  rate_hz: 199.06850941348748
+  gyro_full_scale_dps: 500
+  accel_full_scale_g: 8
+  mass_kg: 0.003
+  simulated_gyro_stddev_rad_s: 0.0011
+  simulated_accel_stddev_mps2: 0.0103
+  source: https://www.st.com/resource/en/datasheet/lsm6dsox.pdf
+mount_provenance:
+  source_step_sha256: 37890b25fc69c5c56e400b6236872ab480dc96016211055842722d52769a98a4
+  status: candidate_not_final_vehicle
+  coordinate_frame: base_link_at_axle_midpoint_ground; chassis_visual_z subtract wheel_radius+body_height/2
+  step_to_vehicle_mm: X=-c-64, Y=21.2-a, Z=b+32.2
+  pillar_geometry: original two part meshes, exact B-rep section at estimated optical
+    Z134.6mm
+  wire_direction: front
+  wire_extra_thickness_mm: 0
+  wire_status: sensitivity_only_not_measured
+  wire_vertical_extent_m:
+  - 0.1246
+  - 0.1446
+  wire_vertical_status: scan_band_proxy_not_whole_harness
+  camera_height_source: B0183 substitute lens cylinder axis b=166.163mm; B0390 unmeasured
+  camera_x_source: old simulation 55mm retained; neither lens tip nor STEP optical
+    projection centre
+  camera_y_source: old zero matches substitute lens axis a=21.2mm
+  camera_intrinsics: B0390 unchanged; mount pitch 0 temporary
+  retained: mass,inertia,wheelbase,track,wheel_diameter,drivetrain,IMU pose
+  rear_id49: not in CAD; existing 140mm centre intersects lidar plane; placement remains
+    separate test argument
+  self_filter: distance-limited within CAD angular sectors; distant valid hits preserved;
+    no-return remains unknown

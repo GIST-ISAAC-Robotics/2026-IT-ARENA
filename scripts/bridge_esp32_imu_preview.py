@@ -10,6 +10,7 @@ import time
 
 from probe_esp32_imu import Decoder
 from arena_vehicle_interface.imu_read_clock import ImuReadClock
+from arena_vehicle_interface.imu_fifo_clock import ImuFifoClock
 
 TOPIC = '/hardware_preview/imu'
 STATUS_TOPIC = '/hardware_preview/imu_status'
@@ -21,6 +22,8 @@ def main():
     p.add_argument('--port', required=True)
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--seconds', type=float, default=30.)
+    p.add_argument('--imu-clock', choices=('mcu_read','fifo_tick'), default='mcu_read',
+        help='fifo_tick은 과거 FIFO/register 기반 추정이며 ROS 절대 취득시각 검증은 아님')
     args=p.parse_args()
     if not math.isfinite(args.seconds) or not 1 <= args.seconds <= 120:
         p.error('seconds must be within 1..120')
@@ -37,7 +40,7 @@ def main():
         raise RuntimeError('hardware preview requires wall clock')
     pub=node.create_publisher(Imu,TOPIC,qos_profile_sensor_data)
     status_pub=node.create_publisher(String,STATUS_TOPIC,10)
-    decoder=Decoder(); clock=ImuReadClock(); counts=collections.Counter()
+    decoder=Decoder(); clock=ImuFifoClock() if args.imu_clock=='fifo_tick' else ImuReadClock(); counts=collections.Counter()
     observed_boots=set(); metadata=None; first_gyro=None; last_status=-math.inf
     last_active=None; stopped=False; complete=False; error=None
     measurement_start=measurement_end=None
@@ -46,7 +49,8 @@ def main():
     serial_port.port=args.port
     gc_before=gc.isenabled()
     began=time.monotonic()
-    with (args.output/'uart.bin').open('xb') as raw, (args.output/'frames.jsonl').open('x') as frames:
+    with (args.output/'uart.bin').open('xb') as raw, (args.output/'frames.jsonl').open('x') as frames, \
+            (args.output/'clock_estimates.jsonl').open('x') as clock_records:
         def receive(phase):
             nonlocal metadata, first_gyro, last_status, last_active
             data=serial_port.read(max(1,min(serial_port.in_waiting,8192)))
@@ -62,13 +66,19 @@ def main():
                 gyros=[row for row in decoded if 'gyro_rad_s' in row]
                 counts['gyro_received_'+phase]+=len(gyros)
                 if gyros and first_gyro is None:first_gyro=time.monotonic()
-                for stamp in clock.convert_batch(gyros,host_monotonic_ns=mono_ns,ros_receipt_ns=ros_ns):
+                for stamp in clock.convert_batch(decoded if args.imu_clock=='fifo_tick' else gyros,host_monotonic_ns=mono_ns,ros_receipt_ns=ros_ns):
                     msg=Imu(); msg.header.frame_id=FRAME
                     msg.header.stamp.sec,msg.header.stamp.nanosec=divmod(stamp.stamp_ns,1_000_000_000)
                     msg.orientation_covariance[0]=-1.
                     msg.linear_acceleration_covariance[0]=-1.
                     msg.angular_velocity.x,msg.angular_velocity.y,msg.angular_velocity.z=stamp.sample['gyro_rad_s']
                     pub.publish(msg);counts['published_'+phase]+=1
+                    if args.imu_clock=='fifo_tick':
+                        clock_records.write(json.dumps(dict(phase=phase,boot=stamp.sample['boot'],sequence=stamp.sample['sequence'],
+                            stamp_ns=stamp.stamp_ns,generation=stamp.generation,sensor_tick=stamp.sensor_tick,
+                            mcu_lower_ns=stamp.mcu_lower_ns,mcu_upper_ns=stamp.mcu_upper_ns,
+                            register_anchor_sequence=stamp.register_anchor_sequence,read_based_stamp_ns=stamp.read_based_stamp_ns,
+                            time_contract_verified=False))+'\n')
             now=time.monotonic()
             if now-last_status>=1.:
                 msg=String();msg.data=json.dumps(dict(time_basis=clock.time_basis,

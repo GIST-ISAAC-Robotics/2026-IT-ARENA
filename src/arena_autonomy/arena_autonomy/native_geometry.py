@@ -34,7 +34,7 @@ def _geometry(scan, transforms, now, config, epoch, mask):
         c, s = math.cos(turn), math.sin(turn)
         origin = (dx + c*sx - s*sy, dy + s*sx + c*sy)
         angle = math.remainder(source_angle, math.tau)
-        masked = _masked_by(math.remainder(angle, math.tau), limits)
+        masked = _masked_by(math.remainder(angle, math.tau), limits,distance)
         valid = math.isfinite(distance) and scan.range_min_m <= distance <= scan.range_max_m
         status = 'masked' if masked else ('return' if valid else 'unknown')
         bearing = angle + yaw + turn

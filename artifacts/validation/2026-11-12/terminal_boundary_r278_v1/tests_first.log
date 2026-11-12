@@ -1,0 +1,26 @@
+F..........F............................................................ [ 73%]
+..........................                                               [100%]
+=================================== FAILURES ===================================
+____ test_long_current_opposite_wall_reacquires_after_distinct_observations ____
+
+    def test_long_current_opposite_wall_reacquires_after_distinct_observations():
+        ctl,rows=sequence()
+        assert rows[0][0]==0 and rows[0][2]['single_wall_reacquire']['side']=='right'
+        assert rows[-1][0]>0 and ctl.path_wall=='right'
+>       assert not rows[-1][2]['boundary_from_memory']
+E       assert not True
+
+artifacts/validation/2026-11-12/terminal_boundary_r278_v1/test_candidate.py:48: AssertionError
+_________ test_retained_path_does_not_trigger_new_opposite_acquisition _________
+
+    def test_retained_path_does_not_trigger_new_opposite_acquisition():
+        ctl,rows=sequence()
+        out=ctl._baseline_command(observed(.8),history(),.0,'left')
+>       assert 'single_wall_reacquire' not in out[2]
+E       AssertionError: assert 'single_wall_reacquire' not in {'behavior': 'HOLD', 'bilateral_alternative_confirmed': False, 'boundary_candidate_ahead_m': 1.7999999999999998, 'boundary_candidate_reason': 'local_path', ...}
+
+artifacts/validation/2026-11-12/terminal_boundary_r278_v1/test_candidate.py:94: AssertionError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-12/terminal_boundary_r278_v1/test_candidate.py::test_long_current_opposite_wall_reacquires_after_distinct_observations
+FAILED artifacts/validation/2026-11-12/terminal_boundary_r278_v1/test_candidate.py::test_retained_path_does_not_trigger_new_opposite_acquisition
+2 failed, 96 passed in 17.87s

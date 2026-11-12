@@ -50,6 +50,24 @@ def test_default_runtime_world_is_byte_identical_to_previous(tmp_path):
     assert arguments['evaluation_grass_alignment'].default_value[0].text == 'original'
 
 
+def test_user_three_mm_step_changes_only_grass_with_explicit_rigid_assumption():
+    module=load(ROOT/LAUNCH,'user_grass_step_launch')
+    before=WORLD.read_bytes()
+    world=ET.parse(WORLD).find('world')
+    original=copy.deepcopy(world)
+    result=module._evaluation_grass_alignment(world,'grass_above_3mm')
+    assert result['shifted_shapes']==952 and result['grass_above_road_m']==.003
+    assert result['after_top_m']-result['road_top_m']==.003
+    assert result['source']=='user_reported_2026_11_13' and 'not calibrated' in result['compliance']
+    old=original.find("model[@name='it_arena_track_static']/link[@name='grass']")
+    new=world.find("model[@name='it_arena_track_static']/link[@name='grass']")
+    for a,b in zip(old,new):
+        assert float(b.findtext('pose').split()[2])==.005
+        b.find('pose').text=a.findtext('pose')
+    assert ET.tostring(world)==ET.tostring(original)
+    assert WORLD.read_bytes()==before
+
+
 @pytest.mark.parametrize('fault', ['height', 'missing', 'mode'])
 def test_unregistered_geometry_or_mode_does_not_partially_mutate(fault):
     module = load(ROOT/LAUNCH, 'alignment_launch_invalid')

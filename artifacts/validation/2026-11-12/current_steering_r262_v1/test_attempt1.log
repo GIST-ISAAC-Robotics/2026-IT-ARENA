@@ -1,0 +1,64 @@
+................................................FF..........             [100%]
+=================================== FAILURES ===================================
+_ test_current_fault_still_stops_with_new_previous_request[front_contact-solo_baseline] _
+
+scope = 'solo_baseline', fault = 'front_contact'
+
+    @pytest.mark.parametrize('scope',SCOPES)
+    @pytest.mark.parametrize('fault',('epoch','side','path_expired','clock_unverified','steering_range','front_contact'))
+    def test_current_fault_still_stops_with_new_previous_request(scope,fault):
+        out,submitted,current,scene,history,cfg=fixture_for(scope)
+        current['previous_steering_rad']+=.04
+        if fault=='epoch':current['epoch']+=1
+        elif fault=='side':current['side']='right' if current['side']=='left' else 'left'
+        elif fault=='path_expired':out[2]['normal']['path_source_s']-=1
+        elif fault=='clock_unverified':current['timing_verified']=False
+        elif fault=='steering_range':current['previous_steering_rad']=cfg.max_steering_rad+.01
+        else:
+            _,scan,_=restore_call(current,history.config)
+            angles=scan_angles(scan)+history.config.lidar_yaw_rad
+            distances=list(scan.ranges_m)
+            for i,angle in enumerate(angles):
+                if abs(math.remainder(angle,math.tau))<.15:distances[i]=.05
+            scan=replace(scan,ranges_m=tuple(distances))
+            current['scan']['measurements']['ranges_m']=distances
+            scene=motion_scene(scan,history,current['reference_s'],timing_verified=True,
+                               epoch=current['epoch'],rear_half_angle_deg=current['rear_half_angle_deg'])
+        result=candidate.rebase(out,submitted,current,scene,history,cfg)
+>       assert result['speed_mps']==0
+E       assert 0.44999999999999996 == 0
+
+artifacts/validation/2026-11-12/current_steering_r262_v1/test_candidate.py:55: AssertionError
+_ test_current_fault_still_stops_with_new_previous_request[front_contact-solo_or_guard_parallel] _
+
+scope = 'solo_or_guard_parallel', fault = 'front_contact'
+
+    @pytest.mark.parametrize('scope',SCOPES)
+    @pytest.mark.parametrize('fault',('epoch','side','path_expired','clock_unverified','steering_range','front_contact'))
+    def test_current_fault_still_stops_with_new_previous_request(scope,fault):
+        out,submitted,current,scene,history,cfg=fixture_for(scope)
+        current['previous_steering_rad']+=.04
+        if fault=='epoch':current['epoch']+=1
+        elif fault=='side':current['side']='right' if current['side']=='left' else 'left'
+        elif fault=='path_expired':out[2]['normal']['path_source_s']-=1
+        elif fault=='clock_unverified':current['timing_verified']=False
+        elif fault=='steering_range':current['previous_steering_rad']=cfg.max_steering_rad+.01
+        else:
+            _,scan,_=restore_call(current,history.config)
+            angles=scan_angles(scan)+history.config.lidar_yaw_rad
+            distances=list(scan.ranges_m)
+            for i,angle in enumerate(angles):
+                if abs(math.remainder(angle,math.tau))<.15:distances[i]=.05
+            scan=replace(scan,ranges_m=tuple(distances))
+            current['scan']['measurements']['ranges_m']=distances
+            scene=motion_scene(scan,history,current['reference_s'],timing_verified=True,
+                               epoch=current['epoch'],rear_half_angle_deg=current['rear_half_angle_deg'])
+        result=candidate.rebase(out,submitted,current,scene,history,cfg)
+>       assert result['speed_mps']==0
+E       assert 0.35 == 0
+
+artifacts/validation/2026-11-12/current_steering_r262_v1/test_candidate.py:55: AssertionError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-12/current_steering_r262_v1/test_candidate.py::test_current_fault_still_stops_with_new_previous_request[front_contact-solo_baseline]
+FAILED artifacts/validation/2026-11-12/current_steering_r262_v1/test_candidate.py::test_current_fault_still_stops_with_new_previous_request[front_contact-solo_or_guard_parallel]
+2 failed, 58 passed in 2.88s

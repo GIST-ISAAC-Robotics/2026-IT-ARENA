@@ -29,15 +29,23 @@ def transport_points(points, history, source_time, reference_time):
     return np.asarray(points, dtype=float) @ np.array([[c, s], [-s, c]]) + [dx, dy]
 
 
-def _measurement_transforms(scan, history, now, *, timing_verified, motion_epoch=0):
-    """원천 배열을 같은 점별 시각으로 보정한다. SDK 추정/미검증 시각은 실행 불가.
+def _measurement_transforms(scan, history, now, *, timing_verified, motion_epoch=0,
+                            timing_policy=None):
+    """원천 배열을 같은 점별 시각으로 보정한다. 기본값은 검증된 시각만 사용한다.
 
     timing_verified는 기존 운영 관문과 별도 호출 증거다. simulation_acquisition은
-    시뮬의 광선 취득 시각이며 실물 시간 검증이 아니다. ROS 어댑터 자동 연결 없음.
+    시뮬의 광선 취득 시각이며 실물 시간 검증이 아니다. 추정 시각은 별도 명시
+    정책을 받아야 하며 scan.time_basis나 timing_verified를 바꾸지 않는다.
     """
     if not isinstance(scan, MeasurementScan):
         raise MotionUnavailable('measurement_scan_required')
-    if not timing_verified or scan.time_basis == 'unverified_estimate':
+    timing_policy = history.scan_time_policy if timing_policy is None else timing_policy
+    if timing_policy not in ('verified_only', 'host_estimated_v1'):
+        raise MotionUnavailable('scan_timing_policy_invalid')
+    estimated = scan.time_basis == 'unverified_estimate'
+    if timing_policy == 'host_estimated_v1' and not estimated:
+        raise MotionUnavailable('scan_timing_policy_basis_mismatch')
+    if (estimated and timing_policy != 'host_estimated_v1') or (not estimated and not timing_verified):
         raise MotionUnavailable('scan_timing_unverified')
     if scan.source_frame_id != 'laser_frame':
         raise MotionUnavailable('scan_frame_mismatch')
@@ -56,9 +64,11 @@ def _measurement_transforms(scan, history, now, *, timing_verified, motion_epoch
     return transforms, config, epoch
 
 
-def measurement_motion_scene(scan, history, now, *, timing_verified, rear_half_angle_deg=30., motion_epoch=0):
+def measurement_motion_scene(scan, history, now, *, timing_verified, rear_half_angle_deg=30., motion_epoch=0,
+                             timing_policy=None):
     transforms, config, epoch = _measurement_transforms(
-        scan, history, now, timing_verified=timing_verified, motion_epoch=motion_epoch)
+        scan, history, now, timing_verified=timing_verified, motion_epoch=motion_epoch,
+        timing_policy=timing_policy)
     if type(scan) is MeasurementScan:
         from arena_autonomy.native_geometry import native_motion_scene
         return native_motion_scene(scan, transforms, now, config, epoch, rear_half_angle_deg)
@@ -71,21 +81,27 @@ def measurement_motion_scene(scan, history, now, *, timing_verified, rear_half_a
         rear_half_angle_deg=rear_half_angle_deg, preserve_sampling=True)
 
 
-def measurement_motion_points(scan, history, now, *, timing_verified):
+def measurement_motion_points(scan, history, now, *, timing_verified, timing_policy=None):
     if type(scan) is not MeasurementScan:
         scene = measurement_motion_scene(scan, history, now, timing_verified=timing_verified,
-                                         rear_half_angle_deg=0.)
+                                         rear_half_angle_deg=0., timing_policy=timing_policy)
         return (np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1, 2),
                 np.asarray([r.source_index for r in scene.rays if r.status == 'return'], dtype=int))
-    transforms, config, epoch = _measurement_transforms(scan, history, now, timing_verified=timing_verified)
+    transforms, config, epoch = _measurement_transforms(scan, history, now, timing_verified=timing_verified,
+                                                      timing_policy=timing_policy)
     from arena_autonomy.native_geometry import native_motion_points
     return native_motion_points(scan, transforms, now, config, epoch)
 
 
-def motion_scene(scan, history, now, *, timing_verified, epoch=0, rear_half_angle_deg=30.):
+def motion_scene(scan, history, now, *, timing_verified, epoch=0, rear_half_angle_deg=30.,
+                 timing_policy=None):
+    timing_policy = history.scan_time_policy if timing_policy is None else timing_policy
     if isinstance(scan, MeasurementScan):
         return measurement_motion_scene(scan,history,now,timing_verified=timing_verified,
-                                       rear_half_angle_deg=rear_half_angle_deg,motion_epoch=epoch)
+                                       rear_half_angle_deg=rear_half_angle_deg,motion_epoch=epoch,
+                                       timing_policy=timing_policy)
+    if timing_policy != 'verified_only':
+        raise MotionUnavailable('estimated_policy_requires_native_measurements')
     if not timing_verified:
         raise MotionUnavailable('scan_timing_unverified')
     if scan.header.frame_id != 'laser_frame':

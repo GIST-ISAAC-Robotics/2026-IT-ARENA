@@ -25,7 +25,7 @@ class TimedPolicy(PartialObservationPolicy):
     def evaluate(self, scan, points, history, now, speed, steering=0., previous_steering=0.,
                  wheelbase=.135, length=.20, width=.15):
         first = scan_first_stamp(scan)
-        expected, ids, _ = project_scan(scan,history,now,mode='both',timing_verified=True)
+        expected, ids, _ = project_scan(scan,history,now,mode='both',timing_verified=history.scan_time_policy=='verified_only')
         points = np.asarray(points, dtype=float).reshape(-1,2)
         if expected.shape != points.shape or not np.allclose(expected, points, rtol=0., atol=1e-8):
             raise ValueError('point order/coordinate mismatch in timed trial')
@@ -146,7 +146,7 @@ class RecoveryPolicy(TimedPolicy):
             # 과거 진단 예시를 전체 상태로 되살리지 않는다.
             return {**result,'anchor_diagnostic':dict(reason='incomplete_threat_set',released=False)}
         first=scan_first_stamp(scan)
-        projected,ids,_=project_scan(scan,history,now,mode='both',timing_verified=True)
+        projected,ids,_=project_scan(scan,history,now,mode='both',timing_verified=history.scan_time_policy=='verified_only')
         if projected.shape != np.asarray(points).shape or not np.allclose(points,projected,rtol=0,atol=1e-8):
             raise ValueError('recovery coordinate mismatch')
         diagnostic=self.anchor_probe.observe(points,ids,history,now,first)
@@ -156,7 +156,7 @@ class RecoveryPolicy(TimedPolicy):
         if not diagnostic['matched']:
             # 옛 위치를 새 유효 반환으로 확인하는 별도 경로. 원래 점 재관측/수명
             # 조건은 그대로이며, 새 경로도 두 스캔 확인 후 현재 입력 재검사가 필요하다.
-            scene=motion_scene(scan,history,now,timing_verified=True,rear_half_angle_deg=0.)
+            scene=motion_scene(scan,history,now,timing_verified=history.scan_time_policy=='verified_only',rear_half_angle_deg=0.)
             clearance=self.clearance_probe.observe(scene,history,points,ids)
             clearance={**clearance,'threat_set':self.anchor_threat_summary,'released':False}
             result['clearance_diagnostic']=clearance

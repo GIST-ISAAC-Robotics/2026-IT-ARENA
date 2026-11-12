@@ -64,7 +64,7 @@ import numpy as np
 import arena_autonomy.m3_execution_trial as mx
 from arena_autonomy.lateral_intent import (LateralIntentConfig, ObservationGrid, cell_coordinates, side_threats)
 from arena_autonomy.m3_observed_follow import command_arc
-from arena_autonomy.observation_support import depth_support
+from arena_autonomy.observation_support import depth_support, depth_and_masked_support
 from arena_autonomy.rear_fringe_trial import bounded_rear_fringe
 from arena_autonomy.static_side_return import StaticSideTracker
 from arena_autonomy.parallel_lane_trial import lateral_excursion
@@ -228,10 +228,11 @@ def motion_region(scene, speed, target, steering, previous, dt, follow_cfg, lat_
     if not len(q):
         return result
     pad = mx.ray_padding(scene, lat_cfg, follow_cfg.object_motion_bound_mps)
-    free = depth_support(scene, q, pad)
+    classified = depth_and_masked_support(scene, q, pad)
+    free = depth_support(scene, q, pad) if classified is None else classified[0]
     if np.any(~free):
         masked = np.zeros(len(q), dtype=bool)
-        masked[~free] = mx.masked_only(scene, q[~free], pad)
+        masked[~free] = mx.masked_only(scene, q[~free], pad) if classified is None else classified[1][~free]
         if context is not None:
             context.update(queries=q, padding=pad, free=free, masked=masked)
         result['unobserved'] = int(np.sum(~free & ~masked))

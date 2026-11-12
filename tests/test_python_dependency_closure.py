@@ -80,3 +80,19 @@ def test_archive_members_give_same_closure_as_disk(tmp_path):
     del members[f'{PKG}/leaf.py']
     with pytest.raises(MissingInternalDependency, match='leaf'):
         collect(['scripts/entry.py'], members=members)
+
+
+def test_registered_native_dependency_keeps_rebuild_sources_without_claiming_binary(tmp_path):
+    from python_dependency_closure import NATIVE_MODULES
+    name='arena_autonomy._numeric_kernels'
+    base=sample(tmp_path, **{f'{PKG}/leaf.py': 'from arena_autonomy import _numeric_kernels as value\n',
+        **{p: '// native source\n' for p in NATIVE_MODULES[name]}})
+    disk=collect(['scripts/entry.py'],base=base)
+    assert disk['native_modules'][name]==list(NATIVE_MODULES[name])
+    assert all(p in disk['files'] for p in NATIVE_MODULES[name])
+    assert not any(p.endswith('.so') for p in disk['files'])
+    members={p.relative_to(base).as_posix():p.read_bytes() for p in base.rglob('*') if p.is_file()}
+    assert collect(['scripts/entry.py'],members=members)==disk
+    del members[NATIVE_MODULES[name][-1]]
+    with pytest.raises(MissingInternalDependency,match='missing native build sources'):
+        collect(['scripts/entry.py'],members=members)

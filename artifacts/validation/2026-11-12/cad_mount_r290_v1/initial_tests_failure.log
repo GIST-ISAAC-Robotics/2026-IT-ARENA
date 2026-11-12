@@ -1,0 +1,27 @@
+.....................F.................................................. [ 35%]
+........................................................................ [ 71%]
+.........................................................                [100%]
+=================================== FAILURES ===================================
+__________ test_traffic_validator_marker_flag_is_opt_in_and_forwarded __________
+
+    def test_traffic_validator_marker_flag_is_opt_in_and_forwarded():
+        source = (ROOT/'scripts/validate_g1_traffic.py').read_text(encoding='utf-8')
+        assert "parser.add_argument('--pilot-marker-z', type=float, default=None," in source
+        assert "extra.append(f'pilot_marker_z:={args.pilot_marker_z:.3f}')" in source
+        # 범위 밖·G1 계열이 아닌 모드는 ROS를 시작하기 전에 거절한다.
+        for extra in (['--mode', 'g1', '--pilot-marker-z', '0.10'], ['--mode', 'r0', '--pilot-marker-z', '0.14']):
+            result = subprocess.run([sys.executable, '-B', str(ROOT/'scripts/validate_g1_traffic.py'), '--case', 'stop_restart',
+                                     '--seed', '0', '--output', '/tmp/jr60_reject_only', *extra],
+                                    cwd=ROOT, capture_output=True, text=True)
+            assert result.returncode == 2 and '--pilot-marker-z' in result.stderr
+        # launch 사슬: g1_follow → (local_pursuit/demo) → simulation의 pilot_marker_z
+        follow = (ROOT/'src/arena_bringup/launch/g1_follow.launch.py').read_text(encoding='utf-8')
+        assert "launch_arguments={'pilot_marker_z': LaunchConfiguration('pilot_marker_z')}" in follow
+        pursuit = (ROOT/'src/arena_bringup/launch/local_pursuit.launch.py').read_text(encoding='utf-8')
+>       assert '"pilot_marker_z": ""}' in pursuit and '**{key: LaunchConfiguration(key) for key in defaults}' in pursuit
+E       assert ('"pilot_marker_z": ""}' in '"""새 RGB+C1+독립 IMU 구성의 재현 가능한 기본 실행. 기존 데모는 보존."""\nfrom pathlib import Path\nfrom ament_index_python.packages import...  "lidar_compensation": "both",\n            "depth_camera": "false", "lidar_rate_hz": "10.0",\n        }.items())])\n')
+
+tests/test_jr60_adoption_profile.py:197: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_jr60_adoption_profile.py::test_traffic_validator_marker_flag_is_opt_in_and_forwarded
+1 failed, 200 passed in 9.50s

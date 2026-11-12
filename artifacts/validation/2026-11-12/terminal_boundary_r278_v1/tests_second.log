@@ -1,0 +1,16 @@
+.......F................................................................ [ 72%]
+...........................                                              [100%]
+=================================== FAILURES ===================================
+________ test_front_occupancy_still_blocks_forward_after_path_selection ________
+
+    def test_front_occupancy_still_blocks_forward_after_path_selection():
+        _,rows=sequence(blocked=True)
+        assert any('single_wall_reacquire' in r[2] for r in rows)
+        assert all(r[0]==0 for r in rows)
+>       assert rows[-1][2]['reason'] in ('follow_gap_hold','follow_release_wait')
+E       AssertionError: assert 'follow_steer_in_place' in ('follow_gap_hold', 'follow_release_wait')
+
+artifacts/validation/2026-11-12/terminal_boundary_r278_v1/test_candidate.py:72: AssertionError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-12/terminal_boundary_r278_v1/test_candidate.py::test_front_occupancy_still_blocks_forward_after_path_selection
+1 failed, 98 passed in 16.32s

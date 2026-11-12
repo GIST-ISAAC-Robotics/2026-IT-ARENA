@@ -41,6 +41,7 @@ from dataclasses import dataclass, replace
 import math
 
 import numpy as np
+from arena_autonomy import numeric_kernels
 
 from arena_autonomy.lidar_motion import MotionUnavailable
 from arena_autonomy.local_follow import FollowConfig, LocalFollow, pursue_path
@@ -226,6 +227,8 @@ def masked_only(scene, queries, pad):
     origins = np.array([r.ray_origin_xy_m for r in scene.rays])
     directions = np.array([r.direction_xy for r in scene.rays])
     status = np.array([r.status for r in scene.rays])
+    status_code = np.array([0 if r.status=='unknown' else 1 if r.status=='return' else
+                            2 if r.status=='masked' else 3 for r in scene.rays],dtype=np.uint8)
     indices = np.array([r.source_index for r in scene.rays])
     depth = np.array([math.dist(r.ray_origin_xy_m, r.hit_xy_m) if r.status == 'return' else -1. for r in scene.rays])
     n = len(origins)
@@ -243,6 +246,8 @@ def masked_only(scene, queries, pad):
     ray_order = np.tile(order, 3)
 
     def evaluate(part, chosen):
+        native=numeric_kernels.masked(part,chosen,origins,directions,indices,status_code,depth,pad)
+        if native is not None:return native
         present = chosen < n
         take = np.minimum(chosen, n-1)
         dx = part[:, 0, None]-origins[take, 0]

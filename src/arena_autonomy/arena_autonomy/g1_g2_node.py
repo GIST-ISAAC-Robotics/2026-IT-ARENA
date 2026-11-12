@@ -48,17 +48,21 @@ def status_detail(detail):
 class G1G2Node(LocalPursuit):
     def __init__(self):
         self.decision_delivery = None
+        self.decision_notice = None
+        self.decision_guard = None
+        self.recheck_in_worker = False
         self.current_path_recheck = None
         super().__init__()
         execution = self.declare_parameter('g1_decision_execution', 'inline').value
         if execution not in ('inline', 'process_candidate'):
             raise ValueError('registered decision execution required')
         submission = self.declare_parameter('g1_submission_policy', 'original_v1').value
+        native_representation = 'native_estimated_v1' if self.hardware_shadow else 'native_simulation_v1'
         if submission not in ('original_v1', 'fresh_native_v1'):
             raise ValueError('registered decision submission policy required')
         if submission == 'fresh_native_v1' and (execution != 'process_candidate'
-                or self.get_parameter('lidar_input_representation').value != 'native_simulation_v1'):
-            raise ValueError('fresh submission requires process_candidate and native_simulation_v1')
+                or self.get_parameter('lidar_input_representation').value != native_representation):
+            raise ValueError('fresh submission requires process_candidate and the selected native time domain')
         retain_reference = self.follow.config.expiry_route_reference_trial
         if retain_reference and (execution != 'process_candidate' or submission != 'fresh_native_v1'):
             raise ValueError('expiry reference requires process_candidate and fresh_native_v1')
@@ -71,32 +75,59 @@ class G1G2Node(LocalPursuit):
             if self.follow.config.guard_observation_policy == 'selected_r181':
                 from arena_autonomy import guard_observation_policy
                 self.current_path_recheck = guard_observation_policy
+        recheck_execution = self.declare_parameter('g1_current_recheck_execution', 'parent').value
+        if recheck_execution not in ('parent', 'worker_event_v1'):
+            raise ValueError('registered current recheck execution required')
+        self.recheck_in_worker = recheck_execution == 'worker_event_v1'
+        numeric_execution=self.declare_parameter('g1_numeric_execution','python').value
+        if numeric_execution not in ('python','native_v1') or (numeric_execution=='native_v1' and not self.recheck_in_worker):
+            raise ValueError('native numeric execution requires selected worker_event_v1')
+        if self.recheck_in_worker and (execution != 'process_candidate' or submission != 'fresh_native_v1'
+                or recheck != 'selected_v1' or self.follow.config.guard_observation_policy != 'selected_r181'):
+            raise ValueError('worker recheck requires process/fresh native/selected observation policy')
         if execution == 'process_candidate':
-            if self.get_parameter('use_sim_time').value is not True or self.settings['control_rate_hz'] != 50.:
-                raise ValueError('process candidate requires simulation and a 50Hz receiving parent')
+            if (not (self.get_parameter('use_sim_time').value is True or self.hardware_shadow)
+                    or self.settings['control_rate_hz'] != 50.):
+                raise ValueError('process candidate requires simulation or isolated hardware shadow and a 50Hz parent')
             from arena_autonomy.decision_process import DecisionProcess
             from arena_autonomy.decision_delivery import DecisionDelivery
             delivery_type = DecisionDelivery
+            worker_type = DecisionProcess
             if submission == 'fresh_native_v1':
                 from arena_autonomy.fresh_submission import FreshStartDelivery
                 delivery_type = FreshStartDelivery
+            if self.recheck_in_worker:
+                from arena_autonomy.recheck_process import TwoStageProcess
+                from arena_autonomy.recheck_delivery import RecheckDelivery
+                delivery_type, worker_type = RecheckDelivery, TwoStageProcess
             header = dict(schema=5, controller_mode='g1_g2_handoff_trial',
                 motion_config=asdict(self.motion.history.config), follow_config=asdict(self.follow.config),
                 execution_config=asdict(self.follow.execution))
+            if numeric_execution!='python':header['numeric_execution']=numeric_execution
             delivery_options = dict(align_first_source=True)
             if retain_reference:
                 delivery_options['retain_expired_reference'] = True
-            self.decision_delivery = delivery_type(DecisionProcess(header), **delivery_options)
+            self.decision_delivery = delivery_type(worker_type(header), **delivery_options)
+            if self.recheck_in_worker:
+                from arena_autonomy.completion_notice import CompletionNotice
+                self.decision_guard = self.create_guard_condition(self.on_decision_ready)
+                self.decision_notice = CompletionNotice(self.decision_delivery.worker.connection,
+                                                        self.decision_guard.trigger)
             self.last_request_time_s = -math.inf
             self.follow_trace.emit('reset', dict(reason='process_candidate_start',
                 execution=execution, decision_dt_s=.1, receive_rate_hz=50., align_first_source=True))
+            if self.hardware_shadow:
+                self.follow_trace.emit('execution_environment', dict(mode='hardware_shadow_v1',
+                    use_sim_time=False, drive_output=False, motion_timing_verified=self.motion.verified,
+                    motion_time_policy=getattr(self.motion,'timing_policy','verified_only')))
             if submission == 'fresh_native_v1':
                 self.follow_trace.emit('decision_submission_policy', dict(policy=submission,
                     completion_window_s=FreshStartDelivery.completion_window_s,
                     evaluation_delay_injection=False, source_timestamps_preserved=True))
             if self.current_path_recheck is not None:
                 self.follow_trace.emit('current_path_recheck_policy', dict(policy=recheck,
-                    independent_guard_required=True, evaluation_delay_injection=False))
+                    independent_guard_required=True, evaluation_delay_injection=False,
+                    **({'execution': recheck_execution,'numeric_execution':numeric_execution} if self.recheck_in_worker else {})))
             if retain_reference:
                 self.follow_trace.emit('expiry_reference_policy', dict(policy='selected_wall_recent_v3',
                     command_retained=False, evaluation_delay_injection=False))
@@ -122,6 +153,9 @@ class G1G2Node(LocalPursuit):
         delivery = self.decision_delivery
         if delivery is None:
             return super().control()
+        notice = getattr(self, 'decision_notice', None)
+        if notice is not None and notice.fault:
+            delivery.worker.fault = 'completion_notice: '+notice.fault
         self.async_inputs_ready = False
         self.decision_command_stamp_s = None
         self.decision_output_dt_s = max(0., min(.1, self.now_s()-self.last_request_time_s))
@@ -142,12 +176,36 @@ class G1G2Node(LocalPursuit):
                 speed = self.motion.history.wheels.values[-1] if self.motion.history.wheels.values else 0.
                 snapshot = snapshot_call(self.scan, self.motion.history, reference,
                     self.motion.counts['resets'], speed, self.side, self.last_steering, .1,
-                    self.motion.verified, self.rear_blind_half_angle)
+                    self.motion.verified, self.rear_blind_half_angle,
+                    timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'))
                 delivery.offer(snapshot)
         return result
 
+    def on_decision_ready(self):
+        notice = self.decision_notice
+        if notice is None:
+            return
+        try:
+            # 입력 부적합 때 command()가 호출되지 않아도 완료는 회수한다.
+            # 결과 적용은 기존 control()의 신호/센서/발행 경계를 모두 거친다.
+            self.decision_delivery.collect()
+            if self.decision_delivery.worker.fault:
+                notice.close()
+                self.decision_notice = None
+            self.control()
+        finally:
+            notice.acknowledge()
+
     def destroy_node(self):
         if self.decision_delivery is not None:
+            if self.decision_notice is not None:
+                report = self.decision_notice.close()
+                if report['alive'] or report['fault']:
+                    self.get_logger().warning('Decision notice cleanup: '+str(report))
+                self.decision_notice = None
+            if self.decision_guard is not None:
+                self.destroy_guard_condition(self.decision_guard)
+                self.decision_guard = None
             self.stop()
             cleanup = self.decision_delivery.worker.close()
             if cleanup and (cleanup['forced'] or cleanup['exitcode'] != 0):
@@ -156,8 +214,8 @@ class G1G2Node(LocalPursuit):
 
     def create_follow_trace(self, trace_path):
         enabled = self.declare_parameter('g1_g2_simulation_trial',False).value
-        if enabled is not True or self.get_parameter('use_sim_time').value is not True:
-            raise ValueError('G1/G2 handoff requires explicit simulation-only activation')
+        if enabled is not True or not (self.get_parameter('use_sim_time').value is True or self.hardware_shadow):
+            raise ValueError('G1/G2 handoff requires explicit trial activation and a registered execution environment')
         # 기본은 기존 즉시 준비 감속이다. 새 관측 근거 조건은 이름으로 명시할 때만 쓴다.
         policy = self.declare_parameter('g1_g2_preparation_policy','front_patch_v0').value
         if type(policy) is not str or policy not in PREPARATION_POLICIES:
@@ -231,20 +289,35 @@ class G1G2Node(LocalPursuit):
                 return None
             if item['kind'] == 'fault':
                 return 0., self.last_steering, dict(reason='decision_process_fault', input_error=item['reason'])
+            if item['kind'] == 'needs_recheck':
+                from arena_autonomy.follow_trace import snapshot_call
+                now = self.motion.last_meta['reference_stamp_s']
+                speed = self.motion.history.wheels.values[-1] if self.motion.history.wheels.values else 0.
+                current = snapshot_call(self.scan, self.motion.history, now, self.motion.counts['resets'],
+                    speed, self.side, self.last_steering, self.decision_output_dt_s,
+                    self.motion.verified, self.rear_blind_half_angle,
+                    timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'))
+                self.decision_delivery.offer_recheck(current)
+                return None
             # 출력과 적용 여부를 분리한다. 버린 결과도 실제 계산/재생 증거로 보존한다.
             evidence = dict(input=item['input'], output=item['result']['output'],
-                delivery={k:v for k,v in item.items() if k not in ('input','result','output')},
+                delivery={k:v for k,v in item.items() if k not in ('input','result','output','recheck_input','recheck_result')},
                 compute={k:v for k,v in item['result'].items() if k != 'output'})
+            checked = item.get('recheck_result')
+            if checked is not None:
+                evidence['current_rebase'] = dict(input=item['recheck_input'], output=checked['output'],
+                    computation_wall_ms=1000*(checked['completed_wall_s']-checked['began_wall_s']),
+                    compute={k:v for k,v in checked.items() if k != 'output'})
             if item['kind'] == 'discarded':
                 self.follow_trace.emit('call', evidence)
                 self.follow.reset()
                 self.follow_trace.emit('reset', dict(reason=item['reason']))
                 return None
             output = item['output']
-            reference = item['reference_s']
-            current_result = None
+            reference = item.get('command_reference_s', item['reference_s'])
+            current_result = None if checked is None else checked['output']
             recheck = getattr(self, 'current_path_recheck', None)
-            if recheck is not None and recheck.supported(output):
+            if not getattr(self, 'recheck_in_worker', False) and recheck is not None and recheck.supported(output):
                 from arena_autonomy.follow_trace import snapshot_call
                 from arena_autonomy.lidar_motion import MotionUnavailable
                 from arena_autonomy.scene_motion import motion_scene
@@ -253,11 +326,13 @@ class G1G2Node(LocalPursuit):
                 speed = self.motion.history.wheels.values[-1] if self.motion.history.wheels.values else 0.
                 current = snapshot_call(self.scan, self.motion.history, now, self.motion.counts['resets'],
                     speed, self.side, self.last_steering, self.decision_output_dt_s,
-                    self.motion.verified, self.rear_blind_half_angle)
+                    self.motion.verified, self.rear_blind_half_angle,
+                    timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'))
                 try:
                     scene = motion_scene(self.scan, self.motion.history, now,
                         timing_verified=self.motion.verified, epoch=self.motion.counts['resets'],
-                        rear_half_angle_deg=self.rear_blind_half_angle)
+                        rear_half_angle_deg=self.rear_blind_half_angle,
+                        timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'))
                     current_result = recheck.rebase(output, item['input'], current, scene,
                                                    self.motion.history, self.follow.config)
                 except (MotionUnavailable, ValueError) as error:

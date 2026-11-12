@@ -1,0 +1,16 @@
+F........................                                                [100%]
+=================================== FAILURES ===================================
+___ test_recheck_can_finish_before_plan_and_old_command_deadline_is_at_risk ____
+
+    def test_recheck_can_finish_before_plan_and_old_command_deadline_is_at_risk():
+        a=arguments();before=copy.deepcopy(a);r=assess(**a)
+        assert r['offer'] and r['reason']=='useful_before_new_plan'
+>       assert a==before and r['original_command_deadline_s']==10.06
+E       AssertionError: assert ({'current_bud...s': 9.86, ...} == {'current_bud...s': 9.86, ...}
+E         Omitting 10 identical items, use -vv to show
+E         Use -v to get more diff and 10.059999999999999 == 10.06)
+
+artifacts/validation/2026-11-12/conditional_route_execution_r271_v1/test_submission.py:16: AssertionError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-12/conditional_route_execution_r271_v1/test_submission.py::test_recheck_can_finish_before_plan_and_old_command_deadline_is_at_risk
+1 failed, 24 passed in 74.12s (0:01:14)

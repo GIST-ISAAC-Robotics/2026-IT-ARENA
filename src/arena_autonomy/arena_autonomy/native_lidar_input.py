@@ -33,6 +33,9 @@ def subscribe_scan(node,callback,qos):
     from sensor_msgs.msg import LaserScan
     from std_msgs.msg import String
     mode=str(node.declare_parameter('lidar_input_representation','laser_scan').value)
+    if (getattr(getattr(node,'motion',None),'timing_policy','verified_only') == 'host_estimated_v1'
+            and mode != 'native_estimated_v1'):
+        raise ValueError('host estimate policy requires the native estimated representation')
     if mode=='laser_scan':
         return node.create_subscription(LaserScan,'/scan',callback,qos)
     if mode not in ('native_simulation_v1','native_estimated_v1'):

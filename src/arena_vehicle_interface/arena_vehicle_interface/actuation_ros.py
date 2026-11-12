@@ -27,6 +27,7 @@ from arena_vehicle_interface.drive_feedback import (
     MODE_LEGACY, MODE_MOTOR, TOPIC_BY_MODE, MotorEncoderSpec, parse_legacy_wheels, parse_motor_state, validate_mode,
 )
 from arena_vehicle_interface.node_lifecycle import run_node
+from arena_vehicle_interface.offer_clock import POLICIES, SHARED_CLOCK, offer_send_eligible
 
 
 def stamp_us(stamp):
@@ -57,6 +58,10 @@ class ActuationHost(TransportNode):
     def __init__(self):
         super().__init__('actuation_host')
         self.wall_timeout = self.wall_limit()
+        self.declare_parameter('offer_time_policy', SHARED_CLOCK)
+        self.offer_time_policy = str(self.get_parameter('offer_time_policy').value)
+        if self.offer_time_policy not in POLICIES:
+            raise ValueError('unknown offer_time_policy')
         self.producer, self.decoder = CommandProducer(), Decoder()
         self.offer = None
         self.offer_wall = 0.
@@ -91,8 +96,10 @@ class ActuationHost(TransportNode):
                     future.set_result((payload.get('accepted') is True, str(payload.get('reason'))))
 
     def fresh_offer(self):
-        return (self.offer is not None and time.monotonic() - self.offer_wall < self.wall_timeout and
-                0 <= self.now_us() - self.offer.get('lease_issued_us', -1) < 100_000)
+        # receiver_owned_lease에서는 송신 후보이며 실제 임대 만료는 MCU가 판정한다.
+        return offer_send_eligible(self.offer, policy=getattr(self, 'offer_time_policy', SHARED_CLOCK),
+                                   host_now_us=self.now_us(), received_wall=self.offer_wall,
+                                   now_wall=time.monotonic(), wall_timeout=self.wall_timeout)
 
     async def control(self, kind, response):
         if kind != 'STOP' and not self.fresh_offer():

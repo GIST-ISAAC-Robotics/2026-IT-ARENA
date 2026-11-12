@@ -1,0 +1,90 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+__________ test_node_observer_option_only_changes_diagnostics[False] ___________
+
+enabled = False
+
+    @pytest.mark.parametrize('enabled', [False, True])
+    def test_node_observer_option_only_changes_diagnostics(enabled):
+        args = ['--ros-args', '-p', 'use_sim_time:=true', '-p', 'vision_execution:=process',
+                '-p', f'vehicle_marker_observer_enabled:={str(enabled).lower()}',
+                '-p', 'vehicle_marker_ids:="12,13"', '-r', '/drive:=/r340_test/drive',
+                '-r', '/autonomy/status:=/r340_test/status']
+        rclpy.init(args=args)
+        node = None
+        try:
+>           node = LocalPursuit()
+
+artifacts/validation/2026-11-13/vehicle_marker_observer_r340_v1/test_node.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.local_pursuit.LocalPursuit object at 0x7b1fb2b90e90>
+
+    def __init__(self):
+        super().__init__("local_pursuit")
+        trial_clock = self.get_parameter('use_sim_time').value or self.hardware_shadow
+        self.rear_blind_half_angle = float(self.declare_parameter('rear_blind_half_angle_deg', 30.).value)
+        if not 0 <= self.rear_blind_half_angle <= 80:
+            raise ValueError('rear_blind_half_angle_deg must be within 0..80')
+        # 시험 전용 장착 구조 각도(JSON). 기본 ''이면 기존 후방 반각 실수 그대로.
+        from arena_autonomy.local_scene import blind_parameter
+        self.rear_blind_half_angle = blind_parameter(self.rear_blind_half_angle,
+            str(self.declare_parameter('lidar_blind_sectors_json', '').value))
+        # 시험 전용 알려진 구조 가림 정책. 기본 off이면 FollowConfig 기본값과 같다.
+        structure_policy = str(self.declare_parameter('known_structure_policy', 'off').value)
+        structure_sectors = str(self.get_parameter('lidar_blind_sectors_json').value) if structure_policy != 'off' else ''
+        if self.motion is None:
+>           raise ValueError("local_pursuit는 엔코더/IMU 운동 보정이 필요합니다.")
+E           ValueError: local_pursuit는 엔코더/IMU 운동 보정이 필요합니다.
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:41: ValueError
+----------------------------- Captured stderr call -----------------------------
+[WARN] [1794513667.243269714] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1794513667.243310039] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[INFO] [1794513667.676089548] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=none; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+___________ test_node_observer_option_only_changes_diagnostics[True] ___________
+
+enabled = True
+
+    @pytest.mark.parametrize('enabled', [False, True])
+    def test_node_observer_option_only_changes_diagnostics(enabled):
+        args = ['--ros-args', '-p', 'use_sim_time:=true', '-p', 'vision_execution:=process',
+                '-p', f'vehicle_marker_observer_enabled:={str(enabled).lower()}',
+                '-p', 'vehicle_marker_ids:="12,13"', '-r', '/drive:=/r340_test/drive',
+                '-r', '/autonomy/status:=/r340_test/status']
+        rclpy.init(args=args)
+        node = None
+        try:
+>           node = LocalPursuit()
+
+artifacts/validation/2026-11-13/vehicle_marker_observer_r340_v1/test_node.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.local_pursuit.LocalPursuit object at 0x7b1fd819bda0>
+
+    def __init__(self):
+        super().__init__("local_pursuit")
+        trial_clock = self.get_parameter('use_sim_time').value or self.hardware_shadow
+        self.rear_blind_half_angle = float(self.declare_parameter('rear_blind_half_angle_deg', 30.).value)
+        if not 0 <= self.rear_blind_half_angle <= 80:
+            raise ValueError('rear_blind_half_angle_deg must be within 0..80')
+        # 시험 전용 장착 구조 각도(JSON). 기본 ''이면 기존 후방 반각 실수 그대로.
+        from arena_autonomy.local_scene import blind_parameter
+        self.rear_blind_half_angle = blind_parameter(self.rear_blind_half_angle,
+            str(self.declare_parameter('lidar_blind_sectors_json', '').value))
+        # 시험 전용 알려진 구조 가림 정책. 기본 off이면 FollowConfig 기본값과 같다.
+        structure_policy = str(self.declare_parameter('known_structure_policy', 'off').value)
+        structure_sectors = str(self.get_parameter('lidar_blind_sectors_json').value) if structure_policy != 'off' else ''
+        if self.motion is None:
+>           raise ValueError("local_pursuit는 엔코더/IMU 운동 보정이 필요합니다.")
+E           ValueError: local_pursuit는 엔코더/IMU 운동 보정이 필요합니다.
+
+src/arena_autonomy/arena_autonomy/local_pursuit.py:41: ValueError
+----------------------------- Captured stderr call -----------------------------
+[WARN] [1794513667.700852002] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1794513667.700866549] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[INFO] [1794513667.719163883] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=none; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-13/vehicle_marker_observer_r340_v1/test_node.py::test_node_observer_option_only_changes_diagnostics[False]
+FAILED artifacts/validation/2026-11-13/vehicle_marker_observer_r340_v1/test_node.py::test_node_observer_option_only_changes_diagnostics[True]
+2 failed in 1.80s

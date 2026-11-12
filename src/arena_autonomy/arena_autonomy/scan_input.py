@@ -64,16 +64,22 @@ def audit_scan_front(scan, yaw=0., *, metadata_only=False):
     return FrontObservationAudit('front_unobserved' if hole or missing or not count else 'ok',count,missing)
 
 
-def project_scan(scan, history, now, mode='both', timing_verified=False):
+def project_scan(scan, history, now, mode='both', timing_verified=False, *, timing_policy=None):
+    timing_policy = history.scan_time_policy if timing_policy is None else timing_policy
     if not isinstance(scan,MeasurementScan):
+        if timing_policy != 'verified_only':
+            raise MotionUnavailable('estimated_policy_requires_native_measurements')
         return history.project(scan.ranges,scan.angle_min,scan.angle_increment,scan.range_min,scan.range_max,
             scan.header.stamp.sec+scan.header.stamp.nanosec*1e-9,float(scan.time_increment),now,mode,timing_verified)
     if mode!='both':
         raise MotionUnavailable('native_scan_requires_both_compensation')
     from arena_autonomy.scene_motion import measurement_motion_points
-    points,ids=measurement_motion_points(scan,history,now,timing_verified=timing_verified)
+    points,ids=measurement_motion_points(scan,history,now,timing_verified=timing_verified,
+                                       timing_policy=timing_policy)
     first,last=scan.acquired_at_s[0],scan.acquired_at_s[-1]
     return points,ids,dict(mode=mode,scan_stamp_s=first,last_ray_stamp_s=last,
         reference_stamp_s=now,oldest_observation_age_s=now-first,newest_observation_age_s=now-last,
         valid_points=len(ids),coordinate_time_assumption=False,input_representation='native_measurements',
-        time_basis=scan.time_basis)
+        time_basis=scan.time_basis,
+        **({'timing_policy':timing_policy,'hardware_timing_verified':False}
+           if timing_policy!='verified_only' else {}))

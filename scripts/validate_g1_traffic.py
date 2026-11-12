@@ -271,7 +271,7 @@ def primary_pose_at(config, centerline, s0, case, elapsed):
 def actor_sdf(config, pose):
     actor = config['actor']
     outline = actor.get('visual_outline', 'box')
-    if outline not in ('box', 'recessed_sides'):
+    if outline not in ('box', 'recessed_sides', 'thin_upper_blade', 'sparse_upper_posts'):
         raise ValueError('unknown evaluation actor visual outline')
     x, y, yaw = pose
     z = actor['bottom_m']+actor['height_m']/2
@@ -295,6 +295,20 @@ def actor_sdf(config, pose):
             ('visual_front', f'{length*.45} 0 0 0 0 0', f'{length*.1} {width} {height}'),
             ('visual_rear', f'{-length*.45} 0 0 0 0 0', f'{length*.1} {width} {height}'),
         ]
+    elif outline in ('thin_upper_blade', 'sparse_upper_posts'):
+        length, width, height = (float(actor[k]) for k in ('length_m', 'width_m', 'height_m'))
+        if not all(math.isfinite(v) and v > 0 for v in (length, width, height)) or height < .15:
+            raise ValueError('sparse upper actor requires positive dimensions and height >= .15 m')
+        lower = min(.08, height*.45)
+        upper = height-lower
+        visuals = [('visual_lower_body', f'0 0 {-height/2+lower/2} 0 0 0', f'{length} {width} {lower}'),
+                   ('visual_top', f'0 0 {height/2-.002} 0 0 0', f'{length*.8} {width*.8} .004')]
+        if outline == 'thin_upper_blade':
+            visuals.append(('visual_blade', f'0 0 {lower/2} 0 0 0', f'.004 {width*.8} {upper}'))
+        else:
+            for i, (px, py) in enumerate(((-1, -1), (-1, 1), (1, -1), (1, 1))):
+                visuals.append((f'visual_post_{i}', f'{px*length*.38} {py*width*.36} {lower/2} 0 0 0',
+                                f'.008 .008 {upper}'))
     for name, local_pose, visual_size in visuals:
         visual = ET.SubElement(link, 'visual', name=name)
         if local_pose is not None:
@@ -474,6 +488,8 @@ def main():
                         help='선택형 C1 원천 가변 점/각도 입력. 기본 균일500점 유지, 시간은 시뮬 근사')
     parser.add_argument('--motion-test-profile', type=Path,
                         help='선택형 G1/M3 시험용 IMU/단일 모터축 오차·지연. 기본 무주입')
+    parser.add_argument('--vehicle-config', type=Path, default=None,
+                        help='선택형 차량 기하/구동 YAML. 시뮬·제어·보호·평가에 함께 전달')
     parser.add_argument('--local-sensor-config', default=None,
                         help='시험 전용 local_pursuit 센서/장착 YAML. 기본은 패키지 b0183_c1.yaml')
     parser.add_argument('--pilot-marker-z', type=float, default=None,
@@ -504,7 +520,7 @@ def main():
                         help='점별 취득 시각 팽창 후보. 기본 oldest 유지, 점/거리 여유/운동 상한 유지')
     parser.add_argument('--zero-speed-mode', choices=ZERO_SPEED_MODES, default='legacy',
                         help='평가 전용 0목표 구동 특성 대조. 기본 legacy는 실행 인자를 추가하지 않음')
-    parser.add_argument('--grass-alignment', choices=('original', 'road_level'), default='original',
+    parser.add_argument('--grass-alignment', choices=('original', 'road_level', 'grass_above_3mm'), default='original',
                         help='v11.06 잔디 1 mm 단차 대조. 기본 원본 유지')
     parser.add_argument('--physics-step', choices=PHYSICS_STEPS,
                         help='평가 전용 물리 step. 생략하면 월드 기본 1 ms')
@@ -573,6 +589,17 @@ def main():
         parser.error('grass alignment requires recorded v11.06 official signal course')
     corner_arguments = piecewise_arguments(args.g1_piecewise_wall, args.mode, args.record_follow_decisions)
     config = load_config(args.config)
+    vehicle_path = None
+    if args.vehicle_config is not None:
+        import yaml
+        vehicle_path = args.vehicle_config.resolve(strict=True)
+        vehicle_path.relative_to(REPO)
+        vehicle = yaml.safe_load(vehicle_path.read_text(encoding='utf-8'))['vehicle']
+        config['ego_geometry'] = dict(length_m=vehicle['footprint']['length_m'],
+            width_m=vehicle['footprint']['width_m'],wheelbase_m=vehicle['drivetrain']['wheelbase_m'],
+            track_width_m=vehicle['drivetrain']['track_width_m'])
+    ego_geometry = ev.ego_geometry(config)
+    ego_length, ego_width = ego_geometry['length_m'], ego_geometry['width_m']
     if args.actor_overlay:
         args.actor_overlay.resolve().relative_to(REPO)
     case = overlay_case(case_named(config, args.case), args.actor_overlay)
@@ -661,6 +688,8 @@ def main():
     actor_path.write_text(actor_text, encoding='utf-8')
     sources = {rel: sha256(REPO/rel) for rel in source_paths(args.config, lidar_profile, args.actor_overlay, motion_profile)}
     sources.update(facility_sources)
+    if vehicle_path is not None:
+        sources[vehicle_path.relative_to(REPO).as_posix()] = sha256(vehicle_path)
     runtime_native_profile = None
     if native_path:
         sources[native_path.relative_to(REPO).as_posix()] = sha256(native_path)
@@ -716,6 +745,8 @@ def main():
     if diagnostic_window is not None:
         report['diagnostic_window'] = dict(stop_after_green_s=diagnostic_window,
             registered_duration_s=case['duration_s'], full_case_evidence=False)
+    if vehicle_path is not None:
+        report['vehicle_config'] = dict(path=str(vehicle_path),sha256=sha256(vehicle_path),ego_geometry=ego_geometry)
     if args.local_sensor_config is not None:
         sensor_path = Path(args.local_sensor_config).resolve(strict=True)
         report['local_sensor_config'] = {'path': str(sensor_path), 'sha256': sha256(sensor_path)}
@@ -957,6 +988,8 @@ def main():
         extra += drivetrain_evaluation_arguments(args.zero_speed_mode, args.physics_step)
         if args.grass_alignment != 'original':
             extra.append('evaluation_grass_alignment:='+args.grass_alignment)
+        if vehicle_path is not None:
+            extra.append('vehicle_config:='+str(vehicle_path))
         if args.local_sensor_config is not None:
             extra.append('local_sensor_config:='+str(Path(args.local_sensor_config).resolve(strict=True)))
         if args.track != DEMO_TRACK:
@@ -1073,7 +1106,7 @@ def main():
                 delta = (s-last_s+centerline.lap/2) % centerline.lap-centerline.lap/2
                 progress += delta if abs(delta) <= 1 else 0.
             last_s = s
-            footprint = rectangle(position['x'], position['y'], yaw_of(pose['orientation']), .20, .15)
+            footprint = rectangle(position['x'], position['y'], yaw_of(pose['orientation']), ego_length, ego_width)
             hit = any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))
             wall_collision += int(hit)
             autonomy = state['autonomy']
@@ -1182,7 +1215,7 @@ def main():
             if now > last_stop:
                 p = {axis: float(state['pose']['position'].get(axis, 0.)) for axis in ('x', 'y')}
                 yaw = yaw_of(state['pose']['orientation'])
-                footprint = rectangle(p['x'], p['y'], yaw, .20, .15)
+                footprint = rectangle(p['x'], p['y'], yaw, ego_length, ego_width)
                 hit = any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))
                 stop_trace.append({'time': now, 'x': p['x'], 'y': p['y'], 'yaw': yaw, 'collision': hit,
                                    'ground_speed_mps': math.hypot(state['dynamics']['truth_longitudinal_mps'],

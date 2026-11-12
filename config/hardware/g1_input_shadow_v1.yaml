@@ -1,0 +1,39 @@
+# 입력/실제 시계 연결용. 주행 채택 설정이나 최종 장착 수치가 아니다.
+local_pursuit:
+  ros__parameters:
+    execution_environment: hardware_shadow_v1
+    use_sim_time: false
+    lidar_compensation: both
+    lidar_input_representation: native_estimated_v1
+    motion_scan_timing_verified: false
+    motion_feedback_mode: drive_motor_shaft
+    motion_gear_ratio: 11.911764705882353
+    motion_wheel_radius_m: 0.0325
+    motion_imu_topic: /hardware_preview/imu
+    motion_imu_frame_id: lsm6dsox_sensor
+    motion_imu_roll_rad: 0.0
+    motion_imu_pitch_rad: 0.0
+    wheelbase_m: 0.135
+    control_rate_hz: 50.0
+    max_speed_mps: 0.3
+    min_speed_mps: 0.14
+    vision_execution: inline
+    race_control_mode: legacy
+    g1_follow_enabled: true
+    g1_g2_simulation_trial: true  # 기존 알고리즘 시험 허가. 실제 시간 도메인은 위에 별도 명시.
+    g1_decision_execution: process_candidate
+    g1_submission_policy: fresh_native_v1
+    g1_current_path_recheck: selected_v1
+    g1_current_recheck_execution: worker_event_v1
+    g1_numeric_execution: python
+    g1_guard_observation_policy: selected_r181
+    g1_boundary_evidence_mode: corner_distance_candidate
+    g1_occupancy_timing_mode: per_ray_candidate
+    partial_observation_policy: bounded_local_v4
+    g1_corridor_fallback_enabled: true
+    g1_parallel_hold_trial: true
+    g1_pass_release_trial: true
+    g1_guard_curve_trial: true
+    g1_traffic_recovery_trial: true
+    g1_traffic_path_recovery_trial: true
+    g1_road_half_m: 0.305

@@ -1,0 +1,38 @@
+Traceback (most recent call last):
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/artifacts/validation/2026-11-12/plan_cost_profile_r244_v1/profile_plan.py", line 69, in <module>
+    if __name__=='__main__':raise SystemExit(main())
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/artifacts/validation/2026-11-12/plan_cost_profile_r244_v1/profile_plan.py", line 37, in main
+    try:answer=replay_call(follow,data['input'],motion)
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/follow_trace.py", line 214, in replay_call
+    return follow.command(scene, history, data['speed_mps'], data['side'],
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/bypass_handoff.py", line 612, in command
+    output = self.moving_pass.command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/moving_pass.py", line 473, in command
+    normal = owner._base_command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/bypass_handoff.py", line 619, in _base_command
+    output = self._relative_yield.command(self, scene, planning,
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/bypass_relative_yield_pause.py", line 48, in command
+    output=evaluate()
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/bypass_handoff.py", line 620, in <lambda>
+    lambda: self._prepared_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan))
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/bypass_handoff.py", line 629, in _prepared_command
+    output = self._command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/bypass_handoff.py", line 649, in _command
+    normal = self.normal.command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/local_follow.py", line 569, in command
+    output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/local_follow.py", line 588, in _forward_command
+    selected = self.pass_selector.select(scene, output, parallel, speed, previous_steering, control_dt,
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/pass_release_trial.py", line 355, in select
+    out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/current_lane_preference.py", line 34, in _select
+    out = super()._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py", line 51, in _select
+    output=super()._select(scene,baseline,parallel,speed,previous,dt,raw_scan=raw_scan)
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/pass_release_trial.py", line 674, in _select
+    guarded = self._guard_curve(scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan)
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/pass_release_trial.py", line 370, in _guard_curve
+    from arena_autonomy.guard_observation_policy import guard_curve
+  File "/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/guard_observation_policy.py", line 8, in <module>
+    from arena_autonomy import current_path_recheck as common
+ImportError: cannot import name 'current_path_recheck' from 'arena_autonomy' (/home/q/it_arena_plan_profile_r244_20261112/worktree/src/arena_autonomy/arena_autonomy/__init__.py)
