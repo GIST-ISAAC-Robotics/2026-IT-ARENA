@@ -1,0 +1,46 @@
+.......F.                                                                [100%]
+=================================== FAILURES ===================================
+____________ test_refresh_keeps_real_occupied_points_in_hold_check _____________
+
+inputs = ({'controller_mode': 'g1_g2_handoff_trial', 'current_corner_budget': 'r396_v1', 'execution_config': {'adaptive_entry_p...ative_confirmed': False, 'boundary_age_s': 0.11699999999973443, 'boundary_candidate_ahead_m': 3.0897286826113124, ...})
+
+    def test_refresh_keeps_real_occupied_points_in_hold_check(inputs):
+        scene=inputs[2]
+        rays=list(scene.rays)
+        for i,y in enumerate(np.linspace(-.075,.075,20)):
+            hit=(.10,float(y))
+            direction=np.asarray(hit)-np.array([.0754,0.])
+            direction/=np.linalg.norm(direction)
+            rays.append(SensorRay((.0754,0.),hit,scene.source_first_s,'return',scene.source_frame_id,
+                scene.source_epoch,1000+i,tuple(direction)))
+>       blocked=replace(scene,rays=tuple(rays))
+
+stage/tests/test_boundary_transient_r464.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/dataclasses.py:1581: in replace
+    return obj.__class__(**changes)
+<string>:11: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = LocalScene(t_ref_s=37.92, source_first_s=37.80300000000027, source_last_s=37.902804687500264, source_frame_id='laser_f...1114873960614, -3.0636812443844974, -3.0762476148083806, -3.0875573481898755, -3.1001237186137587, -3.112690089037642))
+
+    def __post_init__(self):
+        t_ref = _finite(self.t_ref_s, 't_ref_s')
+        if t_ref < 0 or self.frame_id != 'base_link':
+            raise ValueError('invalid reference time/frame')
+        _source(self.source_frame_id, self.source_epoch)
+        if len(self.rays) > MAX_RAYS:
+            raise ValueError('too many rays')
+        rays = tuple(self.rays)
+        object.__setattr__(self, 'rays', rays)
+        if self.source_angles_rad is not None:
+            angles = tuple(_finite(v, 'source_angles_rad') for v in self.source_angles_rad)
+            if len(angles) != len(rays):
+>               raise ValueError('source angles/rays mismatch')
+E               ValueError: source angles/rays mismatch
+
+execution_v1/candidate/src/arena_autonomy/arena_autonomy/local_scene.py:90: ValueError
+=========================== short test summary info ============================
+FAILED stage/tests/test_boundary_transient_r464.py::test_refresh_keeps_real_occupied_points_in_hold_check
+1 failed, 8 passed in 1.67s

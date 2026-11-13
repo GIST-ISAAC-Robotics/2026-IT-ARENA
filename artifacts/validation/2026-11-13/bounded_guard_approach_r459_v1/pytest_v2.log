@@ -1,0 +1,46 @@
+........................................................................ [ 50%]
+............................................F..F.......................  [100%]
+================================== FAILURES ===================================
+_ test_lower_target_requires_full_current_checks_with_source_and_inputs_preserved _
+
+sample = ([0.35, 0.18735875619520628, {'automatic_race_mode_selection': True, 'behavior': 'FOLLOW', 'follow_entry_space': {'app...=0.16, hold_clearance_m=0.2, resume_clearance_m=0.28, headway_s=0.8, confirmations=2, crop_edge_component_trial=False))
+
+    def test_lower_target_requires_full_current_checks_with_source_and_inputs_preserved(sample):
+        before=copy.deepcopy(sample[:3])
+        base=candidate.common.rebase(*sample);result=candidate.rebase(*sample)
+>       assert base['speed_mps']==0
+E       assert 0.35 == 0
+
+tests\test_guard_observation_rebase.py:33: AssertionError
+_ test_bad_current_input_or_occupied_swept_path_does_not_gain_permission[fast_actual] _
+
+sample = ([0.35, 0.18735875619520628, {'automatic_race_mode_selection': True, 'behavior': 'FOLLOW', 'follow_entry_space': {'app...=0.16, hold_clearance_m=0.2, resume_clearance_m=0.28, headway_s=0.8, confirmations=2, crop_edge_component_trial=False))
+kind = 'fast_actual'
+
+    @pytest.mark.parametrize('kind',['epoch','expired','fast_actual','near_front','missing_front','near_side'])
+    def test_bad_current_input_or_occupied_swept_path_does_not_gain_permission(sample,kind):
+        out,old,now,scene,history,cfg=sample
+        if kind=='epoch':now['epoch']+=1
+        elif kind=='expired':out[2]['normal']['path_source_s']-=1.
+        elif kind=='fast_actual':now['speed_mps']=.35
+        else:
+            _,scan,_=restore_call(now,history.config)
+            angles=scan_angles(scan)+history.config.lidar_yaw_rad;values=list(scan.ranges_m)
+            if kind=='near_side':
+                for i,a in enumerate(angles):
+                    a=math.remainder(a,math.tau)
+                    if math.radians(65)<a<math.radians(135):values[i]=.07/math.sin(a)
+            else:
+                i=min(range(len(angles)),key=lambda i:abs(math.remainder(angles[i],math.tau)))
+                values[i]=.05 if kind=='near_front' else math.inf
+            scan=replace(scan,ranges_m=tuple(values));now['scan']['measurements']['ranges_m']=values
+            scene=motion_scene(scan,history,now['reference_s'],timing_verified=True,epoch=now['epoch'],rear_half_angle_deg=now['rear_half_angle_deg'])
+        result=candidate.rebase(out,old,now,scene,history,cfg)
+>       assert result['speed_mps']==0.
+E       assert 0.35 == 0.0
+
+tests\test_guard_observation_rebase.py:60: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_guard_observation_rebase.py::test_lower_target_requires_full_current_checks_with_source_and_inputs_preserved
+FAILED tests/test_guard_observation_rebase.py::test_bad_current_input_or_occupied_swept_path_does_not_gain_permission[fast_actual]
+2 failed, 141 passed in 5.42s

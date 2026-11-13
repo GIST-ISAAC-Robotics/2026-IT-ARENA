@@ -1,0 +1,32 @@
+"""첫 주행 전 import 실패 보존 후 r475의 누락된 byte-exact 평가 helper만 복사."""
+from pathlib import Path
+import json,shutil,hashlib
+A=Path(__file__).resolve().parent.parent;ROOT=A.parents[3];E=A/'execution_v1';B=A/'prelaunch_failure_v1'
+assert not (A/'registered.json').exists() and not (A/'run1').exists()
+assert (E/'run.exit').read_text().strip()=='1'
+assert not json.loads((E/'owned_processes_after.json').read_bytes())['remaining_owned_work']
+assert not B.exists();B.mkdir()
+for name in ('prepared.json','sources.zip','recipe_manifest.json','root_execution_review.json'):
+    source=A/name;target=B/name
+    assert source.resolve().is_relative_to(A.resolve()) and target.resolve().is_relative_to(A.resolve())
+    source.rename(target)
+shutil.copyfile(A/'provenance.json',B/'provenance.json')
+shutil.copyfile(A/'preparation_receipt.json',B/'preparation_receipt.json')
+for name in ('check_before_run.json','run_started_utc.txt','run.pid','runner.log','run.exit',
+             'run_finished_utc.txt','check_after_run.json','owned_processes_after.json'):
+    (E/name).rename(B/name)
+source=ROOT/'artifacts/validation/2026-11-14/solo_full_lap_r475_v1/facility_geometry.py'
+digest=hashlib.sha256(source.read_bytes()).hexdigest()
+assert digest=='b71e456c73a30202368c5e7d9177c007c16fb1de820c7e42c7b684ff23d8d0b9'
+assert not (A/'facility_geometry.py').exists();shutil.copyfile(source,A/'facility_geometry.py')
+provenance=json.loads((A/'provenance.json').read_bytes())
+provenance['copies'].append(dict(source_review='missing imported evaluator-only helper; identical to r475',
+    **{'from':source.relative_to(ROOT).as_posix(),'to':'facility_geometry.py','sha256':digest,'change':'byte_exact'}))
+(A/'provenance.json').write_text(json.dumps(provenance,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
+receipt=dict(error='ModuleNotFoundError: facility_geometry',environment_attempt=1,run_exit=1,
+    registered=False,simulator_started=False,remaining_owned_work=[],common_modified=False,
+    repair='copy missing r475 evaluator helper byte-exact; regenerate recipe/freeze; one actual drive still allowed',
+    helper_sha256=digest,old_prepared_sha256=hashlib.sha256((B/'prepared.json').read_bytes()).hexdigest(),
+    old_source_archive_sha256=hashlib.sha256((B/'sources.zip').read_bytes()).hexdigest())
+(B/'failure_receipt.json').write_text(json.dumps(receipt,indent=2)+'\n')
+print(json.dumps(receipt))

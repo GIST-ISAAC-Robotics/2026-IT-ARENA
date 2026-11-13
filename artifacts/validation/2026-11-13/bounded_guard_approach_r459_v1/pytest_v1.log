@@ -1,0 +1,304 @@
+........................................................................ [ 51%]
+............................................F..F.................FF      [100%]
+================================== FAILURES ===================================
+_ test_lower_target_requires_full_current_checks_with_source_and_inputs_preserved _
+
+sample = ([0.35, 0.18735875619520628, {'automatic_race_mode_selection': True, 'behavior': 'FOLLOW', 'follow_entry_space': {'app...=0.16, hold_clearance_m=0.2, resume_clearance_m=0.28, headway_s=0.8, confirmations=2, crop_edge_component_trial=False))
+
+    def test_lower_target_requires_full_current_checks_with_source_and_inputs_preserved(sample):
+        before=copy.deepcopy(sample[:3])
+        base=candidate.common.rebase(*sample);result=candidate.rebase(*sample)
+>       assert base['speed_mps']==0
+E       assert 0.35 == 0
+
+tests\test_guard_observation_rebase.py:33: AssertionError
+_ test_bad_current_input_or_occupied_swept_path_does_not_gain_permission[fast_actual] _
+
+sample = ([0.35, 0.18735875619520628, {'automatic_race_mode_selection': True, 'behavior': 'FOLLOW', 'follow_entry_space': {'app...=0.16, hold_clearance_m=0.2, resume_clearance_m=0.28, headway_s=0.8, confirmations=2, crop_edge_component_trial=False))
+kind = 'fast_actual'
+
+    @pytest.mark.parametrize('kind',['epoch','expired','fast_actual','near_front','missing_front','near_side'])
+    def test_bad_current_input_or_occupied_swept_path_does_not_gain_permission(sample,kind):
+        out,old,now,scene,history,cfg=sample
+        if kind=='epoch':now['epoch']+=1
+        elif kind=='expired':out[2]['normal']['path_source_s']-=1.
+        elif kind=='fast_actual':now['speed_mps']=.35
+        else:
+            _,scan,_=restore_call(now,history.config)
+            angles=scan_angles(scan)+history.config.lidar_yaw_rad;values=list(scan.ranges_m)
+            if kind=='near_side':
+                for i,a in enumerate(angles):
+                    a=math.remainder(a,math.tau)
+                    if math.radians(65)<a<math.radians(135):values[i]=.07/math.sin(a)
+            else:
+                i=min(range(len(angles)),key=lambda i:abs(math.remainder(angles[i],math.tau)))
+                values[i]=.05 if kind=='near_front' else math.inf
+            scan=replace(scan,ranges_m=tuple(values));now['scan']['measurements']['ranges_m']=values
+            scene=motion_scene(scan,history,now['reference_s'],timing_verified=True,epoch=now['epoch'],rear_half_angle_deg=now['rear_half_angle_deg'])
+        result=candidate.rebase(out,old,now,scene,history,cfg)
+>       assert result['speed_mps']==0.
+E       assert 0.35 == 0.0
+
+tests\test_guard_observation_rebase.py:60: AssertionError
+_ test_absent_guard_checks_region_before_approach_and_keeps_identity[True-arena_autonomy.current_path_recheck] _
+
+package = 'arena_autonomy.current_path_recheck', unknown = True
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001B6E44BD5C0>
+
+    @pytest.mark.parametrize('package',('arena_autonomy.current_path_recheck','arena_autonomy.race_runtime_policy.retained_recheck'))
+    @pytest.mark.parametrize('unknown',(False,True))
+    def test_absent_guard_checks_region_before_approach_and_keeps_identity(package,unknown,monkeypatch):
+        module=importlib.import_module(package+'._guard')
+        frame,ctx,sides,region=sample();cfg=SimpleNamespace(guard_curve_trial=True,traffic_recovery_trial=True,
+            length_m=.2,width_m=.15,object_motion_bound_mps=.5)
+        normal=dict(selector_sides={name:dict(present=False,seen=True,passed=False) for name in sides},
+            selector_guard_candidate=dict(accepted=True,guarded_sides={name:dict(anchor_m=.0) for name in sides}),
+            partial_observation=dict(allowed=True,reason='fully_observed'),path_source_s=.9)
+        output=(.15,0.,dict(normal=normal));old={};current=dict(speed_mps=0.,previous_steering_rad=0.,dt_s=.02,reference_s=1.)
+        scene=SimpleNamespace(t_ref_s=1.,source_first_s=.9)
+        monkeypatch.setattr(module,'supported',lambda _:True)
+        monkeypatch.setattr(module,'forward_planning_speed',lambda c,v:v)
+        monkeypatch.setattr(module.geometry,'rebase',lambda *a:dict(speed_mps=.15,steering_rad=0.,path_points=[[0.,0.],[1.,0.]],reference_s=1.,path_source_s=.9))
+        monkeypatch.setattr(module,'current_forward_coverage',lambda *a:True)
+        monkeypatch.setattr(ps,'lateral_config',lambda c:object())
+        monkeypatch.setattr(ps,'threat_view',lambda *a:dict(frame=frame,left=dict(present=False),right=dict(present=False)))
+        monkeypatch.setattr(ps,'command_arc',lambda *a:np.array([[0.,0.,0.]]))
+        monkeypatch.setattr(ps,'extrema_arc',lambda *a:np.array([[0.,0.,0.]]))
+        monkeypatch.setattr(ps,'side_extent',lambda f,p,s,c:.075 if len(p)==1 else .09)
+        order=[]
+        def motion(*a,context):
+            order.append('region');context.update(deepcopy(ctx));r=deepcopy(region)
+            if unknown:r['unobserved']=1;context['masked'][1]=False
+            return r
+        monkeypatch.setattr(ps,'motion_region',motion)
+        monkeypatch.setattr(module,'bounded_rear_fringe',lambda *a:dict(accepted=False))
+        original=ps.observed_guard_approach
+        def observe(*a,**kw):order.append('approach');return original(*a,**kw)
+        monkeypatch.setattr(ps,'observed_guard_approach',observe)
+        before=deepcopy((output,current))
+>       result=module.rebase(output,old,current,object(),scene,object(),cfg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+artifacts\validation\2026-11-13\bounded_guard_approach_r459_v1\stage\tests\test_bounded_guard_approach.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+output = (0.15, 0.0, {'normal': {'partial_observation': {'allowed': True, 'reason': 'fully_observed'}, 'path_source_s': 0.9, 's...eft': {'passed': False, 'present': False, 'seen': True}, 'right': {'passed': False, 'present': False, 'seen': True}}}})
+submitted = {}
+current = {'dt_s': 0.02, 'previous_steering_rad': 0.0, 'reference_s': 1.0, 'speed_mps': 0.0}
+scan = <object object at 0x000001B6B4CAA5F0>
+scene = namespace(t_ref_s=1.0, source_first_s=0.9)
+history = <object object at 0x000001B6B4CAA3F0>
+cfg = namespace(guard_curve_trial=True, traffic_recovery_trial=True, length_m=0.2, width_m=0.15, object_motion_bound_mps=0.5)
+
+    def rebase(output, submitted, current, scan, scene, history, cfg):
+        if not supported(output):
+            return None
+        normal = output[2]['normal']; original_guard = normal['selector_guard_candidate']
+        diagnostic = dict(rebased_selector_mode='GUARD', rebased_selector_choice='guard_baseline',
+                          state_transition=False, source_permission_reused=False,
+                          independent_guard_required=True, runtime_authorized=False)
+    
+        def stop(reason, **detail):
+            return dict(speed_mps=0., steering_rad=current['previous_steering_rad'],
+                        reason=reason, reference_s=current['reference_s'],
+                        path_source_s=normal.get('path_source_s'), **diagnostic, **detail)
+    
+        sides = normal.get('selector_sides') or {}
+        if set(sides) != {'left','right'}:
+            return stop('guard_rebase_missing_side_state')
+        if any(side.get('present') is not False for side in sides.values()):
+            return stop('guard_rebase_present_side_outside_scope')
+        guarded = [name for name, side in sides.items()
+                   if side.get('seen') is True and side.get('passed') is False]
+        if not guarded or not cfg.guard_curve_trial or not cfg.traffic_recovery_trial:
+            return stop('guard_rebase_original_state_invalid')
+        # 계획기와 같은 전진 정책을 사용한다. 원 부호 있는 운동 이력/입력은 그대로다.
+        measured = current['speed_mps']
+        planning_speed = forward_planning_speed(cfg, measured)
+        if not geometry.finite(planning_speed) or not 0 <= planning_speed <= .35 or output[0] > .35:
+            return stop('guard_rebase_speed_outside_scope')
+        partial = normal.get('partial_observation') or {}
+        if partial.get('allowed') is not True or partial.get('reason') != 'fully_observed':
+            return stop('guard_rebase_original_partial_outside_scope')
+        # 순수 기하 helper의 진입 분류만 맞춘다. 결과를 즉시 반환하지 않고 아래
+        # 현재 GUARD 검사를 모두 수행한다. 실제 선택기 상태를 SOLO로 바꾸지 않는다.
+        geometric_input = (output[0], output[1], {**output[2], 'normal': {
+            **normal, 'selector_mode':'SOLO', 'selector_choice':'baseline'}})
+        result = geometry.rebase(geometric_input, submitted, current, scene, history, cfg)
+        if result is None:
+            raise RuntimeError('guard geometry unexpectedly unsupported')
+        if result['speed_mps'] <= 0:
+            return {**result, **diagnostic}
+        if not current_forward_coverage(scan, scene, history, cfg):
+            return stop('guard_rebase_current_front_not_covered')
+        lat = ps.lateral_config(cfg)
+        view = ps.threat_view(scene, result['path_points'], lat)
+        if view is None:
+            return stop('guard_rebase_current_path_frame_missing')
+        if any(view[name]['present'] for name, _ in ps.SIDES):
+            return stop('guard_rebase_current_side_present')
+        speed = planning_speed; target = result['speed_mps']
+        previous = current['previous_steering_rad']; steering = result['steering_rad']
+        dt = current['dt_s']; age = scene.t_ref_s-scene.source_first_s
+        distance = ps.mx.envelope_distance(max(speed,target), age, dt, ps.mx.ExecutionConfig())
+        poses = np.vstack([np.vstack((ps.command_arc(angle,max(distance,.01),lat),
+                                      ps.extrema_arc(angle,max(distance,.01),lat)))
+                           for angle in sorted({float(steering),float(previous)})])
+        approach, rejected = {}, []
+        policy = ps.SelectorConfig()
+        for name, sign in ps.SIDES:
+            if name not in guarded:
+                continue
+            old = (original_guard.get('guarded_sides') or {}).get(name) or {}
+            anchor = old.get('anchor_m')
+            if not geometry.finite(anchor):
+                return stop('guard_rebase_original_anchor_missing')
+            present_extent = ps.side_extent(view['frame'], [[0.,0.,0.]], sign, lat)
+            predicted = ps.side_extent(view['frame'], poses, sign, lat)
+            approach[name] = dict(anchor_m=anchor, current_m=present_extent, predicted_m=predicted)
+            if predicted > anchor+policy.small_excursion_m and predicted > present_extent+1e-9:
+                rejected.append(name)
+        context = {}
+        region = ps.motion_region(scene,speed,target,steering,previous,dt,cfg,lat,context=context)
+        proof = dict(accepted=False, reason='not_needed', unknown_filled=False)
+        if region['unobserved']:
+            queries = context['queries'][~context['free'] & ~context['masked']]
+>           proof = bounded_rear_fringe(scene,scan,queries,context['padding'],cfg.length_m,cfg.width_m)
+                                                           ^^^^^^^^^^^^^^^^^^
+E           KeyError: 'padding'
+
+artifacts\validation\2026-11-13\bounded_guard_approach_r459_v1\stage\src\arena_autonomy\arena_autonomy\current_path_recheck\_guard.py:114: KeyError
+_ test_absent_guard_checks_region_before_approach_and_keeps_identity[True-arena_autonomy.race_runtime_policy.retained_recheck] _
+
+package = 'arena_autonomy.race_runtime_policy.retained_recheck', unknown = True
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001B6B4D5D630>
+
+    @pytest.mark.parametrize('package',('arena_autonomy.current_path_recheck','arena_autonomy.race_runtime_policy.retained_recheck'))
+    @pytest.mark.parametrize('unknown',(False,True))
+    def test_absent_guard_checks_region_before_approach_and_keeps_identity(package,unknown,monkeypatch):
+        module=importlib.import_module(package+'._guard')
+        frame,ctx,sides,region=sample();cfg=SimpleNamespace(guard_curve_trial=True,traffic_recovery_trial=True,
+            length_m=.2,width_m=.15,object_motion_bound_mps=.5)
+        normal=dict(selector_sides={name:dict(present=False,seen=True,passed=False) for name in sides},
+            selector_guard_candidate=dict(accepted=True,guarded_sides={name:dict(anchor_m=.0) for name in sides}),
+            partial_observation=dict(allowed=True,reason='fully_observed'),path_source_s=.9)
+        output=(.15,0.,dict(normal=normal));old={};current=dict(speed_mps=0.,previous_steering_rad=0.,dt_s=.02,reference_s=1.)
+        scene=SimpleNamespace(t_ref_s=1.,source_first_s=.9)
+        monkeypatch.setattr(module,'supported',lambda _:True)
+        monkeypatch.setattr(module,'forward_planning_speed',lambda c,v:v)
+        monkeypatch.setattr(module.geometry,'rebase',lambda *a:dict(speed_mps=.15,steering_rad=0.,path_points=[[0.,0.],[1.,0.]],reference_s=1.,path_source_s=.9))
+        monkeypatch.setattr(module,'current_forward_coverage',lambda *a:True)
+        monkeypatch.setattr(ps,'lateral_config',lambda c:object())
+        monkeypatch.setattr(ps,'threat_view',lambda *a:dict(frame=frame,left=dict(present=False),right=dict(present=False)))
+        monkeypatch.setattr(ps,'command_arc',lambda *a:np.array([[0.,0.,0.]]))
+        monkeypatch.setattr(ps,'extrema_arc',lambda *a:np.array([[0.,0.,0.]]))
+        monkeypatch.setattr(ps,'side_extent',lambda f,p,s,c:.075 if len(p)==1 else .09)
+        order=[]
+        def motion(*a,context):
+            order.append('region');context.update(deepcopy(ctx));r=deepcopy(region)
+            if unknown:r['unobserved']=1;context['masked'][1]=False
+            return r
+        monkeypatch.setattr(ps,'motion_region',motion)
+        monkeypatch.setattr(module,'bounded_rear_fringe',lambda *a:dict(accepted=False))
+        original=ps.observed_guard_approach
+        def observe(*a,**kw):order.append('approach');return original(*a,**kw)
+        monkeypatch.setattr(ps,'observed_guard_approach',observe)
+        before=deepcopy((output,current))
+>       result=module.rebase(output,old,current,object(),scene,object(),cfg)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+artifacts\validation\2026-11-13\bounded_guard_approach_r459_v1\stage\tests\test_bounded_guard_approach.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+output = (0.15, 0.0, {'normal': {'partial_observation': {'allowed': True, 'reason': 'fully_observed'}, 'path_source_s': 0.9, 's...eft': {'passed': False, 'present': False, 'seen': True}, 'right': {'passed': False, 'present': False, 'seen': True}}}})
+submitted = {}
+current = {'dt_s': 0.02, 'previous_steering_rad': 0.0, 'reference_s': 1.0, 'speed_mps': 0.0}
+scan = <object object at 0x000001B6B4CAA980>
+scene = namespace(t_ref_s=1.0, source_first_s=0.9)
+history = <object object at 0x000001B6B4CAAAE0>
+cfg = namespace(guard_curve_trial=True, traffic_recovery_trial=True, length_m=0.2, width_m=0.15, object_motion_bound_mps=0.5)
+
+    def rebase(output, submitted, current, scan, scene, history, cfg):
+        if not supported(output):
+            return None
+        normal = output[2]['normal']; original_guard = normal['selector_guard_candidate']
+        diagnostic = dict(rebased_selector_mode='GUARD', rebased_selector_choice='guard_baseline',
+                          state_transition=False, source_permission_reused=False,
+                          independent_guard_required=True, runtime_authorized=False)
+    
+        def stop(reason, **detail):
+            return dict(speed_mps=0., steering_rad=current['previous_steering_rad'],
+                        reason=reason, reference_s=current['reference_s'],
+                        path_source_s=normal.get('path_source_s'), **diagnostic, **detail)
+    
+        sides = normal.get('selector_sides') or {}
+        if set(sides) != {'left','right'}:
+            return stop('guard_rebase_missing_side_state')
+        if any(side.get('present') is not False for side in sides.values()):
+            return stop('guard_rebase_present_side_outside_scope')
+        guarded = [name for name, side in sides.items()
+                   if side.get('seen') is True and side.get('passed') is False]
+        if not guarded or not cfg.guard_curve_trial or not cfg.traffic_recovery_trial:
+            return stop('guard_rebase_original_state_invalid')
+        # 계획기와 같은 전진 정책을 사용한다. 원 부호 있는 운동 이력/입력은 그대로다.
+        measured = current['speed_mps']
+        planning_speed = forward_planning_speed(cfg, measured)
+        if not geometry.finite(planning_speed) or not 0 <= planning_speed <= .35 or output[0] > .35:
+            return stop('guard_rebase_speed_outside_scope')
+        partial = normal.get('partial_observation') or {}
+        if partial.get('allowed') is not True or partial.get('reason') != 'fully_observed':
+            return stop('guard_rebase_original_partial_outside_scope')
+        # 순수 기하 helper의 진입 분류만 맞춘다. 결과를 즉시 반환하지 않고 아래
+        # 현재 GUARD 검사를 모두 수행한다. 실제 선택기 상태를 SOLO로 바꾸지 않는다.
+        geometric_input = (output[0], output[1], {**output[2], 'normal': {
+            **normal, 'selector_mode':'SOLO', 'selector_choice':'baseline'}})
+        result = geometry.rebase(geometric_input, submitted, current, scene, history, cfg)
+        if result is None:
+            raise RuntimeError('guard geometry unexpectedly unsupported')
+        if result['speed_mps'] <= 0:
+            return {**result, **diagnostic}
+        if not current_forward_coverage(scan, scene, history, cfg):
+            return stop('guard_rebase_current_front_not_covered')
+        lat = ps.lateral_config(cfg)
+        view = ps.threat_view(scene, result['path_points'], lat)
+        if view is None:
+            return stop('guard_rebase_current_path_frame_missing')
+        if any(view[name]['present'] for name, _ in ps.SIDES):
+            return stop('guard_rebase_current_side_present')
+        speed = planning_speed; target = result['speed_mps']
+        previous = current['previous_steering_rad']; steering = result['steering_rad']
+        dt = current['dt_s']; age = scene.t_ref_s-scene.source_first_s
+        distance = ps.mx.envelope_distance(max(speed,target), age, dt, ps.mx.ExecutionConfig())
+        poses = np.vstack([np.vstack((ps.command_arc(angle,max(distance,.01),lat),
+                                      ps.extrema_arc(angle,max(distance,.01),lat)))
+                           for angle in sorted({float(steering),float(previous)})])
+        approach, rejected = {}, []
+        policy = ps.SelectorConfig()
+        for name, sign in ps.SIDES:
+            if name not in guarded:
+                continue
+            old = (original_guard.get('guarded_sides') or {}).get(name) or {}
+            anchor = old.get('anchor_m')
+            if not geometry.finite(anchor):
+                return stop('guard_rebase_original_anchor_missing')
+            present_extent = ps.side_extent(view['frame'], [[0.,0.,0.]], sign, lat)
+            predicted = ps.side_extent(view['frame'], poses, sign, lat)
+            approach[name] = dict(anchor_m=anchor, current_m=present_extent, predicted_m=predicted)
+            if predicted > anchor+policy.small_excursion_m and predicted > present_extent+1e-9:
+                rejected.append(name)
+        context = {}
+        region = ps.motion_region(scene,speed,target,steering,previous,dt,cfg,lat,context=context)
+        proof = dict(accepted=False, reason='not_needed', unknown_filled=False)
+        if region['unobserved']:
+            queries = context['queries'][~context['free'] & ~context['masked']]
+>           proof = bounded_rear_fringe(scene,scan,queries,context['padding'],cfg.length_m,cfg.width_m)
+                                                           ^^^^^^^^^^^^^^^^^^
+E           KeyError: 'padding'
+
+artifacts\validation\2026-11-13\bounded_guard_approach_r459_v1\stage\src\arena_autonomy\arena_autonomy\race_runtime_policy\retained_recheck\_guard.py:114: KeyError
+=========================== short test summary info ===========================
+FAILED tests/test_guard_observation_rebase.py::test_lower_target_requires_full_current_checks_with_source_and_inputs_preserved
+FAILED tests/test_guard_observation_rebase.py::test_bad_current_input_or_occupied_swept_path_does_not_gain_permission[fast_actual]
+FAILED artifacts/validation/2026-11-13/bounded_guard_approach_r459_v1/stage/tests/test_bounded_guard_approach.py::test_absent_guard_checks_region_before_approach_and_keeps_identity[True-arena_autonomy.current_path_recheck]
+FAILED artifacts/validation/2026-11-13/bounded_guard_approach_r459_v1/stage/tests/test_bounded_guard_approach.py::test_absent_guard_checks_region_before_approach_and_keeps_identity[True-arena_autonomy.race_runtime_policy.retained_recheck]
+4 failed, 135 passed in 5.29s

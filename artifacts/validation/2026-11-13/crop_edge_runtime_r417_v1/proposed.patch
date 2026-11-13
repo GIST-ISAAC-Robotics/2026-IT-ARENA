@@ -1,0 +1,313 @@
+--- /dev/null
++++ b/src/arena_autonomy/arena_autonomy/crop_edge_selection.py
+@@ -0,0 +1,20 @@
++"""기본 OFF인 경계 성분 후보의 공통 설정 검사. 입력/시각/허가는 변환하지 않는다."""
++
++
++def validate_policy_selection(enabled, policy, traffic_recovery):
++    if type(enabled) is not bool:
++        raise ValueError('crop edge component trial must be bool')
++    if enabled and (policy != 'bounded_local_v4' or traffic_recovery is not True):
++        raise ValueError('crop edge component requires bounded_local_v4 and traffic recovery')
++
++
++def validate_node_selection(node, enabled):
++    if not enabled:
++        return
++    from arena_autonomy.native_lidar_input import input_representation
++    motion = node.motion
++    if (node.get_parameter('use_sim_time').value is not True
++            or node.hardware_inputs or motion is None or motion.mode != 'both'
++            or motion.verified is not True or motion.timing_policy != 'verified_only'
++            or input_representation(node) != 'native_simulation_v1'):
++        raise ValueError('crop edge component requires verified-only native simulation with both motion')
+--- a/src/arena_autonomy/arena_autonomy/lidar_safety.py
++++ b/src/arena_autonomy/arena_autonomy/lidar_safety.py
+@@ -62,6 +62,10 @@
+                            if structure_policy != 'off' else '')
+         if structure_policy != 'off' and policy != 'bounded_local_v4':
+             raise ValueError('known structure policy requires bounded_local_v4')
++        crop_edge = self.declare_parameter('g1_crop_edge_component_trial', False).value
++        from arena_autonomy.crop_edge_selection import validate_policy_selection, validate_node_selection
++        validate_policy_selection(crop_edge, policy, traffic_recovery)
++        validate_node_selection(self, crop_edge)
+         if policy != 'strict':
+             if self.recent_observation_enabled or not motion_supported(self):
+                 raise ValueError('bounded observation policy requires explicit both motion timing and no recent candidate')
+@@ -76,7 +80,8 @@
+             self.partial_policy = PartialObservationPolicy(allow_narrow_forward=policy in ('bounded_local_v2','bounded_local_v3','bounded_local_v4'),
+                                                           surface_translation_enabled=policy in ('bounded_local_v3','bounded_local_v4'),
+                                                           lateral_metric_enabled=policy=='bounded_local_v4',
+-                                                          oblique_metric_enabled=oblique)
++                                                          oblique_metric_enabled=oblique,
++                                                          crop_edge_component_trial=crop_edge)
+         self.observation_cache = None
+         self.observation_epoch = 0
+         self.previous_safe_steering = 0.
+--- a/src/arena_autonomy/arena_autonomy/local_follow.py
++++ b/src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -92,6 +92,7 @@
+     resume_clearance_m: float = .28
+     headway_s: float = .8
+     confirmations: int = 2
++    crop_edge_component_trial: bool = False  # 명시 verified native 시뮬 경계 성분 후보.
+ 
+     def __post_init__(self):
+         for name in ('track_m', 'wheel_radius_m', 'wheel_width_m'):
+@@ -182,6 +183,9 @@
+             raise ValueError('unsupported G1 partial observation policy')
+         if self.partial_observation_policy != 'strict' and (self.recent_observation_enabled or self.max_speed_mps>1.):
+             raise ValueError('G1 partial observation requires <=1 m/s and no recent observation candidate')
++        from arena_autonomy.crop_edge_selection import validate_policy_selection
++        validate_policy_selection(self.crop_edge_component_trial, self.partial_observation_policy,
++                                  self.traffic_recovery_trial)
+         from arena_autonomy.known_structure import validate as validate_structure
+         validate_structure(self.known_structure_policy, self.known_structure_sectors_json)
+         if self.known_structure_policy != 'off' and self.partial_observation_policy != 'bounded_local_v4':
+@@ -215,7 +219,7 @@
+         if type(self.narrow_occluder_bridge) is not bool or type(self.junction_continuity) is not bool:
+             raise ValueError('narrow occluder bridge and junction continuity must be bool')
+         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
+-               if k not in ('expiry_route_reference_trial', 'released_body_gap_trial', 'guard_observation_policy', 'traffic_boundary_refresh_trial', 'solo_corner_approach_trial', 'oblique_gap_trial', 'piecewise_wall_trial', 'solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'narrow_occluder_bridge', 'junction_continuity', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
++               if k not in ('crop_edge_component_trial', 'expiry_route_reference_trial', 'released_body_gap_trial', 'guard_observation_policy', 'traffic_boundary_refresh_trial', 'solo_corner_approach_trial', 'oblique_gap_trial', 'piecewise_wall_trial', 'solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'narrow_occluder_bridge', 'junction_continuity', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+             raise ValueError('follow configuration must be finite and positive')
+         if (type(self.corridor_fallback_enabled) is not bool or
+                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
+@@ -493,7 +497,8 @@
+             self.partial_policy = PartialObservationPolicy(allow_narrow_forward=True,
+                 surface_translation_enabled=self.config.partial_observation_policy in ('bounded_local_v3','bounded_local_v4'),
+                 lateral_metric_enabled=self.config.partial_observation_policy=='bounded_local_v4',
+-                oblique_metric_enabled=self.config.oblique_gap_trial and self.config.solo_route_only)
++                oblique_metric_enabled=self.config.oblique_gap_trial and self.config.solo_route_only,
++                crop_edge_component_trial=self.config.crop_edge_component_trial)
+         self.observation_cache = None
+         if self.config.recent_observation_enabled:
+             from arena_autonomy.observation_support import RecentScenes
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -89,6 +89,12 @@
+         guard_policy = str(self.declare_parameter('g1_guard_observation_policy', 'original_v1').value)
+         released_body_gap = bool(self.declare_parameter('g1_released_body_gap_trial', False).value)
+         traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
++        crop_edge = self.declare_parameter('g1_crop_edge_component_trial', False).value
++        from arena_autonomy.crop_edge_selection import validate_policy_selection, validate_node_selection
++        validate_policy_selection(crop_edge, partial_observation, traffic_recovery)
++        if crop_edge and not self.g1_enabled:
++            raise ValueError('crop edge component requires explicit G1 activation')
++        validate_node_selection(self, crop_edge)
+         traffic_path_recovery = bool(self.declare_parameter('g1_traffic_path_recovery_trial', False).value)
+         if traffic_path_recovery and (not traffic_recovery or not corridor_fallback):
+             raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
+@@ -143,6 +149,7 @@
+             solo_straight_budget_trial=bool(self.declare_parameter('g1_solo_straight_budget_trial',False).value),
+             headway_s=solo_headway,
+             partial_observation_policy=partial_observation,
++            crop_edge_component_trial=crop_edge,
+             solo_corner_approach_trial=bool(self.declare_parameter('g1_solo_corner_approach_trial',False).value),
+             oblique_gap_trial=bool(self.declare_parameter('g1_oblique_gap_trial',False).value),
+             known_structure_policy=structure_policy,
+--- a/src/arena_autonomy/arena_autonomy/native_lidar_input.py
++++ b/src/arena_autonomy/arena_autonomy/native_lidar_input.py
+@@ -28,11 +28,18 @@
+     return MeasurementScan(**raw)
+ 
+ 
++def input_representation(node):
++    """먼저 선택을 검사한 노드에서도 선언된 원값/기존 기본 표현을 유지한다."""
++    name = 'lidar_input_representation'
++    parameter = node.get_parameter(name) if node.has_parameter(name) else node.declare_parameter(name, 'laser_scan')
++    return str(parameter.value)
++
++
+ def subscribe_scan(node,callback,qos):
+     """한 표현/한 토픽만 구독한다. 시뮬 native 모드는 기본 OFF다."""
+     from sensor_msgs.msg import LaserScan
+     from std_msgs.msg import String
+-    mode=str(node.declare_parameter('lidar_input_representation','laser_scan').value)
++    mode=input_representation(node)
+     if (getattr(getattr(node,'motion',None),'timing_policy','verified_only') == 'host_estimated_v1'
+             and mode != 'native_estimated_v1'):
+         raise ValueError('host estimate policy requires the native estimated representation')
+--- a/src/arena_autonomy/arena_autonomy/partial_observation.py
++++ b/src/arena_autonomy/arena_autonomy/partial_observation.py
+@@ -14,6 +14,31 @@
+ from arena_autonomy.scene_motion import relative_poses, transport_points
+ from arena_autonomy.scan_input import scan_angles, scan_times, scan_cell_widths, scan_max_gap, audit_scan_front
+ from arena_autonomy.measurement_scan import MeasurementScan
++
++
++def _crop_edge_component(scan, order, front, run, valid, values, cells, forbidden):
++    """한쪽 crop 끝의 원 missing 성분을 실제 두 flank까지 확인한다. 값을 채우지 않는다."""
++    ordered = [int(i) for i in order]
++    inside = [int(front[int(i)]) for i in run]
++    low, high = ordered.index(inside[0]), ordered.index(inside[-1])
++    if ordered[low:high+1] != inside:
++        return None
++    while low > 0 and not valid[ordered[low-1]]:
++        low -= 1
++    while high+1 < len(ordered) and not valid[ordered[high+1]]:
++        high += 1
++    if low == 0 or high+1 == len(ordered):
++        return None
++    members = ordered[low:high+1]
++    flanks = [ordered[low-1], ordered[high+1]]
++    chain = [flanks[0], *members, flanks[1]]
++    if (any(abs(b-a) != 1 for a,b in zip(chain,chain[1:]))
++            or any(forbidden[i] for i in chain)
++            or any(values[i] < scan.range_min for i in members)
++            or any(math.isfinite(values[i]) for i in members)):
++        return None
++    return dict(source_indices=members, inside_source_indices=inside, flank_source_indices=flanks,
++                full_width_deg=math.degrees(float(sum(cells[members]))))
+ 
+ 
+ def near_sweep(points, speed, age, steering, previous_steering, wheelbase, length, width, margin):
+@@ -66,9 +91,15 @@
+ class PartialObservationPolicy:
+     speed_cap_mps = .5
+ 
+-    def __init__(self, allow_narrow_forward=False, surface_translation_enabled=False, lateral_metric_enabled=False, oblique_metric_enabled=False):
++    def __init__(self, allow_narrow_forward=False, surface_translation_enabled=False, lateral_metric_enabled=False, oblique_metric_enabled=False,
++                 crop_edge_component_trial=False):
+         if any(type(v) is not bool for v in (allow_narrow_forward,surface_translation_enabled,lateral_metric_enabled,oblique_metric_enabled)):
+             raise ValueError('forward candidate flag must be bool')
++        if type(crop_edge_component_trial) is not bool:
++            raise ValueError('crop edge component trial must be bool')
++        # OFF의 원 인스턴스 상태를 그대로 보존한다. reset으로 명시 선택을 끄지 않는다.
++        if crop_edge_component_trial:
++            self.crop_edge_component_trial = True
+         self.allow_narrow_forward = allow_narrow_forward
+         self.surface_translation_enabled = surface_translation_enabled
+         if oblique_metric_enabled and not (allow_narrow_forward and surface_translation_enabled and lateral_metric_enabled):
+@@ -236,10 +267,44 @@
+         near_boundary = math.hypot(length/2, width/2) + math.hypot(history.config.lidar_x_m, history.config.lidar_y_m) + .03
+         report['near_boundary_range_m'] = near_boundary
+         boundary_ranges = []
++        edge_component = None
+         for run in runs:
+             if run[0] == 0 or run[-1] == len(front)-1:
+-                return {**report, 'reason':'unbounded_missing'}
+-            boundary_ranges.extend(values[front[[run[0]-1, run[-1]+1]]])
++                eligible = (getattr(self, 'crop_edge_component_trial', False) is True
++                    and isinstance(scan, MeasurementScan)
++                    and scan.time_basis == 'simulation_acquisition'
++                    and history.scan_time_policy == 'verified_only'
++                    and not metric_gap and not central
++                    and sum(r[0] == 0 or r[-1] == len(front)-1 for r in runs) == 1
++                    and not (run[0] == 0 and run[-1] == len(front)-1))
++                if eligible:
++                    forbidden = np.zeros(len(values), dtype=bool)
++                    if excused is not None:
++                        forbidden |= np.asarray(excused, dtype=bool)
++                    # 설명되지 않은 sector도 건너뛰지 않는다. 거리 한정 mask 여부와 무관하다.
++                    from arena_autonomy.known_structure import sector_rays
++                    for indices in sector_rays(0., 0., len(values), getattr(self, 'structure_sectors', ()),
++                                               source_angles=scan_angles(scan)):
++                        forbidden[indices] = True
++                    component = _crop_edge_component(scan, order, front, run, valid, values, cells, forbidden)
++                    if component is not None:
++                        union = set(int(i) for i in unknown) | set(component['source_indices'])
++                        full = np.asarray([int(i) for i in order if int(i) in union], dtype=int)
++                        combined_width = float(sum(cells[full]))
++                        if (combined_width <= math.radians(6)+1e-7 and len(full)/len(front) <= .05
++                                and not np.any(np.abs(angles[full]) <= math.radians(30)+step/2)):
++                            edge_component = component
++                            component.update(combined_unknown_source_indices=full.tolist(),
++                                combined_width_deg=math.degrees(combined_width),
++                                combined_fraction=len(full)/len(front),
++                                flank_ranges_m=values[component['flank_source_indices']].tolist(),
++                                scope='bounded_simulation_edge_component_not_free_space')
++                if edge_component is None:
++                    return {**report, 'reason':'unbounded_missing'}
++                report['crop_edge_component'] = edge_component
++                boundary_ranges.extend(values[edge_component['flank_source_indices']])
++            else:
++                boundary_ranges.extend(values[front[[run[0]-1, run[-1]+1]]])
+             if min(boundary_ranges) < near_boundary:
+                 self._latch('near_gap_boundary',now)
+                 self._remember(points, now, source, fresh)
+@@ -249,6 +314,8 @@
+         poses = relative_poses(history, stamps, now)
+         direction = angles[unknown] + poses[:,2]
+         central_after = bool(np.any(np.abs((direction+math.pi)%math.tau-math.pi) <= math.radians(30)+step/2))
++        if edge_component is not None and central_after:
++            return {**report, 'reason':'unbounded_missing'}
+         if central_after and not self.allow_narrow_forward:
+             return {**report, 'reason':'central_missing_after_motion'}
+         central = central or central_after
+@@ -275,6 +342,15 @@
+             report['speed_cap_mps'] = .2
+             report['forward_neighbor_required_m'] = max(1.,required)
+             report['minimum_gap_neighbor_m'] = float(min(boundary_ranges))
++        threat_unknown = unknown
++        if edge_component is not None:
++            # 허가용 crop/metric 계산은 위에서 끝났다. 이제 전체 원 성분을 소실 검사한다.
++            threat_unknown = np.asarray(edge_component['combined_unknown_source_indices'], dtype=int)
++            stamps = scan_times(scan)[threat_unknown]
++            poses = relative_poses(history, stamps, now)
++            direction = angles[threat_unknown] + poses[:,2]
++            if np.any(np.abs((direction+math.pi)%math.tau-math.pi) <= math.radians(30)+step/2):
++                return {**report, 'reason':'unbounded_missing'}
+         sensor = history.config
+         c, s = np.cos(poses[:,2]), np.sin(poses[:,2])
+         origins = poses[:,:2] + np.column_stack((c*sensor.lidar_x_m-s*sensor.lidar_y_m,
+@@ -352,7 +428,7 @@
+                     witnesses = []
+                     for ray, index in np.argwhere(threatening)[:8]:
+                         best,distance = nearest[int(index)]
+-                        witnesses.append(dict(source_index=int(unknown[ray]),
++                        witnesses.append(dict(source_index=int(threat_unknown[ray]),
+                             direction_rad=float(direction[ray]), origin_xy=origins[ray].tolist(),
+                             previous_point_now_xy=carried[index].tolist(),
+                             nearest_current_xy=current[best].tolist() if best is not None else None,
+--- a/src/arena_bringup/launch/g1_follow.launch.py
++++ b/src/arena_bringup/launch/g1_follow.launch.py
+@@ -66,6 +66,10 @@
+         DeclareLaunchArgument('g1_solo_corner_approach_trial', default_value='false', choices=['true', 'false'],
+                               description='현재 횡단면 거리로 단독 코너 진입 감속을 앞당기는 시험'),
+         SetParameter(name='g1_solo_corner_approach_trial', value=LaunchConfiguration('g1_solo_corner_approach_trial')),
++        DeclareLaunchArgument('g1_crop_edge_component_trial', default_value='false', choices=['true', 'false'],
++                              description='명시 verified native 시뮬 경계 성분; 계획/독립 보호 각각 계산'),
++        SetParameter(name='g1_crop_edge_component_trial',
++                     value=ParameterValue(LaunchConfiguration('g1_crop_edge_component_trial'), value_type=bool)),
+         DeclareLaunchArgument('g1_oblique_gap_trial', default_value='false', choices=['true', 'false'],
+                               description='단독/교통의 현재 SOLO 좁은 공백 저속 후보. 독립 보호에서도 각각 검사'),
+         SetParameter(name='g1_oblique_gap_trial', value=LaunchConfiguration('g1_oblique_gap_trial')),
+--- a/src/arena_bringup/launch/simulation.launch.py
++++ b/src/arena_bringup/launch/simulation.launch.py
+@@ -924,6 +924,9 @@
+         raise RuntimeError('IMU/엔코더 오류 시험은 local_pursuit 전용입니다.')
+     test_profile = LaunchConfiguration('lidar_test_profile').perform(context)
+     native_sampling=LaunchConfiguration('lidar_native_sampling_profile').perform(context)
++    crop_edge = _as_bool(LaunchConfiguration('g1_crop_edge_component_trial').perform(context))
++    if crop_edge and (not local_mode or not native_sampling):
++        raise ValueError('crop edge component requires explicit native local_pursuit simulation')
+     if native_sampling:
+         if (not local_mode or LaunchConfiguration('lidar_acquisition').perform(context)!='sequential'
+                 or LaunchConfiguration('lidar_compensation').perform(context)!='both'):
+@@ -1488,6 +1491,7 @@
+         # 표현해 /drive와 /drive/safe의 float32 직렬화가 이를 넘지 않게 한다.
+         equivalent_steering = _float32_limit_not_above(physical_steering_limit)
+         actions.append(Node(package="arena_autonomy", executable="lidar_safety", parameters=[{
++            "g1_crop_edge_component_trial": crop_edge,
+             "lidar_input_representation": 'native_simulation_v1' if native_sampling else 'laser_scan',
+             "use_sim_time": True, "lidar_compensation": "both", "motion_scan_timing_verified": True,
+             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
+@@ -1549,6 +1553,7 @@
+                                           p22_entry_trial=p22_trial)
+         controller_parameters = {
+             **planning_geometry,
++            "g1_crop_edge_component_trial": crop_edge,
+             "g1_runtime_policy": LaunchConfiguration("g1_runtime_policy").perform(context),
+             "g1_current_corner_budget": LaunchConfiguration("g1_current_corner_budget").perform(context),
+             "use_sim_time": True,
+@@ -1728,6 +1733,9 @@
+             DeclareLaunchArgument('g1_runtime_policy', default_value='off',
+                                   choices=['off', 'cad_runtime_r377_v1'],
+                                   description='명시 두 계산 정책; process/fresh/worker/native 조건은 노드가 검사'),
++            DeclareLaunchArgument('g1_crop_edge_component_trial', default_value='false',
++                                  choices=['false', 'true'],
++                                  description='명시 verified native 시뮬 경계 성분 후보; 계획/독립 보호에 같은 선택'),
+             DeclareLaunchArgument('g1_current_corner_budget', default_value='off',
+                                   choices=['off', 'r396_v1'],
+                                   description='명시 현재 코너 거리·성분 후보; verified simulation 전용'),

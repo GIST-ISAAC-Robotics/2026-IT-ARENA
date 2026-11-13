@@ -10,9 +10,10 @@ class ActuationMotorEndpoint {
   ActuationMotorEndpoint(const ReceiverConfig& cfg, const std::uint32_t* boot,
                         std::size_t length, std::uint64_t assembly_timeout_us,
                         PayloadLayout layout, const TxConfig& tx,
-                        double kp, double ki, double max_dt_s)
+                        double kp, double ki, double max_dt_s,
+                        double output_min = -1.0, double output_max = 1.0)
       : receiver_(cfg,boot,length), ingress_(receiver_,assembly_timeout_us,layout),
-        tx_(tx,receiver_), cycle_(receiver_,kp,ki,max_dt_s) {}
+        tx_(tx,receiver_), cycle_(receiver_,kp,ki,max_dt_s,output_min,output_max) {}
   ActuationMotorEndpoint(const ActuationMotorEndpoint&)=delete;
   ActuationMotorEndpoint& operator=(const ActuationMotorEndpoint&)=delete;
 
@@ -42,9 +43,15 @@ class ActuationMotorEndpoint {
     return receiver_.update_motor_encoder(now,sequence,capture,count);
   }
   void physical_stop(bool pressed,std::int64_t now) { receiver_.set_estop(pressed,now); }
-  MotorCyclePreview control_tick(std::int64_t now,bool ready=false) {
+  void check_deadlines(std::int64_t now,bool ready=false) {
+    receiver_.check_deadlines(now);
+    if(receiver_.armed() && !usable_ready(ready))
+      receiver_.report_control_fault(ControlFault::kOutputUnavailable,now);
+    sync(now,ready);
+  }
+  MotorCyclePreview control_tick(std::int64_t now,bool ready=false,bool inhibit_motor=false) {
     // 유효 시각·명령·피드백/주기부터 검사한다. 반환 의도는 이 호출에만 적용한다.
-    auto result=cycle_.tick(now,usable_ready(ready));sync(now,ready);return result;
+    auto result=cycle_.tick(now,usable_ready(ready),inhibit_motor);sync(now,ready);return result;
   }
   template<class Sink>
   TxPumpResult pump(std::int64_t now,Sink&& sink,bool ready=false) {

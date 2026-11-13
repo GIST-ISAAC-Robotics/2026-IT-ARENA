@@ -1,0 +1,19 @@
+..........F......................                                [100%]
+================================== FAILURES ===================================
+_________ test_timed_recovery_keeps_actual_disappeared_point_latched __________
+
+    def test_timed_recovery_keeps_actual_disappeared_point_latched():
+        p=policy(RecoveryPolicy); h=history()
+        previous=scan(.3); previous.ranges[375]=.15
+        assert evaluate(p,previous,h,now=.4,speed=.4)['allowed']
+        missing=scan(.5); missing.ranges[375]=float('nan')
+        result=evaluate(p,missing,h,now=.6,speed=.4)
+        assert not result['allowed'] and p.latched
+        assert p.latch_reason=='previous_point_in_missing_sweep'
+>       assert p.previous[2]==.5
+E       assert 0.30000000000000004 == 0.5
+
+artifacts\validation\2026-11-14\independent_guard_route_r489_v1\stage\tests\test_independent_guard_route.py:138: AssertionError
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-14/independent_guard_route_r489_v1/stage/tests/test_independent_guard_route.py::test_timed_recovery_keeps_actual_disappeared_point_latched
+1 failed, 32 passed, 8 subtests passed in 0.86s

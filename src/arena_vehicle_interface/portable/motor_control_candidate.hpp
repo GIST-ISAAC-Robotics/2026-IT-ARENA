@@ -19,14 +19,16 @@ class MotorControlCandidate {
  public:
   // receiver가 더 오래 살아야 한다. 이 객체는 모터축 모드만 지원한다.
   explicit MotorControlCandidate(ActuationReceiverCore& receiver, double kp = 0.6,
-                                 double ki = 1.2, double max_dt_s = 0.05)
-      : receiver_(receiver), pi_(kp, ki, max_dt_s), max_dt_s_(max_dt_s) {}
+                                 double ki = 1.2, double max_dt_s = 0.05,
+                                 double output_min = -1.0, double output_max = 1.0)
+      : receiver_(receiver), pi_(kp, ki, max_dt_s, output_min, output_max), max_dt_s_(max_dt_s) {}
   MotorControlCandidate(const MotorControlCandidate&) = delete;
   MotorControlCandidate& operator=(const MotorControlCandidate&) = delete;
 
   // 준비값은 이번 주기의 외부 증거다. 생략하면 false. true도 실물 허가/감시 검증은 아니다.
   // 반환값은 이 시각의 계산 의도이며, 저장해 두었다 나중에 적용하는 출력 패킷이 아니다.
-  MotorCyclePreview tick(std::int64_t now, bool output_ready = false) {
+  // inhibit_motor는 준비 중인 actuator의 추가 출력 억제다. receiver/기한 검사는 생략하지 않는다.
+  MotorCyclePreview tick(std::int64_t now, bool output_ready = false, bool inhibit_motor = false) {
     receiver_.tick(now);  // 명령·피드백·제어 공백 검사부터. 통신 callback에서 이 함수를 호출하지 않는다.
     if (!pi_.valid() || !receiver_.motor_mode())
       return fail(ControlFault::kInvalidConfig, now);
@@ -56,6 +58,10 @@ class MotorControlCandidate {
       auto out = preview(now, "zero_target");
       out.motor.status = PiStatus::kZeroTarget;
       return out;
+    }
+    if (inhibit_motor) {
+      pi_.reset();  // 실제로 출력하지 않는 준비 시간에 적분이 쌓이지 않도록 한다.
+      return preview(now, "actuator_preparing");
     }
     const auto intent = pi_.update_mean(receiver_.target_speed(), receiver_.mean_mps(), dt, true);
     if (intent.status != PiStatus::kNormal) {

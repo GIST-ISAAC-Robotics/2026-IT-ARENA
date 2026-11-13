@@ -1,0 +1,20 @@
+F....................................................................    [100%]
+=================================== FAILURES ===================================
+______________________ test_runtime_connections[default] _______________________
+
+driver = PosixPath('/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/runtime_drive_r387_v1/review/verify_v1/tmp/runtime-drive-review0/driver')
+case = 'default'
+
+    @pytest.mark.parametrize('case',CASES)
+    def test_runtime_connections(driver,case):
+        result=subprocess.run([str(driver),case],capture_output=True,text=True,timeout=15)
+>       assert result.returncode==0 and not result.stderr,(result.stdout,result.stderr)
+E       AssertionError: ('', 'line 62: tx.pump_bounded(now,endpoint,[&](const std::uint8_t* p,std::size_t n)->std::size_t{ const auto take=std...ger_field(text,"lease_issued_us"); offer_generation=integer_field(text,"generation"); } }));return take; },ready())
+E         ')
+E       assert (1 == 0)
+E        +  where 1 = CompletedProcess(args=['/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/runtim...ger_field(text,"lease_issued_us"); offer_generation=integer_field(text,"generation"); } }));return take; },ready())\n').returncode
+
+artifacts/validation/2026-11-13/runtime_drive_r387_v1/review/test_combined.py:47: AssertionError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-13/runtime_drive_r387_v1/review/test_combined.py::test_runtime_connections[default]
+1 failed, 68 passed in 3.25s

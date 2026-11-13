@@ -1,0 +1,806 @@
+--- artifacts/validation/2026-11-13/solo_full_lap_r457_v1/config.json
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/config.json
+@@ -1,7 +1,7 @@
+ {
+   "schema_version": 1,
+   "registered_at": "2026-11-08 실행 전 준비",
+-  "scope": "r457 latest CAD solo full lap, actor0; r452 controller/sensor/facility/physics unchanged",
++  "scope": "r460 solo variations; r457 evaluator and controller settings retained; evaluation-only start or wall variation",
+   "ground_truth_allowlist_evaluation_only": [
+     "actor_schedule",
+     "actor_pose",
+@@ -13,7 +13,7 @@
+     "contact_sensor"
+   ],
+   "launch": {
+-    "entry_g1": "artifacts/validation/2026-11-13/solo_full_lap_r457_v1/course.launch.py",
++    "entry_g1": "artifacts/validation/2026-11-13/solo_variations_r460_v1/course.launch.py",
+     "entry_r0": "demo.launch.py (same arguments as the existing validator's local_pursuit path, g1_follow_enabled unset=false)",
+     "autonomy_mode": "local_pursuit",
+     "lidar_acquisition": "sequential",
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/execution/check_owned_processes.py
+@@ -0,0 +1,17 @@
++import json,os,datetime
++from pathlib import Path
++import sys
++artifact=Path(__file__).resolve().parent.parent
++sys.path.insert(0,str(artifact))
++from prepare import CASES
++assert len(sys.argv)==2 and sys.argv[1] in CASES
++a=artifact/'cases'/sys.argv[1];pid=int((a/'execution_v1/run.pid').read_text());partition=('GZ_PARTITION=arena_autonomy_test_'+str(pid)).encode();rows=[]
++for p in Path('/proc').iterdir():
++ if not p.name.isdigit() or int(p.name)==os.getpid():continue
++ try:
++  args=(p/'cmdline').read_bytes().split(b'\0');env=(p/'environ').read_bytes().split(b'\0');text=b' '.join(args).decode(errors='replace')
++  own=int(p.name)==pid or partition in env or ('solo_variations_r460_v1' in text and any(w in text for w in ['execute_once.sh','stop_once.sh','run.py','stop_owned.py']))
++  if own:rows.append(dict(pid=int(p.name),argv=[x.decode(errors='replace') for x in args if x],partition_match=partition in env))
++ except (FileNotFoundError,PermissionError):pass
++value=dict(at_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),owner_pid=pid,partition=partition.decode(),remaining_owned_work=rows)
++(a/'execution_v1/owned_processes_after.json').write_text(json.dumps(value,indent=2)+'\n');print(json.dumps(value));assert not rows
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/execution/execute_once.sh
+@@ -0,0 +1,31 @@
++#!/usr/bin/env bash
++set -eo pipefail
++cd '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local'
++artifact='artifacts/validation/2026-11-13/solo_variations_r460_v1'
++case_name="${1:?one registered variation required}"
++case "$case_name" in start_left20_yaw_plus3|start_right20_yaw_minus3|wall_surface_inward10) ;; *) exit 2;; esac
++case_dir="$artifact/cases/$case_name"
++receipt="$case_dir/execution_v1"
++test ! -e "$case_dir/registered.json"
++test ! -e "$case_dir/run1"
++test ! -e "$receipt/run.pid"
++source /opt/ros/jazzy/setup.bash
++source install/setup.bash
++export PYTHONDONTWRITEBYTECODE=1
++export PYTHONPATH="$PWD/src/arena_autonomy:$PWD/src/arena_vehicle_interface:$PWD/scripts${PYTHONPATH:+:$PYTHONPATH}"
++mkdir -p "$receipt"
++python3 -B "$artifact/prepare_execution.py" --check > "$receipt/check_before_run.json"
++date --utc --iso-8601=seconds > "$receipt/run_started_utc.txt"
++python3 "$artifact/run.py" "$case_name" > "$receipt/runner.log" 2>&1 &
++run_pid=$!
++printf '%s\n' "$run_pid" > "$receipt/run.pid"
++printf 'r460 one owned variation started: %s pid=%s\n' "$case_name" "$run_pid"
++set +e
++wait "$run_pid"
++run_code=$?
++set -e
++printf '%s\n' "$run_code" > "$receipt/run.exit"
++date --utc --iso-8601=seconds > "$receipt/run_finished_utc.txt"
++python3 -B "$artifact/prepare_execution.py" --check > "$receipt/check_after_run.json"
++printf 'r460 variation exited: %s %s\n' "$case_name" "$run_code"
++exit "$run_code"
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/execution/observe.py
+@@ -0,0 +1,26 @@
++import json,datetime
++from pathlib import Path
++import sys
++artifact=Path(__file__).resolve().parent.parent
++sys.path.insert(0,str(artifact))
++from prepare import CASES
++assert len(sys.argv)==2 and sys.argv[1] in CASES
++a=artifact/'cases'/sys.argv[1]
++p=a/'run1/trajectory.jsonl'
++if not p.exists():
++ print(json.dumps(dict(phase='startup',trajectory_present=False)));raise SystemExit
++rows=[]
++for line in p.read_text(encoding='utf-8').splitlines():
++ try:rows.append(json.loads(line))
++ except json.JSONDecodeError:pass
++if not rows:print('{}');raise SystemExit
++green=[r for r in rows if r.get('elapsed_since_green_s') is not None]
++last=rows[-1];maximum=None;last_advance=None
++for r in green:
++ if maximum is None or r['progress_m']>maximum+1e-6: maximum=r['progress_m'];last_advance=r['t']
++idle=None if last_advance is None else last['t']-last_advance
++contact=any(r.get('wall_collision') for r in green)
++reason='wall_contact' if contact else 'eight_sim_seconds_no_progress' if idle is not None and idle>=8. else None
++value=dict(at_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),phase='running',rows=len(rows),last={k:last.get(k) for k in ['t','progress_m','ground_speed_mps','drive_speed_mps','safe_speed_mps','safety_reason','mcu_state','centerline_error_m','wall_collision']},last_progress_advance_s=last_advance,no_progress_sim_s=idle,stop_required=reason,report_present=(a/'run1/report.json').exists(),run_exit=(a/'execution_v1/run.exit').read_text().strip() if (a/'execution_v1/run.exit').exists() else None)
++with (a/'execution_v1/observations.jsonl').open('a',encoding='utf-8') as stream:stream.write(json.dumps(value)+'\n')
++print(json.dumps(value))
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/execution/stop_once.sh
+@@ -0,0 +1,19 @@
++#!/usr/bin/env bash
++set -eo pipefail
++cd '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local'
++a='artifacts/validation/2026-11-13/solo_variations_r460_v1'
++case_name="${1:?one registered variation required}"
++case "$case_name" in start_left20_yaw_plus3|start_right20_yaw_minus3|wall_surface_inward10) ;; *) exit 2;; esac
++receipt="$a/cases/$case_name/execution_v1"
++test ! -e "$receipt/stop_helper.exit"
++source /opt/ros/jazzy/setup.bash
++source install/setup.bash
++export PYTHONDONTWRITEBYTECODE=1
++export PYTHONPATH="$PWD/src/arena_autonomy:$PWD/src/arena_vehicle_interface:$PWD/scripts${PYTHONPATH:+:$PYTHONPATH}"
++set +e
++python3 "$a/stop_owned.py" "$case_name" > "$receipt/stop_helper.log" 2>&1
++rc=$?
++set -e
++printf '%s\n' "$rc" > "$receipt/stop_helper.exit"
++cat "$receipt/stop_helper.log"
++exit "$rc"
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/launch/simulation.launch.py
+@@ -0,0 +1,21 @@
++"""r460 평가 사본: raw XML 변형 → 공통 override → r457 시설/RTF 처리."""
++import importlib.util
++import os
++from pathlib import Path
++import sys
++
++A = Path(__file__).resolve().parent.parent
++ROOT = A.parents[3]
++sys.path.insert(0, str(A))
++from prepare import CASES
++from variation_launch import runtime_wrapper, spawn_clone
++
++name = os.environ['IT_ARENA_R460_VARIATION']
++assert name in CASES
++evidence = A/'cases'/name
++spec = importlib.util.spec_from_file_location('r460_simulation', ROOT/'src/arena_bringup/launch/simulation.launch.py')
++module = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(module)
++module._runtime_world_overrides = runtime_wrapper(module._runtime_world_overrides, name, evidence)
++module._launch_setup = spawn_clone(module._launch_setup, name, evidence)
++generate_launch_description = module.generate_launch_description
+--- artifacts/validation/2026-11-13/solo_full_lap_r457_v1/launch_adapter.py
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/launch_adapter.py
+@@ -1,5 +1,6 @@
+ """평가기의 launch 진입점만 선택한다. 실제 노드 prefix/정책 monkeypatch는 없다."""
+ import json
++import os
+ from pathlib import Path
+ import types
+ 
+@@ -24,7 +25,9 @@
+     return [*command[:3], str(A/'course.launch.py'), *command[5:], *SELECTION]
+ 
+ 
+-def instrument_start(original, evidence):
++def instrument_start(original, evidence, variation):
++    from prepare import CASES
++    assert variation in CASES
+     process_module = original.__globals__['subprocess']
+ 
+     class Proxy:
+@@ -33,6 +36,7 @@
+ 
+         def Popen(self, command, *args, **kwargs):
+             selected = rewrite_command(command)
++            kwargs['env'] = {**(kwargs.get('env') or os.environ), 'IT_ARENA_R460_VARIATION': variation}
+             Path(evidence).write_text(json.dumps(selected, indent=2)+'\n', encoding='utf8')
+             return process_module.Popen(selected, *args, **kwargs)
+ 
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/prepare_execution.py
+@@ -0,0 +1,134 @@
++"""r460 기준 recipe/정적 연결 준비. nominal 성공 전에는 실행 동결하지 않는다."""
++import argparse
++import ast
++import json
++from pathlib import Path
++import zipfile
++import xml.etree.ElementTree as ET
++
++from prepare import A, ROOT, WORLD, SCENE, CASES
++from variation_launch import raw_variant, sha, write_new
++
++BASE = A.parent/'solo_full_lap_r457_v1'
++
++
++def read(path):
++    return json.loads(path.read_bytes())
++
++
++def case_dir(name):
++    assert name in CASES
++    return A/'cases'/name
++
++
++def arguments(name):
++    args = list(read(BASE/'prepared.json')['args'])
++    args[0] = (A/'solo_runner.py').relative_to(ROOT).as_posix()
++    for key, value in {'--config': A/'config.json', '--output': case_dir(name)/'run1'}.items():
++        args[args.index(key)+1] = value.relative_to(ROOT).as_posix()
++    return args
++
++
++def baseline_inputs():
++    baseline = read(BASE/'prepared.json')
++    assert sha(BASE/'sources.zip') == baseline['source_archive_sha256']
++    selected = {p:h for p,h in baseline['frozen_inputs'].items()
++        if p.startswith(('src/', 'scripts/', 'tests/', 'config/')) or 'old_signal_610_r326_v1/' in p}
++    for path in (WORLD, SCENE, BASE/'prepared.json', BASE/'sources.zip'):
++        selected[path.relative_to(ROOT).as_posix()] = sha(path)
++    for name, record in read(A/'baseline_copy.json').items():
++        path = BASE/name
++        assert sha(path) == record['baseline_sha256'], f'review changed baseline recipe: {name}'
++        selected[path.relative_to(ROOT).as_posix()] = sha(path)
++    changed = [p for p,h in selected.items() if not (ROOT/p).is_file() or sha(ROOT/p) != h]
++    assert not changed, changed
++    return selected
++
++
++def nominal_success():
++    report = read(BASE/'run1/report.json')
++    integrity = read(BASE/'integrity.json')
++    assert report['passed'] is True and report['shutdown_clean'] is True, 'nominal failure holds all variants'
++    assert report['evaluation']['gates']['full_lap'] is True
++    assert report['evaluation']['no_actor']['facility_count'] == 3
++    assert not integrity['changed_inputs'] and integrity['archive_unchanged'] is True
++    processes = read(BASE/'execution_v1/owned_processes_after.json')
++    assert not processes['remaining_owned_work'], 'baseline must return WSL before variations'
++    return {p.relative_to(ROOT).as_posix():sha(p) for p in
++        (BASE/'run1/report.json', BASE/'integrity.json', BASE/'execution_v1/owned_processes_after.json')}
++
++
++def prepare_connection():
++    baseline = baseline_inputs()
++    output = A/'connection_v1'
++    assert not output.exists()
++    output.mkdir()
++    raw_files = {}
++    for name in CASES:
++        tree, _ = raw_variant(WORLD, name, absolute_uris=False)
++        path = output/f'{name}.sdf'
++        ET.ElementTree(tree).write(path, encoding='utf8', xml_declaration=True)
++        raw_files[name] = dict(path=path.relative_to(ROOT).as_posix(), sha256=sha(path))
++    for path in [*A.glob('*.py'), *(A/'launch').glob('*.py'), *(A/'execution').glob('*.py')]:
++        ast.parse(path.read_bytes())
++    assert read(A/'static_v1/result.json')['passed'] is True
++    files = {p.relative_to(ROOT).as_posix():sha(p) for p in
++        [*A.glob('*.py'), *A.glob('*.sdf'), A/'config.json', A/'expected_header.json', A/'baseline_copy.json',
++         A/'static_v1/result.json', A/'static_check_v1.log', A/'static_check_v1.exit',
++         *(A/'prepared').glob('*'), *(A/'launch').glob('*.py'), *(A/'execution').glob('*')] if p.is_file()}
++    value = dict(baseline_inputs=baseline, artifact_inputs=files, raw_files=raw_files,
++        args={name:arguments(name) for name in CASES}, actor_count=0, facilities=3,
++        real_time_factor=.25, max_sim_seconds=80, no_progress_stop_sim_seconds=8,
++        original_static_manifest_sha256=sha(A/'prepared/manifest.json'),
++        original_runtime_probe_failure_sha256=sha(A/'prepared/runtime_probe_initial_failure.json'),
++        control_configuration_changed=False, source_delta_from_r457=[],
++        requires_successful_nominal_solo=True, execution_ready=False, simulation_started=False)
++    write_new(output/'manifest.json', value)
++    return dict(prepared_connection=True, frozen_for_execution=False, simulation_started=False,
++        baseline_input_count=len(baseline), artifact_inputs=len(files), cases=len(CASES))
++
++
++def verify_connection():
++    value = read(A/'connection_v1/manifest.json')
++    selected = {**value['baseline_inputs'], **value['artifact_inputs'],
++        **{r['path']:r['sha256'] for r in value['raw_files'].values()}}
++    changed = [p for p,h in selected.items() if not (ROOT/p).is_file() or sha(ROOT/p) != h]
++    assert not changed, changed
++    return value, selected
++
++
++def freeze():
++    value, selected = verify_connection()
++    selected.update(nominal_success())
++    assert read(A/'static_v1/result.json')['passed'] is True
++    assert read(A/'runtime_preflight/result.json')['passed'] is True
++    for path in (A/'connection_v1/manifest.json', A/'static_v1/result.json', A/'runtime_preflight/result.json'):
++        selected[path.relative_to(ROOT).as_posix()] = sha(path)
++    with zipfile.ZipFile(A/'execution_sources.zip', 'x', zipfile.ZIP_DEFLATED) as bundle:
++        for path in selected:
++            if not path.endswith('/sources.zip'):
++                bundle.write(ROOT/path, path)
++    value = dict(frozen_inputs=selected, args=value['args'],
++        source_archive_sha256=sha(A/'execution_sources.zip'),
++        nominal_success_required=True, actor_count=0, facilities=3, execution_limit_per_case=1,
++        repeat_on_failure=False, control_configuration_changed=False, root_execution_review_required=True)
++    write_new(A/'execution_prepared.json', value)
++    return dict(frozen=True, prepared_sha256=sha(A/'execution_prepared.json'),
++        source_archive_sha256=value['source_archive_sha256'], input_count=len(selected))
++
++
++def verify_prepared():
++    value = read(A/'execution_prepared.json')
++    changed = [p for p,h in value['frozen_inputs'].items() if not (ROOT/p).is_file() or sha(ROOT/p) != h]
++    assert not changed, changed
++    assert sha(A/'execution_sources.zip') == value['source_archive_sha256']
++    return value
++
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser()
++    parser.add_argument('--check', action='store_true')
++    parser.add_argument('--freeze', action='store_true')
++    options = parser.parse_args()
++    print(json.dumps(freeze() if options.freeze else
++        dict(connection_unchanged=True, inputs=len(verify_connection()[1])) if options.check else prepare_connection()))
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/run.py
+@@ -0,0 +1,100 @@
++"""동결·nominal 성공·주 담당 검토 뒤 변형 하나를 한 번만 실행한다."""
++import inspect
++import json
++from pathlib import Path
++import sys
++
++A = Path(__file__).resolve().parent
++ROOT = A.parents[3]
++sys.path[:0] = [str(A), str(ROOT/'scripts'), str(ROOT/'tests')]
++from prepare_execution import CASES, arguments, case_dir, nominal_success, read, verify_prepared
++from variation_launch import sha, write_new
++from launch_adapter import instrument_start
++
++
++def configure(target, name, evidence):
++    from shapely.affinity import rotate, translate
++    from facility_geometry import load, slab_projection
++    fixture = A.parent/'old_signal_610_r326_v1'
++    record = read(fixture/'fixture.json')
++    mesh = fixture/'support_frame_m.stl'
++    assert record['original_sources_unchanged'] and sha(mesh) == record['mesh_sha256']
++    _, _, triangles, _ = load(mesh)
++    shape = slab_projection(triangles, .0325, .0925)
++    shapes = [translate(rotate(shape, p['yaw'], origin=(0,0), use_radians=True), p['x'], p['y'])
++              for p in record['locations']]
++    assert len(shapes) == 3
++    original = target.obstacle_polygons
++    variant = A/'connection_v1'/f'{name}.sdf'
++    expected_walls = original(variant)
++    target.obstacle_polygons = lambda path: [*expected_walls, *shapes]
++    original_evaluate = target.solo_evaluation.evaluate_run
++    def evaluate(**kwargs):
++        # launch 전 STRtree와 종료 평가가 같은 물리 월드를 사용했는지 실제 runtime에서 대조한다.
++        runtime = original(evidence/'run1/runtime_world.sdf')
++        equal = len(runtime) == len(expected_walls) and all(
++            x.equals_exact(y, 1e-12) for x, y in zip(runtime, expected_walls))
++        audit = dict(passed=equal, expected_static_walls=len(expected_walls), runtime_static_walls=len(runtime),
++            additional_facilities=len(shapes), raw_variant_sha256=sha(variant),
++            runtime_world_sha256=sha(evidence/'run1/runtime_world.sdf'),
++            comparison='same static box polygons; old610 three STL slabs retained from baseline')
++        write_new(evidence/'evaluation_geometry.json', audit)
++        result = original_evaluate(**kwargs)
++        result.setdefault('harness', {}).setdefault('checks', {})['runtime_wall_matches_evaluator'] = equal
++        result['harness']['valid'] = result['harness'].get('valid') is True and equal
++        result['variation_geometry'] = audit
++        return result
++    target.solo_evaluation.evaluate_run = evaluate
++    original_start = instrument_start(target.start_demo_process, evidence/'launch_command.json', name)
++    def start(*args, **kwargs):
++        bound = inspect.signature(original_start).bind(*args, **kwargs)
++        bound.apply_defaults()
++        extra = list(bound.arguments['extra_arguments'])
++        assert sum(x.startswith('evaluation_actor_sdf:=') for x in extra) == 1
++        extra += ['g1_narrow_occluder_bridge:=true', 'g1_junction_continuity:=true', 'evaluation_course_markers:=blank_20_30']
++        bound.arguments['extra_arguments'] = extra
++        write_new(evidence/'launch_extra.json', extra)
++        return original_start(*bound.args, **bound.kwargs)
++    target.start_demo_process = start
++
++
++def main():
++    assert Path.cwd() == ROOT and len(sys.argv) == 2 and sys.argv[1] in CASES
++    name = sys.argv[1]
++    evidence = case_dir(name)
++    assert not any((evidence/p).exists() for p in ('registered.json', 'run1')), 'one execution only'
++    prepared = verify_prepared()
++    nominal_success()
++    review = read(evidence/'root_execution_review.json')
++    assert review['root_reviewed'] and review['case'] == name and review['execution_limit'] == 1
++    assert review['repeat_on_failure'] is False and review['wsl_exclusive_owner_confirmed'] is True
++    assert review['prepared_sha256'] == sha(A/'execution_prepared.json')
++    assert review['source_archive_sha256'] == prepared['source_archive_sha256']
++    import solo_runner as target
++    configure(target, name, evidence)
++    args = arguments(name)
++    assert args == prepared['args'][name]
++    write_new(evidence/'registered.json', dict(case=name, args=args, frozen_inputs=prepared['frozen_inputs'],
++        source_archive_sha256=prepared['source_archive_sha256'], actor_count=0, one_execution_only=True,
++        repeat_on_failure=False, ground_truth_evaluation_only=True))
++    code = None
++    try:
++        sys.argv = args
++        code = target.main()
++        return code
++    finally:
++        changed = [p for p,h in prepared['frozen_inputs'].items() if not (ROOT/p).exists() or sha(ROOT/p) != h]
++        write_new(evidence/'integrity.json', dict(validation_returncode=code, changed_inputs=changed,
++            archive_unchanged=sha(A/'execution_sources.zip') == prepared['source_archive_sha256']))
++        trace = evidence/'run1/follow_decisions.jsonl'
++        if trace.exists():
++            from audit_runtime import audit
++            write_new(evidence/'runtime_audit.json', audit(trace, A/'expected_header.json'))
++        if (evidence/'run1/report.json').exists():
++            from audit_runtime import stop_sequence
++            write_new(evidence/'stop_sequence.json', stop_sequence(read(evidence/'run1/report.json'),
++                read(evidence/'early_stop.json') if (evidence/'early_stop.json').exists() else {}))
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/runtime_preflight.py
+@@ -0,0 +1,45 @@
++"""후속 WSL 반환 후 실행할 import/연결 확인. ROS init/spin/발행/Gazebo 시작 없음."""
++import importlib.util
++import os
++from pathlib import Path
++import sys
++
++A = Path(__file__).resolve().parent
++ROOT = A.parents[3]
++sys.path[:0] = [str(A), str(ROOT/'scripts'), str(ROOT/'tests')]
++from prepare_execution import CASES, verify_connection, nominal_success
++from variation_launch import write_new
++
++
++def main():
++    verify_connection()
++    nominal_success()
++    import solo_runner
++    import arena_autonomy.g1_g2_node
++    from run import configure
++    original = solo_runner.obstacle_polygons
++    original_eval = solo_runner.solo_evaluation.evaluate_run
++    original_start = solo_runner.start_demo_process
++    from launch_adapter import SELECTION
++    records = []
++    for name in CASES:
++        os.environ['IT_ARENA_R460_VARIATION'] = name
++        spec = importlib.util.spec_from_file_location('r460_preflight_'+name, A/'launch/simulation.launch.py')
++        module = importlib.util.module_from_spec(spec)
++        spec.loader.exec_module(module)
++        description = module.generate_launch_description()
++        assert description.entities
++        configure(solo_runner, name, A/'runtime_preflight'/name)
++        obstacles = solo_runner.obstacle_polygons(None)
++        assert len(obstacles) == len(original(A/'connection_v1'/f'{name}.sdf'))+3
++        solo_runner.obstacle_polygons = original
++        solo_runner.solo_evaluation.evaluate_run = original_eval
++        solo_runner.start_demo_process = original_start
++        records.append(dict(case=name, launch_description_created=True, evaluator_obstacles=len(obstacles)))
++    write_new(A/'runtime_preflight/result.json', dict(passed=True, cases=records, selection=SELECTION,
++        ros_initialized=False, gazebo_started=False, nodes_started=False, control_publications=0,
++        scope='imports/launch descriptions/geometry wiring only; no launch setup or physics execution'))
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/static_check.py
+@@ -0,0 +1,174 @@
++"""Windows XML/AST 연결 검사. ROS import/시뮬레이터/물리 실행을 하지 않는다."""
++import ast
++import copy
++import inspect
++import json
++import math
++from pathlib import Path
++import struct
++import tempfile
++import xml.etree.ElementTree as ET
++
++from prepare import A, ROOT, WORLD, SCENE, CASES, world_variant, spawn_variant
++from prepare_execution import BASE, baseline_inputs, read
++from variation_launch import SPAWN_LINE, runtime_wrapper, spawn_clone, sha, write_new
++
++
++def xml_functions(path):
++    tree = ast.parse(path.read_bytes())
++    kept = [ast.ImportFrom(module='__future__', names=[ast.alias(name='annotations')], level=0)]
++    kept += [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.Assign, ast.AnnAssign))]
++    namespace = dict(ET=ET, Path=Path, math=math, json=json, copy=copy, struct=struct, tempfile=tempfile,
++                     __file__=str(path))
++    exec(compile(ast.fix_missing_locations(ast.Module(body=kept, type_ignores=[])), str(path), 'exec'), namespace)
++    return namespace
++
++
++def normalized_xml(path):
++    tree = ET.parse(path).getroot()
++    for value in tree.findall('.//uri'):
++        if value.text and Path(value.text).name.startswith('batched_'):
++            value.text = '<runtime>/'+Path(value.text).name
++    return tree
++
++
++def polygon_functions():
++    # 원 evaluator의 rectangle/obstacle_polygons를 그대로 실행하되 Polygon 생성만 꼭짓점 tuple로 받는다.
++    # Shapely 공간 연산 실행은 이 Windows 검사 범위가 아니다.
++    path = ROOT/'scripts/build_experimental_track.py'
++    tree = ast.parse(path.read_bytes())
++    kept = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in ('rectangle','obstacle_polygons')]
++    namespace = dict(ET=ET, Path=Path, math=math, Polygon=lambda points:tuple(points))
++    exec(compile(ast.Module(body=kept, type_ignores=[]), str(path), 'exec'), namespace)
++    return namespace['obstacle_polygons']
++
++
++def main():
++    source_hashes = baseline_inputs()
++    original_prepared = {p:sha(p) for p in (A/'prepared').iterdir() if p.is_file()}
++    output = A/'static_v1'
++    output.mkdir(exist_ok=False)
++    scripts = [*A.glob('*.py'), *(A/'launch').glob('*.py'), *(A/'execution').glob('*.py')]
++    for path in scripts:
++        ast.parse(path.read_bytes())
++    checks = dict(artifact_python_ast=True)
++    baseline_config, new_config = read(BASE/'config.json'), read(A/'config.json')
++    expected = copy.deepcopy(baseline_config)
++    expected['scope'] = new_config['scope']
++    expected['launch']['entry_g1'] = new_config['launch']['entry_g1']
++    assert new_config == expected
++    assert baseline_config['cases'][0]['duration_s'] == 80.
++    assert new_config['launch']['grid_slot'] == 3
++    assert (A/'facilities_only.sdf').read_bytes() == (BASE/'facilities_only.sdf').read_bytes()
++    checks.update(config_only_scope_and_artifact_path=True, facility_overlay_byte_exact=True)
++    common = xml_functions(ROOT/'src/arena_bringup/launch/simulation.launch.py')
++    original = common['_runtime_world_overrides']
++    baseline_folder = output/'baseline'
++    baseline_folder.mkdir()
++    # r457 artifact의 실제 isolated 함수 자체를 호출한다. imports/generate/ROS setup은 호출하지 않는다.
++    path = BASE/'launch/simulation.launch.py'
++    node = next(n for n in ast.parse(path.read_bytes()).body if isinstance(n,ast.FunctionDef) and n.name=='isolated')
++    namespace = dict(original=original, A=baseline_folder, ET=ET, Path=Path, json=json,
++                     hashlib=__import__('hashlib'))
++    exec(compile(ast.Module(body=[node], type_ignores=[]), str(path), 'exec'), namespace)
++    options = dict(detector='configured', scene_broadcaster=False, speed_bump=False, batch_visuals=True,
++        evaluation_models=A/'facilities_only.sdf', evaluation_wheel_contacts=True,
++        evaluation_physics_step='', evaluation_course_markers='blank_20_30',
++        evaluation_grass_alignment='road_level', signal_posts='none', track='official_v2026_11_06')
++    baseline_path = baseline_folder/'world.sdf'
++    baseline_report = namespace['isolated'](WORLD, baseline_path, **options)
++    baseline_tree = normalized_xml(baseline_path)
++    obstacles = polygon_functions()
++    baseline_walls = obstacles(baseline_path)
++    assert obstacles(WORLD) == baseline_walls
++    checks['raw_static_evaluator_matches_nominal_runtime'] = True
++    slot = next(s for s in read(SCENE)['starting_grid']['slots'] if s['index']==3)
++    base_pose = (slot['x'],slot['y'],slot['yaw_rad'])
++    records = []
++    for name, values in CASES.items():
++        case = output/name
++        case.mkdir()
++        destination = case/'world.sdf'
++        report = runtime_wrapper(original,name,case)(WORLD,destination,**options)
++        assert report == baseline_report
++        runtime_tree = normalized_xml(destination)
++        expected_tree = copy.deepcopy(baseline_tree)
++        if values['wall_extra_width_m']:
++            size = expected_tree.find(".//collision[@name='walls_main_left_1_col']/geometry/box/size")
++            size.text = '1.880000000 0.070000000 0.400000000'
++        assert ET.tostring(runtime_tree) == ET.tostring(expected_tree)
++        assert len(runtime_tree.findall('world/model')) == 4
++        assert runtime_tree.find(".//visual[@name='walls_main_left_1_vis']") is None
++        mesh_changes = {}
++        for mesh in baseline_folder.glob('batched_*.obj'):
++            before, after = mesh.read_text().splitlines(), (case/mesh.name).read_text().splitlines()
++            assert len(before) == len(after)
++            changed = [i for i,(x,y) in enumerate(zip(before,after)) if x!=y]
++            if changed:
++                assert values['wall_extra_width_m'] and mesh.name.startswith('batched_walls_')
++                assert len(changed)==8 and all(before[i].startswith('v ') and after[i].startswith('v ') for i in changed)
++                mesh_changes[mesh.name] = dict(changed_vertex_lines=changed)
++        assert bool(mesh_changes) == bool(values['wall_extra_width_m'])
++        raw, edits = world_variant(ET.parse(WORLD).getroot(),name)
++        raw_path = case/'raw_for_evaluator.sdf'
++        ET.ElementTree(raw).write(raw_path,encoding='utf8',xml_declaration=True)
++        expected_polygons = obstacles(raw_path)
++        assert expected_polygons == obstacles(destination)
++        polygon_changes = sum(a!=b for a,b in zip(baseline_walls,expected_polygons))
++        assert polygon_changes == (1 if values['wall_extra_width_m'] else 0)
++        old_source = inspect.getsource(common['_launch_setup'])
++        clone = spawn_clone(common['_launch_setup'],name,case)
++        assert clone.__globals__ is common
++        pose = clone.__globals__['_r460_spawn'](*base_pose)
++        assert pose == spawn_variant(*base_pose,name)
++        assert math.isclose(math.hypot(pose[0]-base_pose[0],pose[1]-base_pose[1]),abs(values['lateral_m']),abs_tol=1e-12)
++        assert math.isclose(pose[2]-base_pose[2],math.radians(values['yaw_delta_deg']),abs_tol=1e-12)
++        assert inspect.getsource(common['_launch_setup']) == old_source
++        launch_source = old_source.replace(SPAWN_LINE,SPAWN_LINE+'\n    spawn_x, spawn_y, spawn_yaw = _r460_spawn(spawn_x, spawn_y, spawn_yaw)')
++        old_body = ast.parse(old_source).body[0].body
++        new_body = ast.parse(launch_source).body[0].body
++        inserted = [i for i,n in enumerate(new_body) if isinstance(n,ast.Assign) and isinstance(n.value,ast.Call)
++                    and isinstance(n.value.func,ast.Name) and n.value.func.id=='_r460_spawn']
++        assert len(inserted)==1
++        new_body.pop(inserted[0])
++        assert ast.dump(ast.Module(body=new_body,type_ignores=[])) == ast.dump(ast.Module(body=old_body,type_ignores=[]))
++        records.append(dict(case=name, spawn=list(pose), raw_edits=edits, static_wall_count=len(expected_polygons),
++            changed_wall_polygons=polygon_changes, runtime_xml_delta='one collision size' if edits else 'none',
++            mesh_changes=mesh_changes, actor_count=0, facilities=3, runtime_wall_matches_evaluator=True,
++            runtime_world_sha256=sha(destination), spawn_after_slot_only=True))
++    checks.update(runtime_three_variants_exact=True, visual_mesh_matches_collision=True,
++                  original_source_relative_uris_preserved=True, spawn_local_assignment_only=True)
++    # 실행 연결/STOP argv는 같은 case 명칭을 사용하며 controller 선택은 r457과 동일하다.
++    from launch_adapter import SELECTION,rewrite_command,instrument_start
++    base_adapter = {}
++    for node in ast.parse((BASE/'launch_adapter.py').read_bytes()).body:
++        if isinstance(node,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='SELECTION' for t in node.targets):
++            base_adapter['selection'] = ast.literal_eval(node.value)
++    assert SELECTION == base_adapter['selection']
++    command = ['ros2','launch','--noninteractive','arena_bringup','g1_follow.launch.py','grid_slot:=3']
++    assert rewrite_command(command) == command[:3]+[str(A/'course.launch.py')]+command[5:]+SELECTION
++    class Process:
++        def Popen(self, command, *args, **kwargs):
++            assert kwargs['env']['IT_ARENA_R460_VARIATION'] in CASES
++            assert kwargs['env']['KEEP'] == 'yes'
++            return command,kwargs['env']
++    def starter(command, **kwargs):
++        return subprocess.Popen(command,**kwargs)
++    starter.__globals__['subprocess'] = Process()
++    for name in CASES:
++        result = instrument_start(starter,output/name/'command.json',name)(command,env={'KEEP':'yes'})
++        assert result[0] == rewrite_command(command) and result[1]['IT_ARENA_R460_VARIATION'] == name
++    checks.update(controller_selection_exact=True, variation_environment_preserves_existing=True)
++    assert all(sha(ROOT/p)==h for p,h in source_hashes.items())
++    assert all(sha(p)==h for p,h in original_prepared.items())
++    checks.update(common_and_baseline_inputs_unchanged=True, initial_static_and_failed_probe_preserved=True)
++    value = dict(passed=True, checks=checks, cases=records, python_files_checked=len(scripts),
++        baseline_input_count=len(source_hashes), common_delta=[], control_selection_delta=[],
++        scope='Windows original Python XML/AST and polygon-coordinate functions; no ROS/physics/Shapely operations',
++        ros_initialized=False, simulator_started=False, build_executed=False, real_launch_setup_executed=False)
++    write_new(output/'result.json',value)
++    print(json.dumps(dict(passed=True,cases=len(records),checks=len(checks),baseline_inputs=len(source_hashes))))
++
++
++if __name__=='__main__':
++    main()
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/stop_owned.py
+@@ -0,0 +1,64 @@
++"""지속 코너 정체의 소유 시험에 STOP을 요청하고 평가기의 정상 회수를 기다린다."""
++import hashlib
++import json
++import os
++from pathlib import Path
++import time
++import sys
++
++import rclpy
++from rclpy.node import Node
++from std_srvs.srv import SetBool, Trigger
++from std_msgs.msg import String
++
++A = Path(__file__).resolve().parent
++root = A.parents[3]
++from prepare import CASES
++assert len(sys.argv)==2 and sys.argv[1] in CASES
++name=sys.argv[1]
++B=A/'cases'/name
++with (B/'stop_requested').open('x'): pass
++expected = [b'python3', b'artifacts/validation/2026-11-13/solo_variations_r460_v1/run.py', name.encode()]
++matches = []
++for proc in Path('/proc').iterdir():
++    if not proc.name.isdigit():
++        continue
++    try:
++        if (proc/'cmdline').read_bytes().split(b'\0')[:3] == expected:
++            assert (proc/'cwd').resolve() == root
++            matches.append(int(proc.name))
++    except (FileNotFoundError, PermissionError):
++        pass
++assert len(matches) == 1, matches
++pid = matches[0]
++os.environ.update(ROS_DOMAIN_ID=str(150+pid % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST', ROS_STATIC_PEERS='')
++rclpy.init()
++n = Node('r460_owned_stop')
++statuses, outputs = [], []
++n.create_subscription(String, '/actuation/status', lambda m: statuses.append(json.loads(m.data)), 20)
++n.create_subscription(String, '/actuation/output_status', lambda m: outputs.append(json.loads(m.data)), 20)
++calls = []
++for srv, kind, request in [('/autonomy/enable', SetBool, SetBool.Request(data=False)),
++                           ('/actuation/stop', Trigger, Trigger.Request())]:
++    client = n.create_client(kind, srv)
++    assert client.wait_for_service(timeout_sec=5.)
++    future = client.call_async(request)
++    rclpy.spin_until_future_complete(n, future, timeout_sec=5.)
++    assert future.done() and future.result().success
++    calls.append(dict(service=srv, success=True, message=future.result().message))
++until = time.monotonic()+3.
++while time.monotonic() < until:
++    rclpy.spin_once(n, timeout_sec=.02)
++last = statuses[-1] if statuses else {}
++out = outputs[-1] if outputs else {}
++confirmed = last.get('state') == 'ESTOP_LATCHED' and out.get('speed_mps') == 0.
++(B/'early_stop.json').write_text(json.dumps(dict(
++    reason='persistent no-progress or unsafe observed state; retain original full-run failure and collect evidence',
++    helper_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
++    owner_pid=pid, calls=calls, final_mcu=last, final_output=out, stop_confirmed=confirmed,
++    original_acceptance_changed=False, early_abort_not_completed_trial=True,
++    validator_signal_sent=False), indent=2)+'\n')
++n.destroy_node()
++rclpy.shutdown()
++assert confirmed, 'inspect simulation before shutdown'
++print('owned simulation STOP acknowledged; original validator performs STOP verification and cleanup')
+--- /dev/null
++++ artifacts/validation/2026-11-13/solo_variations_r460_v1/variation_launch.py
+@@ -0,0 +1,94 @@
++"""평가 사본의 시작점/원 XML만 변형한다. ROS 노드/제어 파라미터는 건드리지 않는다."""
++import ast
++import hashlib
++import inspect
++import json
++from pathlib import Path
++import tempfile
++import xml.etree.ElementTree as ET
++
++from prepare import WORLD, CASES, spawn_variant, world_variant
++
++URI_TAGS = ('uri', 'albedo_map', 'normal_map', 'roughness_map', 'metalness_map',
++            'environment_map', 'emissive_map')
++SPAWN_LINE = 'spawn_x, spawn_y, spawn_yaw = slot["x"], slot["y"], slot["yaw_rad"]'
++
++
++def write_new(path, value):
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with path.open('x', encoding='utf8') as stream:
++        json.dump(value, stream, ensure_ascii=False, indent=2)
++        stream.write('\n')
++
++
++def sha(path):
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def raw_variant(source, name, *, absolute_uris):
++    """같은 원본 디렉터리 기준 URI 해석을 유지한 뒤 임시 source로 전달한다."""
++    tree, edits = world_variant(ET.parse(source).getroot(), name)
++    changed = []
++    if absolute_uris:
++        for tag in URI_TAGS:
++            for value in tree.find('world').findall(f'.//{tag}'):
++                if value.text and '://' not in value.text and not Path(value.text).is_absolute():
++                    before = value.text
++                    value.text = str((source.parent / before).resolve())
++                    changed.append(dict(tag=tag, before=before, after=value.text))
++    return tree, dict(world_edits=edits, uri_edits=changed)
++
++
++def runtime_wrapper(original, name, evidence):
++    assert name in CASES
++    def isolated(*args, **kwargs):
++        bound = inspect.signature(original).bind(*args, **kwargs)
++        bound.apply_defaults()
++        source, destination = Path(bound.arguments['source']), Path(bound.arguments['destination'])
++        assert source.read_bytes() == WORLD.read_bytes(), 'only the registered original world'
++        tree, edits = raw_variant(source, name, absolute_uris=True)
++        # common도 이 URI 변환을 한다. 임시 source.parent로 기준이 바뀌지 않게 먼저 처리한다.
++        with tempfile.TemporaryDirectory(prefix='r460_raw_', dir=destination.parent) as temporary:
++            derived = Path(temporary)/'world.sdf'
++            ET.ElementTree(tree).write(derived, encoding='utf8', xml_declaration=True)
++            bound.arguments['source'] = derived
++            report = original(*bound.args, **bound.kwargs)
++        output = ET.parse(destination).getroot()
++        model = output.find("world/model[@name='it_arena_track_static']")
++        beam = model.find("link[@name='tl_beam']")
++        assert beam is not None, 'same duplicate old610 beam removal as r457'
++        removed = ET.tostring(beam, encoding='unicode')
++        model.remove(beam)
++        factors = output.findall('world/physics/real_time_factor')
++        assert len(factors) == 1 and float(factors[0].text) == 1.0
++        factors[0].text = '0.25'
++        ET.ElementTree(output).write(destination, encoding='utf8', xml_declaration=True)
++        write_new(evidence/'world_variation.json', dict(case=name, source=str(source),
++            source_sha256=sha(source), runtime_sha256=sha(destination), **edits,
++            original_override_arguments={k: str(v) if isinstance(v, Path) else v
++                for k, v in bound.arguments.items() if k not in ('source', 'destination')},
++            removed_duplicate_beam=removed, real_time_factor=.25,
++            max_step_size=output.findtext('world/physics/max_step_size'),
++            scope='evaluation world only; raw variant before common batch; no world_override'))
++        return report
++    return isolated
++
++
++def spawn_clone(original, name, evidence):
++    """선택한 slot의 지역 변수 세 개만 수정한다. 원 launch 함수/기본값은 보존한다."""
++    assert name in CASES
++    source = inspect.getsource(original)
++    assert source.count(SPAWN_LINE) == 1, 'review changed spawn entry before reuse'
++    insertion = SPAWN_LINE + '\n    spawn_x, spawn_y, spawn_yaw = _r460_spawn(spawn_x, spawn_y, spawn_yaw)'
++    updated = source.replace(SPAWN_LINE, insertion)
++    assert updated.replace(insertion, SPAWN_LINE) == source
++    def select(x, y, yaw):
++        pose = spawn_variant(x, y, yaw, name)
++        write_new(evidence/'spawn_variation.json', dict(case=name, before=[x,y,yaw], after=list(pose),
++            selected_after_slot=True, controller_parameters_changed=False))
++        return pose
++    # globals must remain the clone module dictionary: runtime overrides are set in that module.
++    original.__globals__['_r460_spawn'] = select
++    local = {}
++    exec(compile(ast.parse(updated), inspect.getsourcefile(original), 'exec'), original.__globals__, local)
++    return local[original.__name__]

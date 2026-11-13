@@ -21,6 +21,10 @@ from arena_vehicle_interface.timing_probe import TimingProbe
 class LidarSafety(Node):
     def __init__(self):
         super().__init__("lidar_safety")
+        from arena_autonomy.execution_environment import configure, motion_supported
+        configure(self)
+        if self.hardware_shadow:
+            raise ValueError('hardware shadow must use the isolated preview safety path')
         self.timing = TimingProbe(self)
         self.motion = MotionInput(self)
         self.wall_timeout = float(self.declare_parameter("sensor_wall_timeout_s", 3.).value)
@@ -47,6 +51,10 @@ class LidarSafety(Node):
         if oblique and policy != 'bounded_local_v4':
             raise ValueError('oblique gap safety trial requires explicit v4')
         traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
+        guard_policy = str(self.declare_parameter('g1_guard_observation_policy', 'original_v1').value)
+        if guard_policy not in ('original_v1', 'selected_r181'):
+            raise ValueError('unknown guard observation policy')
+        self.command_observation_priority = traffic_recovery and guard_policy == 'selected_r181'
         if traffic_recovery and policy != 'bounded_local_v4':
             raise ValueError('traffic recovery safety requires explicit v4 policy')
         if policy not in ('strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4'):
@@ -58,9 +66,15 @@ class LidarSafety(Node):
                            if structure_policy != 'off' else '')
         if structure_policy != 'off' and policy != 'bounded_local_v4':
             raise ValueError('known structure policy requires bounded_local_v4')
+        crop_edge = self.declare_parameter('g1_crop_edge_component_trial', False).value
+        from arena_autonomy.crop_edge_selection import (SIMULATION_SCOPE, ESTIMATED_SCOPE,
+            validate_policy_selection, validate_node_selection)
+        self.observation_input_scope = self.declare_parameter('g1_observation_input_scope', SIMULATION_SCOPE).value
+        validate_policy_selection(crop_edge, policy, traffic_recovery)
+        validate_node_selection(self, crop_edge, observation_scope=self.observation_input_scope)
         if policy != 'strict':
-            if self.recent_observation_enabled or self.motion.mode != 'both' or not self.motion.verified:
-                raise ValueError('bounded observation policy requires verified both motion and no recent candidate')
+            if self.recent_observation_enabled or not motion_supported(self):
+                raise ValueError('bounded observation policy requires explicit both motion timing and no recent candidate')
             from arena_autonomy.partial_observation import PartialObservationPolicy
             if traffic_recovery:
                 from arena_autonomy.traffic_recovery_trial import RecoveryPolicy
@@ -72,7 +86,12 @@ class LidarSafety(Node):
             self.partial_policy = PartialObservationPolicy(allow_narrow_forward=policy in ('bounded_local_v2','bounded_local_v3','bounded_local_v4'),
                                                           surface_translation_enabled=policy in ('bounded_local_v3','bounded_local_v4'),
                                                           lateral_metric_enabled=policy=='bounded_local_v4',
-                                                          oblique_metric_enabled=oblique)
+                                                          oblique_metric_enabled=oblique,
+                                                          crop_edge_component_trial=crop_edge)
+            if self.command_observation_priority:
+                self.partial_policy.command_observation_priority = True
+            if self.observation_input_scope == ESTIMATED_SCOPE:
+                self.partial_policy.observation_input_scope = self.observation_input_scope
         self.observation_cache = None
         self.observation_epoch = 0
         self.previous_safe_steering = 0.
@@ -87,6 +106,12 @@ class LidarSafety(Node):
                 boundary_evidence_mode='corner_distance_candidate', occupancy_timing_mode='per_ray_candidate',
                 wheelbase_m=self.wheelbase, length_m=self.length, width_m=self.width, max_steering_rad=self.limit)
             self.observation_cache = RecentScenes()
+        from arena_autonomy.vehicle_marker_channel import MarkerChannel
+        self.vehicle_marker_channel = MarkerChannel(self, producer=False)
+        if self.vehicle_marker_channel.profile is not None:
+            from arena_autonomy.local_follow import FollowConfig
+            self.vehicle_marker_config = FollowConfig(wheelbase_m=self.wheelbase,
+                length_m=self.length, width_m=self.width, max_steering_rad=self.limit)
         self.scan = self.command = None
         self.scan_wall = self.command_wall = 0.
         self.last_clock = None
@@ -104,6 +129,7 @@ class LidarSafety(Node):
     def on_input_boundary(self, msg):
         boundary = float(json.loads(msg.data)['boundary_s'])
         self.input_floor_s = boundary
+        self.vehicle_marker_channel.reset(boundary)
         self.scan = None
         self.motion.begin_input_boundary(boundary)
         if getattr(self, 'partial_policy', None) is not None:
@@ -124,6 +150,7 @@ class LidarSafety(Node):
         if self.last_clock is not None and now < self.last_clock:
             self.scan = self.command = None
             self.input_floor_s = -math.inf
+            self.vehicle_marker_channel.reset()
             self.motion.history.reset()
             if getattr(self, 'partial_policy', None) is not None:
                 self.partial_policy.reset()
@@ -142,6 +169,7 @@ class LidarSafety(Node):
         recent = None
         partial = None
         command_stale = None
+        marker_evidence = None
         try:
             if self.scan is None or self.command is None:
                 raise MotionUnavailable("missing_input")
@@ -227,15 +255,31 @@ class LidarSafety(Node):
             cap = braking_speed(clearance, now - seconds(self.scan.header.stamp))
             output.drive.speed = float(min(speed, cap))
             reason = "clear" if cap >= speed else "lidar_braking"
+            packet = self.vehicle_marker_channel.snapshot(now)
+            if packet is not None:
+                from arena_autonomy.vehicle_marker_occupancy import constrain_command
+                limited = constrain_command((output.drive.speed, output.drive.steering_angle, {"reason":reason}),
+                    packet, self.motion.history, now, packet["vision_epoch"],
+                    self.previous_safe_steering, self.vehicle_marker_config)
+                output.drive.speed = limited[0]
+                marker_evidence = limited[2].get("vehicle_marker_occupancy")
+                if marker_evidence is not None: reason = "vehicle_marker_braking"
         except MotionUnavailable as error:
             reason = str(error)
-        if getattr(self,'recent_observation_enabled',False) or getattr(self,'partial_policy',None) is not None:
+        if (getattr(self,'recent_observation_enabled',False) or getattr(self,'partial_policy',None) is not None
+                or self.vehicle_marker_channel.profile is not None):
             self.previous_safe_steering = output.drive.steering_angle
         self.publisher.publish(output)
         self.status.publish(String(data=json.dumps({"reason": reason, "safe_speed_mps": output.drive.speed,
                                                     "reference_s": now, "command_stale": command_stale,
                                                     "swept_clearance_m": clearance, "sensor": "C1",
                                                     "no_return_policy": "unknown",
+                                                    **({'execution_environment': self.execution_environment,
+                                                        'motion_timing_verified': False,
+                                                        'motion_time_policy': self.motion.timing_policy,
+                                                        'physical_actuation_verified': False}
+                                                       if getattr(self,'hardware_runtime',False) else {}),
+                                                    **({"vehicle_marker_occupancy":marker_evidence} if marker_evidence is not None else {}),
                                                     "front_observation": vars(observation) if observation else None,
                                                     **({'partial_observation':partial} if getattr(self,'partial_policy',None) is not None else {}),
                                                     **({'recent_observation':recent} if getattr(self,'recent_observation_enabled',False) else {})})))

@@ -1,0 +1,499 @@
+"""좁은 결측의 선택형 운용 정책. 빈 공간 증명/거리 보간이 아니다.
+
+측방 3°/6°/.5 m/s, 정면 1.5°/1 m 이웃/.2 m/s는 ADR 0027 후속
+시험값이며 제조사/규정값이 아니다. v1은 ±30° 정면을 허용하지 않는다.
+스캔·운동의 무결성 검사는 호출자가 먼저 수행한다. 알려진 근거리 반환의
+소실은 래치하며, 시간 만료만으로 장애물을 잊고 진행하지 않는다.
+"""
+import math
+
+import numpy as np
+from arena_autonomy.scan_input import scan_first_stamp
+
+from arena_autonomy.lidar_observation import audit_front_observation
+from arena_autonomy.scene_motion import relative_poses, transport_points
+from arena_autonomy.scan_input import scan_angles, scan_times, scan_cell_widths, scan_max_gap, audit_scan_front
+from arena_autonomy.measurement_scan import MeasurementScan
+
+
+def _crop_edge_component(scan, order, front, run, valid, values, cells, forbidden):
+    """한쪽 crop 끝의 원 missing 성분을 실제 두 flank까지 확인한다. 값을 채우지 않는다."""
+    ordered = [int(i) for i in order]
+    inside = [int(front[int(i)]) for i in run]
+    low, high = ordered.index(inside[0]), ordered.index(inside[-1])
+    if ordered[low:high+1] != inside:
+        return None
+    while low > 0 and not valid[ordered[low-1]]:
+        low -= 1
+    while high+1 < len(ordered) and not valid[ordered[high+1]]:
+        high += 1
+    if low == 0 or high+1 == len(ordered):
+        return None
+    members = ordered[low:high+1]
+    flanks = [ordered[low-1], ordered[high+1]]
+    chain = [flanks[0], *members, flanks[1]]
+    if (any(abs(b-a) != 1 for a,b in zip(chain,chain[1:]))
+            or any(forbidden[i] for i in chain)
+            or any(values[i] < scan.range_min for i in members)
+            or any(math.isfinite(values[i]) for i in members)):
+        return None
+    return dict(source_indices=members, inside_source_indices=inside, flank_source_indices=flanks,
+                full_width_deg=math.degrees(float(sum(cells[members]))))
+
+
+def near_sweep(points, speed, age, steering, previous_steering, wheelbase, length, width, margin):
+    """현재/직전 조향의 감속 외곽 근처 점만 고른다. 전체 충돌 검사는 독립 층에 남는다."""
+    points = np.asarray(points, dtype=float).reshape(-1, 2)
+    selected = np.zeros(len(points), dtype=bool)
+    horizon = speed*(age+.10) + speed*speed/4 + .06
+    distances = np.linspace(0., horizon, max(2, math.ceil(horizon/.02)+1))
+    for angle in (steering, previous_steering):
+        curvature = math.tan(angle)/wheelbase
+        yaw = distances*curvature
+        rear_x = distances if abs(curvature)<1e-8 else np.sin(yaw)/curvature
+        rear_y = np.zeros_like(distances) if abs(curvature)<1e-8 else (1-np.cos(yaw))/curvature
+        dx = points[None,:,0] - (rear_x[:,None]-wheelbase/2)
+        dy = points[None,:,1] - rear_y[:,None]
+        x = np.cos(yaw[:,None])*dx + np.sin(yaw[:,None])*dy-wheelbase/2
+        y = -np.sin(yaw[:,None])*dx + np.cos(yaw[:,None])*dy
+        selected |= np.any((np.abs(x)<=length/2+margin+.02) & (np.abs(y)<=width/2+margin+.02),axis=0)
+    return selected
+
+
+def short_observed_surface(point, current, source_indices):
+    """연속 유효 광선 세 개의 짧은 표면 대응. 결측 사이를 잇지 않는다.
+
+    각 현 <=6 cm, 방향 변화 <=30°, 옛 점의 현 수직 거리 <=1 cm.
+    자유 공간/물체 신원 증명이 아니며 이 현을 충돌 검사 점군에 추가하지 않는다.
+    """
+    current=np.asarray(current,dtype=float).reshape(-1,2)
+    ids=np.asarray(source_indices)
+    if len(current)!=len(ids) or len(current)<3:
+        return None
+    vectors=np.diff(current,axis=0)
+    sizes=np.linalg.norm(vectors,axis=1)
+    continuous=(np.diff(ids)==1) & (sizes>1e-6) & (sizes<=.06)
+    cosine=np.sum(vectors[:-1]*vectors[1:],axis=1)/np.maximum(1e-12,sizes[:-1]*sizes[1:])
+    triples=np.flatnonzero(continuous[:-1] & continuous[1:] & (cosine>=math.cos(math.radians(30))))
+    for index in triples:
+        for start in (index,index+1):
+            delta=point-current[start]
+            fraction=float(delta@vectors[start]/(sizes[start]*sizes[start]))
+            if 0<=fraction<=1:
+                normal=float(np.linalg.norm(delta-fraction*vectors[start]))
+                if normal<=.01:
+                    return dict(source_indices=ids[index:index+3].tolist(),
+                        current_points=current[index:index+3].tolist(),normal_distance_m=normal,
+                        segment_lengths_m=sizes[index:index+2].tolist())
+    return None
+
+
+class PartialObservationPolicy:
+    speed_cap_mps = .5
+
+    def __init__(self, allow_narrow_forward=False, surface_translation_enabled=False, lateral_metric_enabled=False, oblique_metric_enabled=False,
+                 crop_edge_component_trial=False):
+        if any(type(v) is not bool for v in (allow_narrow_forward,surface_translation_enabled,lateral_metric_enabled,oblique_metric_enabled)):
+            raise ValueError('forward candidate flag must be bool')
+        if type(crop_edge_component_trial) is not bool:
+            raise ValueError('crop edge component trial must be bool')
+        # OFF의 원 인스턴스 상태를 그대로 보존한다. reset으로 명시 선택을 끄지 않는다.
+        if crop_edge_component_trial:
+            self.crop_edge_component_trial = True
+        self.allow_narrow_forward = allow_narrow_forward
+        self.surface_translation_enabled = surface_translation_enabled
+        if oblique_metric_enabled and not (allow_narrow_forward and surface_translation_enabled and lateral_metric_enabled):
+            raise ValueError('oblique gap trial requires the complete v4 policy')
+        self.oblique_metric_enabled = oblique_metric_enabled
+        self.lateral_metric_enabled = lateral_metric_enabled
+        self.reset()
+
+    def _refine_threat(self, threatening, *args):
+        """기본 정책의 계산을 그대로 유지한다. 선택형 후보만 별도 기하를 사용한다."""
+        return threatening
+
+    def _capture_latched_threat(self, threatening, previous, now):
+        """선택형 재관측만 전체 위협 상태를 보존한다. 기본 정책은 사용하지 않는다."""
+        pass
+
+    def reset(self):
+        self.previous = None
+        self.previous_distinct = None
+        self.latched = False
+        self.latch_reason = None
+        self.latch_time = None
+        self.latch_evidence = None
+        self.clear_sources = 0
+        self.last_source = None
+        self.surface_cache = None
+
+    def requested_speed(self, scan, yaw, requested, explained=None):
+        """넓은 결측에서는 기존 저속 후보를 먼저 요청한다. 관측 허가는 아니다.
+
+        상태·입력을 바꾸지 않는다. 호출자는 이 요청과 **실제 측정속도의 최댓값**으로
+        evaluate를 한 번 수행해야 한다. 구조로 설명된 광선은 해당 정책이 따로 검사한다.
+        """
+        if not self.lateral_metric_enabled or not math.isfinite(requested) or requested <= .2:
+            return requested
+        values = np.asarray(scan.ranges, dtype=float)
+        angles = (scan_angles(scan)+yaw+math.pi) % math.tau-math.pi
+        front = np.argsort(angles)
+        front = front[np.abs(angles[front]) <= math.radians(100)+1e-6]
+        missing = ~(np.isfinite(values)&(values>=scan.range_min)&(values<=scan.range_max))
+        if explained:
+            missing[list(explained)] = False
+        ids = np.flatnonzero(missing[front])
+        if not len(ids):
+            return requested
+        runs = np.split(ids, np.flatnonzero(np.diff(ids)>1)+1)
+        if isinstance(scan, MeasurementScan):
+            cells = scan_cell_widths(scan)
+            widest = max(float(sum(cells[front[run]])) for run in runs)
+        else:
+            widest = max(len(run)*scan_max_gap(scan) for run in runs)
+        front_metric=(self.oblique_metric_enabled and len(runs)==1
+            and widest>math.radians(1.5)+1e-7
+            and np.any(np.abs(angles[front[ids]])<=math.radians(30)+scan_max_gap(scan)/2))
+        return min(requested, .2) if widest > math.radians(3)+1e-7 or front_metric else requested
+
+    def evaluate(self, scan, points, history, now, speed, steering=0., previous_steering=0.,
+                 wheelbase=.135, length=.20, width=.15):
+        yaw = history.config.lidar_yaw_rad
+        audit = audit_scan_front(scan,yaw)
+        source = scan_first_stamp(scan)
+        report = dict(allowed=False, reason='partial_invalid', unknown_filled=False,
+                      residual_hidden_object_risk=True, speed_cap_mps=self.speed_cap_mps,
+                      unknown_samples=audit.unknown_samples)
+        def finished(**values):
+            return {**report, **values, 'latch_reason':self.latch_reason,
+                    'latch_time_s':self.latch_time, 'latch_evidence':self.latch_evidence}
+        if (not math.isfinite(now) or not math.isfinite(speed) or speed < 0 or
+                audit.reason == 'scan_invalid' or not 0 <= now-source < .3):
+            return report
+        if ((self.last_source is not None and source < self.last_source) or
+                (self.previous is not None and now < self.previous[1])):
+            self.reset()
+            return {**report, 'reason':'partial_time_reset'}
+        # 선택형 structure_aware_v1만 설정한다. 양옆이 반환인 알려진 구조 광선을 일반
+        # 결측에서 뺄 뿐 거리/자유 공간을 만들지 않는다. 기본(None)은 기존과 같다.
+        excused = getattr(self, 'structure_excused', None)
+        if excused is not None and audit.reason == 'front_unobserved':
+            audit = self._excused_audit(scan, yaw, audit, excused)
+        fresh = source != self.last_source
+        if audit.reason == 'ok':
+            if fresh:
+                self.clear_sources += 1
+            if self.clear_sources >= 2:
+                self.latched = False
+                self.latch_reason = self.latch_time = None
+                self.latch_evidence = None
+            self._remember(points, now, source, fresh)
+            return finished(allowed=not self.latched,
+                    reason='known_obstacle_latched' if self.latched else 'fully_observed',
+                    speed_cap_mps=None)
+        self.clear_sources = 0
+        values = np.asarray(scan.ranges, dtype=float)
+        if speed > 1.2:
+            return {**report, 'reason':'partial_speed_outside_trial'}
+        # 실제 배열의 범위 밖/무반환과 별개로 각도 메타데이터 이음부 누락은 허용하지 않는다.
+        # 유효 상수 배열은 메타데이터 검사 전용이며 거리/점군으로 반환하지 않는다.
+        metadata = audit_scan_front(scan,yaw,metadata_only=True)
+        if metadata.reason != 'ok':
+            return {**report, 'reason':'angular_metadata_hole'}
+        cells=scan_cell_widths(scan)
+        step = scan_max_gap(scan)
+        angles = (scan_angles(scan) + yaw + math.pi) % math.tau - math.pi
+        order = np.argsort(angles)
+        front = order[np.abs(angles[order]) <= math.radians(100)+1e-6]
+        # 최소거리 미만의 유한값/음의 무한대는 멀리 있는 벽의 무반환과 다르다.
+        # 가까운 표적 또는 잘못된 입력일 수 있어 좁은 측방 공백 예외로 보내지 않는다.
+        if np.any(values[front] < scan.range_min):
+            return {**report, 'reason':'invalid_near_return'}
+        valid = np.isfinite(values) & (values >= scan.range_min) & (values <= scan.range_max)
+        missing = ~valid[front]
+        if excused is not None:
+            missing &= ~np.asarray(excused, dtype=bool)[front]
+        ids = np.flatnonzero(missing)
+        if not len(ids):
+            return {**report, 'reason':'angular_metadata_hole'}
+        runs = np.split(ids, np.flatnonzero(np.diff(ids)>1)+1)
+        widest, total = max(len(run)*step for run in runs), len(ids)*step
+        if isinstance(scan,MeasurementScan):
+            widest=max(float(sum(cells[front[run]])) for run in runs)
+            total=float(sum(cells[front[ids]]))
+        report.update(max_gap_deg=math.degrees(widest), total_gap_deg=math.degrees(total))
+        if total > math.radians(6)+1e-7 or len(ids)/len(front) > .05:
+            return {**report, 'reason':'wide_or_many_missing'}
+        unknown = front[ids]
+        # 선택형 저속 정책의 단일 결측은 차량 x축30도 경계 대신 같은 이동 반경/
+        # 숨은 폭으로 비교한다. 정면의 여러 공백·넓은 공백을 모두 허용하지 않는다.
+        single_forward_metric=(self.oblique_metric_enabled and len(runs)==1)
+        metric_gap=(widest>math.radians(3)+1e-7 or (single_forward_metric
+            and widest>math.radians(1.5)+1e-7
+            and np.any(np.abs(angles[unknown])<=math.radians(30)+step/2)))
+        if metric_gap and not self.lateral_metric_enabled:
+            return {**report, 'reason':'wide_or_many_missing'}
+        # 기존 v4 범위는 유지. oblique 선택 시 단일 정면 공백까지 같은 폭을 재되,
+        # 요청은 .2 m/s로 제한하고 실제속도·근거리 반환·소실 위협은 그대로 검사한다.
+        minimum_metric_angle = 0. if single_forward_metric else (30. if self.oblique_metric_enabled else 60.)
+        if metric_gap:
+            # 사선 저속 후보: 원점 고정 반경 대신 감속 동안 차체가 닿을 수 있는 반경.
+            # 후륜축 이동 D에 차체 중심 회전 이동 <= D*abs(tan(delta))/2를 더한다.
+            # 현재 차체 외곽/센서 오프셋과 기존 .06 m 예측 여유도 포함한다.
+            # 50 mm의 제한 위험을 재는 거리이며 미관측 공간의 자유 증명이 아니다.
+            radius=max(
+                (math.hypot(length/2+.05,width/2+.05)
+                 +math.hypot(history.config.lidar_x_m,history.config.lidar_y_m)
+                 +(1+max(abs(math.tan(steering)),abs(math.tan(previous_steering)))/2)
+                   *(speed*(now-source+.10)+speed*speed/4+.06))
+                    if self.oblique_metric_enabled else .6,
+                .16+speed*(now-source+.10)+speed*speed/4)
+            # 양쪽 실제 유효 광선 사이 전체 간격을 쓴다(무반환 셀 폭보다 한 step 큼).
+            chord=2*radius*math.sin((widest+step)/2)
+            report['lateral_metric']=dict(radius_m=radius,missing_chord_m=chord,
+                maximum_chord_m=.05,minimum_angle_deg=minimum_metric_angle, oblique_trial=self.oblique_metric_enabled,maximum_measured_or_requested_speed_mps=.6,
+                scope='bounded_hidden_sliver_risk_not_measured_free_space')
+            if speed>.6 or chord>.05 or np.any(np.abs(angles[unknown])<math.radians(minimum_metric_angle)):
+                return {**report,'reason':'lateral_metric_outside_trial'}
+            report['speed_cap_mps']=.2
+        central = bool(np.any(np.abs(angles[unknown]) <= math.radians(30)+step/2))
+        if central and not self.allow_narrow_forward:
+            return {**report, 'reason':'central_missing'}
+        # 기존 2 m/s² 제동·입력 나이에 차체/여유를 더한 센서 원점 기준 거리.
+        required = max(.6, .16 + speed*(now-source+.10) + speed*speed/4)
+        report['history_distance_m'] = required
+        # 진행 방향 제동 거리를 옆벽 거리에도 요구하지 않는다. 차체 바로 곁의
+        # 반환만 별도 거절하고, 모든 현재 반환의 조향별 제동은 기존 보호층이 담당한다.
+        near_boundary = math.hypot(length/2, width/2) + math.hypot(history.config.lidar_x_m, history.config.lidar_y_m) + .03
+        report['near_boundary_range_m'] = near_boundary
+        boundary_ranges = []
+        edge_component = None
+        for run in runs:
+            if run[0] == 0 or run[-1] == len(front)-1:
+                eligible = (getattr(self, 'crop_edge_component_trial', False) is True
+                    and isinstance(scan, MeasurementScan)
+                    and scan.time_basis == 'simulation_acquisition'
+                    and history.scan_time_policy == 'verified_only'
+                    and not metric_gap and not central
+                    and sum(r[0] == 0 or r[-1] == len(front)-1 for r in runs) == 1
+                    and not (run[0] == 0 and run[-1] == len(front)-1))
+                if eligible:
+                    forbidden = np.zeros(len(values), dtype=bool)
+                    if excused is not None:
+                        forbidden |= np.asarray(excused, dtype=bool)
+                    # 설명되지 않은 sector도 건너뛰지 않는다. 거리 한정 mask 여부와 무관하다.
+                    from arena_autonomy.known_structure import sector_rays
+                    for indices in sector_rays(0., 0., len(values), getattr(self, 'structure_sectors', ()),
+                                               source_angles=scan_angles(scan)):
+                        forbidden[indices] = True
+                    component = _crop_edge_component(scan, order, front, run, valid, values, cells, forbidden)
+                    if component is not None:
+                        union = set(int(i) for i in unknown) | set(component['source_indices'])
+                        full = np.asarray([int(i) for i in order if int(i) in union], dtype=int)
+                        combined_width = float(sum(cells[full]))
+                        if (combined_width <= math.radians(6)+1e-7 and len(full)/len(front) <= .05
+                                and not np.any(np.abs(angles[full]) <= math.radians(30)+step/2)):
+                            edge_component = component
+                            component.update(combined_unknown_source_indices=full.tolist(),
+                                combined_width_deg=math.degrees(combined_width),
+                                combined_fraction=len(full)/len(front),
+                                flank_ranges_m=values[component['flank_source_indices']].tolist(),
+                                scope='bounded_simulation_edge_component_not_free_space')
+                if edge_component is None:
+                    return {**report, 'reason':'unbounded_missing'}
+                report['crop_edge_component'] = edge_component
+                boundary_ranges.extend(values[edge_component['flank_source_indices']])
+            else:
+                boundary_ranges.extend(values[front[[run[0]-1, run[-1]+1]]])
+            if min(boundary_ranges) < near_boundary:
+                self._latch('near_gap_boundary',now)
+                self._remember(points, now, source, fresh)
+                return finished(reason='near_gap_boundary')
+        # 각 무반환의 실제 취득 방향을 현재 차체로 옮긴다. 거리는 만들지 않는다.
+        stamps = scan_times(scan)[unknown]
+        poses = relative_poses(history, stamps, now)
+        direction = angles[unknown] + poses[:,2]
+        central_after = bool(np.any(np.abs((direction+math.pi)%math.tau-math.pi) <= math.radians(30)+step/2))
+        if edge_component is not None and central_after:
+            return {**report, 'reason':'unbounded_missing'}
+        if central_after and not self.allow_narrow_forward:
+            return {**report, 'reason':'central_missing_after_motion'}
+        central = central or central_after
+        # 전방 1.5도 제한에 별개의 측방 공백까지 더하면 각각 허용된 두 공백이
+        # 동시에 나타났다는 이유만으로 정지한다. v4는 취득/현재 방향 중 한쪽이라도
+        # 전방에 닿는 연속 공백의 전체 폭을 합산한다. 경계에서 한 공백을 잘라
+        # 작게 만들지 않으며, 전체6도/측방 폭/각 이웃/소실 위협 검사는 그대로다.
+        forward_total = total
+        if central and self.allow_narrow_forward and self.lateral_metric_enabled:
+            current_angles = (direction+math.pi)%math.tau-math.pi
+            forward_cells = ((np.abs(angles[unknown]) <= math.radians(30)+step/2)
+                             | (np.abs(current_angles) <= math.radians(30)+step/2))
+            forward_runs = [run for run in runs if np.any(forward_cells[np.searchsorted(ids, run)])]
+            forward_total = float(sum(sum(cells[front[run]]) for run in forward_runs))
+            report.update(forward_gap_deg=math.degrees(forward_total),
+                          forward_gap_scope='whole_runs_source_or_reference_v1',
+                          forward_gap_lidar_yaw_rad=yaw)
+        if metric_gap:
+            transported_angles=np.abs((direction+math.pi)%math.tau-math.pi)
+            if (np.any(transported_angles<math.radians(minimum_metric_angle)) or
+                    np.any(transported_angles>math.radians(100)) or min(boundary_ranges)<1.):
+                return {**report,'reason':'lateral_metric_observation_unconfirmed'}
+        if central:
+            report['speed_cap_mps'] = .2
+            report['forward_neighbor_required_m'] = max(1.,required)
+            report['minimum_gap_neighbor_m'] = float(min(boundary_ranges))
+        threat_unknown = unknown
+        if edge_component is not None:
+            # 허가용 crop/metric 계산은 위에서 끝났다. 이제 전체 원 성분을 소실 검사한다.
+            threat_unknown = np.asarray(edge_component['combined_unknown_source_indices'], dtype=int)
+            stamps = scan_times(scan)[threat_unknown]
+            poses = relative_poses(history, stamps, now)
+            direction = angles[threat_unknown] + poses[:,2]
+            if np.any(np.abs((direction+math.pi)%math.tau-math.pi) <= math.radians(30)+step/2):
+                return {**report, 'reason':'unbounded_missing'}
+        sensor = history.config
+        c, s = np.cos(poses[:,2]), np.sin(poses[:,2])
+        origins = poses[:,:2] + np.column_stack((c*sensor.lidar_x_m-s*sensor.lidar_y_m,
+                                               s*sensor.lidar_x_m+c*sensor.lidar_y_m))
+        previous = self.previous if fresh else self.previous_distinct
+        if previous is None:
+            return {**report, 'reason':'partial_history_warmup'}
+        if now-previous[1] > .3:
+            self._latch('partial_history_expired',now)
+            return finished(reason='partial_history_expired')
+        old, reference, previous_source = previous
+        report['previous_scan_source_s'] = previous_source
+        carried = transport_points(old, history, reference, now)
+        if len(carried):
+            delta = carried[None,:,:] - origins[:,None,:]
+            along = delta[:,:,0]*np.cos(direction[:,None]) + delta[:,:,1]*np.sin(direction[:,None])
+            across = np.abs(-delta[:,:,0]*np.sin(direction[:,None]) + delta[:,:,1]*np.cos(direction[:,None]))
+            # 이전 근거리 점이 새 공백으로 들어가는지 검사. 2 m/s 상대 이동
+            # 여유는 시험 가정이며 모든 상대 속도/형상을 보장하지 않는다.
+            spread = .03 + 2*max(0., now-reference) + np.maximum(0.,along)*math.tan(step/2)
+            relevant = near_sweep(carried,speed,now-source,steering,previous_steering,
+                                  wheelbase,length,width,.03+2*max(0.,now-reference))
+            threatening = (along >= 0) & (along <= required) & (across <= spread) & relevant[None,:]
+            threatening = self._refine_threat(threatening, carried, previous, origins, direction,
+                stamps, now, step/2, required, speed,
+                now-source, steering, previous_steering, wheelbase, length, width, report)
+            # 옛 점 위치를 현재 유효 반환이 다시 관측하면 '소실' 가설에서 제외한다.
+            # 물체 신원/정지 증명은 아니며 모든 현재 점은 독립 충돌 검사에 남는다.
+            # 2 cm는 이 저속 후보의 대응 거리다. C1 거리 오차의 보장값이 아니다.
+            current = np.asarray(points, dtype=float).reshape(-1,2)
+            current_indices = np.flatnonzero(valid)
+            candidates = np.flatnonzero(np.any(threatening,axis=0))
+            nearest = {}
+            surface_witnesses = []
+            observed_count = 0
+            for index in candidates:
+                distances = np.linalg.norm(current-carried[index],axis=1)
+                best = int(np.argmin(distances)) if len(distances) else None
+                distance = float(distances[best]) if best is not None else None
+                nearest[int(index)] = (best,distance)
+                surface = (short_observed_surface(carried[index],current,current_indices)
+                           if distance is not None and .02 < distance <= .04 else None)
+                if surface is not None and len(surface_witnesses)<3:
+                    surface_witnesses.append(dict(previous_point_now_xy=carried[index].tolist(),**surface))
+                if distance is not None and (distance <= .02 or surface is not None):
+                    threatening[:,index] = False
+                    observed_count += 1
+            report['reobserved_previous_points'] = observed_count
+            report['short_surface_witnesses'] = surface_witnesses
+            if self.surface_translation_enabled and np.any(threatening):
+                # 공통 이동 후보는 재관측 대응에만 쓴다. 대응하지 않은 옛 점의
+                # 위협 위치/현재 점군/모터 속도/경로에는 적용하지 않는다.
+                from arena_autonomy.partial_surface_alignment import surface_translation
+                key=(previous_source,source)
+                cached=self.surface_cache is not None and self.surface_cache[0]==key
+                if not cached:
+                    fit=surface_translation(carried,current,current_indices)
+                    self.surface_cache=(key,now,fit)
+                _,fit_time,fit=self.surface_cache
+                report['surface_correspondence']={**fit,'cached':cached,'associated_previous_points':0}
+                if fit['accepted']:
+                    turn=relative_poses(history,[fit_time],now)[0,2]
+                    c,s=math.cos(turn),math.sin(turn)
+                    offset=np.array([[c,-s],[s,c]])@fit['translation_m']
+                    report['surface_correspondence']['translation_at_reference_m']=offset.tolist()
+                    for index in np.flatnonzero(np.any(threatening,axis=0)):
+                        moved=carried[index]+offset
+                        distance=float(np.min(np.linalg.norm(current-moved,axis=1)))
+                        if distance<=.02 or (distance<=.04 and short_observed_surface(moved,current,current_indices) is not None):
+                            threatening[:,index]=False
+                            report['surface_correspondence']['associated_previous_points']+=1
+            if np.any(threatening):
+                new_latch = not self.latched
+                if new_latch:
+                    witnesses = []
+                    for ray, index in np.argwhere(threatening)[:8]:
+                        best,distance = nearest[int(index)]
+                        witnesses.append(dict(source_index=int(threat_unknown[ray]),
+                            direction_rad=float(direction[ray]), origin_xy=origins[ray].tolist(),
+                            previous_point_now_xy=carried[index].tolist(),
+                            nearest_current_xy=current[best].tolist() if best is not None else None,
+                            nearest_current_distance_m=distance,
+                            along_m=float(along[ray,index]), across_m=float(across[ray,index]),
+                            allowed_spread_m=float(spread[ray,index])))
+                    self.latch_evidence = dict(scope='sensor_points_only_not_object_identity',
+                        pairs=int(np.count_nonzero(threatening)), witnesses=witnesses,
+                        previous_reference_s=reference, previous_source_first_s=previous_source,
+                        reference_s=now, source_first_s=source,
+                        sweep_speed_mps=speed, steering_rad=steering,
+                        previous_steering_rad=previous_steering,
+                        # 최초 실패의 센서 좌표만 보존한다. 정답 자세를 제어 입력에 넣지 않는다.
+                        # 이 자료로 후속 대응 가설을 저장 입력에서 비교하며 반복 주행을 줄인다.
+                        correspondence_context=dict(
+                            previous_points_at_reference_xy=old.tolist(),
+                            previous_points_now_xy=carried.tolist(),
+                            current_return_points_xy=current.tolist(),
+                            current_return_source_indices=current_indices.tolist(),
+                            estimated_reference_to_now_se2=relative_poses(history,[reference],now)[0].tolist()))
+                self._latch('previous_point_in_missing_sweep',now)
+                if new_latch:
+                    # 짧은 진단 예시(witnesses)와 제어에 필요한 전체 증거를 분리한다.
+                    # 캡처 오류가 생겨도 위에서 설정한 래치는 남는다.
+                    self._capture_latched_threat(threatening,previous,now)
+        self._remember(points, now, source, fresh)
+        # 좁은 정면 예외라도 장애물 기억을 먼저 계산한다. 진행을 거절한 동안
+        # 살아 있는 관측까지 갱신하지 않아 인위적으로 기억을 만료시키지 않는다.
+        if central and not self.latched:
+            if forward_total > math.radians(1.5)+1e-7 and not (metric_gap and single_forward_metric):
+                return finished(reason='forward_gap_too_wide')
+            if min(boundary_ranges) < max(1.,required):
+                return finished(reason='forward_gap_near_boundary')
+        return finished(allowed=not self.latched,
+                reason='known_obstacle_latched' if self.latched else
+                       'bounded_forward_metric_missing' if metric_gap and central and single_forward_metric else
+                       'bounded_lateral_metric_missing' if metric_gap else
+                       'bounded_forward_missing' if central else 'bounded_side_missing')
+
+    @staticmethod
+    def _excused_audit(scan, yaw, audit, excused):
+        """설명된 구조 광선만 결측이고 각도 메타데이터가 온전하면 ok. 아니면 원래 판정."""
+        values = np.asarray(scan.ranges, dtype=float)
+        excused = np.asarray(excused, dtype=bool)
+        if excused.shape != values.shape:
+            return audit
+        metadata = audit_scan_front(scan,yaw,metadata_only=True)
+        if metadata.reason != 'ok':
+            return audit
+        angles = (scan_angles(scan) + yaw + math.pi) % math.tau - math.pi
+        front = np.abs(angles) <= math.radians(100) + 1e-6
+        valid = np.isfinite(values) & (values >= scan.range_min) & (values <= scan.range_max)
+        if np.any(front & ~valid & ~excused) or np.any(values[front] < scan.range_min):
+            return audit
+        return type(audit)('ok', audit.forward_samples, 0)
+
+    def _latch(self,reason,now):
+        if not self.latched:
+            self.latch_reason,self.latch_time = reason,now
+        self.latched = True
+
+    def _remember(self, points, now, source, fresh):
+        if fresh:
+            points = np.asarray(points, dtype=float).reshape(-1,2)
+            points = points[np.all(np.isfinite(points),axis=1)]
+            self.previous_distinct = self.previous
+            self.previous = (points[np.linalg.norm(points,axis=1) <= 3.].copy(), now, source)
+        self.last_source = source

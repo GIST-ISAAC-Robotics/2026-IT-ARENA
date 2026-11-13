@@ -28,11 +28,18 @@ def decode_measurements(text, *, expected_time_basis):
     return MeasurementScan(**raw)
 
 
+def input_representation(node):
+    """먼저 선택을 검사한 노드에서도 선언된 원값/기존 기본 표현을 유지한다."""
+    name = 'lidar_input_representation'
+    parameter = node.get_parameter(name) if node.has_parameter(name) else node.declare_parameter(name, 'laser_scan')
+    return str(parameter.value)
+
+
 def subscribe_scan(node,callback,qos):
     """한 표현/한 토픽만 구독한다. 시뮬 native 모드는 기본 OFF다."""
     from sensor_msgs.msg import LaserScan
     from std_msgs.msg import String
-    mode=str(node.declare_parameter('lidar_input_representation','laser_scan').value)
+    mode=input_representation(node)
     if (getattr(getattr(node,'motion',None),'timing_policy','verified_only') == 'host_estimated_v1'
             and mode != 'native_estimated_v1'):
         raise ValueError('host estimate policy requires the native estimated representation')

@@ -10,10 +10,13 @@ class MotorIntent:
 
 
 class SpeedPI:
-    def __init__(self, kp=.6, ki=1.2, max_dt_s=.05):
-        if not all(number(v) and v > 0 for v in (kp, ki, max_dt_s)):
+    def __init__(self, kp=.6, ki=1.2, max_dt_s=.05, output_min=-1., output_max=1.):
+        if (not all(number(v) and v > 0 for v in (kp, ki, max_dt_s)) or
+                not all(number(v) for v in (output_min, output_max)) or
+                not -1 <= output_min <= 0 <= output_max <= 1 or output_min >= output_max):
             raise ValueError("invalid PI settings")
         self.kp, self.ki, self.max_dt_s = kp, ki, max_dt_s
+        self.output_min, self.output_max = output_min, output_max
         self.integral = 0.
 
     def update(self, target_mps, left_mps, right_mps, dt_s, *, enabled):
@@ -45,11 +48,12 @@ class SpeedPI:
             self.integral = 0.
             return MotorIntent(0., True)
         # 포화가 더 커지는 방향의 적분만 막는다. 중지/재허가에는 적분을 남기지 않는다.
-        if -1 <= raw <= 1 or (raw > 1 and error < 0) or (raw < -1 and error > 0):
-            self.integral = max(-1., min(1., candidate))
+        if (self.output_min <= raw <= self.output_max or
+                (raw > self.output_max and error < 0) or (raw < self.output_min and error > 0)):
+            self.integral = max(self.output_min, min(self.output_max, candidate))
         effort_raw = self.kp * error + self.integral
         if not number(effort_raw):
             self.integral = 0.
             return MotorIntent(0., True)
-        effort = max(-1., min(1., effort_raw))
+        effort = max(self.output_min, min(self.output_max, effort_raw))
         return MotorIntent(effort, effort < 0)

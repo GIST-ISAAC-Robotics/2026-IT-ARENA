@@ -100,6 +100,8 @@ class ActuationReceiverCore {
   void tick(std::int64_t now) {
     if (check(now)) { last_control_ = now; has_last_control_ = true; }
   }
+  // UART/서보 처리 전 시각·만료 확인. 제어를 실제 수행한 tick의 heartbeat는 갱신하지 않는다.
+  void check_deadlines(std::int64_t now) { check(now); }
   void report_control_fault(ControlFault cause, std::int64_t now) {
     if (!check(now)) return;
     const char* reason = "invalid_control_fault";
@@ -205,6 +207,7 @@ class ActuationReceiverCore {
     }
     target_speed_ = speed;
     steering_ = numeric_value(c.field(CommandField::kSteering));
+    drive_seen_ = true;  // 이번 ARM 세대에서 0목표를 포함한 실제 DRIVE 수락 여부
     deadline_ = deadline;
     has_deadline_ = true;
     state_ = speed > 0 ? ReceiverState::kActive : ReceiverState::kArmed;
@@ -225,6 +228,7 @@ class ActuationReceiverCore {
   double target_speed() const { return target_speed_; }
   double steering() const { return steering_; }
   bool has_owner() const { return has_owner_; }
+  bool drive_seen() const { return drive_seen_; }
   const StoredString& owner() const { return owner_; }
   const StoredString& boot() const { return boot_; }
   bool has_deadline() const { return has_deadline_; }
@@ -255,6 +259,7 @@ class ActuationReceiverCore {
  private:
   void transition(ReceiverState state, const char* reason) {
     target_speed_ = 0.;
+    drive_seen_ = false;
     // 정지 중 갑작스러운 중앙 조향은 하지 않는다(steering 유지).
     has_deadline_ = false;
     has_owner_ = false;
@@ -273,6 +278,7 @@ class ActuationReceiverCore {
     state_ = ReceiverState::kFault;
     reason_ = "counter_exhausted";
     target_speed_ = 0.;
+    drive_seen_ = false;
     has_deadline_ = false;
     has_owner_ = false;
     owner_ = StoredString{};
@@ -412,6 +418,7 @@ class ActuationReceiverCore {
   bool generation_exhausted_ = false;
   StoredString owner_;
   bool has_owner_ = false;
+  bool drive_seen_ = false;
   std::int64_t sequence_ = -1;
   double target_speed_ = 0., steering_ = 0.;
   std::int64_t deadline_ = 0;

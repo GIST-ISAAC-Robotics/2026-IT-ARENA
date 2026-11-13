@@ -1,0 +1,1909 @@
+--- r441/scripts/runtime_installed_limits.py
++++ r452/scripts/runtime_installed_limits.py
+@@ -0,0 +1,180 @@
++#!/usr/bin/env python3
++"""검증된 설치 bundle에서 ROS 두 상한과 host 인자를 파생한다. 장치/노드 실행 없음."""
++import argparse
++import copy
++import hashlib
++import json
++import math
++from pathlib import Path
++import sys
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path[:0] = [str(ROOT/'scripts'), str(ROOT/'src/arena_autonomy'),
++                str(ROOT/'src/arena_vehicle_interface')]
++import yaml
++import runtime_installed_profile as installed
++from arena_autonomy import vehicle_geometry
++
++NODES = ('local_pursuit', 'lidar_safety')
++PARAMETER = 'max_steering_angle_rad'
++FILES = ('runtime_profile.base.yaml', 'runtime_profile.yaml', 'runtime_host_limits.json')
++SCHEMA = 'runtime_installed_limits_selection_v1'
++
++
++def digest(raw):
++    return hashlib.sha256(raw).hexdigest()
++
++
++def source_hashes():
++    return {name: digest(Path(path).read_bytes()) for name, path in (
++        ('runtime_installed_limits.py', __file__),
++        ('runtime_installed_profile.py', installed.__file__),
++        ('vehicle_geometry.py', vehicle_geometry.__file__))}
++
++
++class UniqueLoader(yaml.SafeLoader):
++    pass
++
++
++def unique_mapping(loader, node, deep=False):
++    loader.flatten_mapping(node)
++    result = {}
++    for key_node, value_node in node.value:
++        key = loader.construct_object(key_node, deep=deep)
++        if key in result:
++            raise ValueError('duplicate YAML key: '+str(key))
++        result[key] = loader.construct_object(value_node, deep=deep)
++    return result
++
++
++UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
++
++
++def profile_values(raw):
++    value = yaml.load(raw, Loader=UniqueLoader)
++    if type(value) is not dict:
++        raise ValueError('runtime YAML must contain both named ROS nodes')
++    for node in NODES:
++        entry = value.get(node)
++        parameters = entry.get('ros__parameters') if type(entry) is dict else None
++        limit = parameters.get(PARAMETER) if type(parameters) is dict else None
++        if type(limit) not in (int, float) or not math.isfinite(limit) or limit <= 0:
++            raise ValueError(node+' requires an existing finite positive '+PARAMETER)
++    return value
++
++
++def selected_contract(folder):
++    folder = Path(folder)
++    manifest = installed.verify(folder)
++    board = installed.read_json(folder/'runtime_board.json')
++    original = board['servo']['command_limit']
++    limit = vehicle_geometry.float32_limit_not_above(original)
++    return dict(assembly_id=manifest['assembly_id'],
++                installed_manifest_sha256=digest((folder/'manifest.json').read_bytes()),
++                runtime_board_sha256=digest((folder/'runtime_board.json').read_bytes()),
++                board_command_limit_rad=original, command_limit_rad=limit)
++
++
++def derived_profile(base_raw, limit):
++    value = copy.deepcopy(profile_values(base_raw))
++    for node in NODES:
++        if value[node]['ros__parameters'][PARAMETER] < limit:
++            raise ValueError(node+' would widen existing steering limit; '
++                             'choose an explicitly compatible base profile')
++        value[node]['ros__parameters'][PARAMETER] = limit
++    return value
++
++
++def host_limits(limit):
++    return dict(max_steering_rad=limit, arguments=['--max-steering-rad', repr(limit)])
++
++
++def json_bytes(value):
++    return (json.dumps(value, ensure_ascii=False, indent=2)+'\n').encode('utf-8')
++
++
++def prepare(installed_profile, runtime_params, output):
++    contract = selected_contract(installed_profile)
++    base_raw = Path(runtime_params).read_bytes()
++    value = derived_profile(base_raw, contract['command_limit_rad'])
++    files = dict(zip(FILES, (base_raw,
++        yaml.safe_dump(value, sort_keys=False, allow_unicode=True).encode('utf-8'),
++        json_bytes(host_limits(contract['command_limit_rad'])))))
++    if (contract != selected_contract(installed_profile)
++            or base_raw != Path(runtime_params).read_bytes()):
++        raise ValueError('input changed during runtime selection preparation')
++    manifest = dict(schema=SCHEMA, **contract, sources=source_hashes(),
++                    files={name: digest(raw) for name, raw in files.items()})
++    output = Path(output)
++    output.mkdir(parents=True, exist_ok=False)
++    for name, raw in files.items():
++        (output/name).write_bytes(raw)
++    (output/'manifest.json').write_bytes(json_bytes(manifest))
++    return manifest
++
++
++def verify(selection, installed_profile, *, runtime_params=None, host_steering_rad=None):
++    selection = Path(selection)
++    manifest = installed.read_json(selection/'manifest.json')
++    contract = selected_contract(installed_profile)
++    if (type(manifest) is not dict or set(manifest) != {'schema', 'sources', 'files', *contract}
++            or manifest.get('schema') != SCHEMA
++            or any(manifest.get(key) != value for key, value in contract.items())
++            or manifest.get('sources') != source_hashes()
++            or type(manifest.get('files')) is not dict or set(manifest['files']) != set(FILES)):
++        raise ValueError('runtime selection differs from selected installed bundle or sources')
++    for name, expected in manifest['files'].items():
++        if digest((selection/name).read_bytes()) != expected:
++            raise ValueError('runtime selection file changed: '+name)
++    expected = derived_profile((selection/FILES[0]).read_bytes(), contract['command_limit_rad'])
++    if profile_values((selection/FILES[1]).read_bytes()) != expected:
++        raise ValueError('runtime YAML differs beyond the two installed steering limits')
++    if installed.read_json(selection/FILES[2]) != host_limits(contract['command_limit_rad']):
++        raise ValueError('host arguments differ from installed steering limit')
++    if runtime_params is not None and profile_values(Path(runtime_params).read_bytes()) != expected:
++        raise ValueError('selected ROS YAML differs from generated runtime profile')
++    if host_steering_rad is not None and (
++            type(host_steering_rad) not in (int, float) or not math.isfinite(host_steering_rad)
++            or host_steering_rad != contract['command_limit_rad']):
++        raise ValueError('selected host steering argument differs from generated limit')
++    return manifest
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    commands = parser.add_subparsers(dest='command', required=True)
++    make = commands.add_parser('prepare')
++    make.add_argument('--installed-profile', type=Path, required=True)
++    make.add_argument('--runtime-params', type=Path, required=True)
++    make.add_argument('--output', type=Path, required=True)
++    check = commands.add_parser('verify')
++    check.add_argument('--selection', type=Path, required=True)
++    check.add_argument('--installed-profile', type=Path, required=True)
++    check.add_argument('--runtime-params', type=Path)
++    check.add_argument('--host-steering-rad', type=float)
++    host = commands.add_parser('host-arguments')
++    host.add_argument('--selection', type=Path, required=True)
++    host.add_argument('--installed-profile', type=Path, required=True)
++    args = parser.parse_args(argv)
++    try:
++        if args.command == 'prepare':
++            result = prepare(args.installed_profile, args.runtime_params, args.output)
++        else:
++            result = verify(args.selection, args.installed_profile,
++                runtime_params=getattr(args, 'runtime_params', None),
++                host_steering_rad=getattr(args, 'host_steering_rad', None))
++        if args.command == 'host-arguments':
++            print(json.dumps(host_limits(result['command_limit_rad'])['arguments']))
++        else:
++            print(json.dumps(dict(assembly_id=result['assembly_id'],
++                board_command_limit_rad=result['board_command_limit_rad'],
++                command_limit_rad=result['command_limit_rad'], nodes_started=False,
++                firmware_modified=False), ensure_ascii=False))
++        return 0
++    except (ValueError, OSError, OverflowError, TypeError, yaml.YAMLError) as exc:
++        print(json.dumps(dict(error=str(exc), nodes_started=False, firmware_modified=False)))
++        return 2
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())
+--- r441/src/arena_autonomy/arena_autonomy/crop_edge_selection.py
++++ r452/src/arena_autonomy/arena_autonomy/crop_edge_selection.py
+@@ -1,4 +1,47 @@
+ """기본 OFF인 경계 성분 후보의 공통 설정 검사. 입력/시각/허가는 변환하지 않는다."""
++
++SIMULATION_SCOPE = 'verified_native_simulation_v1'
++ESTIMATED_SCOPE = 'host_estimated_crop_v1'
++
++
++def validate_observation_scope(scope):
++    if type(scope) is not str or scope not in (SIMULATION_SCOPE, ESTIMATED_SCOPE):
++        raise ValueError('explicit registered observation input scope required')
++    return scope
++
++
++def estimated_environment(*, execution_environment, use_sim_time, motion_verified,
++                          motion_time_policy, motion_mode, lidar_input_representation):
++    return (execution_environment == 'hardware_runtime_candidate_v1' and use_sim_time is False
++            and motion_verified is False and motion_time_policy == 'host_estimated_v1'
++            and motion_mode == 'both' and lidar_input_representation == 'native_estimated_v1')
++
++
++def basis_matches(scope, policy, basis):
++    validate_observation_scope(scope)
++    return ((policy, basis) == (('host_estimated_v1', 'unverified_estimate')
++            if scope == ESTIMATED_SCOPE else ('verified_only', 'simulation_acquisition')))
++
++
++def timing_matches(scope, verified, policy, basis):
++    return (verified is (False if scope == ESTIMATED_SCOPE else True)
++            and basis_matches(scope, policy, basis))
++
++
++def component_scope(scope):
++    validate_observation_scope(scope)
++    return ('bounded_estimated_edge_component_not_free_space' if scope == ESTIMATED_SCOPE
++            else 'bounded_simulation_edge_component_not_free_space')
++
++
++def configure_follow_observation(follow, scope):
++    """추정 선택만 인스턴스에 연결한다. 기본 FollowConfig/직렬화는 바꾸지 않는다."""
++    validate_observation_scope(scope)
++    if scope == ESTIMATED_SCOPE:
++        normal = getattr(follow, 'normal', follow)
++        if getattr(normal, 'partial_policy', None) is None:
++            raise ValueError('estimated observation requires a bounded partial observation policy')
++        normal.partial_policy.observation_input_scope = scope
+ 
+ 
+ def validate_policy_selection(enabled, policy, traffic_recovery):
+@@ -8,11 +51,20 @@
+         raise ValueError('crop edge component requires bounded_local_v4 and traffic recovery')
+ 
+ 
+-def validate_node_selection(node, enabled):
+-    if not enabled:
++def validate_node_selection(node, enabled, *, observation_scope=SIMULATION_SCOPE):
++    validate_observation_scope(observation_scope)
++    if not enabled and observation_scope == SIMULATION_SCOPE:
+         return
+     from arena_autonomy.native_lidar_input import input_representation
+     motion = node.motion
++    if observation_scope == ESTIMATED_SCOPE:
++        if motion is None or not estimated_environment(
++                execution_environment=getattr(node, 'execution_environment', None),
++                use_sim_time=node.get_parameter('use_sim_time').value,
++                motion_verified=motion.verified, motion_time_policy=motion.timing_policy,
++                motion_mode=motion.mode, lidar_input_representation=input_representation(node)):
++            raise ValueError('estimated observation requires explicit physical runtime and unverified native timing')
++        return
+     if (node.get_parameter('use_sim_time').value is not True
+             or node.hardware_inputs or motion is None or motion.mode != 'both'
+             or motion.verified is not True or motion.timing_policy != 'verified_only'
+--- r441/src/arena_autonomy/arena_autonomy/decision_process.py
++++ r452/src/arena_autonomy/arena_autonomy/decision_process.py
+@@ -23,6 +23,8 @@
+             HandoffExecutionConfig.from_mapping(header['execution_config']), allow_simulation_trial=True)
+     else:
+         raise ValueError('unregistered decision process controller')
++    from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, configure_follow_observation
++    configure_follow_observation(follow, header.get('observation_input_scope', SIMULATION_SCOPE))
+     return follow, MotionConfig(**header['motion_config'])
+ 
+ 
+--- r441/src/arena_autonomy/arena_autonomy/follow_trace.py
++++ r452/src/arena_autonomy/arena_autonomy/follow_trace.py
+@@ -98,7 +98,9 @@
+ 
+ class FollowTrace:
+     def __init__(self, path, motion_config, follow_config, capacity=128, *, mode='g1_follow', execution_config=None,
+-                 current_corner_budget='off'):
++                 current_corner_budget='off', observation_input_scope='verified_native_simulation_v1'):
++        from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, validate_observation_scope
++        validate_observation_scope(observation_input_scope)
+         if (type(current_corner_budget) is not str or current_corner_budget not in ('off', 'r396_v1')
+                 or (current_corner_budget != 'off' and mode != 'g1_g2_handoff_trial')):
+             raise ValueError('registered handoff current corner trace policy required')
+@@ -147,7 +149,9 @@
+         self.emit('header', {**identity,
+                             'history_units': {'wheels': 'm/s_after_conversion', 'gyro': 'rad/s_after_bias'},
+                             'motion_config': asdict(motion_config), 'follow_config': asdict(follow_config),
+-                            **({'current_corner_budget': current_corner_budget} if current_corner_budget != 'off' else {})})
++                            **({'current_corner_budget': current_corner_budget} if current_corner_budget != 'off' else {}),
++                            **({'observation_input_scope': observation_input_scope}
++                               if observation_input_scope != SIMULATION_SCOPE else {})})
+ 
+     def _write(self, event):
+         self.stream.write(json.dumps(event, ensure_ascii=False, allow_nan=False, separators=(',', ':'))+'\n')
+--- r441/src/arena_autonomy/arena_autonomy/g1_g2_node.py
++++ r452/src/arena_autonomy/arena_autonomy/g1_g2_node.py
+@@ -46,6 +46,8 @@
+ 
+ 
+ class G1G2Node(LocalPursuit):
++    # capability는 입구만 연다. 아래 native2slot/r396 실제 선택 검증은 계속 필수다.
++    estimated_observation_runtime_capable = True
+     def __init__(self):
+         self.decision_delivery = None
+         self.decision_notice = None
+@@ -87,14 +89,17 @@
+                 or recheck != 'selected_v1' or self.follow.config.guard_observation_policy != 'selected_r181'):
+             raise ValueError('worker recheck requires process/fresh native/selected observation policy')
+         runtime_policy = self.declare_parameter('g1_runtime_policy', 'off').value
+-        from arena_autonomy.runtime_node_backend import validate_selection, validate_corner_selection
++        from arena_autonomy.runtime_node_backend import validate_selection, validate_corner_selection, observation_options
+         self.runtime_dual_selected = validate_selection(runtime_policy, execution=execution,
+             submission=submission, recheck_in_worker=self.recheck_in_worker,
+             retain_reference=retain_reference, numeric_execution=numeric_execution,
+             hardware_shadow=self.hardware_shadow)
++        self.complete_plan_trace = self.declare_parameter('g1_complete_plan_trace', False).value
++        if self.complete_plan_trace and not self.runtime_dual_selected:
++            raise ValueError('complete plan trace requires the registered runtime policy')
+         validate_corner_selection(self.current_corner_budget, runtime_selected=self.runtime_dual_selected,
+             use_sim_time=self.get_parameter('use_sim_time').value, motion_verified=self.motion.verified,
+-            motion_time_policy=self.motion.timing_policy)
++            motion_time_policy=self.motion.timing_policy, **observation_options(self))
+         if execution == 'process_candidate':
+             if (not (self.get_parameter('use_sim_time').value is True or self.hardware_inputs)
+                     or self.settings['control_rate_hz'] != 50.):
+@@ -313,7 +318,8 @@
+             allow_simulation_trial=True)
+         trace = FollowTrace(trace_path,self.motion.history.config,self.follow.config,
+             mode='g1_g2_handoff_trial',execution_config=self.follow.execution,
+-            current_corner_budget=self.current_corner_budget)
++            current_corner_budget=self.current_corner_budget,
++            observation_input_scope=getattr(self, 'observation_input_scope', 'verified_native_simulation_v1'))
+         self.get_logger().info('G1/G2 sensor handoff trial (preparation '+policy+'); /drive through independent safety')
+         return trace
+ 
+--- r441/src/arena_autonomy/arena_autonomy/lidar_safety.py
++++ r452/src/arena_autonomy/arena_autonomy/lidar_safety.py
+@@ -63,9 +63,11 @@
+         if structure_policy != 'off' and policy != 'bounded_local_v4':
+             raise ValueError('known structure policy requires bounded_local_v4')
+         crop_edge = self.declare_parameter('g1_crop_edge_component_trial', False).value
+-        from arena_autonomy.crop_edge_selection import validate_policy_selection, validate_node_selection
++        from arena_autonomy.crop_edge_selection import (SIMULATION_SCOPE, ESTIMATED_SCOPE,
++            validate_policy_selection, validate_node_selection)
++        self.observation_input_scope = self.declare_parameter('g1_observation_input_scope', SIMULATION_SCOPE).value
+         validate_policy_selection(crop_edge, policy, traffic_recovery)
+-        validate_node_selection(self, crop_edge)
++        validate_node_selection(self, crop_edge, observation_scope=self.observation_input_scope)
+         if policy != 'strict':
+             if self.recent_observation_enabled or not motion_supported(self):
+                 raise ValueError('bounded observation policy requires explicit both motion timing and no recent candidate')
+@@ -82,6 +84,8 @@
+                                                           lateral_metric_enabled=policy=='bounded_local_v4',
+                                                           oblique_metric_enabled=oblique,
+                                                           crop_edge_component_trial=crop_edge)
++            if self.observation_input_scope == ESTIMATED_SCOPE:
++                self.partial_policy.observation_input_scope = self.observation_input_scope
+         self.observation_cache = None
+         self.observation_epoch = 0
+         self.previous_safe_steering = 0.
+--- r441/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ r452/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -18,6 +18,8 @@
+ 
+ 
+ class LocalPursuit(WallFollow):
++    # 명시한 두 계산 runtime을 구성하는 subclass만 추정 관측 보완을 선택한다.
++    estimated_observation_runtime_capable = False
+     # 같은 경기 재개의 입력 경계. 수신 시각이 아니라 원천 취득 시각으로 비교한다.
+     input_floor_s = -math.inf
+     resume_route = None
+@@ -90,11 +92,15 @@
+         released_body_gap = bool(self.declare_parameter('g1_released_body_gap_trial', False).value)
+         traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
+         crop_edge = self.declare_parameter('g1_crop_edge_component_trial', False).value
+-        from arena_autonomy.crop_edge_selection import validate_policy_selection, validate_node_selection
++        from arena_autonomy.crop_edge_selection import (SIMULATION_SCOPE, ESTIMATED_SCOPE,
++            validate_policy_selection, validate_node_selection, configure_follow_observation)
++        self.observation_input_scope = self.declare_parameter('g1_observation_input_scope', SIMULATION_SCOPE).value
++        if self.observation_input_scope == ESTIMATED_SCOPE and self.estimated_observation_runtime_capable is not True:
++            raise ValueError('estimated observation scope requires a registered runtime-capable planner')
+         validate_policy_selection(crop_edge, partial_observation, traffic_recovery)
+         if crop_edge and not self.g1_enabled:
+             raise ValueError('crop edge component requires explicit G1 activation')
+-        validate_node_selection(self, crop_edge)
++        validate_node_selection(self, crop_edge, observation_scope=self.observation_input_scope)
+         traffic_path_recovery = bool(self.declare_parameter('g1_traffic_path_recovery_trial', False).value)
+         if traffic_path_recovery and (not traffic_recovery or not corridor_fallback):
+             raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
+@@ -250,6 +256,7 @@
+             self.input_boundary_publisher = self.create_publisher(String, '/race/input_boundary', 10)
+             self.get_logger().info('B3 race supervisor candidate: session='+self.race.session)
+         self.follow_trace = self.create_follow_trace(trace_path)
++        configure_follow_observation(self.follow, self.observation_input_scope)
+ 
+     def create_follow_trace(self, trace_path):
+         """기본 기록 생성. 별도 명시 실행 파일은 제어기/기록 형식을 함께 선택한다."""
+--- r441/src/arena_autonomy/arena_autonomy/partial_observation.py
++++ r452/src/arena_autonomy/arena_autonomy/partial_observation.py
+@@ -14,6 +14,7 @@
+ from arena_autonomy.scene_motion import relative_poses, transport_points
+ from arena_autonomy.scan_input import scan_angles, scan_times, scan_cell_widths, scan_max_gap, audit_scan_front
+ from arena_autonomy.measurement_scan import MeasurementScan
++from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, basis_matches, component_scope
+ 
+ 
+ def _crop_edge_component(scan, order, front, run, valid, values, cells, forbidden):
+@@ -272,8 +273,8 @@
+             if run[0] == 0 or run[-1] == len(front)-1:
+                 eligible = (getattr(self, 'crop_edge_component_trial', False) is True
+                     and isinstance(scan, MeasurementScan)
+-                    and scan.time_basis == 'simulation_acquisition'
+-                    and history.scan_time_policy == 'verified_only'
++                    and basis_matches(getattr(self, 'observation_input_scope', SIMULATION_SCOPE),
++                                      history.scan_time_policy, scan.time_basis)
+                     and not metric_gap and not central
+                     and sum(r[0] == 0 or r[-1] == len(front)-1 for r in runs) == 1
+                     and not (run[0] == 0 and run[-1] == len(front)-1))
+@@ -298,7 +299,7 @@
+                                 combined_width_deg=math.degrees(combined_width),
+                                 combined_fraction=len(full)/len(front),
+                                 flank_ranges_m=values[component['flank_source_indices']].tolist(),
+-                                scope='bounded_simulation_edge_component_not_free_space')
++                                scope=component_scope(getattr(self, 'observation_input_scope', SIMULATION_SCOPE)))
+                 if edge_component is None:
+                     return {**report, 'reason':'unbounded_missing'}
+                 report['crop_edge_component'] = edge_component
+--- r441/src/arena_autonomy/arena_autonomy/race_runtime_policy/corner_candidate.py
++++ r452/src/arena_autonomy/arena_autonomy/race_runtime_policy/corner_candidate.py
+@@ -32,7 +32,7 @@
+ 
+ 
+ def try_from_current_result(before,output,submitted,current,scene,history,cfg,*,core_rebase,proof_callback,
+-                            require_current_region=False,costs=None):
++                            require_current_region=False,costs=None,target_cap=None):
+     """계산된 기준을 그대로 받아 거리 제안 1회 + 최종 현재 검사 1회만 한다."""
+     if not eligible(before,output,current,cfg,require_current_region):return before
+     measured=current['speed_mps'];previous=current['previous_steering_rad'];dt=current['dt_s']
+@@ -44,6 +44,13 @@
+     def reject(reason):return {**before,DIAGNOSTIC:{**diagnostic,'reason':reason}}
+     if not proposal['accepted']:return reject(proposal['reason'])
+     target=proposal['proposed_target_mps']
++    if target_cap is not None:
++        if not finite(target_cap) or target_cap!=.1:
++            raise ValueError('estimated current corner target cap must be 0.1 m/s')
++        target=min(target,target_cap)
++        diagnostic.update(target_cap_mps=target_cap,observation_input_scope='host_estimated_crop_v1',
++            timing_verified=current['timing_verified'],timing_policy=current['timing_policy'],
++            time_basis=current['scan']['measurements']['time_basis'])
+     start=time.perf_counter_ns()
+     core=core_rebase((target,output[1],output[2]),submitted,current,scene,history,cfg)
+     elapsed(costs,'final_core_ms',start)
+--- r441/src/arena_autonomy/arena_autonomy/race_runtime_policy/crop_current_candidate.py
++++ r452/src/arena_autonomy/arena_autonomy/race_runtime_policy/crop_current_candidate.py
+@@ -5,11 +5,18 @@
+ from arena_autonomy.measurement_scan import MeasurementScan
+ from .crop_current_scope import same_scan_scope
+ from .crop_current_proof import check
++from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, ESTIMATED_SCOPE, validate_observation_scope
+ 
+ DIAGNOSTIC='current_crop_component_retry'
+ 
+ 
+-def try_from_current_result(before,data,scene,history,cfg,*,registered_environment,core_rebase):
++def try_from_current_result(before,data,scene,history,cfg,*,registered_environment,core_rebase,
++                            observation_scope=SIMULATION_SCOPE):
++    validate_observation_scope(observation_scope)
++    if observation_scope == ESTIMATED_SCOPE:
++        # 원0의 관측 보완에 단일 목표만 검사한다. 정상 양수/실측속도를 바꾸지 않는다.
++        return _try_once(before,data,scene,history,cfg,registered_environment=registered_environment,
++            core_rebase=core_rebase,target_cap=.1,observation_scope=observation_scope)
+     first=_try_once(before,data,scene,history,cfg,
+         registered_environment=registered_environment,core_rebase=core_rebase,target_cap=.2)
+     if first is None or first is before or first['speed_mps']!=0:return first
+@@ -44,24 +51,32 @@
+     return {**second,'current_route_proof':route,DIAGNOSTIC:combined}
+ 
+ 
+-def _try_once(before,data,scene,history,cfg,*,registered_environment,core_rebase,target_cap):
++def _try_once(before,data,scene,history,cfg,*,registered_environment,core_rebase,target_cap,
++              observation_scope=SIMULATION_SCOPE):
+     if (before is None or before['speed_mps']!=0
+             or before.get('reason')!='route_current_large_motion_region_unobserved'
+-            or not same_scan_scope(data,cfg,registered_environment=registered_environment)):
++            or not same_scan_scope(data,cfg,registered_environment=registered_environment,
++                                   observation_scope=observation_scope)):
+         return before
+     output,current=data['output'],data['current']
+     measured,previous,dt=current['speed_mps'],current['previous_steering_rad'],current['dt_s']
+     values=(output[0],output[1],measured,previous,dt,before['steering_rad'])
++    maximum_measured = .15 if observation_scope == ESTIMATED_SCOPE else .6
+     if (not all(type(v) in (float,int) and math.isfinite(v) for v in values)
+-            or not 0<=measured<=.6 or not 0<dt<=.1 or output[0]<=0
++            or not 0<=measured<=maximum_measured or not 0<dt<=.1 or output[0]<=0
+             or max(abs(output[1]),abs(previous),abs(before['steering_rad']))>cfg.max_steering_rad):
+         return before
+     target=min(output[0],target_cap)
+     diagnostic=dict(applied=False,original_target_mps=output[0],trial_target_cap_mps=target_cap,
+-        requested_target_mps=target,measured_speed_mps=measured,maximum_measured_speed_mps=.6,
++        requested_target_mps=target,measured_speed_mps=measured,maximum_measured_speed_mps=maximum_measured,
+         attempted_targets=1,final_full_checks=0,unknown_filled=False,source_timestamp_renewed=False,
+         old_occupancy_permission_reused=False,state_transition=False,continuous_sweep_certified=False,
+-        residual_hidden_object_risk=True,scope='verified_native_simulation_same_scan_crop_only')
++        residual_hidden_object_risk=True,scope=('estimated_native_same_scan_crop_only'
++            if observation_scope==ESTIMATED_SCOPE else 'verified_native_simulation_same_scan_crop_only'))
++    if observation_scope==ESTIMATED_SCOPE:
++        diagnostic.update(observation_input_scope=observation_scope,
++            timing_verified=current['timing_verified'],timing_policy=current['timing_policy'],
++            time_basis=current['scan']['measurements']['time_basis'])
+     def reject(reason):return {**before,DIAGNOSTIC:{**diagnostic,'reason':reason}}
+     core=core_rebase((target,output[1],output[2]),data['submitted'],current,scene,history,cfg)
+     diagnostic['core_result']=(None if core is None else {key:core.get(key) for key in
+@@ -81,7 +96,9 @@
+         queries=context['queries'][~context['free'] & ~context['masked']]
+         component=output[2]['normal']['partial_observation']['crop_edge_component']
+         proof=check(scene,raw,queries,context['padding'],component,
+-                    all_queries=context['queries'],motion_epoch=current['epoch'])
++                    all_queries=context['queries'],motion_epoch=current['epoch'],
++                    **(dict(observation_scope=observation_scope,timing_verified=current['timing_verified'],
++                            timing_policy=current['timing_policy']) if observation_scope==ESTIMATED_SCOPE else {}))
+     blocked=ps.region_blocked(region,ps.SelectorConfig(),bounded_unknown_risk=proof['accepted'])
+     diagnostic.update(proof=proof,blocked=blocked)
+     if region['queries']<=0 or blocked is not None or (region['unobserved'] and not proof['accepted']):
+--- r441/src/arena_autonomy/arena_autonomy/race_runtime_policy/crop_current_proof.py
++++ r452/src/arena_autonomy/arena_autonomy/race_runtime_policy/crop_current_proof.py
+@@ -4,6 +4,7 @@
+ 
+ from arena_autonomy.observation_support import source_valid
+ from arena_autonomy.rear_fringe_trial import _bounded_nonreturn
++from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, ESTIMATED_SCOPE, basis_matches, timing_matches
+ 
+ 
+ def component_metric(rays, indices, reach, padding):
+@@ -23,7 +24,8 @@
+         central=bool(np.any(np.abs(angles)<=math.radians(30))),current_directions_rad=angles.tolist())
+ 
+ 
+-def check(scene,raw_scan,queries,padding,component,*,all_queries,motion_epoch):
++def check(scene,raw_scan,queries,padding,component,*,all_queries,motion_epoch,
++          observation_scope=SIMULATION_SCOPE,timing_verified=True,timing_policy='verified_only'):
+     """queries는 현재 motion_region unknown만, reach는 그 전체 질의를 사용한다."""
+     result=dict(accepted=False,reason='invalid_crop_current_input',policy='crop_current_reach_r426',
+         unknown_filled=False,residual_hidden_object_risk=True,continuous_sweep_certified=False,
+@@ -31,7 +33,9 @@
+         allowed_region='same_call_current_motion_region_not_body_side_box',
+         width_contract='sampled_ray_segment_transverse_bound_not_hidden_object_size')
+     def reject(reason,**extra):return {**result,'accepted':False,'reason':reason,**extra}
+-    if (not source_valid(scene) or raw_scan.time_basis!='simulation_acquisition'
++    if (not source_valid(scene) or not basis_matches(observation_scope,timing_policy,raw_scan.time_basis)
++            or (observation_scope==ESTIMATED_SCOPE and not timing_matches(
++                observation_scope,timing_verified,timing_policy,raw_scan.time_basis))
+             or type(motion_epoch) is not int or motion_epoch<0 or type(component) is not dict):
+         return result
+     rays=scene.rays;count=len(rays);members=component.get('source_indices');flanks=component.get('flank_source_indices')
+--- r441/src/arena_autonomy/arena_autonomy/race_runtime_policy/crop_current_scope.py
++++ r452/src/arena_autonomy/arena_autonomy/race_runtime_policy/crop_current_scope.py
+@@ -1,10 +1,11 @@
+ """동일 원 scan의 crop 계획을 현재 검사 후보로만 분류한다. 허가/거리 생성 없음."""
++from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, component_scope, timing_matches
+ 
+ 
+ SCOPE = 'bounded_simulation_edge_component_not_free_space'
+ 
+ 
+-def classified_crop(output):
++def classified_crop(output, *, observation_scope=SIMULATION_SCOPE):
+     normal = output[2].get('normal') or {}
+     partial = normal.get('partial_observation') or {}
+     component = partial.get('crop_edge_component')
+@@ -13,7 +14,7 @@
+             or normal.get('boundary_from_memory') is not False
+             or partial.get('allowed') is not True or partial.get('reason') != 'bounded_side_missing'
+             or partial.get('unknown_filled') is not False or partial.get('latch_reason') is not None
+-            or type(component) is not dict or component.get('scope') != SCOPE):
++            or type(component) is not dict or component.get('scope') != component_scope(observation_scope)):
+         return False
+     # 표식의 모양만 확인한다. 아래 배열/폭을 현재 이동 영역의 proof로 사용하지 않는다.
+     members = component.get('source_indices')
+@@ -27,10 +28,10 @@
+             and all(abs(a-b) == 1 for a, b in zip([flanks[0], *members], [*members, flanks[1]])))
+ 
+ 
+-def same_scan_scope(data, cfg, *, registered_environment=False):
++def same_scan_scope(data, cfg, *, registered_environment=False, observation_scope=SIMULATION_SCOPE):
+     """부모 소유 scan 비교는 후보 분류뿐이다. 외부 ROS 입력/점유 허가가 아니다."""
+     if (registered_environment is not True or getattr(cfg, 'crop_edge_component_trial', False) is not True
+-            or not classified_crop(data['output'])):
++            or not classified_crop(data['output'], observation_scope=observation_scope)):
+         return False
+     current, submitted = data['current'], data['submitted']
+     scan = current.get('scan') or {}; raw = scan.get('measurements') or {}
+@@ -39,10 +40,9 @@
+             and evidence.get('same_scan') is True
+             and evidence.get('submitted_reference_s') == submitted.get('reference_s')
+             and evidence.get('current_reference_s') == current.get('reference_s')
+-            and evidence.get('submitted_timing_verified') is True
+-            and evidence.get('submitted_timing_policy') == 'verified_only'
+-            and evidence.get('submitted_time_basis') == 'simulation_acquisition'
+-            and current.get('timing_verified') is True
+-            and current.get('timing_policy', 'verified_only') == 'verified_only'
++            and timing_matches(observation_scope, evidence.get('submitted_timing_verified'),
++                               evidence.get('submitted_timing_policy'), evidence.get('submitted_time_basis'))
++            and timing_matches(observation_scope, current.get('timing_verified'),
++                               current.get('timing_policy', 'verified_only'), raw.get('time_basis'))
+             and scan.get('representation') == 'native_measurements_v1'
+-            and raw.get('time_basis') == 'simulation_acquisition')
++            )
+--- r441/src/arena_autonomy/arena_autonomy/race_runtime_policy/evaluator.py
++++ r452/src/arena_autonomy/arena_autonomy/race_runtime_policy/evaluator.py
+@@ -1,5 +1,7 @@
+ """명시한 두 계산 자식 안에서만 설치하는 기존 정책 묶음."""
+ from . import observation_policy
++from arena_autonomy.crop_edge_selection import (SIMULATION_SCOPE, ESTIMATED_SCOPE,
++    validate_observation_scope, timing_matches)
+ 
+ POLICY = 'cad_runtime_r377_v1'
+ 
+@@ -14,6 +16,7 @@
+             raise ValueError('explicit registered runtime policy and stage required')
+         self.stage = stage
+         self.time_policy = header.get('runtime_time_policy', 'verified_only')
++        self.observation_scope = validate_observation_scope(header.get('observation_input_scope', SIMULATION_SCOPE))
+         if self.time_policy not in ('verified_only', 'host_estimated_v1'):
+             raise ValueError('explicit runtime acquisition policy required')
+         from arena_autonomy.runtime_node_backend import validate_corner_selection
+@@ -26,7 +29,11 @@
+                 and header.get('numeric_execution') == 'native_v1'
+                 and environment.get('backend') == 'native2slot_v1'),
+             use_sim_time=environment.get('use_sim_time'),
+-            motion_verified=environment.get('motion_timing_verified'), motion_time_policy=self.time_policy)
++            motion_verified=environment.get('motion_timing_verified'), motion_time_policy=self.time_policy,
++            observation_scope=self.observation_scope,
++            execution_environment=environment.get('execution_environment'),
++            lidar_input_representation=environment.get('lidar_input_representation'),
++            motion_mode=environment.get('motion_mode'))
+         from arena_autonomy.numeric_kernels import configure
+         from arena_autonomy.decision_process import make_controller
+         configure(header.get('numeric_execution', 'python'))
+@@ -63,8 +70,16 @@
+         current = data if self.stage == 'plan' else data['current']
+         if current.get('timing_policy', 'verified_only') != self.time_policy:
+             raise ValueError('input acquisition policy differs from selected runtime evaluator')
+-        if self.corner_budget and current.get('timing_verified') is not True:
+-            raise ValueError('current corner budget requires verified input timing')
++        scope = getattr(self, 'observation_scope', SIMULATION_SCOPE)
++        if self.corner_budget:
++            if scope == ESTIMATED_SCOPE:
++                raw = current.get('scan', {})
++                if (raw.get('representation')!='native_measurements_v1' or not timing_matches(
++                        scope,current.get('timing_verified'),current.get('timing_policy'),
++                        raw.get('measurements',{}).get('time_basis'))):
++                    raise ValueError('estimated observation requires unchanged false/host-estimated input timing')
++            elif current.get('timing_verified') is not True:
++                raise ValueError('current corner budget requires verified input timing')
+         if self.stage == 'plan':
+             return freeze(replay_call(self.follow, data, self.motion))
+         info, scan, history = restore_call(current, self.motion)
+@@ -78,7 +93,8 @@
+                 result = self.apply_corner(result, data, info, scene, history)
+                 from .crop_current_candidate import try_from_current_result
+                 result = try_from_current_result(result, data, scene, history, self.follow.config,
+-                    registered_environment=self.corner_budget, core_rebase=self.current_policy.core_policy.rebase)
++                    registered_environment=self.corner_budget, core_rebase=self.current_policy.core_policy.rebase,
++                    **(dict(observation_scope=scope) if scope==ESTIMATED_SCOPE else {}))
+         except (MotionUnavailable, ValueError) as error:
+             result = dict(speed_mps=0., steering_rad=info['previous_steering_rad'],
+                           reference_s=info['reference_s'], reason='rebase_input_stop', input_error=str(error),
+@@ -92,6 +108,9 @@
+         from . import corner_candidate, range_mask_component
+         from arena_autonomy.local_scene import blind_spec
+         cfg = self.follow.config
++        scope = getattr(self, 'observation_scope', SIMULATION_SCOPE)
++        if scope==ESTIMATED_SCOPE and (before is None or before['speed_mps']!=0):
++            return before
+         if not corner_candidate.eligible(before, data['output'], data['current'], cfg, True):
+             return before
+         profile = info['rear_half_angle_deg']
+@@ -100,11 +119,13 @@
+         def proof(s, raw, q, padding, length, width, speed, target):
+             return range_mask_component.bounded_adjacent_structure(
+                 s, raw, q, padding, length, width, speed, target, sectors,
+-                mask_profile=profile, motion_epoch=info['epoch'], timing_verified=info['timing_verified'])
++                mask_profile=profile, motion_epoch=info['epoch'], timing_verified=info['timing_verified'],
++                **(dict(observation_scope=scope,timing_policy=self.time_policy) if scope==ESTIMATED_SCOPE else {}))
+ 
+         return corner_candidate.try_from_current_result(before, data['output'], data['submitted'],
+             data['current'], scene, history, cfg, core_rebase=self.current_policy.core_policy.rebase,
+-            proof_callback=proof, require_current_region=True)
++            proof_callback=proof, require_current_region=True,
++            **(dict(target_cap=.1) if scope==ESTIMATED_SCOPE else {}))
+ 
+ 
+ def evaluator_factory(stage, header):
+--- r441/src/arena_autonomy/arena_autonomy/race_runtime_policy/guard_crawl.py
++++ r452/src/arena_autonomy/arena_autonomy/race_runtime_policy/guard_crawl.py
+@@ -0,0 +1,67 @@
++"""명시 실행 정책에서 기존 GUARD 가림 재검사 뒤 같은 경로를 .10 m/s로 검사한다.
++
++관측된 측방 물체·통과 이력·미관측 영역과 1 cm 가림 한계는 유지한다.
++고정 물체 분류나 정체 시간에 따른 자동 출발이 아니다.
++"""
++import math
++
++from arena_autonomy import pass_release_trial as ps
++from arena_autonomy.observation_support import source_valid
++
++CAP = .10
++REASONS = ('guard_curve_rejected_large_motion_masked_toward_left',
++           'guard_curve_rejected_large_motion_masked_toward_right')
++
++
++def assess(owner, scene, baseline, selected, speed, previous, dt, raw_scan, *, measured):
++    """이미 갱신된 selector 상태를 그대로 읽고 전체 GUARD 검사를 한 번만 수행한다."""
++    cfg = owner.follow_config
++    normal, detail = baseline[2], selected[2]
++    partial = normal.get('partial_observation') or {}
++    original = detail.get('selector_guard_candidate') or {}
++    retry = detail.get('selector_guard_speed_recheck') or {}
++    attempts = retry.get('attempts') or []
++    numbers = (measured, speed, previous, dt, baseline[0], baseline[1], selected[0], selected[1])
++    if (not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in numbers)
++            or not 0 <= measured <= .15 or measured != speed or not 0 < dt <= .1
++            or not cfg.traffic_recovery_trial or not cfg.guard_curve_trial
++            or owner.mode != 'GUARD' or detail.get('selector_mode') != 'GUARD'
++            or selected[0] != 0 or baseline[0] <= .15 or raw_scan is None
++            or detail.get('selector_choice') != 'parallel' or detail.get('selector_reason') not in REASONS
++            or normal.get('reason') not in ps.GUARD_BASELINE_REASONS
++            or normal.get('boundary_from_memory') is not False
++            or normal.get('path_source_s') != scene.source_first_s
++            or partial.get('allowed') is not True or partial.get('reason') != 'fully_observed'
++            or abs(previous) > cfg.max_steering_rad or abs(baseline[1]) > cfg.max_steering_rad
++            or not source_valid(scene) or not 0 <= scene.t_ref_s-scene.source_first_s < owner.config.max_scene_age_s
++            or original.get('accepted') is not False or retry.get('applied') is not False
++            or original.get('trigger') != 'parallel_hold_reference_not_straight'
++            or [a.get('target_mps') for a in attempts] != [.25, .15]):
++        return selected
++    regions = [original.get('region') or {}] + [a.get('region') or {} for a in attempts]
++    if (any(a.get('accepted') is not False or a.get('reason') not in REASONS for a in attempts)
++            or any(r.get('unobserved') != 0 or r.get('masked_front_samples') != 0
++                   or r.get('queries', 0) <= 0
++                   or not r.get('masked_tail_extent_m', 0) > owner.config.masked_tail_allowance_m
++                   for r in regions)):
++        return selected
++
++    view = ps.threat_view(scene, normal.get('path_points'), owner.lat)
++    parallel = (selected[0], selected[1], {**detail, 'reason': original['trigger']})
++    # 원 _select의 상태 메타데이터만 전달한다. 실패한 parallel의 HOLD/reason/path로
++    # 양수 baseline 출력의 의미를 덮어쓰면 후속 현재 경로 검사가 후보를 받지 못한다.
++    selector_detail = {key: detail[key] for key in (
++        'selector_mode_before', 'pass_release_trial', 'selector_unknown_filled',
++        'selector_hidden_rear_risk_unresolved', 'selector_mode', 'selector_evidence',
++        'selector_sides', 'selector_guard_speed_recheck') if key in detail}
++    checked = owner._guard_curve_at_cap(scene, view, baseline, parallel, speed, previous, dt,
++        scene.t_ref_s-scene.source_first_s, selector_detail, raw_scan, target_cap=CAP)
++    proof = {} if checked is None else checked[2].get('selector_guard_candidate') or {}
++    accepted = checked is not None and checked[0] > 0 and proof.get('accepted') is True
++    result = checked if accepted else selected
++    return result[0], result[1], {**result[2], 'selector_guard_crawl_retry': dict(
++        applied=accepted, cap_mps=CAP, measured_speed_mps=measured,
++        previous_caps_mps=[original.get('target_speed_mps'), .25, .15],
++        low_reason=None if checked is None else checked[2].get('selector_reason'),
++        low_guard=proof, full_guard_rechecked=True, state_transition=False,
++        source_timestamp_renewed=False, unknown_filled=False)}
+--- r441/src/arena_autonomy/arena_autonomy/race_runtime_policy/profile_evidence.py
++++ r452/src/arena_autonomy/arena_autonomy/race_runtime_policy/profile_evidence.py
+@@ -4,12 +4,18 @@
+ from arena_autonomy.local_scene import LocalScene, blind_spec, range_bands, _blind_limits, _masked_by
+ from arena_autonomy.measurement_scan import MeasurementScan
+ from arena_autonomy.observation_support import source_valid
++from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, ESTIMATED_SCOPE, validate_observation_scope, timing_matches
+ 
+ 
+-def profile_evidence(scene, raw, sectors, profile, motion_epoch, timing_verified):
++def profile_evidence(scene, raw, sectors, profile, motion_epoch, timing_verified, *,
++                     observation_scope=SIMULATION_SCOPE,timing_policy='verified_only'):
+     """거리 한정 원 프로필과 검증된 현재 장면의 일치. 전체-sector 경로는 호출하지 않는다."""
++    validate_observation_scope(observation_scope)
++    valid_timing = (timing_matches(observation_scope,timing_verified,timing_policy,raw.time_basis)
++        if observation_scope==ESTIMATED_SCOPE and type(raw) is MeasurementScan
++        else timing_verified is True and getattr(raw,'time_basis',None) != 'unverified_estimate')
+     if (type(raw) is not MeasurementScan or type(scene) is not LocalScene
+-            or timing_verified is not True or raw.time_basis == 'unverified_estimate'
++            or not valid_timing
+             or type(motion_epoch) is not int or motion_epoch < 0
+             or type(profile) is not dict or 'range_limits_m' not in profile):
+         raise ValueError('explicit_ranged_profile_and_verified_source_required')
+--- r441/src/arena_autonomy/arena_autonomy/race_runtime_policy/range_mask_component.py
++++ r452/src/arena_autonomy/arena_autonomy/race_runtime_policy/range_mask_component.py
+@@ -10,10 +10,12 @@
+ from arena_autonomy.known_structure import sector_rays
+ from arena_autonomy.scan_input import scan_angles
+ from .profile_evidence import profile_evidence, partial_component
++from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE
+ 
+ 
+ def bounded_adjacent_structure(scene,raw_scan,queries,padding,length,width,speed,target,sectors,*,
+-                               mask_profile=None,motion_epoch=None,timing_verified=None):
++                               mask_profile=None,motion_epoch=None,timing_verified=None,
++                               observation_scope=SIMULATION_SCOPE,timing_policy='verified_only'):
+     old=bounded_body_nonreturn(scene,raw_scan,queries,padding,length,width,speed,target)
+     if old.get('accepted') or old.get('reason') not in ('unbounded_nonreturn','mask_boundary'):
+         return old
+@@ -65,7 +67,8 @@
+                 try:
+                     if profile_bands is None:
+                         profile_bands=profile_evidence(scene,raw_scan,sectors,mask_profile,
+-                                                       motion_epoch,timing_verified)
++                                                       motion_epoch,timing_verified,
++                                                       observation_scope=observation_scope,timing_policy=timing_policy)
+                 except (ValueError,TypeError,AttributeError,OverflowError) as error:
+                     return reject('range_profile_evidence_invalid',profile_error=str(error))
+                 if masked:
+--- r441/src/arena_autonomy/arena_autonomy/race_runtime_policy/released_plan.py
++++ r452/src/arena_autonomy/arena_autonomy/race_runtime_policy/released_plan.py
+@@ -1,4 +1,4 @@
+-"""기본 OFF. RELEASED의 기존 세 가림 재검사 실패 뒤 .10m/s만 비교한다."""
++"""기본 OFF 실행 정책. RELEASED/GUARD 기존 가림 재검사 실패 뒤 .10m/s만 비교한다."""
+ from contextlib import contextmanager
+ from contextvars import ContextVar
+ import math
+@@ -85,7 +85,11 @@
+ 
+     def selected(owner, scene, baseline, parallel, speed, previous, dt, *, raw_scan=None):
+         before = original(owner, scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+-        after, evidence = assess(owner, scene, baseline, before, speed, previous, dt)
++        from .guard_crawl import assess as assess_guard
++        measured = _MEASURED.get()
++        guarded = assess_guard(owner, scene, baseline, before, speed, previous, dt, raw_scan,
++                               measured=speed if measured is None else measured)
++        after, evidence = assess(owner, scene, baseline, guarded, speed, previous, dt)
+         if observer is not None:
+             observer(owner, scene, baseline, before, after, evidence, speed, previous, dt)
+         return before if shadow else after
+--- r441/src/arena_autonomy/arena_autonomy/runtime_dual_delivery.py
++++ r452/src/arena_autonomy/arena_autonomy/runtime_dual_delivery.py
+@@ -34,8 +34,9 @@
+     command_timeout = .2
+     dt = .1
+ 
+-    def __init__(self, worker, clock, emit=lambda *a:None):
++    def __init__(self, worker, clock, emit=lambda *a:None, *, complete_plan_trace=False):
+         self.worker,self.clock,self.emit=worker,clock,emit
++        self.complete_plan_trace = complete_plan_trace
+         self.last_source=self.boundary_source=None
+         self.last_submission=self.last_application=-math.inf
+         self.counts=dict(submitted=0,applied=0,discarded=0,invalidated=0)
+@@ -58,12 +59,23 @@
+                         last_source=self.last_source,policy='latest'):
+             return False
+         if not self.worker.offer_plan(snapshot):return False
++        if self.complete_plan_trace:
++            # offer가 소유한 사본과 실제 lane 식별자다. 계산 완료/발행 증명은 아니다.
++            request = self.worker.plan.inflight
++            self.emit('runtime_plan_submitted', dict(
++                **{k: request[k] for k in ('stage','generation','sequence','reset_reason','submitted_wall_s')},
++                input=self.worker.plan_input))
+         self.last_source,self.last_submission=source,snapshot['reference_s']
+         self.counts['submitted']+=1
+         return True
+ 
+     def collect(self):
+         for row in self.worker.collect():
++            if self.complete_plan_trace and row['stage'] == 'plan':
++                # 입력은 submitted에 한 번만 남긴다. 부모의 적용/폐기 여부와 별도다.
++                self.emit('runtime_plan_completed', {k: row[k] for k in (
++                    'stage','generation','sequence','submitted_wall_s','began_wall_s',
++                    'completed_wall_s','received_wall_s','output')})
+             if row.get('discard_reason'):
+                 self.counts['discarded']+=1
+                 self.emit('parallel_discard',dict(reason=row['discard_reason'],
+--- r441/src/arena_autonomy/arena_autonomy/runtime_node_backend.py
++++ r452/src/arena_autonomy/arena_autonomy/runtime_node_backend.py
+@@ -1,30 +1,59 @@
+ """선택형 두 계산 노드 연결. 기존 발행·신호·독립 보호를 통과한 결과만 확인한다."""
+ import math
++from arena_autonomy.crop_edge_selection import (SIMULATION_SCOPE, ESTIMATED_SCOPE,
++    validate_observation_scope, estimated_environment)
+ 
+ POLICY = 'cad_runtime_r377_v1'
+ CORNER_POLICY = 'r396_v1'
+ 
+ 
+ def validate_corner_selection(policy, *, runtime_selected, use_sim_time,
+-                              motion_verified, motion_time_policy):
++                              motion_verified, motion_time_policy, observation_scope=SIMULATION_SCOPE,
++                              execution_environment=None, lidar_input_representation=None, motion_mode=None):
++    validate_observation_scope(observation_scope)
+     if policy == 'off':
++        if observation_scope == ESTIMATED_SCOPE:
++            raise ValueError('estimated observation requires the registered current corner selection')
+         return False
+     if policy != CORNER_POLICY or type(policy) is not str:
+         raise ValueError('registered current corner budget required')
++    if observation_scope == ESTIMATED_SCOPE:
++        if runtime_selected is not True or not estimated_environment(
++                execution_environment=execution_environment, use_sim_time=use_sim_time,
++                motion_verified=motion_verified, motion_time_policy=motion_time_policy,
++                motion_mode=motion_mode, lidar_input_representation=lidar_input_representation):
++            raise ValueError('current estimated observation requires explicit physical native two-slot runtime')
++        return True
+     if (runtime_selected is not True or use_sim_time is not True
+             or motion_verified is not True or motion_time_policy != 'verified_only'):
+         raise ValueError('current corner budget requires verified simulation and registered native two-slot runtime')
+     return True
+ 
+ 
++def observation_options(node):
++    scope = validate_observation_scope(getattr(node, 'observation_input_scope', SIMULATION_SCOPE))
++    if scope == SIMULATION_SCOPE:
++        return {}
++    from arena_autonomy.native_lidar_input import input_representation
++    return dict(observation_scope=scope, execution_environment=node.execution_environment,
++                lidar_input_representation=input_representation(node), motion_mode=node.motion.mode)
++
++
+ def evaluator_header(node, header):
+     selected = dict(header, runtime_policy=POLICY, runtime_time_policy=node.motion.timing_policy)
+     policy = getattr(node, 'current_corner_budget', 'off')
++    options = observation_options(node)
+     if validate_corner_selection(policy, runtime_selected=node.runtime_dual_selected,
+             use_sim_time=node.get_parameter('use_sim_time').value,
+-            motion_verified=node.motion.verified, motion_time_policy=node.motion.timing_policy):
++            motion_verified=node.motion.verified, motion_time_policy=node.motion.timing_policy, **options):
+         selected.update(current_corner_budget=policy, current_corner_environment=dict(
+             use_sim_time=True, motion_timing_verified=True, backend='native2slot_v1'))
++        if options:
++            selected['observation_input_scope'] = options['observation_scope']
++            selected['current_corner_environment'] = dict(
++                use_sim_time=node.get_parameter('use_sim_time').value,
++                motion_timing_verified=node.motion.verified, backend='native2slot_v1',
++                **{k: v for k, v in options.items() if k != 'observation_scope'})
+     return selected
+ 
+ 
+@@ -47,7 +76,13 @@
+     from arena_autonomy.runtime_dual_delivery import RuntimeDualDelivery
+     selected = evaluator_header(node, header)
+     worker = RuntimeDualProcess(selected, evaluator_factory=evaluator_factory, supported=supported)
+-    return RuntimeDualDelivery(worker, node.now_s, node.follow_trace.emit)
++    complete_plan_trace = getattr(node, 'complete_plan_trace', False)
++    if complete_plan_trace:
++        # 자식에게 전달한 header 원문을 보존한다. 제출/완료 기록은 발행 증명이 아니다.
++        node.follow_trace.emit('runtime_evaluator_header', dict(schema=1, header=selected,
++            scope='submitted_and_collected_plan_only', publication_proven=False))
++    return RuntimeDualDelivery(worker, node.now_s, node.follow_trace.emit,
++                               complete_plan_trace=complete_plan_trace)
+ 
+ 
+ def control(node, parent_control):
+--- r441/src/arena_bringup/launch/simulation.launch.py
++++ r452/src/arena_bringup/launch/simulation.launch.py
+@@ -1555,6 +1555,7 @@
+             **planning_geometry,
+             "g1_crop_edge_component_trial": crop_edge,
+             "g1_runtime_policy": LaunchConfiguration("g1_runtime_policy").perform(context),
++            "g1_complete_plan_trace": _as_bool(LaunchConfiguration("g1_complete_plan_trace").perform(context)),
+             "g1_current_corner_budget": LaunchConfiguration("g1_current_corner_budget").perform(context),
+             "use_sim_time": True,
+             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
+@@ -1733,6 +1734,8 @@
+             DeclareLaunchArgument('g1_runtime_policy', default_value='off',
+                                   choices=['off', 'cad_runtime_r377_v1'],
+                                   description='명시 두 계산 정책; process/fresh/worker/native 조건은 노드가 검사'),
++            DeclareLaunchArgument('g1_complete_plan_trace', default_value='false', choices=['false', 'true'],
++                                  description='진단 전용: 실제 계획 제출/완료 기록. 항상 기록하지 않음'),
+             DeclareLaunchArgument('g1_crop_edge_component_trial', default_value='false',
+                                   choices=['false', 'true'],
+                                   description='명시 verified native 시뮬 경계 성분 후보; 계획/독립 보호에 같은 선택'),
+--- r441/tests/test_current_corner_runtime.py
++++ r452/tests/test_current_corner_runtime.py
+@@ -140,7 +140,7 @@
+     evaluator.stage='current';evaluator.time_policy='verified_only';evaluator.corner_budget=enabled
+     evaluator.follow=NS(config=FollowConfig());evaluator.motion=MotionConfig()
+     def base(*args,**kwargs):calls.append('baseline');return before
+-    evaluator.current_policy=NS(rebase=base)
++    evaluator.current_policy=NS(rebase=base,core_policy=NS(rebase=base))
+     info=dict(reference_s=1.,timing_verified=True,epoch=0,rear_half_angle_deg=0.)
+     monkeypatch.setattr(trace,'restore_call',lambda *args:(info,object(),object()))
+     monkeypatch.setattr(scenes,'motion_scene',lambda *args,**kwargs:object())
+--- r441/tests/test_estimated_observation_entry.py
++++ r452/tests/test_estimated_observation_entry.py
+@@ -0,0 +1,114 @@
++"""ROS 없이 실제 입구 AST를 실행한다. 노드 생성/자식 준비 검증을 대신하지 않는다."""
++import ast
++import copy
++from pathlib import Path
++from types import SimpleNamespace as NS
++import unittest
++
++from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, ESTIMATED_SCOPE, validate_node_selection
++from arena_autonomy.runtime_node_backend import (POLICY, CORNER_POLICY, observation_options,
++    validate_selection, validate_corner_selection)
++
++ROOT=next(p for p in Path(__file__).resolve().parents
++          if (p/'src/arena_autonomy/arena_autonomy/local_pursuit.py').is_file())
++
++
++def source_class(name,path):
++    tree=ast.parse((ROOT/'src/arena_autonomy/arena_autonomy'/path).read_text(encoding='utf-8'))
++    return next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name==name)
++
++
++def attribute_assignment(node,name):
++    return isinstance(node,ast.Assign) and any(isinstance(t,ast.Attribute) and t.attr==name for t in node.targets)
++
++
++def boundaries():
++    base=source_class('LocalPursuit','local_pursuit.py');derived=source_class('G1G2Node','g1_g2_node.py')
++    attr='estimated_observation_runtime_capable'
++    def capability(cls):return next(n for n in cls.body if isinstance(n,ast.Assign)
++        and any(isinstance(t,ast.Name) and t.id==attr for t in n.targets))
++    init=next(n for n in base.body if isinstance(n,ast.FunctionDef) and n.name=='__init__')
++    i=next(i for i,n in enumerate(init.body) if attribute_assignment(n,'observation_input_scope'))
++    selection=copy.deepcopy(init);selection.body=copy.deepcopy(init.body[i:i+2])
++    assert isinstance(selection.body[1],ast.If)  # 실제 scope 선언 직후 입구 검사
++    mini=ast.Module(body=[ast.ClassDef(name='LocalPursuit',bases=[],keywords=[],decorator_list=[],
++        body=[copy.deepcopy(capability(base)),selection]),ast.ClassDef(name='G1G2Node',
++        bases=[ast.Name(id='LocalPursuit',ctx=ast.Load())],keywords=[],decorator_list=[],body=[copy.deepcopy(capability(derived))])],type_ignores=[])
++    env=dict(SIMULATION_SCOPE=SIMULATION_SCOPE,ESTIMATED_SCOPE=ESTIMATED_SCOPE)
++    exec(compile(ast.fix_missing_locations(mini),'<actual planner entry boundary>','exec'),env)
++    # subclass의 실제 validator 호출문도 그대로 실행한다. capability를 true로 두는 것만으로 통과하면 실패한다.
++    child_init=next(n for n in derived.body if isinstance(n,ast.FunctionDef) and n.name=='__init__')
++    assignment=next(n for n in child_init.body if attribute_assignment(n,'runtime_dual_selected')
++        and isinstance(n.value,ast.Call))
++    corner=next(n for n in child_init.body if isinstance(n,ast.Expr) and isinstance(n.value,ast.Call)
++        and isinstance(n.value.func,ast.Name) and n.value.func.id=='validate_corner_selection')
++    assert assignment.lineno<corner.lineno
++    parent=next(n for n in child_init.body if isinstance(n,ast.Expr) and isinstance(n.value,ast.Call)
++        and isinstance(n.value.func,ast.Attribute) and n.value.func.attr=='__init__')
++    assert parent.lineno<assignment.lineno
++    fn=ast.parse('def runtime_checks(self, runtime_policy, execution, submission, retain_reference, numeric_execution):\n    pass').body[0]
++    fn.body=[copy.deepcopy(assignment),copy.deepcopy(corner)]
++    env.update(validate_selection=validate_selection,validate_corner_selection=validate_corner_selection,
++               observation_options=observation_options)
++    exec(compile(ast.fix_missing_locations(ast.Module(body=[fn],type_ignores=[])),
++        '<actual subclass runtime checks>','exec'),env)
++    return env
++
++
++def selected(cls,scope):
++    n=cls.__new__(cls);params={'g1_observation_input_scope':scope,'use_sim_time':scope==SIMULATION_SCOPE,
++        'lidar_input_representation':'native_simulation_v1' if scope==SIMULATION_SCOPE else 'native_estimated_v1'}
++    n.declare_parameter=lambda name,default:NS(value=params.get(name,default))
++    n.get_parameter=lambda name:NS(value=params[name]);n.has_parameter=lambda name:name in params
++    n.__init__()
++    n.current_corner_budget=CORNER_POLICY;n.recheck_in_worker=True;n.hardware_shadow=False
++    n.execution_environment='hardware_runtime_candidate_v1';n.hardware_inputs=scope==ESTIMATED_SCOPE
++    n.motion=NS(verified=scope==SIMULATION_SCOPE,mode='both',
++        timing_policy='verified_only' if scope==SIMULATION_SCOPE else 'host_estimated_v1')
++    return n
++
++
++class EstimatedEntryTests(unittest.TestCase):
++    def setUp(self):self.boundary=boundaries()
++
++    def test_base_planner_rejects_estimated_before_policy_setup(self):
++        with self.assertRaisesRegex(ValueError,'runtime-capable planner'):
++            selected(self.boundary['LocalPursuit'],ESTIMATED_SCOPE)
++
++    def test_base_and_registered_subclass_keep_simulation_entry(self):
++        for name in ('LocalPursuit','G1G2Node'):
++            n=selected(self.boundary[name],SIMULATION_SCOPE)
++            self.assertEqual(n.observation_input_scope,SIMULATION_SCOPE)
++
++    def test_registered_subclass_accepts_estimated_then_validates_runtime(self):
++        n=selected(self.boundary['G1G2Node'],ESTIMATED_SCOPE)
++        self.boundary['runtime_checks'](n,POLICY,'process_candidate','fresh_native_v1',True,'native_v1')
++        self.assertIs(n.runtime_dual_selected,True)
++
++    def test_capability_cannot_replace_native_runtime_or_r396_selection(self):
++        for fault in ('runtime_off','inline','old_submission','no_retain','python','no_recheck','corner_off','verified'):
++            n=selected(self.boundary['G1G2Node'],ESTIMATED_SCOPE)
++            args=[POLICY,'process_candidate','fresh_native_v1',True,'native_v1']
++            if fault=='runtime_off':args[0]='off'
++            elif fault=='inline':args[1]='inline'
++            elif fault=='old_submission':args[2]='original_v1'
++            elif fault=='no_retain':args[3]=False
++            elif fault=='python':args[4]='python'
++            elif fault=='no_recheck':n.recheck_in_worker=False
++            elif fault=='corner_off':n.current_corner_budget='off'
++            elif fault=='verified':n.motion.verified=True
++            with self.subTest(fault=fault),self.assertRaises(ValueError):
++                self.boundary['runtime_checks'](n,*args)
++
++    def test_simulation_subclass_keeps_registered_runtime_checks(self):
++        n=selected(self.boundary['G1G2Node'],SIMULATION_SCOPE)
++        self.boundary['runtime_checks'](n,POLICY,'process_candidate','fresh_native_v1',True,'native_v1')
++        self.assertTrue(n.runtime_dual_selected)
++
++    def test_independent_guard_selection_does_not_require_planner_capability(self):
++        n=selected(self.boundary['G1G2Node'],ESTIMATED_SCOPE)
++        n.estimated_observation_runtime_capable=False
++        validate_node_selection(n,True,observation_scope=ESTIMATED_SCOPE)
++
++
++if __name__=='__main__':unittest.main()
+--- r441/tests/test_estimated_observation_scope.py
++++ r452/tests/test_estimated_observation_scope.py
+@@ -0,0 +1,257 @@
++"""추정 입력 선택/원천 대조/단일 현재 목표. 합성 geometry이며 센서 시각 실측이 아니다."""
++import copy
++from dataclasses import asdict, replace
++import importlib.util
++import json
++import math
++from pathlib import Path
++import tempfile
++from types import SimpleNamespace as NS
++import unittest
++from unittest.mock import patch
++
++import numpy as np
++from arena_autonomy.crop_edge_selection import (SIMULATION_SCOPE as SIM, ESTIMATED_SCOPE as EST,
++    validate_node_selection, component_scope, timing_matches, configure_follow_observation)
++from arena_autonomy.runtime_node_backend import (evaluator_header, validate_corner_selection,
++    POLICY, CORNER_POLICY)
++from arena_autonomy.runtime_dual_state import current_request
++from arena_autonomy.race_runtime_policy import crop_current_candidate as crop
++from arena_autonomy.race_runtime_policy import corner_candidate as corner
++from arena_autonomy.race_runtime_policy.crop_current_scope import same_scan_scope
++from arena_autonomy.race_runtime_policy.crop_current_proof import check
++from arena_autonomy.race_runtime_policy.profile_evidence import profile_evidence
++from arena_autonomy.race_runtime_policy.evaluator import Evaluator
++from arena_autonomy.measurement_scan import MeasurementScan
++from arena_autonomy.local_scene import scene_from_measurements, blind_spec
++from arena_autonomy.partial_observation import PartialObservationPolicy
++from arena_autonomy.follow_trace import FollowTrace, freeze
++from arena_autonomy.local_follow import FollowConfig
++from arena_autonomy.lidar_motion import MotionConfig
++from arena_autonomy.bypass_handoff import HandoffExecutionConfig
++
++
++def node(scope=EST):
++    estimated=scope==EST
++    params={'use_sim_time':not estimated,'lidar_input_representation':
++            'native_estimated_v1' if estimated else 'native_simulation_v1'}
++    return NS(observation_input_scope=scope, execution_environment='hardware_runtime_candidate_v1',
++        hardware_inputs=estimated,motion=NS(mode='both',verified=not estimated,
++        timing_policy='host_estimated_v1' if estimated else 'verified_only'),
++        runtime_dual_selected=True,current_corner_budget=CORNER_POLICY,
++        has_parameter=lambda k:k in params,get_parameter=lambda k:NS(value=params[k]),params=params)
++
++
++def options():
++    return dict(runtime_selected=True,use_sim_time=False,motion_verified=False,
++        motion_time_policy='host_estimated_v1',observation_scope=EST,
++        execution_environment='hardware_runtime_candidate_v1',
++        lidar_input_representation='native_estimated_v1',motion_mode='both')
++
++
++def fixture(scope=EST):
++    n=500;values=[2.]*n
++    members=[124,125,126]
++    for i in members:values[i]=math.inf
++    raw=MeasurementScan(tuple(values),tuple(i*math.tau/n for i in range(n)),
++        tuple(1+i*.1/n for i in range(n)),time_basis='unverified_estimate' if scope==EST else 'simulation_acquisition')
++    part=dict(scope=component_scope(scope),source_indices=members,inside_source_indices=[124,125],
++              flank_source_indices=[123,127])
++    output=[.5,.1,dict(handoff_state='FOLLOW',normal=dict(reason='local_follow',selector_mode='SOLO',
++        selector_choice='baseline',boundary_from_memory=False,partial_observation=dict(allowed=True,
++            reason='bounded_side_missing',unknown_filled=False,latch_reason=None,crop_edge_component=part)))]
++    current=dict(reference_s=1.12,epoch=0,side='left',previous_steering_rad=.1,dt_s=.1,speed_mps=0.,
++        timing_verified=scope!=EST,timing_policy='host_estimated_v1' if scope==EST else 'verified_only',
++        scan=dict(representation='native_measurements_v1',measurements=freeze(asdict(raw))))
++    data=current_request(output,copy.deepcopy(current),current,retained=False,crop_current_selection=True)
++    before=dict(speed_mps=0.,steering_rad=.1,reference_s=1.12,path_source_s=1.,original_reference_s=1.12,
++        path_points=[[0.,0.],[.3,0.]],reason='route_current_large_motion_region_unobserved',current_route_proof={})
++    cfg=NS(crop_edge_component_trial=True,max_steering_rad=.45,length_m=.3,width_m=.2)
++    return raw,part,data,before,cfg
++
++
++def scene(raw,profile=0.):
++    return scene_from_measurements(raw.ranges_m,angles_rad=raw.angles_rad,acquired_at_s=raw.acquired_at_s,
++        t_ref_s=1.12,range_min=raw.range_min_m,range_max=raw.range_max_m,
++        source_frame_id=raw.source_frame_id,source_epoch=raw.source_epoch,
++        sensor_xy_m=(0.,0.),rear_half_angle_deg=profile,preserve_sampling=True)
++
++
++class EstimatedObservationTests(unittest.TestCase):
++    def test_nodes_require_exact_physical_estimated_combination(self):
++        validate_node_selection(node(),True,observation_scope=EST)
++        validate_node_selection(node(SIM),True)
++        for fault in ('sim_clock','verified','policy','representation','environment','motion','unknown_scope'):
++            n=node();scope=EST
++            if fault=='sim_clock':n.params['use_sim_time']=True
++            elif fault=='verified':n.motion.verified=True
++            elif fault=='policy':n.motion.timing_policy='verified_only'
++            elif fault=='representation':n.params['lidar_input_representation']='native_simulation_v1'
++            elif fault=='environment':n.execution_environment='hardware_shadow_v1'
++            elif fault=='motion':n.motion.mode='gyro'
++            elif fault=='unknown_scope':scope='estimated'
++            with self.subTest(fault=fault),self.assertRaises(ValueError):
++                validate_node_selection(n,True,observation_scope=scope)
++        with self.assertRaises(ValueError):validate_node_selection(node(),True)  # default remains simulation
++
++    def test_corner_requires_explicit_scope_and_registered_runtime(self):
++        self.assertTrue(validate_corner_selection(CORNER_POLICY,**options()))
++        for key,value in [('runtime_selected',False),('use_sim_time',True),('motion_verified',True),
++            ('motion_verified',0),('motion_time_policy','verified_only'),('observation_scope',SIM),
++            ('execution_environment','hardware_shadow_v1'),('lidar_input_representation','laser_scan'),
++            ('motion_mode','wheel')]:
++            args=options();args[key]=value
++            with self.subTest(key=key),self.assertRaises(ValueError):validate_corner_selection(CORNER_POLICY,**args)
++        with self.assertRaises(ValueError):validate_corner_selection('off',**options())
++
++    def test_sim_header_unchanged_estimated_header_records_actual_selection(self):
++        initial={'schema':5,'numeric_execution':'native_v1'};before=copy.deepcopy(initial)
++        sim=evaluator_header(node(SIM),initial)
++        self.assertEqual(sim,dict(initial,runtime_policy=POLICY,runtime_time_policy='verified_only',
++            current_corner_budget=CORNER_POLICY,current_corner_environment=dict(use_sim_time=True,
++                motion_timing_verified=True,backend='native2slot_v1')))
++        est=evaluator_header(node(),initial)
++        self.assertEqual(est['observation_input_scope'],EST)
++        self.assertEqual(est['runtime_time_policy'],'host_estimated_v1')
++        self.assertIs(est['current_corner_environment']['use_sim_time'],False)
++        self.assertIs(est['current_corner_environment']['motion_timing_verified'],False)
++        self.assertEqual(initial,before)
++
++    def test_worker_rechecks_header_before_controller_creation(self):
++        selected=evaluator_header(node(),{'numeric_execution':'native_v1'})
++        for key,value in [('use_sim_time',True),('motion_timing_verified',True),
++            ('execution_environment','default'),('lidar_input_representation','native_simulation_v1'),
++            ('backend','other'),('motion_mode','gyro')]:
++            bad=copy.deepcopy(selected);bad['current_corner_environment'][key]=value
++            with self.subTest(key=key),patch('arena_autonomy.decision_process.make_controller') as create:
++                with self.assertRaises(ValueError):Evaluator('current',bad)
++                create.assert_not_called()
++        dummy=NS()
++        with patch('arena_autonomy.numeric_kernels.configure') as numeric,patch(
++                'arena_autonomy.decision_process.make_controller',return_value=(dummy,dummy)):
++            e=Evaluator('current',selected);self.assertEqual(e.observation_scope,EST);e.close()
++            numeric.assert_called_once_with('native_v1')  # contract only; no Windows native build
++
++    def test_worker_rejects_input_timing_forgery_before_rebase(self):
++        e=Evaluator.__new__(Evaluator);e.stage='current';e.time_policy='host_estimated_v1'
++        e.corner_budget=True;e.observation_scope=EST
++        _,_,data,_,_=fixture()
++        for field,value in [('timing_verified',True),('timing_verified',0),('timing_policy','verified_only')]:
++            bad=copy.deepcopy(data);bad['current'][field]=value
++            with self.subTest(field=field),self.assertRaises(ValueError):e(bad)
++        bad=copy.deepcopy(data);bad['current']['scan']['measurements']['time_basis']='simulation_acquisition'
++        with self.assertRaises(ValueError):e(bad)
++
++    def test_full_parent_scan_equality_and_false_metadata_preserved(self):
++        raw,_,data,_,cfg=fixture();original=copy.deepcopy(data)
++        self.assertTrue(same_scan_scope(data,cfg,registered_environment=True,observation_scope=EST))
++        self.assertFalse(same_scan_scope(data,cfg,registered_environment=True))
++        for key,value in [('submitted_timing_verified',True),('same_scan',False),
++            ('submitted_time_basis','simulation_acquisition'),('submitted_timing_policy','verified_only')]:
++            bad=copy.deepcopy(data);bad['crop_current_input'][key]=value
++            self.assertFalse(same_scan_scope(bad,cfg,registered_environment=True,observation_scope=EST))
++        submitted=copy.deepcopy(data['current']);changed=copy.deepcopy(submitted)
++        changed['scan']['measurements']['ranges_m'][0]=.11
++        proof=current_request(data['output'],submitted,changed,retained=False,crop_current_selection=True)
++        self.assertFalse(same_scan_scope(proof,cfg,registered_environment=True,observation_scope=EST))
++        self.assertEqual(data,original);self.assertEqual(raw.time_basis,'unverified_estimate')
++
++    def test_crop_proof_accepts_estimated_geometry_without_changing_source(self):
++        raw,component,_,_,_=fixture();s=scene(raw);q=np.array([[0.,.2]])
++        result=check(s,raw,q,np.full(500,.03),component,all_queries=q,motion_epoch=0,
++            observation_scope=EST,timing_verified=False,timing_policy='host_estimated_v1')
++        self.assertTrue(result['accepted'],result)
++        self.assertFalse(result['unknown_filled']);self.assertTrue(result['residual_hidden_object_risk'])
++        self.assertFalse(check(s,raw,q,np.full(500,.03),component,all_queries=q,motion_epoch=0)['accepted'])
++        for epoch,verified in [(1,False),(0,True)]:
++            bad=check(s,raw,q,np.full(500,.03),component,all_queries=q,motion_epoch=epoch,
++                observation_scope=EST,timing_verified=verified,timing_policy='host_estimated_v1')
++            self.assertFalse(bad['accepted'])
++        self.assertEqual(raw.time_basis,'unverified_estimate')
++
++    def test_crop_proof_keeps_finite_obstacle_and_invalid_nonreturn_rejections(self):
++        raw,component,_,_,_=fixture();q=np.array([[0.,.2]])
++        for value in (.2,math.nan,-math.inf):
++            ranges=list(raw.ranges_m);ranges[125]=value;bad=replace(raw,ranges_m=tuple(ranges))
++            result=check(scene(bad),bad,q,np.full(500,.03),component,all_queries=q,motion_epoch=0,
++                observation_scope=EST,timing_verified=False,timing_policy='host_estimated_v1')
++            with self.subTest(value=value):self.assertFalse(result['accepted'])
++
++    def test_profile_evidence_preserves_range_mask_and_epoch_checks(self):
++        raw,_,_,_,_=fixture();profile={'sectors_deg':[[160.,2.]],'range_limits_m':[[.16,.18]]}
++        s=scene(raw,profile);sectors=blind_spec(profile)[1]
++        bands=profile_evidence(s,raw,sectors,profile,0,False,observation_scope=EST,timing_policy='host_estimated_v1')
++        self.assertEqual(bands,((.16,.18),))
++        for epoch,verified in [(1,False),(0,True)]:
++            with self.subTest(epoch=epoch),self.assertRaises(ValueError):
++                profile_evidence(s,raw,sectors,profile,epoch,verified,observation_scope=EST,timing_policy='host_estimated_v1')
++        with self.assertRaises(ValueError):profile_evidence(s,raw,sectors,profile,0,False)
++
++    def test_current_crop_one_tenth_applied_before_core_region_and_proof(self):
++        _,_,data,before,cfg=fixture();saved=copy.deepcopy(data);calls=[]
++        def core(output,*args):
++            calls.append(('core',output[0]));return {**before,'speed_mps':output[0],'reason':'rebase_current_follow'}
++        def region(scene,measured,target,*args,context):
++            calls.append(('region',target));context.update(queries=np.array([[0.,.2]]),free=np.array([False]),
++                masked=np.array([False]),padding=np.zeros(500))
++            return dict(queries=1,unobserved=True)
++        def proof(*args,**kwargs):
++            calls.append(('proof',kwargs['timing_verified'],kwargs['timing_policy']));return {'accepted':True}
++        with patch.object(crop.ps,'motion_region',side_effect=region),patch.object(crop.ps,'lateral_config',return_value=None),\
++             patch.object(crop.ps,'region_blocked',return_value=None),patch.object(crop,'check',side_effect=proof):
++            out=crop.try_from_current_result(before,data,None,None,cfg,registered_environment=True,
++                core_rebase=core,observation_scope=EST)
++        self.assertEqual(calls,[('core',.1),('region',.1),('proof',False,'host_estimated_v1')])
++        self.assertEqual(out['speed_mps'],.1);self.assertEqual(out[crop.DIAGNOSTIC]['attempted_targets'],1)
++        self.assertEqual(out[crop.DIAGNOSTIC]['final_full_checks'],1);self.assertEqual(data,saved)
++        self.assertIs(out[crop.DIAGNOSTIC]['timing_verified'],False)
++        self.assertEqual(out[crop.DIAGNOSTIC]['timing_policy'],'host_estimated_v1')
++        self.assertEqual(out[crop.DIAGNOSTIC]['time_basis'],'unverified_estimate')
++
++    def test_positive_and_outside_measured_scope_do_not_call_new_candidate(self):
++        _,_,data,before,cfg=fixture()
++        for speed,measured in [(.4,0.),(0.,-.061225),(0.,.150001),(0.,math.nan)]:
++            old={**before,'speed_mps':speed};data['current']['speed_mps']=measured
++            with patch.object(crop,'check') as proof,patch.object(crop.ps,'motion_region') as region:
++                core=unittest.mock.Mock()
++                result=crop.try_from_current_result(old,data,None,None,cfg,registered_environment=True,
++                    core_rebase=core,observation_scope=EST)
++                self.assertIs(result,old);core.assert_not_called();region.assert_not_called();proof.assert_not_called()
++
++    def test_rejected_estimated_candidate_does_not_try_second_target(self):
++        _,_,data,before,cfg=fixture();core=unittest.mock.Mock(return_value={**before,'speed_mps':0.})
++        result=crop.try_from_current_result(before,data,None,None,cfg,registered_environment=True,
++            core_rebase=core,observation_scope=EST)
++        self.assertEqual(result['speed_mps'],0.);self.assertEqual(core.call_count,1)
++        self.assertEqual(core.call_args.args[0][0],.1)
++
++    def test_corner_one_tenth_precedes_full_recheck(self):
++        _,_,data,before,cfg=fixture();calls=[]
++        def core(output,*args):calls.append(output[0]);return {**before,'speed_mps':output[0],'reason':'rebase_current_follow'}
++        def region(scene,measured,target,*args,context):
++            calls.append(target);return dict(queries=1,unobserved=False,distance_m=.03)
++        with patch.object(corner,'eligible',return_value=True),patch.object(corner,'propose',return_value=dict(
++            accepted=True,proposed_target_mps=.14,allowed_distance_m=.05)),patch.object(corner.ps,'motion_region',side_effect=region),\
++            patch.object(corner.ps,'lateral_config',return_value=None),patch.object(corner.ps,'region_blocked',return_value=None):
++            result=corner.try_from_current_result(before,data['output'],data['submitted'],data['current'],None,None,cfg,
++                core_rebase=core,proof_callback=unittest.mock.Mock(),require_current_region=True,target_cap=.1)
++        self.assertEqual(calls,[.1,.1]);self.assertEqual(result['speed_mps'],.1)
++
++    def test_default_instance_and_trace_shape_preserved(self):
++        p=PartialObservationPolicy();follow=NS(partial_policy=p);before=dict(vars(p))
++        configure_follow_observation(follow,SIM);self.assertEqual(vars(p),before)
++        configure_follow_observation(follow,EST);self.assertEqual(p.observation_input_scope,EST)
++        p.reset();self.assertEqual(p.observation_input_scope,EST)
++        with tempfile.TemporaryDirectory() as directory:
++            def record(name,scope=SIM):
++                path=Path(directory)/name
++                t=FollowTrace(str(path),MotionConfig(),FollowConfig(),mode='g1_g2_handoff_trial',
++                    execution_config=HandoffExecutionConfig(),current_corner_budget=CORNER_POLICY,
++                    observation_input_scope=scope);t.close()
++                return json.loads(path.read_text().splitlines()[0])['data']
++            a=record('sim');b=record('est',EST)
++            self.assertNotIn('observation_input_scope',a)
++            self.assertEqual(b.pop('observation_input_scope'),EST);self.assertEqual(a,b)
++
++
++if __name__=='__main__':unittest.main()
+--- r441/tests/test_runtime_guard_crawl.py
++++ r452/tests/test_runtime_guard_crawl.py
+@@ -0,0 +1,126 @@
++"""GUARD 저속 재검사 연결. 실제 저장 기하는 r451에서 별도로 대조한다."""
++from copy import deepcopy
++from dataclasses import replace
++from types import SimpleNamespace
++
++import pytest
++
++from arena_autonomy import pass_release_trial as ps
++from arena_autonomy.local_follow import FollowConfig
++from arena_autonomy.race_runtime_policy import guard_crawl as gc, released_plan as rp
++
++
++@pytest.fixture
++def scenario(monkeypatch):
++    cfg=FollowConfig(partial_observation_policy='bounded_local_v4',parallel_hold_trial=True,
++        pass_release_trial=True,guard_curve_trial=True,traffic_recovery_trial=True,
++        boundary_evidence_mode='corner_distance_candidate',occupancy_timing_mode='per_ray_candidate')
++    owner=ps.PassReleaseSelector(cfg)
++    owner.sides['left'].update(seen=True,present=True)
++    scene=SimpleNamespace(t_ref_s=1.,source_first_s=.9)
++    baseline=(.7,.1,dict(reason='local_follow',boundary_from_memory=False,path_source_s=.9,
++        partial_observation=dict(allowed=True,reason='fully_observed'),behavior='FOLLOW',path_points=[[0.,0.],[1.,0.]]))
++    region=dict(unobserved=0,masked_front_samples=0,queries=100,masked_left=40,
++        masked_right=0,masked_tail_extent_m=.012)
++    detail=dict(reason='parallel_hold_reference_not_straight',behavior='HOLD',path_points=[[9.,9.]],
++        selector_mode='GUARD',selector_choice='parallel',selector_reason=gc.REASONS[0],
++        selector_guard_candidate=dict(accepted=False,trigger='parallel_hold_reference_not_straight',
++            target_speed_mps=.35,region=deepcopy(region)),
++        selector_guard_speed_recheck=dict(applied=False,attempts=[dict(target_mps=c,
++            accepted=False,reason=gc.REASONS[0],region=deepcopy(region)) for c in (.25,.15)]))
++    selected=(0.,.05,detail)
++    state=dict(calls=[],accepted=True)
++    monkeypatch.setattr(gc,'source_valid',lambda _:True)
++    monkeypatch.setattr(ps,'threat_view',lambda *args:object())
++    def check(*args,**kwargs):
++        state['calls'].append((args,kwargs))
++        return (.1 if state['accepted'] else 0.,.1,dict(selector_guard_candidate=dict(accepted=state['accepted']),
++            selector_reason='guard_curve_observed_motion' if state['accepted'] else 'guard_curve_rejected_toward_left'))
++    monkeypatch.setattr(owner,'_guard_curve_at_cap',check)
++    def run(measured=0.,speed=0.,**changes):
++        return gc.assess(owner,scene,baseline,selected,speed,.05,.02,changes.get('raw_scan',object()),measured=measured)
++    return owner,scene,baseline,selected,state,run
++
++
++def test_one_full_check_keeps_side_history_and_measured_motion(scenario):
++    owner,scene,base,old,state,run=scenario
++    before=deepcopy(owner.sides)
++    result=run(measured=.13,speed=.13)
++    assert result[0]==.1 and len(state['calls'])==1
++    args,kwargs=state['calls'][0]
++    assert args[2] is base and args[4:7]==(.13,.05,.02) and kwargs==dict(target_cap=.1)
++    assert owner.sides==before and owner.mode=='GUARD'
++    assert result[2]['selector_guard_crawl_retry']['state_transition'] is False
++    assert result[2]['selector_guard_crawl_retry']['unknown_filled'] is False
++    assert not set(('reason','behavior','path_points')).intersection(args[8])
++
++
++@pytest.mark.parametrize('measured,speed',[(-.01,.01),(.16,.16),(float('nan'),0.),(0.,.01)])
++def test_signed_motion_and_speed_scope(scenario,measured,speed):
++    *_,state,run=scenario
++    assert run(measured=measured,speed=speed)[0]==0.
++    assert state['calls']==[]
++
++
++@pytest.mark.parametrize('change',['memory','old_path','unobserved','front_mask','partial',
++    'missing_retry','already_accepted','not_guard','negative_raw','no_recovery','no_source'])
++def test_noneligible_inputs_do_not_trigger_extra_geometry(scenario,monkeypatch,change):
++    owner,scene,base,old,state,run=scenario
++    if change=='memory':base[2]['boundary_from_memory']=True
++    elif change=='old_path':base[2]['path_source_s']=.8
++    elif change=='partial':base[2]['partial_observation']['allowed']=False
++    elif change=='missing_retry':old[2]['selector_guard_speed_recheck']['attempts'].pop()
++    elif change=='already_accepted':old[2]['selector_guard_speed_recheck']['applied']=True
++    elif change=='not_guard':owner.reset()
++    elif change=='negative_raw':pass
++    elif change=='no_recovery':owner.follow_config=replace(owner.follow_config,traffic_recovery_trial=False)
++    elif change=='no_source':monkeypatch.setattr(gc,'source_valid',lambda _:False)
++    else:old[2]['selector_guard_candidate']['region']['unobserved' if change=='unobserved' else 'masked_front_samples']=1
++    result=run(measured=-.01,speed=.01) if change=='negative_raw' else run()
++    assert result is old and state['calls']==[]
++
++
++def test_failed_full_check_preserves_original_stop(scenario):
++    owner,_,_,old,state,run=scenario
++    before=deepcopy(owner.sides);state['accepted']=False
++    result=run()
++    assert result[:2]==old[:2] and result[2]['selector_reason']==old[2]['selector_reason']
++    assert owner.sides==before
++    assert not result[2]['selector_guard_crawl_retry']['applied']
++
++
++def test_selected_policy_wiring_and_shadow_restore(scenario,monkeypatch):
++    owner,scene,base,old,state,_=scenario
++    monkeypatch.setattr(ps.PassReleaseSelector,'_select',lambda *a,**kw:old)
++    restored=ps.PassReleaseSelector._select
++    with rp.enabled(shadow=True):
++        assert owner._select(scene,base,old,0.,.05,.02,raw_scan=object()) is old
++    assert ps.PassReleaseSelector._select is restored
++    with rp.enabled():
++        result=owner._select(scene,base,old,0.,.05,.02,raw_scan=object())
++    assert result[0]==.1 and len(state['calls'])==2
++    assert ps.PassReleaseSelector._select is restored
++
++
++def test_positive_original_output_is_not_replaced(scenario):
++    owner,scene,base,old,state,_=scenario
++    positive=(.2,old[1],old[2])
++    assert gc.assess(owner,scene,base,positive,0.,.05,.02,object(),measured=0.) is positive
++    assert state['calls']==[]
++
++
++def test_real_guard_success_keeps_baseline_reason_behavior_and_path(scenario,monkeypatch):
++    owner,scene,base,old,_,run=scenario
++    base[2]['path_points']=[[-1.,0.],[0.,0.],[1.,0.],[2.,0.]]
++    old[2]['selector_sides']=deepcopy(owner.sides)
++    monkeypatch.delattr(owner,'_guard_curve_at_cap')
++    monkeypatch.setattr(ps,'threat_view',lambda *a:dict(frame=ps.mx.ExecutionFrame(base[2]['path_points'])))
++    monkeypatch.setattr(ps,'motion_region',lambda *a,**kw:dict(unobserved=0,
++        masked_front_samples=0,queries=100,masked_left=40,masked_right=0,masked_tail_extent_m=.009))
++    result=run()
++    assert result[0]==.1 and result[2]['selector_choice']=='guard_baseline'
++    assert result[2]['reason']==base[2]['reason']=='local_follow'
++    assert result[2]['behavior']==base[2]['behavior']=='FOLLOW'
++    assert result[2]['path_points']==base[2]['path_points']!=old[2]['path_points']
++    from arena_autonomy.race_runtime_policy.retained_recheck._present import supported
++    assert supported((result[0],result[1],dict(handoff_state='FOLLOW',normal=result[2])))
+--- r441/tests/test_runtime_installed_limits.py
++++ r452/tests/test_runtime_installed_limits.py
+@@ -0,0 +1,177 @@
++"""합성 설치 bundle의 상한 전달만 검사한다. 실제 장착값/장치/ROS 실행 없음."""
++import contextlib
++import copy
++import io
++import json
++from pathlib import Path
++import struct
++import sys
++import tempfile
++import unittest
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path[:0] = [str(ROOT/'scripts'), str(ROOT/'src/arena_autonomy'),
++                str(ROOT/'src/arena_vehicle_interface')]
++import yaml
++import runtime_installed_profile as firmware
++import runtime_installed_limits as subject
++from arena_vehicle_interface.steering_calibration import complete_mount_profile, record_zero
++
++
++BASE = {
++    'local_pursuit': {'ros__parameters': {'max_steering_angle_rad': .4578436017036438,
++        'max_speed_mps': 1.5, 'use_sim_time': False, 'g1_current_corner_budget': 'off',
++        'motion_lidar_frame_id': 'c1_unmounted_preview', 'nested_example': [1, 'kept', False]}},
++    'lidar_safety': {'ros__parameters': {'max_steering_angle_rad': .4578436017036438,
++        'wheelbase_m': .128, 'race_control_mode': 'b3_candidate', 'sensor_wall_timeout_s': 30.}},
++}
++
++
++def synthetic_bundle(root, limit=.2, name='installed'):
++    folder = root/name
++    board = dict(schema='runtime_installed_board_v1', assembly_id='SYNTHETIC-ONLY',
++        encoder_direction=-1, motor_direction_confirmed=True, forward_dir_high=True,
++        maximum_duty=.4, kp=.6, ki=1.2, maximum_speed_mps=2., feedback_period_us=20000,
++        servo=dict(id=1, goal_speed=120, goal_acceleration=10, position_period_us=100000,
++            observation_max_age_us=200000, command_limit=limit, wheelbase=.128,
++            track=.1239, wheel_limit=.5235987755982988))
++    zero = complete_mount_profile(record_zero(2000, assembly_id=board['assembly_id'],
++        straight_confirmed=True, evidence_note='SYNTHETIC TEST ONLY'), direction=1,
++        minimum=1000, maximum=3000, confirmed=True)
++    bp, zp = root/(name+'.json'), root/(name+'-zero.json')
++    bp.write_text(json.dumps(board), encoding='utf-8')
++    zp.write_text(json.dumps(zero), encoding='utf-8')
++    firmware.prepare(bp, zp, board['assembly_id'], folder)
++    return folder
++
++
++class InstalledLimitsTests(unittest.TestCase):
++    def setUp(self):
++        self.temp = tempfile.TemporaryDirectory()
++        self.addCleanup(self.temp.cleanup)
++        self.root = Path(self.temp.name)
++        self.base = self.root/'base.yaml'
++        self.base.write_text(yaml.safe_dump(BASE, sort_keys=False), encoding='utf-8')
++        self.installed = synthetic_bundle(self.root)
++        self.output = self.root/'selection'
++
++    def prepare(self):
++        return subject.prepare(self.installed, self.base, self.output)
++
++    def test_reduced_limit_is_not_rounded_above_mcu_and_other_values_are_preserved(self):
++        manifest = self.prepare()
++        limit = manifest['command_limit_rad']
++        self.assertEqual(limit, .19999998807907104)
++        self.assertLess(limit, manifest['board_command_limit_rad'])
++        self.assertEqual(struct.unpack('<f', struct.pack('<f', limit))[0], limit)
++        expected = copy.deepcopy(BASE)
++        for node in subject.NODES:
++            expected[node]['ros__parameters'][subject.PARAMETER] = limit
++        self.assertEqual(yaml.safe_load((self.output/'runtime_profile.yaml').read_bytes()), expected)
++        host = json.loads((self.output/'runtime_host_limits.json').read_bytes())
++        self.assertEqual(host, {'max_steering_rad': limit, 'arguments': ['--max-steering-rad', repr(limit)]})
++        self.assertEqual(subject.verify(self.output, self.installed,
++            runtime_params=self.output/'runtime_profile.yaml', host_steering_rad=limit), manifest)
++
++    def test_existing_cad_limit_stays_exact(self):
++        self.installed = synthetic_bundle(self.root, .4578436017036438, 'cad')
++        manifest = self.prepare()
++        self.assertEqual(manifest['command_limit_rad'], manifest['board_command_limit_rad'])
++        self.assertEqual(yaml.safe_load((self.output/'runtime_profile.yaml').read_bytes()), BASE)
++
++    def test_existing_lower_operational_limit_is_never_silently_increased(self):
++        for node in subject.NODES:
++            with self.subTest(node=node):
++                smaller = copy.deepcopy(BASE)
++                smaller[node]['ros__parameters'][subject.PARAMETER] = .1
++                self.base.write_text(yaml.safe_dump(smaller), encoding='utf-8')
++                with self.assertRaisesRegex(ValueError, 'would widen existing steering limit'):
++                    self.prepare()
++                self.assertFalse(self.output.exists())
++                self.assertEqual(yaml.safe_load(self.base.read_bytes()), smaller)
++
++    def test_original_export_bundle_and_base_are_unchanged_and_not_overwritten(self):
++        before = {p.name: p.read_bytes() for p in self.installed.iterdir()}
++        base_before = self.base.read_bytes()
++        manifest_before = firmware.verify(self.installed)
++        self.prepare()
++        self.assertEqual(firmware.verify(self.installed), manifest_before)
++        self.assertEqual({p.name: p.read_bytes() for p in self.installed.iterdir()}, before)
++        self.assertEqual(self.base.read_bytes(), base_before)
++        with self.assertRaises(FileExistsError):
++            self.prepare()
++
++    def test_both_named_node_limits_must_already_exist(self):
++        for missing in ('local_pursuit', 'lidar_safety'):
++            with self.subTest(missing=missing):
++                broken = copy.deepcopy(BASE)
++                del broken[missing]['ros__parameters'][subject.PARAMETER]
++                self.base.write_text(yaml.safe_dump(broken), encoding='utf-8')
++                with self.assertRaises(ValueError):
++                    self.prepare()
++                self.assertFalse(self.output.exists())
++
++    def test_duplicate_yaml_limit_is_rejected(self):
++        self.base.write_text('local_pursuit:\n  ros__parameters:\n    max_steering_angle_rad: .2\n'
++                             '    max_steering_angle_rad: .4\n', encoding='utf-8')
++        with self.assertRaisesRegex(ValueError, 'duplicate YAML key'):
++            self.prepare()
++        self.assertFalse(self.output.exists())
++
++    def test_different_firmware_bundle_cannot_be_mixed(self):
++        self.prepare()
++        other = synthetic_bundle(self.root, .15, 'other')
++        with self.assertRaisesRegex(ValueError, 'selected installed bundle'):
++            subject.verify(self.output, other)
++
++    def test_changed_generated_profile_is_rejected(self):
++        self.prepare()
++        (self.output/'runtime_profile.yaml').write_text(yaml.safe_dump(BASE), encoding='utf-8')
++        with self.assertRaisesRegex(ValueError, 'file changed'):
++            subject.verify(self.output, self.installed)
++
++    def test_updated_hash_does_not_hide_unrelated_parameter_change(self):
++        self.prepare()
++        path = self.output/'runtime_profile.yaml'
++        values = yaml.safe_load(path.read_bytes())
++        values['local_pursuit']['ros__parameters']['max_speed_mps'] = 9.
++        path.write_text(yaml.safe_dump(values), encoding='utf-8')
++        manifest_path = self.output/'manifest.json'
++        manifest = json.loads(manifest_path.read_bytes())
++        manifest['files'][path.name] = subject.digest(path.read_bytes())
++        manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
++        with self.assertRaisesRegex(ValueError, 'beyond the two'):
++            subject.verify(self.output, self.installed)
++
++    def test_selected_old_yaml_or_host_limit_is_rejected(self):
++        self.prepare()
++        with self.assertRaisesRegex(ValueError, 'selected ROS YAML'):
++            subject.verify(self.output, self.installed, runtime_params=self.base)
++        for bad in (.2, .4578436017036438, float('nan'), True):
++            with self.subTest(host_limit=bad), self.assertRaisesRegex(ValueError, 'selected host steering'):
++                subject.verify(self.output, self.installed, host_steering_rad=bad)
++
++    def test_cli_generates_checks_and_returns_host_arguments_without_starting_nodes(self):
++        def invoke(args):
++            output = io.StringIO()
++            with contextlib.redirect_stdout(output):
++                code = subject.main(args)
++            return code, json.loads(output.getvalue())
++        code, result = invoke(['prepare', '--installed-profile', str(self.installed),
++            '--runtime-params', str(self.base), '--output', str(self.output)])
++        self.assertEqual(code, 0)
++        self.assertFalse(result['nodes_started'])
++        self.assertFalse(result['firmware_modified'])
++        common = ['--selection', str(self.output), '--installed-profile', str(self.installed)]
++        code, result = invoke(['host-arguments', *common])
++        self.assertEqual((code, result), (0, ['--max-steering-rad', '0.19999998807907104']))
++        code, result = invoke(['verify', *common, '--runtime-params', str(self.output/'runtime_profile.yaml'),
++                              '--host-steering-rad', '.19999998807907104'])
++        self.assertEqual(code, 0)
++        code, result = invoke(['verify', *common, '--host-steering-rad', '.4578436017036438'])
++        self.assertEqual(code, 2)
++        self.assertIn('selected host steering', result['error'])
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- r441/tests/test_runtime_plan_trace.py
++++ r452/tests/test_runtime_plan_trace.py
+@@ -0,0 +1,244 @@
++"""제출 소유권/폐기/reset/기록 실패와 실제 Lane spawn의 좁은 재생 계약. ROS/장치 없음."""
++import ast
++import copy
++import hashlib
++import json
++from pathlib import Path
++import time
++from types import SimpleNamespace as NS
++
++import pytest
++from arena_autonomy.follow_trace import FollowTrace
++from arena_autonomy.lidar_motion import MotionConfig
++from arena_autonomy.local_follow import FollowConfig
++from arena_autonomy.runtime_dual_delivery import RuntimeDualDelivery
++from arena_autonomy.runtime_dual_state import RuntimeDualProcess
++from arena_autonomy import runtime_node_backend as backend
++from test_runtime_dual_slots import FakeLane, plan, snapshot, unused_factory
++
++
++class TraceLane(FakeLane):
++    def offer(self,*args,**kwargs):
++        super().offer(*args,**kwargs)
++        self.inflight['submitted_wall_s']=100.
++    def complete(self,output):
++        super().complete(output)
++        self.completed.update(submitted_wall_s=100.,began_wall_s=100.01,
++            completed_wall_s=100.02,received_wall_s=100.03)
++
++
++def worker():
++    return RuntimeDualProcess({},evaluator_factory=unused_factory,supported=lambda output:output[0]>0,
++        lane_factory=TraceLane)
++
++
++def recorder(tmp_path):
++    path=tmp_path/'trace.jsonl'
++    return FollowTrace(path,MotionConfig(),FollowConfig()),path
++
++
++def events(trace,path):
++    trace.close()
++    return [json.loads(line) for line in path.read_text(encoding='utf8').splitlines()]
++
++
++def by_kind(rows,kind):return [r['data'] for r in rows if r['kind']==kind]
++
++
++def align(delivery):assert not delivery.offer(snapshot(1.,.9))
++
++
++def test_default_off_never_reads_capture_fields_or_emits():
++    class Worker:
++        def offer_plan(self,data):return True
++        def collect(self):return [dict(stage='plan',output=['existing result'])]
++        @property
++        def plan(self):raise AssertionError('OFF inspected lane metadata')
++        @property
++        def plan_input(self):raise AssertionError('OFF inspected owned capture')
++    def forbidden(*args):raise AssertionError('OFF emitted new event')
++    d=RuntimeDualDelivery(Worker(),lambda:1.12,forbidden)
++    align(d);assert d.offer(snapshot(1.1,1.));d.collect()
++    assert d.counts==dict(submitted=1,applied=0,discarded=0,invalidated=0)
++
++
++def test_on_and_off_parent_discard_and_output_are_identical(tmp_path):
++    results=[]
++    for enabled in (False,True):
++        folder=tmp_path/str(enabled);folder.mkdir();trace,path=recorder(folder);w=worker()
++        d=RuntimeDualDelivery(w,lambda:1.12,trace.emit,complete_plan_trace=enabled)
++        align(d);assert d.offer(snapshot(1.1,1.));w.plan.complete(plan(0.))
++        result=d.poll(1.5,previous_steering_rad=.1,side='left',motion_epoch=0,sensor_epoch=0)
++        assert result['kind']=='discarded' and result['reason']=='decision_source_expired'
++        results.append((result,copy.deepcopy(d.counts)));rows=events(trace,path);w.close()
++        assert len(by_kind(rows,'runtime_plan_submitted'))==int(enabled)
++        assert len(by_kind(rows,'runtime_plan_completed'))==int(enabled)
++        assert not by_kind(rows,'route_publication')
++    assert results[0]==results[1]
++
++
++def test_success_only_and_parent_owned_input_remains_after_mutation_and_discard(tmp_path):
++    trace,path=recorder(tmp_path);w=worker();d=RuntimeDualDelivery(w,lambda:1.12,trace.emit,complete_plan_trace=True)
++    align(d);data=snapshot(1.1,1.)
++    data.update(timing_verified=False,timing_policy='host_estimated_v1',history=dict(wheels=dict(times=[1.],values=[-.02])))
++    data['scan']['measurements'].update(time_basis='unverified_estimate',ranges_m=[1.,{'nonfinite':'inf'}])
++    original=copy.deepcopy(data);assert d.offer(data)
++    data['scan']['measurements']['ranges_m'][0]=999.;data['history']['wheels']['values'][0]=99.
++    assert w.plan_input==original
++    d.clock=lambda:1.23;assert not d.offer(snapshot(1.2,1.1))  # 실제 occupied offer 실패
++    output=plan(0.);w.plan.complete(output);d.collect()
++    w.saved_plan['input']['scan']['measurements']['ranges_m'][0]=88.
++    w.saved_plan['output'][2]['reason']='mutated after capture'
++    w.discard_plan((0,1));rows=events(trace,path);w.close()
++    submitted=by_kind(rows,'runtime_plan_submitted');completed=by_kind(rows,'runtime_plan_completed')
++    assert len(submitted)==len(completed)==1 and submitted[0]['input']==original
++    assert completed[0]['output']==output and 'input' not in completed[0]
++    assert {k:submitted[0][k] for k in ('generation','sequence','reset_reason','submitted_wall_s')}==dict(
++        generation=0,sequence=1,reset_reason=None,submitted_wall_s=100.)
++
++
++def test_generation_reset_keeps_submission_but_does_not_invent_late_completion(tmp_path):
++    trace,path=recorder(tmp_path);w=worker();d=RuntimeDualDelivery(w,lambda:1.12,trace.emit,complete_plan_trace=True)
++    align(d);assert d.offer(snapshot(1.1,1.))
++    w.invalidate('decision_source_expired');w.plan.complete(plan(0.));d.collect()
++    assert w.old_generation==1 and w.saved_plan is None
++    d.clock=lambda:1.32;assert d.offer(snapshot(1.3,1.2));w.plan.complete(plan(0.));d.collect()
++    rows=events(trace,path);w.close()
++    submitted=by_kind(rows,'runtime_plan_submitted');completed=by_kind(rows,'runtime_plan_completed')
++    assert [(s['generation'],s['sequence'],s['reset_reason']) for s in submitted]==[(0,1,None),(1,2,'decision_source_expired')]
++    assert [(s['generation'],s['sequence']) for s in completed]==[(1,2)]
++
++
++def test_repeated_current_for_same_plan_does_not_duplicate_plan_capture(tmp_path):
++    trace,path=recorder(tmp_path);w=worker();d=RuntimeDualDelivery(w,lambda:1.12,trace.emit,complete_plan_trace=True)
++    align(d);assert d.offer(snapshot(1.1,1.));output=plan();output[2]['normal']['path_source_s']=1.1
++    w.plan.complete(output);d.collect()
++    assert w.offer_next_current(snapshot(1.2,1.1),now_s=1.21)
++    w.current.complete(dict(speed_mps=.4,steering_rad=.2,reference_s=1.2));d.collect()
++    token=(w.ready['generation'],w.ready['sequence'])
++    w.commit_published(token,now_s=1.21,previous_steering_rad=.1,side='left',motion_epoch=0,sensor_epoch=0)
++    assert w.offer_next_current(snapshot(1.3,1.2),now_s=1.31)
++    w.current.complete(dict(speed_mps=.4,steering_rad=.2,reference_s=1.3));d.collect();d.collect()
++    rows=events(trace,path);w.close()
++    assert len(by_kind(rows,'runtime_plan_submitted'))==len(by_kind(rows,'runtime_plan_completed'))==1
++
++
++@pytest.mark.parametrize('failure',['freeze','writer'])
++def test_trace_failure_preserves_control_and_appears_in_footer(tmp_path,monkeypatch,failure):
++    import arena_autonomy.follow_trace as trace_module
++    trace,path=recorder(tmp_path);trace.writer.queue.join()
++    def failed(*args):raise OSError('capture failure')
++    w=worker();d=RuntimeDualDelivery(w,lambda:1.12,trace.emit,complete_plan_trace=True)
++    with monkeypatch.context() as patch:
++        if failure=='freeze':patch.setattr(trace_module,'freeze',failed)
++        else:patch.setattr(trace.writer,'write',failed)
++        align(d);assert d.offer(snapshot(1.1,1.));w.plan.complete(plan(0.));d.collect()
++        assert w.saved_plan['output']==plan(0.) and d.counts['submitted']==1
++        trace.writer.queue.join()
++    rows=events(trace,path);w.close();footer=rows[-1]
++    assert footer['kind']=='footer'
++    assert footer['data']['capture_errors' if failure=='freeze' else 'failed']==2
++
++
++def node(trace,enabled):
++    return NS(complete_plan_trace=enabled,follow_trace=trace,now_s=lambda:1.12,runtime_dual_selected=True,
++        current_corner_budget='r396_v1',observation_input_scope='host_estimated_crop_v1',
++        execution_environment='hardware_runtime_candidate_v1',motion=NS(timing_policy='host_estimated_v1',verified=False,mode='both'),
++        has_parameter=lambda k:k in ('use_sim_time','lidar_input_representation'),
++        get_parameter=lambda k:NS(value={'use_sim_time':False,'lidar_input_representation':'native_estimated_v1'}[k]))
++
++
++@pytest.mark.parametrize('enabled',[False,True])
++def test_factory_header_is_exact_actual_selection_and_only_on(tmp_path,monkeypatch,enabled):
++    import arena_autonomy.runtime_dual_state as state
++    trace,path=recorder(tmp_path);captured=[]
++    def factory(selected,**kwargs):captured.append(copy.deepcopy(selected));return NS()
++    monkeypatch.setattr(state,'RuntimeDualProcess',factory)
++    n=node(trace,enabled);header=dict(schema=5,numeric_execution='native_v1',nested=dict(values=[1,2]))
++    d=backend.create_delivery(n,header);header['nested']['values'][0]=999
++    rows=events(trace,path);actual=by_kind(rows,'runtime_evaluator_header')
++    assert d.complete_plan_trace is enabled and len(actual)==int(enabled)
++    if enabled:
++        assert actual[0]['header']==captured[0]
++        assert actual[0]['publication_proven'] is False
++        assert actual[0]['header']['current_corner_environment']['motion_timing_verified'] is False
++        assert actual[0]['header']['runtime_time_policy']=='host_estimated_v1'
++
++
++def test_actual_node_option_defaults_off_and_requires_registered_runtime():
++    source=Path(backend.__file__).with_name('g1_g2_node.py')
++    cls=next(n for n in ast.parse(source.read_text(encoding='utf8')).body if isinstance(n,ast.ClassDef) and n.name=='G1G2Node')
++    init=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='__init__')
++    index=next(i for i,n in enumerate(init.body) if isinstance(n,ast.Assign) and
++        any(isinstance(t,ast.Attribute) and t.attr=='complete_plan_trace' for t in n.targets))
++    f=ast.parse('def option(self):\n pass').body[0];f.body=copy.deepcopy(init.body[index:index+2])
++    env={};exec(compile(ast.fix_missing_locations(ast.Module(body=[f],type_ignores=[])),'actual option boundary','exec'),env)
++    def owner(selected,requested=None):
++        def declare(name,default):
++            assert name=='g1_complete_plan_trace' and default is False
++            return NS(value=default if requested is None else requested)
++        return NS(runtime_dual_selected=selected,declare_parameter=declare)
++    n=owner(False);env['option'](n);assert n.complete_plan_trace is False
++    with pytest.raises(ValueError,match='registered runtime'):env['option'](owner(False,True))
++    env['option'](owner(True,True))
++
++
++class StatefulEvaluator:
++    """실제 Lane의 전달·reset 순서를 검증하는 작은 결정론 evaluator. 실제 정책 재현은 아니다."""
++    def __init__(self,stage,header):self.stage,self.header,self.total=stage,header,0
++    def reset(self,reason):self.total=0;self.reset_reason=reason
++    def __call__(self,data):
++        assert self.stage=='plan'
++        self.total+=data['marker']
++        return [0.,.2,dict(reason='stored_test_plan',total=self.total,reset_reason=self.reset_reason,
++            input_sha256=hashlib.sha256(json.dumps(data,sort_keys=True).encode()).hexdigest(),
++            time_policy=self.header['runtime_time_policy'],timing_verified=data['timing_verified'])]
++
++
++def stateful_factory(stage,header):return StatefulEvaluator(stage,header)
++
++
++def test_actual_lane_spawn_records_discarded_plans_and_exact_stateful_replay(tmp_path,monkeypatch):
++    import arena_autonomy.race_runtime_policy.evaluator as policy
++    monkeypatch.setattr(policy,'evaluator_factory',stateful_factory)
++    monkeypatch.setattr(policy,'supported',lambda output:False)
++    trace,path=recorder(tmp_path);n=node(trace,True);d=backend.create_delivery(n,dict(schema=5,numeric_execution='native_v1'))
++    w=d.worker;children=[w.plan.process,w.current.process]
++    try:
++        align(d)
++        for index,ref in enumerate((1.1,1.3,1.5)):
++            if index==2:w.invalidate('decision_source_expired')
++            d.clock=lambda ref=ref:ref+.02
++            data=snapshot(ref,ref-.1);data.update(marker=index+1,timing_verified=False,timing_policy='host_estimated_v1')
++            data['scan']['measurements']['time_basis']='unverified_estimate'
++            assert d.offer(data);data['marker']=999
++            deadline=time.monotonic()+5.
++            while w.saved_plan is None:
++                w.connection.poll(.02);d.collect()
++                assert w.fault is None and time.monotonic()<deadline
++            # 부모가 나중에 만료 폐기해도 계산 입력/결과는 이미 각각 한 번 남아 있다.
++            result=d.poll(ref+.4,previous_steering_rad=.1,side='left',motion_epoch=0,sensor_epoch=0)
++            assert result['kind']=='discarded'
++    finally:
++        cleanup=w.close();rows=events(trace,path)
++    assert cleanup['exitcode']==0 and not cleanup['forced'] and not cleanup['alive']
++    assert all(p.exitcode==0 and not p.is_alive() for p in children)
++    selected=by_kind(rows,'runtime_evaluator_header')[0]['header']
++    replay=StatefulEvaluator('plan',selected);generation=None
++    submitted=by_kind(rows,'runtime_plan_submitted');completed=by_kind(rows,'runtime_plan_completed')
++    assert len(submitted)==len(completed)==3
++    indexed={(r['generation'],r['sequence']):r for r in completed}
++    for row in submitted:
++        if row['generation']!=generation:replay.reset(row['reset_reason']);generation=row['generation']
++        result=indexed[(row['generation'],row['sequence'])]
++        assert replay(row['input'])==result['output']
++        assert row['submitted_wall_s']==result['submitted_wall_s']
++        assert result['submitted_wall_s']<=result['began_wall_s']<=result['completed_wall_s']<=result['received_wall_s']
++        assert 'input' not in result
++    assert [r['output'][2]['total'] for r in completed]==[1,3,3]
++    assert rows[-1]['data']['capture_errors']==rows[-1]['data']['failed']==rows[-1]['data']['dropped']==0
++    (tmp_path/'spawn_receipt.json').write_text(json.dumps(dict(
++        children=[dict(pid=p.pid,exitcode=p.exitcode,alive=p.is_alive()) for p in children],
++        cleanup=cleanup,submitted=len(submitted),completed=len(completed),exact_replayed=len(submitted),
++        generation_sequence=[(r['generation'],r['sequence']) for r in submitted],
++        reset_reasons=[r['reset_reason'] for r in submitted],physical_actuation=False),indent=2)+'\n',encoding='utf8')

@@ -14,6 +14,32 @@ from arena_autonomy.lidar_observation import audit_front_observation
 from arena_autonomy.scene_motion import relative_poses, transport_points
 from arena_autonomy.scan_input import scan_angles, scan_times, scan_cell_widths, scan_max_gap, audit_scan_front
 from arena_autonomy.measurement_scan import MeasurementScan
+from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, basis_matches, component_scope
+
+
+def _crop_edge_component(scan, order, front, run, valid, values, cells, forbidden):
+    """한쪽 crop 끝의 원 missing 성분을 실제 두 flank까지 확인한다. 값을 채우지 않는다."""
+    ordered = [int(i) for i in order]
+    inside = [int(front[int(i)]) for i in run]
+    low, high = ordered.index(inside[0]), ordered.index(inside[-1])
+    if ordered[low:high+1] != inside:
+        return None
+    while low > 0 and not valid[ordered[low-1]]:
+        low -= 1
+    while high+1 < len(ordered) and not valid[ordered[high+1]]:
+        high += 1
+    if low == 0 or high+1 == len(ordered):
+        return None
+    members = ordered[low:high+1]
+    flanks = [ordered[low-1], ordered[high+1]]
+    chain = [flanks[0], *members, flanks[1]]
+    if (any(abs(b-a) != 1 for a,b in zip(chain,chain[1:]))
+            or any(forbidden[i] for i in chain)
+            or any(values[i] < scan.range_min for i in members)
+            or any(math.isfinite(values[i]) for i in members)):
+        return None
+    return dict(source_indices=members, inside_source_indices=inside, flank_source_indices=flanks,
+                full_width_deg=math.degrees(float(sum(cells[members]))))
 
 
 def near_sweep(points, speed, age, steering, previous_steering, wheelbase, length, width, margin):
@@ -66,9 +92,15 @@ def short_observed_surface(point, current, source_indices):
 class PartialObservationPolicy:
     speed_cap_mps = .5
 
-    def __init__(self, allow_narrow_forward=False, surface_translation_enabled=False, lateral_metric_enabled=False, oblique_metric_enabled=False):
+    def __init__(self, allow_narrow_forward=False, surface_translation_enabled=False, lateral_metric_enabled=False, oblique_metric_enabled=False,
+                 crop_edge_component_trial=False):
         if any(type(v) is not bool for v in (allow_narrow_forward,surface_translation_enabled,lateral_metric_enabled,oblique_metric_enabled)):
             raise ValueError('forward candidate flag must be bool')
+        if type(crop_edge_component_trial) is not bool:
+            raise ValueError('crop edge component trial must be bool')
+        # OFF의 원 인스턴스 상태를 그대로 보존한다. reset으로 명시 선택을 끄지 않는다.
+        if crop_edge_component_trial:
+            self.crop_edge_component_trial = True
         self.allow_narrow_forward = allow_narrow_forward
         self.surface_translation_enabled = surface_translation_enabled
         if oblique_metric_enabled and not (allow_narrow_forward and surface_translation_enabled and lateral_metric_enabled):
@@ -143,6 +175,12 @@ class PartialObservationPolicy:
                 (self.previous is not None and now < self.previous[1])):
             self.reset()
             return {**report, 'reason':'partial_time_reset'}
+        if getattr(self, 'command_observation_priority', False):
+            from arena_autonomy.independent_guard_route import front_evidence
+            evidence = front_evidence(scan, yaw)
+            report['current_command_observation'] = evidence
+            if not evidence['accepted']:
+                return {**report, 'reason': evidence['reason']}
         # 선택형 structure_aware_v1만 설정한다. 양옆이 반환인 알려진 구조 광선을 일반
         # 결측에서 뺄 뿐 거리/자유 공간을 만들지 않는다. 기본(None)은 기존과 같다.
         excused = getattr(self, 'structure_excused', None)
@@ -160,6 +198,9 @@ class PartialObservationPolicy:
             return finished(allowed=not self.latched,
                     reason='known_obstacle_latched' if self.latched else 'fully_observed',
                     speed_cap_mps=None)
+        if getattr(self, 'command_observation_priority', False):
+            return self._current_command_observation(scan, points, history, now, speed,
+                steering, previous_steering, wheelbase, length, width, source, fresh, excused, report, finished)
         self.clear_sources = 0
         values = np.asarray(scan.ranges, dtype=float)
         if speed > 1.2:
@@ -236,10 +277,44 @@ class PartialObservationPolicy:
         near_boundary = math.hypot(length/2, width/2) + math.hypot(history.config.lidar_x_m, history.config.lidar_y_m) + .03
         report['near_boundary_range_m'] = near_boundary
         boundary_ranges = []
+        edge_component = None
         for run in runs:
             if run[0] == 0 or run[-1] == len(front)-1:
-                return {**report, 'reason':'unbounded_missing'}
-            boundary_ranges.extend(values[front[[run[0]-1, run[-1]+1]]])
+                eligible = (getattr(self, 'crop_edge_component_trial', False) is True
+                    and isinstance(scan, MeasurementScan)
+                    and basis_matches(getattr(self, 'observation_input_scope', SIMULATION_SCOPE),
+                                      history.scan_time_policy, scan.time_basis)
+                    and not metric_gap and not central
+                    and sum(r[0] == 0 or r[-1] == len(front)-1 for r in runs) == 1
+                    and not (run[0] == 0 and run[-1] == len(front)-1))
+                if eligible:
+                    forbidden = np.zeros(len(values), dtype=bool)
+                    if excused is not None:
+                        forbidden |= np.asarray(excused, dtype=bool)
+                    # 설명되지 않은 sector도 건너뛰지 않는다. 거리 한정 mask 여부와 무관하다.
+                    from arena_autonomy.known_structure import sector_rays
+                    for indices in sector_rays(0., 0., len(values), getattr(self, 'structure_sectors', ()),
+                                               source_angles=scan_angles(scan)):
+                        forbidden[indices] = True
+                    component = _crop_edge_component(scan, order, front, run, valid, values, cells, forbidden)
+                    if component is not None:
+                        union = set(int(i) for i in unknown) | set(component['source_indices'])
+                        full = np.asarray([int(i) for i in order if int(i) in union], dtype=int)
+                        combined_width = float(sum(cells[full]))
+                        if (combined_width <= math.radians(6)+1e-7 and len(full)/len(front) <= .05
+                                and not np.any(np.abs(angles[full]) <= math.radians(30)+step/2)):
+                            edge_component = component
+                            component.update(combined_unknown_source_indices=full.tolist(),
+                                combined_width_deg=math.degrees(combined_width),
+                                combined_fraction=len(full)/len(front),
+                                flank_ranges_m=values[component['flank_source_indices']].tolist(),
+                                scope=component_scope(getattr(self, 'observation_input_scope', SIMULATION_SCOPE)))
+                if edge_component is None:
+                    return {**report, 'reason':'unbounded_missing'}
+                report['crop_edge_component'] = edge_component
+                boundary_ranges.extend(values[edge_component['flank_source_indices']])
+            else:
+                boundary_ranges.extend(values[front[[run[0]-1, run[-1]+1]]])
             if min(boundary_ranges) < near_boundary:
                 self._latch('near_gap_boundary',now)
                 self._remember(points, now, source, fresh)
@@ -249,6 +324,8 @@ class PartialObservationPolicy:
         poses = relative_poses(history, stamps, now)
         direction = angles[unknown] + poses[:,2]
         central_after = bool(np.any(np.abs((direction+math.pi)%math.tau-math.pi) <= math.radians(30)+step/2))
+        if edge_component is not None and central_after:
+            return {**report, 'reason':'unbounded_missing'}
         if central_after and not self.allow_narrow_forward:
             return {**report, 'reason':'central_missing_after_motion'}
         central = central or central_after
@@ -275,14 +352,80 @@ class PartialObservationPolicy:
             report['speed_cap_mps'] = .2
             report['forward_neighbor_required_m'] = max(1.,required)
             report['minimum_gap_neighbor_m'] = float(min(boundary_ranges))
+        threat_unknown = unknown
+        if edge_component is not None:
+            # 허가용 crop/metric 계산은 위에서 끝났다. 이제 전체 원 성분을 소실 검사한다.
+            threat_unknown = np.asarray(edge_component['combined_unknown_source_indices'], dtype=int)
+            stamps = scan_times(scan)[threat_unknown]
+            poses = relative_poses(history, stamps, now)
+            direction = angles[threat_unknown] + poses[:,2]
+            if np.any(np.abs((direction+math.pi)%math.tau-math.pi) <= math.radians(30)+step/2):
+                return {**report, 'reason':'unbounded_missing'}
         sensor = history.config
         c, s = np.cos(poses[:,2]), np.sin(poses[:,2])
         origins = poses[:,:2] + np.column_stack((c*sensor.lidar_x_m-s*sensor.lidar_y_m,
                                                s*sensor.lidar_x_m+c*sensor.lidar_y_m))
+        failure = self._observe_missing_history(scan, points, history, now, speed, steering,
+            previous_steering, wheelbase, length, width, source, fresh, valid, threat_unknown,
+            origins, direction, stamps, step, required, report, finished)
+        if failure is not None:
+            return failure
+        # 좁은 정면 예외라도 장애물 기억을 먼저 계산한다. 진행을 거절한 동안
+        # 살아 있는 관측까지 갱신하지 않아 인위적으로 기억을 만료시키지 않는다.
+        if central and not self.latched:
+            if forward_total > math.radians(1.5)+1e-7 and not (metric_gap and single_forward_metric):
+                return finished(reason='forward_gap_too_wide')
+            if min(boundary_ranges) < max(1.,required):
+                return finished(reason='forward_gap_near_boundary')
+        return finished(allowed=not self.latched,
+                reason='known_obstacle_latched' if self.latched else
+                       'bounded_forward_metric_missing' if metric_gap and central and single_forward_metric else
+                       'bounded_lateral_metric_missing' if metric_gap else
+                       'bounded_forward_missing' if central else 'bounded_side_missing')
+
+    def _current_command_observation(self, scan, points, history, now, speed, steering,
+            previous_steering, wheelbase, length, width, source, fresh, excused, report, finished):
+        # 현재 반환/명령의 점유·제동은 호출 guard가 검사한다. 전역 결측 폭/chord,
+        # 시험속도상한과 과거 자유 공간 warmup은 명령 허가 기준으로 사용하지 않는다.
+        self.clear_sources = 0
+        report['speed_cap_mps'] = None
+        values = np.asarray(scan.ranges, dtype=float)
+        angles = (scan_angles(scan)+history.config.lidar_yaw_rad+math.pi) % math.tau-math.pi
+        valid = np.isfinite(values) & (values >= scan.range_min) & (values <= scan.range_max)
+        missing = (np.abs(angles) <= math.radians(100)+1e-6) & ~valid
+        if excused is not None:
+            missing &= ~np.asarray(excused, dtype=bool)
+        unknown = np.flatnonzero(missing)
+        stamps = scan_times(scan)[unknown]
+        poses = relative_poses(history, stamps, now)
+        direction = angles[unknown]+poses[:,2]
+        sensor = history.config
+        c, sin = np.cos(poses[:,2]), np.sin(poses[:,2])
+        origins = poses[:,:2]+np.column_stack((c*sensor.lidar_x_m-sin*sensor.lidar_y_m,
+                                              sin*sensor.lidar_x_m+c*sensor.lidar_y_m))
+        step = scan_max_gap(scan)
+        required = max(.6, .16+speed*(now-source+.10)+speed*speed/4)
+        failure = self._observe_missing_history(scan, points, history, now, speed, steering,
+            previous_steering, wheelbase, length, width, source, fresh, valid, unknown,
+            origins, direction, stamps, step, required, report, finished, allow_empty_history=True)
+        if failure is not None:
+            return failure
+        return finished(allowed=not self.latched,
+            reason='known_obstacle_latched' if self.latched else 'current_command_observed_returns')
+
+    def _observe_missing_history(self, scan, points, history, now, speed, steering,
+            previous_steering, wheelbase, length, width, source, fresh, valid, threat_unknown,
+            origins, direction, stamps, step, required, report, finished, *, allow_empty_history=False):
+        # 기존 소실 위협/재관측/래치/기억 갱신 본문을 같은 순서로 공유한다.
+        # 명시 guard는 없는 기억을 장애물로 만들지 않는다. 남은 실제 점은 나이로
+        # 삭제하지 않고 기존 운동 이력으로 운반한다. 운동 무결성 오류는 허용하지 않는다.
         previous = self.previous if fresh else self.previous_distinct
+        if previous is None and allow_empty_history:
+            self._remember(points, now, source, fresh)
+            return None
         if previous is None:
             return {**report, 'reason':'partial_history_warmup'}
-        if now-previous[1] > .3:
+        if now-previous[1] > .3 and not allow_empty_history:
             self._latch('partial_history_expired',now)
             return finished(reason='partial_history_expired')
         old, reference, previous_source = previous
@@ -352,7 +495,7 @@ class PartialObservationPolicy:
                     witnesses = []
                     for ray, index in np.argwhere(threatening)[:8]:
                         best,distance = nearest[int(index)]
-                        witnesses.append(dict(source_index=int(unknown[ray]),
+                        witnesses.append(dict(source_index=int(threat_unknown[ray]),
                             direction_rad=float(direction[ray]), origin_xy=origins[ray].tolist(),
                             previous_point_now_xy=carried[index].tolist(),
                             nearest_current_xy=current[best].tolist() if best is not None else None,
@@ -379,18 +522,7 @@ class PartialObservationPolicy:
                     # 캡처 오류가 생겨도 위에서 설정한 래치는 남는다.
                     self._capture_latched_threat(threatening,previous,now)
         self._remember(points, now, source, fresh)
-        # 좁은 정면 예외라도 장애물 기억을 먼저 계산한다. 진행을 거절한 동안
-        # 살아 있는 관측까지 갱신하지 않아 인위적으로 기억을 만료시키지 않는다.
-        if central and not self.latched:
-            if forward_total > math.radians(1.5)+1e-7 and not (metric_gap and single_forward_metric):
-                return finished(reason='forward_gap_too_wide')
-            if min(boundary_ranges) < max(1.,required):
-                return finished(reason='forward_gap_near_boundary')
-        return finished(allowed=not self.latched,
-                reason='known_obstacle_latched' if self.latched else
-                       'bounded_forward_metric_missing' if metric_gap and central and single_forward_metric else
-                       'bounded_lateral_metric_missing' if metric_gap else
-                       'bounded_forward_missing' if central else 'bounded_side_missing')
+        return None
 
     @staticmethod
     def _excused_audit(scan, yaw, audit, excused):

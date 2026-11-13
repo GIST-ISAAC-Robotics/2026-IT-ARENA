@@ -1,0 +1,132 @@
+--- a/src/arena_autonomy/arena_autonomy/partial_observation.py
++++ b/src/arena_autonomy/arena_autonomy/partial_observation.py
+@@ -14,6 +14,31 @@
+ from arena_autonomy.scene_motion import relative_poses, transport_points
+ from arena_autonomy.scan_input import scan_angles, scan_times, scan_cell_widths, scan_max_gap, audit_scan_front
+ from arena_autonomy.measurement_scan import MeasurementScan
++
++
++def _crop_edge_component(scan, order, front, run, valid, values, cells, forbidden):
++    """한쪽 crop 끝의 원 missing 성분을 실제 두 flank까지 확인한다. 값을 채우지 않는다."""
++    ordered = [int(i) for i in order]
++    inside = [int(front[int(i)]) for i in run]
++    low, high = ordered.index(inside[0]), ordered.index(inside[-1])
++    if ordered[low:high+1] != inside:
++        return None
++    while low > 0 and not valid[ordered[low-1]]:
++        low -= 1
++    while high+1 < len(ordered) and not valid[ordered[high+1]]:
++        high += 1
++    if low == 0 or high+1 == len(ordered):
++        return None
++    members = ordered[low:high+1]
++    flanks = [ordered[low-1], ordered[high+1]]
++    chain = [flanks[0], *members, flanks[1]]
++    if (any(abs(b-a) != 1 for a,b in zip(chain,chain[1:]))
++            or any(forbidden[i] for i in chain)
++            or any(values[i] < scan.range_min for i in members)
++            or any(math.isfinite(values[i]) for i in members)):
++        return None
++    return dict(source_indices=members, inside_source_indices=inside, flank_source_indices=flanks,
++                full_width_deg=math.degrees(float(sum(cells[members]))))
+ 
+ 
+ def near_sweep(points, speed, age, steering, previous_steering, wheelbase, length, width, margin):
+@@ -66,9 +91,15 @@
+ class PartialObservationPolicy:
+     speed_cap_mps = .5
+ 
+-    def __init__(self, allow_narrow_forward=False, surface_translation_enabled=False, lateral_metric_enabled=False, oblique_metric_enabled=False):
++    def __init__(self, allow_narrow_forward=False, surface_translation_enabled=False, lateral_metric_enabled=False, oblique_metric_enabled=False,
++                 crop_edge_component_trial=False):
+         if any(type(v) is not bool for v in (allow_narrow_forward,surface_translation_enabled,lateral_metric_enabled,oblique_metric_enabled)):
+             raise ValueError('forward candidate flag must be bool')
++        if type(crop_edge_component_trial) is not bool:
++            raise ValueError('crop edge component trial must be bool')
++        # OFF의 원 인스턴스 상태를 그대로 보존한다. reset으로 명시 선택을 끄지 않는다.
++        if crop_edge_component_trial:
++            self.crop_edge_component_trial = True
+         self.allow_narrow_forward = allow_narrow_forward
+         self.surface_translation_enabled = surface_translation_enabled
+         if oblique_metric_enabled and not (allow_narrow_forward and surface_translation_enabled and lateral_metric_enabled):
+@@ -236,10 +267,44 @@
+         near_boundary = math.hypot(length/2, width/2) + math.hypot(history.config.lidar_x_m, history.config.lidar_y_m) + .03
+         report['near_boundary_range_m'] = near_boundary
+         boundary_ranges = []
++        edge_component = None
+         for run in runs:
+             if run[0] == 0 or run[-1] == len(front)-1:
+-                return {**report, 'reason':'unbounded_missing'}
+-            boundary_ranges.extend(values[front[[run[0]-1, run[-1]+1]]])
++                eligible = (getattr(self, 'crop_edge_component_trial', False) is True
++                    and isinstance(scan, MeasurementScan)
++                    and scan.time_basis == 'simulation_acquisition'
++                    and history.scan_time_policy == 'verified_only'
++                    and not metric_gap and not central
++                    and sum(r[0] == 0 or r[-1] == len(front)-1 for r in runs) == 1
++                    and not (run[0] == 0 and run[-1] == len(front)-1))
++                if eligible:
++                    forbidden = np.zeros(len(values), dtype=bool)
++                    if excused is not None:
++                        forbidden |= np.asarray(excused, dtype=bool)
++                    # 설명되지 않은 sector도 건너뛰지 않는다. 거리 한정 mask 여부와 무관하다.
++                    from arena_autonomy.known_structure import sector_rays
++                    for indices in sector_rays(0., 0., len(values), getattr(self, 'structure_sectors', ()),
++                                               source_angles=scan_angles(scan)):
++                        forbidden[indices] = True
++                    component = _crop_edge_component(scan, order, front, run, valid, values, cells, forbidden)
++                    if component is not None:
++                        union = set(int(i) for i in unknown) | set(component['source_indices'])
++                        full = np.asarray([int(i) for i in order if int(i) in union], dtype=int)
++                        combined_width = float(sum(cells[full]))
++                        if (combined_width <= math.radians(6)+1e-7 and len(full)/len(front) <= .05
++                                and not np.any(np.abs(angles[full]) <= math.radians(30)+step/2)):
++                            edge_component = component
++                            component.update(combined_unknown_source_indices=full.tolist(),
++                                combined_width_deg=math.degrees(combined_width),
++                                combined_fraction=len(full)/len(front),
++                                flank_ranges_m=values[component['flank_source_indices']].tolist(),
++                                scope='bounded_simulation_edge_component_not_free_space')
++                if edge_component is None:
++                    return {**report, 'reason':'unbounded_missing'}
++                report['crop_edge_component'] = edge_component
++                boundary_ranges.extend(values[edge_component['flank_source_indices']])
++            else:
++                boundary_ranges.extend(values[front[[run[0]-1, run[-1]+1]]])
+             if min(boundary_ranges) < near_boundary:
+                 self._latch('near_gap_boundary',now)
+                 self._remember(points, now, source, fresh)
+@@ -249,6 +314,8 @@
+         poses = relative_poses(history, stamps, now)
+         direction = angles[unknown] + poses[:,2]
+         central_after = bool(np.any(np.abs((direction+math.pi)%math.tau-math.pi) <= math.radians(30)+step/2))
++        if edge_component is not None and central_after:
++            return {**report, 'reason':'unbounded_missing'}
+         if central_after and not self.allow_narrow_forward:
+             return {**report, 'reason':'central_missing_after_motion'}
+         central = central or central_after
+@@ -275,6 +342,15 @@
+             report['speed_cap_mps'] = .2
+             report['forward_neighbor_required_m'] = max(1.,required)
+             report['minimum_gap_neighbor_m'] = float(min(boundary_ranges))
++        threat_unknown = unknown
++        if edge_component is not None:
++            # 허가용 crop/metric 계산은 위에서 끝났다. 이제 전체 원 성분을 소실 검사한다.
++            threat_unknown = np.asarray(edge_component['combined_unknown_source_indices'], dtype=int)
++            stamps = scan_times(scan)[threat_unknown]
++            poses = relative_poses(history, stamps, now)
++            direction = angles[threat_unknown] + poses[:,2]
++            if np.any(np.abs((direction+math.pi)%math.tau-math.pi) <= math.radians(30)+step/2):
++                return {**report, 'reason':'unbounded_missing'}
+         sensor = history.config
+         c, s = np.cos(poses[:,2]), np.sin(poses[:,2])
+         origins = poses[:,:2] + np.column_stack((c*sensor.lidar_x_m-s*sensor.lidar_y_m,
+@@ -352,7 +428,7 @@
+                     witnesses = []
+                     for ray, index in np.argwhere(threatening)[:8]:
+                         best,distance = nearest[int(index)]
+-                        witnesses.append(dict(source_index=int(unknown[ray]),
++                        witnesses.append(dict(source_index=int(threat_unknown[ray]),
+                             direction_rad=float(direction[ray]), origin_xy=origins[ray].tolist(),
+                             previous_point_now_xy=carried[index].tolist(),
+                             nearest_current_xy=current[best].tolist() if best is not None else None,

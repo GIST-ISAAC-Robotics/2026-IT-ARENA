@@ -7,6 +7,7 @@
   <xacro:arg name="body_mass" default="1.635"/>
   <xacro:arg name="body_cg_z_offset" default="0.0"/>
   <xacro:arg name="drive_mode" default="single_motor"/>
+  <xacro:arg name="steering_model" default="ideal_ackermann"/>
   <xacro:arg name="render_sensors" default="true"/>
   <xacro:arg name="rear_marker_enabled" default="true"/>
   <xacro:arg name="rear_marker_x" default="-0.1005"/>
@@ -646,6 +647,7 @@
 
     <xacro:if value="${'$(arg drive_mode)' == 'single_motor'}">
     <plugin filename="arena-single-motor-system" name="arena::SingleMotorDrive">
+      <steering_model>$(arg steering_model)</steering_model>
       <wheel_radius>${wheel_radius}</wheel_radius>
       <wheelbase>${wheelbase}</wheelbase>
       <track_width>${track_width}</track_width>

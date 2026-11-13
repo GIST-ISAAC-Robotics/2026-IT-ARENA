@@ -1,0 +1,48 @@
+...................F                                                     [100%]
+================================== FAILURES ===================================
+_______ test_real_guard_success_keeps_baseline_reason_behavior_and_path _______
+
+scenario = (<arena_autonomy.pass_release_trial.PassReleaseSelector object at 0x000001DBDD187EE0>, namespace(t_ref_s=1.0, source_f...or_choice': 'parallel', ...}), {'accepted': True, 'calls': []}, <function scenario.<locals>.run at 0x000001DBDD12B060>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001DBDD1070D0>
+
+    def test_real_guard_success_keeps_baseline_reason_behavior_and_path(scenario,monkeypatch):
+        owner,scene,base,old,_,run=scenario
+        monkeypatch.delattr(owner,'_guard_curve_at_cap')
+        monkeypatch.setattr(ps,'threat_view',lambda *a:dict(frame=ps.mx.ExecutionFrame(base[2]['path_points'])))
+        monkeypatch.setattr(ps,'motion_region',lambda *a,**kw:dict(unobserved=0,
+            masked_front_samples=0,queries=100,masked_left=40,masked_right=0,masked_tail_extent_m=.009))
+>       result=run()
+               ^^^^^
+
+tests\test_runtime_guard_crawl.py:118: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\test_runtime_guard_crawl.py:41: in run
+    return gc.assess(owner,scene,baseline,selected,speed,.05,.02,changes.get('raw_scan',object()),measured=measured)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\arena_autonomy\arena_autonomy\race_runtime_policy\guard_crawl.py:49: in assess
+    view = ps.threat_view(scene, normal.get('path_points'), owner.lat)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_runtime_guard_crawl.py:115: in <lambda>
+    monkeypatch.setattr(ps,'threat_view',lambda *a:dict(frame=ps.mx.ExecutionFrame(base[2]['path_points'])))
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\arena_autonomy\arena_autonomy\m3_execution_trial.py:72: in __init__
+    super().__init__(path)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <arena_autonomy.m3_execution_trial.ExecutionFrame object at 0x000001DBDCF93CB0>
+path = [[0.0, 0.0], [1.0, 0.0]]
+
+    def __init__(self, path):
+        p = np.asarray(path, dtype=float).reshape(-1, 2)
+        if len(p) and not np.all(np.isfinite(p)):
+            raise ValueError('nonfinite path')
+        keep = np.r_[True, np.linalg.norm(np.diff(p, axis=0), axis=1) > 1e-9] if len(p) else []
+        p = p[keep]
+        if len(p) < 4:
+>           raise ValueError('path too short')
+E           ValueError: path too short
+
+src\arena_autonomy\arena_autonomy\lateral_intent.py:167: ValueError
+=========================== short test summary info ===========================
+FAILED tests/test_runtime_guard_crawl.py::test_real_guard_success_keeps_baseline_reason_behavior_and_path
+1 failed, 19 passed in 0.37s

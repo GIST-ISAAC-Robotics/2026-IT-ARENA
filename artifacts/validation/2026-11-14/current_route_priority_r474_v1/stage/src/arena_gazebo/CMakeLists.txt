@@ -1,0 +1,52 @@
+cmake_minimum_required(VERSION 3.8)
+project(arena_gazebo)
+
+find_package(ament_cmake REQUIRED)
+find_package(gz_sim_vendor REQUIRED)
+find_package(gz_plugin_vendor REQUIRED)
+find_package(gz-sim8 REQUIRED)
+find_package(gz-plugin2 REQUIRED COMPONENTS register)
+find_package(gz_transport_vendor REQUIRED)
+find_package(gz_msgs_vendor REQUIRED)
+find_package(gz-transport13 REQUIRED)
+find_package(gz-msgs10 REQUIRED)
+
+add_library(arena-single-motor-system SHARED src/single_motor_drive.cpp)
+target_compile_features(arena-single-motor-system PRIVATE cxx_std_17)
+target_include_directories(arena-single-motor-system PRIVATE include ../arena_vehicle_interface/portable)
+target_link_libraries(arena-single-motor-system PRIVATE gz-sim8::gz-sim8 gz-plugin2::gz-plugin2)
+target_compile_options(arena-single-motor-system PRIVATE -Wall -Wextra -Wpedantic)
+install(TARGETS arena-single-motor-system LIBRARY DESTINATION lib)
+
+add_library(arena-wsl-d3d12-lifetime SHARED src/wsl_d3d12_lifetime.cpp)
+target_compile_features(arena-wsl-d3d12-lifetime PRIVATE cxx_std_17)
+target_link_libraries(arena-wsl-d3d12-lifetime PRIVATE ${CMAKE_DL_LIBS})
+target_compile_options(arena-wsl-d3d12-lifetime PRIVATE -Wall -Wextra -Wpedantic)
+install(TARGETS arena-wsl-d3d12-lifetime LIBRARY DESTINATION lib)
+
+add_executable(visual_material_client src/visual_material_client.cpp)
+target_compile_features(visual_material_client PRIVATE cxx_std_17)
+target_link_libraries(visual_material_client PRIVATE gz-transport13::gz-transport13 gz-msgs10::gz-msgs10)
+target_compile_options(visual_material_client PRIVATE -Wall -Wextra -Wpedantic)
+install(TARGETS visual_material_client RUNTIME DESTINATION lib/${PROJECT_NAME})
+
+if(BUILD_TESTING)
+  enable_testing()
+  add_executable(test_drivetrain test/test_drivetrain.cpp)
+  target_compile_features(test_drivetrain PRIVATE cxx_std_17)
+  target_include_directories(test_drivetrain PRIVATE include)
+  add_test(NAME single_motor_equations COMMAND test_drivetrain)
+  add_executable(test_cad_steering test/test_cad_steering.cpp)
+  target_compile_features(test_cad_steering PRIVATE cxx_std_17)
+  target_include_directories(test_cad_steering PRIVATE include ../arena_vehicle_interface/portable)
+  add_test(NAME cad_steering_mapping COMMAND test_cad_steering)
+endif()
+
+install(
+  DIRECTORY worlds
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(PROGRAMS scripts/traffic_light_controller.py DESTINATION lib/${PROJECT_NAME})
+
+ament_package()

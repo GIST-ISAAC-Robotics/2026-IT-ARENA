@@ -1,0 +1,141 @@
+--- v1/test_crop_edge_runtime.py
++++ revision_fixture_v2/test_crop_edge_runtime_v2.py
+@@ -15,7 +15,7 @@
+ from arena_autonomy.local_follow import FollowConfig
+ from arena_autonomy.native_lidar_input import input_representation
+ 
+-A = Path(__file__).resolve().parent
++A = Path(__file__).resolve().parent.parent
+ ROOT = A.parents[3]
+ OLD = A.parent / 'runtime_launch_profile_r401_v1/prepared_v2/expected_header.json'
+ 
+@@ -53,12 +53,12 @@
+     follow, motion = make_controller(old)
+     expected = dict(old['follow_config'], crop_edge_component_trial=False)
+     assert asdict(follow.config) == expected
+-    assert not hasattr(follow.partial_policy, 'crop_edge_component_trial')
++    assert not hasattr(follow.normal.partial_policy, 'crop_edge_component_trial')
+     for enabled in (False, True):
+         follow, _ = make_controller(header(enabled))
+         assert asdict(follow.config) == header(enabled)['follow_config']
+         follow.reset()
+-        assert getattr(follow.partial_policy, 'crop_edge_component_trial', False) is enabled
++        assert getattr(follow.normal.partial_policy, 'crop_edge_component_trial', False) is enabled
+ 
+ 
+ @pytest.mark.parametrize('value', [0, 1, 'true', None])
+@@ -126,8 +126,8 @@
+     from arena_autonomy.scan_input import project_scan
+     from arena_autonomy.follow_trace import snapshot_call, restore_call, freeze, FollowTrace
+     one, motion = make_controller(header()); two, _ = make_controller(header())
+-    assert one.partial_policy is not two.partial_policy
+-    assert one.partial_policy.anchor_probe is not two.partial_policy.anchor_probe
++    assert one.normal.partial_policy is not two.normal.partial_policy
++    assert one.normal.partial_policy.anchor_probe is not two.normal.partial_policy.anchor_probe
+     history = MotionHistory(motion)
+     for series in (history.wheels, history.gyro):
+         series.times = [i*.005 for i in range(101)]; series.values = [0.]*101
+@@ -143,16 +143,16 @@
+     kwargs = dict(wheelbase=cfg.wheelbase_m, length=cfg.length_m, width=cfg.width_m)
+     warm = native_scan(motion.lidar_frame_id, first=.1, missing=False)
+     warm_points, _, _ = project_scan(warm, history, .2, timing_verified=True)
+-    one.partial_policy.evaluate(warm, warm_points, history, .2, 0., **kwargs)
+-    assert two.partial_policy.previous is None and two.partial_policy.last_source is None
+-    result = one.partial_policy.evaluate(scan, points, history, .3, 0., **kwargs)
++    one.normal.partial_policy.evaluate(warm, warm_points, history, .2, 0., **kwargs)
++    assert two.normal.partial_policy.previous is None and two.normal.partial_policy.last_source is None
++    result = one.normal.partial_policy.evaluate(scan, points, history, .3, 0., **kwargs)
+     assert 'crop_edge_component' in result
+-    two.partial_policy.evaluate(warm, warm_points, history, .2, 0., **kwargs)
+-    second = two.partial_policy.evaluate(scan, points, history, .3, 0., **kwargs)
++    two.normal.partial_policy.evaluate(warm, warm_points, history, .2, 0., **kwargs)
++    second = two.normal.partial_policy.evaluate(scan, points, history, .3, 0., **kwargs)
+     assert freeze(result) == freeze(second)
+-    one.partial_policy.reset()
+-    assert one.partial_policy.previous is None and two.partial_policy.previous is not None
+-    assert one.partial_policy.crop_edge_component_trial is True
++    one.normal.partial_policy.reset()
++    assert one.normal.partial_policy.previous is None and two.normal.partial_policy.previous is not None
++    assert one.normal.partial_policy.crop_edge_component_trial is True
+     trace = FollowTrace(str(tmp_path/'trace.jsonl'), motion, cfg)
+     trace.record_call(scan, history, .3, 11, 0., 'left', 0., .02, True, 0., [0., 0., result])
+     trace.close()
+@@ -168,7 +168,7 @@
+                    numeric_execution='native_v1')
+     evaluator = evaluator_factory(stage, request)
+     try:
+-        selected = evaluator.follow.partial_policy
++        selected = evaluator.follow.normal.partial_policy
+         evaluator.reset('WAIT_GREEN')
+         connection.send(dict(stage=stage, configured=evaluator.follow.config.crop_edge_component_trial,
+             selected=selected.crop_edge_component_trial, reset=selected.previous is None,
+--- v1/test_crop_edge_ros.py
++++ revision_fixture_v2/test_crop_edge_ros_v2.py
+@@ -4,7 +4,7 @@
+ import json
+ from pathlib import Path
+ 
+-from test_crop_edge_runtime import A, header, native_scan
++from test_crop_edge_runtime_v2 import A, header, native_scan
+ 
+ 
+ def test_actual_two_nodes_and_spawned_children_selected(tmp_path):
+@@ -42,10 +42,10 @@
+                 assert type(actual) is type(value) and actual == value, (name, key, actual, value)
+             assert asdict(owner.motion.history.config) == expected['motion_config']
+             assert owner.motion.verified and owner.motion.timing_policy == 'verified_only'
+-        assert node.follow.partial_policy.crop_edge_component_trial is True
++        assert node.follow.normal.partial_policy.crop_edge_component_trial is True
+         assert guard.partial_policy.crop_edge_component_trial is True
+-        assert node.follow.partial_policy is not guard.partial_policy
+-        assert node.follow.partial_policy.anchor_probe is not guard.partial_policy.anchor_probe
++        assert node.follow.normal.partial_policy is not guard.partial_policy
++        assert node.follow.normal.partial_policy.anchor_probe is not guard.partial_policy.anchor_probe
+         assert node.publisher.topic_name == '/drive' and guard.publisher.topic_name == '/drive/safe'
+         assert node.runtime_dual_selected and node.count_publishers('/actuation/tx') == 0
+         # 선택된 decoder→각 callback→snapshot 경로에서 원 source/frame/time/epoch 보존.
+@@ -66,10 +66,10 @@
+             assert info['epoch'] == 17 and restored == owner.scan
+             assert not owner.motion.history.wheels.values
+         assert guard.partial_policy.previous is None
+-        node.follow.partial_policy.latched = True
++        node.follow.normal.partial_policy.latched = True
+         assert guard.partial_policy.latched is False
+         node.follow.reset()
+-        assert node.follow.partial_policy.crop_edge_component_trial is True
++        assert node.follow.normal.partial_policy.crop_edge_component_trial is True
+         processes = [worker.plan.process, worker.current.process]
+         assert len({process.pid for process in processes}) == 2
+         assert all(process.is_alive() for process in processes)
+--- v1/run_verify.py
++++ revision_fixture_v2/run_verify.py
+@@ -10,7 +10,8 @@
+ import time
+ import xml.etree.ElementTree as ET
+ 
+-A = Path(__file__).resolve().parent
++R = Path(__file__).resolve().parent
++A = R.parent
+ ROOT = A.parents[3]
+ REGRESSION = ['test_partial_observation.py', 'test_g1_partial_policy.py',
+     'test_known_structure_policy.py', 'test_traffic_recovery_contract.py',
+@@ -19,7 +20,7 @@
+ 
+ 
+ def frozen_inputs():
+-    value = json.loads((A/'manifest.json').read_bytes())
++    value = json.loads((R/'manifest.json').read_bytes())
+     for item in value['files']:
+         actual = hashlib.sha256((ROOT/item['path']).read_bytes()).hexdigest()
+         assert actual == item['sha256'], 'frozen input changed: '+item['path']
+@@ -70,8 +71,8 @@
+                   sources=count, results=[], passed=False)
+     try:
+         groups = [('related', [str(ROOT/'tests'/name) for name in REGRESSION] +
+-                   [str(A/'test_crop_edge_runtime.py'), str(A/'test_launch_contract.py')]),
+-                  ('actual_ros', [str(A/'test_crop_edge_ros.py')])]
++                   [str(R/'test_crop_edge_runtime_v2.py'), str(A/'test_launch_contract.py')]),
++                  ('actual_ros', [str(R/'test_crop_edge_ros_v2.py')])]
+         for label, files in groups:
+             command = [sys.executable, '-B', '-m', 'pytest', '-q', '-s', '-p', 'no:cacheprovider',
+                        '--junitxml='+str(destination/(label+'.xml')), *files]

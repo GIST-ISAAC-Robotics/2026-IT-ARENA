@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import signal
@@ -17,6 +18,7 @@ A=Path(__file__).resolve().parent
 def parser():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--vehicle-config',type=Path,default=None,help='선택 차량 YAML. 생략 시 기존 비구동 preview 기하 유지')
     p.add_argument('--imu-port',required=True)
     p.add_argument('--c1-port',required=True)
     p.add_argument('--c1-executable',type=Path,required=True)
@@ -24,6 +26,8 @@ def parser():
     p.add_argument('--seconds',type=float,default=20.)
     p.add_argument('--imu-source',choices=('probe','sensor-link'),default='probe')
     p.add_argument('--camera',action='store_true')
+    p.add_argument('--camera-publish-hz',type=float,default=None,
+        help='선택 카메라 ROS 발행 상한. 취득60Hz와 기본 전체 발행은 유지')
     p.add_argument('--plan-only',action='store_true',help='장치/ROS를 열지 않고 실행 명령만 출력')
     return p
 
@@ -32,6 +36,11 @@ def commands(args,root=ROOT,node_script=A/'probe_g1_hardware_shadow.py',camera_s
     base=[sys.executable,'-B']
     node=base+[str(node_script),'--output',str(args.output/'node'),
         '--seconds',str(args.seconds+20.),'--estimated-time']
+    if getattr(args, 'vehicle_config', None) is not None:
+        # 선택 YAML은 장치 점유 검사/자식 실행 전에 검증한다. 생략 시 기존 경로 그대로다.
+        from probe_g1_hardware_shadow import vehicle_geometry_override
+        vehicle_geometry_override(args)
+        node += ['--vehicle-config', str(args.vehicle_config.expanduser().resolve(strict=True))]
     if args.camera:node += ['--camera']
     imu_name='bridge_esp32_imu_preview.py' if args.imu_source=='probe' else 'bridge_sensor_link_preview.py'
     imu=base+[str(root/'scripts'/imu_name),'--port',args.imu_port,'--imu-clock','fifo_tick',
@@ -43,6 +52,8 @@ def commands(args,root=ROOT,node_script=A/'probe_g1_hardware_shadow.py',camera_s
         '--seconds',str(args.seconds),'--output',str(args.output/'c1')]}
     if args.camera:result['camera']=base+[str(camera_script),'--seconds',str(args.seconds),
                                         '--output',str(args.output/'camera')]
+    if args.camera and getattr(args,'camera_publish_hz',None) is not None:
+        result['camera']+=['--publish-hz',str(args.camera_publish_hz)]
     return result
 
 
@@ -62,6 +73,10 @@ def ports_free(ports):
 def main():
     p=parser();args=p.parse_args()
     if not 1<=args.seconds<=60:p.error('seconds outside 1..60')
+    if args.camera_publish_hz is not None:
+        if not args.camera:p.error('camera-publish-hz requires camera')
+        if not math.isfinite(args.camera_publish_hz) or not 1<=args.camera_publish_hz<=60:
+            p.error('camera-publish-hz outside finite 1..60')
     if len(args.c1_sha256)!=64 or any(c not in '0123456789abcdef' for c in args.c1_sha256):
         p.error('lowercase SHA256 required')
     args.output=args.output.resolve();cmd=commands(args)

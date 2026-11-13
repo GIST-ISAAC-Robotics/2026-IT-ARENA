@@ -1,0 +1,520 @@
+"""B0183 신호/분기 인식 + C1 지역 경로 추종. 기존 벽 추종과 선택 가능."""
+import json
+import math
+import time
+
+from arena_autonomy.local_path import mask_scan, pursuit_command
+from arena_autonomy.core import marker_ids
+from arena_autonomy.wall_follow import WallFollow, stamp_seconds
+from arena_autonomy.vision_process import VisionPipeline, VisionProcess
+from arena_vehicle_interface.node_lifecycle import run_node
+from arena_autonomy.local_follow import FollowConfig, LocalFollow
+from arena_autonomy.scene_motion import motion_scene
+from arena_autonomy.lidar_motion import MotionUnavailable
+
+
+# 경로는 맞지만 실제 앞차·점유 때문에 멈춘 판단. 경로 계획/독립 보호가 처리할 상황이므로 재개를 막지 않는다.
+ROUTE_HOLDS = ('follow_gap_hold',)
+
+
+class LocalPursuit(WallFollow):
+    # 같은 경기 재개의 입력 경계. 수신 시각이 아니라 원천 취득 시각으로 비교한다.
+    input_floor_s = -math.inf
+    resume_route = None
+    side_marker = None
+    scans_before_boundary = 0
+
+    def __init__(self):
+        super().__init__("local_pursuit")
+        trial_clock = self.get_parameter('use_sim_time').value or self.hardware_shadow
+        self.rear_blind_half_angle = float(self.declare_parameter('rear_blind_half_angle_deg', 30.).value)
+        if not 0 <= self.rear_blind_half_angle <= 80:
+            raise ValueError('rear_blind_half_angle_deg must be within 0..80')
+        # 시험 전용 장착 구조 각도(JSON). 기본 ''이면 기존 후방 반각 실수 그대로.
+        from arena_autonomy.local_scene import blind_parameter
+        self.rear_blind_half_angle = blind_parameter(self.rear_blind_half_angle,
+            str(self.declare_parameter('lidar_blind_sectors_json', '').value))
+        # 시험 전용 알려진 구조 가림 정책. 기본 off이면 FollowConfig 기본값과 같다.
+        structure_policy = str(self.declare_parameter('known_structure_policy', 'off').value)
+        structure_sectors = str(self.get_parameter('lidar_blind_sectors_json').value) if structure_policy != 'off' else ''
+        if self.motion is None:
+            raise ValueError("local_pursuit는 엔코더/IMU 운동 보정이 필요합니다.")
+        self.g1_enabled = bool(self.declare_parameter('g1_follow_enabled', False).value)
+        self.r0_plus_enabled = bool(self.declare_parameter('r0_plus_enabled', False).value)
+        self.m3_execution_enabled = bool(self.declare_parameter('g1_m3_execution_trial', False).value)
+        m3_command_fallback = bool(self.declare_parameter('g1_m3_command_fallback', False).value)
+        if m3_command_fallback and not self.m3_execution_enabled:
+            raise ValueError('M3 command fallback requires explicit M3 trial')
+        m3_release_to_baseline = bool(self.declare_parameter('g1_m3_release_to_baseline', False).value)
+        if m3_release_to_baseline and not self.m3_execution_enabled:
+            raise ValueError('M3 baseline release requires explicit M3 trial')
+        m3_small_center_straight = bool(self.declare_parameter('g1_m3_small_center_straight', False).value)
+        if m3_small_center_straight and not self.m3_execution_enabled:
+            raise ValueError('M3 small center straight requires explicit M3 trial')
+        m3_surface_commitment = bool(self.declare_parameter('g1_m3_straight_surface_commitment', False).value)
+        if m3_surface_commitment and not self.m3_execution_enabled:
+            raise ValueError('M3 straight surface commitment requires explicit M3 trial')
+        m3_departure_options = {name: bool(self.declare_parameter('g1_m3_'+name, False).value)
+                                for name in ('rounded_occupancy', 'straight_with_threat', 'defer_center_on_straight')}
+        if any(m3_departure_options.values()) and not self.m3_execution_enabled:
+            raise ValueError('M3 departure options require explicit M3 trial')
+        if self.g1_enabled and self.r0_plus_enabled:
+            raise ValueError('G1 and R0+ are mutually exclusive')
+        trace_path = str(self.declare_parameter('g1_trace_path', '').value)
+        if self.m3_execution_enabled and (not self.g1_enabled or self.r0_plus_enabled
+                or not trial_clock or not trace_path):
+            raise ValueError('M3 execution trial requires explicit G1, simulation time and decision recording')
+        boundary_mode = str(self.declare_parameter('g1_boundary_evidence_mode', 'connected').value)
+        occupancy_mode = str(self.declare_parameter('g1_occupancy_timing_mode', 'oldest').value)
+        corridor_fallback = bool(self.declare_parameter('g1_corridor_fallback_enabled', False).value)
+        short_prefix = bool(self.declare_parameter('g1_short_boundary_prefix_enabled', False).value)
+        if short_prefix and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled
+                or not trial_clock or not trace_path):
+            raise ValueError('short boundary prefix requires recorded G1 simulation without R0+ or M3')
+        recent_observation = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
+        partial_observation = str(self.declare_parameter('partial_observation_policy','strict').value)
+        signed_motion = str(self.declare_parameter('signed_motion_policy', 'forward_drive').value)
+        solo_route = bool(self.declare_parameter('g1_solo_route_only', False).value)
+        solo_headway = float(self.declare_parameter('g1_solo_headway_s', .8).value)
+        if not .5 <= solo_headway <= .8 or (solo_headway != .8 and not solo_route):
+            raise ValueError('changed headway requires solo route and a 0.5-0.8 s trial range')
+        if solo_route and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled
+                or not trial_clock or not trace_path):
+            raise ValueError('solo route requires recorded G1 simulation without R0+ or M3')
+        parallel_hold = bool(self.declare_parameter('g1_parallel_hold_trial', False).value)
+        pass_release = bool(self.declare_parameter('g1_pass_release_trial', False).value)
+        if pass_release and not parallel_hold:
+            raise ValueError('pass release requires explicit parallel hold trial')
+        guard_curve = bool(self.declare_parameter('g1_guard_curve_trial', False).value)
+        guard_policy = str(self.declare_parameter('g1_guard_observation_policy', 'original_v1').value)
+        released_body_gap = bool(self.declare_parameter('g1_released_body_gap_trial', False).value)
+        traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
+        traffic_path_recovery = bool(self.declare_parameter('g1_traffic_path_recovery_trial', False).value)
+        if traffic_path_recovery and (not traffic_recovery or not corridor_fallback):
+            raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
+        rear_lane_keep = bool(self.declare_parameter('g1_rear_lane_keep_trial', False).value)
+        rear_lane_policy = str(self.declare_parameter('g1_rear_lane_keep_policy', 'timed').value)
+        if rear_lane_keep and not traffic_path_recovery:
+            raise ValueError('rear lane keep trial requires explicit traffic path recovery')
+        if traffic_recovery and not guard_curve:
+            raise ValueError('traffic recovery requires explicit guard curve trial')
+        if guard_curve and not pass_release:
+            raise ValueError('guard curve trial requires explicit pass release trial')
+        if parallel_hold and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled
+                or not trial_clock or not trace_path):
+            raise ValueError('parallel hold requires recorded G1 simulation without R0+ or M3')
+        if partial_observation != 'strict' and (self.r0_plus_enabled or self.m3_execution_enabled):
+            raise ValueError('partial observation is not yet integrated with R0+ or M3')
+        if self.g1_enabled and partial_observation not in ('strict','bounded_local_v2','bounded_local_v3','bounded_local_v4'):
+            raise ValueError('G1 partial observation supports bounded_local_v2/v3/v4')
+        if structure_policy != 'off' and (not self.g1_enabled or self.r0_plus_enabled or self.m3_execution_enabled):
+            raise ValueError('known structure policy requires G1 without R0+ or M3')
+        if self.m3_execution_enabled and (occupancy_mode != 'per_ray_candidate' or recent_observation):
+            raise ValueError('M3 execution trial requires per-ray occupancy and no recent observation')
+        if recent_observation and not self.g1_enabled:
+            raise ValueError('recent observation requires explicit G1 activation')
+        if corridor_fallback and not self.g1_enabled:
+            raise ValueError('corridor fallback requires explicit G1 activation')
+        if occupancy_mode not in ('oldest', 'per_ray_candidate') or (not (self.g1_enabled or self.r0_plus_enabled) and occupancy_mode != 'oldest'):
+            raise ValueError('per-ray occupancy candidate requires G1')
+        if boundary_mode not in ('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate') or (not self.g1_enabled and boundary_mode != 'connected'):
+            raise ValueError('boundary candidate requires G1')
+        if (self.g1_enabled or self.r0_plus_enabled) and (self.motion.mode != 'both'
+                or (not self.motion.verified and not self.hardware_shadow)):
+            raise ValueError('G1은 검증된 순차 취득과 both 운동 보정이 필요합니다.')
+        follow_type = LocalFollow
+        if self.r0_plus_enabled:
+            from arena_autonomy.r0_plus import R0Plus
+            follow_type = R0Plus
+        length = float(self.declare_parameter('vehicle_length_m', .20).value)
+        width = float(self.declare_parameter('vehicle_width_m', .15).value)
+        if not all(math.isfinite(v) and v > 0 for v in (length, width)):
+            raise ValueError('planning vehicle dimensions must be finite and positive')
+        self.follow = follow_type(FollowConfig(
+            length_m=length, width_m=width,
+            signed_motion_policy=signed_motion,
+            solo_route_only=solo_route,
+            corridor_arc_agreement=bool(self.declare_parameter('g1_corridor_arc_agreement',False).value),
+            ray_wall_continuity=bool(self.declare_parameter('g1_ray_wall_continuity',False).value),
+            piecewise_wall_trial=bool(self.declare_parameter('g1_piecewise_wall_trial',False).value),
+            solo_straight_budget_trial=bool(self.declare_parameter('g1_solo_straight_budget_trial',False).value),
+            headway_s=solo_headway,
+            partial_observation_policy=partial_observation,
+            solo_corner_approach_trial=bool(self.declare_parameter('g1_solo_corner_approach_trial',False).value),
+            oblique_gap_trial=bool(self.declare_parameter('g1_oblique_gap_trial',False).value),
+            known_structure_policy=structure_policy,
+            known_structure_sectors_json=structure_sectors,
+            parallel_hold_trial=parallel_hold,
+            pass_release_trial=pass_release,
+            guard_curve_trial=guard_curve,
+            guard_observation_policy=guard_policy,
+            released_body_gap_trial=released_body_gap,
+            traffic_recovery_trial=traffic_recovery,
+            traffic_path_recovery_trial=traffic_path_recovery,
+            rear_lane_keep_trial=rear_lane_keep,
+            rear_lane_keep_policy=rear_lane_policy,
+            corridor_fallback_enabled=corridor_fallback,
+            short_boundary_prefix_enabled=short_prefix,
+            recent_observation_enabled=recent_observation,
+            boundary_evidence_mode=boundary_mode,
+            occupancy_timing_mode=occupancy_mode,
+            wheelbase_m=float(self.settings['wheelbase_m']),
+            max_steering_rad=float(self.settings['max_steering_angle_rad']),
+            max_speed_mps=min(1., float(self.settings['max_speed_mps'])),
+            open_route_speed_mps=float(self.declare_parameter('g1_open_route_speed_mps',0.).value),
+            blend_open_speed_by_length=bool(self.declare_parameter('g1_blend_open_speed_by_length',False).value),
+            preview_turn_speed=bool(self.declare_parameter('g1_preview_turn_speed',False).value),
+            preview_above_base_speed=bool(self.declare_parameter('g1_preview_above_base_speed',False).value),
+            boundary_bridge=bool(self.declare_parameter('g1_boundary_bridge',False).value),
+            low_speed_arc_reacquire=bool(self.declare_parameter('g1_low_speed_arc_reacquire',False).value),
+            standing_wall_reacquire=bool(self.declare_parameter('g1_standing_wall_reacquire',False).value),
+            narrow_occluder_bridge=bool(self.declare_parameter('g1_narrow_occluder_bridge',False).value),
+            junction_continuity=bool(self.declare_parameter('g1_junction_continuity',False).value),
+            expiry_route_reference_trial=bool(self.declare_parameter('g1_expiry_route_reference_trial',False).value),
+            traffic_boundary_refresh_trial=bool(self.declare_parameter('g1_traffic_boundary_refresh_trial',False).value),
+            lateral_acceleration_mps2=float(self.settings['lateral_acceleration_limit_mps2']),
+            wall_offset_m=float(self.settings['target_wall_distance_m']),
+            road_half_m=float(self.declare_parameter('g1_road_half_m', .225).value))) if (self.g1_enabled or self.r0_plus_enabled) else None
+        if self.m3_execution_enabled:
+            from arena_autonomy.m3_execution_trial import M3ExecutionFollow, ExecutionConfig
+            self.follow = M3ExecutionFollow(self.follow.config,
+                ExecutionConfig(command_fallback=m3_command_fallback, release_to_baseline=m3_release_to_baseline,
+                                small_center_straight=m3_small_center_straight,
+                                straight_surface_commitment=m3_surface_commitment, **m3_departure_options),
+                allow_simulation_trial=True)
+        self.vision_execution = str(self.declare_parameter('vision_execution', 'process').value)
+        if self.vision_execution not in ('inline', 'process'):
+            raise ValueError('vision_execution must be inline or process')
+        self.start_signal_mode = str(self.declare_parameter('start_signal_mode', 'temporary_3light').value)
+        if self.start_signal_mode not in ('temporary_3light', 'official_4red_candidate', 'official_4red_local_candidate',
+                                          'official_marker_late_candidate'):
+            raise ValueError('unsupported start_signal_mode')
+        if self.start_signal_mode != 'temporary_3light' and self.vision_execution != 'process':
+            raise ValueError('official start candidate requires process vision')
+        self.race_control_mode = str(self.declare_parameter('race_control_mode', 'legacy').value)
+        if self.hardware_shadow and self.race_control_mode != 'legacy':
+            raise ValueError('hardware shadow has no B3/actuation authorization')
+        if self.race_control_mode not in ('legacy', 'b3_candidate'):
+            raise ValueError('unsupported race_control_mode')
+        development = bool(self.declare_parameter('development_speed_limit_enabled', False).value)
+        initial_limit = float(self.declare_parameter('development_speed_limit_mps', .3).value)
+        if development and self.race_control_mode != 'b3_candidate':
+            raise ValueError('development speed limit requires B3 operator state')
+        if bool(self.declare_parameter('g1_marker_late_start_trial', False).value):
+            if self.start_signal_mode != 'official_4red_local_candidate':
+                raise ValueError('marker late start trial requires the official local signal')
+            self.start_signal_mode = 'official_marker_late_candidate'
+        if self.start_signal_mode == 'official_marker_late_candidate' and self.race_control_mode != 'b3_candidate':
+            raise ValueError('marker late start requires B3 operator preparation boundary')
+        if self.race_control_mode != 'legacy' and self.vision_execution != 'process':
+            raise ValueError('B3 race supervisor requires process vision generations')
+        vehicle_observer_enabled = bool(self.declare_parameter('vehicle_marker_observer_enabled', False).value)
+        vehicle_ids_text = str(self.declare_parameter('vehicle_marker_ids', '').value)
+        vehicle_ids = ()
+        if vehicle_observer_enabled:
+            from arena_autonomy.vehicle_markers import participant_ids
+            if self.vision_execution != 'process':
+                raise ValueError('vehicle marker observer requires process vision')
+            vehicle_ids = participant_ids([int(value.strip()) for value in vehicle_ids_text.split(',') if value.strip()])
+        self.vision_pipeline = None
+        if self.vision_execution == 'process':
+            self.vision_pipeline = VisionPipeline(VisionProcess(),
+                image_timeout=self.settings['image_timeout_s'],
+                wall_timeout=self.settings['sensor_wall_timeout_s'], signal_mode=self.start_signal_mode,
+                vehicle_marker_ids=vehicle_ids)
+        self.race = None
+        if self.race_control_mode == 'b3_candidate':
+            # 기본 legacy에서는 이 구독/발행을 만들지 않는다. MCU 상태는 판정 입력이며 명령을 보내지 않는다.
+            from std_msgs.msg import String
+            from arena_autonomy.race_session import McuObserver, RaceSupervisor
+            self.race = RaceSupervisor(self.vision_pipeline, image_max_age_s=self.settings['image_timeout_s'],
+                mcu=McuObserver(wall_timeout_s=self.settings['sensor_wall_timeout_s']), now_s=self.now_s(),
+                resume_wall_timeout_s=3*self.settings['sensor_wall_timeout_s'])
+            if development:
+                self.race.configure_development_speed_limit(float(self.settings['max_speed_mps']), initial_limit)
+            self.race_result_publisher = self.create_publisher(String, '/race/command_result', 10)
+            self.create_subscription(String, '/actuation/status', self.on_mcu_status, 10)
+            self.create_subscription(String, '/race/command', self.on_race_command, 10)
+            self.create_subscription(String, '/race/operator_link', self.on_operator_link, 10)
+            self.input_boundary_publisher = self.create_publisher(String, '/race/input_boundary', 10)
+            self.get_logger().info('B3 race supervisor candidate: session='+self.race.session)
+        self.follow_trace = self.create_follow_trace(trace_path)
+
+    def create_follow_trace(self, trace_path):
+        """기본 기록 생성. 별도 명시 실행 파일은 제어기/기록 형식을 함께 선택한다."""
+        if trace_path:
+            if self.follow is None:
+                raise ValueError('decision trace requires explicit G1 or R0+ activation')
+            from arena_autonomy.follow_trace import FollowTrace, controller_mode
+            return FollowTrace(trace_path, self.motion.history.config, self.follow.config,
+                mode=controller_mode(self.follow), execution_config=getattr(self.follow, 'execution', None))
+        return None
+
+    def reset_follow(self, reason):
+        self.follow.reset()
+        if getattr(self, 'follow_trace', None) is not None:
+            self.follow_trace.emit('reset', {'reason': reason})
+
+    def on_image(self, message):
+        if self.vision_pipeline is None:
+            return super().on_image(message)
+        self.vision_pipeline.offer(message)
+
+    def on_reset(self, request, response):
+        if getattr(self, 'race', None) is not None:
+            # 구형 reset은 B3 래치를 풀 수 없다. 새 경기와 새 개입 래치를 함께 적용한다.
+            response = super().on_reset(request, response)
+            self.race_reset(lambda: self.race.legacy_reset(self.now_s()), 'legacy_reset')
+            response.message = ('B3: new race and latched intervention %d; acknowledge, MCU re-ARM and '
+                                'new visual sequence required' % self.race.permission.intervention)
+            return response
+        if getattr(self, 'follow', None) is not None:
+            self.reset_follow('autonomy_reset')
+        if self.vision_pipeline is not None:
+            self.vision_pipeline.reset()
+        return super().on_reset(request, response)
+
+    def race_reset(self, operation, reason):
+        """경기/영상 세대와 계획기 기억·신호 참조를 같은 콜백에서 바꾼다."""
+        result = operation()
+        if getattr(self, 'follow', None) is not None:
+            self.reset_follow(reason)
+        self.signal = self.vision_pipeline.signal
+        self.ids = []
+        self.input_floor_s = -math.inf
+        self.resume_route = None
+        self.stop()
+        return result
+
+    def begin_input_boundary(self, boundary_s, reason):
+        """같은 경기 입력 경계. 경기/출발 사실과 논리적 기준 벽은 두고 기하·운동·영상 이력만 버린다.
+
+        영상 세대는 RaceSupervisor가 같은 호출에서 올린다. 경계 전 취득 입력은 늦게 도착해도 쓰지 않는다.
+        """
+        from std_msgs.msg import String
+        self.input_floor_s = boundary_s
+        self.scan, self.scan_wall_time = None, 0.
+        self.rgb_stamp, self.image_wall_time = None, 0.
+        self.ids = []
+        self.resume_route = None
+        self.motion.begin_input_boundary(boundary_s)
+        if getattr(self, 'follow', None) is not None:
+            self.reset_follow(reason)
+        self.stop()
+        self.input_boundary_publisher.publish(String(data=json.dumps(dict(boundary_s=boundary_s, reason=reason))))
+
+    def on_enable(self, request, response):
+        if getattr(self, 'race', None) is None:
+            return super().on_enable(request, response)
+        if request.data:
+            response.success = False
+            response.message = 'B3: enable cannot release a race latch; use /race/command acknowledge'
+            return response
+        token = self.race.stop('autonomy_enable_false', self.now_s())
+        self.stop()
+        response.success = True
+        response.message = 'B3 policy stop latched: intervention %d (MCU STOP is separate)' % token
+        return response
+
+    def on_mcu_status(self, message):
+        try:
+            data = json.loads(message.data)
+        except ValueError:
+            data = None
+        self.race.observe_mcu(data, self.now_s(), time.monotonic())
+
+    def on_race_command(self, message):
+        from std_msgs.msg import String
+        try:
+            payload = json.loads(message.data)
+        except ValueError:
+            payload = None
+        previous = self.race.permission.race_epoch
+        manual = isinstance(payload, dict) and payload.get('op') == 'manual_visual_start'
+        options = {'manual_start_check': self.manual_visual_start_waiting} if manual else {}
+        result = self.race.handle_command(payload, self.now_s(), time.monotonic(), **options)
+        if result['accepted'] and self.race.permission.race_epoch != previous:
+            # handle_command가 경기/영상 세대를 바꿨다. 계획기 기억과 신호 참조도 같은 콜백에서 정리한다.
+            self.race_reset(lambda: None, 'new_race')
+        elif result['accepted'] and result['op'] == 'stop':
+            self.stop()
+        elif result['accepted'] and result['op'] in ('recovery_reset', 'resume_start', 'restore_race'):
+            if result['op'] == 'restore_race':
+                self.side, self.side_marker = result['side'], None
+            self.begin_input_boundary(result['boundary_s'], result['op'])
+        self.race_result_publisher.publish(String(data=json.dumps(result, ensure_ascii=False, allow_nan=False)))
+
+    def manual_visual_start_waiting(self):
+        """수신 시 기존 WAIT_GREEN 조건을 다시 본다. 운동 투영/계획/MCU ARM을 실행하지 않는다."""
+        now, wall = self.now_s(), time.monotonic()
+        if not self.enabled or self.last_status != 'WAIT_GREEN' or now < self.last_control_time:
+            return False
+        # WallFollow.control의 WAIT_GREEN 앞 센서 관문과 같은 한도를 재사용한다.
+        scan_fresh = (self.scan is not None and
+                      0 <= now-stamp_seconds(self.scan.header.stamp) < self.settings['scan_timeout_s'])
+        image_fresh = self.rgb_stamp is not None and 0 <= now-self.rgb_stamp < self.settings['image_timeout_s']
+        timeout = self.settings.get('sensor_wall_timeout_s', 3.)
+        wall_fresh = wall-self.scan_wall_time < timeout and wall-self.image_wall_time < timeout
+        return bool(scan_fresh and image_fresh and wall_fresh)
+
+    def on_operator_link(self, message):
+        self.race.operator_link(message.data, time.monotonic())
+
+    def resume_inputs(self, now):
+        """START 경계 뒤 원천 시각의 입력만 준비 완료로 센다. 영상은 처리까지 끝난 프레임만 인정한다."""
+        boundary = self.race.resume['boundary_s']
+        history = self.motion.history
+        return dict(scan=self.scan is not None and boundary <= stamp_seconds(self.scan.header.stamp)
+                         and now-stamp_seconds(self.scan.header.stamp) < self.settings['scan_timeout_s'],
+                    rgb=self.rgb_stamp is not None and self.rgb_stamp >= boundary,
+                    gyro=bool(len(history.gyro.times)) and history.gyro.times[-1] >= boundary,
+                    encoder=bool(len(history.wheels.times)) and history.wheels.times[-1] >= boundary)
+
+    def input_snapshot(self, now):
+        """표시용 입력 나이. 판정에 쓰지 않으며 값이 없으면 None으로 남긴다."""
+        history = self.motion.history
+        scan_stamp = None if self.scan is None else stamp_seconds(self.scan.header.stamp)
+        gyro = history.gyro.times[-1] if len(history.gyro.times) else None
+        encoder = history.wheels.times[-1] if len(history.wheels.times) else None
+        ages = dict(scan=scan_stamp, rgb=self.rgb_stamp, gyro=gyro, encoder=encoder)
+        return dict(age_s={key: None if value is None else now-value for key, value in ages.items()},
+                    floor_s=None if math.isinf(self.input_floor_s) else self.input_floor_s,
+                    side_marker=self.side_marker, route=self.resume_route,
+                    before_boundary=dict(scan=self.scans_before_boundary,
+                                         rgb=self.vision_pipeline.stats['before_boundary']),
+                    gyro_rejected=self.motion.last_gyro_rejection)
+
+    def motion_gate(self, status):
+        """B3 선택형에서만 호출된다. 허가는 /drive 요청 상한이며 독립 보호층·MCU가 따로 거절한다."""
+        resume = getattr(self.race, 'resume', None)
+        if resume is not None:
+            status['state'] = 'RESUME_PREPARING'
+            # 경로만 계산한다. command()가 이 구간의 출력을 0으로 고정한다.
+            return not resume['missing']
+        decision = self.race.decide(sensors_ready=True, now_s=status['sim_time_s'], wall_s=time.monotonic())
+        if not decision['allowed']:
+            status['state'] = {'wait_visual_start': 'WAIT_GREEN',
+                               'actuator_not_ready': 'ACTUATOR_WAIT'}.get(decision['reason'], 'RACE_LATCHED')
+        return decision['allowed']
+
+    def control(self):
+        if self.vision_pipeline is not None:
+            # 시계가 되감겼으면 결과를 읽기 전에 이전 세대를 무효화한다.
+            if self.now_s() < self.last_control_time:
+                from std_srvs.srv import Trigger
+                if getattr(self, 'race', None) is not None:
+                    from arena_autonomy.wall_follow import WallFollow
+                    WallFollow.on_reset(self, None, Trigger.Response())
+                    self.race_reset(lambda: self.race.clock_reset(self.now_s()), 'clock_reset')
+                else:
+                    was_enabled = self.enabled
+                    self.on_reset(None, Trigger.Response())
+                    self.enabled = was_enabled
+                self.last_control_time = float('-inf')
+            result = self.timing.call('vision_poll', self.vision_pipeline.pump, self.now_s())
+            if getattr(self, 'race', None) is not None:
+                self.race.poll_faults(self.now_s())
+                if result is not None and not self.vision_pipeline.fault:
+                    self.race.observe_vision(result, self.vision_pipeline.epoch, self.now_s())
+                if self.race.resume is not None:
+                    now, phase = self.now_s(), self.race.resume['phase']
+                    self.race.advance_resume(now, time.monotonic(), inputs=self.resume_inputs(now),
+                        route=None if self.resume_route is None or
+                        now-self.resume_route['stamp_s'] >= self.settings['scan_timeout_s'] else self.resume_route)
+                    if self.race.resume is None or self.race.resume['phase'] != phase:
+                        self.last_status_time = -math.inf  # 어댑터가 MCU 단계를 기다리지 않게 바로 알린다.
+            if self.vision_pipeline.fault:
+                self.rgb_stamp = None
+            elif result is not None:
+                self.signal = self.vision_pipeline.signal
+                self.ids = list(self.vision_pipeline.ids)
+                self.rgb_stamp = result['stamp']
+                self.image_wall_time = result['received']
+                if getattr(self, 'race', None) is None or self.race.markers_apply():
+                    if 30 in self.ids:
+                        self.side, self.side_marker = 'right', 30
+                    elif any(marker in self.ids for marker in (0, 20, 45)):
+                        self.side = 'left'
+                        self.side_marker = next(marker for marker in (0, 20, 45) if marker in self.ids)
+        result = super().control()
+        if getattr(self, 'follow', None) is not None and self.last_status in (
+                'WAIT_GREEN', 'DISABLED', 'SENSOR_STOP', 'MOTION_STOP', 'SCAN_INVALID',
+                'RACE_LATCHED', 'ACTUATOR_WAIT'):
+            self.reset_follow(self.last_status)
+        return result
+
+    def destroy_node(self):
+        # 영상 정리를 기다리기 전에 주행 출력은 먼저 정지한다.
+        self.stop()
+        if getattr(self, 'follow_trace', None) is not None:
+            try:
+                self.follow_trace.close()
+            except Exception as error:
+                self.get_logger().warning('G1 trace close failed: '+str(error))
+        if self.vision_pipeline is not None:
+            cleanup = self.vision_pipeline.close()
+            if cleanup and (cleanup['forced'] or cleanup['exitcode'] != 0):
+                self.get_logger().warning('Vision process cleanup: '+str(cleanup))
+        return super().destroy_node()
+
+    def on_scan(self, message):
+        if stamp_seconds(message.header.stamp) < self.input_floor_s:
+            self.scans_before_boundary += 1
+            return
+        super().on_scan(mask_scan(message, self.rear_blind_half_angle))
+
+    def detect_markers(self, rgb):
+        return sorted(set(marker_ids(rgb, .02)))
+
+    def command(self, points):
+        # 명령 속도가 아니라 엔코더 관측으로 선행 거리를 정한다.
+        speed = self.motion.history.wheels.values[-1] if self.motion.history.wheels.values else 0.
+        if getattr(self, 'follow', None) is not None:
+            try:
+                scene = motion_scene(self.scan, self.motion.history,
+                    self.motion.last_meta['reference_stamp_s'], timing_verified=self.motion.verified,
+                    epoch=self.motion.counts['resets'], rear_half_angle_deg=self.rear_blind_half_angle,
+                    timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'))
+                output = self.follow.command(scene, self.motion.history, speed, self.side,
+                                             self.last_steering, 1/self.settings['control_rate_hz'],
+                                             **({'raw_scan':self.scan} if self.follow.config.partial_observation_policy!='strict' else {}))
+            except (MotionUnavailable, ValueError) as error:
+                self.follow.reset()
+                from arena_autonomy.follow_trace import controller_mode
+                output = 0., 0., {'reason': 'follow_input_stop', 'behavior': 'HOLD',
+                                 'input_error': str(error), 'mode': controller_mode(self.follow)}
+            if getattr(self, 'follow_trace', None) is not None:
+                self.follow_trace.record_call(self.scan, self.motion.history,
+                    self.motion.last_meta.get('reference_stamp_s'), self.motion.counts['resets'],
+                    speed, self.side, self.last_steering, 1/self.settings['control_rate_hz'],
+                    self.motion.verified, self.rear_blind_half_angle, output,
+                    timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'))
+            return self.prepared_output(output)
+        return self.prepared_output(pursuit_command(points, self.side, speed,
+                               self.settings["wheelbase_m"], self.settings["max_steering_angle_rad"],
+                               self.settings["max_speed_mps"],
+                               self.settings["lateral_acceleration_limit_mps2"],
+                               self.settings["target_wall_distance_m"],
+                               self.motion.last_meta.get('oldest_observation_age_s', .2)))
+
+    def prepared_output(self, output):
+        """START 준비 중에는 계획 결과로 경로 성립만 확인하고 출력은 0으로 둔다."""
+        if getattr(self, 'race', None) is None or self.race.resume is None:
+            return output
+        speed, steering, detail = output
+        reason = detail.get('reason')
+        route_detail = detail
+        # G1/G2 FOLLOW는 원래 경로 판단을 normal에 보존한다. 앞차 대기를
+        # 경로 상실로 오인하지 않되 BYPASS/REACQUIRE의 과거 normal은 쓰지 않는다.
+        if reason == 'handoff_follow' and detail.get('handoff_state') == 'FOLLOW':
+            route_detail = detail.get('normal') or {}
+        route_reason = route_detail.get('reason')
+        self.resume_route = dict(ready=bool(speed > 0 or route_reason in ROUTE_HOLDS), reason=reason,
+                                 route_reason=route_reason,
+                                 planned_speed_mps=float(speed), preferred_wall=self.side,
+                                 path_wall=route_detail.get('path_wall'), stamp_s=self.now_s())
+        return 0., steering, {**detail, 'reason': 'resume_preparing', 'underlying_reason': reason}
+
+
+def main(args=None):
+    run_node(LocalPursuit, args=args)

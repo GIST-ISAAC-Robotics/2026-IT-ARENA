@@ -1,0 +1,22 @@
+{"calls": 0, "resets": 1, "output_equal": 0, "state_equal": 0, "band_equal": 0, "band_calls": 0, "band_samples": 0, "failures": [], "error": "TypeError: unsupported trace value: set", "changed_sources": [], "backend": "native_v1", "verify_arrays": true, "performance_measurement_valid": false, "all": {"n": 0, "band_calls": 0, "baseline_p50_ms": null, "baseline_p95_ms": null, "baseline_total_ms": 0, "candidate_p50_ms": null, "candidate_p95_ms": null, "candidate_total_ms": 0}, "released": {"n": 0, "band_calls": 0, "baseline_p50_ms": null, "baseline_p95_ms": null, "baseline_total_ms": 0, "candidate_p50_ms": null, "candidate_p95_ms": null, "candidate_total_ms": 0}, "released_total_reduction_fraction": null, "original_record_full_mismatches": [], "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39", "elapsed_s": 0.7122328819998529, "scope": "paired current-controller serial replay; no current stage/ROS/devices/deadline proof"}
+Traceback (most recent call last):
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/released_band_r379_v1/compare.py", line 187, in <module>
+    main()
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/released_band_r379_v1/compare.py", line 122, in main
+    if encoded(selector_state(baseline)) != encoded(selector_state(trial)):
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/released_band_r379_v1/compare.py", line 50, in selector_state
+    return state_value(normal.pass_selector)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/released_band_r379_v1/compare.py", line 44, in state_value
+    return state_value(vars(value))
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/released_band_r379_v1/compare.py", line 40, in state_value
+    return {k: state_value(v) for k, v in value.items()}
+               ^^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/released_band_r379_v1/compare.py", line 45, in state_value
+    return freeze(value)
+           ^^^^^^^^^^^^^
+  File "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/src/arena_autonomy/arena_autonomy/follow_trace.py", line 45, in freeze
+    raise TypeError(f'unsupported trace value: {type(value).__name__}')
+TypeError: unsupported trace value: set

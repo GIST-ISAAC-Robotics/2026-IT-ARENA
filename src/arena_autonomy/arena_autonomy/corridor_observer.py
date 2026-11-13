@@ -4,6 +4,8 @@ evaluate는 명령 tuple 대신 비교용 evidence dict를 반환한다. 이 모
 기본 주행 경로는 비활성이다. 명시 선택형 LocalFollow가 제한된 HOLD에서만 제안을
 채택할 수 있으며 신호/고장 허가와 독립 보호층은 별도다. positive 자체는 구동 허가가 아니다.
 """
+
+from arena_autonomy.lidar_source_frame import registered_source_frame
 import math
 
 import numpy as np
@@ -54,7 +56,7 @@ def current_proposal(scene, speed, side, previous_steering, dt, config, *, parti
     if (side not in ('left','right') or not all(math.isfinite(v) for v in (speed,previous_steering,dt)) or
             not 0 < dt <= .2 or abs(previous_steering) > config.max_steering_rad):
         return base
-    if scene.source_frame_id != 'laser_frame':
+    if not registered_source_frame(scene.source_frame_id):
         return {**base, 'reason':'source_frame_mismatch'}
     if scene.source_first_s is None or not 0 <= scene.t_ref_s-scene.source_first_s < config.memory_ttl_s:
         return {**base, 'reason':'scene_stale'}

@@ -1,0 +1,108 @@
+--- original/r407/run_once.py
++++ revision_v2/r407/run_once.py
+@@ -16,6 +16,7 @@
+ 
+ from registration import DOMAIN,read
+ from fake_mcu import FakeMcu
++from operator_receipt import accepted_reply, policy_accepted, stopped_binding
+ 
+ HERE=Path(__file__).resolve().parent
+ ROOT=HERE.parent
+@@ -85,13 +86,13 @@
+             if body is not None:http.append(dict(request=body,response=value))
+             return value
+     def state():return request('/api/state?client=r407_probe')
+-    def command(op,identifier,**fields):
+-        current=state()
++    def command(op,identifier,*,bound_view=None,**fields):
++        view=state()['binding'] if bound_view is None else bound_view
+         return request('/api/command',dict(op=op,request=identifier,client='r407_probe',
+-            view=current['binding'],**fields))
++            view=view,**fields))
+     def entry(identifier):
+         return next((c for c in state()['commands'] if c['request']==identifier),{})
+-    def policy(identifier):return (entry(identifier).get('policy') or {}).get('accepted') is True
++    def policy(identifier):return policy_accepted(entry(identifier))
+     def stop_evidence(identifier):
+         observed=entry(identifier)
+         step=next(s for s in observed['mcu_steps'] if s['step']=='stop' and s['success'])
+@@ -209,14 +210,29 @@
+             'guard zero reaches PTY host',limit=2.)
+         assert all(c['payload']['command'].get('speed_mps',0)==0 for c in fake.commands)
+         stop_before=len(fake.commands)
+-        assert command('stop','r407-stop')['stage']=='queued'
+-        pump_until(lambda:policy('r407-stop') and any(s['step']=='stop' and s['success'] for s in entry('r407-stop')['mcu_steps'])
+-            and state()['mcu']['state']=='ESTOP_LATCHED' and state()['race']['resume_start_ready'],'button STOP and mapped generation')
++        stop_request=command('stop','r407-stop');assert stop_request['stage']=='queued'
++        stop_view=None
++        def button_stop_ready():
++            nonlocal stop_view
++            current=state()
++            observed=next((c for c in current['commands'] if c['request']=='r407-stop'),{})
++            if not policy_accepted(observed):return False
++            reply=accepted_reply(results,'r407-stop','stop')
++            view=stopped_binding(current,reply,stop_request['view']['race_id'])
++            if view is None:return False
++            if not any(s['step']=='stop' and s['success'] for s in observed['mcu_steps']):return False
++            if current['mcu']['state']!='ESTOP_LATCHED':return False
++            stop_view=view
++            checks['stop_binding_confirmed']=dict(reply=reply,binding=view,
++                displayed_seq=current['seq'],displayed_latch=current['race']['latch'],
++                displayed_sim_s=current['driving']['sim_s'],stop_request_view=stop_request['view'])
++            return True
++        pump_until(button_stop_ready,'button STOP receipt binding and mapped generation')
+         assert any(c['accepted'] and c['payload']['command']['kind']=='STOP' for c in fake.commands[stop_before:])
+         checks['button_stop']=stop_evidence('r407-stop')
+         assert state()['development']['limit_mps']==.2
+         arms_before=sum(c['payload']['command']['kind']=='ARM' for c in fake.commands)
+-        assert command('resume_start','r407-resume')['stage']=='queued'
++        assert command('resume_start','r407-resume',bound_view=stop_view)['stage']=='queued'
+         pump_until(lambda:policy('r407-resume') and (state()['race']['resume'] or {}).get('phase')=='inputs'
+             and guard.input_floor_s==node.input_floor_s,'resume input boundary')
+         observed_until=time.monotonic()+.4
+--- /dev/null
++++ revision_v2/r407/operator_receipt.py
+@@ -0,0 +1,43 @@
++"""r407 하네스 전용: 수락 응답과 표시 binding을 연결하며 권한을 만들지 않는다."""
++from copy import deepcopy
++
++
++def policy_accepted(entry):
++    policy = entry.get('policy') or {}
++    if entry.get('stage') in ('rejected_by_adapter', 'policy_rejected') or policy.get('accepted') is False:
++        reason = entry.get('adapter_reason') or policy.get('reason') or 'unspecified'
++        raise RuntimeError(f"operator {entry.get('request')} rejected: {reason}")
++    return policy.get('accepted') is True
++
++
++def accepted_reply(rows, request, op):
++    reply = next((row for row in rows if row.get('request') == request), None)
++    if reply is None:
++        return None
++    if reply.get('op') != op:
++        raise RuntimeError(f'operator {request} reply operation mismatch')
++    if reply.get('accepted') is not True:
++        raise RuntimeError(f"operator {request} rejected: {reply.get('reason')}")
++    return reply
++
++
++def stopped_binding(snapshot, stop_reply, race_id):
++    """새 STOP의 정확한 표시 상태를 기다린 뒤 그 view를 복사한다. 재전송 없음."""
++    if stop_reply is None:
++        return None
++    if (stop_reply.get('op') != 'stop' or stop_reply.get('accepted') is not True
++            or stop_reply.get('latch') != 'explicit_stop'):
++        raise RuntimeError('accepted explicit STOP receipt required')
++    if snapshot.get('connection', {}).get('status_stale') is not False:
++        return None
++    binding = snapshot.get('binding') or {}
++    if not race_id or binding.get('race_id') != race_id:
++        return None
++    for key in ('session', 'race_epoch', 'intervention'):
++        if stop_reply.get(key) is None or binding.get(key) != stop_reply[key]:
++            return None
++    race = snapshot.get('race') or {}
++    if (race.get('latch') != 'explicit_stop' or race.get('resume_start_ready') is not True
++            or race.get('resume') is not None):
++        return None
++    return deepcopy(binding)

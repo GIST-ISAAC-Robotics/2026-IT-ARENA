@@ -1,0 +1,516 @@
+--- r418/audit_runtime.py
++++ r428/audit_runtime.py
+@@ -6,6 +6,45 @@
+ from header_comparison import compare_headers
+ 
+ KEY = 'current_corner_distance_budget'
++REACH_KEY = 'current_crop_component_retry'
++
++
++def stop_sequence(report,helper):
++    """소유 STOP 관측과 원 평가기의 후속 STOP을 분리하며 원 판정을 고치지 않는다."""
++    timing=(report.get('actuation') or {}).get('stop_latch_timing')
++    return dict(helper_record_present=bool(helper),helper_service_results=helper.get('calls'),
++        helper_stop_confirmed=helper.get('stop_confirmed'),helper_final_mcu=helper.get('final_mcu'),
++        helper_request_timestamp_recorded=False,evaluator_stop_request_clock_ns=report.get('stop_request_clock_ns'),
++        evaluator_stop_request_sim_s=report.get('stop_request_sim_s'),original_latch_timing=timing,
++        original_stop_checks=report.get('stop_checks'),original_verdict_changed=False,
++        interpretation='helper STOP may precede evaluator STOP; retain original before-stop latch result; '
++            'status clocks and helper final observation do not prove exact service request causality')
++
++
++def reach_summary(rows):
++    """새 current 계산과 인접한 실제 부모 route 발행을 분리한다. guard/구동 증명 아님."""
++    tried=accepted=published=0;reasons=Counter();proof_reasons=Counter();pending=None
++    for row in rows:
++        data=row['data']
++        if row['kind']=='call':
++            pending=None;current=data.get('current_rebase',{}).get('output',{})
++            trial=current.get(REACH_KEY)
++            if trial:
++                tried+=1;reasons[trial.get('reason','missing')]+=1
++                proof_reasons[(trial.get('proof') or {}).get('reason','not_reached')]+=1
++                if trial.get('applied') is True:
++                    accepted+=1
++                    if data.get('delivery',{}).get('kind')=='candidate':pending=current
++        elif row['kind']=='route_publication':
++            if (pending is not None and data.get('retained') is True
++                    and data.get('reference_s')==pending['reference_s']
++                    and data.get('steering_rad')==pending['steering_rad']
++                    and 0<data.get('speed_mps',0)<=pending['speed_mps']):published+=1
++            pending=None
++        elif row['kind']=='reset':pending=None
++    return dict(call_outputs_with_retry=tried,calculations_accepted=accepted,
++        adjacent_matching_parent_publications=published,reasons=dict(reasons),proof_reasons=dict(proof_reasons),
++        guard_or_mcu_application_proven=False,driving_improvement_demonstrated=False)
+ 
+ 
+ def component_summary(rows):
+@@ -81,6 +120,7 @@
+         crop_edge_component_selected=(len(headers) == 1 and
+             headers[0].get('follow_config', {}).get('crop_edge_component_trial') is True),
+         crop_edge_diagnostics=component_summary(rows),
++        current_crop_reach=reach_summary(rows),
+         calls=len(calls), candidate_diagnostics=tried, candidate_calculations_accepted=accepted,
+         candidate_parent_publications=published, candidate_reasons=dict(reasons),
+         trace_closed=footer is not None, capture_errors=None if footer is None else footer['capture_errors'],
+--- r418/config.json
++++ r428/config.json
+@@ -1,7 +1,7 @@
+ {
+   "schema_version": 1,
+   "registered_at": "2026-11-08 실행 전 준비",
+-  "scope": "r418: r406 최종 기하4가림/80sim초/RTF0.25/속도·물성·두220mm상대·old610·공통runtime+r396을 유지하고 g1_crop_edge_component_trial=true만 명시 추가. 단일 제한 주행이며 실차/실시간 증명 아님.",
++  "scope": "r428: r418 최종 기하4가림/80sim초/RTF0.25/속도·물성·두220mm상대·old610·crop ON+r396 ON을 유지하고 r426 공통5파일만 변경. 단일 제한 주행이며 실차/실시간 증명 아님.",
+   "ground_truth_allowlist_evaluation_only": [
+     "actor_schedule",
+     "actor_pose",
+@@ -13,7 +13,7 @@
+     "contact_sensor"
+   ],
+   "launch": {
+-    "entry_g1": "r418 course.launch.py; common g1_g2_handoff_trial/cad_runtime_r377_v1/r396_v1; g1_crop_edge_component_trial=true; no node prefix",
++    "entry_g1": "r428 course.launch.py; common g1_g2_handoff_trial/cad_runtime_r377_v1/r396_v1; g1_crop_edge_component_trial=true; no node prefix",
+     "entry_r0": "demo.launch.py (same arguments as the existing validator's local_pursuit path, g1_follow_enabled unset=false)",
+     "autonomy_mode": "local_pursuit",
+     "lidar_acquisition": "sequential",
+--- r418/course.launch.py
++++ r428/course.launch.py
+@@ -1,8 +1,8 @@
+-"""r418 전용 하위 launch 연결. 공용 launch 파일은 수정하지 않는다."""
++"""r428 전용 하위 launch 연결. 공용 launch 파일은 수정하지 않는다."""
+ import importlib.util
+ from pathlib import Path
+ A=Path(__file__).resolve().parent;ROOT=A.parents[3]
+-spec=importlib.util.spec_from_file_location('r418_follow',ROOT/'src/arena_bringup/launch/g1_follow.launch.py')
++spec=importlib.util.spec_from_file_location('r428_follow',ROOT/'src/arena_bringup/launch/g1_follow.launch.py')
+ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+ original=module.get_package_share_directory
+ module.get_package_share_directory=lambda name:str(A) if name=='arena_bringup' else original(name)
+--- r418/launch/demo.launch.py
++++ r428/launch/demo.launch.py
+@@ -1,8 +1,8 @@
+-"""r418 전용 하위 launch 연결. 공용 launch 파일은 수정하지 않는다."""
++"""r428 전용 하위 launch 연결. 공용 launch 파일은 수정하지 않는다."""
+ import importlib.util
+ from pathlib import Path
+ A=Path(__file__).resolve().parent.parent;ROOT=A.parents[3]
+-spec=importlib.util.spec_from_file_location('r418_demo',ROOT/'src/arena_bringup/launch/demo.launch.py')
++spec=importlib.util.spec_from_file_location('r428_demo',ROOT/'src/arena_bringup/launch/demo.launch.py')
+ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+ original=module.get_package_share_directory
+ module.get_package_share_directory=lambda name:str(A) if name=='arena_bringup' else original(name)
+--- r418/launch/local_pursuit.launch.py
++++ r428/launch/local_pursuit.launch.py
+@@ -1,8 +1,8 @@
+-"""r418 전용 하위 launch 연결. 공용 launch 파일은 수정하지 않는다."""
++"""r428 전용 하위 launch 연결. 공용 launch 파일은 수정하지 않는다."""
+ import importlib.util
+ from pathlib import Path
+ A=Path(__file__).resolve().parent.parent;ROOT=A.parents[3]
+-spec=importlib.util.spec_from_file_location('r418_local',ROOT/'src/arena_bringup/launch/local_pursuit.launch.py')
++spec=importlib.util.spec_from_file_location('r428_local',ROOT/'src/arena_bringup/launch/local_pursuit.launch.py')
+ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+ original=module.get_package_share_directory
+ module.get_package_share_directory=lambda name:str(A) if name=='arena_bringup' else original(name)
+--- r418/launch/simulation.launch.py
++++ r428/launch/simulation.launch.py
+@@ -1,11 +1,11 @@
+-"""계산 전달 실패와 시설 경로를 분리하는 r418 전용 벽시계 배율."""
++"""계산 전달 실패와 시설 경로를 분리하는 r428 전용 벽시계 배율."""
+ import hashlib
+ import importlib.util
+ import json
+ from pathlib import Path
+ import xml.etree.ElementTree as ET
+ A=Path(__file__).resolve().parent.parent;ROOT=A.parents[3]
+-spec=importlib.util.spec_from_file_location('r418_simulation',ROOT/'src/arena_bringup/launch/simulation.launch.py')
++spec=importlib.util.spec_from_file_location('r428_simulation',ROOT/'src/arena_bringup/launch/simulation.launch.py')
+ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+ original=module._runtime_world_overrides
+ 
+--- r418/prepare.py
++++ r428/prepare.py
+@@ -1,4 +1,4 @@
+-"""r406 원본 대비 파일별 검토와 r417 이관 뒤에만 동결. ROS/빌드/정책 실행 없음."""
++"""r418 조건을 유지하고 r426 공통5파일만 승인한 뒤 동결한다. 빌드/ROS 실행 없음."""
+ import argparse
+ import ast
+ import hashlib
+@@ -6,176 +6,139 @@
+ from pathlib import Path
+ import zipfile
+ 
+-A = Path(__file__).resolve().parent
+-ROOT = A.parents[3]
+-BASE = A.parent/'final_runtime_drive_r406_v1'
+-R416 = A.parent/'runtime_installed_profile_r416_v1'
+-SIM = 'src/arena_bringup/launch/simulation.launch.py'
+-SOURCE_SUFFIXES = {'.py', '.yaml', '.xml', '.xacro', '.sdf', '.cpp', '.hpp', '.stl', '.so'}
+-FACILITY_INPUTS = [
++A=Path(__file__).resolve().parent;ROOT=A.parents[3]
++BASE=A.parent/'crop_edge_drive_r418_v1'
++R426=A.parent/'crop_current_reach_r426_v1'
++R416=A.parent/'runtime_installed_profile_r416_v1'
++SIM='src/arena_bringup/launch/simulation.launch.py'
++SOURCE_SUFFIXES={'.py','.yaml','.xml','.xacro','.sdf','.cpp','.hpp','.stl','.so'}
++FACILITY_INPUTS=[
+     'artifacts/validation/2026-11-13/old_signal_610_r326_v1/fixture.json',
+     'artifacts/validation/2026-11-13/old_signal_610_r326_v1/support_frame_m.stl',
+     'artifacts/validation/2026-11-13/old_signal_610_r326_v1/supports_trial.sdf',
+     'artifacts/validation/2026-11-13/old610_common_corner_r333_v1/run.py',
+     'artifacts/validation/2026-11-12/signal_post_revision_r291_v1/prepare_fixture.py',
+     'artifacts/validation/2026-11-09/signal_post_source_v1/analyze_stl.py',
+-    'config/tests/c1_standard10_native_angles_v1.json',
+-]
++    'config/tests/c1_standard10_native_angles_v1.json']
+ 
+ 
+-def sha(path):
+-    return hashlib.sha256(path.read_bytes()).hexdigest()
+-
+-
+-def read(path):
+-    return json.loads(path.read_bytes())
+-
+-
+-def write_new(path, data):
+-    with path.open('x', encoding='utf8') as stream:
+-        json.dump(data, stream, ensure_ascii=False, indent=2)
+-        stream.write('\n')
++def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
++def read(path):return json.loads(path.read_bytes())
++def write_new(path,data):
++    with path.open('x',encoding='utf8') as stream:
++        json.dump(data,stream,ensure_ascii=False,indent=2);stream.write('\n')
+ 
+ 
+ def arguments():
+-    args = list(read(BASE/'registered.json')['args'])
+-    replacements = {'--config': A/'config.json', '--actor-overlay': A/'actors.json', '--output': A/'run1'}
+-    for flag, path in replacements.items():
+-        args[args.index(flag)+1] = path.relative_to(ROOT).as_posix()
++    args=list(read(BASE/'registered.json')['args'])
++    for flag,path in {'--config':A/'config.json','--actor-overlay':A/'actors.json','--output':A/'run1'}.items():
++        args[args.index(flag)+1]=path.relative_to(ROOT).as_posix()
+     return args
+ 
+ 
+ def common_sources():
+-    files = {p for p in (ROOT/'src').rglob('*') if p.is_file() and p.suffix in SOURCE_SUFFIXES}
+-    files.update((ROOT/'scripts').glob('*.py'))
+-    files.update((ROOT/'tests').rglob('*.py'))
+-    # 병렬 r416의 firmware-only 6파일도 계보에 드러낸다. 시뮬 선택으로 사용하지 않는다.
++    files={p for p in (ROOT/'src').rglob('*') if p.is_file() and p.suffix in SOURCE_SUFFIXES}
++    files.update((ROOT/'scripts').glob('*.py'));files.update((ROOT/'tests').rglob('*.py'))
+     files.update(ROOT/row['path'] for row in read(R416/'integration.json')['files'])
+-    return {p.relative_to(ROOT).as_posix(): sha(p) for p in sorted(files)}
++    return {p.relative_to(ROOT).as_posix():sha(p) for p in sorted(files)}
+ 
+ 
+ def source_delta(current):
+-    old = read(BASE/'registered.json')['input_sha256']
+-    old = {p: h for p,h in old.items() if p.startswith(('src/', 'scripts/', 'tests/'))}
+-    return [dict(path=p, before_sha256=old.get(p), after_sha256=current.get(p),
+-                 kind='changed' if p in old and p in current else ('added_to_snapshot' if p in current else 'missing'))
+-            for p in sorted(old.keys() | current.keys()) if old.get(p) != current.get(p)]
++    old={p:h for p,h in read(BASE/'prepared.json')['frozen_inputs'].items()
++         if p.startswith(('src/','scripts/','tests/'))}
++    return [dict(path=p,before_sha256=old.get(p),after_sha256=current.get(p),
++        kind='changed' if p in old and p in current else ('added_to_snapshot' if p in current else 'missing'))
++        for p in sorted(old.keys()|current.keys()) if old.get(p)!=current.get(p)]
++
++
++def checked_delta(current,integration):
++    receipt=read(integration);files=receipt['files'];assert len(files)==5
++    expected=[dict(path=p,before_sha256=v['base_sha256'],after_sha256=v['staged_sha256'],
++        kind='added_to_snapshot' if v['new_file'] else 'changed') for p,v in sorted(files.items())]
++    actual=source_delta(current)
++    assert actual==expected,('only exact r426 five common files permitted',actual,expected)
++    assert all(current[p]==v['staged_sha256'] for p,v in files.items())
++    return actual
+ 
+ 
+ def draft_review():
+-    current = common_sources()
+-    rows = source_delta(current)
+-    return dict(status='review_required', baseline=str(BASE.relative_to(ROOT)),
+-                baseline_archive_sha256=sha(BASE/'sources.zip'), changes=rows,
+-                note='추가 snapshot 파일은 원 기록에 없었다는 뜻이며 모두 이번에 새로 작성됐다는 증거가 아니다.')
++    current=common_sources();rows=checked_delta(current,R426/'integration.json')
++    old={p:h for p,h in read(BASE/'prepared.json')['frozen_inputs'].items()
++         if p.startswith(('src/','scripts/','tests/'))}
++    return dict(status='review_required',baseline=BASE.relative_to(ROOT).as_posix(),
++        baseline_archive_sha256=sha(BASE/'sources.zip'),integration_sha256=sha(R426/'integration.json'),
++        changes=rows,unchanged_common_files=sum(current.get(p)==h for p,h in old.items()),
++        current_common_files=len(current),selection_difference=False,
++        note='r418 대비 r426 변경2+신규3만 허용. 나머지 source/선택/기하/평가 기준은 동일.')
+ 
+ 
+ def static_contract():
+-    config, old = read(A/'config.json'), read(BASE/'config.json')
+-    adjusted = json.loads(json.dumps(config))
+-    adjusted['scope'] = old['scope']; adjusted['launch']['entry_g1'] = old['launch']['entry_g1']
+-    assert adjusted == old and config['cases'][0]['duration_s'] == 80.
+-    assert (A/'actors.json').read_bytes() == (BASE/'actors.json').read_bytes()
++    config,old=read(A/'config.json'),read(BASE/'config.json')
++    adjusted=json.loads(json.dumps(config));adjusted['scope']=old['scope'];adjusted['launch']['entry_g1']=old['launch']['entry_g1']
++    assert adjusted==old and config['cases'][0]['duration_s']==80.
++    for name in ('actors.json','expected_header.json','facility_geometry.py','header_comparison.py','launch_adapter.py'):
++        assert (A/name).read_bytes()==(BASE/name).read_bytes(),name
+     assert '--pilot-marker-z' not in arguments()
+-    old_header = read(BASE/'expected_header.json')
+-    expected = read(A/'expected_header.json')
+-    adjusted_header = json.loads(json.dumps(expected))
+-    assert adjusted_header['follow_config'].pop('crop_edge_component_trial') is True
+-    assert adjusted_header == old_header, 'only new ON field may change expected header'
+-    # STOP 본문은 소유 argv/노드 식별자 두 곳만 바꾼다. 성공/실패 기준은 유지한다.
+-    stop = (A/'stop_owned.py').read_text(encoding='utf8')
+-    stop = stop.replace('crop_edge_drive_r418_v1/run.py', 'final_runtime_drive_r406_v1/run.py')
+-    stop = stop.replace("Node('r418_owned_stop')", "Node('r406_owned_stop')")
+-    assert stop == (BASE/'stop_owned.py').read_text(encoding='utf8')
+-    assert (A/'facility_geometry.py').read_bytes() == (BASE/'facility_geometry.py').read_bytes()
+-    for path in A.rglob('*.py'):
+-        ast.parse(path.read_text(encoding='utf8'), filename=str(path))
+-    return dict(config_equal_except_descriptions=True, actors_byte_equal=True,
+-                owned_stop_body_preserved=True, only_new_selection='g1_crop_edge_component_trial=true',
+-                selected_yaml_marker_m=.090, expected_mask_count=4,
+-                thresholds_changed=False, simulator_executed=False)
++    stop=(A/'stop_owned.py').read_text(encoding='utf8').replace('crop_reach_drive_r428_v1/run.py','crop_edge_drive_r418_v1/run.py').replace("Node('r428_owned_stop')","Node('r418_owned_stop')")
++    assert stop==(BASE/'stop_owned.py').read_text(encoding='utf8')
++    for path in [*A.glob('*.py'),*(A/'launch').glob('*.py')]:ast.parse(path.read_bytes(),filename=str(path))
++    return dict(config_equal_except_descriptions=True,actors_byte_equal=True,expected_header_byte_equal=True,
++        launch_selection_byte_equal=True,owned_stop_body_preserved=True,selected_yaml_marker_m=.09,
++        expected_mask_count=4,thresholds_changed=False,simulator_executed=False)
+ 
+ 
+-def integration_files(receipt):
+-    files = receipt['files']
+-    return files if isinstance(files, dict) else {row['path']: row['after_sha256'] for row in files}
+-
+-
+-def freeze(review_path, integration):
+-    assert not any((A/n).exists() for n in ('prepared.json', 'sources.zip', 'registered.json', 'run1'))
+-    static = static_contract()
+-    if integration is not None:
+-        integration = integration.resolve()
+-    assert integration is not None and integration.is_file(), 'root r417 validation/integration receipt required'
+-    receipt = read(integration)
+-    installed = integration_files(receipt)
+-    assert installed and all(sha(ROOT/p) == h for p,h in installed.items())
+-    # r417 영수증을 다른 이관 영수증으로 바꿔 대체하지 않는다.
+-    assert any('crop_edge' in path for path in installed), 'r417 crop-edge source missing'
+-    assert 'g1_crop_edge_component_trial' in (ROOT/SIM).read_text(encoding='utf8')
+-    assert 'crop_edge_component_trial' in (ROOT/'src/arena_autonomy/arena_autonomy/local_follow.py').read_text(encoding='utf8')
+-    parallel = read(R416/'integration.json')
+-    assert all(sha(ROOT/p) == h for p,h in integration_files(parallel).items())
+-    current = common_sources()
+-    expected = source_delta(current)
+-    review = read(review_path)
+-    rows = review['changes']
+-    bare = [{k: row[k] for k in ('path', 'before_sha256', 'after_sha256', 'kind')} for row in rows]
+-    assert bare == expected, 'source delta changed since explicit review; preserve and create new review'
+-    assert review.get('status') == 'reviewed' and all(row.get('reason') for row in rows)
+-    frozen = {ROOT/name for name in current}
+-    frozen.update(ROOT/name for name in FACILITY_INPUTS)
++def freeze(review_path,integration):
++    assert not any((A/n).exists() for n in ('prepared.json','sources.zip','registered.json','run1'))
++    # 상대 CLI 경로도 먼저 절대 경로로 정규화한다. r418 준비 오류를 재현하지 않는다.
++    review_path=review_path.resolve();integration=integration.resolve()
++    assert review_path.is_relative_to(A) and integration==R426/'integration.json'
++    assert (A/'build_v1/build.exit').read_text().strip()=='0','build must complete before freeze'
++    assert (A/'build_v1/build.log').is_file()
++    static=static_contract();current=common_sources();expected=checked_delta(current,integration)
++    review=read(review_path)
++    bare=[{k:row[k] for k in ('path','before_sha256','after_sha256','kind')} for row in review['changes']]
++    assert bare==expected and review.get('status')=='reviewed' and all(row.get('reason') for row in review['changes'])
++    assert review['integration_sha256']==sha(integration) and review['baseline_archive_sha256']==sha(BASE/'sources.zip')
++    frozen={ROOT/p for p in current};frozen.update(ROOT/p for p in FACILITY_INPUTS)
++    frozen.update(BASE/n for n in ('prepared.json','registered.json','expected_header.json','config.json','actors.json',
++        'run.py','stop_owned.py','facility_geometry.py','launch_adapter.py'))
+     frozen.add(A.parent/'runtime_config_audit_r409_v1/audit_saved.py')
+-    frozen.update(BASE/name for name in ('config.json', 'actors.json', 'registered.json'))
+-    frozen.update(BASE/name for name in ('prepared.json', 'expected_header.json', 'run.py', 'stop_owned.py',
+-                                      'facility_geometry.py', 'launch_adapter.py'))
+-    frozen.add(R416/'integration.json')
+-    frozen.add(integration); frozen.add(review_path.resolve())
+-    frozen.update(p for p in A.rglob('*') if p.is_file() and p.suffix in ('.py', '.json', '.md', '.patch'))
+-    hashes = {p.relative_to(ROOT).as_posix(): sha(p) for p in sorted(frozen)}
+-    with zipfile.ZipFile(A/'sources.zip', 'x', zipfile.ZIP_DEFLATED) as archive:
+-        for name in hashes:
+-            archive.write(ROOT/name, name)
+-    value = dict(**static, args=arguments(), frozen_inputs=hashes,
+-        source_archive_sha256=sha(A/'sources.zip'), reviewed_source_delta=rows,
+-        r417_integration_receipt=integration.resolve().relative_to(ROOT).as_posix(),
+-        r417_precondition='root reviewed common selection/guard/trace validation and integrated before freeze',
+-        runtime_policy='cad_runtime_r377_v1', current_corner_budget='r396_v1',
+-        crop_edge_component_trial=True,
+-        r406_source_archive_sha256=sha(BASE/'sources.zip'),
+-        policy_dynamic_artifact_imports=False, real_time_factor=.25, one_execution_only=True)
+-    write_new(A/'prepared.json', value)
+-    return dict(frozen=True, files=len(hashes), prepared_sha256=sha(A/'prepared.json'),
+-                source_archive_sha256=value['source_archive_sha256'], simulation_started=False)
++    frozen.add(integration);frozen.add(review_path);frozen.add(R416/'integration.json')
++    frozen.update(p for p in A.glob('*') if p.is_file() and p.suffix in ('.py','.json','.md','.patch'))
++    frozen.update((A/'launch').glob('*.py'))
++    frozen.update(p for p in (A/'build_v1').glob('*') if p.is_file())
++    hashes={p.relative_to(ROOT).as_posix():sha(p) for p in sorted(frozen)}
++    with zipfile.ZipFile(A/'sources.zip','x',zipfile.ZIP_DEFLATED) as z:
++        for p in hashes:z.write(ROOT/p,p)
++    value=dict(**static,args=arguments(),frozen_inputs=hashes,source_archive_sha256=sha(A/'sources.zip'),
++        reviewed_source_delta=review['changes'],r426_integration_receipt=integration.relative_to(ROOT).as_posix(),
++        source_approval_after_build=True,r418_source_archive_sha256=sha(BASE/'sources.zip'),
++        runtime_policy='cad_runtime_r377_v1',current_corner_budget='r396_v1',crop_edge_component_trial=True,
++        policy_dynamic_artifact_imports=False,real_time_factor=.25,one_execution_only=True)
++    write_new(A/'prepared.json',value)
++    return dict(frozen=True,files=len(hashes),prepared_sha256=sha(A/'prepared.json'),
++        source_archive_sha256=value['source_archive_sha256'],simulation_started=False)
+ 
+ 
+ def verify_prepared():
+-    value = read(A/'prepared.json')
+-    changed = [p for p,h in value['frozen_inputs'].items() if not (ROOT/p).is_file() or sha(ROOT/p) != h]
+-    assert not changed, ('frozen inputs changed', changed)
+-    assert sha(A/'sources.zip') == value['source_archive_sha256']
++    value=read(A/'prepared.json')
++    changed=[p for p,h in value['frozen_inputs'].items() if not (ROOT/p).is_file() or sha(ROOT/p)!=h]
++    assert not changed,('frozen inputs changed',changed)
++    assert sha(A/'sources.zip')==value['source_archive_sha256']
+     return value
+ 
+ 
+ def main():
+-    parser = argparse.ArgumentParser(description=__doc__)
+-    choice = parser.add_mutually_exclusive_group(required=True)
+-    choice.add_argument('--inventory', type=Path)
+-    choice.add_argument('--freeze', type=Path, metavar='REVIEW_JSON')
+-    choice.add_argument('--check', action='store_true')
+-    parser.add_argument('--integration', type=Path, help='root가 검증 뒤 작성한 r417 공통 이관 영수증')
+-    args = parser.parse_args()
++    p=argparse.ArgumentParser(description=__doc__);choice=p.add_mutually_exclusive_group(required=True)
++    choice.add_argument('--inventory',type=Path);choice.add_argument('--freeze',type=Path,metavar='REVIEW_JSON')
++    choice.add_argument('--check',action='store_true');p.add_argument('--integration',type=Path)
++    args=p.parse_args()
+     if args.inventory:
+         assert args.inventory.resolve().is_relative_to(A)
+-        value = draft_review()
+-        write_new(args.inventory, value)
+-        print(json.dumps(dict(changes=len(value['changes']), **static_contract())))
++        value=draft_review();write_new(args.inventory,value);print(json.dumps(dict(changes=len(value['changes']),**static_contract())))
+     elif args.freeze:
+-        print(json.dumps(freeze(args.freeze, args.integration)))
+-    else:
+-        value = verify_prepared()
+-        print(json.dumps(dict(checked=True, files=len(value['frozen_inputs']), simulation_started=False)))
++        assert args.integration is not None;print(json.dumps(freeze(args.freeze,args.integration)))
++    else:print(json.dumps(dict(checked=True,files=len(verify_prepared()['frozen_inputs']),simulation_started=False)))
+ 
+ 
+-if __name__ == '__main__':
+-    main()
++if __name__=='__main__':main()
+--- r418/run.py
++++ r428/run.py
+@@ -1,4 +1,4 @@
+-"""r406 평가/시설을 유지하고 crop-edge 선택만 추가한 final4가림 제한 단1회."""
++"""r418 조건·선택을 유지하고 공통 r426 현재 재검사만 추가한 제한 단1회."""
+ import copy
+ from datetime import datetime, timezone
+ import inspect
+@@ -65,7 +65,7 @@
+     prepared_sha = sha(A/'prepared.json')
+     write_new(A/'registered.json', dict(at_utc=datetime.now(timezone.utc).isoformat(), args=args,
+         input_sha256=prepared['frozen_inputs'], source_archive_sha256=prepared['source_archive_sha256'],
+-        prepared_sha256=prepared_sha, parent=str((A.parent/'final_runtime_drive_r406_v1').relative_to(ROOT)),
++        prepared_sha256=prepared_sha, parent=str((A.parent/'crop_edge_drive_r418_v1').relative_to(ROOT)),
+         scope=read(A/'config.json')['scope'], source_timestamps_unchanged=True,
+         ground_truth_evaluation_only=True, causal_comparison=False, default_changed=False,
+         independent_guard_bypassed=False, runtime_policy='cad_runtime_r377_v1',
+@@ -86,6 +86,11 @@
+         if trace.is_file():
+             from audit_runtime import audit
+             write_new(A/'runtime_audit.json', audit(trace, A/'expected_header.json'))
++        report = A/'run1/report.json'
++        if report.is_file():
++            from audit_runtime import stop_sequence
++            helper = A/'early_stop.json'
++            write_new(A/'stop_sequence.json', stop_sequence(read(report), read(helper) if helper.is_file() else {}))
+ 
+ 
+ if __name__ == '__main__':
+--- r418/stop_owned.py
++++ r428/stop_owned.py
+@@ -12,7 +12,7 @@
+ 
+ A = Path(__file__).resolve().parent
+ root = A.parents[3]
+-expected = [b'python3', b'artifacts/validation/2026-11-13/crop_edge_drive_r418_v1/run.py']
++expected = [b'python3', b'artifacts/validation/2026-11-13/crop_reach_drive_r428_v1/run.py']
+ matches = []
+ for proc in Path('/proc').iterdir():
+     if not proc.name.isdigit():
+@@ -27,7 +27,7 @@
+ pid = matches[0]
+ os.environ.update(ROS_DOMAIN_ID=str(150+pid % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST', ROS_STATIC_PEERS='')
+ rclpy.init()
+-n = Node('r418_owned_stop')
++n = Node('r428_owned_stop')
+ statuses, outputs = [], []
+ n.create_subscription(String, '/actuation/status', lambda m: statuses.append(json.loads(m.data)), 20)
+ n.create_subscription(String, '/actuation/output_status', lambda m: outputs.append(json.loads(m.data)), 20)
+--- r418/test_launch_selection.py
++++ r428/test_launch_selection.py
+@@ -17,7 +17,7 @@
+     if selected:
+         context.launch_configurations.update(g1_runtime_policy='cad_runtime_r377_v1',
+             g1_current_corner_budget='r396_v1', g1_crop_edge_component_trial='true')
+-    spec = importlib.util.spec_from_file_location('r418_launch_declarations', A/'course.launch.py')
++    spec = importlib.util.spec_from_file_location('r428_launch_declarations', A/'course.launch.py')
+     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+     found = []
+ 
+@@ -66,7 +66,7 @@
+     assigns = [node.value for node in ast.walk(tree) if isinstance(node, ast.Assign)
+         and any(isinstance(target, ast.Name) and target.id == 'crop_edge' for target in node.targets)]
+     assert len(assigns) == 1
+-    spec = importlib.util.spec_from_file_location('r418_parameter_expression', ROOT/SIM)
++    spec = importlib.util.spec_from_file_location('r428_parameter_expression', ROOT/SIM)
+     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+     context = LaunchContext(); context.launch_configurations[name] = 'true' if selected else 'false'
+     namespace = {**module.__dict__, 'context': context}
+--- r418/test_preflight.py
++++ r428/test_preflight.py
+@@ -43,7 +43,7 @@
+     assert expected['follow_config']['crop_edge_component_trial'] is True
+     old_selection = ast.literal_eval(next(n.value for n in ast.parse((BASE/'launch_adapter.py').read_text(encoding='utf8')).body
+         if isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name) and n.targets[0].id == 'SELECTION'))
+-    assert SELECTION == [*old_selection, 'g1_crop_edge_component_trial:=true']
++    assert SELECTION == old_selection
+ 
+ 
+ def test_command_uses_common_executable_without_node_prefix():
+@@ -96,7 +96,7 @@
+     expected = read(A/'expected_header.json')
+     actual = copy.deepcopy(expected)
+     field = 'known_structure_sectors_json'
+-    actual['follow_config'][field] = json.dumps(json.loads(actual['follow_config'][field]), separators=(',', ':'))
++    actual['follow_config'][field] = json.dumps(json.loads(actual['follow_config'][field]), indent=2)
+     result = compare_headers(actual, expected)
+     assert result['equivalent'] and not result['exact']
+     actual['follow_config']['crop_edge_component_trial'] = False
+@@ -115,3 +115,15 @@
+     assert report['plan_call_outputs_with_diagnostic'] == 1
+     assert report['positive_plan_call_outputs_with_diagnostic'] == 0
+     assert report['diagnostic_is_not_guard_or_mcu_application'] is True
++
++
++def test_new_current_retry_requires_matching_parent_publication():
++    from audit_runtime import REACH_KEY,reach_summary
++    current=dict(reference_s=2.,steering_rad=.2,speed_mps=.2,
++                 **{REACH_KEY:dict(applied=True,reason='single_current_crop_reach_accepted')})
++    rows=[dict(kind='call',data=dict(current_rebase={'output':current},delivery={'kind':'candidate'}))]
++    assert reach_summary(rows)['calculations_accepted']==1
++    assert reach_summary(rows)['adjacent_matching_parent_publications']==0
++    publication=dict(kind='route_publication',data=dict(retained=True,reference_s=2.,steering_rad=.2,speed_mps=.2))
++    assert reach_summary(rows+[publication])['adjacent_matching_parent_publications']==1
++    assert reach_summary(rows+[dict(kind='reset',data={}),publication])['adjacent_matching_parent_publications']==0

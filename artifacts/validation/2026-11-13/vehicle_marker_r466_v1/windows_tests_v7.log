@@ -1,0 +1,128 @@
+............................F.FF........................................ [ 36%]
+.........................................FF............................. [ 73%]
+.....................................................                    [100%]
+================================== FAILURES ===================================
+___________ test_actual_local_follow_point_path_and_wall_preserved ____________
+
+profile = {'schema': 1, 'profile_id': 'b0390_cad_vehicle_marker_approx_v1', 'mode': 'approximate_v1', 'purpose': 'occupancy_assist', ...}
+
+    def test_actual_local_follow_point_path_and_wall_preserved(profile):
+        h=full_history();baseline=LocalFollow();settle(baseline,h)
+        other=copy.deepcopy(baseline);s=scene(1.1);before=copy.deepcopy(s)
+        out=baseline.command(s,h,0.,'left')
+        p=wire_packet(profile)
+        with marker_scope(dict(reference_s=1.1,vehicle_marker_regions=p),h,other.config,profile,'ros_sim') as scope:
+            marked=other.command(s,h,0.,'left')
+>       assert out[0]>marked[0] and scope['limited_checks']>0
+E       assert (0.0 > 0.0)
+
+artifacts\validation\2026-11-13\vehicle_marker_r466_v1\stage\tests\test_vehicle_marker_connection.py:68: AssertionError
+_________ test_snapshot_and_actual_evaluator_plan_current_connections _________
+
+profile = {'schema': 1, 'profile_id': 'b0390_cad_vehicle_marker_approx_v1', 'mode': 'approximate_v1', 'purpose': 'occupancy_assist', ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000215CE6105F0>
+
+    def test_snapshot_and_actual_evaluator_plan_current_connections(profile,monkeypatch):
+        from arena_autonomy.follow_trace import snapshot_call,restore_call
+        from arena_autonomy.race_runtime_policy.evaluator import Evaluator
+        import arena_autonomy.scene_motion as sm
+        h=full_history();raw=scan(first=.95);p=wire_packet(profile)
+        data=snapshot_call(raw,h,1.1,0,0.,'left',0.,.1,True,0.,vehicle_marker_regions=p)
+        off=snapshot_call(raw,h,1.1,0,0.,'left',0.,.1,True,0.)
+        assert set(data)-set(off)=={'vehicle_marker_regions'}
+        assert all(data[key]==value for key,value in off.items())
+        monkeypatch.setattr(sm,'motion_scene',lambda *a,**k:scene(1.1))
+        def evaluator(stage):
+            obj=Evaluator.__new__(Evaluator);obj.stage=stage;obj.time_policy='verified_only';obj.corner_budget=False
+            obj.vehicle_marker_profile=profile;obj.vehicle_marker_clock_domain='ros_sim'
+            obj.motion=h.config;obj.follow=LocalFollow();settle(obj.follow,h)
+            return obj
+        plan=evaluator('plan');baseline=copy.deepcopy(plan.follow)
+        expected=baseline.command(scene(1.1),h,0.,'left',0.,.1)
+        result=plan(data)
+>       assert result[0]<expected[0] and result[2]['vehicle_marker_sweep']['limited_checks']>0
+E       assert (0.0 < 0.0)
+
+artifacts\validation\2026-11-13\vehicle_marker_r466_v1\stage\tests\test_vehicle_marker_connection.py:114: AssertionError
+_______ test_ros_packet_producer_receiver_empty_expiry_and_clock_reset ________
+
+profile = {'schema': 1, 'profile_id': 'b0390_cad_vehicle_marker_approx_v1', 'mode': 'approximate_v1', 'purpose': 'occupancy_assist', ...}
+tmp_path = WindowsPath('C:/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/vehicle_marker_r466_v1/testtmp/test_ros_packet_producer_recei0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000215CE2AB680>
+
+    def test_ros_packet_producer_receiver_empty_expiry_and_clock_reset(profile,tmp_path,monkeypatch):
+        monkeypatch.setitem(sys.modules,'std_msgs.msg',NS(String=RosString))
+        path=tmp_path/'profile.json';path.write_text(json.dumps(profile),encoding='utf-8')
+        producer=FakeNode(str(path));consumer=FakeNode(str(path))
+        pub=MarkerChannel(producer,producer=True);sub=MarkerChannel(consumer,producer=False)
+        from arena_autonomy.vehicle_markers import VehicleRegionBuffer
+        buffer=VehicleRegionBuffer(profile);buffer.update(packet(profile),stamp=1.,epoch=0)
+        pipeline=NS(vehicle_regions=buffer,epoch=0)
+        pub.publish(pipeline);sub.receive(producer.sent[-1])
+        assert sub.snapshot(1.1)['regions']
+        empty=packet(profile,stamp=1.1);empty['regions']=[];buffer.update(empty,stamp=1.1,epoch=0)
+        pub.publish(pipeline);sub.receive(producer.sent[-1])
+        assert not sub.snapshot(1.11)['regions']
+        assert sub.snapshot(1.36) is None
+>       sub.reset(1.15);sub.receive(producer.sent[-1]);assert sub.latest is None
+                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert {'source_stamp_s': 1.1, 'reference_s': 1.1, 'source_frame_id': 'camera_color_optical_frame', 'frame_id': 'base_link', ...} is None
+E        +  where {'source_stamp_s': 1.1, 'reference_s': 1.1, 'source_frame_id': 'camera_color_optical_frame', 'frame_id': 'base_link', ...} = <arena_autonomy.vehicle_marker_channel.MarkerChannel object at 0x00000215CE76E5D0>.latest
+
+artifacts\validation\2026-11-13\vehicle_marker_r466_v1\stage\tests\test_vehicle_marker_connection.py:151: AssertionError
+_________ test_existing_node_command_is_unchanged_when_opt_in_is_off __________
+
+    def test_existing_node_command_is_unchanged_when_opt_in_is_off():
+>       from arena_autonomy.local_pursuit import LocalPursuit
+
+tests\test_local_follow.py:255: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+artifacts\validation\2026-11-13\vehicle_marker_r466_v1\stage\src\arena_autonomy\arena_autonomy\local_pursuit.py:8: in <module>
+    from arena_autonomy.wall_follow import WallFollow, stamp_seconds
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    """카메라 출발 신호와 라이다만 사용하는 반복 본선 주행 노드."""
+    import json
+    import math
+    import time
+    
+>   import rclpy
+E   ModuleNotFoundError: No module named 'rclpy'
+
+src\arena_autonomy\arena_autonomy\wall_follow.py:6: ModuleNotFoundError
+______________ test_node_g1_input_failure_cannot_fall_back_to_r0 ______________
+
+    def test_node_g1_input_failure_cannot_fall_back_to_r0():
+>       from arena_autonomy.local_pursuit import LocalPursuit
+
+tests\test_local_follow.py:268: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+artifacts\validation\2026-11-13\vehicle_marker_r466_v1\stage\src\arena_autonomy\arena_autonomy\local_pursuit.py:8: in <module>
+    from arena_autonomy.wall_follow import WallFollow, stamp_seconds
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    """카메라 출발 신호와 라이다만 사용하는 반복 본선 주행 노드."""
+    import json
+    import math
+    import time
+    
+>   import rclpy
+E   ModuleNotFoundError: No module named 'rclpy'
+
+src\arena_autonomy\arena_autonomy\wall_follow.py:6: ModuleNotFoundError
+============================== warnings summary ===============================
+..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anyio\pytest_plugin.py:14
+  C:\Users\Jinhyeong\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anyio\pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-13/vehicle_marker_r466_v1/stage/tests/test_vehicle_marker_connection.py::test_actual_local_follow_point_path_and_wall_preserved
+FAILED artifacts/validation/2026-11-13/vehicle_marker_r466_v1/stage/tests/test_vehicle_marker_connection.py::test_snapshot_and_actual_evaluator_plan_current_connections
+FAILED artifacts/validation/2026-11-13/vehicle_marker_r466_v1/stage/tests/test_vehicle_marker_connection.py::test_ros_packet_producer_receiver_empty_expiry_and_clock_reset
+FAILED tests/test_local_follow.py::test_existing_node_command_is_unchanged_when_opt_in_is_off
+FAILED tests/test_local_follow.py::test_node_g1_input_failure_cannot_fall_back_to_r0
+5 failed, 192 passed, 1 warning in 4.68s

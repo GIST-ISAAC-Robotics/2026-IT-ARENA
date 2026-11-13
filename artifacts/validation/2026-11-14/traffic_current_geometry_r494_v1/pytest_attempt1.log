@@ -1,0 +1,74 @@
+...F....                                                                 [100%]
+================================== FAILURES ===================================
+______________________ test_default_entry_outputs_exact _______________________
+
+    def test_default_entry_outputs_exact():
+        path=probe.A/'base/src/arena_autonomy/arena_autonomy/bypass_entry_trial.py'
+        spec=importlib.util.spec_from_file_location('r494_original_entry',path)
+        original=importlib.util.module_from_spec(spec);sys.modules[spec.name]=original;spec.loader.exec_module(original)
+        exact=[]
+        for seq in (525,528,567):
+            g,row,d,raw,h,scene,result=probe.at_entry(seq)
+>           g.config=replace(g.config,guard_observation_policy='original_v1')
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+artifacts\validation\2026-11-14\traffic_current_geometry_r494_v1\test_r494.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Python314\Lib\dataclasses.py:1778: in replace
+    return _replace(obj, **changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Python314\Lib\dataclasses.py:1812: in _replace
+    return self.__class__(**changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+<string>:68: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = FollowConfig(signed_motion_policy='forward_drive', solo_route_only=False, corridor_arc_agreement=False, ray_wall_conti..._m=0.16, hold_clearance_m=0.2, resume_clearance_m=0.28, headway_s=0.8, confirmations=2, crop_edge_component_trial=True)
+
+    def __post_init__(self):
+        for name in ('track_m', 'wheel_radius_m', 'wheel_width_m'):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+                raise ValueError(name + ' must be finite and positive')
+        if (type(self.expiry_route_reference_trial) is not bool or
+                (self.expiry_route_reference_trial and not self.junction_continuity)):
+            raise ValueError('expiry route reference requires junction continuity')
+        if type(self.piecewise_wall_trial) is not bool:
+            raise ValueError('piecewise wall trial must be boolean')
+        if (type(self.solo_corner_approach_trial) is not bool or
+                (self.solo_corner_approach_trial and not self.solo_straight_budget_trial)):
+            raise ValueError('corner approach requires explicit solo straight budget')
+        if (type(self.solo_straight_budget_trial) is not bool or
+                (self.solo_straight_budget_trial and not (
+                    self.solo_route_only and self.blend_open_speed_by_length and self.boundary_bridge
+                    and self.preview_above_base_speed and not self.ray_wall_continuity
+                    and self.occupancy_timing_mode == 'per_ray_candidate'
+                    and self.partial_observation_policy == 'bounded_local_v4'))):
+            raise ValueError('straight speed budget requires the selected solo observed route configuration')
+        if (type(self.side_departure_trial) is not bool or
+                (self.side_departure_trial and (not self.pass_release_trial or self.solo_route_only))):
+            raise ValueError('side departure requires traffic pass release trial')
+        if type(self.solo_route_only) is not bool:
+            raise ValueError('solo route mode must be boolean')
+        if (type(self.corridor_arc_agreement) is not bool or
+                (self.corridor_arc_agreement and not (self.solo_route_only and self.corridor_fallback_enabled))):
+            raise ValueError('corridor arc agreement requires solo route and corridor fallback')
+        if (type(self.ray_wall_continuity) is not bool or
+                (self.ray_wall_continuity and not (self.solo_route_only and self.blend_open_speed_by_length))):
+            raise ValueError('ray wall continuity requires the solo observed route speed profile')
+        if self.signed_motion_policy not in ('legacy_hold', 'forward_drive'):
+            raise ValueError('unknown signed motion policy')
+        if (self.guard_observation_policy not in ('original_v1', 'selected_r181') or
+                (self.guard_observation_policy == 'selected_r181' and not (
+                    self.pass_release_trial and self.guard_curve_trial and self.traffic_recovery_trial))):
+            raise ValueError('selected guard observation requires explicit traffic guard profile')
+        if (type(self.released_body_gap_trial) is not bool or
+                (self.released_body_gap_trial and self.guard_observation_policy != 'selected_r181')):
+>           raise ValueError('released body gap requires selected guard observation policy')
+E           ValueError: released body gap requires selected guard observation policy
+
+src\arena_autonomy\arena_autonomy\local_follow.py:136: ValueError
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-14/traffic_current_geometry_r494_v1/test_r494.py::test_default_entry_outputs_exact
+1 failed, 7 passed in 0.52s

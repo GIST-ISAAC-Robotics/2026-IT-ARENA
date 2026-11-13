@@ -244,7 +244,8 @@ def compare_entries(scene, now, speed, previous_steering, dt, *, config=None, en
 
 
 def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, entry=None, guide=None,
-                     stationary_boundaries=False, padding_growth_s=0., padding_provider=None, reference_provider=None, pursuit_provider=None):
+                     stationary_boundaries=False, padding_growth_s=0., padding_provider=None, reference_provider=None, pursuit_provider=None,
+                     follow_headway=False):
     """순수 비교 출력. selected가 있어도 독립 보호/운영 연결 전까지 구동 허가 아님."""
     config, entry = config or FollowConfig(), entry or EntryConfig()
     # 기본은 기존 함수다. 명시 시험 후보만 같은 호출 형식의 공급자를 넘긴다.
@@ -271,6 +272,9 @@ def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, e
     result['reference'] = evidence
     if reference is None:
         return {**result, 'reason':evidence['reason']}
+    from arena_autonomy.race_runtime_policy.current_route_priority import enabled
+    current_route = (guide is not None and enabled(config)
+        and evidence.get('reason') == 'current_outer_wall_rechecked_for_remembered_guide')
     points = np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1, 2)
     if (isinstance(padding_growth_s, bool) or not isinstance(padding_growth_s, (int, float))
             or not math.isfinite(padding_growth_s) or not 0 <= padding_growth_s <= .3):
@@ -335,18 +339,30 @@ def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, e
             row['preview_unclipped_steering_rad'] = steer
         steer = float(np.clip(steer, previous_steering-3*dt, previous_steering+3*dt))
         padding_key=wall_name if stationary_boundaries else None
-        clearance = min(command_clearance(steer,padding_key), command_clearance(previous_steering,padding_key))
+        clearance = command_clearance(steer,padding_key)
+        if not current_route:
+            clearance = min(clearance, command_clearance(previous_steering,padding_key))
+        preview = preview_clearance(path, points, padding, config)
         # G1의 앞차 추종 간격(standstill/headway/HOLD)을 저속 횡진입의 벽 원호에
         # 그대로 적용하지 않는다. 기존 반응 .1 s/잔여 .06 m/감속 2 m/s²의
         # 제동식과 모든 반환점 시차 팽창으로 속도를 제한한다. 독립 보호는 별도다.
         target = min(entry.speed_cap_mps, cap, braking_speed(clearance, age))
-        old_available = max(0., clearance-config.standstill_gap_m)
+        # 명시 현재 경로의 복귀 간격은 옛 조향 원호 대신 실제 경로의 관측된
+        # 점유 접두 길이를 쓴다. 모든 반환/padding을 유지하고 경로 밖 장애물을 지우지 않는다.
+        follow_clearance = min(clearance, preview) if current_route and follow_headway else clearance
+        old_available = max(0., follow_clearance-config.standstill_gap_m)
+        follow_target = min(entry.speed_cap_mps, cap,
+            braking_speed(old_available, age), old_available/config.headway_s)
+        if follow_headway:
+            # 추월을 중단하는 새 중심 복귀 후보는 일반 추종 간격을 적용한다.
+            # 실제 속도는 그대로 아래 swept/이동영역의 입력으로 남는다.
+            target = follow_target
         row.update(path_points=path.tolist(), steering_rad=steer, target_speed_mps=target,
             command_clearance_m=clearance, reference_remaining_m=remaining,
-            speed_policy='entry_reaction_braking_not_follow_headway',
-            comparison_follow_target_mps=min(entry.speed_cap_mps, cap,
-                braking_speed(old_available, age),old_available/config.headway_s),
-            preview_return_progress_m=preview_clearance(path, points, padding, config),
+            speed_policy=('follow_reaction_braking_and_headway' if follow_headway
+                          else 'entry_reaction_braking_not_follow_headway'),
+            comparison_follow_target_mps=follow_target,
+            preview_return_progress_m=preview,
             preview_point_gap_m=preview_point_gap(path,points,padding,config) if stationary_boundaries else 0.,
             maximum_occupancy_padding_m=float(np.max(padding)), occupied_points=len(points))
         # 짧은 주시거리 후보는 점유/제동에서 이미 0인 명령을 관측 비교 없이 거부한다.
@@ -358,25 +374,36 @@ def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, e
             continue
         # 현재 속도는 target이 낮아져도 낮아졌다고 가정하지 않는다.
         command_key = (steer, target, padding_key)
-        if pursuit_provider is not None and command_key not in regions:
+        if current_route:
+            region = dict(evaluated=False,reason='current_observed_guide_and_occupied_command',
+                measured_speed_mps=speed,target_speed_mps=target,
+                global_visibility_proof_required=False,unknown_filled=False)
+            row.update(command_occupancy_policy='current_steering_after_rate_limit',
+                       follow_path_clearance_m=follow_clearance)
+        elif pursuit_provider is not None and command_key not in regions:
             from arena_autonomy.adaptive_entry_preview import sampled_region_rejection
             rejected=sampled_region_rejection(scene,speed,target,steer,previous_steering,dt,config,lateral,
                 padding if stationary_boundaries or 'outer_boundary_padding' in result else None)
             if rejected is not None:
                 regions[command_key]=rejected
-        if command_key not in regions:
+        if not current_route and command_key not in regions:
             regions[command_key] = entry_motion_region(scene, speed, target, steer, previous_steering, dt, config, lateral,
                 padding if stationary_boundaries or 'outer_boundary_padding' in result else None)
-        region = dict(regions[command_key])
+        if not current_route:
+            region = dict(regions[command_key])
         row['motion_region'] = region
-        blocked = region_blocked(region, selector)
+        blocked = None if current_route else region_blocked(region, selector)
         if clearance <= 0. or target <= 0.:
             row['reason'] = 'known_occupied_command_hold'
         elif blocked:
             row['reason'] = blocked
         else:
-            row.update(eligible=True, reason='observed_entry_command_candidate',
-                masked_tail_risk_accepted=bool(region['masked_left'] or region['masked_right']))
+            row.update(eligible=True, reason='observed_entry_command_candidate')
+            if current_route:
+                row.update(observation_policy='current_route_priority_v1',
+                    residual_hidden_object_risk=True)
+            else:
+                row['masked_tail_risk_accepted']=bool(region['masked_left'] or region['masked_right'])
         result['candidates'].append(row)
     eligible = [r for r in result['candidates'] if r['eligible']]
     if not eligible:
@@ -732,7 +759,8 @@ class EntryGuide:
             guide=dict(reference=reference,path=path,offset_m=self.offset,transition_m=self.transition,
                 outer_side=self.side,
                 stationary_outer_boundary=self.stationary_outer_boundary and self.wall_confirmations>=2),
-            padding_provider=self.padding_provider)
+            padding_provider=self.padding_provider,
+            follow_headway=getattr(self,'follow_headway',False))
         result=_compare_entries(scene,now,speed,previous_steering,dt,**comparison)
         if getattr(self,'adaptive_preview',False) and self.entry.speed_cap_mps <= .35:
             from functools import partial

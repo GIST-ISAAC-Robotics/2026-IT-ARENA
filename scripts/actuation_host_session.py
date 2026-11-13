@@ -146,7 +146,7 @@ class CompactHostSession:
                     or (kind == 'DISARM' and offer['owner'] != self.client_id)):
                 return self._result('owner_or_output_not_ready', envelope=None)
             try:
-                timing = self._observer.review_offer_time(fit, now,
+                timing = self._review_offer_time(fit, now,
                     max_issue_age_ns=max_issue_age_ns, forward_delay_upper_ns=forward_delay_upper_ns,
                     policy_note=policy_note)
             except (ValueError, TypeError, AttributeError, OverflowError):
@@ -291,9 +291,7 @@ class CompactHostSession:
             return self._result('source_repeated_or_order_uncertain', session_conditions_satisfied=False,
                                 command_created=False)
         try:
-            timing = review_source_time(receipt.payload, fit, receipt.received, now, source, self._arm_barrier,
-                mapping_host_epoch=self._observer.host_epoch, expected_boot=self._observer.boot,
-                expected_generation=self._arm_generation, max_lease_us=self._observer.max_lease_us,
+            timing = self._review_source_time(receipt, fit, now, source,
                 max_issue_age_ns=max_issue_age_ns, forward_delay_upper_ns=forward_delay_upper_ns,
                 source_ttl_ns=source_ttl_ns, policy_note=policy_note)
         except (ValueError, TypeError, AttributeError, OverflowError):
@@ -303,3 +301,12 @@ class CompactHostSession:
             self._source_watermark = source
         return self._result('conditions_reviewed', session_conditions_satisfied=satisfied,
             arm_ack_correlated=True, source_watermark_checked=True, timing=timing, command_created=False)
+
+    def _review_offer_time(self, fit, now, **options):
+        return self._observer.review_offer_time(fit, now, **options)
+
+    def _review_source_time(self, receipt, fit, now, source, **options):
+        return review_source_time(receipt.payload, fit, receipt.received, now, source, self._arm_barrier,
+            mapping_host_epoch=self._observer.host_epoch, expected_boot=self._observer.boot,
+            expected_generation=self._arm_generation, max_lease_us=self._observer.max_lease_us,
+            **options)

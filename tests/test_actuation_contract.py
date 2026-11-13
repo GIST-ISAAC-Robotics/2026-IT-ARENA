@@ -64,6 +64,20 @@ class ContractTests(unittest.TestCase):
         self.assertTrue(self.drive()[1][0])
         self.assertEqual(self.r.state, State.ACTIVE)
 
+    def test_drive_observation_is_specific_to_current_arm_generation(self):
+        self.assertFalse(self.r.drive_seen)
+        self.arm()
+        self.assertFalse(self.r.drive_seen)
+        self.assertTrue(self.drive(0)[1][0])
+        self.assertTrue(self.r.drive_seen)  # 0목표에도 조향 명령은 존재한다.
+        old_angle = self.r.steering
+        self.r.receive({'v': 1, 'kind': 'STOP'}, self.t)
+        self.assertFalse(self.r.drive_seen)
+        self.assertEqual(self.r.steering, old_angle)
+        self.assertTrue(self.control('CLEAR')[0])
+        self.arm()
+        self.assertFalse(self.r.drive_seen)
+
     def test_duplicate_cannot_extend_lifetime(self):
         self.arm()
         packet, _ = self.drive()
@@ -74,6 +88,29 @@ class ContractTests(unittest.TestCase):
         self.advance(50_000)
         self.assertEqual(self.r.reason, "command_expired")
         self.assertEqual(self.r.target_speed, 0)
+
+    def test_deadline_check_does_not_replace_control_heartbeat(self):
+        self.arm()
+        self.drive()
+        previous_tick = self.r.last_control_us
+        for _ in range(6):
+            self.t += 10_000
+            self.sample += 1
+            self.r.update_encoder(self.t, sequence=self.sample, capture_us=self.t,
+                                  left_ticks=0, right_ticks=0)
+            self.r.check_deadlines(self.t)
+        self.assertEqual(self.r.last_control_us, previous_tick)
+        self.assertEqual(self.r.reason, 'control_deadline_missed')
+
+    def test_command_expiry_is_checked_between_control_ticks(self):
+        self.arm()
+        self.drive()
+        self.advance(90_000)
+        previous_tick = self.r.last_control_us
+        self.r.check_deadlines(self.t + 10_000)
+        self.assertEqual(self.r.reason, 'command_expired')
+        self.assertEqual(self.r.last_control_us, previous_tick)
+        self.assertFalse(self.r.armed)
 
     def test_old_source_not_repackaged(self):
         self.arm()

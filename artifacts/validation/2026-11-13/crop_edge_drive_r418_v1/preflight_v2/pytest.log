@@ -1,0 +1,19 @@
+........F......                                                          [100%]
+=================================== FAILURES ===================================
+______________ test_only_structure_json_spacing_can_be_equivalent ______________
+
+    def test_only_structure_json_spacing_can_be_equivalent():
+        from header_comparison import compare_headers
+        expected = read(A/'expected_header.json')
+        actual = copy.deepcopy(expected)
+        field = 'known_structure_sectors_json'
+        actual['follow_config'][field] = json.dumps(json.loads(actual['follow_config'][field]), separators=(',', ':'))
+        result = compare_headers(actual, expected)
+>       assert result['equivalent'] and not result['exact']
+E       assert (True and not True)
+
+artifacts/validation/2026-11-13/crop_edge_drive_r418_v1/test_preflight.py:101: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/crop_edge_drive_r418_v1/preflight_v2/pytest.xml -
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-13/crop_edge_drive_r418_v1/test_preflight.py::test_only_structure_json_spacing_can_be_equivalent
+1 failed, 14 passed in 28.63s

@@ -23,6 +23,8 @@ def make_controller(header):
             HandoffExecutionConfig.from_mapping(header['execution_config']), allow_simulation_trial=True)
     else:
         raise ValueError('unregistered decision process controller')
+    from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, configure_follow_observation
+    configure_follow_observation(follow, header.get('observation_input_scope', SIMULATION_SCOPE))
     return follow, MotionConfig(**header['motion_config'])
 
 

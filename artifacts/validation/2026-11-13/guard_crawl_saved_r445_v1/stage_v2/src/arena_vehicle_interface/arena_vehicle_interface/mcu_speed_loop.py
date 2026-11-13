@@ -1,0 +1,59 @@
+"""엔코더 평균 피드백의 단일 모터 PI 참조. normalized effort는 ESC 신호가 아니다."""
+from dataclasses import dataclass
+from arena_vehicle_interface.actuation_contract import number
+
+
+@dataclass(frozen=True)
+class MotorIntent:
+    effort: float
+    brake_requested: bool
+
+
+class SpeedPI:
+    def __init__(self, kp=.6, ki=1.2, max_dt_s=.05, output_min=-1., output_max=1.):
+        if (not all(number(v) and v > 0 for v in (kp, ki, max_dt_s)) or
+                not all(number(v) for v in (output_min, output_max)) or
+                not -1 <= output_min <= 0 <= output_max <= 1 or output_min >= output_max):
+            raise ValueError("invalid PI settings")
+        self.kp, self.ki, self.max_dt_s = kp, ki, max_dt_s
+        self.output_min, self.output_max = output_min, output_max
+        self.integral = 0.
+
+    def update(self, target_mps, left_mps, right_mps, dt_s, *, enabled):
+        """옛 좌우 엔코더 시험 호환용. 새 단일 축은 update_mean을 사용한다."""
+        if not all(number(v) for v in (left_mps, right_mps)):
+            self.integral = 0.
+            return MotorIntent(0., True)
+        return self.update_mean(target_mps, (left_mps + right_mps) / 2, dt_s, enabled=enabled)
+
+    def update_mean(self, target_mps, mean_wheel_mps, dt_s, *, enabled):
+        """단일 모터축에서 환산한 평균 바퀴 속도. 좌우 독립 관측을 요구하지 않는다."""
+        if (type(enabled) is not bool or not all(number(v)
+                for v in (target_mps, mean_wheel_mps, dt_s)) or
+                target_mps < 0 or not 0 < dt_s <= self.max_dt_s):
+            self.integral = 0.
+            return MotorIntent(0., True)
+        if not enabled or target_mps == 0:
+            self.integral = 0.
+            return MotorIntent(0., True)
+        try:
+            error = target_mps - mean_wheel_mps
+            candidate = self.integral + self.ki * error * dt_s
+            raw = self.kp * error + candidate
+        except OverflowError:  # Python int 중간값을 float로 바꿀 때도 넘칠 수 있다.
+            self.integral = 0.
+            return MotorIntent(0., True)
+        # 유한 입력도 차분/곱에서 overflow할 수 있다. inf를 포화 출력으로 바꾸지 않는다.
+        if not all(number(v) for v in (error, candidate, raw)):
+            self.integral = 0.
+            return MotorIntent(0., True)
+        # 포화가 더 커지는 방향의 적분만 막는다. 중지/재허가에는 적분을 남기지 않는다.
+        if (self.output_min <= raw <= self.output_max or
+                (raw > self.output_max and error < 0) or (raw < self.output_min and error > 0)):
+            self.integral = max(self.output_min, min(self.output_max, candidate))
+        effort_raw = self.kp * error + self.integral
+        if not number(effort_raw):
+            self.integral = 0.
+            return MotorIntent(0., True)
+        effort = max(self.output_min, min(self.output_max, effort_raw))
+        return MotorIntent(effort, effort < 0)

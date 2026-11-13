@@ -1,0 +1,283 @@
+--- r465/run.py
++++ r469/run.py
+@@ -1,4 +1,4 @@
+-"""r465 actor0 최신 기하 단독1랩. root review 뒤 고정 명령으로1회만 실행."""
++"""r469 actor0 최신 기하 단독1랩. root review 뒤 고정 명령으로1회만 실행."""
+ import inspect
+ import json
+ from pathlib import Path
+@@ -12,7 +12,7 @@
+ def configure(target):
+     from shapely.affinity import rotate,translate
+     from facility_geometry import load,slab_projection
+-    F=A.parent/'old_signal_610_r326_v1'
++    F=ROOT/'artifacts/validation/2026-11-13/old_signal_610_r326_v1'
+     record=json.loads((F/'fixture.json').read_bytes());mesh=F/'support_frame_m.stl'
+     assert record['original_sources_unchanged'] and sha(mesh)==record['mesh_sha256']
+     _,_,triangles,_=load(mesh);shape=slab_projection(triangles,.0325,.0925)
+@@ -40,7 +40,7 @@
+     import solo_runner as target
+     configure(target);args=arguments();assert args==prepared['args']
+     write_new(A/'registered.json',dict(args=args,frozen_inputs=prepared['frozen_inputs'],actor_count=0,
+-        source_archive_sha256=prepared['source_archive_sha256'],baseline='r457',ground_truth_evaluation_only=True,
++        source_archive_sha256=prepared['source_archive_sha256'],baseline='r465',ground_truth_evaluation_only=True,
+         one_execution_only=True,repeat_on_failure=False))
+     code=None
+     try:
+--- r465/stop_owned.py
++++ r469/stop_owned.py
+@@ -12,7 +12,7 @@
+ 
+ A = Path(__file__).resolve().parent
+ root = A.parents[3]
+-expected = [b'python3', b'artifacts/validation/2026-11-13/solo_full_lap_r465_v1/run.py']
++expected = [b'python3', b'artifacts/validation/2026-11-14/solo_full_lap_r469_v1/run.py']
+ matches = []
+ for proc in Path('/proc').iterdir():
+     if not proc.name.isdigit():
+@@ -27,7 +27,7 @@
+ pid = matches[0]
+ os.environ.update(ROS_DOMAIN_ID=str(150+pid % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST', ROS_STATIC_PEERS='')
+ rclpy.init()
+-n = Node('r465_owned_stop')
++n = Node('r469_owned_stop')
+ statuses, outputs = [], []
+ n.create_subscription(String, '/actuation/status', lambda m: statuses.append(json.loads(m.data)), 20)
+ n.create_subscription(String, '/actuation/output_status', lambda m: outputs.append(json.loads(m.data)), 20)
+--- r465/execution_v1/execute_once.sh
++++ r469/execution_v1/execute_once.sh
+@@ -1,7 +1,7 @@
+ #!/usr/bin/env bash
+ set -eo pipefail
+ cd '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local'
+-artifact='artifacts/validation/2026-11-13/solo_full_lap_r465_v1'
++artifact='artifacts/validation/2026-11-14/solo_full_lap_r469_v1'
+ receipt="$artifact/execution_v1"
+ test ! -e "$artifact/registered.json"
+ test ! -e "$artifact/run1"
+@@ -20,14 +20,14 @@
+ assert json.loads((a/'recipe_manifest.json').read_bytes())['recipe_verified']
+ build=json.loads((a/'build_v1/receipt.json').read_bytes())
+ assert build['build_exitcode']==build['import_cli_exitcode']==0 and build['native_import_verified']
+-assert json.loads((a/'prepared.json').read_bytes())['source_policy']=='r457_plus_exact_root_reviewed_delta'
++assert json.loads((a/'prepared.json').read_bytes())['source_policy']=='r465_plus_exact_root_reviewed_delta'
+ PY
+ python3 -B "$artifact/prepare.py" --check > "$receipt/check_before_run.json"
+ date --utc --iso-8601=seconds > "$receipt/run_started_utc.txt"
+ python3 "$artifact/run.py" > "$receipt/runner.log" 2>&1 &
+ run_pid=$!
+ printf '%s\n' "$run_pid" > "$receipt/run.pid"
+-printf 'r465 one owned run started, pid=%s\n' "$run_pid"
++printf 'r469 one owned run started, pid=%s\n' "$run_pid"
+ set +e
+ wait "$run_pid"
+ run_code=$?
+@@ -35,5 +35,5 @@
+ printf '%s\n' "$run_code" > "$receipt/run.exit"
+ date --utc --iso-8601=seconds > "$receipt/run_finished_utc.txt"
+ python3 -B "$artifact/prepare.py" --check > "$receipt/check_after_run.json"
+-printf 'r465 run exited: %s\n' "$run_code"
++printf 'r469 run exited: %s\n' "$run_code"
+ exit "$run_code"
+--- r465/execution_v1/stop_once.sh
++++ r469/execution_v1/stop_once.sh
+@@ -1,7 +1,7 @@
+ #!/usr/bin/env bash
+ set -eo pipefail
+ cd '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local'
+-a='artifacts/validation/2026-11-13/solo_full_lap_r465_v1'
++a='artifacts/validation/2026-11-14/solo_full_lap_r469_v1'
+ source /opt/ros/jazzy/setup.bash
+ source install/setup.bash
+ export PYTHONDONTWRITEBYTECODE=1
+--- r465/execution_v1/check_owned_processes.py
++++ r469/execution_v1/check_owned_processes.py
+@@ -5,7 +5,7 @@
+  if not p.name.isdigit() or int(p.name)==os.getpid():continue
+  try:
+   args=(p/'cmdline').read_bytes().split(b'\0');env=(p/'environ').read_bytes().split(b'\0');text=b' '.join(args).decode(errors='replace')
+-  own=int(p.name)==pid or partition in env or ('solo_full_lap_r465_v1' in text and any(w in text for w in ['execute_once.sh','stop_once.sh','run.py','stop_owned.py']))
++  own=int(p.name)==pid or partition in env or ('solo_full_lap_r469_v1' in text and any(w in text for w in ['execute_once.sh','stop_once.sh','run.py','stop_owned.py']))
+   if own:rows.append(dict(pid=int(p.name),argv=[x.decode(errors='replace') for x in args if x],partition_match=partition in env))
+  except (FileNotFoundError,PermissionError):pass
+ value=dict(at_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),owner_pid=pid,partition=partition.decode(),remaining_owned_work=rows)
+--- r465/build_v1/session_audit.py
++++ r469/build_v1/session_audit.py
+@@ -12,11 +12,11 @@
+     if not p.name.isdigit() or int(p.name) in ancestors:continue
+     try:args=(p/'cmdline').read_bytes().split(b'\0');comm=(p/'comm').read_text().strip()
+     except (FileNotFoundError,PermissionError):continue
+-    relevant=(any(b'solo_full_lap_r465_v1/' in x for x in args) or
++    relevant=(any(b'solo_full_lap_r469_v1/' in x for x in args) or
+               comm.startswith(('gz-sim','gzserver')) or (args and args[0].endswith(b'ros2') and b'launch' in args))
+     if relevant:matches.append(dict(pid=int(p.name),argv=[x.decode(errors='replace') for x in args if x]))
+ value=dict(at_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),remaining_owned_or_simulation_work=matches,
+            self_and_ancestor_pids_excluded=sorted(ancestors),ros_initialized=False,gazebo_started=False,
+-           session_exitcode=int(os.environ.get('R465_SESSION_EXIT','0')))
+-Path(os.environ.get('R465_AUDIT_PATH',str(A/'build_v1/session_cleanup.json'))).write_text(json.dumps(value,indent=2)+'\n')
++           session_exitcode=int(os.environ.get('R469_SESSION_EXIT','0')))
++Path(os.environ.get('R469_AUDIT_PATH',str(A/'build_v1/session_cleanup.json'))).write_text(json.dumps(value,indent=2)+'\n')
+ print(json.dumps(value));assert not matches
+--- r465/config.json
++++ r469/config.json
+@@ -1,7 +1,7 @@
+ {
+   "schema_version": 1,
+   "registered_at": "2026-11-08 실행 전 준비",
+-  "scope": "r465 solo full lap; r457 actor0 geometry/sensor/speed/physics/acceptance retained; reviewed r463/r464 policy integration pending",
++  "scope": "r469 solo full lap; r465 actor0 geometry/sensor/speed/physics/acceptance retained; reviewed r467/r468 integrated policy only",
+   "ground_truth_allowlist_evaluation_only": [
+     "actor_schedule",
+     "actor_pose",
+@@ -13,7 +13,7 @@
+     "contact_sensor"
+   ],
+   "launch": {
+-    "entry_g1": "artifacts/validation/2026-11-13/solo_full_lap_r465_v1/course.launch.py",
++    "entry_g1": "artifacts/validation/2026-11-14/solo_full_lap_r469_v1/course.launch.py",
+     "entry_r0": "demo.launch.py (same arguments as the existing validator's local_pursuit path, g1_follow_enabled unset=false)",
+     "autonomy_mode": "local_pursuit",
+     "lidar_acquisition": "sequential",
+--- r465/prepare.py
++++ r469/prepare.py
+@@ -1,4 +1,4 @@
+-"""r457 recipe 재사용. 통합 후 실제 delta 전부를 주 담당 검토한 뒤에만 동결한다."""
++"""r465 recipe 재사용. 통합 후 실제 delta 전부를 주 담당 검토한 뒤에만 동결한다."""
+ import argparse
+ import ast
+ import hashlib
+@@ -8,8 +8,16 @@
+ 
+ A=Path(__file__).resolve().parent
+ ROOT=A.parents[3]
+-BASE=A.parent/'solo_full_lap_r457_v1'
++BASE=ROOT/'artifacts/validation/2026-11-13/solo_full_lap_r465_v1'
+ SOURCE_SUFFIXES={'.py','.yaml','.xml','.xacro','.sdf','.cpp','.hpp','.stl','.so'}
++INTEGRATION=ROOT/'artifacts/validation/2026-11-14/released_structure_r468_v1/integration.json'
++EXPECTED_DELTA={
++    'src/arena_autonomy/arena_autonomy/pass_release_trial.py',
++    'src/arena_autonomy/arena_autonomy/race_runtime_policy/current_region.py',
++    'src/arena_autonomy/arena_autonomy/structure_region.py',
++    'src/arena_autonomy/arena_autonomy/known_structure.py',
++    'tests/test_released_structure_region.py',
++}
+ 
+ 
+ def sha(path):
+@@ -41,14 +49,18 @@
+     assert sha(BASE/'sources.zip')==old['source_archive_sha256']
+     baseline={p:h for p,h in old['frozen_inputs'].items() if p.startswith(('src/','scripts/','tests/','config/'))}
+     paths={ROOT/p for p in baseline}
+-    # r457과 같은 source 수집 범위. 이미 포함된 config/fixture는 baseline 키로 유지한다.
++    # r465과 같은 source 수집 범위. 이미 포함된 config/fixture는 baseline 키로 유지한다.
+     paths.update(p for p in (ROOT/'src').rglob('*') if p.is_file() and p.suffix in SOURCE_SUFFIXES)
+     paths.update((ROOT/'scripts').glob('*.py'))
+     paths.update((ROOT/'tests').rglob('*.py'))
+     current={p.relative_to(ROOT).as_posix():sha(p) for p in sorted(paths) if p.is_file()}
+     delta=[dict(path=p,before=baseline.get(p),after=current.get(p))
+         for p in sorted(baseline.keys()|current.keys()) if baseline.get(p)!=current.get(p)]
+-    return dict(baseline='r457',baseline_archive_sha256=old['source_archive_sha256'],
++    assert {row['path'] for row in delta}==EXPECTED_DELTA, 'r469 requires exact approved five-file delta'
++    integrated=read(INTEGRATION)['files']
++    assert set(integrated)==EXPECTED_DELTA
++    assert all(integrated[row['path']]==dict(before=row['before'],after=row['after']) for row in delta)
++    return dict(baseline='r465',baseline_archive_sha256=old['source_archive_sha256'],
+         baseline_prepared_sha256=sha(BASE/'prepared.json'),common_files=current,delta=delta,
+         geometry_sensor_speed_physics_recipe_unchanged=True,source_frozen=False,
+         awaiting_review=True,build_executed=False,simulation_started=False)
+@@ -102,7 +114,7 @@
+     value=dict(args=arguments(),frozen_inputs=selected,source_archive_sha256=sha(A/'sources.zip'),
+         baseline_archive_sha256=sha(BASE/'sources.zip'),common_delta=read(A/'source_scope.json')['delta'],
+         common_files=len(common),actor_count=0,facilities=3,real_time_factor=.25,max_sim_seconds=80,
+-        no_progress_stop_sim_seconds=8,source_policy='r457_plus_exact_root_reviewed_delta',
++        no_progress_stop_sim_seconds=8,source_policy='r465_plus_exact_root_reviewed_delta',
+         header_selection_unchanged=True,one_execution_only=True,repeat_on_failure=False,
+         root_run_confirmation_required=True,simulator_started=False,build_executed=build['build_executed'])
+     write_new(A/'prepared.json',value)
+--- r465/verify_recipe.py
++++ r469/verify_recipe.py
+@@ -23,7 +23,9 @@
+     expected['launch']['entry_g1']=(A/'course.launch.py').relative_to(ROOT).as_posix()
+     assert config==expected
+     before=read(BASE/'registered.json')['args']
+-    expected_args=[s.replace('solo_full_lap_r457_v1','solo_full_lap_r465_v1') for s in before]
++    old_relative=BASE.relative_to(ROOT).as_posix()
++    new_relative=A.relative_to(ROOT).as_posix()
++    expected_args=[s.replace(old_relative,new_relative) for s in before]
+     assert arguments()==expected_args
+     assert config['cases'][0]['duration_s']==80. and config['launch']['grid_slot']==3
+     models=ET.parse(A/'facilities_only.sdf').getroot().findall('model')
+@@ -32,13 +34,17 @@
+     assert all(m.findtext('static')=='true' for m in models)
+     # 수정 run에는 이름/기준시험 기록만 바뀐다. 알고리즘은 baseline의 정확한 원문이다.
+     old=(BASE/'run.py').read_text(encoding='utf8')
+-    transformed=old.replace('solo_full_lap_r457_v1','solo_full_lap_r465_v1').replace('r457','r465').replace('R457','R465').replace("baseline='r452'","baseline='r457'")
++    transformed=old.replace(old_relative,new_relative).replace('r465','r469').replace('R465','R469').replace("baseline='r457'","baseline='r465'")
++    transformed=transformed.replace("F=A.parent/'old_signal_610_r326_v1'", "F=ROOT/'artifacts/validation/2026-11-13/old_signal_610_r326_v1'")
+     assert (A/'run.py').read_text(encoding='utf8')==transformed
++    fixture=ROOT/'artifacts/validation/2026-11-13/old_signal_610_r326_v1'
++    for path in (fixture/'fixture.json',fixture/'support_frame_m.stl'):
++        assert sha(path)==read(BASE/'prepared.json')['frozen_inputs'][path.relative_to(ROOT).as_posix()]
+     stop=(A/'stop_owned.py').read_text(encoding='utf8')
+-    assert "expected = [b'python3', b'artifacts/validation/2026-11-13/solo_full_lap_r465_v1/run.py']" in stop
++    assert "expected = [b'python3', b'artifacts/validation/2026-11-14/solo_full_lap_r469_v1/run.py']" in stop
+     wrapper=(A/'execution_v1/execute_once.sh').read_text(encoding='utf8')
+     assert 'python3 "$artifact/run.py"' in wrapper and 'python3 -B "$artifact/run.py"' not in wrapper
+-    assert 'r457_plus_exact_root_reviewed_delta' in wrapper
++    assert 'r465_plus_exact_root_reviewed_delta' in wrapper
+     assert 'r452_plus_r459_exact_six_files' not in wrapper
+     paths=[*A.glob('*.py'),*(A/'launch').glob('*.py'),*(A/'build_v1').glob('*.py'),*(A/'execution_v1').glob('*.py')]
+     for path in paths:ast.parse(path.read_bytes())
+@@ -49,7 +55,7 @@
+         [*paths,*(A/'build_v1').glob('*.sh'),*(A/'execution_v1').glob('*.sh'),A/'config.json',
+          A/'facilities_only.sdf',A/'expected_header.json',A/'baseline_copy.json']}
+     command=read(BASE/'launch_command.json')
+-    command=[s.replace('solo_full_lap_r457_v1','solo_full_lap_r465_v1') for s in command]
++    command=[s.replace(old_relative,new_relative) for s in command]
+     write_new(A/'launch_command_expected.json',command)
+     all_recipe['launch_command_expected.json']=sha(A/'launch_command_expected.json')
+     result=dict(recipe_verified=True,byte_exact_baseline_copies=exact,copied_file_sha256=copied_files,
+@@ -61,8 +67,8 @@
+         python_ast_files=len(paths),raw_baseline_results_copied=False,old_execution_failures_copied=False,
+         common_source_changes_by_this_task=False,source_scope_created=False,source_frozen=False,
+         build_executed=False,ros_initialized=False,gazebo_started=False,
+-        pending=['r463/r464 root integration','exact common delta review','WSL resource assignment',
+-                 'build/import/fixed CLI','freeze','root one-run review'])
++        pending=['exact approved five-file delta review','build/import/fixed CLI','freeze',
++                 'delegated final execution review under root one-run authorization'])
+     write_new(A/'recipe_manifest.json',result)
+     print(json.dumps(dict(recipe_verified=True,exact_copies=len(exact),python_ast_files=len(paths),
+         recipe_files=len(all_recipe),source_frozen=False,build_executed=False,simulation_started=False)))
+--- r465/build_v1/check_import_cli.py
++++ r469/build_v1/check_import_cli.py
+@@ -56,7 +56,7 @@
+     import_cli_exitcode=0,modules=rows,native_import_verified=True,native=dict(path=str(native),sha256=sha(native)),
+     common_sha256=common,common_delta=read(A/'source_scope.json')['delta'],fixed_cli_reached_ros_init=True,
+     header_selection_unchanged=True,ros_initialized=False,gazebo_started=False,
+-    source_review_sha256=sha(A/'root_source_review.json'),r457_archive_sha256=sha(BASE/'sources.zip'))
++    source_review_sha256=sha(A/'root_source_review.json'),r465_archive_sha256=sha(BASE/'sources.zip'))
+ write_new(A/'build_v1/receipt.json',value)
+ print(__import__('json').dumps(dict(import_cli_passed=True,modules=len(rows),common_files=len(common),
+     common_delta=len(value['common_delta']),native_unchanged=True,ros_initialized=False)))
+--- r465/build_v1/prepare_once.sh
++++ r469/build_v1/prepare_once.sh
+@@ -1,7 +1,7 @@
+ #!/usr/bin/env bash
+ set -eo pipefail
+ cd '/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local'
+-artifact='artifacts/validation/2026-11-13/solo_full_lap_r465_v1'
++artifact='artifacts/validation/2026-11-14/solo_full_lap_r469_v1'
+ b="$artifact/build_v1"
+ test ! -e "$b/session_started_utc.txt"
+ test ! -e "$artifact/prepared.json"
+@@ -9,8 +9,8 @@
+ finish() {
+   rc=$?
+   trap - EXIT
+-  export R465_SESSION_EXIT="$rc"
+-  export R465_AUDIT_PATH="$PWD/$b/session_cleanup.json"
++  export R469_SESSION_EXIT="$rc"
++  export R469_AUDIT_PATH="$PWD/$b/session_cleanup.json"
+   printf '%s\n' "$rc" > "$b/session.exit"
+   python3 -B "$b/session_audit.py" > "$b/session_audit.log" 2>&1
+   audit_rc=$?

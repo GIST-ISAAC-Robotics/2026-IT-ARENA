@@ -1,0 +1,396 @@
+--- a/src/arena_autonomy/arena_autonomy/pass_release_trial.py
++++ b/src/arena_autonomy/arena_autonomy/pass_release_trial.py
+@@ -134,10 +134,13 @@
+ 
+ 
+ 
+-def observed_guard_approach(frame, context, guarded_sides, rejected_sides):
++def observed_guard_approach(frame, context, guarded_sides, rejected_sides, *, region=None, selector_config=None,
++                            length_m=None, width_m=None):
+     """옆차 쪽으로 추가 접근하는 모든 이동 표본의 현재 관측을 요구한다.
+ 
+-    과거 횡위치 초과의 대안 근거이며 미관측/장착 마스크는 통과시키지 않는다.
++    옵션 없는 기존 호출은 모든 접근 표본의 현재 자유 관측을 요구한다.
++    명시한 현재 region/config가 같은 표본의 제한된 자기 가림을 허용한 경우에만
++    그 가림을 별도 위험으로 센다. 자유 관측으로 바꾸거나 얇은 숨은 물체의 부재를 보증하지 않는다.
+     context의 free는 원시 반환과 기존 거리/시간 여유를 적용한 depth_support다.
+     """
+     evidence = {'accepted': False, 'unknown_filled': False, 'sides': {}}
+@@ -146,6 +149,26 @@
+     queries = context['queries']
+     if not len(queries):
+         return evidence
++    bounded = False
++    explicit = region is not None or selector_config is not None
++    masked = context.get('masked') if explicit else None
++    if explicit and masked is None:
++        masked = np.zeros(len(queries), dtype=bool)
++    if region is not None and selector_config is not None:
++        tail = region.get('masked_tail_extent_m')
++        bounded = (region.get('queries') == len(queries)
++            and region.get('unobserved') == 0 and region.get('masked_front_samples') == 0
++            and isinstance(tail, (int, float)) and not isinstance(tail, bool) and math.isfinite(tail)
++            and 0 <= tail <= selector_config.masked_tail_allowance_m
++            and all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v > 0
++                    for v in (length_m, width_m))
++            and masked.shape == context['free'].shape == (len(queries),)
++            and not np.any(~context['free'] & ~masked)
++            and region.get('masked_left', 0) + region.get('masked_right', 0) == int(np.count_nonzero(masked))
++            and region_blocked(region, selector_config) is None)
++    if explicit:
++        evidence.update(bounded_mask_eligible=bool(bounded), residual_hidden_object_risk=False,
++                        basis='observed')
+     _, lateral = frame.project(queries)
+     for name in rejected_sides:
+         sign = 1. if name == 'left' else -1.
+@@ -153,7 +176,37 @@
+         count = int(np.count_nonzero(beyond))
+         free = int(np.count_nonzero(context['free'][beyond]))
+         evidence['sides'][name] = {'samples': count, 'currently_observed': free}
+-        if count == 0 or free != count:
++        bounded_count = 0
++        mask_span = None
++        before_mask = after_mask = 0
++        if bounded:
++            failed_mask = beyond & masked & ~context['free']
++            points = queries[failed_mask]
++            if len(points):
++                # 앞/뒤 돌출을 포함하지 않는 현재 차체 옆면의 작은 띠만 허용한다.
++                # .05m는 known_structure의 허용 가림 폭을 종방향 span 상한으로
++                # 보수적으로 재사용한 값이며, 연속 관측이나 물체 부재 보증이 아니다.
++                from arena_autonomy.known_structure import ACCEPTED_HIDDEN_WIDTH_M
++                exterior = np.abs(points[:, 1]) - width_m/2
++                mask_span = float(np.ptp(points[:, 0]))
++                free_x = queries[beyond & context['free'], 0]
++                before_mask = int(np.count_nonzero(free_x < np.min(points[:, 0])))
++                after_mask = int(np.count_nonzero(free_x > np.max(points[:, 0])))
++                if (np.all(np.isfinite(points)) and np.all(np.abs(points[:, 0]) <= length_m/2)
++                        and np.all((exterior >= 0) & (exterior <= selector_config.masked_tail_allowance_m))
++                        and mask_span <= ACCEPTED_HIDDEN_WIDTH_M):
++                    bounded_count = len(points)
++        if explicit:
++            known_count = int(np.count_nonzero(masked[beyond] & ~context['free'][beyond]))
++            evidence['sides'][name].update(known_masked=known_count, bounded_mask=bounded_count,
++                unaccepted_masked=known_count-bounded_count, unknown=count-free-known_count)
++            if mask_span is not None:
++                evidence['sides'][name].update(masked_x_span_m=mask_span,
++                    observed_before_mask=before_mask, observed_after_mask=after_mask)
++            evidence['residual_hidden_object_risk'] |= bounded_count > 0
++            if bounded_count:
++                evidence['basis'] = 'observed_with_mask_budget'
++        if free == 0 or free + bounded_count != count:
+             return evidence
+     evidence['accepted'] = True
+     return evidence
+@@ -537,7 +590,10 @@
+                 _, queries = motion_queries(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
+                 pad = mx.ray_padding(scene, self.lat, self.follow_config.object_motion_bound_mps)
+                 context = {'queries': queries, 'free': depth_support(scene, queries, pad)}
+-            approach = observed_guard_approach(view['frame'], context, info['guarded_sides'], rejected_sides)
++            approach = observed_guard_approach(view['frame'], context, info['guarded_sides'], rejected_sides,
++                **(dict(region=region, selector_config=self.config, length_m=self.follow_config.length_m,
++                        width_m=self.follow_config.width_m) if self.follow_config.traffic_recovery_trial
++                        and self.follow_config.guard_observation_policy == 'selected_r181' else {}))
+             info['current_approach'] = approach
+             if not approach['accepted']:
+                 return reject(f'toward_{rejected_sides[0]}')
+@@ -547,7 +603,9 @@
+                   'guard_curve_bounded_same_path_gap' if same['accepted'] else
+                   'guard_curve_observed_motion_small_masked_tail' if small_tail else 'guard_curve_observed_motion')
+         if rejected_sides:
+-            reason = 'guard_curve_current_approach_observed'
++            reason = ('guard_curve_current_approach_observed_with_mask_budget'
++                      if approach.get('basis') == 'observed_with_mask_budget'
++                      else 'guard_curve_current_approach_observed')
+         risk_detail = ({'selector_same_path_gap_risk_accepted': same['accepted']}
+                        if self.follow_config.traffic_recovery_trial else {})
+         return target, b_steer, {**b_detail, **detail, 'selector_choice': 'guard_baseline', 'selector_reason': reason,
+--- a/src/arena_autonomy/arena_autonomy/current_path_recheck/_present.py
++++ b/src/arena_autonomy/arena_autonomy/current_path_recheck/_present.py
+@@ -110,7 +110,9 @@
+             _, queries = ps.motion_queries(scene, speed, target, steering, previous_steering, dt, cfg, lat)
+             pad = ps.mx.ray_padding(scene, lat, cfg.object_motion_bound_mps)
+             context = dict(queries=queries, free=ps.depth_support(scene, queries, pad))
+-        proof = ps.observed_guard_approach(view['frame'], context, approach, rejected)
++        proof = ps.observed_guard_approach(view['frame'], context, approach, rejected,
++            **(dict(region=region, selector_config=policy, length_m=cfg.length_m, width_m=cfg.width_m)
++               if cfg.guard_observation_policy == 'selected_r181' else {}))
+         detail['current_approach'] = proof
+         if not proof['accepted']:
+             return stop('guard_current_approach_not_observed', **detail)
+--- a/src/arena_autonomy/arena_autonomy/current_path_recheck/_guard.py
++++ b/src/arena_autonomy/arena_autonomy/current_path_recheck/_guard.py
+@@ -92,7 +92,8 @@
+     poses = np.vstack([np.vstack((ps.command_arc(angle,max(distance,.01),lat),
+                                   ps.extrema_arc(angle,max(distance,.01),lat)))
+                        for angle in sorted({float(steering),float(previous)})])
+-    approach = {}
++    approach, rejected = {}, []
++    policy = ps.SelectorConfig()
+     for name, sign in ps.SIDES:
+         if name not in guarded:
+             continue
+@@ -103,8 +104,10 @@
+         present_extent = ps.side_extent(view['frame'], [[0.,0.,0.]], sign, lat)
+         predicted = ps.side_extent(view['frame'], poses, sign, lat)
+         approach[name] = dict(anchor_m=anchor, current_m=present_extent, predicted_m=predicted)
+-        if predicted > anchor+.01 and predicted > present_extent+1e-9:
+-            return stop('guard_rebase_toward_unreleased_side', guarded_sides=approach)
++        if predicted > anchor+policy.small_excursion_m and predicted > present_extent+1e-9:
++            if cfg.guard_observation_policy != 'selected_r181':
++                return stop('guard_rebase_toward_unreleased_side', guarded_sides=approach)
++            rejected.append(name)
+     context = {}
+     region = ps.motion_region(scene,speed,target,steering,previous,dt,cfg,lat,context=context)
+     proof = dict(accepted=False, reason='not_needed', unknown_filled=False)
+@@ -123,10 +126,25 @@
+             # 현재 실제속도로 같은 좁은 위험 분류를 처음부터 검사한다.
+             proof = adjacent.bounded_adjacent_structure(scene,scan,queries,context['padding'],
+                 cfg.length_m,cfg.width_m,speed,target,parse_sectors(cfg.known_structure_sectors_json))
+-    blocked = ps.region_blocked(region,ps.SelectorConfig(),bounded_unknown_risk=proof['accepted'])
++    blocked = ps.region_blocked(region,policy,bounded_unknown_risk=proof['accepted'])
+     if blocked:
++        if rejected:
++            return stop('guard_rebase_toward_unreleased_side', region=region,
++                        current_gap_proof=proof, guarded_sides=approach, current_region_blocked=blocked)
+         return stop('guard_rebase_'+blocked, region=region, current_gap_proof=proof)
+-    return {**result, **diagnostic, 'reason':'rebase_current_guard',
++    approach_detail = {}
++    if rejected:
++        if not context:
++            _, queries = ps.motion_queries(scene,speed,target,steering,previous,dt,cfg,lat)
++            pad = ps.mx.ray_padding(scene,lat,cfg.object_motion_bound_mps)
++            context = dict(queries=queries,free=ps.depth_support(scene,queries,pad))
++        observed = ps.observed_guard_approach(view['frame'],context,approach,rejected,
++            region=region,selector_config=policy,length_m=cfg.length_m,width_m=cfg.width_m)
++        approach_detail['current_approach'] = observed
++        if not observed['accepted']:
++            return stop('guard_rebase_toward_unreleased_side',guarded_sides=approach,
++                        region=region,current_gap_proof=proof,**approach_detail)
++    return {**result, **diagnostic, **approach_detail, 'reason':'rebase_current_guard',
+             'guarded_sides':approach, 'region':region, 'current_gap_proof':proof,
+             'current_side_presence':{name:view[name]['present'] for name,_ in ps.SIDES},
+             'forward_coverage_only':True}
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/retained_recheck/_present.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/retained_recheck/_present.py
+@@ -110,7 +110,9 @@
+             _, queries = ps.motion_queries(scene, speed, target, steering, previous_steering, dt, cfg, lat)
+             pad = ps.mx.ray_padding(scene, lat, cfg.object_motion_bound_mps)
+             context = dict(queries=queries, free=ps.depth_support(scene, queries, pad))
+-        proof = ps.observed_guard_approach(view['frame'], context, approach, rejected)
++        proof = ps.observed_guard_approach(view['frame'], context, approach, rejected,
++            **(dict(region=region, selector_config=policy, length_m=cfg.length_m, width_m=cfg.width_m)
++               if cfg.guard_observation_policy == 'selected_r181' else {}))
+         detail['current_approach'] = proof
+         if not proof['accepted']:
+             return stop('guard_current_approach_not_observed', **detail)
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/retained_recheck/_guard.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/retained_recheck/_guard.py
+@@ -92,7 +92,8 @@
+     poses = np.vstack([np.vstack((ps.command_arc(angle,max(distance,.01),lat),
+                                   ps.extrema_arc(angle,max(distance,.01),lat)))
+                        for angle in sorted({float(steering),float(previous)})])
+-    approach = {}
++    approach, rejected = {}, []
++    policy = ps.SelectorConfig()
+     for name, sign in ps.SIDES:
+         if name not in guarded:
+             continue
+@@ -103,8 +104,10 @@
+         present_extent = ps.side_extent(view['frame'], [[0.,0.,0.]], sign, lat)
+         predicted = ps.side_extent(view['frame'], poses, sign, lat)
+         approach[name] = dict(anchor_m=anchor, current_m=present_extent, predicted_m=predicted)
+-        if predicted > anchor+.01 and predicted > present_extent+1e-9:
+-            return stop('guard_rebase_toward_unreleased_side', guarded_sides=approach)
++        if predicted > anchor+policy.small_excursion_m and predicted > present_extent+1e-9:
++            if cfg.guard_observation_policy != 'selected_r181':
++                return stop('guard_rebase_toward_unreleased_side', guarded_sides=approach)
++            rejected.append(name)
+     context = {}
+     region = ps.motion_region(scene,speed,target,steering,previous,dt,cfg,lat,context=context)
+     proof = dict(accepted=False, reason='not_needed', unknown_filled=False)
+@@ -123,10 +126,25 @@
+             # 현재 실제속도로 같은 좁은 위험 분류를 처음부터 검사한다.
+             proof = adjacent.bounded_adjacent_structure(scene,scan,queries,context['padding'],
+                 cfg.length_m,cfg.width_m,speed,target,parse_sectors(cfg.known_structure_sectors_json))
+-    blocked = ps.region_blocked(region,ps.SelectorConfig(),bounded_unknown_risk=proof['accepted'])
++    blocked = ps.region_blocked(region,policy,bounded_unknown_risk=proof['accepted'])
+     if blocked:
++        if rejected:
++            return stop('guard_rebase_toward_unreleased_side', region=region,
++                        current_gap_proof=proof, guarded_sides=approach, current_region_blocked=blocked)
+         return stop('guard_rebase_'+blocked, region=region, current_gap_proof=proof)
+-    return {**result, **diagnostic, 'reason':'rebase_current_guard',
++    approach_detail = {}
++    if rejected:
++        if not context:
++            _, queries = ps.motion_queries(scene,speed,target,steering,previous,dt,cfg,lat)
++            pad = ps.mx.ray_padding(scene,lat,cfg.object_motion_bound_mps)
++            context = dict(queries=queries,free=ps.depth_support(scene,queries,pad))
++        observed = ps.observed_guard_approach(view['frame'],context,approach,rejected,
++            region=region,selector_config=policy,length_m=cfg.length_m,width_m=cfg.width_m)
++        approach_detail['current_approach'] = observed
++        if not observed['accepted']:
++            return stop('guard_rebase_toward_unreleased_side',guarded_sides=approach,
++                        region=region,current_gap_proof=proof,**approach_detail)
++    return {**result, **diagnostic, **approach_detail, 'reason':'rebase_current_guard',
+             'guarded_sides':approach, 'region':region, 'current_gap_proof':proof,
+             'current_side_presence':{name:view[name]['present'] for name,_ in ps.SIDES},
+             'forward_coverage_only':True}
+--- /dev/null
++++ b/tests/test_bounded_guard_approach.py
+@@ -0,0 +1,154 @@
++"""명시 현재 region proof의 작은 자기 가림만 수용하며 관측/가림을 구분한다."""
++from copy import deepcopy
++from dataclasses import replace
++from types import SimpleNamespace
++import importlib
++import math
++import numpy as np
++import pytest
++from arena_autonomy import pass_release_trial as ps
++
++
++def sample():
++    frame=ps.mx.ExecutionFrame(np.array([[-1.,0.],[0.,0.],[1.,0.],[2.,0.]]))
++    context=dict(queries=np.array([[.02,-.077],[.03,-.081],[.02,.077],[.03,.081]]),
++        free=np.array([True,False,True,False]),masked=np.array([False,True,False,True]))
++    sides={name:dict(current_m=.075) for name in ('left','right')}
++    region=dict(queries=4,unobserved=0,masked_front_samples=0,masked_left=1,masked_right=1,masked_tail_extent_m=.006)
++    return frame,context,sides,region
++
++
++def check(data,**overrides):
++    frame,context,sides,region=data
++    return ps.observed_guard_approach(frame,context,sides,['right','left'],
++        region=overrides.get('region',region),selector_config=overrides.get('selector_config',ps.SelectorConfig()),
++        length_m=.2,width_m=.15)
++
++
++def test_explicit_region_keeps_mask_separate_from_free_and_state():
++    data=sample();before=deepcopy(data[1:]);out=check(data)
++    assert out['accepted'] and out['bounded_mask_eligible'] and out['residual_hidden_object_risk']
++    assert not out['unknown_filled']
++    assert out['basis']=='observed_with_mask_budget'
++    assert out['sides']=={side:dict(samples=2,currently_observed=1,known_masked=1,bounded_mask=1,unaccepted_masked=0,unknown=0,
++        masked_x_span_m=0.,observed_before_mask=1,observed_after_mask=0) for side in ('left','right')}
++    assert data[2:]==before[1:]
++    for key in data[1]:np.testing.assert_array_equal(data[1][key],before[0][key])
++
++
++def test_legacy_call_stays_strict_without_proof():
++    frame,context,sides,_=sample()
++    out=ps.observed_guard_approach(frame,context,sides,['right'])
++    assert out==dict(accepted=False,unknown_filled=False,sides={'right':dict(samples=2,currently_observed=1)})
++    assert not check(sample(),region=None)['accepted']
++    assert not check(sample(),selector_config=None)['accepted']
++
++
++@pytest.mark.parametrize('change',('unknown','front','over_budget','nan_tail','wrong_count','mismatched_mask'))
++def test_invalid_or_unsafe_region_cannot_supply_bounded_permission(change):
++    data=sample();region=data[3]
++    if change=='unknown':region['unobserved']=1
++    elif change=='front':region['masked_front_samples']=1
++    elif change=='over_budget':region['masked_tail_extent_m']=.010001
++    elif change=='nan_tail':region['masked_tail_extent_m']=float('nan')
++    elif change=='wrong_count':region['queries']=5
++    else:region['masked_left']=0
++    out=check(data)
++    assert not out['accepted'] and not out['bounded_mask_eligible']
++    assert out['sides']['right']['unknown']==0
++    assert out['sides']['right']['known_masked']==out['sides']['right']['unaccepted_masked']==1
++
++
++def test_mask_only_one_side_cannot_borrow_free_from_other_side():
++    data=sample();data[1]['free'][0]=False;data[1]['masked'][0]=True;data[3]['masked_right']=2
++    out=check(data)
++    assert not out['accepted'] and out['bounded_mask_eligible']
++    assert out['sides']['right']['currently_observed']==0
++
++
++def test_finite_block_or_general_unknown_cannot_be_relabelled_by_region_summary():
++    data=sample();data[1]['masked'][1]=False;data[3]['masked_right']=0
++    # The classification array wins even if a caller's summary says unknown=0.
++    assert not check(data)['accepted']
++
++
++@pytest.mark.parametrize('point',([.100001,-.081],[-.100001,-.081],[.03,-.085001]))
++def test_query_geometry_cannot_hide_behind_region_summary(point):
++    data=sample();data[1]['queries'][1]=point
++    assert not check(data)['accepted']
++
++
++def test_long_masked_span_is_rejected_without_requiring_bracketing_free():
++    data=sample();data[1]['queries']=np.vstack((data[1]['queries'],[-.03,-.081]))
++    data[1]['free']=np.append(data[1]['free'],False);data[1]['masked']=np.append(data[1]['masked'],True)
++    data[3].update(queries=5,masked_right=2)
++    assert not check(data)['accepted']  # .06m span exceeds existing .05m hidden-width budget.
++
++
++@pytest.mark.parametrize('package',('arena_autonomy.current_path_recheck','arena_autonomy.race_runtime_policy.retained_recheck'))
++@pytest.mark.parametrize('unknown',(False,True))
++def test_absent_guard_checks_region_before_approach_and_keeps_identity(package,unknown,monkeypatch):
++    module=importlib.import_module(package+'._guard')
++    frame,ctx,sides,region=sample();cfg=SimpleNamespace(guard_curve_trial=True,traffic_recovery_trial=True,
++        length_m=.2,width_m=.15,object_motion_bound_mps=.5,guard_observation_policy='selected_r181')
++    normal=dict(selector_sides={name:dict(present=False,seen=True,passed=False) for name in sides},
++        selector_guard_candidate=dict(accepted=True,guarded_sides={name:dict(anchor_m=.0) for name in sides}),
++        partial_observation=dict(allowed=True,reason='fully_observed'),path_source_s=.9)
++    output=(.15,0.,dict(normal=normal));old={};current=dict(speed_mps=0.,previous_steering_rad=0.,dt_s=.02,reference_s=1.)
++    scene=SimpleNamespace(t_ref_s=1.,source_first_s=.9)
++    monkeypatch.setattr(module,'supported',lambda _:True)
++    monkeypatch.setattr(module,'forward_planning_speed',lambda c,v:v)
++    monkeypatch.setattr(module.geometry,'rebase',lambda *a:dict(speed_mps=.15,steering_rad=0.,path_points=[[0.,0.],[1.,0.]],reference_s=1.,path_source_s=.9))
++    monkeypatch.setattr(module,'current_forward_coverage',lambda *a:True)
++    monkeypatch.setattr(ps,'lateral_config',lambda c:object())
++    monkeypatch.setattr(ps,'threat_view',lambda *a:dict(frame=frame,left=dict(present=False),right=dict(present=False)))
++    monkeypatch.setattr(ps,'command_arc',lambda *a:np.array([[0.,0.,0.]]))
++    monkeypatch.setattr(ps,'extrema_arc',lambda *a:np.array([[0.,0.,0.]]))
++    monkeypatch.setattr(ps,'side_extent',lambda f,p,s,c:.075 if len(p)==1 else .09)
++    order=[]
++    def motion(*a,context):
++        order.append('region');context.update(deepcopy(ctx));context['padding']=np.zeros(4);r=deepcopy(region)
++        if unknown:r['unobserved']=1;context['masked'][1]=False
++        return r
++    monkeypatch.setattr(ps,'motion_region',motion)
++    monkeypatch.setattr(module,'bounded_rear_fringe',lambda *a:dict(accepted=False))
++    original=ps.observed_guard_approach
++    def observe(*a,**kw):order.append('approach');return original(*a,**kw)
++    monkeypatch.setattr(ps,'observed_guard_approach',observe)
++    before=deepcopy((output,current))
++    result=module.rebase(output,old,current,object(),scene,object(),cfg)
++    assert (output,current)==before
++    if unknown:
++        assert result['speed_mps']==0 and order==['region']
++        assert result['reason']=='guard_rebase_toward_unreleased_side'
++    else:
++        assert result['speed_mps']==.15 and order==['region','approach']
++        assert result['current_approach']['accepted'] and not result['state_transition']
++
++
++@pytest.mark.parametrize('runtime',(False,True))
++@pytest.mark.parametrize('change',('near_front','near_side','missing_front'))
++def test_selected_policy_current_real_rays_keep_obstacle_and_unknown_stop(runtime,change):
++    # Real saved current scene; only explicit selection and the stated ray fault change.
++    from test_guard_observation_rebase import sample as saved_sample
++    from arena_autonomy.follow_trace import restore_call
++    from arena_autonomy.scan_input import scan_angles
++    from arena_autonomy.scene_motion import motion_scene
++    out,old,now,scene,history,cfg=saved_sample.__wrapped__()
++    cfg=replace(cfg,guard_observation_policy='selected_r181')
++    _,scan,_=restore_call(now,history.config)
++    angles=scan_angles(scan)+history.config.lidar_yaw_rad;values=list(scan.ranges_m)
++    if change=='near_side':
++        for i,a in enumerate(angles):
++            a=math.remainder(a,math.tau)
++            if math.radians(65)<a<math.radians(135):values[i]=.07/math.sin(a)
++    else:
++        index=min(range(len(angles)),key=lambda i:abs(math.remainder(angles[i],math.tau)))
++        values[index]=.05 if change=='near_front' else math.inf
++    scan=replace(scan,ranges_m=tuple(values));now['scan']['measurements']['ranges_m']=values
++    scene=motion_scene(scan,history,now['reference_s'],timing_verified=True,
++        epoch=now['epoch'],rear_half_angle_deg=now['rear_half_angle_deg'])
++    policy=importlib.import_module('arena_autonomy.race_runtime_policy.observation_policy' if runtime
++                                  else 'arena_autonomy.guard_observation_policy')
++    result=policy.rebase(out,old,now,scene,history,cfg)
++    assert result['speed_mps']==0.

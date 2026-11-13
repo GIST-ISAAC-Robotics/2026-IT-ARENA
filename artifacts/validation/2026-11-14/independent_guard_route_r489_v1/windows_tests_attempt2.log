@@ -1,0 +1,21 @@
+...................F...........                                  [100%]
+================================== FAILURES ===================================
+_______ test_generated_profile_connects_only_explicit_shared_selection ________
+
+    def test_generated_profile_connects_only_explicit_shared_selection():
+        import runtime_installed_limits as subject
+        import yaml
+        base={name:{'ros__parameters':{'max_steering_angle_rad':.45,
+            'g1_traffic_recovery_trial':True}} for name in subject.NODES}
+        planner=base['local_pursuit']['ros__parameters']
+        planner['g1_guard_observation_policy']='selected_r181'
+        original=copy.deepcopy(base)
+        result=subject.derived_profile(yaml.safe_dump(base),.2)
+>       assert result['lidar_safety']['ros__parameters']['g1_guard_observation_policy']=='selected_r181'
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'g1_guard_observation_policy'
+
+artifacts\validation\2026-11-14\independent_guard_route_r489_v1\stage\tests\test_independent_guard_route.py:223: KeyError
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-14/independent_guard_route_r489_v1/stage/tests/test_independent_guard_route.py::test_generated_profile_connects_only_explicit_shared_selection
+1 failed, 30 passed, 8 subtests passed in 1.17s

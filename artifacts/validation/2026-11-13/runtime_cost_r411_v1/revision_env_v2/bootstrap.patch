@@ -1,0 +1,44 @@
+--- original/r411/remote_bootstrap.py
++++ revision_env_v2/r411/remote_bootstrap.py
+@@ -20,11 +20,21 @@
+                  *Path('/sys/devices/system/cpu').glob('cpu[0-9]*/cpufreq/scaling_cur_freq'),
+                  *Path('/sys/devices/system/cpu').glob('cpu[0-9]*/cpufreq/scaling_governor'),
+                  *Path('/sys/class/thermal').glob('thermal_zone*/temp')]:
+-        try:values[str(path)]=path.read_text()[:4096]
+-        except OSError as error:values[str(path)]=repr(error)
++        try:
++            with path.open('rb') as stream:data=stream.read(4096)
++            if not isinstance(data,bytes):raise TypeError('metadata read returned non-bytes')
++            values[str(path)]=data.decode('utf8',errors='replace')
++        except (OSError,TypeError) as error:values[str(path)]=dict(available=False,error=repr(error))
+     return dict(monotonic_s=time.monotonic(),cpu_count=os.cpu_count(),readings=values,
+         thread_environment={k:os.environ.get(k) for k in ('OPENBLAS_NUM_THREADS','OMP_NUM_THREADS','MKL_NUM_THREADS')},
+         settings_changed=False)
++
++
++def safe_environment_snapshot():
++    try:return environment_snapshot()
++    except Exception as error:
++        # 부수 메타데이터 실패가 실행 시작/최종 영수증 회수를 막지 않는다.
++        return dict(available=False,error=repr(error),settings_changed=False)
+ 
+ 
+ def main():
+@@ -61,7 +71,7 @@
+     assert not changed()
+     env=dict(os.environ,PYTHONPATH=os.pathsep.join(str(root/p) for p in
+         ('src/arena_autonomy','src/arena_vehicle_interface','r411')),PYTHONDONTWRITEBYTECODE='1')
+-    steps=[];failure=None;began=time.monotonic();before=environment_snapshot()
++    steps=[];failure=None;began=time.monotonic();before=safe_environment_snapshot()
+     def execute(label,command,cwd,timeout):
+         with (work/(label+'.log')).open('x') as log:
+             child=subprocess.Popen(command,cwd=cwd,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+@@ -99,7 +109,7 @@
+             historical_exact_reproduction_passed=report.get('historical_exact_reproduction_passed'),
+             same_machine_invariants_passed=report.get('same_machine_invariants_passed'),
+             smoke_report_sha256=args.smoke_sha256,wall_s=time.monotonic()-began,
+-            environment_before=before,environment_after=environment_snapshot(),devices_opened=False,
++            environment_before=before,environment_after=safe_environment_snapshot(),devices_opened=False,
+             automatic_adoption_allowed=False,settings_changed=False,original_r406_passed=False)
+         (work/'execution.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf8')
+         with zipfile.ZipFile(result_zip,'x',zipfile.ZIP_DEFLATED) as output:

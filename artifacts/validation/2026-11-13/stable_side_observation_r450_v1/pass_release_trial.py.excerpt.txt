@@ -1,0 +1,107 @@
+318:     @staticmethod
+319:     def _side():
+320:         return {'seen': False, 'present': False, 'clear': 0, 'passed': False, 'vanish': None, 'last_present': None}
+321: 
+322:     def _reset_static_side(self):
+323:         for tracker in (self.static_side or {}).values():
+324:             tracker.reset()
+325: 
+326:     def _world_fixed(self, name, now, now_side, evidence):
+327:         """자차 이동량만큼 물러나는 측방 반환은 측방 위협에서 뺀다. 경로 점유 검사는 그대로다."""
+328:         if self.static_side is None or not self.static_side[name].observe(now, now_side['frontmost_ds_m']):
+329:             return False
+330:         self.sides[name].update(self._side())
+331:         evidence[name]['world_fixed_return'] = True
+558:     def _select(self, scene, baseline, parallel, speed, previous, dt, *, raw_scan=None):
+559:         detail = {'selector_mode_before': self.mode, 'pass_release_trial':True,
+560:                   'selector_unknown_filled':False, 'selector_hidden_rear_risk_unresolved':True}
+561:         # 두 후보를 모두 검사한다. 미선택 후보의 잘못된 출력도 정상 후보로 숨기지 않는다.
+562:         c = self.follow_config
+563:         motion_valid = (all(math.isfinite(v) for v in (speed, previous, dt))
+564:                         and 0. < dt <= .2 and abs(previous) <= c.max_steering_rad+1e-9)
+565:         # 현재 보이는 본선 벽으로 만든 G1 경로만 별도 순항 상한을 쓴다.
+566:         # 평행·가림 경로의 출력이나 통과 판정까지 같은 상한으로 풀지는 않는다.
+567:         base_limit = c.max_speed_mps
+568:         if (c.open_route_speed_mps and baseline[2].get('open_route_speed_enabled') is True
+569:                 and baseline[2].get('reason') == 'local_follow'):
+570:             base_limit = c.open_route_speed_mps
+571:         outputs_valid = all(math.isfinite(o[0]) and math.isfinite(o[1])
+572:                             and 0. <= o[0] <= limit+1e-9
+573:                             and abs(o[1]) <= c.max_steering_rad+1e-9
+574:                             for o, limit in ((baseline, base_limit), (parallel, c.max_speed_mps)))
+575:         if not motion_valid or not outputs_valid:
+576:             return self._hold(previous, detail, self.invalidate('invalid_motion_or_output'))
+577:         source, now = scene.source_first_s, scene.t_ref_s
+578:         if source is None or not math.isfinite(source) or not math.isfinite(now):
+579:             return self._hold(previous, detail, self.invalidate('invalid_time'))
+580:         if ((self.epoch is not None and scene.source_epoch != self.epoch) or
+581:                 (self.last_ref is not None and now < self.last_ref) or
+582:                 (self.last_source is not None and source < self.last_source)):
+583:             return self._hold(previous, detail, self.invalidate('time_or_epoch_discontinuity'))
+584:         age = now-source
+585:         if not 0 <= age < self.config.max_scene_age_s:
+586:             return self._hold(previous, detail, self.invalidate('scene_age_out_of_range'))
+587:         fresh = self.last_source is None or source > self.last_source
+588:         for tracker in (self.static_side or {}).values():
+589:             tracker.advance_to(now, speed)
+590:         self.epoch, self.last_source, self.last_ref = scene.source_epoch, source, now
+591:         b_speed, b_steer, b_detail = baseline
+592:         view = threat_view(scene, b_detail.get('path_points'), self.lat)
+593:         evidence = {'fresh': fresh}
+594:         if view is not None and fresh:
+595:             for name, sign in SIDES:
+596:                 side, now_side = self.sides[name], view[name]
+597:                 evidence[name] = dict(now_side)
+598:                 if self._world_fixed(name, now, now_side, evidence):
+599:                     continue
+600:                 if now_side['present']:
+601:                     side.update(seen=True, present=True, clear=0, passed=False,
+602:                                 last_present={'t': now, 'rearmost_ds_m': now_side['rearmost_ds_m'],
+603:                                               'frontmost_ds_m': now_side['frontmost_ds_m']})
+604:                     if side['vanish'] == 'benign':
+605:                         side['vanish'] = None
+606:                     continue
+607:                 if not side['seen']:
+608:                     continue
+609:                 if side['present']:
+610:                     rear = (side['last_present'] or {}).get('rearmost_ds_m')
+611:                     front = self.follow_config.length_m/2+self.config.pass_front_margin_m
+612:                     vanish = 'benign' if rear is not None and rear >= front else 'rear'
+613:                     if side['vanish'] not in ('rear', 'unknown'):
+614:                         side['vanish'] = vanish
+615:                     side['present'] = False
+616:                 band = band_check(scene, view['frame'], sign, self.lat, self.config)
+617:                 evidence[name]['band'] = band
+618:                 clear = band['free'] and side['vanish'] == 'benign'
+619:                 if side['vanish'] in ('rear', 'unknown'):
+620:                     # 띠만으로는 해제하지 않는다. 측방 위협 창 전체가 현재 관측되어야 한다(기록은 유지).
+621:                     window = band_check(scene, view['frame'], sign, self.lat, self.config,
+622:                                         (-self.lat.band_behind_m, self.lat.band_ahead_m))
+623:                     evidence[name]['side_window'] = window
+624:                     clear = window['free']
+625:                 side['clear'] = side['clear']+1 if clear else 0
+626:                 previous_passed = side['passed']
+627:                 side['passed'] = side['vanish'] in ('benign', 'rear', 'unknown') and \
+628:                     side['clear'] >= self.config.release_fresh
+629:                 if self.follow_config.traffic_recovery_trial:
+630:                     side['passed'] = side['passed'] or previous_passed
+631:         elif fresh and view is None:
+632:             for side in self.sides.values():
+633:                 if side['seen'] and not side['present']:
+634:                     side['clear'] = 0
+635:                     side['passed'] = False
+636:             evidence['view'] = 'no_baseline_path'
+637:         mode = self.mode
+638:         if mode != 'GUARD':
+639:             self.guard_anchor = {}
+640:         elif c.guard_curve_trial and view is not None:
+641:             # GUARD 진입 때(첫 관측 경로) 해제되지 않은 쪽의 차체 모서리 경로 횡위치. 누적 접근의 기준이다.
+642:             for name, sign in SIDES:
+643:                 side = self.sides[name]
+644:                 if name not in self.guard_anchor and side['seen'] and not (side['passed'] and not side['present']):
+645:                     self.guard_anchor[name] = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+646:         detail.update(selector_mode=mode, selector_evidence=evidence,
+647:                       selector_sides={k: {kk: v[kk] for kk in ('seen', 'present', 'clear', 'passed', 'vanish')}
+648:                                       for k, v in self.sides.items()})
+649:         if speed < 0.:
+650:             # 제동 중 유한 음수 모터축 속도는 전진 출력을 막지만 센서 시계 단절은 아니다.

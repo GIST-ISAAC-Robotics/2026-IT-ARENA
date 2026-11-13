@@ -1,0 +1,33 @@
+458: def forward_planning_speed(config, measured):
+459:     """전진 계획의 속력 상계. 원래 센서값·signed 이력/이송을 수정하지 않는다."""
+460:     if (config.signed_motion_policy == 'forward_drive' and
+461:             isinstance(measured, (int, float)) and not isinstance(measured, bool) and
+462:             math.isfinite(measured) and measured < 0.):
+463:         return abs(measured)
+464:     return measured
+580:     def command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+581:         planning = forward_planning_speed(self.config, speed)
+582:         output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+583:                                         raw_scan=raw_scan)
+584:         if self.config.solo_straight_budget_trial:
+585:             from arena_autonomy.solo_straight_budget import evaluate
+586:             new_speed, reason = evaluate(output, scene, previous_steering, speed, self.config)
+587:             output = new_speed, output[1], {**output[2], 'solo_straight_budget': reason,
+588:                                              'original_speed_mps': output[0]}
+589:         if self.config.solo_corner_approach_trial:
+590:             from arena_autonomy.solo_corner_approach import approach_speed
+591:             new_speed, evidence = approach_speed(output, scene, self.config)
+592:             output = new_speed, output[1], {**output[2], 'corner_approach': evidence}
+593:         return signed_feedback_detail(output, speed, planning)
+594: 
+595:     def _forward_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+596:         output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
+597:                                         raw_scan=raw_scan)
+598:         if self.parallel_trial is not None:
+599:             parallel = self.parallel_trial.apply(scene, output, speed, previous_steering, control_dt)
+600:             if self.pass_selector is not None:
+601:                 selected = self.pass_selector.select(scene, output, parallel, speed, previous_steering, control_dt,
+602:                     **({'raw_scan': raw_scan} if self.config.guard_curve_trial else {}))
+603:                 if selected[2].get('selector_choice') == 'hold_fault':
+604:                     return selected[0], selected[1], {**output[2], **selected[2]}
+605:                 return selected

@@ -1,0 +1,60 @@
+{
+  "passed": false,
+  "error": "RuntimeError(('jetson_run', 1))",
+  "steps": [
+    {
+      "label": "native_build",
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "setup.py",
+        "build_ext",
+        "--inplace"
+      ],
+      "pid": 52154,
+      "timeout_s": 120,
+      "forced": false,
+      "returncode": 0
+    },
+    {
+      "label": "import_preflight",
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "/home/q/it-arena-r380-20261113/artifacts/validation/2026-11-13/current_cost_r380_v1/preflight.py",
+        "--backend",
+        "native_v1",
+        "--output",
+        "/home/q/it-arena-r380-20261113/artifacts/validation/2026-11-13/current_cost_r380_v1/import_preflight.json"
+      ],
+      "pid": 52173,
+      "timeout_s": 60,
+      "forced": false,
+      "returncode": 0
+    },
+    {
+      "label": "jetson_run",
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "/home/q/it-arena-r380-20261113/artifacts/validation/2026-11-13/current_cost_r380_v1/run.py",
+        "--output",
+        "/home/q/it-arena-r380-20261113/artifacts/validation/2026-11-13/current_cost_r380_v1/jetson",
+        "--require-machine",
+        "aarch64"
+      ],
+      "pid": 52179,
+      "timeout_s": 900,
+      "forced": false,
+      "returncode": 1
+    }
+  ],
+  "wall_s": 8.173512830006075,
+  "changed_sources": [],
+  "source_count": 266,
+  "source_archive_sha256": "122f13672bdac590285bc4bf4bc15be0341158dac0849d9f65a7c916c8530a44",
+  "devices_opened": false,
+  "power_settings_changed": false,
+  "firmware_changed": false,
+  "process_policy": "each owned child waited; timeout uses own process group only"
+}

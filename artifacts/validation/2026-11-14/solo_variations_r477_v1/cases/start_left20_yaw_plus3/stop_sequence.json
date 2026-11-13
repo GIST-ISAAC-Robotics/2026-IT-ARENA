@@ -1,0 +1,76 @@
+{
+  "helper_record_present": true,
+  "helper_service_results": [
+    {
+      "service": "/autonomy/enable",
+      "success": true,
+      "message": "사용자 정지"
+    },
+    {
+      "service": "/actuation/stop",
+      "success": true,
+      "message": "software_stop"
+    }
+  ],
+  "helper_stop_confirmed": true,
+  "helper_final_mcu": {
+    "v": 1,
+    "boot": "9702cc897ec842e4b1917a131f475710",
+    "generation": 3,
+    "state": "ESTOP_LATCHED",
+    "reason": "software_stop",
+    "owner": null,
+    "accepted_seq": -1,
+    "target_speed_mps": 0.0,
+    "steering_rad": 0.10426968336105347,
+    "left_wheel_mps": null,
+    "right_wheel_mps": null,
+    "mean_wheel_mps": 0.0,
+    "feedback_mode": "drive_motor_shaft",
+    "stationary_scope": "mean_wheel_only_opposite_rotation_unobservable",
+    "feedback_valid": true,
+    "feedback_seq": 6196,
+    "left_ticks": null,
+    "right_ticks": null,
+    "motor_counts": 66230,
+    "feedback_capture_us": 61953000,
+    "deadline_us": null,
+    "estop_held": false,
+    "now_us": 61955000,
+    "output_ready": true,
+    "stationary_ready": true
+  },
+  "helper_request_timestamp_recorded": false,
+  "evaluator_stop_request_clock_ns": 61704000000,
+  "evaluator_stop_request_sim_s": 61.703,
+  "original_latch_timing": {
+    "valid": true,
+    "request_clock_ns": 61704000000,
+    "request_clock_us": 61704000,
+    "invalid_time_samples": 0,
+    "latched_before_request": 2,
+    "same_instant_stop_response": 1,
+    "same_instant_other_latch": 0,
+    "latched_before_stop_samples": 2,
+    "first_latched": {
+      "now_us": 61698000,
+      "state": "ESTOP_LATCHED",
+      "reason": "software_stop"
+    },
+    "limits": [
+      "request time is the evaluator /clock freshly received (two callbacks after a mark) just before the STOP call; nodes receive /clock at different times, so causal order is not proven",
+      "equal microseconds are attributed to the STOP response only for the configured STOP state and reason",
+      "latched status received before the STOP call is still caught by the case-loop abort in wall order"
+    ]
+  },
+  "original_stop_checks": {
+    "model_stop_stable": true,
+    "dense_pose_stop_evidence": true,
+    "explicit_mcu_stop": true,
+    "no_mcu_latch_before_stop": false,
+    "no_deadline_diagnostic": true,
+    "no_wall_collision": true
+  },
+  "original_verdict_changed": false,
+  "interpretation": "helper STOP may precede evaluator STOP; retain original before-stop latch result; status clocks and helper final observation do not prove exact service request causality"
+}

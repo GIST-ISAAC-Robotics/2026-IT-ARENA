@@ -57,6 +57,10 @@ def main():
         if request.get('sudo'):
             stdin.write(request['password'] + '\n')
             stdin.flush()
+        # 선택형 기밀 입력은 명령행/임시 파일/로그 대신 SSH stdin으로만 전달한다.
+        if 'stdin_payload' in request:
+            stdin.write(request['stdin_payload'])
+            stdin.flush()
         stdin.channel.shutdown_write()
         channel = stdout.channel
         deadline = time.monotonic() + request['timeout']

@@ -1,0 +1,1429 @@
+--- a/scripts/development_jog.py
++++ b/scripts/development_jog.py
+@@ -1,242 +1,12 @@
+ #!/usr/bin/env python3
+-"""개발 전용 짧은 전진/좌회전/우회전. --send 없이는 계획만 출력한다.
++"""기존 CLI 호환 진입점. 패널과 동일한 제한 jog/회수 구현을 사용한다."""
++from pathlib import Path
++import sys
+ 
+-자율 제어기를 끈 별도 시험에서 이미 ARM된 공통 MCU 인터페이스를 사용한다.
+-ARM/CLEAR/RESET은 수행하지 않으며 /drive/safe를 직접 발행하지 않는다.
+-"""
+-import argparse
+-import json
+-import math
+-from pathlib import Path
+-import signal
+-import time
+-import uuid
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'src'/'arena_autonomy'))
++from arena_autonomy import development_jog as _implementation
+ 
+-
+-def plan(direction, speed, seconds, speed_limit):
+-    if direction not in ('forward', 'left', 'right'):
+-        raise ValueError('direction must be forward/left/right; reverse is unsupported')
+-    if any(type(v) not in (int,float) or not math.isfinite(v) for v in (speed,seconds,speed_limit)):
+-        raise ValueError('finite numeric values required')
+-    if not .05<=speed_limit<=.2 or not 0<speed<=speed_limit or not .05<=seconds<=2.:
+-        raise ValueError('speed <= explicit limit (0.05..0.2 m/s), duration 0.05..2 s required')
+-    return dict(direction=direction,speed_mps=float(speed),duration_wall_s=float(seconds),
+-        speed_limit_mps=float(speed_limit),steering_rad={'forward':0.,'left':.2,'right':-.2}[direction],
+-        output_topic='/drive',completion='zero speed holding requested steering, then MCU STOP',automatic_arm=False,
+-        scope='development only; trial bounds, not calibrated physical limits')
+-
+-
+-RUNTIME_TIME_BASIS='minimum_receipt_offset_mcu_state_estimate'
+-
+-
+-def runtime_status(status):
+-    return isinstance(status,dict) and any(k in status for k in ('time_basis','motor_feedback','scope'))
+-
+-
+-def fresh_status(status, now_s, receipt_wall_s, wall_s):
+-    if (type(status) is not dict or type(status.get('v')) is not int or status['v']!=1
+-        or type(status.get('boot')) is not str or not status['boot']
+-        or type(status.get('generation')) is not int or status['generation']<0
+-        or type(status.get('now_us')) is not int or status['now_us']<0):return False
+-    if any(type(v) not in (int,float) or not math.isfinite(v) for v in (now_s,receipt_wall_s,wall_s)):return False
+-    if not 0<=now_s-status['now_us']*1e-6<=.25 or not 0<=wall_s-receipt_wall_s<=.25:return False
+-    if runtime_status(status):
+-        if (status.get('time_basis')!=RUNTIME_TIME_BASIS or status.get('time_contract_verified') is not False
+-            or status.get('scope')!='observation_only_no_drive'
+-            or any(type(status.get(k)) is not int or status[k]<0 for k in
+-                   ('clock_epoch','mcu_now_us','host_receipt_ns','receipt_age_ns'))):return False
+-        # McuStatusClock의 mapped ns -> now_us 내림과 원 receipt/age를 그대로 확인한다.
+-        if not 0<=status['host_receipt_ns']-status['receipt_age_ns']-status['now_us']*1000<1000:return False
+-    return True
+-
+-
+-def mcu_identity(status):
+-    owner=('runtime_observation',status['clock_epoch']) if runtime_status(status) else status['owner']
+-    return status['boot'],status['generation'],owner
+-
+-
+-def runtime_feedback_observed(status, now_s):
+-    raw=status.get('motor_feedback')
+-    if (type(raw) is not dict or raw.get('schema')!='motor_feedback_observation_v1'
+-        or raw.get('source_valid') is not True or raw.get('time_contract_verified') is not False
+-        or raw.get('time_basis')!=RUNTIME_TIME_BASIS
+-        or any(raw.get(k)!=status[k] for k in ('boot','generation','clock_epoch','host_receipt_ns'))
+-        or any(type(raw.get(k)) is not int or raw[k]<0 for k in ('sequence','mcu_capture_us','estimated_capture_ns'))
+-        or type(raw.get('motor_counts')) is not int):return False
+-    return (raw['mcu_capture_us']<=status['mcu_now_us']
+-        and raw['estimated_capture_ns']==status['now_us']*1000-(status['mcu_now_us']-raw['mcu_capture_us'])*1000
+-        and 0<=now_s-raw['estimated_capture_ns']*1e-9<=.25)
+-
+-
+-def valid_mcu(status, now_s, receipt_wall_s, wall_s, *, identity=None):
+-    if (not fresh_status(status,now_s,receipt_wall_s,wall_s)
+-        or status.get('estop_held') is not False or status.get('output_ready') is not True):
+-        return False
+-    runtime=runtime_status(status)
+-    if runtime:
+-        if not runtime_feedback_observed(status,now_s):return False
+-    elif (status.get('feedback_valid') is not True or type(status.get('owner')) is not str
+-          or not status['owner']):return False
+-    if identity is None:
+-        # 현재 receiver의 ARMED는 0목표이다. 관측에 없는 owner/target을 합성하지 않는다.
+-        return status.get('state')=='ARMED' and (runtime or status.get('target_speed_mps')==0)
+-    return status.get('state') in ('ARMED','ACTIVE') and mcu_identity(status)==identity
+-
+-
+-def stop_observed(status, now_s, receipt_wall_s, wall_s, identity):
+-    if (not fresh_status(status,now_s,receipt_wall_s,wall_s) or status['boot']!=identity[0]
+-        or status['generation']<=identity[1] or status.get('state')!='ESTOP_LATCHED'):return False
+-    if isinstance(identity[2],tuple):
+-        return runtime_status(status) and identity[2]==('runtime_observation',status['clock_epoch'])
+-    return not runtime_status(status) and status.get('target_speed_mps')==0
+-
+-
+-def graph_ready(node):
+-    def peer(info):return info.node_namespace,info.node_name
+-    own=node.get_namespace(),node.get_name()
+-    drive=node.get_publishers_info_by_topic('/drive')
+-    if any(peer(info)!=own for info in drive):
+-        raise RuntimeError('another /drive publisher exists; cancel this jog without terminating that node')
+-    safe=node.get_publishers_info_by_topic('/drive/safe')
+-    readers=node.get_subscriptions_info_by_topic('/drive')
+-    hosts=node.get_subscriptions_info_by_topic('/drive/safe')
+-    status=node.get_publishers_info_by_topic('/actuation/status')
+-    return (len(drive)==1 and len(safe)==1 and safe[0].node_name=='lidar_safety'
+-        and any(peer(r)==peer(safe[0]) for r in readers)
+-        and any(r.node_name in ('actuation_host','runtime_actuation_host') for r in hosts) and len(status)==1)
+-
+-
+-def pulse(request, *, wall, pump, check, publish, cancelled):
+-    """고정 목표의 제한 실행. 합성 호출 검사는 실제 scheduling 검증이 아니다."""
+-    began=next_emit=wall()
+-    while wall()-began<request['duration_wall_s']:
+-        pump(.005)
+-        if cancelled():raise InterruptedError('jog interrupted')
+-        current=wall()
+-        if current-began>=request['duration_wall_s']:break
+-        check()
+-        if current>=next_emit:
+-            publish(request['speed_mps'],request['steering_rad']);next_emit=current+.05
+-
+-
+-def finish(*, publish_zero, call_stop, wall, pump, observed):
+-    """0 발행 오류와 STOP 요청을 독립 시도. ACK/상태/실제 정지를 분리한다."""
+-    result=dict(zero_published=False,stop_requested=False,stop_ack=False,stop_response=None,
+-        fresh_estop_state_seen=False,physical_stop_verified=False,errors=[])
+-    try:publish_zero();result['zero_published']=True
+-    except BaseException as error:result['errors'].append('zero_publish: '+repr(error))
+-    future=None
+-    try:future=call_stop();result['stop_requested']=True
+-    except BaseException as error:result['errors'].append('stop_request: '+repr(error))
+-    try:
+-        deadline=wall()+1.  # 기존 r169 회수 예산; 전달/물리 정지 보증 시간이 아니다.
+-        while wall()<deadline:
+-            pump(.01)
+-            if future is not None and future.done():
+-                response=future.result();result['stop_ack']=bool(response and response.success is True)
+-                result['stop_response']=None if response is None else response.message
+-            result['fresh_estop_state_seen']=bool(observed())
+-            if result['stop_ack'] and result['fresh_estop_state_seen']:break
+-    except BaseException as error:result['errors'].append('stop_confirmation: '+repr(error))
+-    return result
+-
+-
+-def main():
+-    parser=argparse.ArgumentParser(description=__doc__)
+-    parser.add_argument('direction',choices=('forward','left','right'))
+-    parser.add_argument('--speed',type=float,default=.15)
+-    parser.add_argument('--seconds',type=float,default=.5)
+-    parser.add_argument('--speed-limit',type=float,default=.2)
+-    parser.add_argument('--send',action='store_true')
+-    parser.add_argument('--output',type=Path)
+-    args=parser.parse_args()
+-    try:request=plan(args.direction,args.speed,args.seconds,args.speed_limit)
+-    except ValueError as error:parser.error(str(error))
+-    if not args.send:
+-        print(json.dumps(request,ensure_ascii=False,indent=2));return
+-    import rclpy
+-    from rclpy.node import Node
+-    from rclpy.signals import SignalHandlerOptions
+-    from ackermann_msgs.msg import AckermannDriveStamped
+-    from std_msgs.msg import String
+-    from std_srvs.srv import Trigger
+-    output=args.output or Path('build/development_jog')/str(time.time_ns())
+-    output.mkdir(parents=True,exist_ok=False)
+-    (output/'request.json').write_text(json.dumps(request,indent=2)+'\n',encoding='utf8')
+-    rclpy.init(args=[],signal_handler_options=SignalHandlerOptions.NO)
+-    interrupted={'value':False};old_handlers={}
+-    for number in (signal.SIGINT,signal.SIGTERM):
+-        old_handlers[number]=signal.signal(number,lambda *_:interrupted.update(value=True))
+-    node=Node('development_jog_'+uuid.uuid4().hex[:8])
+-    publisher=node.create_publisher(AckermannDriveStamped,'/drive',1)
+-    stop=node.create_client(Trigger,'/actuation/stop')
+-    latest=None;receipt=-math.inf
+-    events=[];started=False;failure=None
+-    ending=dict(zero_published=False,stop_requested=False,stop_ack=False,stop_response=None,
+-        fresh_estop_state_seen=False,physical_stop_verified=False,errors=[])
+-    identity=None
+-
+-    def on_status(message):
+-        nonlocal latest,receipt
+-        try:latest=json.loads(message.data)
+-        except (ValueError,TypeError):latest=None
+-        receipt=time.monotonic()
+-
+-    node.create_subscription(String,'/actuation/status',on_status,10)
+-
+-    def now():return node.get_clock().now().nanoseconds*1e-9
+-
+-    def pump(seconds):rclpy.spin_once(node,timeout_sec=seconds)
+-
+-    def publish(speed,steering):
+-        msg=AckermannDriveStamped();msg.header.stamp=node.get_clock().now().to_msg()
+-        msg.header.frame_id='base_link';msg.drive.speed=float(speed)
+-        msg.drive.steering_angle=float(steering)
+-        publisher.publish(msg)
+-        events.append(dict(wall_s=time.monotonic(),stamp_s=now(),speed_mps=speed,
+-            steering_rad=msg.drive.steering_angle))
+-
+-    try:
+-        deadline=time.monotonic()+3.
+-        while time.monotonic()<deadline:
+-            pump(.02)
+-            if interrupted['value']:raise InterruptedError('jog cancelled before start')
+-            if graph_ready(node) and stop.service_is_ready() and valid_mcu(latest,now(),receipt,time.monotonic()):
+-                break
+-        else:raise RuntimeError('exclusive /drive, independent safety, STOP service and fresh ARMED MCU required')
+-        identity=mcu_identity(latest)
+-
+-        def check():
+-            if not graph_ready(node) or not stop.service_is_ready():
+-                raise RuntimeError('drive ownership, independent safety or host connection lost')
+-            if not valid_mcu(latest,now(),receipt,time.monotonic(),identity=identity):
+-                raise RuntimeError('MCU stopped, changed or stale; jog cancelled')
+-
+-        started=True  # publish가 예외로 끝나도 부분 전달 가능성이 있으므로 STOP을 시도한다.
+-        pulse(request,wall=time.monotonic,pump=pump,check=check,publish=publish,
+-            cancelled=lambda:interrupted['value'])
+-        if not events:raise RuntimeError('duration expired before any jog publication')
+-    except BaseException as error:
+-        failure=type(error).__name__+': '+str(error)
+-    finally:
+-        if started:
+-            # DRIVE0도 runtime_servo의 drive_seen 조향 경로로 전달되므로 자동 중앙을 요청하지 않는다.
+-            ending=finish(publish_zero=lambda:publish(0.,request['steering_rad']),
+-                call_stop=lambda:stop.call_async(Trigger.Request()),wall=time.monotonic,pump=pump,
+-                observed=lambda:stop_observed(latest,now(),receipt,time.monotonic(),identity))
+-        result=dict(started=started,error=failure,commands=events,**ending,
+-            armed_automatically=False,output_topic='/drive',status_identity=identity,
+-            state_observation_is_drive_permission=False)
+-        try:(output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf8')
+-        finally:
+-            try:node.destroy_node()
+-            finally:
+-                try:rclpy.shutdown()
+-                finally:
+-                    for number,handler in old_handlers.items():signal.signal(number,handler)
+-    print(json.dumps({k:v for k,v in result.items() if k!='commands'},ensure_ascii=False))
+-    if failure or ending['errors'] or not (started and ending['stop_ack'] and ending['fresh_estop_state_seen']):
+-        raise SystemExit(1)
+-
+-
+-if __name__=='__main__':main()
++if __name__ == '__main__':
++    _implementation.main()
++else:
++    sys.modules[__name__] = _implementation
+--- /dev/null
++++ b/src/arena_autonomy/arena_autonomy/development_jog.py
+@@ -0,0 +1,289 @@
++#!/usr/bin/env python3
++"""개발 전용 짧은 전진/좌회전/우회전. --send 없이는 계획만 출력한다.
++
++자율 제어기를 끈 별도 시험에서 이미 ARM된 공통 MCU 인터페이스를 사용한다.
++ARM/CLEAR/RESET은 수행하지 않으며 /drive/safe를 직접 발행하지 않는다.
++"""
++import argparse
++import json
++import math
++import os
++from pathlib import Path
++import signal
++import sys
++import threading
++import time
++import uuid
++
++
++MAX_STEERING_RAD = 0.4578436017036438
++
++
++def plan(direction, speed, seconds, speed_limit, *, steering_rad=None, max_steering_rad=MAX_STEERING_RAD):
++    if direction not in ('forward', 'left', 'right'):
++        raise ValueError('direction must be forward/left/right; reverse is unsupported')
++    if any(type(v) not in (int,float) or not math.isfinite(v) for v in (speed,seconds,speed_limit)):
++        raise ValueError('finite numeric values required')
++    if not .05<=speed_limit<=.2 or not 0<speed<=speed_limit or not .05<=seconds<=2.:
++        raise ValueError('speed <= explicit limit (0.05..0.2 m/s), duration 0.05..2 s required')
++    angle={'forward':0.,'left':.2,'right':-.2}[direction] if steering_rad is None else steering_rad
++    if (any(type(v) not in (int,float) or not math.isfinite(v) for v in (angle,max_steering_rad))
++        or not 0<max_steering_rad<=MAX_STEERING_RAD or abs(angle)>max_steering_rad):
++        raise ValueError('central equivalent wheel angle exceeds configured limit')
++    return dict(direction=direction,speed_mps=float(speed),duration_wall_s=float(seconds),
++        speed_limit_mps=float(speed_limit),steering_rad=float(angle),steering_deg=math.degrees(angle),
++        steering_reference='central_equivalent_wheel_angle_left_positive',
++        estimated_distance_m=float(speed*seconds),distance_estimate='v*t only, not measured or guaranteed',
++        output_topic='/drive',completion='zero speed holding requested steering, then MCU STOP',automatic_arm=False,
++        scope='development only; trial bounds, not calibrated physical limits')
++
++
++class ParentHeartbeat:
++    """패널 자식의 stdin EOF/STOP/연결 공백은 정상 finally 회수로 전달한다."""
++    def __init__(self, stream, timeout_s=.75, wall=time.monotonic):
++        self.wall,self.timeout_s=wall,timeout_s
++        self.last=wall();self.stopped=False
++        def read():
++            try:
++                pending=b''
++                while True:
++                    chunk=os.read(stream.fileno(),256)
++                    if not chunk:break
++                    pending+=chunk
++                    while b'\n' in pending:
++                        line,pending=pending.split(b'\n',1)
++                        if line.strip()!=b'HEARTBEAT':return
++                        self.last=wall()
++                    if len(pending)>256:break
++            finally:self.stopped=True
++        self.thread=threading.Thread(target=read,name='panel_heartbeat',daemon=True)
++        self.thread.start()
++
++    def cancelled(self):return self.stopped or self.wall()-self.last>=self.timeout_s
++
++
++RUNTIME_TIME_BASIS='minimum_receipt_offset_mcu_state_estimate'
++
++
++def runtime_status(status):
++    return isinstance(status,dict) and any(k in status for k in ('time_basis','motor_feedback','scope'))
++
++
++def fresh_status(status, now_s, receipt_wall_s, wall_s):
++    if (type(status) is not dict or type(status.get('v')) is not int or status['v']!=1
++        or type(status.get('boot')) is not str or not status['boot']
++        or type(status.get('generation')) is not int or status['generation']<0
++        or type(status.get('now_us')) is not int or status['now_us']<0):return False
++    if any(type(v) not in (int,float) or not math.isfinite(v) for v in (now_s,receipt_wall_s,wall_s)):return False
++    if not 0<=now_s-status['now_us']*1e-6<=.25 or not 0<=wall_s-receipt_wall_s<=.25:return False
++    if runtime_status(status):
++        if (status.get('time_basis')!=RUNTIME_TIME_BASIS or status.get('time_contract_verified') is not False
++            or status.get('scope')!='observation_only_no_drive'
++            or any(type(status.get(k)) is not int or status[k]<0 for k in
++                   ('clock_epoch','mcu_now_us','host_receipt_ns','receipt_age_ns'))):return False
++        # McuStatusClock의 mapped ns -> now_us 내림과 원 receipt/age를 그대로 확인한다.
++        if not 0<=status['host_receipt_ns']-status['receipt_age_ns']-status['now_us']*1000<1000:return False
++    return True
++
++
++def mcu_identity(status):
++    owner=('runtime_observation',status['clock_epoch']) if runtime_status(status) else status['owner']
++    return status['boot'],status['generation'],owner
++
++
++def runtime_feedback_observed(status, now_s):
++    raw=status.get('motor_feedback')
++    if (type(raw) is not dict or raw.get('schema')!='motor_feedback_observation_v1'
++        or raw.get('source_valid') is not True or raw.get('time_contract_verified') is not False
++        or raw.get('time_basis')!=RUNTIME_TIME_BASIS
++        or any(raw.get(k)!=status[k] for k in ('boot','generation','clock_epoch','host_receipt_ns'))
++        or any(type(raw.get(k)) is not int or raw[k]<0 for k in ('sequence','mcu_capture_us','estimated_capture_ns'))
++        or type(raw.get('motor_counts')) is not int):return False
++    return (raw['mcu_capture_us']<=status['mcu_now_us']
++        and raw['estimated_capture_ns']==status['now_us']*1000-(status['mcu_now_us']-raw['mcu_capture_us'])*1000
++        and 0<=now_s-raw['estimated_capture_ns']*1e-9<=.25)
++
++
++def valid_mcu(status, now_s, receipt_wall_s, wall_s, *, identity=None):
++    if (not fresh_status(status,now_s,receipt_wall_s,wall_s)
++        or status.get('estop_held') is not False or status.get('output_ready') is not True):
++        return False
++    runtime=runtime_status(status)
++    if runtime:
++        if not runtime_feedback_observed(status,now_s):return False
++    elif (status.get('feedback_valid') is not True or type(status.get('owner')) is not str
++          or not status['owner']):return False
++    if identity is None:
++        # 현재 receiver의 ARMED는 0목표이다. 관측에 없는 owner/target을 합성하지 않는다.
++        return status.get('state')=='ARMED' and (runtime or status.get('target_speed_mps')==0)
++    return status.get('state') in ('ARMED','ACTIVE') and mcu_identity(status)==identity
++
++
++def stop_observed(status, now_s, receipt_wall_s, wall_s, identity):
++    if (not fresh_status(status,now_s,receipt_wall_s,wall_s) or status['boot']!=identity[0]
++        or status['generation']<=identity[1] or status.get('state')!='ESTOP_LATCHED'):return False
++    if isinstance(identity[2],tuple):
++        return runtime_status(status) and identity[2]==('runtime_observation',status['clock_epoch'])
++    return not runtime_status(status) and status.get('target_speed_mps')==0
++
++
++def graph_ready(node):
++    def peer(info):return info.node_namespace,info.node_name
++    own=node.get_namespace(),node.get_name()
++    drive=node.get_publishers_info_by_topic('/drive')
++    if any(peer(info)!=own for info in drive):
++        raise RuntimeError('another /drive publisher exists; cancel this jog without terminating that node')
++    safe=node.get_publishers_info_by_topic('/drive/safe')
++    readers=node.get_subscriptions_info_by_topic('/drive')
++    hosts=node.get_subscriptions_info_by_topic('/drive/safe')
++    status=node.get_publishers_info_by_topic('/actuation/status')
++    return (len(drive)==1 and len(safe)==1 and safe[0].node_name=='lidar_safety'
++        and any(peer(r)==peer(safe[0]) for r in readers)
++        and any(r.node_name in ('actuation_host','runtime_actuation_host') for r in hosts) and len(status)==1)
++
++
++def pulse(request, *, wall, pump, check, publish, cancelled):
++    """고정 목표의 제한 실행. 합성 호출 검사는 실제 scheduling 검증이 아니다."""
++    began=next_emit=wall()
++    while wall()-began<request['duration_wall_s']:
++        pump(.005)
++        if cancelled():raise InterruptedError('jog interrupted')
++        current=wall()
++        if current-began>=request['duration_wall_s']:break
++        check()
++        if current>=next_emit:
++            publish(request['speed_mps'],request['steering_rad']);next_emit=current+.05
++
++
++def finish(*, publish_zero, call_stop, wall, pump, observed):
++    """0 발행 오류와 STOP 요청을 독립 시도. ACK/상태/실제 정지를 분리한다."""
++    result=dict(zero_published=False,stop_requested=False,stop_ack=False,stop_response=None,
++        fresh_estop_state_seen=False,physical_stop_verified=False,errors=[])
++    try:publish_zero();result['zero_published']=True
++    except BaseException as error:result['errors'].append('zero_publish: '+repr(error))
++    future=None
++    try:future=call_stop();result['stop_requested']=True
++    except BaseException as error:result['errors'].append('stop_request: '+repr(error))
++    try:
++        deadline=wall()+1.  # 기존 r169 회수 예산; 전달/물리 정지 보증 시간이 아니다.
++        while wall()<deadline:
++            pump(.01)
++            if future is not None and future.done():
++                response=future.result();result['stop_ack']=bool(response and response.success is True)
++                result['stop_response']=None if response is None else response.message
++            result['fresh_estop_state_seen']=bool(observed())
++            if result['stop_ack'] and result['fresh_estop_state_seen']:break
++    except BaseException as error:result['errors'].append('stop_confirmation: '+repr(error))
++    return result
++
++
++def main():
++    parser=argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('direction',choices=('forward','left','right'))
++    parser.add_argument('--speed',type=float,default=.15)
++    parser.add_argument('--seconds',type=float,default=.5)
++    parser.add_argument('--speed-limit',type=float,default=.2)
++    parser.add_argument('--steering-deg',type=float,help='central equivalent wheel angle; +left/-right, not servo shaft')
++    parser.add_argument('--max-steering-rad',type=float,default=MAX_STEERING_RAD)
++    parser.add_argument('--parent-heartbeat-stdin',action='store_true',help=argparse.SUPPRESS)
++    parser.add_argument('--node-name',default=None,help=argparse.SUPPRESS)
++    parser.add_argument('--send',action='store_true')
++    parser.add_argument('--output',type=Path)
++    args=parser.parse_args()
++    try:request=plan(args.direction,args.speed,args.seconds,args.speed_limit,
++        steering_rad=None if args.steering_deg is None else math.radians(args.steering_deg),
++        max_steering_rad=args.max_steering_rad)
++    except ValueError as error:parser.error(str(error))
++    if not args.send:
++        print(json.dumps(request,ensure_ascii=False,indent=2));return
++    heartbeat=ParentHeartbeat(sys.stdin) if args.parent_heartbeat_stdin else None
++    if args.node_name is not None and (not args.node_name.startswith('panel_jog_')
++        or not args.node_name.replace('_','').isalnum()):parser.error('invalid panel node name')
++    import rclpy
++    from rclpy.node import Node
++    from rclpy.signals import SignalHandlerOptions
++    from ackermann_msgs.msg import AckermannDriveStamped
++    from std_msgs.msg import String
++    from std_srvs.srv import Trigger
++    output=args.output or Path('build/development_jog')/str(time.time_ns())
++    output.mkdir(parents=True,exist_ok=False)
++    (output/'request.json').write_text(json.dumps(request,indent=2)+'\n',encoding='utf8')
++    rclpy.init(args=[],signal_handler_options=SignalHandlerOptions.NO)
++    interrupted={'value':False};old_handlers={}
++    for number in (signal.SIGINT,signal.SIGTERM):
++        old_handlers[number]=signal.signal(number,lambda *_:interrupted.update(value=True))
++    node=Node(args.node_name or 'development_jog_'+uuid.uuid4().hex[:8])
++    publisher=node.create_publisher(AckermannDriveStamped,'/drive',1)
++    stop=node.create_client(Trigger,'/actuation/stop')
++    latest=None;receipt=-math.inf
++    events=[];started=False;failure=None
++    ending=dict(zero_published=False,stop_requested=False,stop_ack=False,stop_response=None,
++        fresh_estop_state_seen=False,physical_stop_verified=False,errors=[])
++    identity=None
++
++    def on_status(message):
++        nonlocal latest,receipt
++        try:latest=json.loads(message.data)
++        except (ValueError,TypeError):latest=None
++        receipt=time.monotonic()
++
++    node.create_subscription(String,'/actuation/status',on_status,10)
++
++    def now():return node.get_clock().now().nanoseconds*1e-9
++
++    def pump(seconds):rclpy.spin_once(node,timeout_sec=seconds)
++
++    def cancelled():return interrupted['value'] or (heartbeat is not None and heartbeat.cancelled())
++
++    def publish(speed,steering):
++        msg=AckermannDriveStamped();msg.header.stamp=node.get_clock().now().to_msg()
++        msg.header.frame_id='base_link';msg.drive.speed=float(speed)
++        msg.drive.steering_angle=float(steering)
++        publisher.publish(msg)
++        events.append(dict(wall_s=time.monotonic(),stamp_s=now(),speed_mps=speed,
++            steering_rad=msg.drive.steering_angle))
++
++    try:
++        deadline=time.monotonic()+3.
++        while time.monotonic()<deadline:
++            pump(.02)
++            if cancelled():raise InterruptedError('jog cancelled before start')
++            if graph_ready(node) and stop.service_is_ready() and valid_mcu(latest,now(),receipt,time.monotonic()):
++                break
++        else:raise RuntimeError('exclusive /drive, independent safety, STOP service and fresh ARMED MCU required')
++        identity=mcu_identity(latest)
++
++        def check():
++            if not graph_ready(node) or not stop.service_is_ready():
++                raise RuntimeError('drive ownership, independent safety or host connection lost')
++            if not valid_mcu(latest,now(),receipt,time.monotonic(),identity=identity):
++                raise RuntimeError('MCU stopped, changed or stale; jog cancelled')
++
++        started=True  # publish가 예외로 끝나도 부분 전달 가능성이 있으므로 STOP을 시도한다.
++        pulse(request,wall=time.monotonic,pump=pump,check=check,publish=publish,
++            cancelled=cancelled)
++        if not events:raise RuntimeError('duration expired before any jog publication')
++    except BaseException as error:
++        failure=type(error).__name__+': '+str(error)
++    finally:
++        if started:
++            # DRIVE0도 runtime_servo의 drive_seen 조향 경로로 전달되므로 자동 중앙을 요청하지 않는다.
++            ending=finish(publish_zero=lambda:publish(0.,request['steering_rad']),
++                call_stop=lambda:stop.call_async(Trigger.Request()),wall=time.monotonic,pump=pump,
++                observed=lambda:stop_observed(latest,now(),receipt,time.monotonic(),identity))
++        result=dict(started=started,error=failure,commands=events,**ending,
++            armed_automatically=False,output_topic='/drive',status_identity=identity,
++            state_observation_is_drive_permission=False)
++        try:(output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf8')
++        finally:
++            try:node.destroy_node()
++            finally:
++                try:rclpy.shutdown()
++                finally:
++                    for number,handler in old_handlers.items():signal.signal(number,handler)
++    print(json.dumps({k:v for k,v in result.items() if k!='commands'},ensure_ascii=False))
++    if failure or ending['errors'] or not (started and ending['stop_ack'] and ending['fresh_estop_state_seen']):
++        raise SystemExit(1)
++
++
++if __name__=='__main__':main()
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -240,8 +240,9 @@
+             self.race = RaceSupervisor(self.vision_pipeline, image_max_age_s=self.settings['image_timeout_s'],
+                 mcu=McuObserver(wall_timeout_s=self.settings['sensor_wall_timeout_s']), now_s=self.now_s(),
+                 resume_wall_timeout_s=3*self.settings['sensor_wall_timeout_s'])
+-            if development:
+-                self.race.configure_development_speed_limit(float(self.settings['max_speed_mps']), initial_limit)
++            # B3 운영 상한은 항상 제공한다. 옛 명시 개발 설정만 초기 상한을 유지한다.
++            maximum = float(self.settings['max_speed_mps'])
++            self.race.configure_operator_speed_limit(maximum, development, initial_limit)
+             self.race_result_publisher = self.create_publisher(String, '/race/command_result', 10)
+             self.create_subscription(String, '/actuation/status', self.on_mcu_status, 10)
+             self.create_subscription(String, '/race/command', self.on_race_command, 10)
+--- /dev/null
++++ b/src/arena_autonomy/arena_autonomy/race_ops_manual.py
+@@ -0,0 +1,248 @@
++"""별도 수동 구성의 요청/단발 자식 관리. ROS publisher나 자동 ARM은 만들지 않는다."""
++from collections import deque
++import copy
++import json
++import math
++from pathlib import Path
++import subprocess
++import sys
++import threading
++import uuid
++
++from arena_autonomy.development_jog import MAX_STEERING_RAD, plan
++from arena_autonomy.race_ops_core import token
++
++
++def finite(value):
++    return type(value) in (int, float) and math.isfinite(value)
++
++
++class ManualPanel:
++    """HTTP는 요청만 넣고 ROS tick에서 실행한다. 재전송은 같은 receipt를 반환한다."""
++    def __init__(self, mode='autonomous', maximum_mps=1.5, steering_limit_rad=.2,
++                 output_root='build/panel_manual', spawn=subprocess.Popen):
++        if mode not in ('autonomous', 'manual'):
++            raise ValueError('operation_mode must be autonomous or manual')
++        if not finite(maximum_mps) or maximum_mps < .05:
++            raise ValueError('manual maximum speed must be finite and >= 0.05')
++        if not finite(steering_limit_rad) or not 0 < steering_limit_rad <= MAX_STEERING_RAD:
++            raise ValueError('manual steering limit exceeds supported vehicle command bound')
++        self.mode, self.maximum_mps, self.limit_mps = mode, maximum_mps, maximum_mps
++        self.steering_limit_rad = steering_limit_rad
++        self.output_root, self.spawn = Path(output_root), spawn
++        self.session, self.generation = uuid.uuid4().hex, 0
++        self.lock = threading.RLock()
++        self.entries, self.queue = {}, deque()
++        self.state, self.reason = 'idle', 'explicit_manual_configuration_required' if mode != 'manual' else 'prepare_required'
++        self.prepared_identity = None
++        self.client = None
++        self.process = self.job = self.stream = None
++        self.last_heartbeat = 0.
++        self.stop_since = None
++
++    def binding(self):
++        return dict(session=self.session, generation=self.generation)
++
++    def snapshot(self):
++        with self.lock:
++            return dict(mode=self.mode, binding=self.binding(), state=self.state, reason=self.reason,
++                maximum_mps=self.maximum_mps, limit_mps=self.limit_mps,
++                pulse_limit_mps=min(.2, self.limit_mps), duration_max_s=2.,
++                steering_limit_rad=self.steering_limit_rad,
++                steering_limit_deg=math.degrees(self.steering_limit_rad),
++                steering_reference='central_equivalent_wheel_angle_left_positive',
++                prepared=self.prepared_identity is not None,
++                commands=copy.deepcopy(list(self.entries.values())[-5:][::-1]))
++
++    def submit(self, op, request, client, binding, value, wall):
++        with self.lock:
++            if request in self.entries:
++                return copy.deepcopy(self.entries[request])
++            reason = None
++            if not token(request) or not token(client):
++                reason = 'invalid_request_or_client'
++            elif op not in ('prepare', 'run', 'stop', 'set_speed_limit'):
++                reason = 'unknown_manual_operation'
++            elif self.mode != 'manual':
++                reason = 'explicit_manual_configuration_required'
++            elif op != 'stop' and binding != self.binding():
++                reason = 'stale_manual_view'
++            elif op != 'stop' and (self.queue or self.state in ('preparing', 'running', 'stopping')):
++                reason = 'manual_operation_busy'
++            elif op == 'run' and self.prepared_identity is None:
++                reason = 'prepare_required'
++            elif op == 'set_speed_limit' and (not finite(value) or not .05 <= value <= self.maximum_mps):
++                reason = 'speed_limit_out_of_range'
++            elif op == 'run':
++                try:
++                    if type(value) is not dict or set(value) != {'speed_mps', 'seconds', 'steering_deg'}:
++                        raise ValueError('manual request fields')
++                    if not finite(value['steering_deg']):
++                        raise ValueError('finite angle required')
++                    plan('forward', value['speed_mps'], value['seconds'], min(.2, self.limit_mps),
++                        steering_rad=math.radians(value['steering_deg']), max_steering_rad=self.steering_limit_rad)
++                except (TypeError, ValueError):
++                    reason = 'manual_value_out_of_range'
++            entry = dict(op=op, request=request, client=client, binding=copy.deepcopy(binding), value=value,
++                stage='rejected' if reason else 'queued', reason=reason, received_wall_s=wall, mcu_steps=[])
++            self.entries[request] = entry
++            if len(self.entries) > 32:
++                del self.entries[next(iter(self.entries))]
++            if reason is None:
++                if op == 'stop':
++                    self.generation += 1
++                    self.prepared_identity = None
++                    self.queue.appendleft(entry)
++                else:
++                    self.queue.append(entry)
++            return copy.deepcopy(entry)
++
++    def next_action(self):
++        with self.lock:
++            if not self.queue:
++                return None
++            entry = self.queue.popleft()
++            if entry['op'] != 'stop' and entry['binding'] != self.binding():
++                entry.update(stage='cancelled', reason='stale_manual_view')
++                return None
++            return entry
++
++    def mark(self, entry, stage, reason, *, state=None):
++        with self.lock:
++            entry.update(stage=stage, reason=reason)
++            self.reason = reason
++            if state is not None:
++                self.state = state
++
++    def begin_prepare(self, entry):
++        with self.lock:
++            self.client = entry['client']
++            self.prepared_identity = None
++            self.mark(entry, 'preparing', 'explicit_clear_arm_pending', state='preparing')
++
++    def prepared(self, entry, identity):
++        with self.lock:
++            self.prepared_identity = identity
++            self.mark(entry, 'prepared', 'armed_zero_target_no_pulse', state='prepared')
++
++    def apply_limit(self, entry):
++        with self.lock:
++            self.limit_mps = float(entry['value'])
++            self.prepared_identity = None
++            self.mark(entry, 'applied', 'speed_limit_set_held', state='idle')
++
++    def launch(self, entry, wall):
++        with self.lock:
++            if self.process is not None or self.prepared_identity is None:
++                raise RuntimeError('prepared exclusive jog required')
++            value = entry['value']
++            request = plan('forward', value['speed_mps'], value['seconds'], min(.2, self.limit_mps),
++                steering_rad=math.radians(value['steering_deg']), max_steering_rad=self.steering_limit_rad)
++            output = self.output_root / (self.session + '-' + entry['request'])
++            output.parent.mkdir(parents=True, exist_ok=True)
++            log_path = output.with_suffix('.log')
++            self.stream = log_path.open('x', encoding='utf-8')
++            node_name = 'panel_jog_' + uuid.uuid4().hex[:12]
++            command = [sys.executable, '-m', 'arena_autonomy.development_jog', 'forward',
++                '--speed', str(request['speed_mps']), '--seconds', str(request['duration_wall_s']),
++                '--speed-limit', str(request['speed_limit_mps']), '--steering-deg', str(value['steering_deg']),
++                '--max-steering-rad', str(self.steering_limit_rad), '--node-name', node_name,
++                '--parent-heartbeat-stdin', '--send', '--output', str(output)]
++            try:
++                self.process = self.spawn(command, stdin=subprocess.PIPE, stdout=self.stream, stderr=subprocess.STDOUT,
++                    text=True, bufsize=1, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
++            except BaseException:
++                self.stream.close(); self.stream = None
++                raise
++            self.job = dict(entry=entry, output=output, node_name=node_name,
++                deadline=wall+request['duration_wall_s']+6., identity=self.prepared_identity)
++            self.client = entry['client']
++            self.prepared_identity = None
++            self.stop_since = None
++            self.last_heartbeat = wall-1.
++            self.mark(entry, 'running', 'bounded_pulse_child_starting', state='running')
++            entry['request_values'] = request
++
++    def stop(self, reason, wall):
++        with self.lock:
++            self.generation += 1
++            while self.queue:
++                pending = self.queue.popleft()
++                pending.update(stage='cancelled', reason=reason)
++            self.prepared_identity = None
++            self.reason = reason
++            if self.process is None:
++                self.state = 'idle'
++                return
++            if self.stop_since is None:
++                self.stop_since = wall
++                self.state = 'stopping'
++                try:
++                    self.process.stdin.write('STOP\n'); self.process.stdin.flush()
++                    self.process.stdin.close()
++                except (BrokenPipeError, OSError, ValueError):
++                    pass
++
++    def tick(self, wall, client_fresh):
++        """종료 receipt를 돌려준다. 호출자는 별도 MCU STOP을 독립 요청한다."""
++        with self.lock:
++            process = self.process
++            if process is None:
++                return None
++            if not client_fresh:
++                self.stop('operator_link_lost', wall)
++            if wall >= self.job['deadline']:
++                self.stop('child_deadline', wall)
++            if self.stop_since is None and wall-self.last_heartbeat >= .2:
++                try:
++                    process.stdin.write('HEARTBEAT\n'); process.stdin.flush()
++                    self.last_heartbeat = wall
++                except (BrokenPipeError, OSError, ValueError):
++                    self.stop('child_pipe_lost', wall)
++            if self.stop_since is not None and wall-self.stop_since > 3. and process.poll() is None:
++                process.kill()
++                self.reason = 'forced_child_cleanup_stop_unconfirmed'
++            code = process.poll()
++            if code is None:
++                return None
++            entry, output = self.job['entry'], self.job['output']
++            try:
++                result = json.loads((output/'result.json').read_text(encoding='utf-8'))
++            except (OSError, ValueError):
++                result = None
++            complete = (code == 0 and isinstance(result, dict) and result.get('stop_ack') is True
++                and result.get('fresh_estop_state_seen') is True and not result.get('error') and not result.get('errors'))
++            self.mark(entry, 'completed' if complete else 'failed',
++                'pulse_stopped_observed_not_physical_proof' if complete else self.reason if self.stop_since else 'child_failed', state='idle')
++            entry['result'] = result
++            entry['exit_code'] = code
++            entry['output'] = str(output)
++            self.stream.close(); self.stream = None
++            try:
++                if not process.stdin.closed: process.stdin.close()
++            except (OSError, ValueError):
++                pass
++            self.process = self.job = None
++            return entry
++
++
++def graph_reason(node, expected_publisher=None):
++    """자동 제어기는 0명령 상태여도 동시 publisher로 거절한다."""
++    def peer(info): return info.node_namespace, info.node_name
++    drive = node.get_publishers_info_by_topic('/drive')
++    if any(info.node_name != expected_publisher or info.node_namespace != node.get_namespace() for info in drive):
++        return 'autonomy_or_other_drive_publisher_present'
++    if expected_publisher is None and drive:
++        return 'drive_publisher_present'
++    if expected_publisher is not None and len(drive) > 1:
++        return 'duplicate_manual_drive_publisher'
++    safe = node.get_publishers_info_by_topic('/drive/safe')
++    readers = node.get_subscriptions_info_by_topic('/drive')
++    hosts = node.get_subscriptions_info_by_topic('/drive/safe')
++    status = node.get_publishers_info_by_topic('/actuation/status')
++    if (len(safe) != 1 or safe[0].node_name != 'lidar_safety'
++        or not any(peer(r) == peer(safe[0]) for r in readers)
++        or not any(r.node_name in ('actuation_host', 'runtime_actuation_host') for r in hosts)
++        or len(status) != 1):
++        return 'independent_guard_or_host_missing'
++    return None
+--- a/src/arena_autonomy/arena_autonomy/race_ops_node.py
++++ b/src/arena_autonomy/arena_autonomy/race_ops_node.py
+@@ -23,6 +23,8 @@
+ from arena_autonomy import race_ops_export
+ from arena_autonomy.race_ops_core import ARMED_MCU, LATCHED_MCU, OpsCore, token
+ from arena_autonomy.race_ops_page import PAGE
++from arena_autonomy.race_ops_manual import ManualPanel, graph_reason
++from arena_autonomy.development_jog import fresh_status, valid_mcu, mcu_identity
+ from arena_vehicle_interface.node_lifecycle import run_node
+ from arena_vehicle_interface.queued_log import QueuedLog
+ 
+@@ -95,6 +97,7 @@
+             if token(client) and role == 'operator':
+                 ops.core.client_seen(client, wall)
+             state = ops.core.view(wall, time.time())
++            state['manual'] = ops.manual.snapshot()
+             return self.respond(200, json.dumps(state, ensure_ascii=False, allow_nan=False), X_Arena_Role=role)
+         if url.path in ('/api/export.csv', '/api/export.html'):
+             seconds = float(query.get('seconds', ['120'])[0])
+@@ -109,7 +112,8 @@
+         role = self.role()
+         if role is None:
+             return None
+-        if urlsplit(self.path).path != '/api/command':
++        path = urlsplit(self.path).path
++        if path not in ('/api/command', '/api/manual'):
+             return self.respond(404, json.dumps(dict(error='not_found')))
+         if role != 'operator':
+             return self.respond(403, json.dumps(dict(error='read_only')))
+@@ -123,8 +127,12 @@
+         if (type(body) is not dict or not token(body.get('request')) or type(body.get('op')) is not str
+                 or not token(body.get('client'))):
+             return self.respond(400, json.dumps(dict(error='schema')))
+-        entry = self.server.ops.core.submit(body['op'], body['request'], body.get('view'), body['client'],
+-                                            body.get('confirm'), time.monotonic(), value=body.get('value'))
++        if path == '/api/manual':
++            entry = self.server.ops.manual.submit(body['op'], body['request'], body['client'],
++                body.get('view'), body.get('value'), time.monotonic())
++        else:
++            entry = self.server.ops.core.submit(body['op'], body['request'], body.get('view'), body['client'],
++                                                body.get('confirm'), time.monotonic(), value=body.get('value'))
+         return self.respond(200, json.dumps(entry, ensure_ascii=False, allow_nan=False, default=str))
+ 
+ 
+@@ -133,7 +141,9 @@
+         super().__init__('race_ops')
+         declared = dict(vehicle_id='arena', host='127.0.0.1', port=8765, token_path='', view_token_path='',
+                         record_path='', log_path='', status_stale_s=1., client_timeout_s=2., record_max_age_s=7200.,
+-                        result_timeout_s=3., mcu_timeout_s=30., log_max_bytes=64*1024*1024)
++                        result_timeout_s=3., mcu_timeout_s=30., log_max_bytes=64*1024*1024,
++                        operation_mode='autonomous', manual_maximum_mps=1.5, manual_steering_limit_rad=.2,
++                        manual_output_root='build/panel_manual')
+         values = {key: self.declare_parameter(key, value).value for key, value in declared.items()}
+         self.vehicle_id = str(values['vehicle_id'])
+         if not token(self.vehicle_id):
+@@ -167,6 +177,9 @@
+         self.rearm = None     # 진행 중인 CLEAR/ARM 묶음
+         self.last_link = self.last_record = 0.
+         self.last_written = None
++        self.manual = ManualPanel(str(values['operation_mode']), float(values['manual_maximum_mps']),
++            float(values['manual_steering_limit_rad']), str(values['manual_output_root']))
++        self.manual_prepare = None
+         self.create_timer(.02, self.tick, clock=Clock(clock_type=ClockType.STEADY_TIME))
+         self.server = ThreadingHTTPServer((str(values['host']), int(values['port'])), Handler)
+         self.server.daemon_threads = True
+@@ -270,7 +283,11 @@
+ 
+     def execute(self, entry):
+         op, wall = entry['op'], time.monotonic()
++        if self.manual.mode == 'manual' and op != 'stop':
++            return self.core.mark(entry, wall, stage='rejected_by_adapter', adapter_reason='manual_configuration')
+         if op == 'stop':
++            self.manual.stop('explicit_stop', wall)
++            self.manual_prepare = None
+             self.publish(dict(v=1, request=entry['request'], op='stop'))
+             self.call(entry, 'stop')
+         elif op == 'new_race':
+@@ -294,6 +311,117 @@
+                           'side': record['side'], 'same_race_confirmed': True})
+         self.core.mark(entry, wall, stage='sent', sent_wall=wall)
+ 
++    def manual_mcu_fresh(self, wall):
++        return fresh_status(self.core.mcu, self.get_clock().now().nanoseconds*1e-9,
++                            self.core.mcu_wall, wall)
++
++    def manual_abort(self, entry, reason, wall):
++        self.manual.stop(reason, wall)
++        self.manual_prepare = None
++        self.manual.mark(entry, 'failed', reason, state='stopping' if self.manual.process else 'idle')
++        self.call(entry, 'stop')
++        self.core.mark(entry, wall, manual_reason=reason)
++
++    def execute_manual(self, entry, wall):
++        op = entry['op']
++        if op == 'stop':
++            self.manual.stop('explicit_manual_stop', wall)
++            self.manual_prepare = None
++            self.call(entry, 'stop')
++            self.manual.mark(entry, 'stop_requested', 'stop_ack_and_state_are_separate')
++            return
++        reason = graph_reason(self)
++        if not self.core.client_fresh(entry['client'], wall):
++            reason = 'operator_link_lost'
++        if reason or not self.manual_mcu_fresh(wall):
++            self.manual.mark(entry, 'rejected', reason or 'fresh_mcu_required')
++            return
++        mcu = self.core.mcu
++        if op == 'set_speed_limit':
++            if mcu.get('state') not in (*LATCHED_MCU, 'DISARMED'):
++                return self.manual.mark(entry, 'rejected', 'mcu_stop_required')
++            self.manual.apply_limit(entry)
++        elif op == 'prepare':
++            if mcu.get('estop_held') is not False or mcu.get('state') not in (*LATCHED_MCU, 'DISARMED', 'ARMED'):
++                return self.manual.mark(entry, 'rejected', 'manual_prepare_state_invalid')
++            self.manual.begin_prepare(entry)
++            self.manual_prepare = dict(entry=entry, deadline=wall+10., future=None,
++                expected=None, waiting_until=0.)
++        elif op == 'run':
++            now = self.get_clock().now().nanoseconds*1e-9
++            if (not valid_mcu(mcu, now, self.core.mcu_wall, wall)
++                or mcu_identity(mcu) != self.manual.prepared_identity):
++                return self.manual_abort(entry, 'prepared_mcu_changed_or_stale', wall)
++            try:
++                self.manual.launch(entry, wall)
++            except BaseException as error:
++                return self.manual_abort(entry, 'jog_launch_failed:'+str(error), wall)
++        self.core.mark(entry, wall, stage=entry['stage'])
++
++    def tick_manual_prepare(self, wall):
++        job = self.manual_prepare
++        if job is None:
++            return
++        entry, mcu = job['entry'], self.core.mcu or {}
++        reason = graph_reason(self)
++        if not self.core.client_fresh(entry['client'], wall): reason = 'operator_link_lost'
++        if wall >= job['deadline']: reason = 'manual_prepare_timeout'
++        if not self.manual_mcu_fresh(wall): reason = 'fresh_mcu_required'
++        if mcu.get('estop_held') is not False: reason = 'physical_stop_held'
++        if reason:
++            return self.manual_abort(entry, reason, wall)
++        future = job['future']
++        if future is not None:
++            if not future.done(): return
++            try:
++                response = future.result()
++                accepted = response is not None and response.success is True
++            except BaseException:
++                accepted = False
++            if not accepted: return self.manual_abort(entry, 'manual_prepare_service_rejected', wall)
++            job['future'] = None
++            job['waiting_until'] = wall+self.result_timeout_s
++        state = mcu.get('state')
++        if job['expected'] and state != job['expected']:
++            if wall >= job['waiting_until']:
++                return self.manual_abort(entry, 'manual_prepare_state_unconfirmed', wall)
++            return
++        job['expected'] = None
++        if state == 'ARMED':
++            now = self.get_clock().now().nanoseconds*1e-9
++            if not valid_mcu(mcu, now, self.core.mcu_wall, wall):
++                return self.manual_abort(entry, 'armed_feedback_not_ready', wall)
++            self.manual.prepared(entry, mcu_identity(mcu))
++            self.manual_prepare = None
++            return
++        step = 'clear_stop' if state in LATCHED_MCU else 'arm' if state == 'DISARMED' else None
++        if step is None or not self.call(entry, step):
++            return self.manual_abort(entry, 'manual_prepare_service_unavailable', wall)
++        job['future'] = self.calls[-1][2]
++        job['expected'] = 'DISARMED' if step == 'clear_stop' else 'ARMED'
++
++    def tick_manual(self, wall):
++        if self.manual.mode != 'manual':
++            return  # 자율 구성에는 수동 publisher/자식/graph 폴링을 추가하지 않는다.
++        while (entry := self.manual.next_action()) is not None:
++            self.execute_manual(entry, wall)
++        self.tick_manual_prepare(wall)
++        if self.manual.process is not None:
++            # 실행 중 graph 소유권은 실제 발행자인 기존 jog가 매 송신 전에 검사한다.
++            # parent DDS discovery에서 새 child endpoint를 중복 판정하지 않는다.
++            ended = self.manual.tick(wall, self.core.client_fresh(self.manual.client, wall))
++            if ended is not None:
++                self.call(ended, 'stop')  # 자식 정상 종료/실패와 무관하게 기존 STOP 서비스도 요청한다.
++                self.core.mark(ended, wall, stage=ended['stage'])
++        elif self.manual.prepared_identity is not None:
++            now = self.get_clock().now().nanoseconds*1e-9
++            reason = graph_reason(self)
++            if (reason or not self.core.client_fresh(self.manual.client, wall)
++                or not valid_mcu(self.core.mcu, now, self.core.mcu_wall, wall,
++                                 identity=self.manual.prepared_identity)):
++                entry = dict(op='manual_watchdog', request='manual-watchdog', mcu_steps=[])
++                self.manual_abort(entry, reason or 'prepared_connection_or_mcu_lost', wall)
++
+     def call(self, entry, name):
+         client = self.mcu_clients[name]
+         if not client.service_is_ready():
+@@ -309,7 +437,20 @@
+             entry, name, future, deadline = item
+             if future.done():
+                 self.calls.remove(item)
+-                result = future.result()
++                try:
++                    result = future.result()
++                except BaseException as error:
++                    self.core.mark(entry, mcu=name+':응답 오류(결과 미확인)')
++                    entry['mcu_steps'].append(dict(step=name, success=False, message=type(error).__name__, wall_s=wall))
++                    if self.rearm is not None and self.rearm.get('future') is future:
++                        self.rearm = None
++                    continue
++                if result is None:
++                    self.core.mark(entry, mcu=name+':빈 응답(결과 미확인)')
++                    entry['mcu_steps'].append(dict(step=name, success=False, message='empty_response', wall_s=wall))
++                    if self.rearm is not None and self.rearm.get('future') is future:
++                        self.rearm = None
++                    continue
+                 self.core.mark(entry, mcu=f"{name}:{'확인' if result.success else '거절'} {result.message}")
+                 entry['mcu_steps'].append(dict(step=name, success=result.success, message=result.message, wall_s=wall))
+                 if self.rearm is not None and self.rearm.get('future') is future:
+@@ -414,6 +555,7 @@
+         while (entry := self.core.next_action()) is not None:
+             self.execute(entry)
+         self.poll_calls(wall)
++        self.tick_manual(wall)
+         self.tick_start(wall)
+         self.tick_prepare(wall)
+         self.core.expire(wall, self.result_timeout_s)
+@@ -421,6 +563,16 @@
+         self.tick_log()
+ 
+     def destroy_node(self):
++        manual_active = (self.manual.mode == 'manual' and (self.manual.prepared_identity is not None
++                         or self.manual_prepare is not None or self.manual.process is not None))
++        if manual_active:
++            self.call(dict(op='manual_shutdown', request='manual-shutdown', mcu_steps=[]), 'stop')
++        self.manual.stop('panel_shutdown', time.monotonic())
++        if self.manual.process is not None:
++            deadline = time.monotonic()+4.
++            while self.manual.process is not None and time.monotonic() < deadline:
++                self.manual.tick(time.monotonic(), False)
++                time.sleep(.02)
+         self.server.shutdown()
+         self.server.server_close()
+         self.log.close()
+--- a/src/arena_autonomy/arena_autonomy/race_ops_page.py
++++ b/src/arena_autonomy/arena_autonomy/race_ops_page.py
+@@ -1,4 +1,4 @@
+-"""운영 화면. 개발 모드의 정지 중 속도 상한 외 원격 주행 입력은 없다."""
++"""운영 상한과 별도 수동 구성의 제한 조작 화면. 경기 자율 모드와 구분한다."""
+ PAGE = r"""<!doctype html>
+ <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>IT ARENA 운영</title>
+@@ -32,31 +32,46 @@
+ <div class="row"><button id="reset">복구 RESET</button><button id="start">재개 START</button></div>
+ <p class="muted" style="margin:4px 0">잠깐 정지했다면 START로 재개합니다. 차량 재배치·상태 초기화가 필요하면 먼저 RESET을 사용합니다. RESET만으로 출발하지 않습니다.</p>
+ <div id="why"></div>
+-<div id="speedlimitbox" hidden><p>개발 시험 상한: <b id="speedlimitcurrent">-</b> m/s</p><input id="speedlimit" type="number" min="0.05" step="0.05" value="0.3" aria-label="시험 속도 상한 m/s"> <button id="setspeedlimit">상한 적용</button><p class="muted">STOP과 MCU 정지 상태에서 변경합니다. 적용만으로 출발하지 않으며 실제 차체 속도를 보장하지 않습니다.</p></div>
++<div id="speedlimitbox"><p>서버 적용 상한: <b id="speedlimitcurrent">미확인</b></p>
++<div class="row"><label>편집 m/s <input id="speedlimit" type="number" min="0.05" step="0.01" aria-label="편집 속도 상한 m/s"></label><label>편집 km/h <input id="speedlimitkmh" type="number" min="0.18" step="0.036" aria-label="편집 속도 상한 km/h"></label></div>
++<button id="setspeedlimit" disabled>상한 적용</button> <span id="speededitstate" class="muted">서버값 대기</span>
++<p class="muted">STOP과 MCU 비ARM 상태에서 변경합니다. 적용만으로 출발하지 않으며 실제 차체 속도를 보장하지 않습니다. 초기 상한은 주행 목표가 아닙니다.</p></div>
+ <div class="row" style="margin-top:4px"><button id="prepare">최초 출발 준비(해제·ARM)</button></div>
+ <div class="row" style="margin-top:4px"><button id="manualstart" disabled>신호 확인 후 수동 출발</button></div>
+ <p class="muted" style="margin:4px 0">출발 신호를 직접 확인했을 때만 누릅니다. 카메라 검출 대신 운영자 수동 확인으로 기록됩니다. 버튼 수락은 즉시 구동을 보장하지 않으며 기존 센서·MCU·보호 조건은 유지됩니다.</p>
+ <div id="restorebox" hidden><p class="muted" id="restoretext"></p><label><input type="checkbox" id="restoreok" style="width:auto"> 이 기록이 현재 경기임을 확인합니다</label> <button id="restore">같은 경기 복구</button></div>
+ <details><summary>새 경기(출발 사실 삭제)</summary><label><input type="checkbox" id="newok" style="width:auto"> 기존 출발 사실을 지우고 새 신호를 기다립니다</label> <button id="newrace">새 경기 시작</button></details>
+ </section>
+-<section><h2>속도 m/s <span class="muted">(읽기 전용)</span></h2><table id="speeds"></table>
++<section><h2>속도 m/s · km/h <span class="muted">(읽기 전용)</span></h2><table id="speeds"></table>
+ <p class="muted" style="margin:3px 0 0">모터축 환산은 단일 모터축 카운트 환산값이며 차체 실제 속도가 아닙니다.</p></section>
+ <section><h2>명령 결과</h2><table id="commands"></table><div class="muted">실제 차체 정지: <b id="phys">미확인</b></div></section>
+ <section><h2>주행 상태</h2><table id="driving"></table></section>
+ <section><h2>센서 갱신 나이 s</h2><table id="sensors"></table></section>
+ <section><h2>최근 사건</h2><div id="list"></div><div class="row" style="margin-top:4px"><a id="csv" href="#">CSV</a> <a id="html" href="#">HTML</a> <span class="muted" id="logstate"></span></div></section>
++<section><h2>수동 단발 조작</h2><p id="manualmode" class="muted">별도 수동 실행 구성에서 사용할 수 있습니다.</p>
++<p>단발 유효 상한: <b id="manualceiling">-</b> · 최대 <b id="manualduration">2</b>초</p>
++<div class="row"><label>목표 m/s <input id="manualspeed" type="number" min="0.001" step="0.01" value="0.15"></label><label>목표 km/h <input id="manualspeedkmh" type="number" min="0.0036" step="0.036" value="0.54"></label></div>
++<div class="row"><label>실행시간 s <input id="manualseconds" type="number" min="0.05" max="2" step="0.05" value="0.5"></label><label>중앙 등가 바퀴각 ° <input id="manualangle" type="number" step="0.1" value="0"></label></div>
++<p class="muted">+는 좌회전, −는 우회전입니다. 서보축 각도가 아닙니다. 설정 범위 <b id="manualanglerange">-</b>이며 실제 장착 각도 검증값이 아닙니다.</p>
++<p>예상 이동거리(등속 가정) v×t: <b id="manualdistance">0.075 m</b><br><span class="muted">가속·제동·미끄러짐·보호층 제한을 반영하지 않는 계산값입니다. 실제 이동거리·정지거리·곡선 순변위를 보장하지 않습니다.</span></p>
++<div class="row"><button id="manualprepare" disabled>수동 준비(해제·ARM)</button><button id="manualrun" disabled>입력값으로 실행</button><button id="manualstop" disabled>수동 중지 / STOP</button></div>
++<p id="manualresult" class="muted">자동 ARM·자동 재실행은 하지 않습니다. 종료 시 0목표·명시 STOP을 요청합니다.</p>
++</section>
+ </main>
+ <script>
+ "use strict";
+ const $=id=>document.getElementById(id);
+ const client=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join('');
+-let auth=null,last=null,lastOk=0,busy=false;
++let auth=null,last=null,lastOk=0,busy=false,speedDirty=false,speedInitialized=false;
+ const rid=()=>Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>b.toString(16).padStart(2,'0')).join('');
+ const fmt=(v,d=2)=>v===null||v===undefined?'-':typeof v==='number'?v.toFixed(d):String(v);
++const speedText=v=>typeof v==='number'?fmt(v,3)+' m/s / '+fmt(v*3.6,3)+' km/h':'미확인';
++function convertSpeed(from,to,factor){const raw=$(from).value,v=Number(raw);$(to).value=raw!==''&&Number.isFinite(v)?String(Number((v*factor).toFixed(9))):''}
++function distancePreview(){const v=Number($('manualspeed').value),t=Number($('manualseconds').value);$('manualdistance').textContent=Number.isFinite(v*t)&&v>0&&t>0?fmt(v*t,3)+' m':'입력값 확인'}
+ const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+ const headers=()=>({'X-Arena-Token':auth.token,'X-Arena-Vehicle':auth.vehicle,'Content-Type':'application/json'});
+ const STAGE={queued:'접수',sent:'전송, 응답 대기',policy_accepted:'정책 수락',policy_rejected:'정책 거절',rejected_by_adapter:'어댑터 거절',unknown_after_send:'결과 미확인',preparing:'준비 중',permitted:'주행 허가',cancelled:'취소'};
+-const OPS={stop:'STOP',recovery_reset:'복구 RESET',resume_start:'재개 START',prepare_start:'출발 준비',manual_visual_start:'신호 확인 후 수동 출발',new_race:'새 경기',restore_race:'같은 경기 복구',set_speed_limit:'시험 속도 상한'};
++const OPS={stop:'STOP',recovery_reset:'복구 RESET',resume_start:'재개 START',prepare_start:'출발 준비',manual_visual_start:'신호 확인 후 수동 출발',new_race:'새 경기',restore_race:'같은 경기 복구',set_speed_limit:'운영 속도 상한'};
+ function rows(id,list){$(id).innerHTML=list.map(r=>'<tr>'+r.map(c=>c).join('')+'</tr>').join('')}
+ function setStale(text){$('conn').textContent=text;$('conn').className='stale'}
+ function render(s){
+@@ -64,21 +79,45 @@
+  const b=s.binding,age=s.connection.status_age_s;
+  $('race').textContent='경기 '+String(b.race_id||'-').slice(0,8)+' · 번호 '+fmt(b.race_epoch,0)+' · 개입 '+fmt(b.intervention,0)+' · 세션 '+String(b.session||'-').slice(0,8)+(s.race.start_source?' · 출발 '+s.race.start_source:'');
+  if(s.connection.status_stale)setStale('차량 상태 오래됨 '+fmt(age,1)+'s');else{$('conn').textContent='상태 '+fmt(age,2)+'s 전';$('conn').className=''}
+- const sp=s.speeds;rows('speeds',[['<td>계획(/drive)</td>','<td class=n>'+fmt(sp.plan_mps)+'</td>'],['<td>보호 후(/drive/safe)</td>','<td class=n>'+fmt(sp.protected_mps)+'</td>'],['<td>MCU 적용 목표</td>','<td class=n>'+fmt(sp.mcu_target_mps)+'</td>'],['<td>모터축 환산</td>','<td class=n>'+fmt(sp.motor_shaft_equiv_mps)+(sp.motor_feedback_valid===false?' <span class=bad>무효</span>':'')+'</td>']]);
++ const sp=s.speeds;rows('speeds',[['<td>계획(/drive)</td>','<td class=n>'+speedText(sp.plan_mps)+'</td>'],['<td>보호 후(/drive/safe)</td>','<td class=n>'+speedText(sp.protected_mps)+'</td>'],['<td>MCU 적용 목표</td>','<td class=n>'+speedText(sp.mcu_target_mps)+'</td>'],['<td>모터축 환산</td>','<td class=n>'+speedText(sp.motor_shaft_equiv_mps)+(sp.motor_feedback_valid===false?' <span class=bad>무효</span>':'')+'</td>']]);
+  const d=s.driving,m=s.mcu;rows('driving',[['<td>상태</td><td>'+esc(d.state)+' / '+esc(d.behavior??'-')+'</td>'],['<td>이유</td><td>'+esc(d.reason??'-')+'</td>'],['<td>기준 벽</td><td>'+esc(d.side??'-')+(d.side_marker!=null?' (마커 '+d.side_marker+')':' (마커 근거 없음)')+' · 마커 '+esc(JSON.stringify(d.marker_ids??[]))+'</td>'],['<td>보호층</td><td>'+esc(d.safety_reason??'-')+' · 스윕 여유 '+fmt(d.clearance_m)+' m</td>'],['<td>정책</td><td>'+esc(s.race.policy_reason??'-')+' / '+esc(s.race.actuator_reason??'-')+'</td>'],['<td>MCU</td><td>'+esc(m.state??'-')+' ('+esc(m.reason??'-')+') 세대 '+fmt(m.generation,0)+(m.estop_held?' <span class=bad>HW 정지 입력</span>':'')+'</td>'],['<td>START 단계</td><td>'+(s.race.resume?esc(s.race.resume.phase)+' 대기 '+esc(s.race.resume.missing.join(',')||'-'):s.race.last_resume?esc(s.race.last_resume.outcome)+': '+esc(s.race.last_resume.reason):'-')+'</td>']]);
+  rows('sensors',s.sensors.map(x=>['<td>'+x.name+'</td>','<td class="n '+(x.ok?'ok':'bad')+'">'+fmt(x.age_s,3)+'</td>','<td class="n muted">&lt; '+x.limit_s+'</td>']));
+  rows('commands',s.commands.slice(0,5).map(c=>['<td>'+(OPS[c.op]||c.op)+'</td>','<td>'+esc(STAGE[c.stage]||c.stage)+(c.adapter_reason?' '+esc(c.adapter_reason):'')+(c.policy?' · '+esc(c.policy.reason):'')+(c.mcu?' · MCU '+esc(c.mcu):'')+'</td>']));
+  $('list').innerHTML=s.events.map(e=>'<div>'+fmt(e.sim_s,2)+' <span class=muted>'+esc(e.kind)+'</span> '+esc(e.text)+'</div>').join('');
+  $('logstate').textContent=s.log&&s.log.dropped?'기록 누락 '+s.log.dropped:'';
+- const c=s.controls,unknown=s.commands.some(x=>x.stage==='queued'||x.stage==='sent'),off=k=>!c[k].allowed||unknown||busy||auth.readonly;
++ const manual=s.manual||{},manualMode=manual.mode==='manual';
++ const c=s.controls,unknown=s.commands.some(x=>x.stage==='queued'||x.stage==='sent'),off=k=>manualMode||!c[k].allowed||unknown||busy||auth.readonly;
+  $('manualstart').disabled=off('manual_visual_start');
+  $('reset').disabled=off('recovery_reset');$('start').disabled=off('resume_start');$('prepare').disabled=off('prepare_start');
+  $('newrace').disabled=off('new_race')||!$('newok').checked;$('stop').disabled=auth.readonly;
+- const dev=s.development;$('speedlimitbox').hidden=!(dev&&dev.enabled);
+- if(dev&&dev.enabled){$('speedlimitcurrent').textContent=fmt(dev.limit_mps);$('speedlimit').max=dev.maximum_mps;$('setspeedlimit').disabled=!c.set_speed_limit?.allowed||unknown||busy||auth.readonly}
++ const dev=manualMode?manual:s.development;
++ $('speedlimitcurrent').textContent=speedText(dev?.limit_mps);
++ if(dev){$('speedlimit').max=dev.maximum_mps;$('speedlimitkmh').max=dev.maximum_mps*3.6;
++  if(!speedInitialized){$('speedlimit').value=dev.limit_mps;convertSpeed('speedlimit','speedlimitkmh',3.6);speedInitialized=true}
++  const edited=Number($('speedlimit').value),same=Number.isFinite(edited)&&Math.abs(edited-dev.limit_mps)<1e-9;
++  $('speededitstate').textContent=same?'편집값 = 서버 적용값':'미적용 편집값';
++  if(same)speedDirty=false;
++ }
++ const manualBusy=['preparing','running','stopping'].includes(manual.state)||(manual.commands||[]).some(x=>x.stage==='queued');
++ const mcuFresh=typeof s.connection.mcu_age_s==='number'&&s.connection.mcu_age_s<.25;
++ const stopped=['DISARMED','ESTOP_LATCHED','FAULT_LATCHED'].includes(m.state);
++ $('setspeedlimit').disabled=!dev||busy||auth.readonly||(manualMode?manualBusy||!mcuFresh||!stopped:!c.set_speed_limit?.allowed||unknown);
+  $('why').textContent=auth.readonly?'읽기 전용 접속입니다.':s.connection.status_stale?'상태가 오래되어 STOP 외 명령을 막았습니다.':s.race.resume?'START 처리 중: 아직 주행 허가가 아닙니다.':(!c.resume_start.allowed&&s.race.latch?'START 불가: '+c.resume_start.reason:'');
+  const o=s.restore_offer;$('restorebox').hidden=!o;
+  if(o){$('restoretext').textContent='저장된 경기 '+o.race_id.slice(0,8)+' · 기준 벽 '+o.side+' · 저장 '+new Date(o.saved_wall_time*1000).toLocaleTimeString()+'. 출발 신호를 새로 본 것이 아닙니다.';$('restore').disabled=off('restore_race')||!$('restoreok').checked}
++ $('manualmode').textContent=manualMode?'별도 수동 구성 · '+manual.state+' · '+(manual.reason||''):'자율 구성: 수동 준비·실행 비활성. 자율 노드를 정상 종료한 뒤 guard·host·패널의 별도 수동 구성으로 실행하십시오.';
++ $('manualceiling').textContent=speedText(manual.pulse_limit_mps);
++ $('manualanglerange').textContent='±'+fmt(manual.steering_limit_deg,3)+'°';
++ $('manualspeed').max=manual.pulse_limit_mps;$('manualspeedkmh').max=manual.pulse_limit_mps*3.6;
++ $('manualangle').min=-manual.steering_limit_deg;$('manualangle').max=manual.steering_limit_deg;
++ $('manualprepare').disabled=!manualMode||manualBusy||!mcuFresh||busy||auth.readonly;
++ $('manualrun').disabled=!manualMode||!manual.prepared||manualBusy||busy||auth.readonly;
++ $('manualstop').disabled=!manualMode||auth.readonly;
++ const latestManual=manual.commands?.[0];if(latestManual)$('manualresult').textContent=latestManual.op+' · '+latestManual.stage+' · '+(latestManual.reason||'');
++ if(manualMode){$('badge').textContent='수동 · '+manual.state;$('badge').className=manual.state==='running'?'running':'setup';
++  if(mcuFresh){$('conn').textContent='MCU '+fmt(s.connection.mcu_age_s,3)+'s 전';$('conn').className=''}
++  $('why').textContent='수동 구성에서는 경기 START/RESET·신호 수동 출발을 사용하지 않습니다.'}
++ distancePreview();
+ }
+ async function poll(){
+  if(!auth)return;
+@@ -86,7 +125,7 @@
+   if(r.status===401||r.status===409){setStale('인증/차량 불일치 '+r.status);return}
+   const s=await r.json();auth.readonly=r.headers.get('X-Arena-Role')==='view';lastOk=performance.now();render(s)
+  }catch(e){setStale('연결 끊김: 상태·명령 결과 미확인 '+fmt((performance.now()-lastOk)/1000,1)+'s');
+-  ['reset','start','prepare','manualstart','newrace','restore','setspeedlimit'].forEach(k=>$(k).disabled=true)}
++  ['reset','start','prepare','manualstart','newrace','restore','setspeedlimit','manualprepare','manualrun'].forEach(k=>$(k).disabled=true)}
+ }
+ async function send(op,confirm,value){
+  const stale=!last||performance.now()-lastOk>1500;
+@@ -97,9 +136,27 @@
+  catch(e){$('why').textContent='응답 없음: 결과 미확인. 상태를 다시 확인하십시오. 자동 재전송하지 않습니다.'}
+  busy=false;poll()
+ }
+-$('stop').onclick=()=>send('stop');$('reset').onclick=()=>send('recovery_reset');$('start').onclick=()=>send('resume_start');$('prepare').onclick=()=>send('prepare_start');
++async function sendManual(op,value){
++ if(!auth||(op!=='stop'&&(!last||performance.now()-lastOk>1500)))return;
++ busy=op!=='stop';
++ try{const response=await fetch('/api/manual',{method:'POST',headers:headers(),body:JSON.stringify({op,request:rid(),client,view:last?.manual?.binding,value})});
++  const receipt=await response.json();$('manualresult').textContent=receipt.stage+' · '+(receipt.reason||'요청 접수')}
++ catch(e){$('manualresult').textContent='결과 미확인. 자동 재전송하지 않습니다.'}
++ busy=false;poll();
++}
++$('stop').onclick=()=>last?.manual?.mode==='manual'?sendManual('stop'):send('stop');$('reset').onclick=()=>send('recovery_reset');$('start').onclick=()=>send('resume_start');$('prepare').onclick=()=>send('prepare_start');
+ $('manualstart').onclick=()=>{if(!busy&&!$('manualstart').disabled){$('manualstart').disabled=true;send('manual_visual_start','SIGNAL_CONFIRMED')}};
+-$('setspeedlimit').onclick=()=>{const v=Number($('speedlimit').value);if(Number.isFinite(v)&&v>=.05&&v<=last.development.maximum_mps)send('set_speed_limit',null,v);else $('why').textContent='표시된 범위 안의 m/s 값을 입력하십시오.'};
++$('speedlimit').oninput=()=>{speedDirty=true;convertSpeed('speedlimit','speedlimitkmh',3.6);$('speededitstate').textContent='미적용 편집값'};
++$('speedlimitkmh').oninput=()=>{speedDirty=true;convertSpeed('speedlimitkmh','speedlimit',1/3.6);$('speededitstate').textContent='미적용 편집값'};
++$('setspeedlimit').onclick=()=>{const v=Number($('speedlimit').value),manual=last?.manual?.mode==='manual',dev=manual?last.manual:last?.development;
++ if(dev&&Number.isFinite(v)&&v>=.05&&v<=dev.maximum_mps){if(manual)sendManual('set_speed_limit',v);else send('set_speed_limit',null,v)}else $('why').textContent='표시된 범위 안의 m/s 값을 입력하십시오.'};
++$('manualspeed').oninput=()=>{convertSpeed('manualspeed','manualspeedkmh',3.6);distancePreview()};
++$('manualspeedkmh').oninput=()=>{convertSpeed('manualspeedkmh','manualspeed',1/3.6);distancePreview()};
++$('manualseconds').oninput=distancePreview;
++$('manualprepare').onclick=()=>sendManual('prepare');$('manualstop').onclick=()=>sendManual('stop');
++$('manualrun').onclick=()=>{const m=last?.manual,v=Number($('manualspeed').value),t=Number($('manualseconds').value),a=Number($('manualangle').value);
++ if(!m||![v,t,a].every(Number.isFinite)||v<=0||v>m.pulse_limit_mps||t<.05||t>2||Math.abs(a)>m.steering_limit_deg){$('manualresult').textContent='입력값이 서버 범위를 벗어났습니다. 값을 줄여 실행하지 않습니다.';return}
++ sendManual('run',{speed_mps:v,seconds:t,steering_deg:a})};
+ $('newrace').onclick=()=>{send('new_race','NEW_RACE');$('newok').checked=false};$('restore').onclick=()=>{send('restore_race','SAME_RACE');$('restoreok').checked=false};
+ function exportLink(id,kind){$(id).onclick=async e=>{e.preventDefault();const r=await fetch('/api/export.'+kind+'?seconds=120',{headers:headers()});const u=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=u;a.download='arena_events.'+kind;a.click();URL.revokeObjectURL(u)}}
+ exportLink('csv','csv');exportLink('html','html');
+--- a/src/arena_autonomy/arena_autonomy/race_session.py
++++ b/src/arena_autonomy/arena_autonomy/race_session.py
+@@ -402,8 +402,12 @@
+         if request not in self.processed:
+             self.processed.append(request)
+ 
++    def configure_operator_speed_limit(self, maximum_mps, legacy_enabled=False, legacy_initial_mps=.3):
++        """별도 플래그 없이 B3 상한 제공. 기존 명시 개발 초기값만 호환한다."""
++        self.configure_development_speed_limit(maximum_mps, legacy_initial_mps if legacy_enabled else maximum_mps)
++
+     def configure_development_speed_limit(self, maximum_mps, initial_mps):
+-        """명시 개발 모드에서만 사용. 경기 초기화/재개로 상한을 해제하지 않는다."""
++        """B3 운영 상한. 기존 설정 이름을 유지하며 경기 초기화/재개로 해제하지 않는다."""
+         if not all(_finite(v) for v in (maximum_mps, initial_mps)) or not .05 <= initial_mps <= maximum_mps:
+             raise ValueError('development speed limit must be within 0.05..configured maximum')
+         self.development_speed_limit = dict(enabled=True, limit_mps=float(initial_mps),
+--- /dev/null
++++ b/tests/test_operator_panel_manual.py
+@@ -0,0 +1,209 @@
++"""패널의 요청/모드/준비/자식 수명 경계. 합성 ROS API이며 실물/스케줄링 증명이 아니다."""
++import ast
++import io
++import json
++import math
++import os
++from pathlib import Path
++from types import SimpleNamespace as N
++import time
++
++import pytest
++
++from arena_autonomy import race_ops_manual as mod
++from arena_autonomy.development_jog import plan, fresh_status, valid_mcu, mcu_identity, ParentHeartbeat
++from arena_autonomy.race_ops_core import OpsCore, ARMED_MCU, LATCHED_MCU
++from arena_autonomy.race_session import RaceSupervisor
++
++
++def test_operator_cap_is_default_and_preserves_explicit_legacy_initial():
++    vision=N(epoch=0, signal=N(started=False), fault=None)
++    default=RaceSupervisor(vision,now_s=10.)
++    default.configure_operator_speed_limit(1.5)
++    assert default.development_speed_limit['enabled'] is True
++    assert default.limit_speed(1.) == 1. and default.limit_speed(2.) == 1.5
++    default.configure_operator_speed_limit(1.5,True,.3)
++    assert default.limit_speed(1.) == .3
++
++
++@pytest.mark.parametrize('angle', [-.2, 0., .2])
++def test_angle_and_vt_are_explicit_not_servo_or_actual_distance(angle):
++    value=plan('forward',.15,.5,.2,steering_rad=angle,max_steering_rad=.2)
++    assert value['steering_rad']==angle and value['estimated_distance_m']==.075
++    assert value['steering_reference']=='central_equivalent_wheel_angle_left_positive'
++    with pytest.raises(ValueError):plan('forward',.15,.5,.2,steering_rad=.21,max_steering_rad=.2)
++
++
++def submit(panel,op,number='req1',value=None):
++    return panel.submit(op,number,'desk',panel.binding(),value,100.)
++
++
++def test_autonomous_configuration_has_no_manual_actions():
++    panel=mod.ManualPanel()
++    for op in ('prepare','run','stop','set_speed_limit'):
++        assert submit(panel,op,op)['reason']=='explicit_manual_configuration_required'
++    assert panel.next_action() is None and panel.process is None
++
++
++def test_request_binding_and_stop_invalidate_queued_run(tmp_path):
++    panel=mod.ManualPanel('manual',output_root=tmp_path)
++    panel.prepared_identity=('boot',4,'host')
++    value=dict(speed_mps=.1,seconds=.5,steering_deg=0.)
++    first=submit(panel,'run',value=value)
++    assert submit(panel,'run',value=value)==first  # 같은 request는 재실행하지 않는다.
++    assert submit(panel,'stop','stop1')['stage']=='queued'
++    stop=panel.next_action();panel.stop('explicit_stop',100.)
++    assert stop['op']=='stop' and panel.next_action() is None
++    assert panel.entries['req1']['stage']=='cancelled' and panel.process is None
++
++
++@pytest.mark.parametrize('value', [dict(speed_mps=.21,seconds=.5,steering_deg=0.),
++    dict(speed_mps=.1,seconds=2.1,steering_deg=0.),dict(speed_mps=.1,seconds=.5,steering_deg=12.),
++    dict(speed_mps=True,seconds=.5,steering_deg=0.),dict(speed_mps=.1,seconds=.5,steering_deg=float('nan'))])
++def test_outside_manual_bounds_is_rejected_without_clamping(value):
++    panel=mod.ManualPanel('manual');panel.prepared_identity=('boot',4,'host')
++    assert submit(panel,'run',value=value)['reason']=='manual_value_out_of_range'
++    assert panel.next_action() is None
++
++
++class Pipe(io.StringIO):
++    def close(self):self.recorded=self.getvalue();super().close()
++
++
++class Process:
++    def __init__(self,command,**kwargs):
++        self.command,self.kwargs=command,kwargs
++        self.stdin=Pipe();self.code=None;self.killed=False
++        self.output=Path(command[command.index('--output')+1]);self.output.mkdir()
++    def poll(self):return self.code
++    def kill(self):self.killed=True;self.code=-9
++    def complete(self):
++        (self.output/'result.json').write_text(json.dumps(dict(stop_ack=True,fresh_estop_state_seen=True,
++            error=None,errors=[],physical_stop_verified=False)),encoding='utf-8')
++        self.code=0
++
++
++def test_child_reuses_jog_and_eof_stop_is_bounded(tmp_path):
++    panel=mod.ManualPanel('manual',output_root=tmp_path,spawn=Process)
++    panel.prepared_identity=('boot',4,'host')
++    submit(panel,'run',value=dict(speed_mps=.15,seconds=.5,steering_deg=-5.))
++    entry=panel.next_action();panel.launch(entry,100.)
++    process=panel.process
++    assert process.command[1:3]==['-m','arena_autonomy.development_jog']
++    assert '--parent-heartbeat-stdin' in process.command and '--send' in process.command
++    assert process.kwargs.get('shell') is None
++    panel.tick(100.,True);assert process.stdin.getvalue()=='HEARTBEAT\n'
++    panel.tick(100.1,False)
++    assert process.stdin.closed and process.stdin.recorded.endswith('STOP\n')
++    process.complete();ended=panel.tick(100.2,False)
++    assert ended['result']['physical_stop_verified'] is False and panel.process is None
++
++
++def test_successful_child_does_not_allow_second_pulse_without_prepare(tmp_path):
++    panel=mod.ManualPanel('manual',output_root=tmp_path,spawn=Process)
++    panel.prepared_identity=('boot',4,'host')
++    submit(panel,'run',value=dict(speed_mps=.1,seconds=.5,steering_deg=0.))
++    panel.launch(panel.next_action(),100.);panel.process.complete()
++    assert panel.tick(100.1,True)['stage']=='completed'
++    assert submit(panel,'run','again',dict(speed_mps=.1,seconds=.5,steering_deg=0.))['reason']=='prepare_required'
++
++
++def test_parent_pipe_eof_cancels_child_without_signal_or_buffered_stdin_lock():
++    read_fd,write_fd=os.pipe()
++    with os.fdopen(read_fd,'rb',buffering=0) as stream:
++        heartbeat=ParentHeartbeat(stream)
++        os.write(write_fd,b'HEARTBEAT\n');os.close(write_fd)
++        heartbeat.thread.join(1.)
++        assert heartbeat.cancelled() and not heartbeat.thread.is_alive()
++
++
++@pytest.fixture
++def fake_node(tmp_path):
++    from arena_autonomy import race_ops_page
++    path=Path(race_ops_page.__file__).with_name('race_ops_node.py')
++    tree=ast.parse(path.read_text(encoding='utf-8'))
++    cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='RaceOps')
++    clock=[100.]
++    namespace=dict(Node=object,graph_reason=mod.graph_reason,fresh_status=fresh_status,valid_mcu=valid_mcu,
++        mcu_identity=mcu_identity,ARMED_MCU=ARMED_MCU,LATCHED_MCU=LATCHED_MCU,
++        Trigger=N(Request=lambda:object()),MCU_CALL_TIMEOUT_S=2.,time=N(monotonic=lambda:clock[0]))
++    exec(compile(ast.Module(body=[cls],type_ignores=[]),str(path),'exec'),namespace)
++    node=object.__new__(namespace['RaceOps'])
++    node.core=OpsCore('car');node.manual=mod.ManualPanel('manual',output_root=tmp_path,spawn=Process)
++    node.manual_prepare=None;node.calls=[];node.rearm=None;node.result_timeout_s=3.
++    node.get_clock=lambda:N(now=lambda:N(nanoseconds=int(10e9)))
++    node.core.client_seen('desk',100.)
++    node.core.update_mcu(dict(v=1,boot='fixture',generation=4,owner='host',state='ESTOP_LATCHED',
++        now_us=10_000_000,estop_held=False,feedback_valid=True,output_ready=True,target_speed_mps=0.),100.)
++    node.get_namespace=lambda:'/'
++    peer=lambda name:N(node_name=name,node_namespace='/')
++    node.extra_drive=[]
++    node.get_publishers_info_by_topic=lambda topic:{'/drive':node.extra_drive,
++        '/drive/safe':[peer('lidar_safety')],'/actuation/status':[peer('actuation_host')]}[topic]
++    node.get_subscriptions_info_by_topic=lambda topic:[peer('lidar_safety' if topic=='/drive' else 'actuation_host')]
++    node.service_calls=[]
++    def service(name):
++        def call(_):
++            node.service_calls.append(name)
++            node.core.mcu['state']={'clear_stop':'DISARMED','arm':'ARMED','stop':'ESTOP_LATCHED'}[name]
++            node.core.mcu['generation']+=1
++            return N(done=lambda:True,result=lambda:N(success=True,message='synthetic ACK'))
++        return N(service_is_ready=lambda:True,call_async=call)
++    node.mcu_clients={name:service(name) for name in ('clear_stop','arm','stop')}
++    return node
++
++
++def prepare(node):
++    submit(node.manual,'prepare')
++    for _ in range(3):
++        node.tick_manual(100.);node.poll_calls(100.)
++
++
++def test_explicit_prepare_then_run_uses_clear_arm_without_auto_pulse(fake_node):
++    node=fake_node
++    node.tick_manual(100.);assert node.service_calls==[]
++    prepare(node)
++    assert node.service_calls==['clear_stop','arm']
++    assert node.manual.prepared_identity is not None and node.manual.process is None
++    submit(node.manual,'run','run1',dict(speed_mps=.1,seconds=.5,steering_deg=5.))
++    node.tick_manual(100.)
++    assert node.manual.process is not None and node.manual.state=='running'
++    node.manual.process.complete();node.tick_manual(100.)
++    assert node.service_calls[-1]=='stop' and node.manual.state=='idle'
++
++
++def test_autonomous_publisher_blocks_preparation_even_if_command_zero(fake_node):
++    node=fake_node;node.extra_drive=[N(node_name='local_pursuit',node_namespace='/')]
++    prepare(node)
++    assert node.service_calls==[] and node.manual.prepared_identity is None
++    assert node.manual.entries['req1']['reason']=='autonomy_or_other_drive_publisher_present'
++
++
++def test_prepared_connection_loss_requests_stop(fake_node):
++    node=fake_node;prepare(node)
++    node.core.clients.clear();node.tick_manual(100.)
++    assert node.service_calls[-1]=='stop' and node.manual.prepared_identity is None
++
++
++def test_manual_cap_requires_stopped_mcu_and_rejects_above_config(fake_node):
++    node=fake_node
++    submit(node.manual,'set_speed_limit','limit1',.1);node.tick_manual(100.)
++    assert node.manual.limit_mps==.1 and node.manual.snapshot()['pulse_limit_mps']==.1
++    assert submit(node.manual,'set_speed_limit','bad',2.)['reason']=='speed_limit_out_of_range'
++    prepare(node)
++    submit(node.manual,'set_speed_limit','armed',.15);node.tick_manual(100.)
++    assert node.manual.limit_mps==.1 and node.manual.entries['armed']['reason']=='mcu_stop_required'
++
++
++def test_clear_arm_service_exception_does_not_escape_tick_and_requests_stop(fake_node):
++    node=fake_node
++    def failed(_):
++        def result():raise RuntimeError('synthetic transport error')
++        return N(done=lambda:True,result=result)
++    node.mcu_clients['clear_stop']=N(service_is_ready=lambda:True,call_async=failed)
++    submit(node.manual,'prepare');node.tick_manual(100.)
++    node.poll_calls(100.)  # future.result 예외가 executor를 빠져나가지 않는다.
++    node.tick_manual(100.)
++    assert node.manual.entries['req1']['stage']=='failed'
++    assert node.manual.entries['req1']['reason']=='manual_prepare_service_rejected'
++    assert node.service_calls==['stop'] and node.manual.process is None

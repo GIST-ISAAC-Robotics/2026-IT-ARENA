@@ -31,6 +31,23 @@ def test_selected_camera_runs_existing_vision_on_private_topic():
     assert set(cmd)=={'node','imu','c1','camera'} and '--camera' in cmd['node']
     assert '/camera/color/image_raw:=/hardware_preview/camera/image_raw' in ros
     assert 'vision_execution:=process' in ros and 'motion_scan_time_policy:=host_estimated_v1' in ros
+    assert '--publish-hz' not in cmd['camera']
+
+
+def test_selected_publish_limit_does_not_change_sensor_capture_command():
+    cmd=runner.commands(args(camera=True,camera_publish_hz=20.))
+    assert cmd['camera'][-2:]==['--publish-hz','20.0']
+    assert '--publish-hz' not in cmd['imu'] and '--publish-hz' not in cmd['c1']
+
+
+@pytest.mark.parametrize('extra',[['--camera-publish-hz','20'],
+    ['--camera','--camera-publish-hz','nan'],['--camera','--camera-publish-hz','0']])
+def test_invalid_publish_limit_fails_before_device_io(tmp_path,extra):
+    output=tmp_path/'absent'
+    result=subprocess.run([sys.executable,str(Path(runner.__file__)),
+        '--output',str(output),'--imu-port','absent-imu','--c1-port','absent-c1',
+        '--c1-executable','absent-sdk','--c1-sha256','0'*64,'--plan-only',*extra],capture_output=True,text=True)
+    assert result.returncode==2 and not output.exists()
 
 
 def test_verified_policy_and_no_camera_stay_default_when_not_selected():

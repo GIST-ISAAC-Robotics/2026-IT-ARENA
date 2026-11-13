@@ -1,0 +1,122 @@
+.......FF.F............................................................. [ 97%]
+..                                                                       [100%]
+================================== FAILURES ===================================
+______ test_factory_header_is_exact_actual_selection_and_only_on[False] _______
+
+tmp_path = WindowsPath('C:/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/complete_plan_trace_r449_v1/verify_windows_v1/tmp/test_factory_header_is_exact_a0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000267FF449260>
+enabled = False
+
+    @pytest.mark.parametrize('enabled',[False,True])
+    def test_factory_header_is_exact_actual_selection_and_only_on(tmp_path,monkeypatch,enabled):
+        import arena_autonomy.runtime_dual_state as state
+        trace,path=recorder(tmp_path);captured=[]
+        def factory(selected,**kwargs):captured.append(copy.deepcopy(selected));return NS()
+        monkeypatch.setattr(state,'RuntimeDualProcess',factory)
+        n=node(trace,enabled);header=dict(schema=5,numeric_execution='native_v1',nested=dict(values=[1,2]))
+>       d=backend.create_delivery(n,header);header['nested']['values'][0]=999
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_runtime_plan_trace.py:157: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\arena_autonomy\arena_autonomy\runtime_node_backend.py:77: in create_delivery
+    selected = evaluator_header(node, header)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\arena_autonomy\arena_autonomy\runtime_node_backend.py:45: in evaluator_header
+    options = observation_options(node)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+src\arena_autonomy\arena_autonomy\runtime_node_backend.py:39: in observation_options
+    lidar_input_representation=input_representation(node), motion_mode=node.motion.mode)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+node = namespace(complete_plan_trace=False, follow_trace=<arena_autonomy.follow_trace.FollowTrace object at 0x00000267FF449D0...ost_estimated_v1', verified=False, mode='both'), get_parameter=<function node.<locals>.<lambda> at 0x00000267FF55DBC0>)
+
+    def input_representation(node):
+        """먼저 선택을 검사한 노드에서도 선언된 원값/기존 기본 표현을 유지한다."""
+        name = 'lidar_input_representation'
+>       parameter = node.get_parameter(name) if node.has_parameter(name) else node.declare_parameter(name, 'laser_scan')
+                                                ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'has_parameter'. Did you mean: 'get_parameter'?
+
+src\arena_autonomy\arena_autonomy\native_lidar_input.py:34: AttributeError
+_______ test_factory_header_is_exact_actual_selection_and_only_on[True] _______
+
+tmp_path = WindowsPath('C:/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/complete_plan_trace_r449_v1/verify_windows_v1/tmp/test_factory_header_is_exact_a1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000267FF463D50>
+enabled = True
+
+    @pytest.mark.parametrize('enabled',[False,True])
+    def test_factory_header_is_exact_actual_selection_and_only_on(tmp_path,monkeypatch,enabled):
+        import arena_autonomy.runtime_dual_state as state
+        trace,path=recorder(tmp_path);captured=[]
+        def factory(selected,**kwargs):captured.append(copy.deepcopy(selected));return NS()
+        monkeypatch.setattr(state,'RuntimeDualProcess',factory)
+        n=node(trace,enabled);header=dict(schema=5,numeric_execution='native_v1',nested=dict(values=[1,2]))
+>       d=backend.create_delivery(n,header);header['nested']['values'][0]=999
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_runtime_plan_trace.py:157: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\arena_autonomy\arena_autonomy\runtime_node_backend.py:77: in create_delivery
+    selected = evaluator_header(node, header)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\arena_autonomy\arena_autonomy\runtime_node_backend.py:45: in evaluator_header
+    options = observation_options(node)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+src\arena_autonomy\arena_autonomy\runtime_node_backend.py:39: in observation_options
+    lidar_input_representation=input_representation(node), motion_mode=node.motion.mode)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+node = namespace(complete_plan_trace=True, follow_trace=<arena_autonomy.follow_trace.FollowTrace object at 0x00000267FF463B50...ost_estimated_v1', verified=False, mode='both'), get_parameter=<function node.<locals>.<lambda> at 0x00000267FF4761F0>)
+
+    def input_representation(node):
+        """먼저 선택을 검사한 노드에서도 선언된 원값/기존 기본 표현을 유지한다."""
+        name = 'lidar_input_representation'
+>       parameter = node.get_parameter(name) if node.has_parameter(name) else node.declare_parameter(name, 'laser_scan')
+                                                ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'has_parameter'. Did you mean: 'get_parameter'?
+
+src\arena_autonomy\arena_autonomy\native_lidar_input.py:34: AttributeError
+__ test_actual_lane_spawn_records_discarded_plans_and_exact_stateful_replay ___
+
+tmp_path = WindowsPath('C:/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/complete_plan_trace_r449_v1/verify_windows_v1/tmp/test_actual_lane_spawn_records0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000267FF56FB50>
+
+    def test_actual_lane_spawn_records_discarded_plans_and_exact_stateful_replay(tmp_path,monkeypatch):
+        import arena_autonomy.race_runtime_policy.evaluator as policy
+        monkeypatch.setattr(policy,'evaluator_factory',stateful_factory)
+        monkeypatch.setattr(policy,'supported',lambda output:False)
+>       trace,path=recorder(tmp_path);n=node(trace,True);d=backend.create_delivery(n,dict(schema=5,numeric_execution='native_v1'))
+                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_runtime_plan_trace.py:204: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\arena_autonomy\arena_autonomy\runtime_node_backend.py:77: in create_delivery
+    selected = evaluator_header(node, header)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src\arena_autonomy\arena_autonomy\runtime_node_backend.py:45: in evaluator_header
+    options = observation_options(node)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+src\arena_autonomy\arena_autonomy\runtime_node_backend.py:39: in observation_options
+    lidar_input_representation=input_representation(node), motion_mode=node.motion.mode)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+node = namespace(complete_plan_trace=True, follow_trace=<arena_autonomy.follow_trace.FollowTrace object at 0x00000267FF461B50...ost_estimated_v1', verified=False, mode='both'), get_parameter=<function node.<locals>.<lambda> at 0x00000267FF476610>)
+
+    def input_representation(node):
+        """먼저 선택을 검사한 노드에서도 선언된 원값/기존 기본 표현을 유지한다."""
+        name = 'lidar_input_representation'
+>       parameter = node.get_parameter(name) if node.has_parameter(name) else node.declare_parameter(name, 'laser_scan')
+                                                ^^^^^^^^^^^^^^^^^^
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'has_parameter'. Did you mean: 'get_parameter'?
+
+src\arena_autonomy\arena_autonomy\native_lidar_input.py:34: AttributeError
+=========================== short test summary info ===========================
+FAILED tests/test_runtime_plan_trace.py::test_factory_header_is_exact_actual_selection_and_only_on[False]
+FAILED tests/test_runtime_plan_trace.py::test_factory_header_is_exact_actual_selection_and_only_on[True]
+FAILED tests/test_runtime_plan_trace.py::test_actual_lane_spawn_records_discarded_plans_and_exact_stateful_replay
+3 failed, 71 passed in 3.73s
+{"owned_remaining": [], "external_imports": {}}

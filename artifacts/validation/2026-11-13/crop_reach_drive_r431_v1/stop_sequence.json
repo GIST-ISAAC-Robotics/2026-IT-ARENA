@@ -1,0 +1,39 @@
+{
+  "helper_record_present": false,
+  "helper_service_results": null,
+  "helper_stop_confirmed": null,
+  "helper_final_mcu": null,
+  "helper_request_timestamp_recorded": false,
+  "evaluator_stop_request_clock_ns": 19859000000,
+  "evaluator_stop_request_sim_s": 19.857,
+  "original_latch_timing": {
+    "valid": true,
+    "request_clock_ns": 19859000000,
+    "request_clock_us": 19859000,
+    "invalid_time_samples": 0,
+    "latched_before_request": 78,
+    "same_instant_stop_response": 1,
+    "same_instant_other_latch": 0,
+    "latched_before_stop_samples": 78,
+    "first_latched": {
+      "now_us": 19472000,
+      "state": "FAULT_LATCHED",
+      "reason": "command_expired"
+    },
+    "limits": [
+      "request time is the evaluator /clock freshly received (two callbacks after a mark) just before the STOP call; nodes receive /clock at different times, so causal order is not proven",
+      "equal microseconds are attributed to the STOP response only for the configured STOP state and reason",
+      "latched status received before the STOP call is still caught by the case-loop abort in wall order"
+    ]
+  },
+  "original_stop_checks": {
+    "model_stop_stable": true,
+    "dense_pose_stop_evidence": true,
+    "explicit_mcu_stop": true,
+    "no_mcu_latch_before_stop": false,
+    "no_deadline_diagnostic": true,
+    "no_wall_collision": true
+  },
+  "original_verdict_changed": false,
+  "interpretation": "helper STOP may precede evaluator STOP; retain original before-stop latch result; status clocks and helper final observation do not prove exact service request causality"
+}

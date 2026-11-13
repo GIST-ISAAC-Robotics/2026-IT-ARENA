@@ -1,0 +1,816 @@
+--- /dev/null
++++ b/scripts/steering_zero_profile.py
+@@ -0,0 +1,51 @@
++#!/usr/bin/env python3
++"""장치 없는 수동 중립 저장/검사. 연결/읽기/구동/EEPROM 기능 없음."""
++import argparse
++import json
++from pathlib import Path
++import sys
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'src/arena_vehicle_interface'))
++from arena_vehicle_interface.steering_calibration import (
++    check_profile, covers, read_profile, record_zero, save_new_profile,
++)
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    commands = parser.add_subparsers(dest='command', required=True)
++    record = commands.add_parser('record')
++    record.add_argument('--neutral-count', type=int, required=True)
++    record.add_argument('--assembly-id', required=True)
++    record.add_argument('--confirm-wheels-straight', action='store_true', required=True)
++    record.add_argument('--evidence-note', required=True)
++    record.add_argument('--output', type=Path, required=True)
++    check = commands.add_parser('check')
++    check.add_argument('profile', type=Path)
++    check.add_argument('--assembly-id', required=True)
++    check.add_argument('--required-servo-min-rad', type=float, required=True)
++    check.add_argument('--required-servo-max-rad', type=float, required=True)
++    args = parser.parse_args(argv)
++    try:
++        if args.command == 'record':
++            data = record_zero(args.neutral_count, assembly_id=args.assembly_id,
++                               straight_confirmed=args.confirm_wheels_straight,
++                               evidence_note=args.evidence_note)
++            save_new_profile(args.output, data)
++            print(json.dumps(dict(saved=str(args.output), calibration_ready=False,
++                                  output_enabled=False, status=data['status'])))
++            return 0
++        data = read_profile(args.profile)
++        check_profile(data, ready=True, assembly_id=args.assembly_id)
++        complete = covers(data, args.required_servo_min_rad, args.required_servo_max_rad)
++        print(json.dumps(dict(profile_valid=True, required_range_covered=complete,
++                              output_enabled=False, hardware_angle_measured=False,
++                              reason='profile_checked' if complete else 'required_range_crosses_mounted_or_count_limit')))
++        return 0 if complete else 2
++    except (ValueError, OSError) as exc:
++        print(json.dumps(dict(profile_valid=False, output_enabled=False, reason=str(exc))))
++        return 2
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())
+--- a/src/arena_bringup/launch/simulation.launch.py
++++ b/src/arena_bringup/launch/simulation.launch.py
+@@ -1017,6 +1017,7 @@
+             "wheel_radius": str(drivetrain["wheel_radius_m"]),
+             "wheel_width": str(drivetrain["wheel_width_m"]),
+             "max_steering_angle": str(drivetrain["max_steering_angle_rad"]),
++            "steering_model": str(drivetrain.get("simulation_steering_model", "ideal_ackermann")),
+             "max_speed": str(drivetrain["max_speed_mps"]),
+             "steering_p_gain": str(drivetrain.get("simulation_steering_p_gain", 12.0)),
+             "acceleration_limit": str(drivetrain.get("simulation_acceleration_limit_mps2", 4.0)),
+--- a/src/arena_description/models/arena_car/model.sdf.xacro
++++ b/src/arena_description/models/arena_car/model.sdf.xacro
+@@ -7,6 +7,7 @@
+   <xacro:arg name="body_mass" default="1.635"/>
+   <xacro:arg name="body_cg_z_offset" default="0.0"/>
+   <xacro:arg name="drive_mode" default="single_motor"/>
++  <xacro:arg name="steering_model" default="ideal_ackermann"/>
+   <xacro:arg name="render_sensors" default="true"/>
+   <xacro:arg name="rear_marker_enabled" default="true"/>
+   <xacro:arg name="rear_marker_x" default="-0.1005"/>
+@@ -646,6 +647,7 @@
+ 
+     <xacro:if value="${'$(arg drive_mode)' == 'single_motor'}">
+     <plugin filename="arena-single-motor-system" name="arena::SingleMotorDrive">
++      <steering_model>$(arg steering_model)</steering_model>
+       <wheel_radius>${wheel_radius}</wheel_radius>
+       <wheelbase>${wheelbase}</wheelbase>
+       <track_width>${track_width}</track_width>
+--- a/src/arena_gazebo/CMakeLists.txt
++++ b/src/arena_gazebo/CMakeLists.txt
+@@ -13,7 +13,7 @@
+ 
+ add_library(arena-single-motor-system SHARED src/single_motor_drive.cpp)
+ target_compile_features(arena-single-motor-system PRIVATE cxx_std_17)
+-target_include_directories(arena-single-motor-system PRIVATE include)
++target_include_directories(arena-single-motor-system PRIVATE include ../arena_vehicle_interface/portable)
+ target_link_libraries(arena-single-motor-system PRIVATE gz-sim8::gz-sim8 gz-plugin2::gz-plugin2)
+ target_compile_options(arena-single-motor-system PRIVATE -Wall -Wextra -Wpedantic)
+ install(TARGETS arena-single-motor-system LIBRARY DESTINATION lib)
+@@ -36,6 +36,10 @@
+   target_compile_features(test_drivetrain PRIVATE cxx_std_17)
+   target_include_directories(test_drivetrain PRIVATE include)
+   add_test(NAME single_motor_equations COMMAND test_drivetrain)
++  add_executable(test_cad_steering test/test_cad_steering.cpp)
++  target_compile_features(test_cad_steering PRIVATE cxx_std_17)
++  target_include_directories(test_cad_steering PRIVATE include ../arena_vehicle_interface/portable)
++  add_test(NAME cad_steering_mapping COMMAND test_cad_steering)
+ endif()
+ 
+ install(
+--- a/src/arena_gazebo/src/single_motor_drive.cpp
++++ b/src/arena_gazebo/src/single_motor_drive.cpp
+@@ -1,5 +1,6 @@
+ #include "arena_gazebo/command_trace.hpp"
+ #include "arena_gazebo/drivetrain.hpp"
++#include "cad_steering_table.hpp"
+ #include "arena_gazebo/scheduled_apply.hpp"
+ 
+ #include <chrono>
+@@ -56,6 +57,16 @@
+     wheelbase = get("wheelbase", 0.135);  // SDF 누락 시 대체값. 실행값은 vehicle.yaml 주입
+     track = get("track_width", 0.135);
+     wheelLimit = get("steering_limit", 0.45);
++    steeringModel = sdf->Get<std::string>("steering_model", "ideal_ackermann").first;
++    if (steeringModel != "ideal_ackermann" && steeringModel != "fusion_cad_2026_11_13")
++      throw std::invalid_argument("unknown steering model");
++    if (steeringModel == "fusion_cad_2026_11_13") {
++      if (std::abs(wheelbase-.128)>1e-6 || std::abs(track-.1239)>1e-6)
++        throw std::invalid_argument("CAD steering requires final geometry");
++      cadMapping = std::make_unique<arena_steering::CadMapping>(
++        arena_steering::kCadSamples,arena_steering::kCadSampleCount);
++      if (!cadMapping->valid()) throw std::invalid_argument("invalid CAD steering table");
++    }
+     servoGain = get("steering_gain", 0.40);
+     servoIntegralGain = get("steering_integral_gain", 0.25);
+     servoDamping = get("steering_velocity_gain", 0.003);
+@@ -201,7 +212,12 @@
+     }
+     gz::sim::Joint(joints[0]).SetForce(ecm, {state.leftTorque});
+     gz::sim::Joint(joints[1]).SetForce(ecm, {state.rightTorque});
+-    const auto angles = SteeringAngles(steering, wheelbase, track, wheelLimit);
++    auto angles = SteeringAngles(steering, wheelbase, track, wheelLimit);
++    if (cadMapping) {
++      cadGoal = cadMapping->central(steering, wheelbase, track, wheelLimit);
++      if (!cadGoal.valid) throw std::runtime_error("invalid CAD steering target");
++      angles = {cadGoal.left_rad, cadGoal.right_rad};
++    }
+     double efforts[2]{};
+     for (int index = 0; index != 2; ++index)
+     {
+@@ -308,6 +324,12 @@
+       << ",\"truth_roll_rad\":" << worldPose.Rot().Roll()
+       << ",\"truth_pitch_rad\":" << worldPose.Rot().Pitch()
+       << ",\"truth_yaw_rad\":" << worldPose.Rot().Yaw()
++      << ",\"steering_model\":\"" << steeringModel << "\""
++      << ",\"cad_table_sha256\":\"" << (cadMapping?arena_steering::kCadSha256:"") << "\""
++      << ",\"cad_hardware_measured\":false"
++      << ",\"cad_relative_target_rad\":" << cadGoal.servo_rad
++      << ",\"cad_equivalent_target_rad\":" << cadGoal.equivalent_rad
++      << ",\"cad_target_clamped\":" << (cadGoal.clamped?"true":"false")
+       << ",\"truth_longitudinal_mps\":" << localVelocity.X()
+       << ",\"truth_lateral_mps\":" << localVelocity.Y()
+       << ",\"truth_yaw_rate_rad_s\":" << angular.Z()
+@@ -332,6 +354,9 @@
+   double zeroPositiveWork{};
+   uint64_t zeroPositivePowerSteps{}, zeroSteps{};
+   std::unique_ptr<SingleMotor> motor;
++  std::string steeringModel="ideal_ackermann";
++  std::unique_ptr<arena_steering::CadMapping> cadMapping;
++  arena_steering::CadGoal cadGoal;
+   gz::transport::Node transport;
+   gz::transport::Node::Publisher telemetry, odometry, transform;
+   std::vector<gz::sim::Entity> joints;
+--- /dev/null
++++ b/src/arena_gazebo/test/test_cad_steering.cpp
+@@ -0,0 +1,53 @@
++#include "cad_steering_table.hpp"
++#include "cad_servo_goal.hpp"
++#include "steering_mapping.hpp"
++#include "st3215_transaction.hpp"
++#include <limits>
++#include <stdexcept>
++#include <vector>
++
++void Require(bool value,const char* message){if(!value)throw std::runtime_error(message);}
++int main(){
++  using namespace arena_steering;
++  CadMapping cad(kCadSamples,kCadSampleCount);
++  Require(cad.valid(),"96 row source table valid");
++  for(const auto& row:kCadSamples){
++    const auto value=cad.relative(row.servo_rad);
++    Require(value.valid && std::abs(value.left_rad-row.left_rad)<1e-12 &&
++      std::abs(value.right_rad-row.right_rad)<1e-12,"CAD knot preservation");
++  }
++  const double limit=std::atan(.128/(.128/std::tan(.45)+.1239/2));
++  for(int i=-500;i<=500;++i){
++    const double requested=limit*i/500;
++    const auto goal=cad.central(requested,.128,.1239,.45);
++    Require(goal.valid && std::abs(goal.equivalent_rad-requested)<1e-11,"inverse equivalent angle");
++    Require(std::max(std::abs(goal.left_rad),std::abs(goal.right_rad))<=.45,"inner cap unchanged");
++  }
++  Require(cad.central(100,.128,.1239,.45).clamped,"central saturation");
++  Require(cad.relative(100).clamped,"no extrapolation");
++  Require(!cad.central(std::numeric_limits<double>::quiet_NaN(),.128,.1239,.45).valid,"NaN rejected");
++  Require(!ZeroProfile{}.goal(0).valid,"pending calibration has no target");
++  ZeroProfile zero{2000,1000,3000,1,4096,true,true,true,true,true};
++  Require(zero.goal(0).position==2000,"software straight offset");
++  zero.direction=-1;
++  Require(zero.goal(.1).position<2000 && zero.goal(.1).relative_rad>0,"reverse mount sign");
++  auto target=ResolveCadServoGoal(cad,zero,.1,limit,.128,.1239,.45);
++  Require(target.valid,"CAD to checked software offset");
++  Require(!ResolveCadServoGoal(cad,zero,limit+.01,limit,.128,.1239,.45).valid,"wire command cap remains strict");
++  zero.zero=4090;zero.minimum=0;zero.maximum=4095;
++  Require(!zero.covers(-.3,.3),"near-wrap range unavailable");
++  Require(!ResolveCadServoGoal(cad,zero,0,limit,.128,.1239,.45).valid,"insufficient full range refuses goal");
++  zero.zero=0;Require(!zero.valid(),"boundary zero retained in storage but not bidirectional runtime profile");
++  // r319 실측 경로는 별도 그대로 유지한다. 아래 값은 합성값이다.
++  Sample measured[]={{-.3,1700},{0,2000},{.3,2300}};
++  Mapping mapping(measured,3);
++  Require(mapping.goal(.1).valid && mapping.goal(.1).position==2100,"r319 measured path unchanged");
++  Require(!mapping.goal(.4).valid,"r319 outside measured range still rejects");
++  arena_servo::Transaction tx;
++  Require(tx.goal(1000,1,target.servo.position,200,10),"existing RAM-only serializer");
++  std::vector<unsigned char> packet;
++  tx.pump(1001,[&](const unsigned char* bytes,std::size_t size){
++    packet.insert(packet.end(),bytes,bytes+size);return size;});
++  Require(packet.size()==14 && packet[5]==41 &&
++    (packet[7]|(unsigned(packet[8])<<8))==target.servo.position,"RAM target payload");
++}
+--- /dev/null
++++ b/src/arena_vehicle_interface/arena_vehicle_interface/steering_calibration.py
+@@ -0,0 +1,200 @@
++"""CAD 기하와 소프트웨어 영점 프로필. 장치 I/O나 출력 허가는 하지 않는다."""
++from dataclasses import dataclass
++import csv
++import json
++import math
++from pathlib import Path
++
++
++def finite(value):
++    return type(value) in (int, float) and math.isfinite(value)
++
++
++def equivalent(left, right):
++    # 현 single_motor PostUpdate와 같은 모델 정의. 실차 곡률 실측이 아니다.
++    if left == 0 and right == 0:
++        return 0.0
++    a, b = math.tan(left), math.tan(right)
++    return math.atan(2*a*b/(a+b))
++
++
++@dataclass(frozen=True)
++class CadGoal:
++    servo_rad: float
++    left_rad: float
++    right_rad: float
++    equivalent_rad: float
++    clamped: bool = False
++
++
++class CadMapping:
++    def __init__(self, rows):
++        self.rows = tuple(tuple(row) for row in rows)
++        if not 3 <= len(self.rows) <= 96:
++            raise ValueError('invalid CAD sample count')
++        zero = False
++        for i, row in enumerate(self.rows):
++            if len(row) != 3 or not all(finite(v) and abs(v) < 1.4 for v in row):
++                raise ValueError('invalid CAD sample')
++            s, left, right = row
++            if s == 0:
++                if left != 0 or right != 0:
++                    raise ValueError('CAD zero must be straight')
++                zero = True
++            elif s*left >= 0 or s*right >= 0:
++                raise ValueError('CAD sign differs from positive-right input')
++            if i:
++                previous = self.rows[i-1]
++                if not (s > previous[0] and left < previous[1] and right < previous[2]):
++                    raise ValueError('CAD mapping must be monotone')
++        if not zero or not self.rows[0][0] < 0 < self.rows[-1][0]:
++            raise ValueError('CAD straight and both directions required')
++
++    @classmethod
++    def from_csv(cls, path):
++        with Path(path).open(encoding='utf-8-sig', newline='') as stream:
++            return cls((math.radians(float(row['fusion_servo_deg'])),
++                        float(row['left_wheel_heading_rad_left_positive']),
++                        float(row['right_wheel_heading_rad_left_positive']))
++                       for row in csv.DictReader(stream))
++
++    def relative(self, requested):
++        if not finite(requested):
++            raise ValueError('invalid angle')
++        servo = min(self.rows[-1][0], max(self.rows[0][0], requested))
++        hi = 1
++        while hi < len(self.rows)-1 and self.rows[hi][0] < servo:
++            hi += 1
++        a, b = self.rows[hi-1], self.rows[hi]
++        fraction = (servo-a[0])/(b[0]-a[0])
++        left = a[1]+fraction*(b[1]-a[1])
++        right = a[2]+fraction*(b[2]-a[2])
++        return CadGoal(servo, left, right, equivalent(left, right), servo != requested)
++
++    def central(self, requested, *, wheelbase, track, wheel_limit):
++        if not all(finite(v) for v in (requested, wheelbase, track, wheel_limit)):
++            raise ValueError('nonfinite geometry or command')
++        if wheelbase <= 0 or track <= 0 or not 0 < wheel_limit < 1.4:
++            raise ValueError('invalid geometry')
++        legacy = math.atan(wheelbase/(wheelbase/math.tan(wheel_limit)+track/2))
++        target = min(legacy, equivalent(*self.rows[0][1:]),
++                     max(-legacy, equivalent(*self.rows[-1][1:]), requested))
++        if target == 0:
++            return CadGoal(0, 0, 0, 0, requested != 0)
++        hi = 1
++        while hi < len(self.rows)-1 and equivalent(*self.rows[hi][1:]) > target:
++            hi += 1
++        lo, up = self.rows[hi-1][0], self.rows[hi][0]
++        for _ in range(40):
++            mid = (lo+up)/2
++            if self.relative(mid).equivalent_rad > target:
++                lo = mid
++            else:
++                up = mid
++        goal = self.relative((lo+up)/2)
++        clipped = target != requested
++        if max(abs(goal.left_rad), abs(goal.right_rad)) > wheel_limit:
++            inside, outside = 0.0, goal.servo_rad
++            for _ in range(40):
++                mid = (inside+outside)/2
++                trial = self.relative(mid)
++                if max(abs(trial.left_rad), abs(trial.right_rad)) <= wheel_limit:
++                    inside = mid
++                else:
++                    outside = mid
++            goal, clipped = self.relative(inside), True
++        return CadGoal(goal.servo_rad, goal.left_rad, goal.right_rad, goal.equivalent_rad, clipped)
++
++
++PROFILE_SCHEMA = 'arena_steering_zero_v1'
++
++
++def read_profile(path):
++    def pairs(items):
++        result = {}
++        for key, value in items:
++            if key in result:
++                raise ValueError('duplicate profile key')
++            result[key] = value
++        return result
++    data = json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=pairs,
++                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
++    check_profile(data)
++    return data
++
++
++def check_profile(data, *, ready=False, assembly_id=None):
++    if not isinstance(data, dict) or data.get('schema') != PROFILE_SCHEMA:
++        raise ValueError('unknown profile schema')
++    if not isinstance(data.get('assembly_id'), str) or not data['assembly_id'].strip():
++        raise ValueError('assembly identity required')
++    if assembly_id is not None and data['assembly_id'] != assembly_id:
++        raise ValueError('assembly identity changed')
++    if type(data.get('zero_count')) is not int or not 0 <= data['zero_count'] <= 4095:
++        raise ValueError('invalid straight count')
++    if data.get('straight_confirmed') is not True or data.get('count_wrap_policy') != 'reject':
++        raise ValueError('straight confirmation and no-wrap policy required')
++    if data.get('hardware_angle_measured') is not False or data.get('angle_source') != 'fusion_cad_unmeasured_hardware':
++        raise ValueError('CAD profile cannot claim measured wheel angles')
++    if data.get('status') not in ('zero_recorded_pending_mount_checks', 'mount_checks_recorded'):
++        raise ValueError('invalid calibration status')
++    if data['status'] == 'mount_checks_recorded' or ready:
++        if data['status'] != 'mount_checks_recorded':
++            raise ValueError('direction/endpoints/mode/scale pending')
++        for flag in ('direction_confirmed', 'endpoints_confirmed', 'position_mode_confirmed', 'scale_confirmed'):
++            if data.get(flag) is not True:
++                raise ValueError(flag+' required')
++        direction = data.get('count_direction_per_cad_positive')
++        if type(direction) is not int or direction not in (-1, 1):
++            raise ValueError('direction must be measured as -1 or +1')
++        if type(data.get('counts_per_turn')) is not int or data['counts_per_turn'] != 4096:
++            raise ValueError('only checked single-turn 4096 scale supported')
++        low, high = data.get('safe_min_count'), data.get('safe_max_count')
++        if type(low) is not int or type(high) is not int or not 0 <= low < data['zero_count'] < high <= 4095:
++            raise ValueError('mounted limits must contain straight, without wrap')
++
++
++def record_zero(neutral_count, *, assembly_id, straight_confirmed, evidence_note):
++    # count는 사람이 관측해 전달한다. 이 함수에서 장치를 읽지 않는다.
++    if not isinstance(evidence_note, str) or not evidence_note.strip():
++        raise ValueError('manual observation evidence note required')
++    data = dict(schema=PROFILE_SCHEMA, assembly_id=assembly_id, zero_count=neutral_count,
++                straight_confirmed=straight_confirmed, status='zero_recorded_pending_mount_checks',
++                count_wrap_policy='reject', hardware_angle_measured=False,
++                angle_source='fusion_cad_unmeasured_hardware', evidence_note=evidence_note,
++                count_direction_per_cad_positive=None, safe_min_count=None, safe_max_count=None,
++                counts_per_turn=None, direction_confirmed=False, endpoints_confirmed=False,
++                position_mode_confirmed=False, scale_confirmed=False)
++    check_profile(data)
++    return data
++
++
++def save_new_profile(path, data):
++    check_profile(data)
++    # 새 버전 파일만 만든다. 기존 교정 덮어쓰기와 디바이스 EEPROM 조작은 없다.
++    with Path(path).open('x', encoding='utf-8', newline='\n') as stream:
++        json.dump(data, stream, ensure_ascii=False, indent=2, allow_nan=False)
++        stream.write('\n')
++
++
++def relative_goal(profile, servo_rad):
++    check_profile(profile, ready=True)
++    if not finite(servo_rad):
++        raise ValueError('invalid relative servo angle')
++    scale = profile['count_direction_per_cad_positive']*profile['counts_per_turn']/(2*math.pi)
++    raw = profile['zero_count']+servo_rad*scale
++    if not math.isfinite(raw):
++        raise ValueError('relative count overflow')
++    bounded = min(profile['safe_max_count'], max(profile['safe_min_count'], raw))
++    position = math.floor(bounded+0.5)  # 양수 count: C++ lround와 동일
++    return dict(position=position, clamped=raw != bounded,
++                realized_relative_rad=(position-profile['zero_count'])/scale)
++
++
++def covers(profile, servo_min, servo_max):
++    check_profile(profile, ready=True)
++    if not all(finite(v) for v in (servo_min, servo_max)) or not servo_min <= 0 <= servo_max:
++        return False
++    scale = profile['count_direction_per_cad_positive']*profile['counts_per_turn']/(2*math.pi)
++    a, b = (profile['zero_count']+v*scale for v in (servo_min, servo_max))
++    return profile['safe_min_count'] <= min(a, b) and max(a, b) <= profile['safe_max_count']
+--- /dev/null
++++ b/src/arena_vehicle_interface/portable/cad_servo_goal.hpp
+@@ -0,0 +1,33 @@
++#pragma once
++// 공통 steering_rad → CAD 상대각 → 실장 offset. RAM 송신/ARM은 호출자 소유.
++#include "cad_steering.hpp"
++#include "steering_zero.hpp"
++
++namespace arena_steering {
++struct CadServoGoal {
++  bool valid=false;
++  CadGoal cad;
++  ZeroGoal servo;
++  const char* reason="calibration_pending";
++};
++inline CadServoGoal ResolveCadServoGoal(const CadMapping& map,const ZeroProfile& zero,
++    double steering,double command_limit,double wheelbase,double track,double wheel_limit) {
++  if(!std::isfinite(command_limit)||command_limit<=0 || !std::isfinite(steering) ||
++     std::abs(steering)>command_limit)return {false,{}, {},"outside_command_contract"};
++  if(!zero.valid()||!map.valid())return {};
++  const auto a=map.central(-command_limit,wheelbase,track,wheel_limit);
++  const auto b=map.central(command_limit,wheelbase,track,wheel_limit);
++  if(!a.valid||!b.valid)return {false,{}, {},"invalid_geometry"};
++  if(!zero.covers(std::min(a.servo_rad,b.servo_rad),std::max(a.servo_rad,b.servo_rad)))
++    return {false,{}, {},"required_range_crosses_mounted_or_count_limit"};
++  const auto cad=map.central(steering,wheelbase,track,wheel_limit);
++  const auto goal=zero.goal(cad.servo_rad);
++  if(!goal.valid)return {false,cad,goal,"invalid_servo_goal"};
++  // count 양자화까지 적용한 실제 목표가 표/내륜 상한을 넘으면 거부한다.
++  const auto quantized=map.relative(goal.relative_rad);
++  if(goal.clamped || !quantized.valid || quantized.clamped ||
++     std::max(std::abs(quantized.left_rad),std::abs(quantized.right_rad))>wheel_limit)
++    return {false,cad,goal,"quantized_target_outside_geometry"};
++  return {true,cad,goal,"cad_provisional_with_mounted_zero"};
++}
++}  // namespace arena_steering
+--- /dev/null
++++ b/src/arena_vehicle_interface/portable/cad_steering.hpp
+@@ -0,0 +1,75 @@
++#pragma once
++// CAD 기하 전용. 실장 교정/전류/간섭/마찰 모델이나 출력 허가가 아니다.
++#include <algorithm>
++#include <cmath>
++#include <cstddef>
++
++namespace arena_steering {
++struct CadSample { double servo_rad, left_rad, right_rad; };
++struct CadGoal {
++  bool valid=false, clamped=false;
++  double servo_rad=0, left_rad=0, right_rad=0, equivalent_rad=0;
++};
++inline double EquivalentAngle(double left,double right) {
++  if(left==0 && right==0)return 0;
++  const double a=std::tan(left),b=std::tan(right);
++  return std::atan(2*a*b/(a+b));
++}
++class CadMapping {
++ public:
++  // 데이터는 객체보다 오래 살아야 한다. 표는 서보 오름차순, 좌/우각 내림차순.
++  CadMapping(const CadSample* samples,std::size_t size): samples_(samples),size_(size) {
++    if(!samples || size<3 || size>96)return;
++    bool zero=false;
++    for(std::size_t i=0;i<size;++i){
++      const auto p=samples[i];
++      if(!std::isfinite(p.servo_rad)||!std::isfinite(p.left_rad)||!std::isfinite(p.right_rad) ||
++         std::abs(p.servo_rad)>=1.4||std::abs(p.left_rad)>=1.4||std::abs(p.right_rad)>=1.4)return;
++      if(p.servo_rad==0){if(p.left_rad!=0 || p.right_rad!=0)return;zero=true;}
++      else if(p.left_rad*p.servo_rad>=0 || p.right_rad*p.servo_rad>=0)return;
++      if(i && (!(p.servo_rad>samples[i-1].servo_rad) || !(p.left_rad<samples[i-1].left_rad) ||
++               !(p.right_rad<samples[i-1].right_rad)))return;
++    }
++    valid_=zero && samples[0].servo_rad<0 && samples[size-1].servo_rad>0;
++  }
++  bool valid()const{return valid_;}
++  CadGoal relative(double servo)const {
++    if(!valid_ || !std::isfinite(servo))return {};
++    const double s=std::clamp(servo,samples_[0].servo_rad,samples_[size_-1].servo_rad);
++    std::size_t hi=1;
++    while(hi<size_-1 && samples_[hi].servo_rad<s)++hi;
++    const auto a=samples_[hi-1],b=samples_[hi];
++    const double t=(s-a.servo_rad)/(b.servo_rad-a.servo_rad);
++    const double l=a.left_rad+t*(b.left_rad-a.left_rad),r=a.right_rad+t*(b.right_rad-a.right_rad);
++    return {true,s!=servo,s,l,r,EquivalentAngle(l,r)};
++  }
++  CadGoal central(double requested,double wheelbase,double track,double wheel_limit)const {
++    if(!valid_ || !std::isfinite(requested)||!std::isfinite(wheelbase)||!std::isfinite(track) ||
++       !std::isfinite(wheel_limit)||wheelbase<=0||track<=0||wheel_limit<=0||wheel_limit>=1.4)return {};
++    const double legacy=std::atan(wheelbase/(wheelbase/std::tan(wheel_limit)+track/2));
++    const double target=std::clamp(requested,
++      std::max(-legacy,EquivalentAngle(samples_[size_-1].left_rad,samples_[size_-1].right_rad)),
++      std::min(legacy,EquivalentAngle(samples_[0].left_rad,samples_[0].right_rad)));
++    if(target==0)return {true,requested!=0,0,0,0,0};
++    // 같은 표의 단조 구간을 역산한다. 독립 좌/우 클립으로 링크 곡선을 바꾸지 않는다.
++    std::size_t hi=1;
++    while(hi<size_-1 && EquivalentAngle(samples_[hi].left_rad,samples_[hi].right_rad)>target)++hi;
++    double lo=samples_[hi-1].servo_rad,up=samples_[hi].servo_rad;
++    for(int i=0;i<40;++i){const double mid=(lo+up)/2;
++      if(relative(mid).equivalent_rad>target)lo=mid;else up=mid;}
++    auto goal=relative((lo+up)/2);
++    bool clipped=requested!=target;
++    if(std::max(std::abs(goal.left_rad),std::abs(goal.right_rad))>wheel_limit){
++      double inside=0,outside=goal.servo_rad;
++      for(int i=0;i<40;++i){const double mid=(inside+outside)/2;const auto p=relative(mid);
++        if(std::max(std::abs(p.left_rad),std::abs(p.right_rad))<=wheel_limit)inside=mid;else outside=mid;}
++      goal=relative(inside);clipped=true;
++    }
++    goal.clamped=clipped;return goal;
++  }
++ private:
++  const CadSample* samples_=nullptr;
++  std::size_t size_=0;
++  bool valid_=false;
++};
++}  // namespace arena_steering
+--- /dev/null
++++ b/src/arena_vehicle_interface/portable/cad_steering_table.hpp
+@@ -0,0 +1,105 @@
++#pragma once
++// 원 CSV의 96행. CAD 운동이며 실물 교정표가 아니다.
++#include "cad_steering.hpp"
++namespace arena_steering {
++inline constexpr const char* kCadSha256="882d0a66d987a15f66ef58303bcbd74c32d0c1afef255dc42f0a30ff1973b189";
++inline constexpr CadSample kCadSamples[]={
++  {-0.41189770347066179, 0.52315933709999995, 0.40630126500000002},
++  {-0.41015237421866746, 0.52041302639999998, 0.40476974090000001},
++  {-0.4014257279586958, 0.50680491660000004, 0.39708229560000002},
++  {-0.39269908169872414, 0.49339360700000001, 0.38934625849999999},
++  {-0.38397243543875248, 0.48016779549999999, 0.38156302399999997},
++  {-0.37524578917878088, 0.46711717899999999, 0.37373384250000002},
++  {-0.36651914291880922, 0.4542323372, 0.36585983719999998},
++  {-0.35779249665883756, 0.44150463410000002, 0.3579420176},
++  {-0.3490658503988659, 0.42892613239999999, 0.34998129220000002},
++  {-0.34033920413889424, 0.4164895193, 0.34197847840000001},
++  {-0.33161255787892263, 0.40418804310000001, 0.33393431150000003},
++  {-0.32288591161895097, 0.39201545640000002, 0.32584945240000002},
++  {-0.31415926535897931, 0.37996596789999998, 0.31772449409999998},
++  {-0.30543261909900765, 0.36803419840000001, 0.30955996740000002},
++  {-0.29670597283903605, 0.3562151435, 0.30135634620000001},
++  {-0.28797932657906439, 0.34450413969999999, 0.29311405149999997},
++  {-0.27925268031909273, 0.33289683440000001, 0.28483345510000002},
++  {-0.27052603405912107, 0.3213891593, 0.27651488330000001},
++  {-0.26179938779914941, 0.30997730670000001, 0.2681586198},
++  {-0.2530727415391778, 0.29865770829999999, 0.25976490749999998},
++  {-0.24434609527920614, 0.28742701599999998, 0.2513339517},
++  {-0.23561944901923448, 0.27628208440000002, 0.24286592130000001},
++  {-0.22689280275926285, 0.26521995599999998, 0.23436095069999999},
++  {-0.21816615649929119, 0.25423784649999998, 0.2258191413},
++  {-0.20943951023931956, 0.24333313240000001, 0.21724056259999999},
++  {-0.2007128639793479, 0.23250333949999999, 0.20862525339999999},
++  {-0.19198621771937624, 0.22174613239999999, 0.19997322249999999},
++  {-0.18325957145940461, 0.21105930480000001, 0.19128444980000001},
++  {-0.17453292519943295, 0.2004407708, 0.1825588863},
++  {-0.16580627893946132, 0.18988855739999999, 0.17379645530000001},
++  {-0.15707963267948966, 0.17940079640000001, 0.1649970523},
++  {-0.14835298641951802, 0.16897571850000001, 0.1561605452},
++  {-0.13962634015954636, 0.15861164659999999, 0.14728677479999999},
++  {-0.1308996938995747, 0.1483069903, 0.1383755545},
++  {-0.12217304763960307, 0.13806024110000001, 0.12942667050000001},
++  {-0.11344640137963143, 0.1278699667, 0.12043988160000001},
++  {-0.10471975511965978, 0.1177348077, 0.1114149186},
++  {-0.09599310885968812, 0.10765347259999999, 0.10235148469999999},
++  {-0.087266462599716474, 0.097624734300000002, 0.093249254500000003},
++  {-0.078539816339744828, 0.087647426900000006, 0.084107873700000002},
++  {-0.069813170079773182, 0.077720442000000001, 0.074926958599999996},
++  {-0.061086523819801536, 0.067842725899999998, 0.065706095300000003},
++  {-0.05235987755982989, 0.058013276699999998, 0.056444838800000001},
++  {-0.043633231299858237, 0.048231141999999998, 0.047142712699999999},
++  {-0.034906585039886591, 0.038495415900000003, 0.037799207500000001},
++  {-0.026179938779914945, 0.028805237300000001, 0.02841378},
++  {-0.017453292519943295, 0.019159787500000001, 0.018985852099999999},
++  {-0.0087266462599716477, 0.0095582882000000008, 0.0095148093999999992},
++  {0, 0, 0},
++  {0.0087266462599716477, -0.0095157796999999992, -0.0095592673999999999},
++  {0.017453292519943295, -0.018989718199999998, -0.0191637248},
++  {0.026179938779914945, -0.028422448699999998, -0.028814146700000001},
++  {0.034906585039886591, -0.037814572099999999, -0.038511352399999997},
++  {0.043633231299858237, -0.047166658100000002, -0.048256207699999998},
++  {0.05235987755982989, -0.056479246300000001, -0.058049627399999998},
++  {0.061086523819801536, -0.065752847700000006, -0.067892577900000001},
++  {0.069813170079773182, -0.074987945299999997, -0.077786079499999994},
++  {0.078539816339744828, -0.084184995499999998, -0.087731210000000004},
++  {0.087266462599716474, -0.093344428899999998, -0.097729106900000001},
++  {0.09599310885968812, -0.10246665100000001, -0.10778097189999999},
++  {0.10471975511965978, -0.1115520433, -0.1178880739},
++  {0.11344640137963143, -0.1206009638, -0.12805175320000001},
++  {0.12217304763960307, -0.12961374780000001, -0.1382734263},
++  {0.1308996938995747, -0.13859070870000001, -0.14855459009999999},
++  {0.13962634015954636, -0.14753213849999999, -0.15889682760000001},
++  {0.14835298641951802, -0.1564383084, -0.1693018137},
++  {0.15707963267948966, -0.16530946909999999, -0.1797713209},
++  {0.16580627893946132, -0.17414585169999999, -0.1903072267},
++  {0.17453292519943295, -0.18294766800000001, -0.20091152100000001},
++  {0.18325957145940461, -0.1917151108, -0.21158631389999999},
++  {0.19198621771937624, -0.2004483544, -0.2223338456},
++  {0.2007128639793479, -0.20914755500000001, -0.23315649560000001},
++  {0.20943951023931956, -0.21781285110000001, -0.2440567941},
++  {0.21816615649929119, -0.22644436339999999, -0.25503743429999998},
++  {0.22689280275926285, -0.23504219579999999, -0.26610128560000001},
++  {0.23561944901923448, -0.24360643500000001, -0.27725140910000001},
++  {0.24434609527920614, -0.252137151, -0.28849107400000001},
++  {0.2530727415391778, -0.26063439729999999, -0.2998237762},
++  {0.26179938779914941, -0.26909821140000001, -0.31125325970000001},
++  {0.27052603405912107, -0.27752861429999998, -0.32278353980000002},
++  {0.27925268031909273, -0.28592561150000001, -0.33441892969999998},
++  {0.28797932657906439, -0.29428919260000003, -0.34616407020000001},
++  {0.29670597283903605, -0.30261933159999999, -0.35802396399999997},
++  {0.30543261909900765, -0.31091598720000002, -0.37000401379999998},
++  {0.31415926535897931, -0.3191791028, -0.38211006669999997},
++  {0.32288591161895097, -0.32740860710000003, -0.39434846439999999},
++  {0.33161255787892263, -0.33560441369999999, -0.40672610139999998},
++  {0.34033920413889424, -0.34376642190000001, -0.41925049180000001},
++  {0.3490658503988659, -0.35189451700000002, -0.43192984769999998},
++  {0.35779249665883756, -0.35998857010000002, -0.44477316979999998},
++  {0.36651914291880922, -0.3680484396, -0.45779035420000003},
++  {0.37524578917878088, -0.37607397100000001, -0.47099231870000002},
++  {0.38397243543875248, -0.38406499820000001, -0.48439115230000002},
++  {0.39269908169872414, -0.3920213447, -0.49800029439999999},
++  {0.4014257279586958, -0.39994282440000001, -0.51183475099999998},
++  {0.40840704496667307, -0.4062547748, -0.52307578610000005},
++};
++inline constexpr std::size_t kCadSampleCount=96;
++}  // namespace arena_steering
+--- /dev/null
++++ b/src/arena_vehicle_interface/portable/steering_zero.hpp
+@@ -0,0 +1,45 @@
++#pragma once
++// 저장 프로필을 검증한 호출자가 채운다. EEPROM/토크/UART/ARM 기능 없음.
++#include <algorithm>
++#include <cmath>
++
++namespace arena_steering {
++struct ZeroGoal {
++  bool valid=false,clamped=false;
++  unsigned position=0;
++  double relative_rad=0;
++  const char* reason="calibration_pending";
++};
++struct ZeroProfile {
++  int zero=-1,minimum=-1,maximum=-1,direction=0;
++  unsigned counts_per_turn=0;
++  bool straight_verified=false,direction_verified=false,endpoints_verified=false;
++  bool position_mode_verified=false,scale_verified=false;
++  bool valid()const {
++    return straight_verified && direction_verified && endpoints_verified && position_mode_verified &&
++      scale_verified && counts_per_turn==4096 && (direction==1 || direction==-1) &&
++      0<=minimum && minimum<zero && zero<maximum && maximum<=4095;
++  }
++  double raw(double servo_relative_rad)const {
++    return zero+direction*servo_relative_rad*counts_per_turn/6.2831853071795864769;
++  }
++  bool covers(double minimum_relative_rad,double maximum_relative_rad)const {
++    if(!valid()||!std::isfinite(minimum_relative_rad)||!std::isfinite(maximum_relative_rad) ||
++       minimum_relative_rad>0||maximum_relative_rad<0)return false;
++    const double a=raw(minimum_relative_rad),b=raw(maximum_relative_rad);
++    return std::min(a,b)>=minimum && std::max(a,b)<=maximum;
++  }
++  ZeroGoal goal(double relative_rad)const {
++    if(!valid())return {};
++    if(!std::isfinite(relative_rad))return {false,false,0,0,"invalid_angle"};
++    const double count=raw(relative_rad);
++    if(!std::isfinite(count))return {false,false,0,0,"invalid_angle"};
++    // %4096나 최단 회전 경로는 사용하지 않는다. 실장 안전 구간 안쪽만 사용한다.
++    const double bounded=std::clamp(count,static_cast<double>(minimum),static_cast<double>(maximum));
++    const unsigned position=static_cast<unsigned>(std::lround(bounded));
++    return {true,count!=bounded,position,
++      (static_cast<double>(position)-zero)*6.2831853071795864769/(direction*static_cast<double>(counts_per_turn)),
++      count!=bounded?"mounted_limit_clamped":"relative_offset"};
++  }
++};
++}  // namespace arena_steering
+--- /dev/null
++++ b/tests/test_steering_calibration.py
+@@ -0,0 +1,117 @@
++"""r368 초안: 순수 CPU/임시 파일만. 아직 실행하지 않은 회귀."""
++import math
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++import unittest
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT/'src/arena_vehicle_interface'))
++from arena_vehicle_interface.steering_calibration import (
++    CadMapping, check_profile, covers, read_profile, record_zero, relative_goal, save_new_profile,
++)
++
++
++def ready_profile(zero=2000, direction=1):
++    # 합성값. 운영 교정값이나 실제 방향/끝점으로 복사하지 않는다.
++    value = record_zero(zero, assembly_id='synthetic', straight_confirmed=True, evidence_note='synthetic')
++    value.update(status='mount_checks_recorded', counts_per_turn=4096,
++                 count_direction_per_cad_positive=direction, safe_min_count=100, safe_max_count=4000,
++                 direction_confirmed=True, endpoints_confirmed=True, position_mode_confirmed=True,
++                 scale_confirmed=True)
++    return value
++
++
++class SteeringCalibrationTests(unittest.TestCase):
++    def test_zero_only_can_persist_but_does_not_enable_goal(self):
++        data = record_zero(17, assembly_id='synthetic', straight_confirmed=True, evidence_note='synthetic')
++        with tempfile.TemporaryDirectory() as folder:
++            path = Path(folder)/'zero.json'
++            save_new_profile(path, data)
++            self.assertEqual(read_profile(path), data)
++            with self.assertRaises(FileExistsError):
++                save_new_profile(path, data)
++        with self.assertRaisesRegex(ValueError, 'pending'):
++            relative_goal(data, 0)
++
++    def test_neutral_is_offset_and_direction_is_explicit(self):
++        for direction in (-1, 1):
++            profile = ready_profile(direction=direction)
++            self.assertEqual(relative_goal(profile, 0)['position'], 2000)
++            self.assertEqual(relative_goal(profile, 2*math.pi/4096)['position'], 2000+direction)
++
++    def test_invalid_and_missing_fields_never_make_a_target(self):
++        for key, bad in [('zero_count', True), ('zero_count', 4096),
++                         ('count_direction_per_cad_positive', None), ('counts_per_turn', 4095),
++                         ('safe_min_count', 2000), ('scale_confirmed', False),
++                         ('hardware_angle_measured', True), ('count_wrap_policy', 'modulo')]:
++            profile = ready_profile()
++            profile[key] = bad
++            with self.assertRaises(ValueError):
++                relative_goal(profile, 0)
++        for angle in (math.nan, math.inf, True):
++            with self.assertRaises(ValueError):
++                relative_goal(ready_profile(), angle)
++
++    def test_neutral_near_wrap_is_saved_but_range_not_covered(self):
++        for zero in (0, 5, 4090, 4095):
++            pending = record_zero(zero, assembly_id='synthetic', straight_confirmed=True, evidence_note='synthetic')
++            self.assertEqual(pending['zero_count'], zero)
++            if zero in (0, 4095):
++                checked = ready_profile(zero)
++                checked.update(safe_min_count=0, safe_max_count=4095)
++                with self.assertRaisesRegex(ValueError, 'without wrap'):
++                    check_profile(checked, ready=True)
++            else:
++                checked = ready_profile(zero)
++                checked.update(safe_min_count=0, safe_max_count=4095)
++                self.assertFalse(covers(checked, -.3, .3))
++                goal = relative_goal(checked, -.3 if zero == 5 else .3)
++                self.assertTrue(goal['clamped'])
++                self.assertEqual(goal['position'], 0 if zero == 5 else 4095)
++
++    def test_assembly_change_invalidates_reuse(self):
++        with self.assertRaisesRegex(ValueError, 'identity changed'):
++            check_profile(ready_profile(), assembly_id='new-mount')
++
++    def test_duplicate_keys_rejected(self):
++        with tempfile.TemporaryDirectory() as folder:
++            path = Path(folder)/'bad.json'
++            path.write_text('{"schema":1,"schema":2}', encoding='utf-8')
++            with self.assertRaisesRegex(ValueError, 'duplicate'):
++                read_profile(path)
++
++    def test_cli_records_without_device_import_or_io(self):
++        with tempfile.TemporaryDirectory() as folder:
++            path = Path(folder)/'profile.json'
++            command = [sys.executable, str(ROOT/'scripts/steering_zero_profile.py'), 'record',
++                       '--neutral-count', '4090', '--assembly-id', 'synthetic',
++                       '--confirm-wheels-straight', '--evidence-note', 'synthetic only', '--output', str(path)]
++            result = subprocess.run(command, capture_output=True, text=True)
++            self.assertEqual(result.returncode, 0, result.stderr)
++            self.assertEqual(read_profile(path)['zero_count'], 4090)
++
++    def test_synthetic_cad_round_trip_and_inner_bound(self):
++        mapping = CadMapping([(-.4, .49, .38), (-.1, .12, .11), (0, 0, 0),
++                              (.1, -.111, -.121), (.4, -.39, -.50)])
++        for angle in (-.3, -.1, 0, .1, .3):
++            goal = mapping.central(angle, wheelbase=.128, track=.1239, wheel_limit=.45)
++            self.assertAlmostEqual(goal.equivalent_rad, angle, places=11)
++            self.assertLessEqual(max(abs(goal.left_rad), abs(goal.right_rad)), .45)
++        for angle in (-100., 100.):
++            goal = mapping.central(angle, wheelbase=.128, track=.1239, wheel_limit=.45)
++            self.assertTrue(goal.clamped)
++            self.assertLessEqual(max(abs(goal.left_rad), abs(goal.right_rad)), .45)
++        self.assertTrue(mapping.relative(1).clamped)
++
++    def test_bad_cad_sign_nonfinite_fold_or_missing_zero(self):
++        for rows in [[(-.1, .1, .1), (0, 0, 0), (.1, .1, .1)],
++                     [(-.1, .1, .1), (0, 0, 0), (.1, math.nan, -.1)],
++                     [(-.1, .1, .1), (.05, -.05, -.05), (.1, -.1, -.1)]]:
++            with self.assertRaises(ValueError):
++                CadMapping(rows)
++
++
++if __name__ == '__main__':
++    unittest.main()

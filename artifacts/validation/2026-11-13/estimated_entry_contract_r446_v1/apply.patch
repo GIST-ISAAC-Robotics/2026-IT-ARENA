@@ -1,0 +1,152 @@
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -18,6 +18,8 @@
+ 
+ 
+ class LocalPursuit(WallFollow):
++    # 명시한 두 계산 runtime을 구성하는 subclass만 추정 관측 보완을 선택한다.
++    estimated_observation_runtime_capable = False
+     # 같은 경기 재개의 입력 경계. 수신 시각이 아니라 원천 취득 시각으로 비교한다.
+     input_floor_s = -math.inf
+     resume_route = None
+@@ -90,9 +92,11 @@
+         released_body_gap = bool(self.declare_parameter('g1_released_body_gap_trial', False).value)
+         traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
+         crop_edge = self.declare_parameter('g1_crop_edge_component_trial', False).value
+-        from arena_autonomy.crop_edge_selection import (SIMULATION_SCOPE,
++        from arena_autonomy.crop_edge_selection import (SIMULATION_SCOPE, ESTIMATED_SCOPE,
+             validate_policy_selection, validate_node_selection, configure_follow_observation)
+         self.observation_input_scope = self.declare_parameter('g1_observation_input_scope', SIMULATION_SCOPE).value
++        if self.observation_input_scope == ESTIMATED_SCOPE and self.estimated_observation_runtime_capable is not True:
++            raise ValueError('estimated observation scope requires a registered runtime-capable planner')
+         validate_policy_selection(crop_edge, partial_observation, traffic_recovery)
+         if crop_edge and not self.g1_enabled:
+             raise ValueError('crop edge component requires explicit G1 activation')
+--- a/src/arena_autonomy/arena_autonomy/g1_g2_node.py
++++ b/src/arena_autonomy/arena_autonomy/g1_g2_node.py
+@@ -46,6 +46,8 @@
+ 
+ 
+ class G1G2Node(LocalPursuit):
++    # capability는 입구만 연다. 아래 native2slot/r396 실제 선택 검증은 계속 필수다.
++    estimated_observation_runtime_capable = True
+     def __init__(self):
+         self.decision_delivery = None
+         self.decision_notice = None
+--- /dev/null
++++ b/tests/test_estimated_observation_entry.py
+@@ -0,0 +1,114 @@
++"""ROS 없이 실제 입구 AST를 실행한다. 노드 생성/자식 준비 검증을 대신하지 않는다."""
++import ast
++import copy
++from pathlib import Path
++from types import SimpleNamespace as NS
++import unittest
++
++from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, ESTIMATED_SCOPE, validate_node_selection
++from arena_autonomy.runtime_node_backend import (POLICY, CORNER_POLICY, observation_options,
++    validate_selection, validate_corner_selection)
++
++ROOT=next(p for p in Path(__file__).resolve().parents
++          if (p/'src/arena_autonomy/arena_autonomy/local_pursuit.py').is_file())
++
++
++def source_class(name,path):
++    tree=ast.parse((ROOT/'src/arena_autonomy/arena_autonomy'/path).read_text(encoding='utf-8'))
++    return next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name==name)
++
++
++def attribute_assignment(node,name):
++    return isinstance(node,ast.Assign) and any(isinstance(t,ast.Attribute) and t.attr==name for t in node.targets)
++
++
++def boundaries():
++    base=source_class('LocalPursuit','local_pursuit.py');derived=source_class('G1G2Node','g1_g2_node.py')
++    attr='estimated_observation_runtime_capable'
++    def capability(cls):return next(n for n in cls.body if isinstance(n,ast.Assign)
++        and any(isinstance(t,ast.Name) and t.id==attr for t in n.targets))
++    init=next(n for n in base.body if isinstance(n,ast.FunctionDef) and n.name=='__init__')
++    i=next(i for i,n in enumerate(init.body) if attribute_assignment(n,'observation_input_scope'))
++    selection=copy.deepcopy(init);selection.body=copy.deepcopy(init.body[i:i+2])
++    assert isinstance(selection.body[1],ast.If)  # 실제 scope 선언 직후 입구 검사
++    mini=ast.Module(body=[ast.ClassDef(name='LocalPursuit',bases=[],keywords=[],decorator_list=[],
++        body=[copy.deepcopy(capability(base)),selection]),ast.ClassDef(name='G1G2Node',
++        bases=[ast.Name(id='LocalPursuit',ctx=ast.Load())],keywords=[],decorator_list=[],body=[copy.deepcopy(capability(derived))])],type_ignores=[])
++    env=dict(SIMULATION_SCOPE=SIMULATION_SCOPE,ESTIMATED_SCOPE=ESTIMATED_SCOPE)
++    exec(compile(ast.fix_missing_locations(mini),'<actual planner entry boundary>','exec'),env)
++    # subclass의 실제 validator 호출문도 그대로 실행한다. capability를 true로 두는 것만으로 통과하면 실패한다.
++    child_init=next(n for n in derived.body if isinstance(n,ast.FunctionDef) and n.name=='__init__')
++    assignment=next(n for n in child_init.body if attribute_assignment(n,'runtime_dual_selected')
++        and isinstance(n.value,ast.Call))
++    corner=next(n for n in child_init.body if isinstance(n,ast.Expr) and isinstance(n.value,ast.Call)
++        and isinstance(n.value.func,ast.Name) and n.value.func.id=='validate_corner_selection')
++    assert assignment.lineno<corner.lineno
++    parent=next(n for n in child_init.body if isinstance(n,ast.Expr) and isinstance(n.value,ast.Call)
++        and isinstance(n.value.func,ast.Attribute) and n.value.func.attr=='__init__')
++    assert parent.lineno<assignment.lineno
++    fn=ast.parse('def runtime_checks(self, runtime_policy, execution, submission, retain_reference, numeric_execution):\n    pass').body[0]
++    fn.body=[copy.deepcopy(assignment),copy.deepcopy(corner)]
++    env.update(validate_selection=validate_selection,validate_corner_selection=validate_corner_selection,
++               observation_options=observation_options)
++    exec(compile(ast.fix_missing_locations(ast.Module(body=[fn],type_ignores=[])),
++        '<actual subclass runtime checks>','exec'),env)
++    return env
++
++
++def selected(cls,scope):
++    n=cls.__new__(cls);params={'g1_observation_input_scope':scope,'use_sim_time':scope==SIMULATION_SCOPE,
++        'lidar_input_representation':'native_simulation_v1' if scope==SIMULATION_SCOPE else 'native_estimated_v1'}
++    n.declare_parameter=lambda name,default:NS(value=params.get(name,default))
++    n.get_parameter=lambda name:NS(value=params[name]);n.has_parameter=lambda name:name in params
++    n.__init__()
++    n.current_corner_budget=CORNER_POLICY;n.recheck_in_worker=True;n.hardware_shadow=False
++    n.execution_environment='hardware_runtime_candidate_v1';n.hardware_inputs=scope==ESTIMATED_SCOPE
++    n.motion=NS(verified=scope==SIMULATION_SCOPE,mode='both',
++        timing_policy='verified_only' if scope==SIMULATION_SCOPE else 'host_estimated_v1')
++    return n
++
++
++class EstimatedEntryTests(unittest.TestCase):
++    def setUp(self):self.boundary=boundaries()
++
++    def test_base_planner_rejects_estimated_before_policy_setup(self):
++        with self.assertRaisesRegex(ValueError,'runtime-capable planner'):
++            selected(self.boundary['LocalPursuit'],ESTIMATED_SCOPE)
++
++    def test_base_and_registered_subclass_keep_simulation_entry(self):
++        for name in ('LocalPursuit','G1G2Node'):
++            n=selected(self.boundary[name],SIMULATION_SCOPE)
++            self.assertEqual(n.observation_input_scope,SIMULATION_SCOPE)
++
++    def test_registered_subclass_accepts_estimated_then_validates_runtime(self):
++        n=selected(self.boundary['G1G2Node'],ESTIMATED_SCOPE)
++        self.boundary['runtime_checks'](n,POLICY,'process_candidate','fresh_native_v1',True,'native_v1')
++        self.assertIs(n.runtime_dual_selected,True)
++
++    def test_capability_cannot_replace_native_runtime_or_r396_selection(self):
++        for fault in ('runtime_off','inline','old_submission','no_retain','python','no_recheck','corner_off','verified'):
++            n=selected(self.boundary['G1G2Node'],ESTIMATED_SCOPE)
++            args=[POLICY,'process_candidate','fresh_native_v1',True,'native_v1']
++            if fault=='runtime_off':args[0]='off'
++            elif fault=='inline':args[1]='inline'
++            elif fault=='old_submission':args[2]='original_v1'
++            elif fault=='no_retain':args[3]=False
++            elif fault=='python':args[4]='python'
++            elif fault=='no_recheck':n.recheck_in_worker=False
++            elif fault=='corner_off':n.current_corner_budget='off'
++            elif fault=='verified':n.motion.verified=True
++            with self.subTest(fault=fault),self.assertRaises(ValueError):
++                self.boundary['runtime_checks'](n,*args)
++
++    def test_simulation_subclass_keeps_registered_runtime_checks(self):
++        n=selected(self.boundary['G1G2Node'],SIMULATION_SCOPE)
++        self.boundary['runtime_checks'](n,POLICY,'process_candidate','fresh_native_v1',True,'native_v1')
++        self.assertTrue(n.runtime_dual_selected)
++
++    def test_independent_guard_selection_does_not_require_planner_capability(self):
++        n=selected(self.boundary['G1G2Node'],ESTIMATED_SCOPE)
++        n.estimated_observation_runtime_capable=False
++        validate_node_selection(n,True,observation_scope=ESTIMATED_SCOPE)
++
++
++if __name__=='__main__':unittest.main()

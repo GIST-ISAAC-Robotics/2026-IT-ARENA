@@ -1,0 +1,52 @@
+377:     def _guard_curve_original(self, scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan):
+378:         """GUARD의 가림 꼬리 초과는 같은 경로의 낮은 목표로 제한 재검사한다.
+379: 
+380:         현재 측정속도와 두 조향은 그대로다. RELEASED에서 쓰는 .25/.15 m/s
+381:         후보만 비교하며 각 후보의 측방 누적 접근·점유/관측도 전부 다시 검사한다.
+382:         미관측/전면 가림·기존 G1 정지를 완화하지 않고 통과 증거도 바꾸지 않는다.
+383:         """
+384:         args = (scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan)
+385:         result = self._guard_curve_at_cap(*args)
+386:         if result is None or not self.follow_config.traffic_recovery_trial:
+387:             return result
+388:         info = result[2].get('selector_guard_candidate') or {}
+389:         region = info.get('region') or {}
+390:         partial = baseline[2].get('partial_observation') or {}
+391:         reason = result[2].get('selector_reason')
+392:         target = info.get('target_speed_mps', 0.)
+393:         if (reason not in ('guard_curve_rejected_large_motion_masked_toward_left',
+394:                            'guard_curve_rejected_large_motion_masked_toward_right')
+395:                 or partial.get('allowed') is not True or partial.get('reason') != 'fully_observed'
+396:                 or region.get('unobserved') != 0 or region.get('masked_front_samples') != 0
+397:                 or target <= .15 or speed >= target):
+398:             return result
+399:         attempts = []
+400:         for cap in (.25, .15):
+401:             if cap >= target or cap > self.config.guard_speed_cap_mps:
+402:                 continue
+403:             candidate = self._guard_curve_at_cap(*args, target_cap=cap)
+404:             if candidate is None:
+405:                 continue
+406:             checked = candidate[2].get('selector_guard_candidate') or {}
+407:             accepted = candidate[0] > 0 and checked.get('accepted') is True
+408:             attempts.append({'target_mps': cap, 'accepted': accepted,
+409:                              'reason': candidate[2].get('selector_reason'),
+410:                              'region': checked.get('region')})
+411:             if accepted:
+412:                 result = candidate
+413:                 break
+414:         diagnostic = {'applied': result[0] > 0, 'original_target_mps': target,
+415:                       'original_region': region, 'attempts': attempts,
+416:                       'measured_motion_preserved': True, 'unknown_filled': False}
+417:         return result[0], result[1], {**result[2], 'selector_guard_speed_recheck': diagnostic}
+418: 
+419:     def _guard_curve_at_cap(self, scene, view, baseline, parallel, speed, previous, dt, age, detail,
+420:                             raw_scan, *, target_cap=None):
+421:         """GUARD 후보(선택형). 직선 적합 실패 또는 허용된 부분 관측에서 같은 G1 출력을 저속으로 검사한다.
+422: 
+423:         G1 경로·점유·팽창·조향 변화율·hysteresis는 기존 출력 그대로이며 속도만 min(G1, 0.35 m/s)로 낮춘다. 측정 속도가 더 크면
+424:         감속 완료를 가정하지 않고 큰 쪽으로 예측한다. 위협을 본(해제되지 않은) 쪽마다 현재/직전 조향 원호의 차체 모서리
+425:         경로 횡위치가 GUARD 진입 때보다 1 cm 넘고 현재보다도 증가하면 거절한다(누적 접근 포함). 이미 기준 밖이어도 더
+426:         접근하지 않는 진행/회복은 막지 않는다. 경로 좌표 추정 변화의 영향은 남으므로 실제 이동 영역도 매번 검사한다.
+427:         통과 증거·vanish·GUARD 상태는 바꾸지 않으며 숨은 물체 위험을 지우지 않는다.
+428:         거절하거나 조건 밖이면 None/평행 후보(정지)를 돌려준다.

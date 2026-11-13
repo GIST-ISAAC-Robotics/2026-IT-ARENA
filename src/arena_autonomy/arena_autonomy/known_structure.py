@@ -36,6 +36,153 @@ MEMORY_RANGE_M = 3.
 SAMPLE_STEP_M = .03
 
 
+def _current_mask_query_batches(queries, origins, directions):
+    """전체 광선 bracket을 원 연산/동률 규칙으로 최대 32질의씩 계산한다."""
+    for start in range(0, len(queries), 32):
+        dx = queries[start:start+32, None, 0]-origins[None, :, 0]
+        dy = queries[start:start+32, None, 1]-origins[None, :, 1]
+        # 2원소 norm의 multiply/add/sqrt 순서를 유지한다. hypot나 제곱 임계값으로
+        # 바꾸지 않으며 dot의 +0은 np.sum([-0., -0.])의 양의 0도 보존한다.
+        radius = np.sqrt(dx*dx + dy*dy)
+        cross = directions[None, :, 0]*dy-directions[None, :, 1]*dx
+        dot = directions[None, :, 0]*dx + directions[None, :, 1]*dy + 0.
+        angles = np.arctan2(cross, dot)
+        lows = np.argmin(np.where(angles >= -1e-10, np.maximum(angles, 0.), np.inf), axis=1)
+        highs = np.argmin(np.where(angles <= 1e-10, np.maximum(-angles, 0.), np.inf), axis=1)
+        yield radius, angles, lows, highs
+
+
+def current_mask_shadow(scene, scan, queries, padding, sectors):
+    """현재 선언 구조 그림자의 폭/양옆 깊이로 위험을 제한한다. free 증거가 아니다.
+
+    차체의 횡이동량과 숨을 수 있는 물체 폭은 서로 다른 양이다. 여기서는
+    기존 structure_aware_v1의 5 cm 숨은 폭을 재사용한다. 거리 방향 패딩은
+    양옆 반환 깊이에서 빼며, 가림 폭을 계산할 질의 위치를 이동시키지 않는다.
+    실제 점유 sweep과 숨은 기억은 호출 전 기하 검사/독립 보호층에 남는다.
+    """
+    from arena_autonomy.observation_support import source_valid
+    result = dict(accepted=False, policy='current_declared_structure_shadow_v1',
+        unknown_filled=False, residual_hidden_object_risk=True,
+        accepted_hidden_width_m=ACCEPTED_HIDDEN_WIDTH_M, memory_rechecked_here=False,
+        independent_guard_required=True)
+
+    def reject(reason):
+        return {**result, 'reason': reason}
+
+    q = np.asarray(queries, dtype=float).reshape(-1, 2)
+    pad = np.asarray(padding, dtype=float)
+    rays = scene.rays
+    if (not source_valid(scene) or not len(q) or not np.all(np.isfinite(q))
+            or pad.shape != (len(rays),) or not np.all(np.isfinite(pad)) or np.any(pad < 0)):
+        return reject('invalid_current_mask_queries')
+    _, _, rows = classify(scan, sectors)
+    membership = np.zeros(len(rays), dtype=int)
+    for row in rows:
+        if row['explained']:
+            membership[row['rays']] += 1
+    origins = np.asarray([r.ray_origin_xy_m for r in rays])
+    directions = np.asarray([r.direction_xy for r in rays])
+    status = np.asarray([r.status for r in rays])
+    hits = np.asarray([r.hit_xy_m for r in rays if r.status == 'return']).reshape(-1, 2)
+    valid = status == 'return'
+    # 일부만 보이는 물체의 실제 옆면을 구조 그림자라는 이유로 제외하지 않는다.
+    from arena_autonomy.numeric_kernels import current_mask_occupied
+    occupied = current_mask_occupied(q, hits, pad[valid])
+    if occupied is None:
+        occupied = any(len(hits) and np.any(
+            np.linalg.norm(q[start:start+64, None]-hits[None], axis=2) <= pad[valid])
+            for start in range(0, len(q), 64))
+    if occupied:
+        return reject('current_known_occupied_padding')
+    depths = np.asarray([math.dist(r.ray_origin_xy_m, r.hit_xy_m) if r.status == 'return'
+                         else -1. for r in rays])
+    groups = {}
+    components = {}
+    # 같은 구간을 모든 질의마다 다시 탐색하지 않는다. 안쪽 취득 광선의
+    # 방향/원점 변화도 포함해 끝 두 광선만으로 폭을 축소하지 않는다.
+    i = 0
+    while i < len(rays):
+        if status[i] != 'masked':
+            i += 1
+            continue
+        a = i
+        while i+1 < len(rays) and status[i+1] == 'masked': i += 1
+        b = i
+        explained = (a > 0 and b+1 < len(rays) and status[a-1] == 'return'
+            and status[b+1] == 'return' and np.all(membership[a:b+1] == 1)
+            and any(row['explained'] and set(range(a,b+1)).issubset(set(row['rays'])) for row in rows))
+        component = None
+        if explained:
+            local = directions[a-1:b+2]
+            bearings = np.unwrap(np.arctan2(local[:,1], local[:,0]))
+            angle = float(np.ptp(bearings))
+            positions = origins[a-1:b+2]
+            span = float(np.max(np.linalg.norm(positions[:,None]-positions[None],axis=2)))
+            component = (a,b,angle,span)
+        for j in range(a,b+1): components[j] = component
+        i += 1
+    # 광선 전체와 각 취득 원점은 유지한다. 최대 32질의의 계산만 배열화한다.
+    # 첫 실패 질의와 그 질의의 기존 거절 우선순위는 아래 masks 순서로 보존한다.
+    by_id = list(dict.fromkeys(c for c in components.values() if c is not None))
+    ids = {c: i for i, c in enumerate(by_id)}
+    component_ids = np.full(len(rays), -1, dtype=int)
+    for ray, component in components.items():
+        if component is not None:
+            component_ids[ray] = ids[component]
+    available = depths-pad
+    for radius, angles, lo, hi in _current_mask_query_batches(q, origins, directions):
+        row = np.arange(len(radius))
+        low_angles, high_angles = angles[row, lo], angles[row, hi]
+        bracket_bad = (np.any(radius <= 1e-9, axis=1) | (low_angles < -1e-10)
+            | (high_angles > 1e-10) | (np.abs(lo-hi) > 1)
+            | (np.abs(low_angles)+np.abs(high_angles) > .025))
+        low_masked, high_masked = status[lo] == 'masked', status[hi] == 'masked'
+        low_return, high_return = valid[lo], valid[hi]
+        status_bad = (~(low_masked | high_masked) | ~(low_masked | low_return)
+            | ~(high_masked | high_return))
+        pair_near = ((low_return & (available[lo] <= radius[row, lo]))
+            | (high_return & (available[hi] <= radius[row, hi])))
+        selected = component_ids[np.where(low_masked, lo, hi)]
+        unexplained = selected < 0
+        wide, flank_near = np.zeros(len(row), dtype=bool), np.zeros(len(row), dtype=bool)
+        reaches, widths = np.zeros(len(row)), np.zeros(len(row))
+        # 인접한 두 masked 광선은 반드시 같은 연속 component다. 인접하지 않은
+        # 질의는 bracket_bad로 먼저 거절하므로 서로 다른 성분을 합치지 않는다.
+        ordered = list(dict.fromkeys(selected.tolist()))
+        for index in ordered:
+            if index < 0:
+                continue
+            a, b, angle, origin_span = by_id[index]
+            chosen = np.flatnonzero(selected == index)
+            reach = np.max(radius[chosen, a-1:b+2], axis=1)
+            width = 2*reach*math.sin(angle/2) + origin_span
+            reaches[chosen], widths[chosen] = reach, width
+            wide[chosen] = (angle >= math.pi/2) | (width > ACCEPTED_HIDDEN_WIDTH_M)
+            flank_near[chosen] = ((available[a-1] <= radius[chosen, a-1])
+                | (available[b+1] <= radius[chosen, b+1]))
+        masks = (bracket_bad, status_bad, pair_near, unexplained, wide, flank_near)
+        reasons = ('unbracketed_current_mask_query', 'not_declared_mask_only',
+            'near_current_mask_flank', 'unexplained_current_mask_component',
+            'wide_current_structure_shadow', 'near_current_mask_flank')
+        failed = np.flatnonzero(np.logical_or.reduce(masks))
+        if len(failed):
+            first_bad = failed[0]
+            return reject(next(reason for reason, mask in zip(reasons, masks) if mask[first_bad]))
+        for index in ordered:
+            a, b, _, _ = by_id[index]
+            chosen = np.flatnonzero(selected == index)
+            # argmax의 첫 동률 선택과 batch 간 strict > 갱신으로 원 질의 순서 유지.
+            best = chosen[np.argmax(widths[chosen])]
+            width, reach = float(widths[best]), float(reaches[best])
+            key = (a, b)
+            old = groups.get(key)
+            if old is None or width > old['hidden_width_m']:
+                groups[key] = dict(first=a, last=b, hidden_width_m=width,
+                    flank_ranges_m=depths[[a-1, b+1]].tolist(), query_reach_m=reach)
+    return {**result, 'accepted': True, 'reason': 'bounded_current_structure_shadow_risk',
+            'queries': len(q), 'components': list(groups.values())}
+
+
 def parse_sectors(text):
     """lidar_blind_sectors_json → ((중심°, 반폭°), ...). 비어 있으면 거절한다."""
     from arena_autonomy.local_scene import blind_spec,blind_parameter
@@ -306,7 +453,9 @@ class StructureAwareMixin:
         horizon = speed*(age + .10) + speed*speed/4 + .06 + .04
         steerings = sorted({float(steering), float(previous_steering)})
         far = []
-        for shadow in shadows:
+        # 명시 guard는 가상 먼 그림자를 점유로 만들지 않는다. 위 실제 기억 갱신과
+        # 아래 hidden-memory clearance/cap은 그대로 유지한다.
+        for shadow in ([] if getattr(self, 'command_observation_priority', False) else shadows):
             radius = shadow['hidden_width_range_m']
             # 먼 그림자 표본. 거리 상한은 이번 속도의 제동 지평과 차체 대각선.
             reach = horizon + math.hypot(length/2, width/2) + .05
@@ -336,7 +485,7 @@ class StructureAwareMixin:
             if value is not None and value < horizon - 1e-9:
                 caps[name] = braking_speed(value, age)
         cap = min(caps.values()) if caps else None
-        return dict(policy='structure_aware_v1', evaluated=True, fresh=fresh,
+        result = dict(policy='structure_aware_v1', evaluated=True, fresh=fresh,
                     sectors=len(rows), explained_sectors=sum(row['explained'] for row in rows),
                     unexplained_sector_deg=[row['center_deg'] for row in rows if not row['explained']],
                     hidden_memory_points=len(hidden), hidden_memory_added=added, hidden_memory_released=released,
@@ -345,3 +494,7 @@ class StructureAwareMixin:
                     speed_cap_mps=cap, horizon_m=horizon, accepted_hidden_width_m=self.accepted_hidden_width_m,
                     unknown_filled=False,
                     scope='known_structure_shadow_bounded_not_free_space')
+        if getattr(self, 'command_observation_priority', False):
+            result.update(virtual_shadow_cap_enabled=False, actual_hidden_memory_cap_enabled=True,
+                          scope='independent_current_command_and_actual_hidden_memory')
+        return result

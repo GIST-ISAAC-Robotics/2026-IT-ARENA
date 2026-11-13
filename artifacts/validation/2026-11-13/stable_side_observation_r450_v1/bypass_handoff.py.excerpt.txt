@@ -1,0 +1,8 @@
+608:     def command(self, scene, history, speed, side, previous, dt, *, raw_scan=None):
+609:         from arena_autonomy.local_follow import forward_planning_speed, signed_feedback_detail
+610:         planning = forward_planning_speed(self.config, speed)
+611:         if self.moving_pass is not None:
+612:             output = self.moving_pass.command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
+613:         else:
+614:             output = self._base_command(scene, history, planning, side, previous, dt, raw_scan=raw_scan)
+615:         return signed_feedback_detail(output, speed, planning)

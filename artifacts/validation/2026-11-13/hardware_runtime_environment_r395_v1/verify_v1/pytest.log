@@ -1,0 +1,78 @@
+.........F.............................................................. [ 41%]
+........................................................................ [ 83%]
+.............................                                            [100%]
+=================================== FAILURES ===================================
+_____ test_real_clock_shadow_keeps_unverified_input_and_no_actuator_output _____
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_real_clock_shadow_keeps_u0')
+
+    def test_real_clock_shadow_keeps_unverified_input_and_no_actuator_output(tmp_path):
+        trace=tmp_path/'shadow.jsonl'
+        rclpy.init(args=['--ros-args','--params-file',str(PROFILE),'-p','g1_trace_path:='+str(trace)])
+        node=peer=None
+        try:
+            node=G1G2Node();peer=Node('shadow_test_peer')
+            assert node.hardware_shadow and not node.motion.verified
+            assert node.now_s()>1_000_000_000
+            assert node.publisher.topic_name=='/hardware_preview/drive'
+            assert node.count_publishers('/drive')==node.count_publishers('/drive/safe')==0
+            assert node.count_publishers('/actuation/tx')==0
+            outputs=[];states=[]
+            peer.create_subscription(AckermannDriveStamped,'/hardware_preview/drive',outputs.append,10)
+            peer.create_subscription(String,'/hardware_preview/autonomy/status',lambda m:states.append(json.loads(m.data)),10)
+            pub=peer.create_publisher(String,'/scan/native',qos_profile_sensor_data)
+            until=time.monotonic()+3
+            while pub.get_subscription_count()==0:
+                rclpy.spin_once(peer,timeout_sec=.01)
+                assert time.monotonic()<until
+            now=node.now_s()
+            raw=dict(schema='arena_native_lidar_v1',ranges_m=[2.]*40,
+                angles_rad=[math.pi-i*math.tau/40 for i in range(40)],
+                acquired_at_s=[now-.1+i*.002 for i in range(40)],
+                source_frame_id='laser_frame',source_epoch=17,range_min_m=.05,range_max_m=12.,
+                time_basis='unverified_estimate')
+            pub.publish(String(data=json.dumps(raw)))
+            until=time.monotonic()+2
+            while node.scan is None:
+                rclpy.spin_once(node,timeout_sec=.01)
+                assert time.monotonic()<until
+            assert node.scan.time_basis=='unverified_estimate' and node.scan.source_epoch==17
+            # 입력 거절에 도달시키기 위한 시험 장치. 실제 신호 검출/출발을 뜻하지 않는다.
+            node.signal.started=True;node.rgb_stamp=node.now_s();node.image_wall_time=time.monotonic()
+            node.control()
+            assert node.last_status=='MOTION_STOP'
+            assert node.motion.last_meta['reason']=='scan_timing_unverified'
+            assert not node.motion.history.wheels.values
+            until=time.monotonic()+.15
+            while time.monotonic()<until:rclpy.spin_once(peer,timeout_sec=.01)
+            assert outputs and all(m.drive.speed==0 for m in outputs)
+            assert any(s.get('drive_output') is False and s.get('motion_timing_verified') is False for s in states)
+            generation=node.decision_delivery.worker.generation
+            assert node.on_enable(SetBool.Request(data=False),SetBool.Response()).success
+            assert node.decision_delivery.worker.generation>generation
+            node.on_reset(Trigger.Request(),Trigger.Response())
+            assert node.scan is None and not node.signal.started
+            process=node.decision_delivery.worker.process
+        finally:
+            if node is not None:node.destroy_node()
+            if peer is not None:peer.destroy_node()
+            rclpy.shutdown()
+        assert not process.is_alive()
+        rows=[json.loads(line) for line in trace.read_text().splitlines()]
+        environment=next(r['data'] for r in rows if r['kind']=='execution_environment')
+>       assert environment==dict(mode='hardware_shadow_v1',use_sim_time=False,drive_output=False,motion_timing_verified=False)
+E       AssertionError: assert {'drive_outpu...': False, ...} == {'drive_outpu..._time': False}
+E         Omitting 4 identical items, use -vv to show
+E         Left contains 1 more item:
+E         {'motion_time_policy': 'verified_only'}
+E         Use -v to get more diff
+
+tests/test_hardware_shadow.py:74: AssertionError
+----------------------------- Captured stderr call -----------------------------
+[WARN] [1794543472.952014298] [rcl]: ROS_LOCALHOST_ONLY is deprecated but still honored if it is enabled. Use ROS_AUTOMATIC_DISCOVERY_RANGE and ROS_STATIC_PEERS instead.
+[WARN] [1794543472.952028234] [rcl]: 'localhost_only' is enabled, 'automatic_discovery_range' and 'static_peers' will be ignored.
+[INFO] [1794543472.976094944] [local_pursuit]: RGB 빨강→초록 대기. lidar_compensation=both; 보정 시 엔코더·자이로 추가, 지도·정답 위치 미사용.
+[INFO] [1794543472.991511428] [local_pursuit]: G1/G2 sensor handoff trial (preparation front_patch_v0); /drive through independent safety
+[INFO] [1794543474.518848207] [local_pursuit]: t=1794543474.501784 SENSOR_STOP / left 벽 / unknown
+[INFO] [1794543474.528079953] [local_pursuit]: t=1794543474.502369 MOTION_STOP / left 벽 / unknown
+1 failed, 172 passed in 17.86s

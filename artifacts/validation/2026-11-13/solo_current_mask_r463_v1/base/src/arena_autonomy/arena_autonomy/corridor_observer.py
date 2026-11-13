@@ -1,0 +1,248 @@
+"""회랑 비교 관측기. 기본 경계 기억/LocalFollow 상태를 변경하지 않는다.
+
+evaluate는 명령 tuple 대신 비교용 evidence dict를 반환한다. 이 모듈을 호출하는
+기본 주행 경로는 비활성이다. 명시 선택형 LocalFollow가 제한된 HOLD에서만 제안을
+채택할 수 있으며 신호/고장 허가와 독립 보호층은 별도다. positive 자체는 구동 허가가 아니다.
+"""
+
+from arena_autonomy.lidar_source_frame import registered_source_frame
+import math
+
+import numpy as np
+
+from arena_autonomy.corner_corridor import corridor_evidence, short_prefix_evidence, short_inner_prefix_evidence
+from arena_autonomy.lidar_motion import MotionUnavailable
+from arena_autonomy.local_follow import path_agrees, path_agrees_arc, pursue_path
+from arena_autonomy.local_path import braking_speed, swept_limit
+from arena_autonomy.occupancy_timing import per_ray_padding
+from arena_autonomy.scene_motion import transport_points
+
+
+def path_agrees_common_segments(candidate, reference, tolerance):
+    """이미 관측한 경로의 공통 선분만 대조한다. 센서 결측/경로 끝 외삽은 하지 않는다.
+
+    각 경로의 끝 표본이 조금 어긋나도 실제 공통 길이를 잘라내지 않는다.
+    보간한 끝점은 원래 표본 각5개의 요건에 포함하지 않는다.
+    """
+    paths = [np.asarray(p, dtype=float) for p in (candidate, reference)]
+    if any(p.ndim != 2 or p.shape[1] != 2 or len(p) < 5 or not np.all(np.isfinite(p))
+           or np.any(np.diff(p[:, 0]) <= 0) for p in paths):
+        return False
+    lo = max(.05, *(p[0, 0] for p in paths))
+    hi = min(.65, *(p[-1, 0] for p in paths))
+    if hi-lo < .25:
+        return False
+    if any(np.count_nonzero((p[:, 0] >= lo) & (p[:, 0] <= hi)) < 5 for p in paths):
+        return False
+    clipped = []
+    for p in paths:
+        x = np.r_[lo, p[(p[:, 0] > lo) & (p[:, 0] < hi), 0], hi]
+        clipped.append(np.c_[x, np.interp(x, p[:, 0], p[:, 1])])
+
+    def gap(p, q):
+        delta = np.diff(q, axis=0)
+        offset = p[:, None, :]-q[None, :-1, :]
+        fraction = np.clip(np.sum(offset*delta, axis=2)/np.sum(delta*delta, axis=1), 0., 1.)
+        distances = np.linalg.norm(offset-fraction[:, :, None]*delta, axis=2)
+        return float(np.max(np.min(distances, axis=1)))
+
+    return max(gap(*clipped), gap(*clipped[::-1])) <= tolerance
+
+
+def current_proposal(scene, speed, side, previous_steering, dt, config, *, partial_candidate=False):
+    base = dict(geometry_supported=False, point_occupancy_supported=False, proposed_speed_mps=0.,
+                reason='invalid_motion_state', driving_authorized=False, runtime_connected=False,
+                memory_refresh_authorized=False, free_area_certified=False)
+    if (side not in ('left','right') or not all(math.isfinite(v) for v in (speed,previous_steering,dt)) or
+            not 0 < dt <= .2 or abs(previous_steering) > config.max_steering_rad):
+        return base
+    if not registered_source_frame(scene.source_frame_id):
+        return {**base, 'reason':'source_frame_mismatch'}
+    if scene.source_first_s is None or not 0 <= scene.t_ref_s-scene.source_first_s < config.memory_ttl_s:
+        return {**base, 'reason':'scene_stale'}
+    front = [r for r in scene.rays if abs(math.atan2(r.direction_xy[1],r.direction_xy[0])) <= math.radians(100)]
+    if not front or any(r.status != 'return' for r in front):
+        from arena_autonomy.observation_support import side_missing_candidate
+        if not (partial_candidate or (config.recent_observation_enabled and side_missing_candidate(scene))):
+            return {**base, 'reason':'front_unobserved'}
+        # 선택형 LocalFollow의 관측 확인 전까지는 여전히 경로/점유 제안일 뿐이다.
+    points = np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1,2)
+    if config.traffic_path_recovery_trial:
+        from arena_autonomy.corridor_roles import role_aware_evidence
+        geometry = role_aware_evidence(points, side, config)
+    else:
+        geometry = corridor_evidence(points, side, config)
+    if (config.short_boundary_prefix_enabled and not geometry['supported']
+            and geometry['reason'] == 'long_outer_reference_unavailable'):
+        if config.piecewise_wall_trial:
+            alternative = short_prefix_evidence(points,side,config,allow_long_preferred=True)
+        else:
+            alternative = short_prefix_evidence(points,side,config)
+        if alternative.get('reason') == 'insufficient_contiguous_common_prefix':
+            from arena_autonomy.continuous_prefix import refine
+            alternative = refine(alternative,config)
+        if alternative['supported']:
+            geometry = alternative
+    if (config.short_boundary_prefix_enabled and not geometry['supported']
+            and geometry['reason'] == 'inner_surface_support_unavailable'):
+        alternative = short_inner_prefix_evidence(geometry,config)
+        if alternative['supported']:
+            geometry = alternative
+    base.update(geometry_supported=geometry['supported'], geometry=geometry,
+                occupied_points=len(points), all_return_points_retained=True)
+    if not geometry['supported']:
+        return {**base, 'reason':geometry['reason']}
+    age = scene.t_ref_s-scene.source_first_s
+    try:
+        cap, desired, ahead = pursue_path(geometry['path'], speed, config, age)
+    except MotionUnavailable as error:
+        return {**base, 'reason':'pursuit_unavailable', 'error':str(error)}
+    short_prefix = geometry.get('short_prefix',False)
+    if short_prefix:
+        cap = min(cap,.35)
+    steering = float(np.clip(desired,previous_steering-3*dt,previous_steering+3*dt))
+    padding = (per_ray_padding(scene,.025+config.measurement_padding_m,config.object_motion_bound_mps)
+               if config.occupancy_timing_mode == 'per_ray_candidate' else
+               .025+config.measurement_padding_m+config.object_motion_bound_mps*age)
+    clearances = [swept_limit(points,angle,config.wheelbase_m,horizon=2.5,margin=padding,
+                             length=config.length_m,width=config.width_m) for angle in (steering,previous_steering)]
+    clearance = min(clearances)
+    available = max(0.,clearance-config.standstill_gap_m)
+    target = min(cap,braking_speed(available,age),available/config.headway_s)
+    base.update(steering_rad=steering, swept_clearance_m=clearance, observed_path_ahead_m=ahead,
+                point_padding_min_m=float(np.min(padding)), point_padding_max_m=float(np.max(padding)))
+    if short_prefix:
+        # 새 안쪽 지지 후보는 차체 원점의 실제 투영부터 관측 끝까지 잰다.
+        # 후륜축 추종기의 남은 길이가 더 길어도 관측 제동 예산을 늘리지 않는다.
+        budget_ahead = min(ahead,geometry.get('base_observed_ahead_m',ahead))
+        path_budget = max(0.,budget_ahead-config.length_m/2-config.measurement_padding_m)
+        v = max(speed,target)
+        stop_budget = .06+v*(age+.10)+v*v/4
+        base.update(short_prefix=True,path_budget_m=path_budget,stop_budget_m=stop_budget)
+        if stop_budget > path_budget:
+            return {**base,'reason':'short_prefix_stop_budget'}
+    if speed < 0:
+        return {**base, 'reason':'reverse_motion'}
+    if clearance < config.resume_clearance_m:
+        return {**base, 'reason':'existing_occupancy_margin_hold'}
+    return {**base, 'reason':'geometry_and_point_occupancy_only', 'point_occupancy_supported':target > 0,
+            'proposed_speed_mps':float(target)}
+
+
+class CorridorObserver:
+    """현재 기하 필수. 과거 path는 확인 전용이며 과거 path만의 출력은 불가하다."""
+    def __init__(self, config):
+        self.config = config
+        self.reset()
+
+    def reset(self):
+        self.key = self.last_ref = self.last_source = None
+        self.path = self.path_ref = self.path_source = None
+        self.confirmations = self.release_count = 0
+
+    def clear_evidence(self):
+        self.path = self.path_ref = self.path_source = None
+        self.confirmations = self.release_count = 0
+
+    def evaluate(self, scene, history, speed, side, previous_steering=0., dt=.02, *, partial_candidate=False):
+        now, source = scene.t_ref_s, scene.source_first_s
+        key = (scene.source_frame_id,scene.source_epoch,side)
+        reset_cause = None
+        if self.key is not None and key != self.key:
+            reset_cause = 'frame_epoch_or_side_changed'
+            self.reset()
+        elif ((self.last_ref is not None and now < self.last_ref) or
+              (self.last_source is not None and source is not None and source < self.last_source)):
+            self.reset()
+            self.key, self.last_ref, self.last_source = key, now, source
+            return dict(positive=False, reason='reference_or_source_regressed', fresh=False,
+                        confirmations=0, release_count=0, proposed_speed_mps=0.,
+                        driving_authorized=False, runtime_connected=False)
+        fresh = source is not None and (self.last_source is None or source > self.last_source)
+        self.key, self.last_ref, self.last_source = key, now, source
+        proposal = current_proposal(scene,speed,side,previous_steering,dt,self.config,
+                                    **({'partial_candidate':True} if partial_candidate else {}))
+        result = dict(positive=False, reason=proposal['reason'], fresh=fresh, proposed_speed_mps=0.,
+                      confirmations=0, release_count=0, geometry_supported=proposal['geometry_supported'],
+                      current_point_occupancy_supported=proposal['point_occupancy_supported'],
+                      source_first_s=source, reference_s=now, reset_cause=reset_cause,
+                      swept_clearance_m=proposal.get('swept_clearance_m'),
+                      driving_authorized=False, runtime_connected=False, memory_refresh_authorized=False,
+                      wall_identity_certified=False, old_path_only_allowed=False)
+        if self.config.traffic_path_recovery_trial:
+            geometry = proposal.get('geometry') or {}
+            result.update({key: geometry.get(key) for key in
+                           ('role_selection','preferred_side','inner_side','outer_side',
+                            'preferred_observed_path_agrees')})
+        if self.config.short_boundary_prefix_enabled:
+            result.update(short_prefix=proposal.get('short_prefix',False),
+                          path_budget_m=proposal.get('path_budget_m'),stop_budget_m=proposal.get('stop_budget_m'))
+        if not proposal['geometry_supported'] or proposal['reason'] in ('reverse_motion','pursuit_unavailable'):
+            self.clear_evidence()
+            return result
+        path = np.asarray(proposal['geometry']['path'])
+        compatible, displacement, transport_error = False,None,None
+        comparison = None
+        prior_age = None if self.path_source is None else now-self.path_source
+        if self.path is not None and 0 <= prior_age < self.config.memory_ttl_s:
+            try:
+                transported = transport_points(self.path,history,self.path_ref,now)
+                displacement = float(np.max(np.linalg.norm(transported-self.path,axis=1)))
+                if displacement <= self.config.memory_motion_limit_m:
+                    compatible = path_agrees(path,transported,self.config.boundary_agreement_m)
+                    comparison = 'forward_x' if compatible else None
+                    if (not compatible and self.config.corridor_arc_agreement
+                            and path_agrees_arc(path,transported,self.config.boundary_agreement_m)):
+                        # 같은 가까운 경로를 호길이로 비교. U자 뒤쪽의 같은 x 좌표를
+                        # 공통 전방 구간으로 세지 않는다. 점유/TTL/확인 횟수는 그대로다.
+                        compatible = True
+                        comparison = 'common_arc'
+                    if (not compatible and self.config.piecewise_wall_trial and proposal.get('short_prefix')
+                            and path_agrees_common_segments(path, transported, self.config.boundary_agreement_m)):
+                        compatible = True
+                        comparison = 'continuous_common_x'
+            except (ValueError,MotionUnavailable) as error:
+                transport_error = str(error)
+        result.update(previous_source_age_s=prior_age, previous_path_agrees=bool(compatible),
+                      transport_displacement_m=displacement, transport_error=transport_error)
+        if self.config.corridor_arc_agreement:
+            result['path_agreement_method'] = comparison
+        if not fresh and not compatible:
+            self.clear_evidence()
+            return {**result, 'reason':'reused_scan_path_unconfirmed'}
+        if fresh:
+            self.confirmations = self.confirmations+1 if compatible else 1
+            if not compatible:
+                self.release_count = 0
+            self.path, self.path_ref, self.path_source = path.copy(),now,source
+            if self.confirmations >= self.config.confirmations and proposal['point_occupancy_supported']:
+                self.release_count += 1
+        if not proposal['point_occupancy_supported']:
+            self.release_count = 0
+        result.update(confirmations=self.confirmations,release_count=self.release_count)
+        if self.confirmations < self.config.confirmations:
+            result['reason'] = 'distinct_geometry_confirmation_wait'
+        elif not proposal['point_occupancy_supported']:
+            result['reason'] = proposal['reason']
+        elif self.release_count < self.config.confirmations:
+            result['reason'] = 'distinct_motion_release_wait'
+        else:
+            result.update(positive=True,reason='confirmed_shadow_candidate_only',path=path.tolist(),
+                          proposed_speed_mps=proposal['proposed_speed_mps'],steering_rad=proposal['steering_rad'])
+        return result
+
+
+def compare_boundary_hold(baseline, proposal):
+    """저장 기본 출력과의 대조만. 보호/점유/고장 HOLD는 절대로 대체하지 않는다.
+
+    반환값은 ROS 명령이 아니다. 우선순위와 전환 시점의 비교 준비이며 실제 주행,
+    동적 handoff 안정성이나 독립 보호층 연결 완료를 의미하지 않는다.
+    """
+    speed, steering, detail = baseline
+    selected = bool(speed == 0 and detail.get('reason') == 'follow_boundary_unconfirmed' and proposal.get('positive'))
+    return dict(selected=selected, reason='corridor_shadow_for_boundary_hold' if selected else 'baseline_retained',
+                proposed_speed_mps=proposal['proposed_speed_mps'] if selected else speed,
+                proposed_steering_rad=proposal['steering_rad'] if selected else steering,
+                baseline_reason=detail.get('reason'),
+                driving_authorized=False,runtime_connected=False,boundary_memory_modified=False,
+                transition_dynamics_verified=False)

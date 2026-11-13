@@ -110,7 +110,9 @@ def rebase(output, submitted, current, scene, history, cfg):
             _, queries = ps.motion_queries(scene, speed, target, steering, previous_steering, dt, cfg, lat)
             pad = ps.mx.ray_padding(scene, lat, cfg.object_motion_bound_mps)
             context = dict(queries=queries, free=ps.depth_support(scene, queries, pad))
-        proof = ps.observed_guard_approach(view['frame'], context, approach, rejected)
+        proof = ps.observed_guard_approach(view['frame'], context, approach, rejected,
+            **(dict(region=region, selector_config=policy, length_m=cfg.length_m, width_m=cfg.width_m)
+               if cfg.guard_observation_policy == 'selected_r181' else {}))
         detail['current_approach'] = proof
         if not proof['accepted']:
             return stop('guard_current_approach_not_observed', **detail)

@@ -47,7 +47,7 @@ def _measurement_transforms(scan, history, now, *, timing_verified, motion_epoch
         raise MotionUnavailable('scan_timing_policy_basis_mismatch')
     if (estimated and timing_policy != 'host_estimated_v1') or (not estimated and not timing_verified):
         raise MotionUnavailable('scan_timing_unverified')
-    if scan.source_frame_id != 'laser_frame':
+    if scan.source_frame_id != history.config.lidar_frame_id:
         raise MotionUnavailable('scan_frame_mismatch')
     if type(motion_epoch) is not int or motion_epoch<0:
         raise MotionUnavailable('motion_epoch_invalid')
@@ -104,7 +104,7 @@ def motion_scene(scan, history, now, *, timing_verified, epoch=0, rear_half_angl
         raise MotionUnavailable('estimated_policy_requires_native_measurements')
     if not timing_verified:
         raise MotionUnavailable('scan_timing_unverified')
-    if scan.header.frame_id != 'laser_frame':
+    if scan.header.frame_id != history.config.lidar_frame_id:
         raise MotionUnavailable('scan_frame_mismatch')
     coverage = audit_front_observation(scan.ranges, scan.angle_min, scan.angle_increment,
         scan.range_min, scan.range_max, history.config.lidar_yaw_rad)

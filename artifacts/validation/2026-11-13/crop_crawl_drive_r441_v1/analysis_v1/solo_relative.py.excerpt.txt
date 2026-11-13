@@ -1,0 +1,34 @@
+13: def rebase(output,submitted,current,scene,history,cfg,*,require_current_region=False):
+14:     before=prior.rebase(output,submitted,current,scene,history,cfg,require_current_region=require_current_region)
+15:     if before is None or before['speed_mps']>0:return before
+16:     normal=output[2].get('normal') or {}
+17:     partial=normal.get('partial_observation') or {}
+18:     speed=current['speed_mps']
+19:     prior_gap=before.get('current_solo_gap_retry') or {}
+20:     if (before.get('reason')!='route_current_large_motion_region_unobserved'
+21:             or not math.isfinite(speed) or not 0<=speed<=.15 or output[0]<=.15
+22:             or output[2].get('handoff_state')!='FOLLOW' or normal.get('selector_mode')!='SOLO'
+23:             or normal.get('boundary_from_memory') is not False
+24:             or partial.get('allowed') is not True or partial.get('reason')!='fully_observed'
+25:             or prior_gap.get('applied') is not False or prior_gap.get('cap_mps')!=.15):
+26:         return before
+27:     core=prior.prior.prior.base.candidate_policy.rebase((CAP,output[1],output[2]),submitted,current,scene,history,cfg)
+28:     if (core is None or not 0<core['speed_mps']<=CAP
+29:             or core['steering_rad']!=before['steering_rad'] or core['reference_s']!=before['reference_s']):
+30:         return before
+31:     context={}
+32:     region=ps.motion_region(scene,speed,core['speed_mps'],core['steering_rad'],current['previous_steering_rad'],
+33:                             current['dt_s'],cfg,ps.lateral_config(cfg),context=context)
+34:     proof=dict(accepted=False,reason='no_unknown_context')
+35:     if region['unobserved'] and context:
+36:         q=context['queries'][~context['free'] & ~context['masked']]
+37:         raw=MeasurementScan(**thaw(current['scan']['measurements']))
+38:         proof=bounded_body_nonreturn(scene,raw,q,context['padding'],cfg.length_m,cfg.width_m,
+39:                                     speed,core['speed_mps'],relative_neighbor=True)
+40:     blocked=ps.region_blocked(region,ps.SelectorConfig(),bounded_unknown_risk=proof['accepted'])
+41:     accepted=region['queries']>0 and proof['accepted'] and blocked is None
+42:     diagnostic=dict(applied=accepted,cap_mps=CAP,proof=proof,region=region,blocked=blocked,
+43:         actual_speed_mps=speed,unknown_filled=False,source_timestamp_renewed=False,same_steering=True)
+44:     if not accepted:return {**before,'current_relative_body_retry':diagnostic}
+45:     route=dict(before['current_route_proof'],region=region,accepted=True,bounded_current_risk=diagnostic)
+46:     return {**core,'current_route_proof':route,'current_relative_body_retry':diagnostic}

@@ -81,18 +81,18 @@
 
 ## 6. ESP32 프로그램 이관
 
-현재 프로젝트의 portable core와 시험용 UART 코드를 출발점으로 사용하되, 실물 주변장치 드라이버가 구현됐다고 가정하지 않는다.
+11/13 현재 `firmware_runtime_drive`에는 IMU·PCNT 엔코더·서보 UART·MD20A PWM/DIR·GPIO8 STOP의 HAL과 Jetson runtime host가 연결되어 있다. 이 구현/빌드와 실제 설치·장착 동작은 구별한다. 현재 장치에 설치된 앱을 확인하지 않고 runtime firmware라고 가정하지 않는다. [운영 진입 감사](../../artifacts/validation/2026-11-13/runtime_entry_audit_r415_v1/REVIEW.md)의 근거를 따른다.
 
 권장 순서:
-1. 기존 ESP32 프로젝트를 빌드해 기준 펌웨어와 통신 포맷을 보존한다.
-2. Jetson USB-UART 링크를 먼저 연결하고 ESP32 부팅/수신/송신을 확인한다.
-3. IMU SPI 드라이버를 연결하고 센서 ID, 축 방향, 샘플 주기를 확인한다.
-4. 엔코더 출력 방식을 확인한 후 GPIO4/5 입력과 PCNT 계수를 구현한다.
-5. Servo Adapter A UART 제어를 구현하고 ID/baud/readback을 확인한다.
-6. MD20A PWM/DIR 출력을 구현한다. 최초 부팅/리셋/통신 오류 시 PWM이 0으로 유지되는지 확인한다.
-7. Jetson ROS 노드와 MCU 프로토콜을 연결하고 프레임 손실, 지연, 재연결을 확인한다.
+1. 설치 앱·빌드/프로필 계보를 확인하고 기존 펌웨어와 통신 형식을 보존한다. 기본 `installed_board_profile()`은 미교정 비활성 상태이므로 빌드 성공만으로 출력 준비가 된 것은 아니다.
+2. 조립 후 측정한 서보 영점·좌우 한계/방향과 기존 계획의 모터/엔코더 방향·출력 설정을 실장 프로필로 연결한다. [r416 빌드 연결](../../artifacts/validation/2026-11-13/runtime_installed_profile_r416_v1/RESULT.md)의 `runtime_installed_profile.py prepare`와 `build_runtime_drive.sh --installed-profile DIR`로 명시 전달한다. 기존 `export-cpp`만으로 자동 적용되지는 않는다. 실제 영점/출력값은 조립 뒤 확인하며 합성 검사 프로필은 설치하지 않는다.
+3. runtime UART는 host 하나만 소유한다. host의 `/hardware_runtime/imu`와 `/drive_motor/encoder`를 사용하며 예전 preview IMU bridge를 같은 포트에서 함께 실행하지 않는다.
+4. 이미 완료한 개별 센서 수신·손 회전·무부하 서보 검사를 반복하지 않는다. 장착 후 달라지는 축/부호·직진 중립·링크 간섭과 실제 출력만 아래 최소 확인 순서로 검사한다.
+5. 실제 최초 부팅/리셋/통신 오류·물리 STOP에서 출력이 멈추는지 제한된 설치 확인을 수행한다. 기존 소프트웨어 회귀와 비구동 ROS/가짜 MCU의 STOP ACK를 물리 정지 증거로 바꾸지 않는다.
 
 ## 7. 센서·구동 교정
+
+아래는 일반 교정 항목이다. 이번 조립 직후에는 뒤의 **시간 제한형 실물 확인**을 우선하며, 이미 확인한 센서 수신·손 회전·배선 검사를 반복하지 않는다. count/rev 정밀 재측정은 방향/환산에 이상 근거가 있을 때만 추가한다.
 
 ### 엔코더
 - 제조사 자료 또는 계측으로 A/B 출력 회로와 전압을 확정한다. 제공된 회로도에 4.7 kΩ VCC pull-up이 보이므로 오픈 컬렉터라는 이유만으로 3.3 V 직접 입력을 가정하지 않는다.
@@ -133,7 +133,9 @@
 
 ## 시간 제한형 실물 확인 — 이미 끝난 시험은 반복하지 않음
 
-차량은 대회 전날 저녁에 완성될 예정이고 출발 전 실물 시험 시간이 짧다. 이 절은 기존 전기적 조립/통전 절차를 대체하지 않으며, 배선 담당자는 승인 전장도와 위 단계별 통전 절차를 따른다. 별도 연습 트랙은 제작하지 않는다.
+**11/14 실행 절차:** 차량 도착 후에는 [60cm 사각 벽 공간의 측정·보정·적용 순서](ASSEMBLED_CAR_BOX_CHECK_2026_11_14.md)를 먼저 따른다. 기둥 위치와 전선 두께의 실측, 기존 여유에 움직임 여유를 더한 자기 가림 설정, IMU 편향·마커 거리·서보 영점의 적용/재확인까지 포함한다. 자기 가림도 사각 벽 안에서 측정하며, 거리/부품 위치와 필요 시 몇 cm 재배치 기록으로 외부 벽을 구분한다. 열린 공간은 요구하지 않는다. 아래 기존 항목은 이 구체 절차의 배경이며 완료된 시험을 새로 반복하라는 지시가 아니다.
+
+차량 완성 최신 예상은11/14 02:00경(미확정)이고05:00 출발 전 실물 시험 시간이 매우 짧다. 이 절은 기존 전기적 조립/통전 절차를 대체하지 않으며, 배선 담당자는 승인 전장도와 위 단계별 통전 절차를 따른다. 별도 연습 트랙은 제작하지 않는다.
 
 1. **기존 시험 재사용:** C1/카메라/IMU 단독 수신, IMU 원시 수신, 엔코더 손 회전, 서보 무부하 왕복, 배선/커넥터 확인은 이미 기록이 있으므로 동일 조건으로 반복하지 않는다.
 2. **4방향 벽 확인:** 작은 벽 공간에서 차량을 네 방향으로 놓고 C1 벽 반환과 방향, IMU yaw 변화 부호를 확인한다. 짧은 이동/회전에서 엔코더 방향도 함께 대조한다. 벽 직각도나 기준 위치를 모르면 절대 각도·거리 보정으로 주장하지 않는다.
@@ -144,6 +146,12 @@
 
 이 시간 제한형 확인은 정밀한 교정 전수 절차가 아니다. 눈에 띄는 방향 오류·출력 부족·기구 간섭처럼 실제 주행을 막는 문제를 먼저 찾아 수정하는 목적이다. 공식 코스는 대회장 연습 시간에만 확인한다.
 
+### 설치 전 소프트웨어 인계에서 남은 항목
+
+- r430에서 영점 export와 MCU에 같은 선택 `command_limit`·축거·윤거·바퀴각 한계를 전달하도록 수정했다. 축소 실장 한계도 검사하며 실제 count 범위를 넓혀 통과시키지 않는다. 관련45개 검사 요구를44통과 뒤 누락 시험 의존성 보완/1개 재검사로 충족했고 Python/C++ 양방향14표본을 대조했다. 새 IDF 빌드·flash·실물 검증은 아니다. [통합 결과](../reports/RUNTIME_SENSOR_INTEGRATION_2026_11_12.md#11-13-panel-steering-integration).
+- r439의 [`runtime_installed_limits.py`](../../scripts/runtime_installed_limits.py)를 공통 이관했다. 실제 선택한 설치 bundle과 운영 YAML을 입력하면 planner·guard 두 조향 상한과 host 인자를 함께 생성한다. MCU 원상한을 바꾸지 않고 float32 송신값을 하향 정규화하며, 기존 YAML의 더 작은 상한을 자동 확대하지 않는다. 두 ROS 노드는 생성한 같은 params-file을, host는 생성한 인자를 사용해야 한다. 수동 패널은 별도로 `manual_steering_limit_rad:=min(0.2, 생성 상한)`을 전달한다. Windows11검사·r401 전체 parameter 보존 대조를 마쳤으며 실장값 선택/실제 launch/flash는 아직이다. [명령과 검증 범위](../../artifacts/validation/2026-11-13/installed_limit_chain_r439_v1/RESULT.md) · [이관 영수증](../../artifacts/validation/2026-11-13/installed_limit_chain_r439_v1/integration.json).
+- 명령 만료/물리 STOP 처리와 MCU 루프 자체가 멈출 때의 출력 상태는 별개다. r432에서 이전 r416 생성 설정의 interrupt watchdog800ms·task watchdog5s/idle task 감시를 확인했다. 앱 제어 루프 자체의 명시적 task watchdog 등록/급식은 코드에서 확인되지 않아 루프 고장 시 독립 출력 차단으로 해석하지 않는다. 실제 출력 정지는 기존 최소 STOP 확인에 포함한다. 이 문서만으로 MCU 고장 시 독립 차단을 확인했다고 하지 않는다.
+
 ## 9. 이 문서에서 확정하지 않는 것
 
 - CF-0108의 실제 패드 배열·정상 동작(YF08E 마킹에 의한 TXS0108E 식별은 11/12 반영)
@@ -153,11 +161,15 @@
 - Adapter A UART 커넥터의 실제 보드 실크와 서보 케이블 핀 배열
 - 6S 배터리 전압이 24 V 아래일 때 M01의 안정 동작
 - 실제 서보 조향 전류와 전압 강하
-- 물리 STOP의 펌웨어 구현·실물 동작·규정 인정. **11/13 사용자 지시의 결선 설계는 GPIO8↔2선 유지형 스위치↔TGND로 반영 완료**했으며 [통합 배선도](schematics/esp32_gpio_wiring_v1.html)를 따른다.
+- 물리 STOP의 설치 상태·실제 출력 정지·규정 인정. GPIO8 입력을 처리하는 runtime 펌웨어 코드는 구현되어 있으나 장착 동작과 구별한다. **11/13 사용자 지시의 결선 설계는 GPIO8↔2선 유지형 스위치↔TGND로 반영 완료**했으며 [통합 배선도](schematics/esp32_gpio_wiring_v1.html)를 따른다.
 
 위 항목은 임의 회로를 추가해 덮지 않는다. 제조사 자료나 실물 측정으로 확인한 뒤 필요한 최소한의 연결만 추가한다.
 
 ## 조립 전 관측 실행
+
+**11/13 후속 운영 명령 연결:** [설치 상한·실물 추정 입력·패널·로그를 합친 명령 조합](../../artifacts/validation/2026-11-13/operator_handover_r453_v1/MINIMAL_HANDOVER.md)을 코드와 대조했다. 실물 실행 전의 명령안이며 설치 bundle/영점/출력값을 대신 생성하지 않는다. 기존 관측 후보OFF 구성은 유지할 수 있다. estimated 후보를 명시 선택할 때는 생성한 같은 YAML/host 상한을 유지하고, planner와 guard 양쪽에 `host_estimated_crop_v1`/crop를, G1에 `r396_v1`을 함께 지정한다. `corner=off`에 scope만 붙이는 조합은 현재 validator가 거절한다. `timing_verified=false`와 G1 전용 진입을 유지한다. 수동 로그는 자율 사건 시각이 없으므로 전체 export와 단발/host 원자료를 함께 회수한다. [대조 근거와 미확정 입력](../../artifacts/validation/2026-11-13/operator_handover_r453_v1/REVIEW.md).
+
+아래는 개별 관측을 위한 preview이며 최종 형상+B3+출력 host의 운영 실행 명령이 아니다. 최종 profile을 받는 planner/guard와 host의 세 명령, 필수 clock JSON·motor feedback JSON·포트 단일 소유는 [운영 진입 템플릿](../../artifacts/validation/2026-11-13/runtime_entry_audit_r415_v1/REVIEW.md#운영-진입-명령-3개)을 따른다. 템플릿은 실제 실차 송신을 실행한 결과가 아니며, `--enable-drive-wire` 없는 host는 출력 전송이 차단된다. 실물 추정시각을 verified로 바꾸지 않는다. 원 r415 템플릿의 `g1_current_corner_budget=off`는 그대로 보존한다. 후속 r444는 false/host_estimated를 유지하는 별도 명시 scope를 준비했으며, 기존 템플릿에 r396만 단독 추가해서는 안 된다. 선택 조합과 검증 한계는 [r444 결과](../../artifacts/validation/2026-11-13/estimated_observation_r444_v1/RESULT.md)를 따른다. 실제 선택 profile/실물 주행은 아직 미확인이다.
 
 `scripts/run_hardware_sensor_preview.py`는 실제 C1·IMU·선택 B0390을 공통 비구동 노드에 연결하고 기록/종료를 묶는다. 펌웨어 업로드·ARM·DRIVE·가상 엔코더 입력은 하지 않는다. 원 `imu_probe` 앱은 `--imu-source probe`(기본), 출력 없는 통합 센서 앱은 `--imu-source sensor-link`를 명시한다. 앱 종류를 자동 변경하지 않는다. 카메라 미선택 시 영상 발행/처리 프로세스는 실행하지 않는다.
 

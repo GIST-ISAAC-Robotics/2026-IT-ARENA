@@ -56,7 +56,7 @@ def thaw(value):
 
 
 def snapshot_call(scan, history, reference_s, epoch, speed, side, steering, dt,
-                  verified, rear_half_angle, *, timing_policy=None):
+                  verified, rear_half_angle, *, timing_policy=None, vehicle_marker_regions=None):
     timing_policy = history.scan_time_policy if timing_policy is None else timing_policy
     # frozen MeasurementScan의 중간 deepcopy를 생략하고 아래 freeze에서
     # 최종 저장 사본을 만든다. 원시 배열/이력/비유한값을 줄이거나 공유하지 않는다.
@@ -67,6 +67,7 @@ def snapshot_call(scan, history, reference_s, epoch, speed, side, steering, dt,
             **{k:getattr(scan,k) for k in ('angle_min','angle_increment','range_min','range_max','time_increment')}})
     return freeze({
         'scan': raw,
+        **({'vehicle_marker_regions':vehicle_marker_regions} if vehicle_marker_regions is not None else {}),
         # values는 반지름/기어비/바이어스 적용 뒤 값. 재생에서 중복 환산하지 않는다.
         'history': {k: {'times': list(getattr(history, k).times),
                         'values': list(getattr(history, k).values)} for k in ('wheels', 'gyro')},
@@ -97,7 +98,13 @@ def controller_mode(follow):
 
 
 class FollowTrace:
-    def __init__(self, path, motion_config, follow_config, capacity=128, *, mode='g1_follow', execution_config=None):
+    def __init__(self, path, motion_config, follow_config, capacity=128, *, mode='g1_follow', execution_config=None,
+                 current_corner_budget='off', observation_input_scope='verified_native_simulation_v1'):
+        from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, validate_observation_scope
+        validate_observation_scope(observation_input_scope)
+        if (type(current_corner_budget) is not str or current_corner_budget not in ('off', 'r396_v1')
+                or (current_corner_budget != 'off' and mode != 'g1_g2_handoff_trial')):
+            raise ValueError('registered handoff current corner trace policy required')
         if mode not in ('g1_follow', 'r0_plus_candidate', 'm3_execution_trial', 'g2_entry_trial', 'g1_g2_handoff_trial', 'p22_entry_trial', 'p22_route_trial'):
             raise ValueError('unsupported decision trace mode')
         if mode == 'm3_execution_trial':
@@ -142,7 +149,10 @@ class FollowTrace:
                         'simulation_trial_only': True, 'vision_events': 'p22_frame'}
         self.emit('header', {**identity,
                             'history_units': {'wheels': 'm/s_after_conversion', 'gyro': 'rad/s_after_bias'},
-                            'motion_config': asdict(motion_config), 'follow_config': asdict(follow_config)})
+                            'motion_config': asdict(motion_config), 'follow_config': asdict(follow_config),
+                            **({'current_corner_budget': current_corner_budget} if current_corner_budget != 'off' else {}),
+                            **({'observation_input_scope': observation_input_scope}
+                               if observation_input_scope != SIMULATION_SCOPE else {})})
 
     def _write(self, event):
         self.stream.write(json.dumps(event, ensure_ascii=False, allow_nan=False, separators=(',', ':'))+'\n')

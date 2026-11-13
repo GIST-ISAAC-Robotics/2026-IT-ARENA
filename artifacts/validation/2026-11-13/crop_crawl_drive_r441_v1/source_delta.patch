@@ -1,0 +1,578 @@
+--- r437/src/arena_autonomy/arena_autonomy/race_ops_node.py
++++ r441/src/arena_autonomy/arena_autonomy/race_ops_node.py
+@@ -1,7 +1,8 @@
+ """온보드 경기 운영 어댑터: 제한 HTTP API ↔ 기존 /race/command·MCU 서비스.
+ 
+-제어 콜백과 다른 프로세스다. /drive, /drive/safe에 발행하지 않는다. 개발 모드에는 정지 중 속도 상한 설정만 제공한다.
+-HTTP 스레드는 큐에만 넣고 ROS 호출은 단일 실행기 타이머가 수행한다. 파일 기록은 별도 스레드다.
++제어 콜백과 다른 프로세스다. 기본 패널은 정지 중 속도 상한 설정을 제공한다.
++명시적인 별도 수동 구성만 기존 jog의 /drive 발행을 사용하며 /drive/safe에 직접 발행하지 않는다.
++ROS 호출은 단일 실행기 타이머가 수행한다. 파일 기록과 선택형 JPEG 처리는 별도 스레드다.
+ """
+ import hmac
+ import json
+@@ -24,6 +25,7 @@
+ from arena_autonomy.race_ops_core import ARMED_MCU, LATCHED_MCU, OpsCore, token
+ from arena_autonomy.race_ops_page import PAGE
+ from arena_autonomy.race_ops_manual import ManualPanel, graph_reason
++from arena_autonomy.race_ops_preview import Preview
+ from arena_autonomy.development_jog import fresh_status, valid_mcu, mcu_identity
+ from arena_vehicle_interface.node_lifecycle import run_node
+ from arena_vehicle_interface.queued_log import QueuedLog
+@@ -96,9 +98,15 @@
+             client = query.get('client', [''])[0]
+             if token(client) and role == 'operator':
+                 ops.core.client_seen(client, wall)
++            if token(client):ops.preview.keepalive(client)
+             state = ops.core.view(wall, time.time())
+             state['manual'] = ops.manual.snapshot()
++            state['preview'] = ops.preview.snapshot()
+             return self.respond(200, json.dumps(state, ensure_ascii=False, allow_nan=False), X_Arena_Role=role)
++        if url.path == '/api/preview.jpg':
++            data = ops.preview.jpeg()
++            if data is None:return self.respond(404, json.dumps(dict(error='preview_off_stale_or_pending')))
++            return self.respond(200, data, 'image/jpeg')
+         if url.path in ('/api/export.csv', '/api/export.html'):
+             seconds = float(query.get('seconds', ['120'])[0])
+             table = race_ops_export.merge(ops.core.export_rows(max(1., min(seconds, 3600.)), wall))
+@@ -113,9 +121,9 @@
+         if role is None:
+             return None
+         path = urlsplit(self.path).path
+-        if path not in ('/api/command', '/api/manual'):
++        if path not in ('/api/command', '/api/manual', '/api/preview'):
+             return self.respond(404, json.dumps(dict(error='not_found')))
+-        if role != 'operator':
++        if role != 'operator' and path != '/api/preview':
+             return self.respond(403, json.dumps(dict(error='read_only')))
+         size = int(self.headers.get('Content-Length', '0') or 0)
+         if not 0 < size <= MAX_BODY:
+@@ -124,6 +132,14 @@
+             body = json.loads(self.rfile.read(size))
+         except ValueError:
+             return self.respond(400, json.dumps(dict(error='invalid_json')))
++        if path == '/api/preview':
++            if type(body) is not dict or not token(body.get('client')):
++                return self.respond(400, json.dumps(dict(error='invalid_preview_client')))
++            try:
++                result = self.server.ops.preview.configure(body.get('config'), body['client'])
++            except ValueError as error:
++                return self.respond(400, json.dumps(dict(error=str(error))))
++            return self.respond(200, json.dumps(result, ensure_ascii=False, allow_nan=False))
+         if (type(body) is not dict or not token(body.get('request')) or type(body.get('op')) is not str
+                 or not token(body.get('client'))):
+             return self.respond(400, json.dumps(dict(error='schema')))
+@@ -180,6 +196,7 @@
+         self.manual = ManualPanel(str(values['operation_mode']), float(values['manual_maximum_mps']),
+             float(values['manual_steering_limit_rad']), str(values['manual_output_root']))
+         self.manual_prepare = None
++        self.preview = Preview()
+         self.create_timer(.02, self.tick, clock=Clock(clock_type=ClockType.STEADY_TIME))
+         self.server = ThreadingHTTPServer((str(values['host']), int(values['port'])), Handler)
+         self.server.daemon_threads = True
+@@ -552,6 +569,7 @@
+ 
+     def tick(self):
+         wall = time.monotonic()
++        if self.preview.needs_sync():self.preview.sync(self)
+         while (entry := self.core.next_action()) is not None:
+             self.execute(entry)
+         self.poll_calls(wall)
+@@ -563,6 +581,7 @@
+         self.tick_log()
+ 
+     def destroy_node(self):
++        self.preview.close(self)
+         manual_active = (self.manual.mode == 'manual' and (self.manual.prepared_identity is not None
+                          or self.manual_prepare is not None or self.manual.process is not None))
+         if manual_active:
+--- r437/src/arena_autonomy/arena_autonomy/race_ops_page.py
++++ r441/src/arena_autonomy/arena_autonomy/race_ops_page.py
+@@ -23,6 +23,9 @@
+ input{font:inherit;background:#0e1114;color:#eee;border:1px solid #444;padding:3px 5px;width:150px}
+ #list{max-height:230px;overflow:auto;font-size:12px}#auth{padding:6px 10px;background:#26211a}
+ #why{min-height:17px;color:#ffcc80;font-size:12px}
++.preview{grid-column:1/-1}.previewgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:8px}
++.preview canvas,.preview img{display:block;width:100%;max-width:640px;background:#101419;border:1px solid #39424c}
++.preview input.topic{width:min(100%,320px)}.preview label{display:inline-block;margin:3px 5px 3px 0}
+ </style></head><body>
+ <div id="auth">차량 <input id="vehicle" placeholder="차량 이름"> 토큰 <input id="token" type="password" placeholder="토큰"> <button id="login">연결</button> <span id="authmsg" class="muted"></span></div>
+ <header><span id="badge">연결 전</span><b id="vid">-</b><span id="conn">-</span><span id="race" class="muted"></span></header>
+@@ -57,23 +60,68 @@
+ <div class="row"><button id="manualprepare" disabled>수동 준비(해제·ARM)</button><button id="manualrun" disabled>입력값으로 실행</button><button id="manualstop" disabled>수동 중지 / STOP</button></div>
+ <p id="manualresult" class="muted">자동 ARM·자동 재실행은 하지 않습니다. 종료 시 0목표·명시 STOP을 요청합니다.</p>
+ </section>
++<section class="preview"><h2>선택형 센서 미리보기 <span class="muted">(기본 OFF · 기존 ROS 입력만 사용)</span></h2>
++<p class="muted">원측정 점이며 벽·차량 분류 결과가 아닙니다. 운동 보정 전·장착 미확정 센서 좌표입니다. 무반환/NaN은 빈 공간이라는 뜻이 아닙니다. 영상은 최대640px·2Hz, 라이다는 최대720점·5Hz로 표시합니다.</p>
++<div class="row"><label><input id="previewlidar" type="checkbox" style="width:auto"> 라이다</label><label><input id="previewcamera" type="checkbox" style="width:auto"> 카메라</label><button id="previewapply">미리보기 적용</button><button id="previewoff">모두 끄기</button><span id="previewstate" class="muted">OFF</span></div>
++<label>라이다 형식 <select id="previewkind"><option value="native">native JSON</option><option value="laser_scan">LaserScan</option></select></label>
++<label>라이다 토픽 <input id="previewlidartopic" class="topic" value="/scan/native"></label>
++<label>RGB 토픽 <input id="previewcameratopic" class="topic" value="/camera/color/image_raw"></label>
++<div class="previewgrid"><div><label>표시 반경 m <input id="previewrange" type="number" min="0.25" max="12" step="0.25" value="3"></label>
++<canvas id="lidarcanvas" width="640" height="480" aria-label="운동 보정 전 라이다 반환 점"></canvas><div id="lidarmeta" class="muted">OFF</div><div id="lidarpoint" class="muted">점 위에 포인터를 올리면 원측정 거리를 표시합니다.</div></div>
++<div><img id="camerapreview" alt="카메라 미리보기 OFF" hidden><div id="camerameta" class="muted">OFF</div></div></div>
++</section>
+ </main>
+ <script>
+ "use strict";
+ const $=id=>document.getElementById(id);
+ const client=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join('');
+ let auth=null,last=null,lastOk=0,busy=false,speedDirty=false,speedInitialized=false;
++let previewLidar=null,previewLidarSequence=null,previewCameraSequence=null,previewCameraUrl=null,previewImageBusy=false,previewCanvasDrawn=false;
+ const rid=()=>Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>b.toString(16).padStart(2,'0')).join('');
+ const fmt=(v,d=2)=>v===null||v===undefined?'-':typeof v==='number'?v.toFixed(d):String(v);
+ const speedText=v=>typeof v==='number'?fmt(v,3)+' m/s / '+fmt(v*3.6,3)+' km/h':'미확인';
+ function convertSpeed(from,to,factor){const raw=$(from).value,v=Number(raw);$(to).value=raw!==''&&Number.isFinite(v)?String(Number((v*factor).toFixed(9))):''}
+ function distancePreview(){const v=Number($('manualspeed').value),t=Number($('manualseconds').value);$('manualdistance').textContent=Number.isFinite(v*t)&&v>0&&t>0?fmt(v*t,3)+' m':'입력값 확인'}
++function clearCamera(){if(previewCameraUrl)URL.revokeObjectURL(previewCameraUrl);previewCameraUrl=null;$('camerapreview').hidden=true;$('camerapreview').removeAttribute('src');previewCameraSequence=null}
++function drawLidar(){
++ previewCanvasDrawn=true;
++ const canvas=$('lidarcanvas'),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2;
++ const entered=Number($('previewrange').value),range=Number.isFinite(entered)&&entered>=.25&&entered<=12?entered:3,scale=(Math.min(w,h)/2-25)/range;
++ ctx.clearRect(0,0,w,h);ctx.strokeStyle='#32404b';ctx.fillStyle='#8a939c';ctx.font='12px sans-serif';
++ for(let i=1;i<=3;i++){const radius=range*i/3;ctx.beginPath();ctx.arc(cx,cy,radius*scale,0,Math.PI*2);ctx.stroke();ctx.fillText(fmt(radius,1)+' m',cx+4,cy-radius*scale+13)}
++ ctx.beginPath();ctx.moveTo(cx,15);ctx.lineTo(cx,h-15);ctx.moveTo(15,cy);ctx.lineTo(w-15,cy);ctx.stroke();ctx.fillText('+x 센서축',cx+5,14);ctx.fillText('+y 센서축',10,cy-7);
++ ctx.fillStyle=previewLidar?.stale?'#927749':'#55d6e8';
++ for(const p of previewLidar?.points||[]){if(p[2]>range)continue;ctx.fillRect(cx-p[1]*scale-1.5,cy-p[0]*scale-1.5,3,3)}
++ if(!previewLidar){ctx.fillStyle='#8a939c';ctx.fillText('유효 반환 점 없음 / OFF — 빈 공간 판정 아님',30,h-15)}
++}
++async function cameraPreview(row){
++ if(previewImageBusy||row.sequence===previewCameraSequence)return;
++ previewImageBusy=true;
++ try{const response=await fetch('/api/preview.jpg?sequence='+row.sequence,{headers:headers(),cache:'no-store'});if(!response.ok)throw Error('JPEG '+response.status);
++  const blob=await response.blob();if(!last?.preview?.config.camera||!$('previewcamera').checked)return;
++  if(previewCameraUrl)URL.revokeObjectURL(previewCameraUrl);previewCameraUrl=URL.createObjectURL(blob);previewCameraSequence=row.sequence;
++  $('camerapreview').src=previewCameraUrl;$('camerapreview').hidden=false;
++ }catch(error){$('camerameta').textContent='미리보기 오류: '+error.message}finally{previewImageBusy=false}
++}
++function renderPreview(p){
++ if(!p)return;const cfg=p.config;
++ $('previewstate').textContent=p.active?'ON · 조회 만료 시 자동 해제':'OFF';
++ const lidar=cfg.lidar?p.lidar:null;
++ if(lidar){$('lidarmeta').textContent=(lidar.stale?'오래됨 · ':'')+lidar.frame+' · 수신 '+fmt(lidar.receipt_age_s,2)+'s 전 · 표시 '+lidar.drawn_count+'/'+lidar.raw_count+' · 무효/무반환 '+lidar.invalid_count+' · 센서 좌표/운동보정 전';
++  if(previewLidarSequence!==lidar.sequence||previewLidar?.stale!==lidar.stale){previewLidar=lidar;previewLidarSequence=lidar.sequence;drawLidar()}}
++ else{const hadPoints=previewLidar!==null;previewLidar=null;previewLidarSequence=null;$('lidarmeta').textContent=p.errors.lidar?'오류: '+p.errors.lidar:cfg.lidar?'새 라이다 입력 대기':'OFF';if(hadPoints||!previewCanvasDrawn)drawLidar()}
++ const camera=cfg.camera?p.camera:null;
++ if(camera){$('camerameta').textContent=(camera.stale?'오래됨 · ':'')+camera.frame+' · 수신 '+fmt(camera.receipt_age_s,2)+'s 전 · '+camera.width+'×'+camera.height+' · 취득시각 미검증';if(!camera.stale)cameraPreview(camera)}
++ else{$('camerameta').textContent=p.errors.camera?'오류: '+p.errors.camera:cfg.camera?'새 RGB 입력 대기':'OFF';if(!cfg.camera)clearCamera()}
++}
+ const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+ const headers=()=>({'X-Arena-Token':auth.token,'X-Arena-Vehicle':auth.vehicle,'Content-Type':'application/json'});
+ const STAGE={queued:'접수',sent:'전송, 응답 대기',policy_accepted:'정책 수락',policy_rejected:'정책 거절',rejected_by_adapter:'어댑터 거절',unknown_after_send:'결과 미확인',preparing:'준비 중',permitted:'주행 허가',cancelled:'취소'};
+ const OPS={stop:'STOP',recovery_reset:'복구 RESET',resume_start:'재개 START',prepare_start:'출발 준비',manual_visual_start:'신호 확인 후 수동 출발',new_race:'새 경기',restore_race:'같은 경기 복구',set_speed_limit:'운영 속도 상한'};
+ function rows(id,list){$(id).innerHTML=list.map(r=>'<tr>'+r.map(c=>c).join('')+'</tr>').join('')}
+-function setStale(text){$('conn').textContent=text;$('conn').className='stale'}
++function setStale(text){$('conn').textContent=text;$('conn').className='stale';
++ if(last?.preview?.active){$('previewstate').textContent='연결 미확인 · 마지막 입력 오래됨';clearCamera();
++  if(previewLidar&&!previewLidar.stale){previewLidar={...previewLidar,stale:true};drawLidar()}}}
+ function render(s){
+  last=s;$('badge').textContent=s.state_label;$('badge').className=s.state;$('vid').textContent=s.vehicle_id;
+  const b=s.binding,age=s.connection.status_age_s;
+@@ -118,6 +166,7 @@
+   if(mcuFresh){$('conn').textContent='MCU '+fmt(s.connection.mcu_age_s,3)+'s 전';$('conn').className=''}
+   $('why').textContent='수동 구성에서는 경기 START/RESET·신호 수동 출발을 사용하지 않습니다.'}
+  distancePreview();
++ renderPreview(s.preview);
+ }
+ async function poll(){
+  if(!auth)return;
+@@ -157,6 +206,22 @@
+ $('manualrun').onclick=()=>{const m=last?.manual,v=Number($('manualspeed').value),t=Number($('manualseconds').value),a=Number($('manualangle').value);
+  if(!m||![v,t,a].every(Number.isFinite)||v<=0||v>m.pulse_limit_mps||t<.05||t>2||Math.abs(a)>m.steering_limit_deg){$('manualresult').textContent='입력값이 서버 범위를 벗어났습니다. 값을 줄여 실행하지 않습니다.';return}
+  sendManual('run',{speed_mps:v,seconds:t,steering_deg:a})};
++async function configurePreview(off=false){
++ if(!auth){$('previewstate').textContent='차량/토큰을 먼저 연결하십시오.';return}
++ if(off){$('previewlidar').checked=false;$('previewcamera').checked=false;previewLidar=null;drawLidar();clearCamera()}
++ const config={lidar:$('previewlidar').checked,camera:$('previewcamera').checked,lidar_type:$('previewkind').value,
++  lidar_topic:$('previewlidartopic').value.trim(),camera_topic:$('previewcameratopic').value.trim()};
++ try{const response=await fetch('/api/preview',{method:'POST',headers:headers(),body:JSON.stringify({client,config})});
++  const result=await response.json();if(!response.ok)throw Error(result.error||response.status);renderPreview(result);poll()}
++ catch(error){$('previewstate').textContent='미리보기 설정 오류: '+error.message}
++}
++$('previewapply').onclick=()=>configurePreview();$('previewoff').onclick=()=>configurePreview(true);
++$('previewrange').oninput=drawLidar;
++$('previewkind').onchange=()=>{$('previewlidartopic').value=$('previewkind').value==='native'?'/scan/native':'/scan'};
++$('lidarcanvas').onmousemove=event=>{if(!previewLidar)return;const canvas=$('lidarcanvas'),rect=canvas.getBoundingClientRect(),range=Number($('previewrange').value)||3,scale=(Math.min(canvas.width,canvas.height)/2-25)/range;
++ const px=(event.clientX-rect.left)*canvas.width/rect.width,py=(event.clientY-rect.top)*canvas.height/rect.height;
++ let best=null,dist=12;for(const p of previewLidar.points){if(p[2]>range)continue;const d=Math.hypot(px-(canvas.width/2-p[1]*scale),py-(canvas.height/2-p[0]*scale));if(d<dist){dist=d;best=p}}
++ $('lidarpoint').textContent=best?'원측정 거리 '+fmt(best[2],3)+' m · 센서 x '+fmt(best[0],3)+' / y '+fmt(best[1],3)+' m':'가까운 표시 점 없음 — 빈 공간 판정 아님'};
+ $('newrace').onclick=()=>{send('new_race','NEW_RACE');$('newok').checked=false};$('restore').onclick=()=>{send('restore_race','SAME_RACE');$('restoreok').checked=false};
+ function exportLink(id,kind){$(id).onclick=async e=>{e.preventDefault();const r=await fetch('/api/export.'+kind+'?seconds=120',{headers:headers()});const u=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=u;a.download='arena_events.'+kind;a.click();URL.revokeObjectURL(u)}}
+ exportLink('csv','csv');exportLink('html','html');
+--- r437/src/arena_autonomy/arena_autonomy/race_ops_preview.py
++++ r441/src/arena_autonomy/arena_autonomy/race_ops_preview.py
+@@ -0,0 +1,190 @@
++"""선택형 ROS 관측 미리보기. 장치/파일/제어 publisher를 열지 않는다."""
++import json
++import math
++import re
++import threading
++import time
++
++
++def topic(value):
++    return isinstance(value,str) and len(value)<=200 and re.fullmatch(r'/(?:[A-Za-z_][A-Za-z0-9_]*)(?:/[A-Za-z_][A-Za-z0-9_]*)*',value)
++
++
++def config(value):
++    if not isinstance(value,dict) or set(value)!={'lidar','camera','lidar_type','lidar_topic','camera_topic'}:
++        raise ValueError('preview config fields invalid')
++    if any(type(value[k]) is not bool for k in ('lidar','camera')):
++        raise ValueError('preview enable flags must be boolean')
++    if value['lidar_type'] not in ('laser_scan','native') or not all(topic(value[k]) for k in ('lidar_topic','camera_topic')):
++        raise ValueError('explicit ROS message type and absolute topic required')
++    return dict(value)
++
++
++def stamp(message):
++    return message.header.stamp.sec+message.header.stamp.nanosec*1e-9
++
++
++def lidar_points(message,kind):
++    """점 사이 보간/무반환 채움/벽 분류/운동 보정 없이 원시 유효 반환만 축약한다."""
++    if kind=='native':
++        text=message.data
++        if not isinstance(text,str) or len(text)>2_000_000:raise ValueError('native payload too large')
++        raw=json.loads(text)
++        if raw.get('schema')!='arena_native_lidar_v1':raise ValueError('unknown native schema')
++        ranges,angles=raw['ranges_m'],raw['angles_rad']
++        if len(ranges)!=len(angles):raise ValueError('native array lengths differ')
++        frame=raw['source_frame_id'];minimum=raw['range_min_m'];maximum=raw['range_max_m']
++        source_stamp=None;basis=str(raw.get('time_basis','unverified'))[:120]
++    else:
++        ranges=message.ranges;angles=[message.angle_min+i*message.angle_increment for i in range(len(ranges))]
++        frame=message.header.frame_id;minimum=message.range_min;maximum=message.range_max
++        source_stamp=stamp(message);basis='header_stamp_not_verified_acquisition'
++    if len(ranges)>10000 or not 0<=minimum<maximum or not math.isfinite(maximum):
++        raise ValueError('invalid range envelope or count')
++    points=[];invalid=0
++    for distance,angle in zip(ranges,angles):
++        if (type(distance) not in (int,float) or type(angle) not in (int,float)
++            or not math.isfinite(distance) or not math.isfinite(angle) or not minimum<=distance<=maximum or distance<=0):
++            invalid+=1;continue
++        points.append([distance*math.cos(angle),distance*math.sin(angle),distance])
++    valid=len(points)
++    if valid>720:points=[points[math.floor(i*valid/720)] for i in range(720)]
++    return dict(points=points,frame=str(frame)[:200],source_stamp_s=source_stamp,time_basis=basis,
++        raw_count=len(ranges),valid_count=valid,invalid_count=invalid,drawn_count=len(points),subsampled=valid>720,
++        coordinates='sensor_frame_mount_unverified',motion_compensated=False,classification=False)
++
++
++def jpeg_image(message):
++    """worker 전용. 원영상은 저장하지 않으며 JPEG 최대 가로640 px를 반환한다."""
++    import cv2
++    import numpy as np
++    channels={'rgb8':3,'bgr8':3,'rgba8':4,'bgra8':4,'mono8':1}
++    count=channels.get(message.encoding)
++    if count is None or not 0<message.width<=4096 or not 0<message.height<=2160:
++        raise ValueError('unsupported RGB image format/size')
++    if message.step<message.width*count or len(message.data)!=message.step*message.height:
++        raise ValueError('invalid image step/data length')
++    view=np.frombuffer(message.data,dtype=np.uint8).reshape(message.height,message.step)
++    image=view[:,:message.width*count].reshape(message.height,message.width,count)
++    if message.width>640:
++        image=cv2.resize(image,(640,max(1,round(message.height*640/message.width))),interpolation=cv2.INTER_AREA)
++    conversion={'rgb8':cv2.COLOR_RGB2BGR,'rgba8':cv2.COLOR_RGBA2BGR,'bgra8':cv2.COLOR_BGRA2BGR}
++    if message.encoding in conversion:image=cv2.cvtColor(image,conversion[message.encoding])
++    success,data=cv2.imencode('.jpg',image,[cv2.IMWRITE_JPEG_QUALITY,70])
++    if not success:raise ValueError('JPEG encode failed')
++    return data.tobytes(),dict(frame=str(message.header.frame_id)[:200],source_stamp_s=stamp(message),
++        width=int(image.shape[1]),height=int(image.shape[0]),encoding='jpeg',acquisition_time_verified=False)
++
++
++class Preview:
++    LEASE_S=3.
++    PERIOD={'lidar':.2,'camera':.5}
++
++    def __init__(self,wall=time.monotonic,encode=jpeg_image):
++        self.wall,self.encode=wall,encode
++        self.lock=threading.RLock();self.condition=threading.Condition(self.lock)
++        self.desired=dict(lidar=False,camera=False,lidar_type='native',
++            lidar_topic='/scan/native',camera_topic='/camera/color/image_raw')
++        self.active=None;self.client=None;self.lease_until=0.;self.generation=0
++        self.subscriptions={};self.pending={};self.cache={};self.errors={};self.next_at={}
++        self.worker=None;self.closed=False;self.serial=0;self.dirty=False
++
++    def configure(self,value,client):
++        selected=config(value)
++        if not isinstance(client,str) or not 1<=len(client)<=64:raise ValueError('preview client required')
++        with self.condition:
++            self.desired=selected;self.client=client;self.lease_until=self.wall()+self.LEASE_S
++            self.dirty=True
++            self.condition.notify_all()
++        return self.snapshot()
++
++    def keepalive(self,client):
++        with self.lock:
++            if client==self.client and (self.desired['lidar'] or self.desired['camera']):
++                self.lease_until=self.wall()+self.LEASE_S
++
++    def offer(self,name,message,generation):
++        with self.condition:
++            if generation!=self.generation or self.active is None or not self.active[name]:return
++            self.pending[name]=(message,self.wall(),generation)
++            self.condition.notify_all()
++
++    def sync(self,node):
++        """ROS thread 전용: ON/OFF/설정 변경시에만 구독을 만들거나 제거한다."""
++        with self.condition:
++            desired=dict(self.desired)
++            if self.closed or self.wall()>=self.lease_until:
++                desired.update(lidar=False,camera=False)
++                self.desired=desired
++            self.dirty=False
++            if desired==self.active:return
++            self.generation+=1;generation=self.generation
++            self.pending.clear();self.cache.clear();self.errors.clear();self.next_at.clear()
++            for handle in self.subscriptions.values():node.destroy_subscription(handle)
++            self.subscriptions.clear();self.active=desired
++            if desired['lidar'] or desired['camera']:
++                from rclpy.qos import QoSProfile,ReliabilityPolicy,DurabilityPolicy
++                from sensor_msgs.msg import LaserScan,Image
++                from std_msgs.msg import String
++                qos=QoSProfile(depth=1,reliability=ReliabilityPolicy.BEST_EFFORT,durability=DurabilityPolicy.VOLATILE)
++                if desired['lidar']:
++                    kind=LaserScan if desired['lidar_type']=='laser_scan' else String
++                    self.subscriptions['lidar']=node.create_subscription(kind,desired['lidar_topic'],
++                        lambda message:self.offer('lidar',message,generation),qos)
++                if desired['camera']:
++                    self.subscriptions['camera']=node.create_subscription(Image,desired['camera_topic'],
++                        lambda message:self.offer('camera',message,generation),qos)
++                if self.worker is None or not self.worker.is_alive():
++                    self.worker=threading.Thread(target=self.work,name='race_preview_encoder',daemon=True);self.worker.start()
++            self.condition.notify_all()
++
++    def needs_sync(self):
++        return self.dirty or bool(self.subscriptions and self.wall()>=self.lease_until)
++
++    def work(self):
++        while True:
++            with self.condition:
++                if self.closed or not self.active or not (self.active['lidar'] or self.active['camera']):
++                    self.worker=None
++                    return
++                now=self.wall()
++                eligible=[name for name in self.pending if now>=self.next_at.get(name,0.)]
++                if not eligible:
++                    delay=min([max(.001,self.next_at.get(name,now)-now) for name in self.pending] or [.5])
++                    self.condition.wait(min(.5,delay));continue
++                name=eligible[0];message,received,generation=self.pending.pop(name)
++                kind=self.active['lidar_type'];self.next_at[name]=now+self.PERIOD[name]
++            try:
++                if name=='camera':data,metadata=self.encode(message)
++                else:data,metadata=None,lidar_points(message,kind)
++                error=None
++            except Exception as exc:
++                data=None;metadata=None;error=type(exc).__name__+': '+str(exc)[:160]
++            with self.lock:
++                if generation!=self.generation or not self.active or not self.active[name]:continue
++                if error:self.errors[name]=error;self.cache.pop(name,None)
++                else:
++                    self.serial+=1;self.errors.pop(name,None)
++                    self.cache[name]=dict(metadata,received_wall_s=received,sequence=self.serial,data=data)
++
++    def snapshot(self):
++        with self.lock:
++            result=dict(config=dict(self.desired),active=bool(self.active and (self.active['lidar'] or self.active['camera'])),
++                lease_remaining_s=max(0.,self.lease_until-self.wall()),errors=dict(self.errors),
++                lidar=None,camera=None,default_off=True)
++            for name,row in self.cache.items():
++                age=max(0.,self.wall()-row['received_wall_s'])
++                result[name]={k:v for k,v in row.items() if k not in ('data','received_wall_s')}
++                result[name].update(receipt_age_s=age,stale=age>1.)
++            return result
++
++    def jpeg(self):
++        with self.lock:
++            row=self.cache.get('camera')
++            return None if row is None or self.wall()-row['received_wall_s']>1. else row['data']
++
++    def close(self,node):
++        with self.condition:
++            worker=self.worker;self.closed=True;self.condition.notify_all()
++        self.sync(node)
++        if worker is not None:worker.join(timeout=2.)
+--- r437/src/arena_autonomy/arena_autonomy/race_runtime_policy/crop_current_candidate.py
++++ r441/src/arena_autonomy/arena_autonomy/race_runtime_policy/crop_current_candidate.py
+@@ -1,4 +1,4 @@
+-"""기존 current0의 동일 crop 성분에만 한 목표를 재검사. 기본/실물 미선택."""
++"""동일 crop 성분 재검사와 거의 정지한 자기 가림의 단일 저속 재검사. 기본/실물 미선택."""
+ import math
+ from arena_autonomy import pass_release_trial as ps
+ from arena_autonomy.follow_trace import thaw
+@@ -10,6 +10,41 @@
+ 
+ 
+ def try_from_current_result(before,data,scene,history,cfg,*,registered_environment,core_rebase):
++    first=_try_once(before,data,scene,history,cfg,
++        registered_environment=registered_environment,core_rebase=core_rebase,target_cap=.2)
++    if first is None or first is before or first['speed_mps']!=0:return first
++    diagnostic=first.get(DIAGNOSTIC) or {}
++    region=diagnostic.get('region') or {}
++    # 이미 통과한 양수 판단과 crop 관측 자체의 실패에는 새 계산을 추가하지 않는다.
++    # 측정 속도는 그대로 유지하고, 자기 후측방 가림만 남은 거의 정지 상태에 한정한다.
++    if (diagnostic.get('applied') is not False
++            or diagnostic.get('reason')!='current_crop_full_region_rejected'
++            or (diagnostic.get('proof') or {}).get('accepted') is not True
++            or diagnostic.get('blocked') not in
++               ('large_motion_masked_toward_left','large_motion_masked_toward_right')
++            or region.get('queries',0)<=0 or region.get('masked_front_samples')!=0
++            or not 0<=diagnostic['measured_speed_mps']<=.15
++            or diagnostic['requested_target_mps']<=.1):
++        return first
++    # 첫 proof를 재사용하지 않는다. 현재 점유/제동·전체 이동 외곽·crop 관측을 모두 다시 검사한다.
++    second=_try_once(before,data,scene,history,cfg,
++        registered_environment=registered_environment,core_rebase=core_rebase,target_cap=.1)
++    retry=second.get(DIAGNOSTIC) or {}
++    accepted=retry.get('applied') is True
++    combined={**(retry if accepted else diagnostic),
++        'attempted_targets':2,
++        'final_full_checks':diagnostic.get('final_full_checks',0)+retry.get('final_full_checks',0),
++        'crawl_retry':dict(applied=accepted,cap_mps=.1,maximum_measured_speed_mps=.15,
++            previous_target_mps=diagnostic['requested_target_mps'],
++            previous_blocked=diagnostic['blocked'],
++            previous_masked_tail_extent_m=region.get('masked_tail_extent_m'),
++            result=retry)}
++    if not accepted:return {**first,DIAGNOSTIC:combined}
++    route={**second['current_route_proof'],'bounded_current_risk':combined}
++    return {**second,'current_route_proof':route,DIAGNOSTIC:combined}
++
++
++def _try_once(before,data,scene,history,cfg,*,registered_environment,core_rebase,target_cap):
+     if (before is None or before['speed_mps']!=0
+             or before.get('reason')!='route_current_large_motion_region_unobserved'
+             or not same_scan_scope(data,cfg,registered_environment=registered_environment)):
+@@ -21,8 +56,8 @@
+             or not 0<=measured<=.6 or not 0<dt<=.1 or output[0]<=0
+             or max(abs(output[1]),abs(previous),abs(before['steering_rad']))>cfg.max_steering_rad):
+         return before
+-    target=min(output[0],.2)
+-    diagnostic=dict(applied=False,original_target_mps=output[0],trial_target_cap_mps=.2,
++    target=min(output[0],target_cap)
++    diagnostic=dict(applied=False,original_target_mps=output[0],trial_target_cap_mps=target_cap,
+         requested_target_mps=target,measured_speed_mps=measured,maximum_measured_speed_mps=.6,
+         attempted_targets=1,final_full_checks=0,unknown_filled=False,source_timestamp_renewed=False,
+         old_occupancy_permission_reused=False,state_transition=False,continuous_sweep_certified=False,
+--- r437/tests/test_operator_preview.py
++++ r441/tests/test_operator_preview.py
+@@ -0,0 +1,120 @@
++"""미리보기 단위/수명 검사. 장치 입력/제어 성능 검증은 별도다."""
++import json
++import math
++import sys
++import threading
++import time
++from types import SimpleNamespace as N
++
++import pytest
++import numpy as np
++
++from arena_autonomy.race_ops_preview import Preview, config, lidar_points, jpeg_image
++
++
++def image(width=848,height=480,encoding='rgb8'):
++    data=np.zeros((height,width,3),np.uint8);data[:,:,0]=220
++    return N(width=width,height=height,step=width*3,encoding=encoding,data=data.tobytes(),
++        header=N(frame_id='b0390_receive_time_unverified',stamp=N(sec=10,nanosec=0)))
++
++
++def scan():
++    return N(ranges=[1.,float('nan'),float('inf'),0.,2.],angle_min=0.,angle_increment=math.pi/2,
++        range_min=.05,range_max=12.,header=N(frame_id='c1_sensor',stamp=N(sec=10,nanosec=0)))
++
++
++def selected(**kw):
++    return dict(lidar=True,camera=False,lidar_type='laser_scan',lidar_topic='/scan',camera_topic='/rgb',**kw)
++
++
++def test_raw_returns_do_not_fill_or_classify_nonreturns():
++    row=lidar_points(scan(),'laser_scan')
++    assert row['raw_count']==5 and row['valid_count']==2 and row['invalid_count']==3
++    assert row['drawn_count']==2 and row['points'][0]==[1.,0.,1.]
++    assert row['motion_compensated'] is False and row['classification'] is False
++    assert row['coordinates']=='sensor_frame_mount_unverified'
++
++
++def test_native_explicit_shape_and_point_budget():
++    raw=dict(schema='arena_native_lidar_v1',ranges_m=[1.]*1500+[None,'+inf'],angles_rad=[0.]*1502,
++        range_min_m=.05,range_max_m=12.,source_frame_id='raw_c1',time_basis='unverified_estimate')
++    row=lidar_points(N(data=json.dumps(raw)),'native')
++    assert row['drawn_count']<=720 and row['valid_count']==1500 and row['invalid_count']==2
++    assert row['time_basis']=='unverified_estimate' and row['subsampled']
++    raw['angles_rad']=[]
++    with pytest.raises(ValueError):lidar_points(N(data=json.dumps(raw)),'native')
++
++
++@pytest.mark.parametrize('change',[{'lidar_type':'guess'},{'lidar_topic':'/dev/ttyUSB0;run'},
++    {'camera_topic':'http://camera'},{'camera':1},{'lidar_topic':'relative'}])
++def test_preview_has_no_device_or_url_input(change):
++    with pytest.raises(ValueError):config({**selected(),**change})
++
++
++def test_rgb_jpeg_downsample_and_metadata_without_file_output():
++    import cv2
++    data,meta=jpeg_image(image())
++    decoded=cv2.imdecode(np.frombuffer(data,np.uint8),cv2.IMREAD_COLOR)
++    assert decoded.shape[:2]==(362,640)
++    assert meta['width']==640 and meta['frame']=='b0390_receive_time_unverified'
++    assert meta['acquisition_time_verified'] is False
++    assert decoded[:,:,2].mean()>200 and decoded[:,:,0].mean()<10
++
++
++@pytest.fixture
++def fake_ros(monkeypatch):
++    monkeypatch.setitem(sys.modules,'rclpy.qos',N(QoSProfile=lambda **kw:kw,
++        ReliabilityPolicy=N(BEST_EFFORT='best'),DurabilityPolicy=N(VOLATILE='volatile')))
++    monkeypatch.setitem(sys.modules,'sensor_msgs.msg',N(LaserScan=object,Image=object))
++    monkeypatch.setitem(sys.modules,'std_msgs.msg',N(String=object))
++    class Node:
++        def __init__(self):self.subs=[];self.destroyed=[]
++        def create_subscription(self,kind,topic,callback,qos):
++            handle=N(kind=kind,topic=topic,callback=callback,qos=qos);self.subs.append(handle);return handle
++        def destroy_subscription(self,handle):self.subs.remove(handle);self.destroyed.append(handle)
++    return Node()
++
++
++def until(predicate):
++    deadline=time.monotonic()+1.
++    while not predicate() and time.monotonic()<deadline:time.sleep(.005)
++    assert predicate()
++
++
++def test_off_has_no_worker_or_subscription_and_lease_destroys_everything(fake_ros):
++    clock=[10.];preview=Preview(wall=lambda:clock[0])
++    assert not preview.needs_sync() and preview.worker is None and fake_ros.subs==[]
++    preview.configure(selected(),'viewer');preview.sync(fake_ros)
++    assert len(fake_ros.subs)==1 and fake_ros.subs[0].qos['depth']==1
++    fake_ros.subs[0].callback(scan());until(lambda:preview.snapshot()['lidar'] is not None)
++    clock[0]=13.01;assert preview.needs_sync();preview.sync(fake_ros)
++    assert fake_ros.subs==[] and preview.snapshot()['lidar'] is None
++    until(lambda:preview.worker is None);assert not preview.needs_sync()
++    preview.close(fake_ros)
++
++
++def test_generation_drops_encoding_completed_after_off_and_only_latest_pending(fake_ros):
++    entered=threading.Event();release=threading.Event();calls=[]
++    def encode(message):
++        calls.append(message);entered.set();release.wait(1.)
++        return b'jpeg',dict(frame='fixture',width=1,height=1)
++    preview=Preview(encode=encode)
++    preview.configure({**selected(), 'lidar':False,'camera':True},'viewer');preview.sync(fake_ros)
++    callback=fake_ros.subs[0].callback
++    callback('first');assert entered.wait(1.)
++    callback('middle');callback('last')
++    assert len(preview.pending)==1 and preview.pending['camera'][0]=='last'
++    preview.configure({**selected(),'lidar':False,'camera':False},'viewer');preview.sync(fake_ros)
++    release.set();until(lambda:preview.worker is None)
++    assert calls==['first'] and preview.jpeg() is None and preview.pending=={} and fake_ros.subs==[]
++    preview.close(fake_ros)
++
++
++def test_only_owner_state_poll_renews_preview_and_stale_is_explicit(fake_ros):
++    clock=[10.];preview=Preview(wall=lambda:clock[0])
++    preview.configure(selected(),'one');preview.sync(fake_ros)
++    fake_ros.subs[0].callback(scan());until(lambda:preview.snapshot()['lidar'] is not None)
++    clock[0]=11.2;preview.keepalive('other')
++    assert preview.lease_until==13. and preview.snapshot()['lidar']['stale']
++    preview.keepalive('one');assert preview.lease_until==14.2
++    preview.close(fake_ros)

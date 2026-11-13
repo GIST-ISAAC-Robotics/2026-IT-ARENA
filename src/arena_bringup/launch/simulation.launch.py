@@ -97,19 +97,8 @@ SPEED_PROFILES["g1_open_10kmh_solo_gap05_arc_preview_bridge_ray"] = {
 
 def _float32_limit_not_above(limit):
     """Ackermann float32 반올림으로 물리/MCU 상한을 넘지 않는 송신 상한."""
-    if not math.isfinite(limit) or limit <= 0:
-        raise ValueError('Command limit must be finite and positive')
-    try:
-        packed = struct.pack('<f', limit)
-    except OverflowError as error:
-        raise ValueError('Command limit cannot be represented as float32') from error
-    rounded = struct.unpack('<f', packed)[0]
-    if rounded > limit:
-        bits = struct.unpack('<I', packed)[0]
-        rounded = struct.unpack('<f', struct.pack('<I', bits-1))[0]
-    if rounded <= 0:
-        raise ValueError('Command limit is below positive float32 range')
-    return rounded
+    from arena_autonomy.vehicle_geometry import float32_limit_not_above
+    return float32_limit_not_above(limit)
 
 
 def _dynamics_mappings(config, drive_mode="configured", differential="configured"):
@@ -872,8 +861,14 @@ def _vehicle_geometry_settings(config):
             or float(drive['wheelbase_m'])+2*float(drive['wheel_radius_m']) > float(footprint['length_m'])+1e-9
             or float(drive['track_width_m'])+float(drive['wheel_width_m']) > float(footprint['width_m'])+1e-9):
         raise ValueError('planning envelope must contain body and straight wheels')
-    return ({'body_geometry_x': str(offset)},
-            {'vehicle_length_m': float(footprint['length_m']), 'vehicle_width_m': float(footprint['width_m'])})
+    from arena_autonomy.vehicle_geometry import planning_parameters
+    return ({'body_geometry_x': str(offset)}, planning_parameters(config))
+
+
+def _equivalent_steering_limit(drivetrain):
+    """기존 중앙 등가각 변환을 hardware preview와 같은 순수 함수로 공유한다."""
+    from arena_autonomy.vehicle_geometry import equivalent_steering_limit
+    return equivalent_steering_limit(drivetrain)
 
 
 def _launch_setup(context):
@@ -886,6 +881,7 @@ def _launch_setup(context):
 
     body = config["body"]
     drivetrain = config["drivetrain"]
+    physical_steering_limit = _equivalent_steering_limit(drivetrain)
     geometry_mappings, planning_geometry = _vehicle_geometry_settings(config)
     rear_marker = config["identification_marker"]
     rear_marker_xyz = [float(value) for value in rear_marker["xyz_m"]]
@@ -928,6 +924,9 @@ def _launch_setup(context):
         raise RuntimeError('IMU/엔코더 오류 시험은 local_pursuit 전용입니다.')
     test_profile = LaunchConfiguration('lidar_test_profile').perform(context)
     native_sampling=LaunchConfiguration('lidar_native_sampling_profile').perform(context)
+    crop_edge = _as_bool(LaunchConfiguration('g1_crop_edge_component_trial').perform(context))
+    if crop_edge and (not local_mode or not native_sampling):
+        raise ValueError('crop edge component requires explicit native local_pursuit simulation')
     if native_sampling:
         if (not local_mode or LaunchConfiguration('lidar_acquisition').perform(context)!='sequential'
                 or LaunchConfiguration('lidar_compensation').perform(context)!='both'):
@@ -1017,6 +1016,7 @@ def _launch_setup(context):
             "wheel_radius": str(drivetrain["wheel_radius_m"]),
             "wheel_width": str(drivetrain["wheel_width_m"]),
             "max_steering_angle": str(drivetrain["max_steering_angle_rad"]),
+            "steering_model": str(drivetrain.get("simulation_steering_model", "ideal_ackermann")),
             "max_speed": str(drivetrain["max_speed_mps"]),
             "steering_p_gain": str(drivetrain.get("simulation_steering_p_gain", 12.0)),
             "acceleration_limit": str(drivetrain.get("simulation_acceleration_limit_mps2", 4.0)),
@@ -1308,9 +1308,9 @@ def _launch_setup(context):
             {
                 "wheelbase_m": float(drivetrain["wheelbase_m"]),
                 "max_speed_mps": float(drivetrain["max_speed_mps"]),
-                "max_steering_angle_rad": float(
-                    drivetrain["max_steering_angle_rad"]
-                ),
+                "max_steering_angle_rad": (physical_steering_limit
+                    if drivetrain.get('simulation_steering_model') == 'fusion_cad_2026_11_13'
+                    else float(drivetrain["max_steering_angle_rad"])),
                 "use_sim_time": True,
                 **({"wall_timeout_s": sensor_wall_timeout, "applied_max_speed_mps": virtual_limit}
                    if guarded_actuation else {}),
@@ -1378,9 +1378,7 @@ def _launch_setup(context):
                 'use_sim_time': True, 'wall_timeout_s': sensor_wall_timeout,
                 **feedback['mcu'],
                 'max_speed_mps': virtual_limit,
-                'max_steering_angle_rad': math.atan(float(drivetrain['wheelbase_m']) /
-                    (float(drivetrain['wheelbase_m']) / math.tan(float(drivetrain['max_steering_angle_rad'])) +
-                     float(drivetrain['track_width_m']) / 2)),
+                'max_steering_angle_rad': physical_steering_limit,
             }]),
         ])
     if depth_enabled and render_sensors:
@@ -1491,9 +1489,9 @@ def _launch_setup(context):
             raise RuntimeError("새 보호층은 C1과 구동 엔코더가 필요합니다.")
         # 수신 MCU는 원래 물리 상한을 엄격히 검사한다. 송신 상한만 안쪽으로
         # 표현해 /drive와 /drive/safe의 float32 직렬화가 이를 넘지 않게 한다.
-        equivalent_steering = _float32_limit_not_above(math.atan(float(drivetrain["wheelbase_m"]) /
-            (float(drivetrain["wheelbase_m"])/math.tan(float(drivetrain["max_steering_angle_rad"])) + float(drivetrain["track_width_m"])/2)))
+        equivalent_steering = _float32_limit_not_above(physical_steering_limit)
         actions.append(Node(package="arena_autonomy", executable="lidar_safety", parameters=[{
+            "g1_crop_edge_component_trial": crop_edge,
             "lidar_input_representation": 'native_simulation_v1' if native_sampling else 'laser_scan',
             "use_sim_time": True, "lidar_compensation": "both", "motion_scan_timing_verified": True,
             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
@@ -1555,6 +1553,10 @@ def _launch_setup(context):
                                           p22_entry_trial=p22_trial)
         controller_parameters = {
             **planning_geometry,
+            "g1_crop_edge_component_trial": crop_edge,
+            "g1_runtime_policy": LaunchConfiguration("g1_runtime_policy").perform(context),
+            "g1_complete_plan_trace": _as_bool(LaunchConfiguration("g1_complete_plan_trace").perform(context)),
+            "g1_current_corner_budget": LaunchConfiguration("g1_current_corner_budget").perform(context),
             "use_sim_time": True,
             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
             **speed_profile,
@@ -1729,6 +1731,17 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("lidar_source_rate_hz", default_value="500", choices=["500", "1000"],
                                   description="순차 취득의 내부 광선 계산 주기; C1 회전 주기 아님"),
             DeclareLaunchArgument("autonomy", default_value="false", description="RGB 출발 신호 + 선택한 센서의 본선 벽 추종"),
+            DeclareLaunchArgument('g1_runtime_policy', default_value='off',
+                                  choices=['off', 'cad_runtime_r377_v1'],
+                                  description='명시 두 계산 정책; process/fresh/worker/native 조건은 노드가 검사'),
+            DeclareLaunchArgument('g1_complete_plan_trace', default_value='false', choices=['false', 'true'],
+                                  description='진단 전용: 실제 계획 제출/완료 기록. 항상 기록하지 않음'),
+            DeclareLaunchArgument('g1_crop_edge_component_trial', default_value='false',
+                                  choices=['false', 'true'],
+                                  description='명시 verified native 시뮬 경계 성분 후보; 계획/독립 보호에 같은 선택'),
+            DeclareLaunchArgument('g1_current_corner_budget', default_value='off',
+                                  choices=['off', 'r396_v1'],
+                                  description='명시 현재 코너 거리·성분 후보; verified simulation 전용'),
             DeclareLaunchArgument(
                 "autonomy_mode", default_value="lidar", choices=list(AUTONOMY_MODES),
                 description="lidar: C1+ToF6, stereo: 전방 D435i 깊이+측면 ToF4 개인 비교안",

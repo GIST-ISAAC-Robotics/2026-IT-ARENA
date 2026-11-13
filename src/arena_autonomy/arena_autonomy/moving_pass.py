@@ -282,10 +282,13 @@ class MovingPassGuide(EntryGuide):
     def reset(self):
         super().reset()
         self.returning_behind=False
+        self.follow_headway=False
+        self.returning_to_current_follow=False
 
     def evaluate(self,scene,history,speed,previous_steering,dt):
         if self.path is not None or not source_valid(scene):
             result=super().evaluate(scene,history,speed,previous_steering,dt)
+            result=self._current_follow_return(scene,history,speed,previous_steering,dt,result)
             if result.get('entry_phase')=='rejoin' and result.get('rejoin_band'):
                 self.returning_behind=result['rejoin_band'].get('return_behind_lead',False)
             return result
@@ -317,6 +320,77 @@ class MovingPassGuide(EntryGuide):
         finally:
             self.entry=original
             self.reference_provider=None
+
+    def _current_follow_return(self,scene,history,speed,previous,dt,result):
+        """점유 제동으로 느려지는 추월에서 현재 관측의 중심 복귀를 비교한다.
+
+        기본 정책은 기존 ahead-clear를 유지한다. selected 운영 정책은 현재
+        대상 반환을 유지하며 두 현재 경로의 실제 점유 접두 길이를 비교한다.
+        새 곡선의 점유·제동이 통과한 뒤에만 경로 상태를 바꾼다.
+        """
+        from arena_autonomy.bypass_entry_trial import _compare_entries,entry_path
+        from arena_autonomy.local_path import braking_speed
+        from arena_autonomy.race_runtime_policy.current_route_priority import enabled
+        current_route=enabled(self.config)
+        target=self.tracker.detail
+        if (self.phase!='entry' or result.get('entry_phase')!='entry'
+                or not target.get('observed') or self.tracker.current is None
+                or (not current_route and not self.tracker.ahead_clear(scene))):
+            return result
+        candidates=result.get('candidates',())
+        if len(candidates)!=1:
+            return result
+        current=candidates[0]
+        clearance=current.get('command_clearance_m')
+        commanded=current.get('target_speed_mps')
+        if not current_route and (clearance is None or commanded is None or commanded>=self.entry.speed_cap_mps
+                or not math.isclose(commanded,braking_speed(clearance,scene.t_ref_s-scene.source_first_s),
+                                    rel_tol=1e-12,abs_tol=1e-12)):
+            return result
+        reference=result.get('reference',{})
+        wall=reference.get('walls',{}).get(self.side)
+        if wall is None or reference.get('reason')!='current_outer_wall_rechecked_for_remembered_guide':
+            return result
+        fit=(wall['slope'],wall['intercept_m'],*wall['observed_x_m'])
+        transition=self.entry.transitions_m[-1]
+        try:
+            path=entry_path(fit,0.,self.config,self.entry,transition)
+        except (ValueError,MotionUnavailable):
+            return result
+        proposal=_compare_entries(scene,scene.t_ref_s,speed,previous,dt,
+            config=self.config,entry=self.entry,guide=dict(reference=reference,path=path,
+                offset_m=0.,transition_m=transition,outer_side=self.side,
+                stationary_outer_boundary=self.stationary_outer_boundary and self.wall_confirmations>=2),
+            padding_provider=self.padding_provider,follow_headway=True)
+        chosen=proposal.get('selected')
+        if chosen is None or chosen['speed_mps']<=0.:
+            return result
+        if current_route:
+            center=proposal['candidates'][0]
+            if current.get('preview_return_progress_m') is None:
+                return result
+            # 기존 진입 비교의 2 cm 진행량/작은 편이 순위. 대상 후단 추정의
+            # 한 숫자로 복귀 가능 시점을 막지 않고 같은 현재 반환의 두 경로를 비교한다.
+            rank=lambda row:(math.floor(row['preview_return_progress_m']/.02),-abs(row['offset_m']))
+            if rank(center)<=rank(current):
+                return result
+        self.path=path
+        self.offset=0.;self.transition=transition;self.phase='rejoin'
+        self.returning_behind=not current_route;self.follow_headway=True
+        self.returning_to_current_follow=current_route
+        self.rejoin_confirmations=0;self.center_confirmations=0
+        return {**result,**proposal,'entry_phase':'rejoin','rejoin_band':None,
+            'rejoin_confirmations':0,'center_confirmations':0,
+            'current_follow_return':dict(reason=('current_center_path_longer_observed_occupied_prefix'
+                if current_route else 'current_center_path_after_occupied_pass_braking'),
+                previous_target_mps=commanded,previous_clearance_m=clearance,
+                target_rear_bound_m=self.tracker.rear_bound(scene),
+                required_target_rear_bound_m=self.config.length_m/2+self.tracker.rear_margin_m,
+                target_currently_ahead=self.tracker.ahead_clear(scene),
+                **({'target_observed_not_free_proof':True,
+                    'selection_policy':'current_occupied_prefix_ranking'} if current_route else {}),
+                follow_headway_applied_before_motion_region=True,
+                same_scene=True,unknown_filled=False)}
 
     def _faster_outer_padding(self, scene, config, side, wall, padding_growth_s=0.):
         from arena_autonomy.moving_pass_wall_padding import current_outer_and_rear_padding
@@ -359,6 +433,8 @@ class MovingPassGuide(EntryGuide):
         # 경로 기준선의 길이 확인이며 실제 이동 영역의 관측/점유 검사는 별도다.
         current_clear=(self.tracker.detail.get('ahead_clear') if self.returning_behind
                        else self.tracker.detail.get('rear_clear'))
+        if self.returning_to_current_follow:
+            current_clear=self.tracker.detail.get('observed',False)
         if (self.phase=='rejoin' and current_clear
                 and self.tracker.current is not None
                 and wall.get('reason')=='current_connected_straight_wall_fit'
@@ -518,6 +594,7 @@ class MovingPassAdapter:
         self._prepare_follow_handoff(scene,history,speed,side,previous,dt,raw_scan)
         if proposal.get('entry_phase') == 'centered':
             behind=self.guide.returning_behind
+            current_follow=self.guide.returning_to_current_follow
             prepared,monitor=self.handoff_follow,self.handoff_monitor
             owner.reset()
             # owner.reset()은 모드/우회 상태를 지운다. 같은 입력으로 따로 준비한
@@ -526,13 +603,16 @@ class MovingPassAdapter:
                 owner.normal,owner.monitor=prepared,monitor
             normal = owner._base_command(scene, history, speed, side, previous, dt, raw_scan=raw_scan)
             return normal[0], normal[1], {**normal[2], 'moving_pass':dict(
-                reason='aborted_to_observed_follow' if behind else 'rejoined', completed=not behind)}
+                reason=('returned_to_current_follow' if current_follow else
+                        'aborted_to_observed_follow' if behind else 'rejoined'),
+                completed=not (behind or current_follow))}
         if chosen is None:
             return 0., previous, dict(reason='moving_pass_current_path_unavailable', behavior='HOLD',
                                      mode='g1_g2_handoff_trial', handoff_state='MOVING_PASS', simulation_trial_only=True,
                                      moving_pass=dict(target=target, entry=proposal),
                                      output_requires_independent_guard=True)
-        why=('moving_pass_return_behind' if self.guide.returning_behind else
+        why=('moving_pass_current_follow_return' if self.guide.returning_to_current_follow else
+             'moving_pass_return_behind' if self.guide.returning_behind else
              'moving_pass_yield_for_return' if self.withdrawal_requested else 'moving_pass_'+self.guide.phase)
         return self._output(chosen, proposal, why)
 

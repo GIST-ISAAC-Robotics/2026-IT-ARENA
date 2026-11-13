@@ -1,0 +1,41 @@
+.........F........                                                       [100%]
+================================== FAILURES ===================================
+____ test_side_return_outside_return_path_does_not_erase_current_free_path ____
+
+    def test_side_return_outside_return_path_does_not_erase_current_free_path():
+        guide,row,d,scan,history,scene,result=probe.at_entry(524)
+>       changed=visible_box(scene,np.array([.30,.65]),0.)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+artifacts\validation\2026-11-14\moving_pass_recovery_r486_v1\test_current_follow_return.py:94: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+scene = LocalScene(t_ref_s=10.92, source_first_s=10.802999999999978, source_last_s=10.902801587301566, source_frame_id='laser_...10902488604188, -3.023468859028071, -3.034778592409566, -3.0473449628334492, -3.0599113332573324, -3.0724777036812156))
+center = array([0.3 , 0.65]), yaw = 0.0, size = (0.2, 0.15)
+
+    def visible_box(scene, center, yaw=0., size=(.2,.15)):
+        # �򰡿� �ռ� ���簢���� ���� ������ ray cast. �� unknown/mask�� �ٲ��� �ʴ´�.
+        c,s=math.cos(yaw),math.sin(yaw)
+        rot=np.array([[c,s],[-s,c]]);half=np.asarray(size)/2;rays=[];changed=0
+        for ray in scene.rays:
+            if ray.status!='return':rays.append(ray);continue
+            origin=rot@(np.asarray(ray.ray_origin_xy_m)-center)
+            direction=rot@np.asarray(ray.direction_xy);low,high=0.,math.inf
+            for axis in range(2):
+                if abs(direction[axis])<1e-12:
+                    if abs(origin[axis])>half[axis]:low=math.inf;break
+                else:
+                    a,b=sorted(((-half[axis]-origin[axis])/direction[axis],(half[axis]-origin[axis])/direction[axis]))
+                    low=max(low,a);high=min(high,b)
+            old=np.linalg.norm(np.asarray(ray.hit_xy_m)-ray.ray_origin_xy_m)
+            if 0.<low<=high and low<old:
+                point=np.asarray(ray.ray_origin_xy_m)+low*np.asarray(ray.direction_xy)
+                ray=replace(ray,hit_xy_m=tuple(map(float,point)));changed+=1
+            rays.append(ray)
+>       assert changed>0
+E       assert 0 > 0
+
+artifacts\validation\2026-11-14\moving_pass_recovery_r486_v1\test_current_follow_return.py:40: AssertionError
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-14/moving_pass_recovery_r486_v1/test_current_follow_return.py::test_side_return_outside_return_path_does_not_erase_current_free_path
+1 failed, 17 passed in 0.95s

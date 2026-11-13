@@ -3,6 +3,8 @@ import json
 import math
 import time
 
+from arena_autonomy.vehicle_geometry import float32_limit_not_above
+
 import rclpy
 from ackermann_msgs.msg import AckermannDriveStamped
 from rclpy.node import Node
@@ -26,13 +28,8 @@ def stamp_seconds(stamp):
 class WallFollow(Node):
     def __init__(self, node_name="wall_follow"):
         super().__init__(node_name)
-        environment = self.declare_parameter('execution_environment', 'default').value
-        if environment not in ('default', 'hardware_shadow_v1'):
-            raise ValueError('unknown execution environment')
-        self.hardware_shadow = environment == 'hardware_shadow_v1'
-        if self.hardware_shadow and self.get_parameter('use_sim_time').value:
-            raise ValueError('hardware shadow requires the real ROS clock')
-        self.execution_environment = environment
+        from arena_autonomy.execution_environment import configure
+        configure(self)
         self.timing = TimingProbe(self)
         defaults = {"wheelbase_m": .145, "lidar_x_m": -.03, "max_steering_angle_rad": .43,
                     "target_wall_distance_m": .425, "max_speed_mps": .35, "min_speed_mps": .14,
@@ -206,7 +203,7 @@ class WallFollow(Node):
             message.header.stamp = (self.get_clock().now().to_msg() if reference is None else
                 rclpy.time.Time(nanoseconds=round(reference * 1e9)).to_msg())
             message.header.frame_id = "base_link"
-            message.drive.speed, message.drive.steering_angle = float(speed), float(steering)
+            message.drive.speed, message.drive.steering_angle = (float32_limit_not_above(speed) if speed > 0 else float(speed)), float(steering)
             self.timing.call('command_publish', self.publisher.publish, message)
         status.update(speed_command_mps=speed, steering_command_rad=steering)
         if getattr(self, 'hardware_shadow', False):
@@ -214,6 +211,10 @@ class WallFollow(Node):
                           motion_timing_verified=bool(self.motion and self.motion.verified),
                           **({'motion_time_policy': self.motion.timing_policy}
                              if self.motion and getattr(self.motion,'timing_policy','verified_only')!='verified_only' else {}))
+        if getattr(self, 'hardware_runtime', False):
+            status.update(execution_environment=self.execution_environment,
+                          motion_timing_verified=False, motion_time_policy=self.motion.timing_policy,
+                          command_requires_independent_guard=True, physical_actuation_verified=False)
         status['text_log'] = self.state_log.snapshot()
         if getattr(self, 'vision_pipeline', None) is not None:
             status['vision'] = self.vision_pipeline.snapshot()

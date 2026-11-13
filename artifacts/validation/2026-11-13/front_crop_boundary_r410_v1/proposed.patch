@@ -1,0 +1,44 @@
+--- a/src/arena_autonomy/arena_autonomy/partial_observation.py
++++ b/src/arena_autonomy/arena_autonomy/partial_observation.py
+@@ -14,6 +14,26 @@
+ from arena_autonomy.scene_motion import relative_poses, transport_points
+ from arena_autonomy.scan_input import scan_angles, scan_times, scan_cell_widths, scan_max_gap, audit_scan_front
+ from arena_autonomy.measurement_scan import MeasurementScan
++
++
++def _cropped_gap_flanks(order, front, run, valid):
++    """crop 안의 전체 gap에서 잘린 바로 옆 실제 반환만 찾는다.
++
++    바깥 unknown을 건너뛰거나 끝/처음 seam을 잇지 않는다. unknown 배열·폭과
++    각도/거리/속도/과거 위협 검사는 바꾸지 않으며 반환의 거리를 만들지 않는다.
++    """
++    ordered = [int(index) for index in order]
++    members = [int(front[int(index)]) for index in run]
++    low, high = ordered.index(members[0]), ordered.index(members[-1])
++    if low == 0 or high == len(ordered)-1 or ordered[low:high+1] != members:
++        return None
++    left, right = ordered[low-1], ordered[high+1]
++    if not valid[left] or not valid[right]:
++        return None
++    chain = [left, *members, right]
++    if any(abs(b-a) != 1 for a, b in zip(chain, chain[1:])):
++        return None
++    return left, right
+ 
+ 
+ def near_sweep(points, speed, age, steering, previous_steering, wheelbase, length, width, margin):
+@@ -238,8 +258,12 @@
+         boundary_ranges = []
+         for run in runs:
+             if run[0] == 0 or run[-1] == len(front)-1:
+-                return {**report, 'reason':'unbounded_missing'}
+-            boundary_ranges.extend(values[front[[run[0]-1, run[-1]+1]]])
++                flanks = _cropped_gap_flanks(order, front, run, valid)
++                if flanks is None:
++                    return {**report, 'reason':'unbounded_missing'}
++                boundary_ranges.extend(values[list(flanks)])
++            else:
++                boundary_ranges.extend(values[front[[run[0]-1, run[-1]+1]]])
+             if min(boundary_ranges) < near_boundary:
+                 self._latch('near_gap_boundary',now)
+                 self._remember(points, now, source, fresh)

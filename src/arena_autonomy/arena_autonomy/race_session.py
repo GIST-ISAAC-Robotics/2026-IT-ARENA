@@ -20,6 +20,8 @@ ARMED_STATES = ('ARMED', 'ACTIVE')
 LATCHED_STATES = ('ESTOP_LATCHED', 'FAULT_LATCHED')
 KNOWN_STATES = ('DISARMED',) + ARMED_STATES + LATCHED_STATES
 COMMAND_KEYS = {
+    'manual_visual_start': {'v', 'request', 'op', 'session', 'race_epoch', 'intervention',
+                            'signal_confirmed'},
     'set_speed_limit': {'v', 'request', 'op', 'session', 'race_epoch', 'intervention', 'speed_limit_mps'},
     'new_race': {'v', 'request', 'op', 'session', 'race_epoch'},
     'acknowledge': {'v', 'request', 'op', 'session', 'race_epoch', 'intervention',
@@ -380,6 +382,7 @@ class RaceSupervisor:
         if permission.started or permission.latch != 'process_start' or permission.race_epoch != 0:
             return self._result(request, 'restore_race', False, 'restore_requires_fresh_process')
         permission.started = True
+        self.vision.signal_detection_enabled = False
         self.race_id, self.start_source = payload['race_id'], 'restored_operator_confirmed'
         self.recovery_intervention = permission.intervention
         self._event('race_restored', request=request, race_id=self.race_id)
@@ -399,8 +402,12 @@ class RaceSupervisor:
         if request not in self.processed:
             self.processed.append(request)
 
+    def configure_operator_speed_limit(self, maximum_mps, legacy_enabled=False, legacy_initial_mps=.3):
+        """별도 플래그 없이 B3 상한 제공. 기존 명시 개발 초기값만 호환한다."""
+        self.configure_development_speed_limit(maximum_mps, legacy_initial_mps if legacy_enabled else maximum_mps)
+
     def configure_development_speed_limit(self, maximum_mps, initial_mps):
-        """명시 개발 모드에서만 사용. 경기 초기화/재개로 상한을 해제하지 않는다."""
+        """B3 운영 상한. 기존 설정 이름을 유지하며 경기 초기화/재개로 해제하지 않는다."""
         if not all(_finite(v) for v in (maximum_mps, initial_mps)) or not .05 <= initial_mps <= maximum_mps:
             raise ValueError('development speed limit must be within 0.05..configured maximum')
         self.development_speed_limit = dict(enabled=True, limit_mps=float(initial_mps),
@@ -434,7 +441,35 @@ class RaceSupervisor:
         self._event('development_speed_limit', previous_mps=previous, limit_mps=float(value))
         return self._result(request, 'set_speed_limit', True, 'speed_limit_set_held', speed_limit_mps=float(value))
 
-    def handle_command(self, payload, now_s=None, wall_s=None):
+    def _manual_visual_start(self, request, payload, now_s, check):
+        """시각 출발 사실만 운영자 확인으로 대체한다. 기존 구동/센서/보호 관문은 유지한다."""
+        reason = None
+        if payload['signal_confirmed'] is not True:
+            reason = 'signal_confirmation_required'
+        elif type(payload['intervention']) is not int or payload['intervention'] != self.permission.intervention:
+            reason = 'intervention_mismatch'
+        elif self.permission.started:
+            reason = 'race_already_started'
+        elif self.permission.latch is not None or self.resume is not None:
+            reason = 'wait_green_required'
+        elif self.vision.epoch != self.bound_vision_epoch:
+            reason = 'vision_epoch_mismatch'
+        elif not _finite(now_s) or now_s <= 0:
+            reason = 'clock_unavailable'
+        elif not callable(check) or check() is not True:
+            # HTTP 표시나 payload의 주장이 아니라 현재 노드의 기존 WAIT_GREEN 상태를 대조한다.
+            reason = 'wait_green_required'
+        if reason is not None:
+            return self._result(request, 'manual_visual_start', False, reason)
+        self.permission.started = True
+        self.start_source = 'operator_confirmed'
+        # signal.started/last_visual_stamp를 조작하지 않는다. 신호 계산만 끝내고 마커는 유지한다.
+        self.vision.signal_detection_enabled = False
+        self._event('manual_visual_start', request=request, start_source=self.start_source)
+        return self._result(request, 'manual_visual_start', True, 'operator_confirmed_start_fact',
+                            start_source=self.start_source)
+
+    def handle_command(self, payload, now_s=None, wall_s=None, *, manual_start_check=None):
         """명령 결과를 반환한다. STOP은 형식이 불완전하거나 요청 번호가 다른 명령과 겹쳐도 적용한다."""
         self.counts['commands'] += 1
         if type(payload) is not dict:
@@ -481,6 +516,8 @@ class RaceSupervisor:
             return self._result(request, op, False, 'fixed_fault_present')
         if self.mcu.latest is not None and self.mcu.latest['estop_held']:
             return self._result(request, op, False, 'physical_stop_held')
+        if op == 'manual_visual_start':
+            return self._manual_visual_start(request, payload, now_s, manual_start_check)
         if op in ('recovery_reset', 'resume_start', 'restore_race'):
             if type(payload['intervention']) is not int or payload['intervention'] != self.permission.intervention:
                 return self._result(request, op, False, 'intervention_mismatch')

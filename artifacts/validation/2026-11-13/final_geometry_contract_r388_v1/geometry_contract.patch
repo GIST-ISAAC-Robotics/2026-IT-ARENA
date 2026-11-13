@@ -1,0 +1,255 @@
+--- a/scripts/probe_g1_hardware_shadow.py
++++ b/scripts/probe_g1_hardware_shadow.py
+@@ -1,6 +1,7 @@
+ #!/usr/bin/env python3
+ """공통 G1/G2 노드의 실물 입력 관측. 구동 토픽/MCU 없이 시계·입력·종료를 확인한다."""
+ import argparse
++import hashlib
+ import json
+ import os
+ from pathlib import Path
+@@ -8,10 +9,27 @@
+ import time
+ 
+ 
+-def ros_arguments(args,root):
++def vehicle_geometry_override(args):
++    path = getattr(args, 'vehicle_config', None)
++    if path is None:
++        return None
++    import yaml
++    from arena_autonomy.vehicle_geometry import preview_parameters
++    path = Path(path).expanduser().resolve(strict=True)
++    raw = path.read_bytes()
++    vehicle = yaml.safe_load(raw)['vehicle']
++    return dict(path=str(path), sha256=hashlib.sha256(raw).hexdigest(), parameters=preview_parameters(vehicle))
++
++
++def ros_arguments(args,root,*,geometry=None):
+     result=['--ros-args','--params-file',str(root/'config/hardware/g1_input_shadow_v1.yaml'),
+         '-p','g1_trace_path:='+str(args.output/'decisions.jsonl'),
+         '-r','/scan/native:=/hardware_preview/c1/native']
++    if geometry is None:
++        geometry = vehicle_geometry_override(args)
++    if geometry is not None:
++        for name, value in geometry['parameters'].items():
++            result += ['-p', name+':='+str(value)]
+     if args.estimated_time:result += ['-p','motion_scan_time_policy:=host_estimated_v1']
+     if args.camera:result += ['-r','/camera/color/image_raw:=/hardware_preview/camera/image_raw',
+         '-p','vision_execution:=process','-p','start_signal_mode:=official_4red_local_candidate']
+@@ -21,6 +39,7 @@
+ def main():
+     p=argparse.ArgumentParser(description=__doc__)
+     p.add_argument('--output',type=Path,required=True)
++    p.add_argument('--vehicle-config',type=Path,default=None,help='명시 차량 YAML의 기하만 전달. 생략 시 기존 preview 설정 유지')
+     p.add_argument('--seconds',type=float,default=40.)
+     p.add_argument('--estimated-time',action='store_true',
+         help='추정 시각을 명시 허용하는 비구동 계산. 시각 검증/엔코더 대체가 아님')
+@@ -31,6 +50,7 @@
+     if os.environ.get('ROS_LOCALHOST_ONLY')!='1' or os.environ.get('ROS_DOMAIN_ID')!='216':
+         p.error('isolated localhost domain216 required')
+     root=Path(__file__).resolve().parents[1]
++    geometry=vehicle_geometry_override(args)
+     args.output.mkdir(parents=True,exist_ok=False)
+     import rclpy
+     from rclpy.signals import SignalHandlerOptions
+@@ -42,7 +62,7 @@
+         nonlocal stop
+         stop=True
+     signal.signal(signal.SIGINT,request_stop);signal.signal(signal.SIGTERM,request_stop)
+-    rclpy.init(args=ros_arguments(args,root),
++    rclpy.init(args=ros_arguments(args,root,geometry=geometry),
+         signal_handler_options=SignalHandlerOptions.NO)
+     stamps=[];states=[];commands=[];accepted_scans=0;images=[];vision_results=[];motion_samples=[];mcu_states=[]
+     class ObservedNode(G1G2Node):
+@@ -97,6 +117,7 @@
+             nonzero_private_commands=sum(c['speed']!=0 for c in commands),
+             motion=dict(node.motion.counts) if node else None,drive_output=False,
+             actuator_node_started=False,synthetic_encoder_published=False,time_contract_verified=False,
++            selected_vehicle_geometry=geometry,
+             motion_time_policy=node.motion.timing_policy if node else None,
+             camera_requested=args.camera,camera_connected=bool(images),mounting_calibrated=False,
+             motion_samples_recorded=len(motion_samples),mcu_status_requested=args.mcu_status,
+--- a/scripts/run_hardware_sensor_preview.py
++++ b/scripts/run_hardware_sensor_preview.py
+@@ -18,6 +18,7 @@
+ def parser():
+     p=argparse.ArgumentParser(description=__doc__)
+     p.add_argument('--output',type=Path,required=True)
++    p.add_argument('--vehicle-config',type=Path,default=None,help='선택 차량 YAML. 생략 시 기존 비구동 preview 기하 유지')
+     p.add_argument('--imu-port',required=True)
+     p.add_argument('--c1-port',required=True)
+     p.add_argument('--c1-executable',type=Path,required=True)
+@@ -35,6 +36,11 @@
+     base=[sys.executable,'-B']
+     node=base+[str(node_script),'--output',str(args.output/'node'),
+         '--seconds',str(args.seconds+20.),'--estimated-time']
++    if getattr(args, 'vehicle_config', None) is not None:
++        # 선택 YAML은 장치 점유 검사/자식 실행 전에 검증한다. 생략 시 기존 경로 그대로다.
++        from probe_g1_hardware_shadow import vehicle_geometry_override
++        vehicle_geometry_override(args)
++        node += ['--vehicle-config', str(args.vehicle_config.expanduser().resolve(strict=True))]
+     if args.camera:node += ['--camera']
+     imu_name='bridge_esp32_imu_preview.py' if args.imu_source=='probe' else 'bridge_sensor_link_preview.py'
+     imu=base+[str(root/'scripts'/imu_name),'--port',args.imu_port,'--imu-clock','fifo_tick',
+--- a/src/arena_autonomy/arena_autonomy/local_follow.py
++++ b/src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -54,6 +54,10 @@
+     boundary_evidence_mode: str = 'connected'
+     occupancy_timing_mode: str = 'oldest'
+     wheelbase_m: float = .135
++    # 옛 trace에 필드가 없으면 당시 측방 기본 기하를 유지한다.
++    track_m: float = .135
++    wheel_radius_m: float = .0325
++    wheel_width_m: float = .012
+     length_m: float = .20
+     width_m: float = .15
+     wall_offset_m: float = .425
+@@ -90,6 +94,10 @@
+     confirmations: int = 2
+ 
+     def __post_init__(self):
++        for name in ('track_m', 'wheel_radius_m', 'wheel_width_m'):
++            value = getattr(self, name)
++            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
++                raise ValueError(name + ' must be finite and positive')
+         if (type(self.expiry_route_reference_trial) is not bool or
+                 (self.expiry_route_reference_trial and not self.junction_continuity)):
+             raise ValueError('expiry route reference requires junction continuity')
+--- a/src/arena_autonomy/arena_autonomy/local_pursuit.py
++++ b/src/arena_autonomy/arena_autonomy/local_pursuit.py
+@@ -132,6 +132,9 @@
+             raise ValueError('planning vehicle dimensions must be finite and positive')
+         self.follow = follow_type(FollowConfig(
+             length_m=length, width_m=width,
++            track_m=float(self.declare_parameter('vehicle_track_width_m', .135).value),
++            wheel_radius_m=float(self.declare_parameter('vehicle_wheel_radius_m', .0325).value),
++            wheel_width_m=float(self.declare_parameter('vehicle_wheel_width_m', .012).value),
+             signed_motion_policy=signed_motion,
+             solo_route_only=solo_route,
+             corridor_arc_agreement=bool(self.declare_parameter('g1_corridor_arc_agreement',False).value),
+--- a/src/arena_autonomy/arena_autonomy/m3_execution_trial.py
++++ b/src/arena_autonomy/arena_autonomy/m3_execution_trial.py
+@@ -1038,7 +1038,8 @@
+         self.trial_speed_cap_mps = min(.35, c.max_speed_mps)
+         self.lateral_config = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass',
+             wheelbase_m=c.wheelbase_m, length_m=c.length_m, width_m=c.width_m, max_steering_rad=c.max_steering_rad,
+-            road_half_m=c.road_half_m)
++            road_half_m=c.road_half_m, track_m=c.track_m,
++            wheel_radius_m=c.wheel_radius_m, wheel_width_m=c.wheel_width_m)
+         if not math.isclose(c.wall_offset_m, self.lateral_config.wall_offset_m, abs_tol=1e-12):
+             raise ValueError('M3 requires the registered wall-to-road geometry')
+         self.base = LocalFollow(c)
+--- a/src/arena_autonomy/arena_autonomy/m3_observed_follow.py
++++ b/src/arena_autonomy/arena_autonomy/m3_observed_follow.py
+@@ -104,7 +104,8 @@
+         self.trial_speed_cap_mps = min(.35, c.max_speed_mps)
+         self.lateral_config = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass',
+             wheelbase_m=c.wheelbase_m, length_m=c.length_m, width_m=c.width_m,
+-            max_steering_rad=c.max_steering_rad, road_half_m=c.road_half_m)
++            max_steering_rad=c.max_steering_rad, road_half_m=c.road_half_m,
++            track_m=c.track_m, wheel_radius_m=c.wheel_radius_m, wheel_width_m=c.wheel_width_m)
+         if not math.isclose(c.wall_offset_m, self.lateral_config.wall_offset_m, abs_tol=1e-12):
+             raise ValueError('M3 requires the registered wall-to-road geometry')
+         self.base = LocalFollow(c)
+--- a/src/arena_autonomy/arena_autonomy/pass_release_trial.py
++++ b/src/arena_autonomy/arena_autonomy/pass_release_trial.py
+@@ -104,6 +104,7 @@
+     c = follow_config
+     return LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', wheelbase_m=c.wheelbase_m,
+                                length_m=c.length_m, width_m=c.width_m, max_steering_rad=c.max_steering_rad,
++                               track_m=c.track_m, wheel_radius_m=c.wheel_radius_m, wheel_width_m=c.wheel_width_m,
+                                road_half_m=c.road_half_m)
+ 
+ 
+--- /dev/null
++++ b/src/arena_autonomy/arena_autonomy/vehicle_geometry.py
+@@ -0,0 +1,54 @@
++"""차량 YAML의 명시 기하를 계획/preview 매개변수로 옮기는 순수 변환."""
++import math
++
++
++def positive(value,name):
++    if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or value<=0:
++        raise ValueError(name+' must be a finite positive number')
++    return float(value)
++
++
++def planning_parameters(vehicle):
++    """명시 YAML에서 누락/부정합 시 실패한다. legacy 기본값으로 조용히 대체하지 않는다."""
++    drive=vehicle['drivetrain'];body=vehicle['body'];footprint=vehicle['footprint']
++    length=positive(footprint['length_m'],'footprint.length_m')
++    width=positive(footprint['width_m'],'footprint.width_m')
++    wheelbase=positive(drive['wheelbase_m'],'wheelbase_m')
++    track=positive(drive['track_width_m'],'track_width_m')
++    radius=positive(drive['wheel_radius_m'],'wheel_radius_m')
++    wheel_width=positive(drive['wheel_width_m'],'wheel_width_m')
++    body_length=positive(body['length_m'],'body.length_m')
++    body_width=positive(body['width_m'],'body.width_m')
++    offset=body.get('geometry_center_x_m',0.)
++    if isinstance(offset,bool) or not isinstance(offset,(int,float)) or not math.isfinite(offset):
++        raise ValueError('body geometry offset must be finite')
++    if (2*abs(offset)+body_length>length+1e-9 or body_width>width+1e-9
++            or wheelbase+2*radius>length+1e-9 or track+wheel_width>width+1e-9):
++        raise ValueError('planning envelope must contain body and straight wheels')
++    return dict(vehicle_length_m=length,vehicle_width_m=width,
++        vehicle_track_width_m=track,vehicle_wheel_radius_m=radius,vehicle_wheel_width_m=wheel_width)
++
++
++def equivalent_steering_limit(drivetrain):
++    """기존 simulation.launch의 중앙 등가각 변환을 그대로 공유한다."""
++    model=drivetrain.get('simulation_steering_model','ideal_ackermann')
++    wheelbase,track,limit=(positive(drivetrain[key],key) for key in
++        ('wheelbase_m','track_width_m','max_steering_angle_rad'))
++    if limit>=1.4:raise ValueError('invalid steering dimensions or limit')
++    if model=='fusion_cad_2026_11_13':
++        if (drivetrain.get('simulation_drive_mode')!='single_motor'
++                or abs(wheelbase-.128)>1e-6 or abs(track-.1239)>1e-6):
++            raise ValueError('CAD steering requires final geometry and single_motor mode')
++        from arena_vehicle_interface.steering_calibration import CadMapping
++        return CadMapping.default().command_limit(wheelbase=wheelbase,track=track,wheel_limit=limit)
++    if model!='ideal_ackermann':raise ValueError('unknown steering model')
++    return math.atan(wheelbase/(wheelbase/math.tan(limit)+track/2))
++
++
++def preview_parameters(vehicle):
++    """선택한 차량의 계획/운동 기하만 전달한다. 속도·기어비·출력/시계 정책은 바꾸지 않는다."""
++    result=planning_parameters(vehicle);drive=vehicle['drivetrain']
++    wheelbase=positive(drive['wheelbase_m'],'wheelbase_m')
++    return {**result,'wheelbase_m':wheelbase,'motion_rear_axle_x_m':-wheelbase/2,
++        'motion_wheel_radius_m':result['vehicle_wheel_radius_m'],
++        'max_steering_angle_rad':equivalent_steering_limit(drive)}
+--- a/src/arena_bringup/launch/simulation.launch.py
++++ b/src/arena_bringup/launch/simulation.launch.py
+@@ -872,26 +872,14 @@
+             or float(drive['wheelbase_m'])+2*float(drive['wheel_radius_m']) > float(footprint['length_m'])+1e-9
+             or float(drive['track_width_m'])+float(drive['wheel_width_m']) > float(footprint['width_m'])+1e-9):
+         raise ValueError('planning envelope must contain body and straight wheels')
+-    return ({'body_geometry_x': str(offset)},
+-            {'vehicle_length_m': float(footprint['length_m']), 'vehicle_width_m': float(footprint['width_m'])})
++    from arena_autonomy.vehicle_geometry import planning_parameters
++    return ({'body_geometry_x': str(offset)}, planning_parameters(config))
+ 
+ 
+ def _equivalent_steering_limit(drivetrain):
+-    """명령의 중앙 등가각과 바퀴 내륜각을 구분한다. CAD 선택에서 이상 애커만 상한을 재사용하지 않는다."""
+-    model = drivetrain.get('simulation_steering_model', 'ideal_ackermann')
+-    wheelbase, track, limit = (float(drivetrain[key]) for key in
+-                             ('wheelbase_m', 'track_width_m', 'max_steering_angle_rad'))
+-    if not all(math.isfinite(v) and v > 0 for v in (wheelbase, track, limit)) or limit >= 1.4:
+-        raise ValueError('invalid steering dimensions or limit')
+-    if model == 'fusion_cad_2026_11_13':
+-        if (drivetrain.get('simulation_drive_mode') != 'single_motor'
+-                or abs(wheelbase-.128)>1e-6 or abs(track-.1239)>1e-6):
+-            raise ValueError('CAD steering requires final geometry and single_motor mode')
+-        from arena_vehicle_interface.steering_calibration import CadMapping
+-        return CadMapping.default().command_limit(wheelbase=wheelbase, track=track, wheel_limit=limit)
+-    if model != 'ideal_ackermann':
+-        raise ValueError('unknown steering model')
+-    return math.atan(wheelbase/(wheelbase/math.tan(limit)+track/2))
++    """기존 중앙 등가각 변환을 hardware preview와 같은 순수 함수로 공유한다."""
++    from arena_autonomy.vehicle_geometry import equivalent_steering_limit
++    return equivalent_steering_limit(drivetrain)
+ 
+ 
+ def _launch_setup(context):

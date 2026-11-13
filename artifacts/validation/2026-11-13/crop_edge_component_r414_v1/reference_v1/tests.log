@@ -1,0 +1,101 @@
+FFFF{"fixture": "F2", "direct_threshold_interval_m": [0.41466237306594855, 0.4146624088287354], "point_radius_m": 0.40466237306594854}
+....................
+=================================== FAILURES ===================================
+__ test_f1_outside_three_points_are_captured_before_remember[0.0-0.0-python] ___
+
+kernel = 'python', speed = 0.0, steering = 0.0
+
+    @pytest.mark.parametrize('kernel',['python','native_v1'])
+    @pytest.mark.parametrize('speed,steering',[(0.,0.),(.5,.25)])
+    def test_f1_outside_three_points_are_captured_before_remember(kernel,speed,steering):
+        numeric_kernels.configure(kernel)
+        p,h,old=warm(close=(101.,101.7,102.4))
+        raw=measurements(.1,missing=True)
+        result=evaluate(p,h,raw,.2,speed,steering)
+        assert not result['allowed'] and p.latched
+        assert p.latch_reason=='previous_point_in_missing_sweep'
+        assert p.anchor_threat_summary['unique_points']==3 and p.anchor_threat_summary['complete']
+>       assert len(p.anchor_probe.retained)==3 and p.anchor_probe.anchor[1:]==(.1,0.)
+E       assert (3 == 3 and (0.2, 0.1) == (0.1, 0.0)
+E        +  where 3 = len(array([[8.61685162e-03, 3.43569514e-01],\n       [4.42444663e-03, 3.42727984e-01],\n       [2.42635492e-04, 3.41835297e-01]]))
+E        +    where array([[8.61685162e-03, 3.43569514e-01],\n       [4.42444663e-03, 3.42727984e-01],\n       [2.42635492e-04, 3.41835297e-01]]) = <arena_autonomy.surface_anchor_trial.SurfaceAnchorTrial object at 0x7b43176a26f0>.retained
+E        +      where <arena_autonomy.surface_anchor_trial.SurfaceAnchorTrial object at 0x7b43176a26f0> = <arena_autonomy.known_structure.StructureAwareRecoveryPolicy object at 0x7b43157b2a80>.anchor_probe
+E         At index 0 diff: 0.2 != 0.1
+E         Use -v to get more diff)
+
+artifacts/validation/2026-11-13/crop_edge_component_r414_v1/test_edge_component.py:104: AssertionError
+_ test_f1_outside_three_points_are_captured_before_remember[0.0-0.0-native_v1] _
+
+kernel = 'native_v1', speed = 0.0, steering = 0.0
+
+    @pytest.mark.parametrize('kernel',['python','native_v1'])
+    @pytest.mark.parametrize('speed,steering',[(0.,0.),(.5,.25)])
+    def test_f1_outside_three_points_are_captured_before_remember(kernel,speed,steering):
+        numeric_kernels.configure(kernel)
+        p,h,old=warm(close=(101.,101.7,102.4))
+        raw=measurements(.1,missing=True)
+        result=evaluate(p,h,raw,.2,speed,steering)
+        assert not result['allowed'] and p.latched
+        assert p.latch_reason=='previous_point_in_missing_sweep'
+        assert p.anchor_threat_summary['unique_points']==3 and p.anchor_threat_summary['complete']
+>       assert len(p.anchor_probe.retained)==3 and p.anchor_probe.anchor[1:]==(.1,0.)
+E       assert (3 == 3 and (0.2, 0.1) == (0.1, 0.0)
+E        +  where 3 = len(array([[8.61685162e-03, 3.43569514e-01],\n       [4.42444663e-03, 3.42727984e-01],\n       [2.42635492e-04, 3.41835297e-01]]))
+E        +    where array([[8.61685162e-03, 3.43569514e-01],\n       [4.42444663e-03, 3.42727984e-01],\n       [2.42635492e-04, 3.41835297e-01]]) = <arena_autonomy.surface_anchor_trial.SurfaceAnchorTrial object at 0x7b431769b560>.retained
+E        +      where <arena_autonomy.surface_anchor_trial.SurfaceAnchorTrial object at 0x7b431769b560> = <arena_autonomy.known_structure.StructureAwareRecoveryPolicy object at 0x7b43157b2cf0>.anchor_probe
+E         At index 0 diff: 0.2 != 0.1
+E         Use -v to get more diff)
+
+artifacts/validation/2026-11-13/crop_edge_component_r414_v1/test_edge_component.py:104: AssertionError
+__ test_f1_outside_three_points_are_captured_before_remember[0.5-0.25-python] __
+
+kernel = 'python', speed = 0.5, steering = 0.25
+
+    @pytest.mark.parametrize('kernel',['python','native_v1'])
+    @pytest.mark.parametrize('speed,steering',[(0.,0.),(.5,.25)])
+    def test_f1_outside_three_points_are_captured_before_remember(kernel,speed,steering):
+        numeric_kernels.configure(kernel)
+        p,h,old=warm(close=(101.,101.7,102.4))
+        raw=measurements(.1,missing=True)
+        result=evaluate(p,h,raw,.2,speed,steering)
+        assert not result['allowed'] and p.latched
+        assert p.latch_reason=='previous_point_in_missing_sweep'
+        assert p.anchor_threat_summary['unique_points']==3 and p.anchor_threat_summary['complete']
+>       assert len(p.anchor_probe.retained)==3 and p.anchor_probe.anchor[1:]==(.1,0.)
+E       assert (3 == 3 and (0.2, 0.1) == (0.1, 0.0)
+E        +  where 3 = len(array([[8.61685162e-03, 3.43569514e-01],\n       [4.42444663e-03, 3.42727984e-01],\n       [2.42635492e-04, 3.41835297e-01]]))
+E        +    where array([[8.61685162e-03, 3.43569514e-01],\n       [4.42444663e-03, 3.42727984e-01],\n       [2.42635492e-04, 3.41835297e-01]]) = <arena_autonomy.surface_anchor_trial.SurfaceAnchorTrial object at 0x7b43157b35c0>.retained
+E        +      where <arena_autonomy.surface_anchor_trial.SurfaceAnchorTrial object at 0x7b43157b35c0> = <arena_autonomy.known_structure.StructureAwareRecoveryPolicy object at 0x7b43157b3590>.anchor_probe
+E         At index 0 diff: 0.2 != 0.1
+E         Use -v to get more diff)
+
+artifacts/validation/2026-11-13/crop_edge_component_r414_v1/test_edge_component.py:104: AssertionError
+_ test_f1_outside_three_points_are_captured_before_remember[0.5-0.25-native_v1] _
+
+kernel = 'native_v1', speed = 0.5, steering = 0.25
+
+    @pytest.mark.parametrize('kernel',['python','native_v1'])
+    @pytest.mark.parametrize('speed,steering',[(0.,0.),(.5,.25)])
+    def test_f1_outside_three_points_are_captured_before_remember(kernel,speed,steering):
+        numeric_kernels.configure(kernel)
+        p,h,old=warm(close=(101.,101.7,102.4))
+        raw=measurements(.1,missing=True)
+        result=evaluate(p,h,raw,.2,speed,steering)
+        assert not result['allowed'] and p.latched
+        assert p.latch_reason=='previous_point_in_missing_sweep'
+        assert p.anchor_threat_summary['unique_points']==3 and p.anchor_threat_summary['complete']
+>       assert len(p.anchor_probe.retained)==3 and p.anchor_probe.anchor[1:]==(.1,0.)
+E       assert (3 == 3 and (0.2, 0.1) == (0.1, 0.0)
+E        +  where 3 = len(array([[8.61685162e-03, 3.43569514e-01],\n       [4.42444663e-03, 3.42727984e-01],\n       [2.42635492e-04, 3.41835297e-01]]))
+E        +    where array([[8.61685162e-03, 3.43569514e-01],\n       [4.42444663e-03, 3.42727984e-01],\n       [2.42635492e-04, 3.41835297e-01]]) = <arena_autonomy.surface_anchor_trial.SurfaceAnchorTrial object at 0x7b431769b590>.retained
+E        +      where <arena_autonomy.surface_anchor_trial.SurfaceAnchorTrial object at 0x7b431769b590> = <arena_autonomy.known_structure.StructureAwareRecoveryPolicy object at 0x7b43157b3230>.anchor_probe
+E         At index 0 diff: 0.2 != 0.1
+E         Use -v to get more diff)
+
+artifacts/validation/2026-11-13/crop_edge_component_r414_v1/test_edge_component.py:104: AssertionError
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-13/crop_edge_component_r414_v1/test_edge_component.py::test_f1_outside_three_points_are_captured_before_remember[0.0-0.0-python]
+FAILED artifacts/validation/2026-11-13/crop_edge_component_r414_v1/test_edge_component.py::test_f1_outside_three_points_are_captured_before_remember[0.0-0.0-native_v1]
+FAILED artifacts/validation/2026-11-13/crop_edge_component_r414_v1/test_edge_component.py::test_f1_outside_three_points_are_captured_before_remember[0.5-0.25-python]
+FAILED artifacts/validation/2026-11-13/crop_edge_component_r414_v1/test_edge_component.py::test_f1_outside_three_points_are_captured_before_remember[0.5-0.25-native_v1]
+4 failed, 20 passed in 1.45s

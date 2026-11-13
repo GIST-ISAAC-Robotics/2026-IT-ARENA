@@ -1,0 +1,339 @@
+--- r452/scripts/validate_g1_traffic.py
++++ r457/solo_runner.py
+@@ -31,6 +31,7 @@
+                                      configured_feedback_topic, early_start_detected, start_demo_process)
+ from validate_facility_visibility import yaw_of
+ import g1_traffic_eval as ev
++import solo_evaluation
+ import g1_handoff_eval
+ from g1_lidar_stress import load_test_profile, audit_injection, require_injection_evidence
+ from native_traffic_contract import NativeSamplingAudit, native_received_row
+@@ -618,7 +619,7 @@
+     if merge_profile is not None and (args.mode != ('g1g2' if args.official_signal_course else 'g1') or args.race_operation_test
+                                       or args.lidar_test_profile or motion_profile):
+         raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
+-    specs = actor_specs(config, case)
++    specs = []  # r457: no traffic models, no hidden or remote actor.
+     launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
+     handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire, boundary_refresh=args.handoff_boundary_refresh, control_rate_hz=args.handoff_control_rate_hz, decision_execution=args.handoff_decision_execution)
+     facility_sources = {}
+@@ -675,19 +676,14 @@
+     centerline, scene = load_centerline(world_dir)
+     s0 = actor_start_s(config, scene, args.seed, case)
+     lateral = actor_lateral_offset(config, case)
+-    route = check_route(config, centerline, case, s0, road_polygon(world_dir/'world.sdf'),
+-                        obstacle_polygons(world_dir/'world.sdf'))
+-    starts, additional_routes = check_additional_routes(config, case, specs, scene, args.seed, centerline,
+-        road_polygon(world_dir/'world.sdf'), obstacle_polygons(world_dir/'world.sdf'),
+-        actor_start_s, check_route, actor_pose_at) if len(specs) > 1 else ([s0], None)
++    route = dict(kind='solo_full_course', lap_length_m=centerline.lap, actor_count=0)
++    starts, additional_routes = [], None
+     output.mkdir(parents=True, exist_ok=False)
+-    actor_path = output/'evaluation_actor.sdf'
+-    actor_text = (compose_sdf(specs, [actor_pose_at(centerline, s, a['schedule'], 0., a['lateral_offset_m'])
+-                                    for s, a in zip(starts, specs)], actor_sdf) if len(specs) > 1 else
+-                  actor_sdf(config, primary_pose_at(config, centerline, s0, case, 0.)))
+-    actor_path.write_text(actor_text, encoding='utf-8')
++    actor_path = output/'facilities_only.sdf'
++    actor_path.write_bytes((Path(__file__).resolve().parent/'facilities_only.sdf').read_bytes())
+     sources = {rel: sha256(REPO/rel) for rel in source_paths(args.config, lidar_profile, args.actor_overlay, motion_profile)}
+     sources.update(facility_sources)
++    sources.update({p.relative_to(REPO).as_posix(): sha256(p) for p in Path(__file__).resolve().parent.glob('*.py')})
+     if vehicle_path is not None:
+         sources[vehicle_path.relative_to(REPO).as_posix()] = sha256(vehicle_path)
+     runtime_native_profile = None
+@@ -791,9 +787,9 @@
+     capture_gate = EvaluationCaptureGate()
+     wheel_contacts = []
+     reader_audit = {name: {'json_messages': 0, 'handled_messages': 0, 'parse_errors': 0,
+-                          'handler_errors': 0, 'last_error': None} for name in ('ego', 'contact')}
++                          'handler_errors': 0, 'last_error': None} for name in ('ego',)}
+     if args.record_wheel_contacts:
+-        reader_audit['wheel_contact'] = dict(reader_audit['contact'])
++        reader_audit['wheel_contact'] = dict(reader_audit['ego'])
+     rejected_actor_times = 0
+     rejected_ego_times = 0
+     actuation_trace, actuation_diagnostics = [], []
+@@ -840,20 +836,6 @@
+         state['autonomy'] = status
+         status_stream.write(json.dumps({k: v for k, v in status.items() if k not in ('text_log', 'vision')},
+                                        ensure_ascii=False)+'\n')
+-
+-    def receive_actor(message):
+-        nonlocal rejected_actor_times
+-        for transform in message.transforms:
+-            actor_frames.add((transform.header.frame_id, transform.child_frame_id))
+-            if transform.child_frame_id != actor_cfg['model_name'] or transform.header.frame_id != WORLD_NAME:
+-                continue
+-            when = stamp(transform.header.stamp)
+-            if actor and when <= actor[-1][0]:
+-                rejected_actor_times += 1
+-                continue
+-            q = transform.transform.rotation
+-            actor.append((when, float(transform.transform.translation.x), float(transform.transform.translation.y),
+-                          math.atan2(2*(q.w*q.z+q.x*q.y), 1-2*(q.y*q.y+q.z*q.z))))
+ 
+     def receive_actuation(message):
+         status = json.loads(message.data)
+@@ -885,7 +867,6 @@
+         node.create_subscription(String, '/actuation/output_status', lambda m: remember(json.loads(m.data), 'actuation_output'), 100),
+         node.create_subscription(String, '/actuation/diagnostics', lambda m: actuation_diagnostics.append(json.loads(m.data)),
+                                  QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)),
+-        node.create_subscription(TFMessage, f"/model/{actor_cfg['model_name']}/pose", receive_actor, reliable),
+     ]
+     arm_service = node.create_client(Trigger, '/actuation/arm')
+     mcu_stop_service = node.create_client(Trigger, '/actuation/stop')
+@@ -896,7 +877,6 @@
+         if args.race_operation_test == 'new_race_restart':
+             from m4_second_start import RosSecondStart
+             second_start = RosSecondStart(node, Trigger)
+-    actor_client = node.create_client(SetEntityPose, SET_POSE_SERVICE)
+     obstacles = obstacle_polygons(world_dir/'world.sdf')
+     tree = STRtree(obstacles)
+     log_path = output/'simulation.log'
+@@ -908,7 +888,6 @@
+     t_green = None
+     outcome = {'abort': None}
+     began = time.monotonic()
+-    extras = ExtraActors(specs[1:], starts[1:], centerline, actor_pose_at, output, began)
+ 
+     def receive_ego(data):
+         nonlocal rejected_ego_times
+@@ -930,23 +909,6 @@
+         pairs = [[c['collision1']['name'], c['collision2']['name']] for c in data.get('contact', [])]
+         # 빈 Contacts도 수신 증거로 보존한다. 무접촉시 무발행과 구분한다.
+         contacts.append({'t': when, 'pairs': pairs})
+-
+-    def schedule_pose(t):
+-        elapsed = 0. if t_green is None else t-t_green
+-        x, y, _ = primary_pose_at(config, centerline, s0, case, elapsed)
+-        return x, y
+-
+-    def complete_actor_future():
+-        nonlocal actor_future
+-        if actor_future is not None and actor_future.done():
+-            response = actor_future.result()
+-            commands[-1].update(response_wall_s=time.monotonic()-began,
+-                                acknowledged=response is not None and response.success)
+-            actor_future = None
+-            if not commands[-1]['acknowledged']:
+-                raise RuntimeError('actor set_pose was not acknowledged')
+-        if actor_future is not None and time.monotonic()-commands[-1]['requested_wall_absolute_s'] > 8:
+-            raise TimeoutError('actor set_pose timeout')
+ 
+     try:
+         extra = [f'evaluation_actor_sdf:={actor_path}', *partial_arguments, *parallel_arguments, *release_arguments,
+@@ -1007,25 +969,11 @@
+             str(runtime_motion_profile) if runtime_motion_profile else '',
+             launch['actuation_mode'], False, args.mode in ('g1', 'm3', 'g1g2'), extra, r0_plus=args.mode == 'r0plus',
+             team_signal_course=args.team_signal_course))
+-        from ament_index_python.packages import get_package_prefix
+-        bridge_executable = Path(get_package_prefix('ros_gz_bridge'))/'lib/ros_gz_bridge/parameter_bridge'
+-        extra_topics, extra_qos = extras.bridge_arguments()
+-        processes.append(subprocess.Popen([str(bridge_executable),
+-            f'{SET_POSE_SERVICE}@ros_gz_interfaces/srv/SetEntityPose',
+-            f"/model/{actor_cfg['model_name']}/pose@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V",
+-            *extra_topics,
+-            '--ros-args', '-r', '__node:=eval_actor_bridge',
+-            '-p', f"qos_overrides./model/{actor_cfg['model_name']}/pose.publisher.reliability:=reliable",
+-            '-p', f"qos_overrides./model/{actor_cfg['model_name']}/pose.publisher.depth:=200", *extra_qos],
+-            cwd=REPO, stdin=subprocess.DEVNULL, stdout=reader_log, stderr=reader_log, start_new_session=True))
+         readers.append(json_reader(['gz', 'topic', '-e', '-t', f'/world/{WORLD_NAME}/dynamic_pose/info', '--json-output'],
+                                    capture_gate.wrap(receive_ego), reader_log, reader_audit['ego']))
+-        readers.append(json_reader(['gz', 'topic', '-e', '-t', CONTACT_TOPIC, '--json-output'],
+-                                   capture_gate.wrap(receive_contact), reader_log, reader_audit['contact']))
+         if args.record_wheel_contacts:
+             readers.append(json_reader(['gz', 'topic', '-e', '-t', '/eval/wheels/contact', '--json-output'],
+                                        capture_gate.wrap(wheel_contacts.append), reader_log, reader_audit['wheel_contact']))
+-        extras.connect(node, reliable, json_reader, capture_gate, reader_log, readers)
+         last_record = -math.inf
+         last_command_s = None
+         first_pose_time = None
+@@ -1042,8 +990,6 @@
+                 raise RuntimeError('owned process exited early')
+             if time.monotonic()-began > limits['wall_timeout_s']:
+                 raise TimeoutError('wall timeout')
+-            complete_actor_future()
+-            extras.complete()
+             if 'actuation' in state and operation_trial is None:
+                 status = state['actuation']
+                 if (arm_future is None and status['stationary_ready'] and status['output_ready']
+@@ -1056,9 +1002,9 @@
+                     break
+             required = {'pose', 'autonomy', 'light', 'rgb', 'odom', 'drive', 'dynamics', 'scan', 'safety',
+                         'safe_drive', 'imu'}
+-            if not required.issubset(state) or not actor or not extras.ready:
++            if not required.issubset(state):
+                 if time.monotonic()-began > limits['startup_wall_timeout_s']:
+-                    raise TimeoutError(f'startup data missing: {sorted(required-set(state))}, actor={len(actor)}, extras_ready={extras.ready}')
++                    raise TimeoutError(f'startup data missing: {sorted(required-set(state))}')
+                 continue
+             pose = state['pose']
+             now = pose['time']
+@@ -1080,21 +1026,6 @@
+                 except Exception as error:
+                     outcome['abort'] = f'M4 operator: {type(error).__name__}: {error}'
+                     break
+-            extras.tick(actor_client, SetEntityPose.Request, now, t_green)
+-            if case['schedule'] and t_green is not None and actor_future is None and (
+-                    last_command_s is None or now-last_command_s >= 1/actor_cfg['command_hz']):
+-                x, y, yaw = primary_pose_at(config, centerline, s0, case, now-t_green)
+-                request = SetEntityPose.Request()
+-                request.entity.name = actor_cfg['model_name']
+-                request.entity.type = request.entity.MODEL
+-                request.pose.position.x, request.pose.position.y = x, y
+-                request.pose.position.z = actor_cfg['bottom_m']+actor_cfg['height_m']/2
+-                request.pose.orientation.z, request.pose.orientation.w = math.sin(yaw/2), math.cos(yaw/2)
+-                actor_future = actor_client.call_async(request)
+-                commands.append({'requested_sim_s': now, 'elapsed_s': now-t_green, 'x_m': x, 'y_m': y,
+-                                 'requested_wall_s': time.monotonic()-began,
+-                                 'requested_wall_absolute_s': time.monotonic(), 'acknowledged': False})
+-                last_command_s = now
+             if now-last_record < .10:
+                 if t_green is not None and now-t_green >= case['duration_s']:
+                     break
+@@ -1113,9 +1044,6 @@
+             signal_states.add(light['applied'])
+             false_start |= early_start_detected(light['applied'], state['drive'].drive.speed, autonomy)
+             false_start |= early_start_detected(light['applied'], state['safe_drive'].drive.speed, autonomy)
+-            latest_actor = actor[-1]
+-            gap = footprint.distance(rectangle(latest_actor[1], latest_actor[2], latest_actor[3],
+-                                               actor_cfg['length_m'], actor_cfg['width_m']))
+             dynamics = state['dynamics']
+             record = {
+                 't': now, 'x': position['x'], 'y': position['y'], 'yaw': yaw_of(pose['orientation']),
+@@ -1125,8 +1053,6 @@
+                 'truth_longitudinal_mps': dynamics['truth_longitudinal_mps'],
+                 'drive_speed_mps': state['drive'].drive.speed, 'safe_speed_mps': state['safe_drive'].drive.speed,
+                 'safety_reason': state['safety'].get('reason'), 'safety_clearance_m': state['safety'].get('swept_clearance_m'),
+-                'actor_x': latest_actor[1], 'actor_y': latest_actor[2], 'actor_stamp_s': latest_actor[0],
+-                'sampled_gap_m': gap,
+                 'autonomy': ev.compact_autonomy_status(autonomy),
+                 'mcu_state': state.get('actuation', {}).get('state'),
+             }
+@@ -1142,6 +1068,9 @@
+                                               parallel=args.parallel_hold_trial,pass_release=args.pass_release_trial))
+             trace.append(record)
+             trace_stream.write(json.dumps(record, ensure_ascii=False)+'\n')
++            if t_green is not None and progress >= centerline.lap:
++                report['solo_lap_finish_sim_s'] = now
++                break
+             if wall_collision > 3 or error > .35:
+                 outcome['abort'] = f'wall contact or route departure: samples={wall_collision}, error={error:.3f}'
+                 break
+@@ -1156,12 +1085,6 @@
+                 raise TimeoutError('case sim window overrun')
+         report['case_window'] = {'green_sim_s': t_green, 'end_sim_s': state['pose']['time'],
+                                  'duration_s': case['duration_s']}
+-        # 일정이 끝난 뒤 actor는 마지막 명령 자세에 정지한다. 명령 응답을 먼저 회수한다.
+-        drain = time.monotonic()+8
+-        while (actor_future is not None or extras.has_pending) and time.monotonic() < drain:
+-            rclpy.spin_once(node, timeout_sec=.01)
+-            complete_actor_future()
+-            extras.complete()
+         controller = 'local_pursuit'
+         inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node(controller, '/')}
+         required_inputs = {lidar_topic, '/camera/color/image_raw', configured_feedback_topic(), '/imu/data'}
+@@ -1177,16 +1100,9 @@
+         if runtime_motion_profile:
+             report['motion_relay_publishers'] = {topic: sorted(i.node_name for i in node.get_publishers_info_by_topic(topic))
+                                                 for topic in ('/imu/data', configured_feedback_topic())}
+-        actor_topic = f"/model/{actor_cfg['model_name']}/pose"
+-        report['actor_pose_subscribers'] = sorted(i.node_name for i in node.get_subscriptions_info_by_topic(actor_topic))
++        report['actor_pose_publishers'] = {name: sorted(i.node_name for i in node.get_publishers_info_by_topic(f'/model/{name}/pose')) for name in ('eval_g1b_actor','eval_second_lead')}
+         report['drive_publishers'] = sorted(i.node_name for i in node.get_publishers_info_by_topic('/drive'))
+         report['safe_drive_publishers'] = sorted(i.node_name for i in node.get_publishers_info_by_topic('/drive/safe'))
+-        contact_info = subprocess.run(['gz', 'topic', '-i', '-t', CONTACT_TOPIC], cwd=REPO,
+-            capture_output=True, text=True, timeout=10)
+-        report['contact_topic_connection'] = {'topic': CONTACT_TOPIC, 'returncode': contact_info.returncode,
+-            'output': contact_info.stdout, 'stderr': contact_info.stderr,
+-            'reader_alive_at_graph_audit': readers[1].poll() is None}
+-        extras.graph_audit(node)
+         host_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('actuation_host', '/')})
+         mcu_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('virtual_mcu', '/')})
+         sink_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('guarded_sim_actuator', '/')})
+@@ -1283,17 +1199,6 @@
+         capture_gate.close()
+         report['observation_closed_before_serialization'] = True
+         report['observation_last_ego_sim_s'] = ego[-1][0] if ego else None
+-        # 자차는 transport thread, 상대차는 ROS spin으로 수신한다. 정상 STOP 후
+-        # 보고서 계산 동안 자차만 먼저 늘어난 끝부분을 원래 상대차 메시지로 채운다.
+-        # 고장/중단 때는 기다리지 않으며, 시간 내 회수 실패는 기존 coverage 실패로 남긴다.
+-        if (report.get('stop', {}).get('stable') and ego and not stop_requested
+-                and not report.get('error') and all(p.poll() is None for p in processes)):
+-            streams = {actor_cfg['model_name']: actor, **extras.records.poses}
+-            try:
+-                report['actor_tail_drain'] = drain_actor_tail(ego[-1][0], streams,
+-                    lambda timeout: rclpy.spin_once(node, timeout_sec=timeout))
+-            except Exception as error:
+-                report['actor_tail_drain'] = dict(completed=False, error=f'{type(error).__name__}: {error}')
+         report['abort'] = outcome['abort']
+         if args.record_wheel_contacts:
+             path = output/'wheel_contacts.jsonl'
+@@ -1324,16 +1229,8 @@
+             'valid': reader_audit['ego']['handled_messages'] > 0 and all(
+                 a['parse_errors'] == 0 and a['handler_errors'] == 0 for a in reader_audit.values()),
+             'scope': 'reader parse/handler success; contact event-only silence is not no-contact coverage'}
+-        probe = json.loads(CONTACT_PROBE_REPORT.read_text(encoding='utf-8')) if CONTACT_PROBE_REPORT.exists() else {}
+-        connection = report.get('contact_topic_connection', {})
+-        report['contact_evidence'] = {'validated_source': bool(
+-            probe.get('interpretation', {}).get('moved_contact_reported') is True
+-            and probe.get('server_returncode') == 0 and ev.contact_connection_valid(connection)
+-            and reader_audit['contact']['parse_errors'] == 0 and reader_audit['contact']['handler_errors'] == 0),
+-            'known_contact_probe': str(CONTACT_PROBE_REPORT.relative_to(REPO)),
+-            'known_contact_probe_sha256': sha256(CONTACT_PROBE_REPORT) if CONTACT_PROBE_REPORT.exists() else None,
+-            'topic_connection': connection, 'observed_events': len(contacts),
+-            'scope': 'known-contact source capability + this-run connection/error checks; not continuous physical no-contact proof'}
++        report['contact_evidence'] = dict(applicability='no_traffic_actor',
++            scope='Actor contact sensor removed with actor. Wall/old610 overlap and STOP checks remain; no physical contact-free claim from silence.')
+         node.destroy_node()
+         rclpy.shutdown()
+         report['gazebo_stop_service'] = stop_gazebo_service(processes[0] if processes else None,
+@@ -1376,10 +1273,10 @@
+         (output/'actor_commands.json').write_text(json.dumps(commands, indent=1), encoding='utf-8')
+         (output/'trace.json').write_text(json.dumps(trace, ensure_ascii=False), encoding='utf-8')
+         try:
+-            report['evaluation'] = ev.evaluate_run(
++            report['evaluation'] = solo_evaluation.evaluate_run(
+                 config=config, case=case, mode=args.mode, t_green=t_green, trace=trace, ego=ego, actor=actor,
+                 contacts=contacts, commands=commands, stop_start=report.get('stop_request_sim_s'),
+-                schedule_pose=schedule_pose, centerline=centerline, s0=s0,
++                schedule_pose=None, centerline=centerline, s0=s0, obstacles=obstacles,
+                 road=road_polygon(output/'runtime_world.sdf') if (output/'runtime_world.sdf').exists() else None,
+                 runtime_world=(output/'runtime_world.sdf').read_text(encoding='utf-8') if (output/'runtime_world.sdf').exists() else '',
+                 contact_evidence=report['contact_evidence'])
+@@ -1396,7 +1293,7 @@
+                 report['official_signal_evidence']=official.signal(output, report.get('signal_states',[]), trace, scene)
+             except (OSError,ValueError,KeyError,IndexError,TypeError) as error:
+                 report['official_signal_evidence']=dict(passed=False,error=str(error))
+-        ev.finalize_verdict(report, args.mode)
++        solo_evaluation.finalize_verdict(report, args.mode)
+         if merge_profile is not None:
+             try:
+                 result = audit_merge_motion(config, case, centerline, s0, t_green, actor,
+@@ -1407,25 +1304,6 @@
+             report['harness_valid'] = report['harness_valid'] and result['valid']
+             report['run_valid'] = report['run_valid'] and result['valid']
+             report['passed'] = report['run_valid'] and report['behavior_gates_passed']
+-        if extras.specs:
+-            try:
+-                result = extras.save_and_evaluate(ego=ego, green=t_green, duration=case['duration_s'], config=config,
+-                    runtime_world=(output/'runtime_world.sdf').read_text(encoding='utf-8') if (output/'runtime_world.sdf').exists() else '',
+-                    known_contact_source=(probe.get('interpretation', {}).get('moved_contact_reported') is True
+-                                          and probe.get('server_returncode') == 0), digest=sha256)
+-                combined = contact_events([{'actor': actor_cfg['model_name'], 'topic': CONTACT_TOPIC, **row}
+-                                            for row in contacts]+extras.contacts, specs)
+-                result['combined_contacts'] = combined
+-                result['harness_valid'] = result['harness_valid'] and combined['valid']
+-            except Exception as error:
+-                result = {'harness_valid': False, 'behavior_gates_passed': False, 'error': f'{type(error).__name__}: {error}'}
+-            report['additional_actors'] = result
+-            report['harness_valid'] = report['harness_valid'] and result['harness_valid']
+-            report['run_valid'] = report['run_valid'] and result['harness_valid']
+-            report['behavior_gates_passed'] = report['behavior_gates_passed'] and result['behavior_gates_passed']
+-            report['passed'] = report['run_valid'] and (report['behavior_gates_passed'] if args.mode in ('g1', 'r0plus', 'm3', 'g1g2') else True)
+-            if args.mode == 'r0':
+-                report['r0_meets_g1_gates'] = report['behavior_gates_passed']
+         if native_audit:
+             try:
+                 received_native = [json.loads(line) for line in

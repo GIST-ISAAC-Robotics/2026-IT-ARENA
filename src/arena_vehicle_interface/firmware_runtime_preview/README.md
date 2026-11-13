@@ -26,8 +26,8 @@ bash scripts/build_runtime_preview.sh \
 ## 운용 연결 전에 남은 일
 
 1. 실장 엔코더 부호·실제 count per rev와 배선/관측을 확인하고 PCNT를 유효 피드백으로 연결합니다.
-2. 차량 조향각↔서보 위치 실측표를 받습니다. [`steering_mapping.hpp`](../portable/steering_mapping.hpp)는 비대칭 보간 준비물일 뿐이며, 실제 측정표/자동 중립/출력 연결은 없습니다.
-3. 모터 PI의 음수 effort는 역회전 명령이 아닙니다. MD20A 전기 제동 매핑·실측 게인·속도 상한을 확인한 별도 구현이 필요합니다.
+2. 11/13 확정 CAD의 내륜30°·외륜23.3°/서보−23.6~+23.4°는 [`cad_servo_goal.hpp`](../portable/cad_servo_goal.hpp)에 준비했습니다. 조립 후 소프트웨어 영점 count·설치 방향·안전 구간을 기록해 이 표에 연결합니다. [`steering_mapping.hpp`](../portable/steering_mapping.hpp)는 후속 실측표의 비대칭 보간 준비물이며, CAD값은 실제 기구 측정을 대신하지 않습니다. 자동 중립/실제 출력 연결은 아직 없습니다.
+3. 모터 PI의 음수 effort는 역회전 명령이 아닙니다. 공통 `speed_pi.hpp`의 선택형 `[0,duty상한]`과 `md20a_forward_output.hpp`의 고정 전진 DIR 매핑을 준비했습니다. 양수 목표의 과속 duty0은 정상 감속이며 STOP으로 바꾸지 않습니다. 실제 PWM 연결·실측 게인·장착 방향·속도 상한·제동 효과는 남아 있으며 이 preview는 해당 출력을 연결하지 않습니다.
 4. GPIO8/명시 STOP·통신 상실·출력0·조향 응답을 실제 하중에서 확인하고 운용 준비 상태를 연결합니다. 이 preview의 정상 수신만으로 구동 준비를 허가하지 않습니다.
 
 상세 이력은 [실행·센서 통합 보고서](../../../docs/reports/RUNTIME_SENSOR_INTEGRATION_2026_11_12.md), 확정 회로는 [GPIO 배선 기준](../../../docs/hardware/ESP32_GPIO_WIRING_2026_11_11.md)을 따릅니다.

@@ -1,0 +1,585 @@
+--- a/src/arena_autonomy/arena_autonomy/follow_trace.py
++++ b/src/arena_autonomy/arena_autonomy/follow_trace.py
+@@ -97,7 +97,11 @@
+ 
+ 
+ class FollowTrace:
+-    def __init__(self, path, motion_config, follow_config, capacity=128, *, mode='g1_follow', execution_config=None):
++    def __init__(self, path, motion_config, follow_config, capacity=128, *, mode='g1_follow', execution_config=None,
++                 current_corner_budget='off'):
++        if (type(current_corner_budget) is not str or current_corner_budget not in ('off', 'r396_v1')
++                or (current_corner_budget != 'off' and mode != 'g1_g2_handoff_trial')):
++            raise ValueError('registered handoff current corner trace policy required')
+         if mode not in ('g1_follow', 'r0_plus_candidate', 'm3_execution_trial', 'g2_entry_trial', 'g1_g2_handoff_trial', 'p22_entry_trial', 'p22_route_trial'):
+             raise ValueError('unsupported decision trace mode')
+         if mode == 'm3_execution_trial':
+@@ -142,7 +146,8 @@
+                         'simulation_trial_only': True, 'vision_events': 'p22_frame'}
+         self.emit('header', {**identity,
+                             'history_units': {'wheels': 'm/s_after_conversion', 'gyro': 'rad/s_after_bias'},
+-                            'motion_config': asdict(motion_config), 'follow_config': asdict(follow_config)})
++                            'motion_config': asdict(motion_config), 'follow_config': asdict(follow_config),
++                            **({'current_corner_budget': current_corner_budget} if current_corner_budget != 'off' else {})})
+ 
+     def _write(self, event):
+         self.stream.write(json.dumps(event, ensure_ascii=False, allow_nan=False, separators=(',', ':'))+'\n')
+--- a/src/arena_autonomy/arena_autonomy/g1_g2_node.py
++++ b/src/arena_autonomy/arena_autonomy/g1_g2_node.py
+@@ -87,11 +87,14 @@
+                 or recheck != 'selected_v1' or self.follow.config.guard_observation_policy != 'selected_r181'):
+             raise ValueError('worker recheck requires process/fresh native/selected observation policy')
+         runtime_policy = self.declare_parameter('g1_runtime_policy', 'off').value
+-        from arena_autonomy.runtime_node_backend import validate_selection
++        from arena_autonomy.runtime_node_backend import validate_selection, validate_corner_selection
+         self.runtime_dual_selected = validate_selection(runtime_policy, execution=execution,
+             submission=submission, recheck_in_worker=self.recheck_in_worker,
+             retain_reference=retain_reference, numeric_execution=numeric_execution,
+             hardware_shadow=self.hardware_shadow)
++        validate_corner_selection(self.current_corner_budget, runtime_selected=self.runtime_dual_selected,
++            use_sim_time=self.get_parameter('use_sim_time').value, motion_verified=self.motion.verified,
++            motion_time_policy=self.motion.timing_policy)
+         if execution == 'process_candidate':
+             if (not (self.get_parameter('use_sim_time').value is True or self.hardware_inputs)
+                     or self.settings['control_rate_hz'] != 50.):
+@@ -120,7 +123,9 @@
+                 self.follow_trace.emit('runtime_factory_policy', dict(policy=runtime_policy,
+                     backend='runtime_dual_v1', motion_time_policy=self.motion.timing_policy,
+                     motion_timing_verified=self.motion.verified, physical_actuation_verified=False,
+-                    source_timestamps_preserved=True, default_changed=False))
++                    source_timestamps_preserved=True, default_changed=False,
++                    **({'current_corner_budget': self.current_corner_budget}
++                       if self.current_corner_budget != 'off' else {})))
+             else:
+                 self.decision_delivery = delivery_type(worker_type(header), **delivery_options)
+             if self.recheck_in_worker:
+@@ -242,6 +247,9 @@
+         return super().destroy_node()
+ 
+     def create_follow_trace(self, trace_path):
++        self.current_corner_budget = self.declare_parameter('g1_current_corner_budget', 'off').value
++        if type(self.current_corner_budget) is not str or self.current_corner_budget not in ('off', 'r396_v1'):
++            raise ValueError('registered current corner budget required')
+         enabled = self.declare_parameter('g1_g2_simulation_trial',False).value
+         if enabled is not True or not (self.get_parameter('use_sim_time').value is True or self.hardware_inputs):
+             raise ValueError('G1/G2 handoff requires explicit trial activation and a registered execution environment')
+@@ -304,7 +312,8 @@
+                                          rear_wall_witness=wall_witness)),
+             allow_simulation_trial=True)
+         trace = FollowTrace(trace_path,self.motion.history.config,self.follow.config,
+-            mode='g1_g2_handoff_trial',execution_config=self.follow.execution)
++            mode='g1_g2_handoff_trial',execution_config=self.follow.execution,
++            current_corner_budget=self.current_corner_budget)
+         self.get_logger().info('G1/G2 sensor handoff trial (preparation '+policy+'); /drive through independent safety')
+         return trace
+ 
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/corner_budget.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/corner_budget.py
+@@ -0,0 +1,132 @@
++"""고정 거리 접두 표본에서 한 개 저속 목표를 제안한다. 허가는 최종 기존 검사에만 있다."""
++import math
++import time
++
++import numpy as np
++from arena_autonomy import pass_release_trial as ps
++from arena_autonomy.observation_support import source_valid
++
++DISTANCE_STEP_M = .01  # 기존 command_arc의 1cm 자세 표본 간격. 새 보호 판정선이 아니다.
++MINIMUM_QUERY_DISTANCE_M = .01  # 기존 motion_queries의 최솟값.
++
++
++def elapsed(costs,name,start):
++    if costs is not None:costs[name]=(time.perf_counter_ns()-start)/1e6
++
++
++def fixed_distances(distance,steerings,cfg):
++    """원호 길이에 대해 고정된 1cm점과 기존 차체 x/y 극점, 한 끝점의 합집합."""
++    values={0.,float(distance)}
++    values.update(i*DISTANCE_STEP_M for i in range(1,math.floor(distance/DISTANCE_STEP_M)+1))
++    for steering in steerings:
++        k=math.tan(steering)/cfg.wheelbase_m
++        if abs(k)<1e-9:continue
++        lo,hi=sorted((0.,distance*k))
++        for x in (-cfg.length_m/2,cfg.length_m/2):
++            for y in (-cfg.width_m/2,cfg.width_m/2):
++                a,b=1/k-y,cfg.wheelbase_m/2+x
++                for critical in (math.atan2(a,b),math.atan2(-b,a)):
++                    for n in range(math.ceil((lo-critical)/math.pi),math.floor((hi-critical)/math.pi)+1):
++                        s=(critical+n*math.pi)/k
++                        if 0<=s<=distance:values.add(float(s))
++    return np.array(sorted(values),dtype=float)
++
++
++def poses_at_distances(steering,distances,cfg):
++    """기존 후륜축 정곡률 적분식이며 linspace를 재생성하지 않는다."""
++    k=math.tan(steering)/cfg.wheelbase_m
++    yaw=k*distances
++    if abs(k)<1e-9:
++        rx,ry=distances-cfg.wheelbase_m/2,np.zeros_like(distances)
++    else:
++        rx=np.sin(yaw)/k-cfg.wheelbase_m/2
++        ry=(1-np.cos(yaw))/k
++    return np.column_stack((rx+cfg.wheelbase_m/2*np.cos(yaw),ry+cfg.wheelbase_m/2*np.sin(yaw),yaw))
++
++
++def observed_prefix(queries,first_distance,distances,free,masked,length,width,selector):
++    """관측한 질의는 제약하지 않는다. unknown/자체마스크의 기존 기하 제한만 제안에 쓴다."""
++    q=np.asarray(queries,dtype=float).reshape(-1,2)
++    assert len(q)==len(first_distance)==len(free)==len(masked)
++    unknown=~free & ~masked
++    hidden=~free & masked
++    exterior=np.abs(q[:,1])-width/2
++    unknown_bad=unknown & ((np.abs(q[:,0])>length/2) | (exterior<=0) | (exterior>.01))
++    masked_extent=np.maximum(exterior,-q[:,0]-length/2)
++    masked_bad=hidden & ((q[:,0]>length/2) | (masked_extent>selector.masked_tail_allowance_m))
++    bad=unknown_bad | masked_bad
++    first=float(np.min(first_distance[bad])) if np.any(bad) else None
++    preceding=distances if first is None else distances[distances<first]
++    allowed=float(preceding[-1]) if len(preceding) else 0.
++    return dict(allowed_distance_m=allowed,first_bad_distance_m=first,
++        unknown_geometry_bad_queries=int(np.sum(unknown_bad)),masked_geometry_bad_queries=int(np.sum(masked_bad)),
++        queries=len(q),free_queries=int(np.sum(free)),unknown_queries=int(np.sum(unknown)),masked_queries=int(np.sum(hidden)),
++        maximum_exterior_m=.01,maximum_masked_tail_m=selector.masked_tail_allowance_m,
++        distances_m=distances.tolist(),proposal_only=True,continuous_sweep_certified=False,
++        unknown_filled=False,final_full_check_required=True)
++
++
++def speed_from_distance(allowed,measured,original_target,tau,execution):
++    """같은 D(v)를 안정적인 이차식으로 역산한다. 실제속도의 제동거리를 제거하지 않는다."""
++    measured_distance=measured*tau+measured*measured/(2*execution.deceleration_mps2)
++    result=dict(accepted=False,reason='distance_below_minimum_query',allowed_distance_m=allowed,
++        measured_distance_m=measured_distance,minimum_query_distance_m=MINIMUM_QUERY_DISTANCE_M,
++        tau_s=tau,reaction_s=execution.reaction_s,deceleration_mps2=execution.deceleration_mps2)
++    if not math.isfinite(allowed) or allowed<MINIMUM_QUERY_DISTANCE_M:return result
++    if measured_distance>allowed:return {**result,'reason':'measured_braking_distance_exceeds_budget'}
++    speed=2*allowed/(tau+math.sqrt(tau*tau+2*allowed/execution.deceleration_mps2))
++    # 한 번의 안쪽 반올림만 한다. 새 속도열이나 반복 탐색은 만들지 않는다.
++    target=math.nextafter(min(float(original_target),.10,speed),0.)
++    prediction=max(measured,target)
++    distance=prediction*tau+prediction*prediction/(2*execution.deceleration_mps2)
++    if not 0<target<=.10 or distance>allowed:
++        return {**result,'reason':'inverse_rounding_or_target_invalid','proposed_target_mps':target,'proposal_distance_m':distance}
++    return {**result,'accepted':True,'reason':'single_distance_budget_proposal',
++        'proposed_target_mps':target,'proposal_distance_m':distance}
++
++
++def propose(scene,measured,steering,previous,dt,cfg,*,target_cap=.10,costs=None):
++    start=time.perf_counter_ns()
++    if not source_valid(scene):return dict(accepted=False,reason='invalid_source')
++    age=scene.t_ref_s-scene.source_first_s
++    if not all(math.isfinite(v) for v in (measured,steering,previous,dt,age,target_cap)):
++        return dict(accepted=False,reason='invalid_budget_input')
++    execution=ps.mx.ExecutionConfig()
++    assert execution.reaction_s==.10 and execution.deceleration_mps2==2.
++    tau=dt+max(0.,age)+execution.reaction_s
++    distance=ps.mx.envelope_distance(max(measured,target_cap),age,dt,execution)
++    lateral=ps.lateral_config(cfg)
++    steerings=sorted({float(steering),float(previous)})
++    distances=fixed_distances(max(distance,MINIMUM_QUERY_DISTANCE_M),steerings,lateral)
++    points=[];provenance=[];poses_count=0;thin_intersections=0
++    for angle in steerings:
++        poses=poses_at_distances(angle,distances,lateral)
++        for s,pose in zip(distances,poses):
++            # 기존 body_queries가 차체/바퀴/얇은 unknown 교차를 만든다. 발생 거리만 붙인다.
++            q,thin=ps.mx.body_queries(scene,pose.reshape(1,3),np.array([angle]),lateral)
++            q=q[(np.abs(q[:,0])>cfg.length_m/2+1e-9) | (np.abs(q[:,1])>cfg.width_m/2+1e-9)]
++            points.append(q);provenance.append(np.full(len(q),s));poses_count+=1;thin_intersections+=thin
++    all_queries=np.vstack(points);all_distances=np.concatenate(provenance)
++    if not len(all_queries):return dict(accepted=False,reason='empty_proposal_queries')
++    unique,inverse=np.unique(all_queries,axis=0,return_inverse=True)
++    first_distance=np.full(len(unique),np.inf)
++    np.minimum.at(first_distance,inverse,all_distances)
++    elapsed(costs,'proposal_geometry_ms',start)
++    start=time.perf_counter_ns()
++    padding=ps.mx.ray_padding(scene,lateral,cfg.object_motion_bound_mps)
++    classified=ps.depth_and_masked_support(scene,unique,padding)
++    if classified is None:
++        free=ps.depth_support(scene,unique,padding)
++        masked=np.zeros(len(unique),dtype=bool)
++        masked[~free]=ps.mx.masked_only(scene,unique[~free],padding)
++    else:free,masked=classified
++    elapsed(costs,'proposal_classification_ms',start)
++    prefix=observed_prefix(unique,first_distance,distances,free,masked,cfg.length_m,cfg.width_m,ps.SelectorConfig())
++    inverse_result=speed_from_distance(prefix['allowed_distance_m'],measured,target_cap,tau,execution)
++    return {**inverse_result,'prefix':prefix,'cap_distance_m':distance,'target_cap_mps':target_cap,
++        'current_steering_rad':steering,'previous_steering_rad':previous,'measured_speed_mps':measured,
++        'query_pose_count':poses_count,'queries_before_exact_dedup':len(all_queries),
++        'thin_intersections':int(thin_intersections),'source_first_s':scene.source_first_s,
++        'actual_lateral_geometry':dict(length_m=lateral.length_m,width_m=lateral.width_m,wheelbase_m=lateral.wheelbase_m,
++            track_m=lateral.track_m,wheel_radius_m=lateral.wheel_radius_m,wheel_width_m=lateral.wheel_width_m),
++        'geometry_source':'same ps.lateral_config(cfg) and wheel_contact_corners as frozen baseline'}
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/corner_candidate.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/corner_candidate.py
+@@ -0,0 +1,78 @@
++"""명시 선택형 현재 계산. 이전 결과를 받으며 기존 wrapper를 다시 호출하거나 발행하지 않는다."""
++import math
++import time
++
++from arena_autonomy import pass_release_trial as ps
++from arena_autonomy.follow_trace import thaw
++from arena_autonomy.measurement_scan import MeasurementScan
++from .corner_budget import propose,elapsed
++
++DIAGNOSTIC='current_corner_distance_budget'
++
++
++def finite(value):
++    return type(value) in (int,float) and math.isfinite(value)
++
++
++def eligible(before,output,current,cfg,require_current_region):
++    if before is None or before['speed_mps']>0:return False
++    normal=output[2].get('normal') or {};partial=normal.get('partial_observation') or {}
++    retry=before.get('current_relative_body_retry') or {};proof=retry.get('proof') or {}
++    values=(output[0],output[1],current['speed_mps'],current['previous_steering_rad'],current['dt_s'],before['steering_rad'])
++    return (require_current_region is True and all(finite(v) for v in values)
++        and 0<=current['speed_mps']<=.15 and 0<current['dt_s']<=.1 and output[0]>.15
++        and max(abs(output[1]),abs(current['previous_steering_rad']),abs(before['steering_rad']))<=cfg.max_steering_rad
++        and output[2].get('handoff_state')=='FOLLOW' and normal.get('reason')=='local_follow'
++        and normal.get('selector_mode')=='SOLO' and normal.get('selector_choice')=='baseline'
++        and normal.get('boundary_from_memory') is False and partial.get('allowed') is True
++        and partial.get('reason')=='fully_observed'
++        and before.get('reason')=='route_current_large_motion_region_unobserved'
++        and retry.get('applied') is False and retry.get('cap_mps')==.10
++        and proof.get('reason')=='outside_small_body_side')
++
++
++def try_from_current_result(before,output,submitted,current,scene,history,cfg,*,core_rebase,proof_callback,
++                            require_current_region=False,costs=None):
++    """계산된 기준을 그대로 받아 거리 제안 1회 + 최종 현재 검사 1회만 한다."""
++    if not eligible(before,output,current,cfg,require_current_region):return before
++    measured=current['speed_mps'];previous=current['previous_steering_rad'];dt=current['dt_s']
++    proposal=propose(scene,measured,before['steering_rad'],previous,dt,cfg,costs=costs)
++    diagnostic=dict(applied=False,proposal=proposal,original_reason=before['reason'],original_target_mps=output[0],
++        measured_speed_mps=measured,unknown_filled=False,source_timestamp_renewed=False,
++        state_transition=False,default_changed=False,additional_target_attempts=0,final_full_checks=0,
++        continuous_sweep_certified=False,proposal_is_permission=False)
++    def reject(reason):return {**before,DIAGNOSTIC:{**diagnostic,'reason':reason}}
++    if not proposal['accepted']:return reject(proposal['reason'])
++    target=proposal['proposed_target_mps']
++    start=time.perf_counter_ns()
++    core=core_rebase((target,output[1],output[2]),submitted,current,scene,history,cfg)
++    elapsed(costs,'final_core_ms',start)
++    diagnostic['additional_target_attempts']=1
++    if (core is None or not finite(core.get('speed_mps')) or not 0<core['speed_mps']<=target
++            or core.get('reason')!='rebase_current_follow'
++            or any(core.get(k)!=before.get(k) for k in (
++                'steering_rad','reference_s','path_source_s','original_reference_s','path_points'))):
++        return reject('final_current_geometry_or_identity_rejected')
++    # 다시 생성하는 최종 linspace 질의가 접두 표본의 부분집합이라고 가정하지 않는다.
++    context={};start=time.perf_counter_ns()
++    region=ps.motion_region(scene,measured,core['speed_mps'],core['steering_rad'],previous,dt,cfg,
++        ps.lateral_config(cfg),context=context)
++    elapsed(costs,'final_region_ms',start)
++    diagnostic.update(final_full_checks=1,region=region,target_mps=core['speed_mps'])
++    if region['distance_m']>proposal['allowed_distance_m']:
++        return reject('final_distance_exceeds_budget')
++    proof=dict(accepted=False,reason='no_unknown_context',unknown_filled=False)
++    start=time.perf_counter_ns()
++    if region['unobserved'] and context:
++        raw=MeasurementScan(**thaw(current['scan']['measurements']))
++        q=context['queries'][~context['free'] & ~context['masked']]
++        proof=proof_callback(scene,raw,q,context['padding'],cfg.length_m,cfg.width_m,
++            measured,core['speed_mps'])
++    blocked=ps.region_blocked(region,ps.SelectorConfig(),bounded_unknown_risk=proof['accepted'])
++    elapsed(costs,'final_gap_ms',start)
++    diagnostic.update(proof=proof,blocked=blocked)
++    if not (region['queries']>0 and blocked is None and (not region['unobserved'] or proof['accepted'])):
++        return reject('final_current_region_rejected')
++    diagnostic.update(applied=True,reason='single_current_distance_budget_accepted',current_full_recheck=True)
++    route={**before['current_route_proof'],'region':region,'accepted':True,'bounded_current_risk':diagnostic}
++    return {**core,'current_route_proof':route,DIAGNOSTIC:diagnostic}
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/evaluator.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/evaluator.py
+@@ -16,6 +16,17 @@
+         self.time_policy = header.get('runtime_time_policy', 'verified_only')
+         if self.time_policy not in ('verified_only', 'host_estimated_v1'):
+             raise ValueError('explicit runtime acquisition policy required')
++        from arena_autonomy.runtime_node_backend import validate_corner_selection
++        corner = header.get('current_corner_budget', 'off')
++        environment = header.get('current_corner_environment', {}) if corner != 'off' else {}
++        if type(environment) is not dict:
++            raise ValueError('explicit current corner environment mapping required')
++        self.corner_budget = validate_corner_selection(corner,
++            runtime_selected=(header.get('runtime_policy') == POLICY
++                and header.get('numeric_execution') == 'native_v1'
++                and environment.get('backend') == 'native2slot_v1'),
++            use_sim_time=environment.get('use_sim_time'),
++            motion_verified=environment.get('motion_timing_verified'), motion_time_policy=self.time_policy)
+         from arena_autonomy.numeric_kernels import configure
+         from arena_autonomy.decision_process import make_controller
+         configure(header.get('numeric_execution', 'python'))
+@@ -52,6 +63,8 @@
+         current = data if self.stage == 'plan' else data['current']
+         if current.get('timing_policy', 'verified_only') != self.time_policy:
+             raise ValueError('input acquisition policy differs from selected runtime evaluator')
++        if self.corner_budget and current.get('timing_verified') is not True:
++            raise ValueError('current corner budget requires verified input timing')
+         if self.stage == 'plan':
+             return freeze(replay_call(self.follow, data, self.motion))
+         info, scan, history = restore_call(current, self.motion)
+@@ -61,6 +74,8 @@
+                                  timing_policy=self.time_policy)
+             result = self.current_policy.rebase(data['output'], data['submitted'], current, scene,
+                                                history, self.follow.config, require_current_region=True)
++            if self.corner_budget:
++                result = self.apply_corner(result, data, info, scene, history)
+         except (MotionUnavailable, ValueError) as error:
+             result = dict(speed_mps=0., steering_rad=info['previous_steering_rad'],
+                           reference_s=info['reference_s'], reason='rebase_input_stop', input_error=str(error),
+@@ -69,6 +84,25 @@
+             raise ValueError('unsupported current recheck')
+         return freeze(result)
+ 
++    def apply_corner(self, before, data, info, scene, history):
++        """계산된 baseline을 받고 eligible일 때만 원 단일 제안/최종 검사를 추가한다."""
++        from . import corner_candidate, range_mask_component
++        from arena_autonomy.local_scene import blind_spec
++        cfg = self.follow.config
++        if not corner_candidate.eligible(before, data['output'], data['current'], cfg, True):
++            return before
++        profile = info['rear_half_angle_deg']
++        sectors = blind_spec(profile)[1]
++
++        def proof(s, raw, q, padding, length, width, speed, target):
++            return range_mask_component.bounded_adjacent_structure(
++                s, raw, q, padding, length, width, speed, target, sectors,
++                mask_profile=profile, motion_epoch=info['epoch'], timing_verified=info['timing_verified'])
++
++        return corner_candidate.try_from_current_result(before, data['output'], data['submitted'],
++            data['current'], scene, history, cfg, core_rebase=self.current_policy.core_policy.rebase,
++            proof_callback=proof, require_current_region=True)
++
+ 
+ def evaluator_factory(stage, header):
+     return Evaluator(stage, header)
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/profile_evidence.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/profile_evidence.py
+@@ -0,0 +1,62 @@
++"""부분 장착 성분의 출처 대조. 광선 상태/시각/거리를 생성하거나 수정하지 않는다."""
++import math
++
++from arena_autonomy.local_scene import LocalScene, blind_spec, range_bands, _blind_limits, _masked_by
++from arena_autonomy.measurement_scan import MeasurementScan
++from arena_autonomy.observation_support import source_valid
++
++
++def profile_evidence(scene, raw, sectors, profile, motion_epoch, timing_verified):
++    """거리 한정 원 프로필과 검증된 현재 장면의 일치. 전체-sector 경로는 호출하지 않는다."""
++    if (type(raw) is not MeasurementScan or type(scene) is not LocalScene
++            or timing_verified is not True or raw.time_basis == 'unverified_estimate'
++            or type(motion_epoch) is not int or motion_epoch < 0
++            or type(profile) is not dict or 'range_limits_m' not in profile):
++        raise ValueError('explicit_ranged_profile_and_verified_source_required')
++    rear, declared = blind_spec(profile)
++    bands = range_bands(profile, len(declared))
++    limits = _blind_limits(profile)
++    if rear != 0. or not declared or tuple(map(tuple, sectors)) != declared:
++        raise ValueError('profile_sector_mismatch')
++    total = raw.source_epoch + motion_epoch
++    epoch = total*(total+1)//2 + motion_epoch
++    if (not source_valid(scene) or scene.source_epoch != epoch
++            or scene.source_frame_id != raw.source_frame_id
++            or scene.source_first_s != raw.acquired_at_s[0]
++            or scene.source_last_s != raw.acquired_at_s[-1]
++            or scene.source_angles_rad != raw.angles_rad
++            or len(scene.rays) != len(raw.ranges_m)):
++        raise ValueError('profile_raw_scene_metadata_mismatch')
++    for i, (ray, distance, angle, stamp) in enumerate(zip(
++            scene.rays, raw.ranges_m, raw.angles_rad, raw.acquired_at_s)):
++        valid = math.isfinite(distance) and raw.range_min_m <= distance <= raw.range_max_m
++        masked = _masked_by(math.remainder(angle, math.tau), limits, distance)
++        status = 'masked' if masked else ('return' if valid else 'unknown')
++        if (ray.source_index != i or ray.source_frame_id != raw.source_frame_id
++                or ray.source_epoch != epoch or ray.acquired_at_s != stamp or ray.status != status):
++            raise ValueError('profile_raw_scene_ray_mismatch')
++        if status == 'return':
++            hit = tuple(o+distance*d for o, d in zip(ray.ray_origin_xy_m, ray.direction_xy))
++            if ray.hit_xy_m is None or math.dist(hit, ray.hit_xy_m) > 1e-6:
++                raise ValueError('profile_return_geometry_mismatch')
++        elif ray.hit_xy_m is not None:
++            raise ValueError('profile_nonreturn_has_hit')
++    return bands
++
++
++def partial_component(masked, memberships, a, b, values, bands):
++    """nominal 구간을 실제 먼 return이 끊은 한 연결 성분만 인정한다."""
++    matches = [i for i, member in enumerate(memberships) if masked and masked < member]
++    if len(matches) != 1:
++        return None
++    sector = matches[0]
++    # 겹치거나 여러 장착 구간의 mask를 한 부분 구간으로 합치지 않는다.
++    if any(sum(j in member for member in memberships) != 1 for j in masked):
++        return None
++    inside_flanks = [j for j in (a, b) if j in memberships[sector]]
++    if not inside_flanks or any(not math.isfinite(values[j]) or values[j] <= bands[sector][1]
++                                for j in inside_flanks):
++        return None
++    return dict(sector_index=sector, masked_indices=sorted(masked),
++                distant_split_return_indices=inside_flanks,
++                range_band_m=list(bands[sector]), unknown_filled=False)
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/range_mask_component.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/range_mask_component.py
+@@ -0,0 +1,120 @@
++"""저장 비교 후보. 원 whole-sector 본문에서 membership 실패 분기만 확장한다.
++
++새 부분 분기에도 10 mm/6 deg/50 mm/0.15 m/s/0.6 m와 원 점유·시각 검사를 유지한다.
++공통 함수 설치, 상태 전이, 발행은 없다.
++"""
++import math
++import numpy as np
++from arena_autonomy.current_path_recheck._gaps import bounded_body_nonreturn
++from arena_autonomy.rear_fringe_trial import _query_brackets
++from arena_autonomy.known_structure import sector_rays
++from arena_autonomy.scan_input import scan_angles
++from .profile_evidence import profile_evidence, partial_component
++
++
++def bounded_adjacent_structure(scene,raw_scan,queries,padding,length,width,speed,target,sectors,*,
++                               mask_profile=None,motion_epoch=None,timing_verified=None):
++    old=bounded_body_nonreturn(scene,raw_scan,queries,padding,length,width,speed,target)
++    if old.get('accepted') or old.get('reason') not in ('unbounded_nonreturn','mask_boundary'):
++        return old
++    result={**old,'policy':'guard_adjacent_structure_gap_r149','unknown_filled':False,
++            'residual_hidden_object_risk':True,'maximum_speed_mps':.15}
++    def reject(reason,**fields):
++        return {**result,'accepted':False,'reason':reason,**fields}
++    if not 0<=speed<=.15 or not 0<target<=.15 or not sectors:
++        return reject('adjacent_structure_outside_scope')
++    q=np.asarray(queries,dtype=float).reshape(-1,2);pad=np.asarray(padding,dtype=float)
++    rays=scene.rays;count=len(rays)
++    origins=np.asarray([r.ray_origin_xy_m for r in rays])
++    directions=np.asarray([r.direction_xy for r in rays])
++    status=np.asarray([r.status for r in rays]);values=np.asarray(raw_scan.ranges,dtype=float)
++    depths=np.asarray([math.dist(r.ray_origin_xy_m,r.hit_xy_m) if r.status=='return' else -1. for r in rays])
++    memberships=[set(row.tolist()) for row in sector_rays(0.,0.,count,sectors,source_angles=scan_angles(raw_scan))]
++    groups={};checked=set();profile_bands=None;partial_components=[];pure_components=[]
++    angle=lambda a,b:abs(math.atan2(float(directions[a,0]*directions[b,1]-directions[a,1]*directions[b,0]),
++                                   float(np.dot(directions[a],directions[b]))))
++    # 전단 body 검사가 출처/시간/국소 차체 범위와 알려진 점유를 검증했다.
++    # 첫 무경계 구간 뒤의 모든 질의도 아래에서 끝까지 다시 검사한다.
++    for radius,angles,lo,hi in _query_brackets(q,origins,directions):
++        if np.any(radius<=1e-9):return reject('query_at_sensor_origin')
++        if (angles[lo]<-1e-10 or angles[hi]>1e-10 or abs(lo-hi)>1
++                or abs(angles[lo])+abs(angles[hi])>.025):
++            return reject('unbracketed_query')
++        if not any(status[i]=='unknown' for i in (lo,hi)):return reject('not_nonreturn_only')
++        for i in (lo,hi):
++            # 한 질의의 각도 세포가 mask/unknown 경계에 걸릴 수도 있다.
++            # 양쪽 모두 masked인 질의는 위에서 거절했고, 짝 unknown에서
++            # 이 마스크를 포함한 성분 전체와 바깥 반환을 검증한다.
++            if status[i]=='masked':continue
++            if status[i]=='return':
++                if depths[i]-radius[i]-pad[i]<=0:return reject('near_return')
++                continue
++            if i in checked:continue
++            start=end=i
++            while start>0 and status[start-1] in ('unknown','masked'):start-=1
++            while end+1<count and status[end+1] in ('unknown','masked'):end+=1
++            a,b=start-1,end+1
++            if a<0 or b>=count or status[a]!='return' or status[b]!='return':
++                return reject('combined_unbounded')
++            member=set(range(start,end+1))
++            masked={j for j in member if status[j]=='masked'}
++            # 묶음 안 마스크는 한 개의 명시된 장착 구간 전체와 일치해야 한다.
++            if not masked or not any(masked==m for m in memberships):
++                if mask_profile is None:
++                    return reject('not_one_declared_mount_sector')
++                try:
++                    if profile_bands is None:
++                        profile_bands=profile_evidence(scene,raw_scan,sectors,mask_profile,
++                                                       motion_epoch,timing_verified)
++                except (ValueError,TypeError,AttributeError,OverflowError) as error:
++                    return reject('range_profile_evidence_invalid',profile_error=str(error))
++                if masked:
++                    partial=partial_component(masked,memberships,a,b,values,profile_bands)
++                    if partial is None:
++                        return reject('not_range_split_declared_component')
++                    partial_components.append(partial)
++                else:
++                    # 실제 반환 사이의 일반 무반환 성분은 장착 마스크가 아니다.
++                    # 아래 동일한 raw/점유/전방/폭 검사와 전체 공백 합산을 적용한다.
++                    # 원 profile 미지정 경로는 앞에서 그대로 거절해 보존한다.
++                    pure_components.append(dict(first=start,last=end))
++            unknown=sorted(member-masked)
++            if not np.all(np.isposinf(values[unknown])) or not np.all(np.isnan(values[list(masked)])):
++                return reject('invalid_raw_gap')
++            if any(abs(math.atan2(directions[j,1],directions[j,0]))<=math.radians(100) for j in member):
++                return reject('front_gap_outside_scope')
++            if min(depths[a],depths[b])<result['minimum_neighbor_range_m']:
++                return reject('near_outer_neighbor')
++            if (not np.all(np.isfinite(values[[a,b]]))
++                    or max(abs(values[a]-depths[a]),abs(values[b]-depths[b]))>1e-6):
++                return reject('raw_scene_mismatch')
++            spans=[]
++            for j in unknown:
++                if j-1 in member and status[j-1]=='unknown':continue
++                last=j
++                while last+1 in member and status[last+1]=='unknown':last+=1
++                spans.append(angle(j-1,last+1))
++            gap=sum(spans)
++            if gap>math.radians(6):return reject('wide_unknown_part')
++            combined=angle(a,b)
++            if combined>=math.pi/2:return reject('wide_combined_angle')
++            reach=max(float(np.max(np.linalg.norm(q-origins[j],axis=1))) for j in member)
++            chord=2*(reach+float(pad.max()))*math.sin(combined/2)
++            if chord>result['maximum_local_chord_m']:return reject('wide_combined_local_gap',maximum_chord_m=chord)
++            groups[(start,end)]=dict(first=start,last=end,masked_indices=sorted(masked),
++                unknown_gap_rad=gap,combined_gap_rad=combined,local_chord_m=chord,
++                outer_return_ranges_m=[float(depths[a]),float(depths[b])])
++            checked.update(member)
++    if sum(g['unknown_gap_rad'] for g in groups.values())>math.radians(6):
++        return reject('many_unknown_gaps')
++    if sum(g['local_chord_m'] for g in groups.values())>result['maximum_local_chord_m']:
++        return reject('many_combined_local_gaps')
++    accepted={**result,'accepted':True,'reason':'bounded_adjacent_mount_gap_risk',
++              'gaps':list(groups.values()),'maximum_chord_m':max(g['local_chord_m'] for g in groups.values())}
++    if partial_components:
++        accepted.update(policy='range_limited_mount_component_r396',
++                        range_mask_components=partial_components)
++    if pure_components:
++        accepted.update(policy='mixed_bounded_components_r396_v2',
++                        ordinary_nonreturn_components=pure_components)
++    return accepted
+--- a/src/arena_autonomy/arena_autonomy/runtime_node_backend.py
++++ b/src/arena_autonomy/arena_autonomy/runtime_node_backend.py
+@@ -2,6 +2,30 @@
+ import math
+ 
+ POLICY = 'cad_runtime_r377_v1'
++CORNER_POLICY = 'r396_v1'
++
++
++def validate_corner_selection(policy, *, runtime_selected, use_sim_time,
++                              motion_verified, motion_time_policy):
++    if policy == 'off':
++        return False
++    if policy != CORNER_POLICY or type(policy) is not str:
++        raise ValueError('registered current corner budget required')
++    if (runtime_selected is not True or use_sim_time is not True
++            or motion_verified is not True or motion_time_policy != 'verified_only'):
++        raise ValueError('current corner budget requires verified simulation and registered native two-slot runtime')
++    return True
++
++
++def evaluator_header(node, header):
++    selected = dict(header, runtime_policy=POLICY, runtime_time_policy=node.motion.timing_policy)
++    policy = getattr(node, 'current_corner_budget', 'off')
++    if validate_corner_selection(policy, runtime_selected=node.runtime_dual_selected,
++            use_sim_time=node.get_parameter('use_sim_time').value,
++            motion_verified=node.motion.verified, motion_time_policy=node.motion.timing_policy):
++        selected.update(current_corner_budget=policy, current_corner_environment=dict(
++            use_sim_time=True, motion_timing_verified=True, backend='native2slot_v1'))
++    return selected
+ 
+ 
+ def validate_selection(policy, *, execution, submission, recheck_in_worker,
+@@ -21,8 +45,7 @@
+     from arena_autonomy.race_runtime_policy.evaluator import evaluator_factory, supported
+     from arena_autonomy.runtime_dual_state import RuntimeDualProcess
+     from arena_autonomy.runtime_dual_delivery import RuntimeDualDelivery
+-    selected = dict(header, runtime_policy=POLICY,
+-                    runtime_time_policy=node.motion.timing_policy)
++    selected = evaluator_header(node, header)
+     worker = RuntimeDualProcess(selected, evaluator_factory=evaluator_factory, supported=supported)
+     return RuntimeDualDelivery(worker, node.now_s, node.follow_trace.emit)
+ 

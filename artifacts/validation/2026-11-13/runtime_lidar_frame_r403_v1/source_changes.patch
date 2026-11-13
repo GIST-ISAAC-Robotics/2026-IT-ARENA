@@ -1,0 +1,158 @@
+--- a/src/arena_autonomy/arena_autonomy/corridor_observer.py
++++ b/src/arena_autonomy/arena_autonomy/corridor_observer.py
+@@ -4,6 +4,8 @@
+ 기본 주행 경로는 비활성이다. 명시 선택형 LocalFollow가 제한된 HOLD에서만 제안을
+ 채택할 수 있으며 신호/고장 허가와 독립 보호층은 별도다. positive 자체는 구동 허가가 아니다.
+ """
++
++from arena_autonomy.lidar_source_frame import registered_source_frame
+ import math
+ 
+ import numpy as np
+@@ -54,7 +56,7 @@
+     if (side not in ('left','right') or not all(math.isfinite(v) for v in (speed,previous_steering,dt)) or
+             not 0 < dt <= .2 or abs(previous_steering) > config.max_steering_rad):
+         return base
+-    if scene.source_frame_id != 'laser_frame':
++    if not registered_source_frame(scene.source_frame_id):
+         return {**base, 'reason':'source_frame_mismatch'}
+     if scene.source_first_s is None or not 0 <= scene.t_ref_s-scene.source_first_s < config.memory_ttl_s:
+         return {**base, 'reason':'scene_stale'}
+--- a/src/arena_autonomy/arena_autonomy/lidar_motion.py
++++ b/src/arena_autonomy/arena_autonomy/lidar_motion.py
+@@ -30,9 +30,13 @@
+     max_input_gap_s: float = .05
+     max_extrapolation_s: float = .03
+     scan_timeout_s: float = .45
++    lidar_frame_id: str = 'laser_frame'
+ 
+     def __post_init__(self):
+-        if not all(math.isfinite(float(v)) for v in vars(self).values()):
++        from arena_autonomy.lidar_source_frame import registered_source_frame
++        if not registered_source_frame(self.lidar_frame_id):
++            raise ValueError('explicit registered lidar source frame required')
++        if not all(math.isfinite(float(v)) for k,v in vars(self).items() if k != 'lidar_frame_id'):
+             raise ValueError("운동 설정은 유한해야 합니다.")
+         for name in ("wheel_radius_m", "wheel_scale", "history_s", "max_input_gap_s",
+                      "max_extrapolation_s", "scan_timeout_s"):
+--- a/src/arena_autonomy/arena_autonomy/lidar_motion_ros.py
++++ b/src/arena_autonomy/arena_autonomy/lidar_motion_ros.py
+@@ -36,7 +36,8 @@
+         from arena_autonomy.execution_environment import validate_motion_time
+         validate_motion_time(node, self.mode, self.verified, self.timing_policy)
+         defaults = vars(MotionConfig())
+-        config = {name: float(node.declare_parameter("motion_" + name, value).value)
++        config = {name: (node.declare_parameter("motion_" + name, value).value if name == 'lidar_frame_id'
++                         else float(node.declare_parameter("motion_" + name, value).value))
+                   for name, value in defaults.items()}
+         self.history = MotionHistory(MotionConfig(**config), scan_time_policy=self.timing_policy)
+         # 실물 연결 시 장착 축과 함께 명시할 입력 frame 계약. 빈 문자열은 기존
+@@ -187,7 +188,7 @@
+         diagnostic = {"gyro_rejections": dict(getattr(self, 'gyro_rejections', {})),
+                       "last_gyro_rejection": getattr(self, 'last_gyro_rejection', None)}
+         try:
+-            if scan.header.frame_id != "laser_frame":
++            if scan.header.frame_id != self.history.config.lidar_frame_id:
+                 raise MotionUnavailable("scan_frame_mismatch")
+             from arena_autonomy.scan_input import project_scan
+             points, indices, meta = project_scan(scan,self.history,now,self.mode,self.verified,
+--- a/src/arena_autonomy/arena_autonomy/lidar_source_frame.py
++++ b/src/arena_autonomy/arena_autonomy/lidar_source_frame.py
+@@ -0,0 +1,8 @@
++"""현재 원천 센서의 좌표계 이름. 이름 자체가 장착/축 교정 증거는 아니다."""
++REGISTERED_SOURCE_FRAMES = ('laser_frame', 'c1_unmounted_preview')
++
++
++def registered_source_frame(value):
++    # 실제 운동 변환에서는 MotionConfig의 선택값과도 일치해야 한다.
++    # 하류 관측기는 이미 base_link로 투영한 장면의 원 출처를 보존한다.
++    return type(value) is str and value in REGISTERED_SOURCE_FRAMES
+--- a/src/arena_autonomy/arena_autonomy/linear_observation.py
++++ b/src/arena_autonomy/arena_autonomy/linear_observation.py
+@@ -4,6 +4,8 @@
+ 직사각형 영역을 검사한다. 회전/횡미끄럼/미관측 측방 cut-in의 안전 증명이 아니다.
+ 독립 보호와 계획기가 같은 순수 계산을 각자의 센서 입력으로 호출할 수 있다.
+ """
++
++from arena_autonomy.lidar_source_frame import registered_source_frame
+ import math
+ 
+ import numpy as np
+@@ -82,7 +84,7 @@
+     if (not all(math.isfinite(v) for v in inputs) or not 0 <= speed <= 2.5
+             or min(inputs[1:]) <= 0 or scene.source_first_s is None
+             or not 0 <= scene.t_ref_s-scene.source_first_s < .3
+-            or scene.source_frame_id != 'laser_frame' or len(scene.rays)<180):
++            or not registered_source_frame(scene.source_frame_id) or len(scene.rays)<180):
+         return result
+     if [r.source_index for r in scene.rays] != list(range(len(scene.rays))):
+         return {**result,'reason':'source_cells_incomplete'}
+--- a/src/arena_autonomy/arena_autonomy/observation_support.py
++++ b/src/arena_autonomy/arena_autonomy/observation_support.py
+@@ -3,6 +3,8 @@
+ 각도 분해능과 짧은 평면 운동 이력을 전제로 한 표본 지지이며 연속 자유 공간,
+ 횡슬립, 동적 cut-in 또는 실물 제동을 인증하지 않는다. 명시 시험 옵션에서만 연결한다.
+ """
++
++from arena_autonomy.lidar_source_frame import registered_source_frame
+ from collections import deque
+ from dataclasses import replace
+ import math
+@@ -139,7 +141,7 @@
+ 
+ def source_valid(scene):
+     count = len(scene.rays)
+-    if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
++    if (not registered_source_frame(scene.source_frame_id) or scene.source_first_s is None
+             or not 0<=scene.t_ref_s-scene.source_first_s<.3
+             or [r.source_index for r in scene.rays]!=list(range(count))):
+         return False
+@@ -183,15 +185,15 @@
+ 
+     def reset(self):
+         self.scenes=deque(maxlen=3)
+-        self.last_ref=self.epoch=None
++        self.last_ref=self.epoch=self.frame=None
+ 
+     def observe(self,scene,history, *, transport=True):
+         if (not source_valid(scene) or
+                 (self.last_ref is not None and scene.t_ref_s<self.last_ref) or
+                 (self.scenes and scene.source_first_s<self.scenes[-1].source_first_s)):
+             self.reset(); return [],'observation_invalid_or_regressed'
+-        if self.epoch is not None and self.epoch!=scene.source_epoch: self.reset()
+-        self.last_ref,self.epoch=scene.t_ref_s,scene.source_epoch
++        if self.epoch is not None and (self.epoch!=scene.source_epoch or self.frame!=scene.source_frame_id): self.reset()
++        self.last_ref,self.epoch,self.frame=scene.t_ref_s,scene.source_epoch,scene.source_frame_id
+         if not self.scenes or scene.source_first_s>self.scenes[-1].source_first_s: self.scenes.append(scene)
+         while self.scenes and scene.t_ref_s-self.scenes[0].source_first_s>=.3: self.scenes.popleft()
+         available=[scene]
+@@ -324,7 +326,8 @@
+                       rear_dynamic_risk_unresolved=True, lateral_rejected_queries=0)
+     supported=np.zeros(len(queries),dtype=bool); sources=[]
+     for i,s in enumerate(scenes):
+-        if (s.source_epoch!=current.source_epoch or s.t_ref_s!=current.t_ref_s
++        if (s.source_frame_id!=current.source_frame_id
++                or s.source_epoch!=current.source_epoch or s.t_ref_s!=current.t_ref_s
+                 or s.source_first_s>current.source_first_s): continue
+         pad=np.array([.025+config.measurement_padding_m+config.object_motion_bound_mps*(s.t_ref_s-r.acquired_at_s) for r in s.rays])
+         remaining=np.flatnonzero(~supported)
+--- a/src/arena_autonomy/arena_autonomy/scene_motion.py
++++ b/src/arena_autonomy/arena_autonomy/scene_motion.py
+@@ -47,7 +47,7 @@
+         raise MotionUnavailable('scan_timing_policy_basis_mismatch')
+     if (estimated and timing_policy != 'host_estimated_v1') or (not estimated and not timing_verified):
+         raise MotionUnavailable('scan_timing_unverified')
+-    if scan.source_frame_id != 'laser_frame':
++    if scan.source_frame_id != history.config.lidar_frame_id:
+         raise MotionUnavailable('scan_frame_mismatch')
+     if type(motion_epoch) is not int or motion_epoch<0:
+         raise MotionUnavailable('motion_epoch_invalid')
+@@ -104,7 +104,7 @@
+         raise MotionUnavailable('estimated_policy_requires_native_measurements')
+     if not timing_verified:
+         raise MotionUnavailable('scan_timing_unverified')
+-    if scan.header.frame_id != 'laser_frame':
++    if scan.header.frame_id != history.config.lidar_frame_id:
+         raise MotionUnavailable('scan_frame_mismatch')
+     coverage = audit_front_observation(scan.ranges, scan.angle_min, scan.angle_increment,
+         scan.range_min, scan.range_max, history.config.lidar_yaw_rad)

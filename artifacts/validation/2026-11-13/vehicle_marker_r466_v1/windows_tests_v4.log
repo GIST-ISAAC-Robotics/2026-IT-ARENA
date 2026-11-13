@@ -1,0 +1,66 @@
+.FF............F.................................................        [100%]
+================================== FAILURES ===================================
+______________ test_ippe_metric_pose_polygon_and_frame[0.3-0.04] ______________
+
+profile = {'schema': 1, 'profile_id': 'b0390_cad_vehicle_marker_approx_v1', 'mode': 'approximate_v1', 'purpose': 'occupancy_assist', ...}
+heading = 0.3, x = 0.04
+
+    @pytest.mark.parametrize('heading,x',[(0.,0.),(.3,.04),(-.3,-.04)])
+    def test_ippe_metric_pose_polygon_and_frame(profile,heading,x):
+        region,reason=g.pose_region(projected(profile,.65,heading,x),profile['targets'][0],profile,1280,720)
+        assert reason is None
+        assert region['rear_center_xy_m']==pytest.approx([.705,-x],abs=1e-7)
+>       assert region['heading_rad']==pytest.approx(-heading,abs=1e-6)
+E       assert 0.3000001016820697 == -0.3 ± 1.0e-06
+E         
+E         comparison failed
+E         Obtained: 0.3000001016820697
+E         Expected: -0.3 ± 1.0e-06
+
+artifacts\validation\2026-11-13\vehicle_marker_r466_v1\stage\tests\test_vehicle_marker_regions.py:52: AssertionError
+_____________ test_ippe_metric_pose_polygon_and_frame[-0.3--0.04] _____________
+
+profile = {'schema': 1, 'profile_id': 'b0390_cad_vehicle_marker_approx_v1', 'mode': 'approximate_v1', 'purpose': 'occupancy_assist', ...}
+heading = -0.3, x = -0.04
+
+    @pytest.mark.parametrize('heading,x',[(0.,0.),(.3,.04),(-.3,-.04)])
+    def test_ippe_metric_pose_polygon_and_frame(profile,heading,x):
+        region,reason=g.pose_region(projected(profile,.65,heading,x),profile['targets'][0],profile,1280,720)
+        assert reason is None
+        assert region['rear_center_xy_m']==pytest.approx([.705,-x],abs=1e-7)
+>       assert region['heading_rad']==pytest.approx(-heading,abs=1e-6)
+E       assert -0.30000004627280097 == 0.3 ± 1.0e-06
+E         
+E         comparison failed
+E         Obtained: -0.30000004627280097
+E         Expected: 0.3 ± 1.0e-06
+
+artifacts\validation\2026-11-13\vehicle_marker_r466_v1\stage\tests\test_vehicle_marker_regions.py:52: AssertionError
+___________ test_occupancy_actual_existing_sweep_and_absence_exact ____________
+
+profile = {'schema': 1, 'profile_id': 'b0390_cad_vehicle_marker_approx_v1', 'mode': 'approximate_v1', 'purpose': 'occupancy_assist', ...}
+
+    def test_occupancy_actual_existing_sweep_and_absence_exact(profile):
+        h=history();cfg=FollowConfig();out=(.75,0.,{'reason':'local_follow','behavior':'FOLLOW'})
+        p=packet(profile,depth=.25);p['fresh']=True
+        regions,_=current_regions(p,h,1.1,0)
+        original=np.asarray(p['regions'][0]['polygon_xy_m'])
+>       assert min(regions[0][1][:,0])==pytest.approx(min(original[:,0])-.01,abs=1e-8)
+                   ^^^^^^^^^^
+E       IndexError: list index out of range
+
+artifacts\validation\2026-11-13\vehicle_marker_r466_v1\stage\tests\test_vehicle_marker_regions.py:148: IndexError
+============================== warnings summary ===============================
+..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anyio\pytest_plugin.py:14
+  C:\Users\Jinhyeong\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anyio\pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-13/vehicle_marker_r466_v1/stage/tests/test_vehicle_marker_regions.py::test_ippe_metric_pose_polygon_and_frame[0.3-0.04]
+FAILED artifacts/validation/2026-11-13/vehicle_marker_r466_v1/stage/tests/test_vehicle_marker_regions.py::test_ippe_metric_pose_polygon_and_frame[-0.3--0.04]
+FAILED artifacts/validation/2026-11-13/vehicle_marker_r466_v1/stage/tests/test_vehicle_marker_regions.py::test_occupancy_actual_existing_sweep_and_absence_exact
+3 failed, 62 passed, 1 warning in 1.04s

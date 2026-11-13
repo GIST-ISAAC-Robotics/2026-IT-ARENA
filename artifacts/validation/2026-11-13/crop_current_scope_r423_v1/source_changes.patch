@@ -1,0 +1,277 @@
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/corner_candidate.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/corner_candidate.py
+@@ -1,5 +1,6 @@
+ """명시 선택형 현재 계산. 이전 결과를 받으며 기존 wrapper를 다시 호출하거나 발행하지 않는다."""
+ import math
++from .crop_current_scope import partial_retry_scope
+ import time
+ 
+ from arena_autonomy import pass_release_trial as ps
+@@ -14,7 +15,7 @@
+     return type(value) in (int,float) and math.isfinite(value)
+ 
+ 
+-def eligible(before,output,current,cfg,require_current_region):
++def eligible(before,output,current,cfg,require_current_region,*,crop_current_scope=False):
+     if before is None or before['speed_mps']>0:return False
+     normal=output[2].get('normal') or {};partial=normal.get('partial_observation') or {}
+     retry=before.get('current_relative_body_retry') or {};proof=retry.get('proof') or {}
+@@ -24,17 +25,17 @@
+         and max(abs(output[1]),abs(current['previous_steering_rad']),abs(before['steering_rad']))<=cfg.max_steering_rad
+         and output[2].get('handoff_state')=='FOLLOW' and normal.get('reason')=='local_follow'
+         and normal.get('selector_mode')=='SOLO' and normal.get('selector_choice')=='baseline'
+-        and normal.get('boundary_from_memory') is False and partial.get('allowed') is True
+-        and partial.get('reason')=='fully_observed'
++        and normal.get('boundary_from_memory') is False
++        and partial_retry_scope(partial,crop_current_scope=crop_current_scope)
+         and before.get('reason')=='route_current_large_motion_region_unobserved'
+         and retry.get('applied') is False and retry.get('cap_mps')==.10
+         and proof.get('reason')=='outside_small_body_side')
+ 
+ 
+ def try_from_current_result(before,output,submitted,current,scene,history,cfg,*,core_rebase,proof_callback,
+-                            require_current_region=False,costs=None):
++                            require_current_region=False,costs=None,crop_current_scope=False):
+     """계산된 기준을 그대로 받아 거리 제안 1회 + 최종 현재 검사 1회만 한다."""
+-    if not eligible(before,output,current,cfg,require_current_region):return before
++    if not eligible(before,output,current,cfg,require_current_region,crop_current_scope=crop_current_scope):return before
+     measured=current['speed_mps'];previous=current['previous_steering_rad'];dt=current['dt_s']
+     proposal=propose(scene,measured,before['steering_rad'],previous,dt,cfg,costs=costs)
+     diagnostic=dict(applied=False,proposal=proposal,original_reason=before['reason'],original_target_mps=output[0],
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/crop_current_scope.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/crop_current_scope.py
+@@ -0,0 +1,54 @@
++"""동일 원 scan의 crop 계획을 현재 검사 후보로만 분류한다. 허가/거리 생성 없음."""
++
++
++SCOPE = 'bounded_simulation_edge_component_not_free_space'
++
++
++def classified_crop(output):
++    normal = output[2].get('normal') or {}
++    partial = normal.get('partial_observation') or {}
++    component = partial.get('crop_edge_component')
++    if (output[2].get('handoff_state') != 'FOLLOW' or normal.get('reason') != 'local_follow'
++            or normal.get('selector_mode') != 'SOLO' or normal.get('selector_choice') != 'baseline'
++            or normal.get('boundary_from_memory') is not False
++            or partial.get('allowed') is not True or partial.get('reason') != 'bounded_side_missing'
++            or partial.get('unknown_filled') is not False or partial.get('latch_reason') is not None
++            or type(component) is not dict or component.get('scope') != SCOPE):
++        return False
++    # 표식의 모양만 확인한다. 아래 배열/폭을 현재 이동 영역의 proof로 사용하지 않는다.
++    members = component.get('source_indices')
++    inside = component.get('inside_source_indices')
++    flanks = component.get('flank_source_indices')
++    if any(type(ids) is not list or not ids or any(type(i) is not int or i < 0 for i in ids)
++           or len(ids) != len(set(ids)) for ids in (members, inside, flanks)):
++        return False
++    return (len(flanks) == 2 and set(inside).issubset(members)
++            and not set(flanks).intersection(members)
++            and all(abs(a-b) == 1 for a, b in zip([flanks[0], *members], [*members, flanks[1]])))
++
++
++def same_scan_scope(data, cfg, *, registered_environment=False):
++    """부모 소유 scan 비교는 후보 분류뿐이다. 외부 ROS 입력/점유 허가가 아니다."""
++    if (registered_environment is not True or getattr(cfg, 'crop_edge_component_trial', False) is not True
++            or not classified_crop(data['output'])):
++        return False
++    current, submitted = data['current'], data['submitted']
++    scan = current.get('scan') or {}; raw = scan.get('measurements') or {}
++    evidence = data.get('crop_current_input') or {}
++    return (evidence.get('schema') == 'parent_owned_frozen_scan_equality_v1'
++            and evidence.get('same_scan') is True
++            and evidence.get('submitted_reference_s') == submitted.get('reference_s')
++            and evidence.get('current_reference_s') == current.get('reference_s')
++            and evidence.get('submitted_timing_verified') is True
++            and evidence.get('submitted_timing_policy') == 'verified_only'
++            and evidence.get('submitted_time_basis') == 'simulation_acquisition'
++            and current.get('timing_verified') is True
++            and current.get('timing_policy', 'verified_only') == 'verified_only'
++            and scan.get('representation') == 'native_measurements_v1'
++            and raw.get('time_basis') == 'simulation_acquisition')
++
++
++def partial_retry_scope(partial, *, crop_current_scope=False):
++    """fully 경로는 원 계약 그대로. crop bool은 현재 입력에서 새로 만든 분류다."""
++    return (partial.get('allowed') is True and (partial.get('reason') == 'fully_observed'
++            or (crop_current_scope is True and partial.get('reason') == 'bounded_side_missing')))
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/evaluator.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/evaluator.py
+@@ -67,15 +67,18 @@
+             raise ValueError('current corner budget requires verified input timing')
+         if self.stage == 'plan':
+             return freeze(replay_call(self.follow, data, self.motion))
++        from .crop_current_scope import same_scan_scope
++        crop_scope = same_scan_scope(data, self.follow.config, registered_environment=self.corner_budget)
+         info, scan, history = restore_call(current, self.motion)
+         try:
+             scene = motion_scene(scan, history, info['reference_s'], timing_verified=info['timing_verified'],
+                                  epoch=info['epoch'], rear_half_angle_deg=info['rear_half_angle_deg'],
+                                  timing_policy=self.time_policy)
++            scope_args = {'crop_current_scope': True} if crop_scope else {}
+             result = self.current_policy.rebase(data['output'], data['submitted'], current, scene,
+-                                               history, self.follow.config, require_current_region=True)
++                                               history, self.follow.config, require_current_region=True, **scope_args)
+             if self.corner_budget:
+-                result = self.apply_corner(result, data, info, scene, history)
++                result = self.apply_corner(result, data, info, scene, history, crop_current_scope=crop_scope)
+         except (MotionUnavailable, ValueError) as error:
+             result = dict(speed_mps=0., steering_rad=info['previous_steering_rad'],
+                           reference_s=info['reference_s'], reason='rebase_input_stop', input_error=str(error),
+@@ -84,12 +87,13 @@
+             raise ValueError('unsupported current recheck')
+         return freeze(result)
+ 
+-    def apply_corner(self, before, data, info, scene, history):
++    def apply_corner(self, before, data, info, scene, history, *, crop_current_scope=False):
+         """계산된 baseline을 받고 eligible일 때만 원 단일 제안/최종 검사를 추가한다."""
+         from . import corner_candidate, range_mask_component
+         from arena_autonomy.local_scene import blind_spec
+         cfg = self.follow.config
+-        if not corner_candidate.eligible(before, data['output'], data['current'], cfg, True):
++        if not corner_candidate.eligible(before, data['output'], data['current'], cfg, True,
++                                         crop_current_scope=crop_current_scope):
+             return before
+         profile = info['rear_half_angle_deg']
+         sectors = blind_spec(profile)[1]
+@@ -101,7 +105,7 @@
+ 
+         return corner_candidate.try_from_current_result(before, data['output'], data['submitted'],
+             data['current'], scene, history, cfg, core_rebase=self.current_policy.core_policy.rebase,
+-            proof_callback=proof, require_current_region=True)
++            proof_callback=proof, require_current_region=True, crop_current_scope=crop_current_scope)
+ 
+ 
+ def evaluator_factory(stage, header):
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/released_relative.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/released_relative.py
+@@ -21,9 +21,10 @@
+     return type(value) in (int, float) and math.isfinite(value)
+ 
+ 
+-def rebase(output, submitted, current, scene, history, cfg, *, require_current_region=False):
++def rebase(output, submitted, current, scene, history, cfg, *, require_current_region=False, crop_current_scope=False):
+     before = prior.rebase(output, submitted, current, scene, history, cfg,
+-                          require_current_region=require_current_region)
++                          require_current_region=require_current_region,
++                          crop_current_scope=crop_current_scope)
+     if before is None or before['speed_mps'] > 0:
+         return before
+     normal = output[2].get('normal') or {}
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/solo_crawl.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/solo_crawl.py
+@@ -5,8 +5,9 @@
+ CAP=.10
+ 
+ 
+-def rebase(output,submitted,current,scene,history,cfg,*,require_current_region=False):
+-    before=prior.rebase(output,submitted,current,scene,history,cfg,require_current_region=require_current_region)
++def rebase(output,submitted,current,scene,history,cfg,*,require_current_region=False, crop_current_scope=False):
++    before=prior.rebase(output,submitted,current,scene,history,cfg,require_current_region=require_current_region,
++                        crop_current_scope=crop_current_scope)
+     if before is None or before['speed_mps']>0:return before
+     normal=output[2].get('normal') or {}
+     partial=normal.get('partial_observation') or {}
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/solo_gap.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/solo_gap.py
+@@ -1,5 +1,6 @@
+ """정지 근처 SOLO에서도 기존 작은 차체 옆 공백 검사를 동일하게 적용한다."""
+ import math
++from .crop_current_scope import partial_retry_scope
+ 
+ from . import solo_low as prior
+ from arena_autonomy.follow_trace import thaw
+@@ -9,7 +10,7 @@
+ CAP = .15
+ 
+ 
+-def rebase(output, submitted, current, scene, history, cfg, *, require_current_region=False):
++def rebase(output, submitted, current, scene, history, cfg, *, require_current_region=False, crop_current_scope=False):
+     before = prior.rebase(output, submitted, current, scene, history, cfg,
+                           require_current_region=require_current_region)
+     normal = output[2].get('normal') or {}
+@@ -19,8 +20,8 @@
+             or not math.isfinite(speed) or not 0 <= speed <= CAP or output[0] <= CAP
+             or output[2].get('handoff_state') != 'FOLLOW' or normal.get('selector_mode') != 'SOLO'
+             or normal.get('boundary_from_memory') is not False
+-            or (normal.get('partial_observation') or {}).get('allowed') is not True
+-            or (normal.get('partial_observation') or {}).get('reason') != 'fully_observed'):
++            or not partial_retry_scope(normal.get('partial_observation') or {},
++                crop_current_scope=crop_current_scope)):
+         return before
+     low = (CAP, output[1], output[2])
+     # 현재 좌표/점유/유효 시간과 조향은 기존 구현으로 다시 검사한다.
+--- a/src/arena_autonomy/arena_autonomy/race_runtime_policy/solo_relative.py
++++ b/src/arena_autonomy/arena_autonomy/race_runtime_policy/solo_relative.py
+@@ -1,5 +1,6 @@
+ """SOLO 현재 검사에만 명시 연결하는 저속 상대 거리 공백 후보. 기본 미연결."""
+ import math
++from .crop_current_scope import partial_retry_scope
+ 
+ from . import solo_crawl as prior
+ from arena_autonomy import pass_release_trial as ps
+@@ -10,8 +11,9 @@
+ CAP=.10
+ 
+ 
+-def rebase(output,submitted,current,scene,history,cfg,*,require_current_region=False):
+-    before=prior.rebase(output,submitted,current,scene,history,cfg,require_current_region=require_current_region)
++def rebase(output,submitted,current,scene,history,cfg,*,require_current_region=False, crop_current_scope=False):
++    before=prior.rebase(output,submitted,current,scene,history,cfg,require_current_region=require_current_region,
++                        crop_current_scope=crop_current_scope)
+     if before is None or before['speed_mps']>0:return before
+     normal=output[2].get('normal') or {}
+     partial=normal.get('partial_observation') or {}
+@@ -21,7 +23,7 @@
+             or not math.isfinite(speed) or not 0<=speed<=.15 or output[0]<=.15
+             or output[2].get('handoff_state')!='FOLLOW' or normal.get('selector_mode')!='SOLO'
+             or normal.get('boundary_from_memory') is not False
+-            or partial.get('allowed') is not True or partial.get('reason')!='fully_observed'
++            or not partial_retry_scope(partial,crop_current_scope=crop_current_scope)
+             or prior_gap.get('applied') is not False or prior_gap.get('cap_mps')!=.15):
+         return before
+     core=prior.prior.prior.base.candidate_policy.rebase((CAP,output[1],output[2]),submitted,current,scene,history,cfg)
+--- a/src/arena_autonomy/arena_autonomy/runtime_dual_state.py
++++ b/src/arena_autonomy/arena_autonomy/runtime_dual_state.py
+@@ -9,6 +9,21 @@
+ from arena_autonomy.runtime_dual_process import DualSlots, plan_reference
+ 
+ 
++def current_request(output, submitted, current, *, retained, crop_current_selection=False):
++    """부모 소유 입력에서 만든다. 새 scan 비교는 동일성뿐이며 허가가 아니다."""
++    data = dict(output=output, submitted=plan_reference(submitted), current=current, retained=retained)
++    if crop_current_selection:
++        # frozen 사전의 비유한값 태그/원 배열/metadata 전체를 직접 비교한다.
++        # 원 scan을 IPC에 중복 첨부하거나 매 호출 hash/JSON을 다시 만들지 않는다.
++        data['crop_current_input'] = dict(schema='parent_owned_frozen_scan_equality_v1',
++            same_scan=submitted['scan'] == current['scan'],
++            submitted_reference_s=submitted['reference_s'], current_reference_s=current['reference_s'],
++            submitted_timing_verified=submitted.get('timing_verified'),
++            submitted_timing_policy=submitted.get('timing_policy', 'verified_only'),
++            submitted_time_basis=submitted['scan'].get('measurements', {}).get('time_basis'))
++    return data
++
++
+ def may_finish_current(old,new):
+     """같은 FOLLOW 의도·비감속 새 양수 계획만 현재 검사 종료까지 보관한다.
+ 
+@@ -54,6 +69,8 @@
+         if not callable(supported):
+             raise ValueError('explicit current-check support predicate required')
+         self.supported = supported
++        self.crop_current_selection = (header.get('follow_config', {}).get('crop_edge_component_trial') is True
++                                       and header.get('current_corner_budget') == 'r396_v1')
+         super().__init__(header, **kwargs)
+         self.retained = self.ready = self.last_checked_source = None
+         self.revision = 0
+@@ -159,8 +176,8 @@
+         owned_plan = copy.deepcopy(plan)
+         owned = copy.deepcopy(snapshot)
+         owned_plan['route_check'] = dict(retained=retained, revision=self.revision)
+-        data = dict(output=owned_plan['output'], submitted=plan_reference(owned_plan['input']),
+-                    current=owned, retained=retained)
++        data = current_request(owned_plan['output'], owned_plan['input'], owned, retained=retained,
++                               crop_current_selection=self.crop_current_selection)
+         self.sequence += 1
+         self.current.offer(data, self.generation, self.sequence)
+         self.current_input = dict(plan=owned_plan, current=owned)

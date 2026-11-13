@@ -4,6 +4,8 @@
 직사각형 영역을 검사한다. 회전/횡미끄럼/미관측 측방 cut-in의 안전 증명이 아니다.
 독립 보호와 계획기가 같은 순수 계산을 각자의 센서 입력으로 호출할 수 있다.
 """
+
+from arena_autonomy.lidar_source_frame import registered_source_frame
 import math
 
 import numpy as np
@@ -82,7 +84,7 @@ def linear_observation(scene, speed, *, length=.20, width=.15, standstill_gap=.1
     if (not all(math.isfinite(v) for v in inputs) or not 0 <= speed <= 2.5
             or min(inputs[1:]) <= 0 or scene.source_first_s is None
             or not 0 <= scene.t_ref_s-scene.source_first_s < .3
-            or scene.source_frame_id != 'laser_frame' or len(scene.rays)<180):
+            or not registered_source_frame(scene.source_frame_id) or len(scene.rays)<180):
         return result
     if [r.source_index for r in scene.rays] != list(range(len(scene.rays))):
         return {**result,'reason':'source_cells_incomplete'}

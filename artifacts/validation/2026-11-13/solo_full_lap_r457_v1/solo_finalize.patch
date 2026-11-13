@@ -1,0 +1,16 @@
+--- r452/finalize_verdict
++++ r457/solo_finalize.py
+@@ -15,11 +15,11 @@
+     integrity = {
+         'no_runtime_error': 'error' not in report and 'error' not in evaluation,
+         'evaluation_readers_valid': report.get('evaluation_readers', {}).get('valid') is True,
+-        'contact_source_instrumented': report.get('contact_evidence', {}).get('validated_source') is True,
++        'no_traffic_actor_in_world': evaluation.get('no_actor', {}).get('passed') is True,
+         'sensor_only_controller_inputs': report.get('sensor_only_inputs') is True,
+         'sensor_only_safety_inputs': report.get('safety_sensor_only_inputs') is True,
+         'actuation_sensor_only_inputs': report.get('actuation', {}).get('sensor_only_inputs') is True,
+-        'actor_pose_only_evaluator': report.get('actor_pose_subscribers') == ['g1b_traffic_validator'],
++        'no_actor_pose_publishers': report.get('actor_pose_publishers') == {'eval_g1b_actor': [], 'eval_second_lead': []},
+         'drive_publisher_controller_only': report.get('drive_publishers') == ['local_pursuit'],
+         'safe_drive_publisher_safety_only': report.get('safe_drive_publishers') == ['lidar_safety'],
+         'sequential_acquisition': report.get('sequential_acquisition_verified') is True,

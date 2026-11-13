@@ -18,6 +18,8 @@ ROUTE_HOLDS = ('follow_gap_hold',)
 
 
 class LocalPursuit(WallFollow):
+    # 명시한 두 계산 runtime을 구성하는 subclass만 추정 관측 보완을 선택한다.
+    estimated_observation_runtime_capable = False
     # 같은 경기 재개의 입력 경계. 수신 시각이 아니라 원천 취득 시각으로 비교한다.
     input_floor_s = -math.inf
     resume_route = None
@@ -26,7 +28,7 @@ class LocalPursuit(WallFollow):
 
     def __init__(self):
         super().__init__("local_pursuit")
-        trial_clock = self.get_parameter('use_sim_time').value or self.hardware_shadow
+        trial_clock = self.get_parameter('use_sim_time').value or self.hardware_inputs
         self.rear_blind_half_angle = float(self.declare_parameter('rear_blind_half_angle_deg', 30.).value)
         if not 0 <= self.rear_blind_half_angle <= 80:
             raise ValueError('rear_blind_half_angle_deg must be within 0..80')
@@ -89,6 +91,16 @@ class LocalPursuit(WallFollow):
         guard_policy = str(self.declare_parameter('g1_guard_observation_policy', 'original_v1').value)
         released_body_gap = bool(self.declare_parameter('g1_released_body_gap_trial', False).value)
         traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
+        crop_edge = self.declare_parameter('g1_crop_edge_component_trial', False).value
+        from arena_autonomy.crop_edge_selection import (SIMULATION_SCOPE, ESTIMATED_SCOPE,
+            validate_policy_selection, validate_node_selection, configure_follow_observation)
+        self.observation_input_scope = self.declare_parameter('g1_observation_input_scope', SIMULATION_SCOPE).value
+        if self.observation_input_scope == ESTIMATED_SCOPE and self.estimated_observation_runtime_capable is not True:
+            raise ValueError('estimated observation scope requires a registered runtime-capable planner')
+        validate_policy_selection(crop_edge, partial_observation, traffic_recovery)
+        if crop_edge and not self.g1_enabled:
+            raise ValueError('crop edge component requires explicit G1 activation')
+        validate_node_selection(self, crop_edge, observation_scope=self.observation_input_scope)
         traffic_path_recovery = bool(self.declare_parameter('g1_traffic_path_recovery_trial', False).value)
         if traffic_path_recovery and (not traffic_recovery or not corridor_fallback):
             raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
@@ -119,9 +131,9 @@ class LocalPursuit(WallFollow):
             raise ValueError('per-ray occupancy candidate requires G1')
         if boundary_mode not in ('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate') or (not self.g1_enabled and boundary_mode != 'connected'):
             raise ValueError('boundary candidate requires G1')
-        if (self.g1_enabled or self.r0_plus_enabled) and (self.motion.mode != 'both'
-                or (not self.motion.verified and not self.hardware_shadow)):
-            raise ValueError('G1은 검증된 순차 취득과 both 운동 보정이 필요합니다.')
+        from arena_autonomy.execution_environment import motion_supported
+        if (self.g1_enabled or self.r0_plus_enabled) and not (motion_supported(self) or (self.hardware_shadow and self.motion.mode == 'both')):
+            raise ValueError('G1 requires both motion and an explicitly selected acquisition time policy')
         follow_type = LocalFollow
         if self.r0_plus_enabled:
             from arena_autonomy.r0_plus import R0Plus
@@ -132,6 +144,9 @@ class LocalPursuit(WallFollow):
             raise ValueError('planning vehicle dimensions must be finite and positive')
         self.follow = follow_type(FollowConfig(
             length_m=length, width_m=width,
+            track_m=float(self.declare_parameter('vehicle_track_width_m', .135).value),
+            wheel_radius_m=float(self.declare_parameter('vehicle_wheel_radius_m', .0325).value),
+            wheel_width_m=float(self.declare_parameter('vehicle_wheel_width_m', .012).value),
             signed_motion_policy=signed_motion,
             solo_route_only=solo_route,
             corridor_arc_agreement=bool(self.declare_parameter('g1_corridor_arc_agreement',False).value),
@@ -140,6 +155,7 @@ class LocalPursuit(WallFollow):
             solo_straight_budget_trial=bool(self.declare_parameter('g1_solo_straight_budget_trial',False).value),
             headway_s=solo_headway,
             partial_observation_policy=partial_observation,
+            crop_edge_component_trial=crop_edge,
             solo_corner_approach_trial=bool(self.declare_parameter('g1_solo_corner_approach_trial',False).value),
             oblique_gap_trial=bool(self.declare_parameter('g1_oblique_gap_trial',False).value),
             known_structure_policy=structure_policy,
@@ -216,12 +232,18 @@ class LocalPursuit(WallFollow):
             if self.vision_execution != 'process':
                 raise ValueError('vehicle marker observer requires process vision')
             vehicle_ids = participant_ids([int(value.strip()) for value in vehicle_ids_text.split(',') if value.strip()])
+        from arena_autonomy.vehicle_marker_channel import MarkerChannel
+        self.vehicle_marker_channel = MarkerChannel(self, producer=True)
+        if self.vehicle_marker_channel.profile is not None and not getattr(self,'metric_marker_runtime_capable',False):
+            raise ValueError('metric vehicle markers require the registered dual runtime node')
+        if self.vehicle_marker_channel.profile is not None and self.vision_execution != 'process':
+            raise ValueError('metric vehicle markers require process vision')
         self.vision_pipeline = None
         if self.vision_execution == 'process':
             self.vision_pipeline = VisionPipeline(VisionProcess(),
                 image_timeout=self.settings['image_timeout_s'],
                 wall_timeout=self.settings['sensor_wall_timeout_s'], signal_mode=self.start_signal_mode,
-                vehicle_marker_ids=vehicle_ids)
+                vehicle_marker_ids=vehicle_ids, vehicle_region_profile=self.vehicle_marker_channel.profile)
         self.race = None
         if self.race_control_mode == 'b3_candidate':
             # 기본 legacy에서는 이 구독/발행을 만들지 않는다. MCU 상태는 판정 입력이며 명령을 보내지 않는다.
@@ -230,8 +252,9 @@ class LocalPursuit(WallFollow):
             self.race = RaceSupervisor(self.vision_pipeline, image_max_age_s=self.settings['image_timeout_s'],
                 mcu=McuObserver(wall_timeout_s=self.settings['sensor_wall_timeout_s']), now_s=self.now_s(),
                 resume_wall_timeout_s=3*self.settings['sensor_wall_timeout_s'])
-            if development:
-                self.race.configure_development_speed_limit(float(self.settings['max_speed_mps']), initial_limit)
+            # B3 운영 상한은 항상 제공한다. 옛 명시 개발 설정만 초기 상한을 유지한다.
+            maximum = float(self.settings['max_speed_mps'])
+            self.race.configure_operator_speed_limit(maximum, development, initial_limit)
             self.race_result_publisher = self.create_publisher(String, '/race/command_result', 10)
             self.create_subscription(String, '/actuation/status', self.on_mcu_status, 10)
             self.create_subscription(String, '/race/command', self.on_race_command, 10)
@@ -239,6 +262,7 @@ class LocalPursuit(WallFollow):
             self.input_boundary_publisher = self.create_publisher(String, '/race/input_boundary', 10)
             self.get_logger().info('B3 race supervisor candidate: session='+self.race.session)
         self.follow_trace = self.create_follow_trace(trace_path)
+        configure_follow_observation(self.follow, self.observation_input_scope)
 
     def create_follow_trace(self, trace_path):
         """기본 기록 생성. 별도 명시 실행 파일은 제어기/기록 형식을 함께 선택한다."""
@@ -330,7 +354,9 @@ class LocalPursuit(WallFollow):
         except ValueError:
             payload = None
         previous = self.race.permission.race_epoch
-        result = self.race.handle_command(payload, self.now_s(), time.monotonic())
+        manual = isinstance(payload, dict) and payload.get('op') == 'manual_visual_start'
+        options = {'manual_start_check': self.manual_visual_start_waiting} if manual else {}
+        result = self.race.handle_command(payload, self.now_s(), time.monotonic(), **options)
         if result['accepted'] and self.race.permission.race_epoch != previous:
             # handle_command가 경기/영상 세대를 바꿨다. 계획기 기억과 신호 참조도 같은 콜백에서 정리한다.
             self.race_reset(lambda: None, 'new_race')
@@ -341,6 +367,19 @@ class LocalPursuit(WallFollow):
                 self.side, self.side_marker = result['side'], None
             self.begin_input_boundary(result['boundary_s'], result['op'])
         self.race_result_publisher.publish(String(data=json.dumps(result, ensure_ascii=False, allow_nan=False)))
+
+    def manual_visual_start_waiting(self):
+        """수신 시 기존 WAIT_GREEN 조건을 다시 본다. 운동 투영/계획/MCU ARM을 실행하지 않는다."""
+        now, wall = self.now_s(), time.monotonic()
+        if not self.enabled or self.last_status != 'WAIT_GREEN' or now < self.last_control_time:
+            return False
+        # WallFollow.control의 WAIT_GREEN 앞 센서 관문과 같은 한도를 재사용한다.
+        scan_fresh = (self.scan is not None and
+                      0 <= now-stamp_seconds(self.scan.header.stamp) < self.settings['scan_timeout_s'])
+        image_fresh = self.rgb_stamp is not None and 0 <= now-self.rgb_stamp < self.settings['image_timeout_s']
+        timeout = self.settings.get('sensor_wall_timeout_s', 3.)
+        wall_fresh = wall-self.scan_wall_time < timeout and wall-self.image_wall_time < timeout
+        return bool(scan_fresh and image_fresh and wall_fresh)
 
     def on_operator_link(self, message):
         self.race.operator_link(message.data, time.monotonic())
@@ -411,6 +450,7 @@ class LocalPursuit(WallFollow):
             if self.vision_pipeline.fault:
                 self.rgb_stamp = None
             elif result is not None:
+                self.vehicle_marker_channel.publish(self.vision_pipeline)
                 self.signal = self.vision_pipeline.signal
                 self.ids = list(self.vision_pipeline.ids)
                 self.rgb_stamp = result['stamp']

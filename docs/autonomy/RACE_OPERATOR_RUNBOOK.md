@@ -10,16 +10,18 @@
 
 차량에서 `race_ops`를 실행하고 노트북 브라우저로 연다. 공용 AP 접속·보안·실제 정지는 현장 미검증이다.
 
+**실물 runtime 시작:** 이 웹 프로세스만 실행해도 planner/guard가 B3로 전환되는 것은 아니다. [최종 profile·양쪽 B3 노드·UART host의 진입 템플릿](../../artifacts/validation/2026-11-13/runtime_entry_audit_r415_v1/REVIEW.md#운영-진입-명령-3개)을 먼저 확인한다. r415는 당시 기본 진입 템플릿이며, 이후 실장 조향 상한은 아래 `runtime_installed_limits.py`의 생성값으로 연결한다. r444의 추정시각 관측 보완은 [별도 명시 선택](../../artifacts/validation/2026-11-13/estimated_observation_r444_v1/RESULT.md)이고 기본 활성화·실물 주행을 확인한 상태는 아니다. host에는 clock policy·motor feedback 설정이 필요하며 ESP 포트는 host 하나만 소유한다. 기존 센서 preview에 별도 host를 중복 연결하지 않는다. 실장 영점과 출력 프로필의 빌드 연결/장착 확인은 [실물 이관](../hardware/PHYSICAL_HANDOVER_APPROVED_LAYOUT.md#6-esp32-프로그램-이관)에 남아 있다.
+
 ```bash
 ros2 run arena_autonomy race_ops --ros-args -p vehicle_id:=car1 -p host:=0.0.0.0 -p port:=8765 \
   -p token_path:=/path/token.txt -p record_path:=/path/race_record.json -p log_path:=/path/ops_log.jsonl
 ```
 
-토큰 파일이 없으면 새로 만든다. 읽기 전용 접속은 `view_token_path`로 별도 토큰을 준다. `host` 기본값은 `127.0.0.1`이다.
+토큰 파일이 없으면 새로 만든다. 읽기 전용 접속은 `view_token_path`로 별도 토큰을 준다. `host` 기본값은 `127.0.0.1`이다. 패널은 실행 중인 HTTP 서버의 주소로 연다. 예를 들어 위 포트 설정이면 `http://Jetson주소:8765/`이며, SSH 포워딩을 사용하면 그 로컬 포트를 연다. 저장한 HTML 파일을 직접 여는 방식은 `/api/state`와 명령 API가 제공되는 운영 패널 실행을 대신하지 않는다.
 
 | 상황 | 조작 |
 |---|---|
-| 프로세스 시작·새 경기 뒤 | **최초 출발 준비**: 위험 제거 확인 뒤 해제·ARM. 출발은 차량이 신호를 시각 인식해야 한다 |
+| 프로세스 시작·새 경기 뒤 | **최초 출발 준비**: 위험 제거 확인 뒤 해제·ARM. 최초 출발은 영상 신호 확인 또는 `WAIT_GREEN`에서 운영자의 명시적 신호 확인을 사용한다. MCU·센서·경로·보호 조건은 유지한다 |
 | 제자리 잠깐 정지 | **STOP → 재개 START**. 일반 명시 STOP일 때 별도 RESET 버튼은 생략 가능. 고장·물리 정지 복구와 구별 |
 | 상태만 먼저 초기화 | **STOP → 복구 RESET**은 정지를 유지한다. 이후 최종 배치 확인 뒤 **START**. 일반 명시 STOP 뒤에는 재배치했더라도 START 자체가 새 입력으로 준비하므로 별도 RESET 버튼은 필수가 아니다 |
 | 제어 프로세스 재시작 뒤 | 화면의 저장 기록이 현재 경기임을 확인하고 **같은 경기 복구** → **재개 START** |
@@ -37,29 +39,52 @@ ros2 run arena_autonomy race_ops --ros-args -p vehicle_id:=car1 -p host:=0.0.0.0
 
 `scripts/race_operator.py`는 **이미 실행 중인 B3 후보**를 사람이 조회·조작하는 도구다. 기본 제어 모드를 바꾸거나 시뮬레이션을 시작하지 않는다. 신호를 대신 켜 주거나 앞차의 움직임으로 출발을 추측하지도 않는다.
 
-## 0.1 개발 시험용 속도 상한
+## 0.1 기본 속도 상한과 수동 단발 시험
 
-11/12 추가한 선택 기능이다. 기존 G1 실행 인자에 `development_speed_limit_enabled:=true development_speed_limit_mps:=0.3`을 명시한다. `race_control_mode:=b3_candidate`가 필요하고 초기값은0.05 m/s 이상·현재 `max_speed_mps` 이하여야 한다. 기본 경기 모드에서는 기능/화면이 꺼져 있으며 수동 조향 입력을 추가하지 않는다.
+B3 운영 패널에는 별도 개발 모드 없이 **속도 상한**이 표시된다. m/s와 km/h 중 한쪽을 편집하면 다른 쪽도 변환한다(1 m/s = 3.6 km/h). 편집값과 서버 적용값을 구분하고, 정지 및 MCU 비ARM 상태에서 적용한 뒤 기존 출발 준비/START를 사용한다. 상한을 적용하는 것만으로 ARM하거나 출발하지 않는다. 주행 중 변경은 현재 범위에 없다.
 
-웹의 **개발 시험 상한**에서 m/s 값을 입력하고 적용한다. 기존 STOP과 MCU의 비ARM 상태를 확인한 동안만 변경된다. 같은 세션/경기/개입의 최신 상태를 대조하고 실제 명령 수신 시에도 재검사한다. 적용 후에는 기존 출발 준비 또는 재개 START를 사용한다. 상한 적용 자체는 출발·래치 해제·MCU ARM을 수행하지 않는다.
+기본 초기 상한은 현재 차량의 `max_speed_mps`다. 이전 `development_speed_limit_enabled:=true development_speed_limit_mps:=0.3`을 명시한 실행은 그 초기값을 유지한다. STOP·경기 초기화·브라우저 종료 때문에 상한을 자동 해제하지 않는다. 이는 목표속도 제한이며 실제 속도·제동거리 보증이 아니다.
 
-- 상한은 `/drive` 발행 직전에 계획 목표의 크기를 제한한다. 가속 제한·조향·독립 보호·MCU를 유지한다. 브라우저 종료/연결 상실·STOP/같은 프로세스의 경기 초기화로 상한을 자동 해제하지 않는다.
-- 실제 차체 속도/제동 거리의 보증이 아니다. 구동계가 연결되면0.2–0.3 m/s 등 낮은 상한부터 실제 모터축 환산·정지·방향을 확인한다. 시험 시작값은 현장 판단이며 자동 실차 구동을 의미하지 않는다.
-- 주행 중 상한 변경은 이번 범위에 넣지 않았다. 갑작스러운 목표 변경을 피하려면 STOP 뒤 값을 바꾸고 START한다. 상한 요청·적용값·상한으로 제한된 목표는 기존 운영 기록에 남긴다.
-- WASD/짧은 전진·좌우 개발 조작은 **아직 미구현**이다. 자율 모드에 수동 제어 루프/주기 통신을 넣지 않는다.
-
-CLI는 기존 `status`로 현재 번호를 확인한 뒤 다음 형식을 쓴다. `--send` 없이는 전송하지 않는다.
+수동 시험은 자율 제어기를 먼저 종료한 **별도 `operation_mode:=manual` 실행 구성**에서 사용한다. 기존 guard와 actuation host가 필요하며 `/drive`의 다른 발행자가 있으면 준비/실행을 거절한다. 기존 프로세스를 자동으로 끄거나 보호층을 우회하지 않는다. 일반 자율 구성은 수동 자식이나 graph 주기 검사를 실행하지 않는다.
 
 ```bash
-python3 scripts/race_operator.py set-speed-limit --session 확인한_SESSION --race-epoch 0 --intervention 1 --speed-limit-mps 0.3
+ros2 run arena_autonomy race_ops --ros-args -p operation_mode:=manual \
+  -p vehicle_id:=isaac -p host:=0.0.0.0 -p port:=8765 \
+  -p token_path:=/확인한/운영토큰경로 \
+  -p manual_steering_limit_rad:="${MANUAL_STEERING_LIMIT:?설치 상한에서 계산한 min(0.2,L)}" \
+  -p log_path:="${RUN_OUTPUT:?이번 실행의 새 결과 폴더}/ops_manual.jsonl" \
+  -p manual_output_root:="$RUN_OUTPUT/manual_jogs"
 ```
 
-[구현·검사 범위](../../artifacts/validation/2026-11-12/development_speed_limit_r162_v1/README.md). ROS 출력/상태 연결과 Gazebo/실차 저속 주행을 구분한다.
+`RUN_OUTPUT`은 미리 만든 이번 실행의 절대 경로다. 같은 폴더 아래 host·패널·단발 결과를 모으되 host가 생성할 하위 `host` 폴더는 미리 만들지 않는다. 수동 구성은 자율 status의 시각이 없으므로 사건 내보내기에 `--request`를 지정하지 않고 `python3 scripts/race_event_export.py --log "$RUN_OUTPUT/ops_manual.jsonl" --output "$RUN_OUTPUT/events_manual"`로 전체 기록을 내보낸다. `manual_jogs` 원 request/result/stdout과 host 원 UART/사건 기록도 함께 회수한다. `log_path`를 생략하면 패널 디스크 로그는 남지 않는다.
+
+1. 차량 이름/토큰과 정지 상태를 확인하고 필요하면 상한을 적용한다.
+2. **수동 준비**를 눌러 명시 CLEAR→ARM을 확인한다. 준비만으로 주행하지 않는다.
+3. 속도·실행 시간·중앙 등가 바퀴 조향각(+좌/−우)을 입력하고 단발 실행한다. 서보축 각도가 아니다.
+4. 실행이 끝나면0명령·MCU STOP·상태 확인 뒤 자식을 회수한다. 다시 실행하려면 다시 준비한다.
+
+현재 단발은 최대0.2m/s·0.05–2초, 기본 조향±0.2rad다. 실장 한계보다 크게 설정하지 않는다. `v×t` 표시는 등속 가정 예상 주행거리이며 실제 이동/정지거리나 곡선의 직선 변위가 아니다. 입력 초과값을 몰래 줄여 실행하지 않고 거절한다. WASD는 요청 범위에서 제외했다. 수동 실행 중 브라우저 연결이 끊기면 취소/STOP을 요청하며, 정상 자율주행은 브라우저 창을 필수로 요구하지 않는다.
+
+실제 설치 bundle에서 운영 상한을 만들 때는 [`runtime_installed_limits.py`](../../scripts/runtime_installed_limits.py)를 사용한다. 생성한 같은 YAML을 planner와 guard에 선택하고, `host-arguments`의 값은 반올림하지 않고 host에 전달한다. 별도 수동 구성의 `manual_steering_limit_rad`도 **기본0.2rad와 생성 상한 중 작은 값**으로 맞춘다. 이 값은 중앙 등가 바퀴각이며 서보축 각도가 아니다. [실행 예시](../../artifacts/validation/2026-11-13/installed_limit_chain_r439_v1/RESULT.md#이관-후-사용할-최소-흐름). 설정 생성만으로 펌웨어가 바뀌거나 차량이 출발하지 않는다.
+
+[r429](../../artifacts/validation/2026-11-13/operator_panel_r429_v1/RESULT.md)에서 기존140·신규19검사, 후속56영향검사·DOM 검사와 실제 HTTP/ROS/가짜MCU 대표를 확인했다. 실제 차량·무선 AP·브라우저 시각 검수는 이 대표에 포함하지 않는다. 기존 CLI `race_operator.py set-speed-limit`와 `development_jog.py`도 유지한다.
+
+## 0.2 선택형 라이다·카메라 보기
+
+기존 패널의 센서 미리보기에서 필요한 센서와 **실제 발행 중인 토픽/메시지 형식**을 고르고 적용한다. 기본은 모두 OFF다. 같은 operator/view 토큰을 사용하며 별도 프로그램이나 카메라 장치 재개방은 필요 없다.
+
+- 시뮬 기본: native JSON `/scan/native` 또는 LaserScan `/scan`, RGB `/camera/color/image_raw`.
+- 현재 실물 runtime 입력을 쓰면 native `/hardware_runtime/c1/native`, RGB `/hardware_runtime/camera/image_raw`처럼 실제 실행에 지정한 이름을 넣는다. 센서 발행기는 기존 실행이 담당하며 패널이 새로 시작하지 않는다.
+- 라이다는 센서 좌표의 유효 반환 점·거리·수신 나이를 보여준다. 기본3m 표시 반경을 조절하고 점에 포인터를 올려 거리를 읽는다. 최대720점·5Hz이며 무반환은 자유 공간이 아니다. 벽/차량 분류 결과나 운동 보정 결과가 아니다.
+- 카메라는 최신 한 장을 최대 가로640px·2Hz JPEG로 전송한다. 수신1초 초과는 오래된 영상으로 표시하고 새 JPEG를 제공하지 않는다. 원영상을 저장하지 않는다.
+- **모두 끄기** 또는 마지막 설정 탭의 상태 조회가3초간 끊기면 구독·캐시를 해제한다. 미리보기는 구동 상태·ARM·STOP을 바꾸지 않는다. 주행 중에도 선택할 수 있으나 Jetson 실주행의 추가 부하는 아직 측정하지 않았다.
+
+[r434 대표](../../artifacts/validation/2026-11-13/operator_preview_r434_v1/RESULT.md)는 WSL의 실제 ROS/HTTP에서 native10Hz·RGB20Hz 합성 입력, JPEG 약2Hz, 종류별 대기1개, OFF/만료 구독0과 인증 경계를 확인했다. 실물 광학/거리 정확도나 브라우저 시각 검증을 대신하지 않는다.
 
 ## 1. 적용 범위와 주의
 
 - 대상 노드는 `local_pursuit`의 `race_control_mode=b3_candidate`, `vision_execution=process`로 명시 선택한 경우다. 공식 출발 검출은 별도 `start_signal_mode=official_4red_candidate` 매개변수이며 두 선택은 서로를 자동 활성화하지 않는다. 현재 launch 기본값은 유지한다.
-- **상위 정책 정지 ≠ MCU STOP ≠ 실제 차량 정지.** 이 도구는 `/race/command`만 발행한다. `/actuation/command`, `/drive`, `/drive/safe`에 발행하지 않는다. 통신이나 제어기가 고장 난 상황의 비상 정지 수단으로 쓰지 않는다.
+- **상위 정책 정지 ≠ MCU STOP ≠ 실제 차량 정지.** CLI `race_operator.py`는 `/race/command`만 발행한다. 웹 RaceOps는 경기 요청과 MCU Trigger 서비스 호출을 연결한다. 두 도구 모두 `/drive`·`/drive/safe`에 직접 발행하지 않는다. 통신이나 제어기가 고장 난 상황의 독립 비상 정지 수단으로 쓰지 않는다.
 - 사람의 `acknowledge`는 상위 래치만 푼다. 별도 MCU ARM·신호·센서·독립 보호 조건이 필요하지만, **그 조건이 이미 모두 갖춰져 있다면 해제 직후 움직일 수 있다.** 실제 위험 제거와 정지 확인 없이 확인 표시만 넣지 않는다.
 - ROS domain 격리는 혼동 방지이며 인증이 아니다. 신뢰되지 않은 네트워크의 명령/상태 위조를 막는 도구가 아니다.
 - 실물 MCU 시계 변환·전기 정지·공식 그리드 시야·실물 주행은 미검증이다. [B3 계약·현재 한계](RACE_START_CONTRACT_2026_10_13.md#8-1024--새-경기같은-경기-재개의-선택형-운영-연결), [M5 그리드 제약](GRID_START_M5_2026_10_24.md)을 먼저 확인한다.
@@ -133,6 +158,6 @@ v1의 실패 2개(단위 시험 전제 누락·ROS 전용 context와 전역 exec
 
 ## 개발 전용 짧은 조작 준비 — 11/12
 
-[조작 도구 r169](../../artifacts/validation/2026-11-12/development_jog_r169_v1/README.md)는 자율 제어기를 끈 별도 시험용이다. `python3 scripts/development_jog.py forward --speed .15 --seconds .5 --speed-limit .2`는 미리보기이고 `--send`를 붙여야 발행한다. `left/right`는 전진하며±0.2rad 조향한다. 자동 ARM/CLEAR/RESET·후진·WASD는 없으며 기존 독립 보호층을 거친다. 출발 전 이미 ARM된0목표 MCU가 필요하고 종료 때 명시 STOP/새 ESTOP0목표를 확인한다. 별도 스크립트라 자율 모드의 입력 루프에 추가하지 않았다.
+[조작 도구 r169](../../artifacts/validation/2026-11-12/development_jog_r169_v1/README.md)는 자율 제어기를 끈 별도 시험용이다. `python3 scripts/development_jog.py forward --speed .15 --seconds .5 --speed-limit .2`는 미리보기이고 `--send`를 붙여야 발행한다. `left/right`는 전진하며±0.2rad 조향한다. 자동 ARM/CLEAR/RESET·후진·WASD는 없으며 기존 독립 보호층을 거친다. r408 보완 뒤에는 출발 전 기존 virtual 또는 runtime host 형식의 새 ARMED·0목표·유효 feedback과 단독 발행 조건을 확인한다. 종료 때0목표는 요청 조향을 유지하고, 별도 명시 STOP과 같은 boot/시계의 새 `ESTOP_LATCHED` 세대를 확인한다. 이는 실제 차체 정지의 측정은 아니다. 별도 스크립트라 자율 모드의 입력 루프에 추가하지 않았다.
 
-노트북의 실제 ROS/보호층과 가짜 MCU endpoint6사례까지 확인했다. 실제 차량 조작·방향·제동·전체MCU전송은 미검증이다. r162 자율 시험 상한과 수동 도구의 상한은 각 모드에서 명시하며 하나의 화면에서 공유하는 전환은 아직 없다. **현재 사용자 모터 시험 동안 Jetson 접근은 별도 재허용 전까지 금지한다.**
+노트북의 실제 ROS/보호층과 가짜 MCU endpoint6사례까지 확인했다. 실제 차량 조작·방향·제동·전체MCU전송은 미검증이다. r162 자율 시험 상한과 수동 도구의 상한은 각 모드에서 명시하며 하나의 화면에서 공유하는 전환은 아직 없다. 당시 모터 시험 중의 Jetson 접근 중단 요청은 이후 사용자 재허용으로 해제됐다. 현재 장비 소유권과 실행 범위는 [현재 현황](../PROJECT_CONTEXT.md)의 최신 작업 지시를 따르며, 접속 허용을 실물 구동 승인으로 확대하지 않는다.

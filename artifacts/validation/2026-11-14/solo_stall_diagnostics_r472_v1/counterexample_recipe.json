@@ -1,0 +1,37 @@
+{
+  "status": "prepared_only_not_executed",
+  "source": "selected_inputs.json, actual_plan_submitted reference 19.22; actual_current trace seq823",
+  "preserve": ["original source", "raw timestamp arrays", "epoch", "source frame", "measured speed except an explicitly labelled sensitivity case", "vehicle geometry"],
+  "cases": [
+    {
+      "name": "known_finite_return_in_query_padding",
+      "base_reference_s": 19.22,
+      "path": "data.input.scan.measurements.ranges_m[71]",
+      "old": {"nonfinite": "inf"},
+      "new": 0.14,
+      "expectation": "This finite near return must not be excused as bounded unknown or self mask. Recompute raw scene and exact current query; do not reuse original free/masked classification.",
+      "scope": "local proof counterexample, not a prediction that every full controller must output zero"
+    },
+    {
+      "name": "undeclared_nan_beside_sector",
+      "base_reference_s": 19.22,
+      "path": "data.input.scan.measurements.ranges_m[71]",
+      "old": {"nonfinite": "inf"},
+      "new": {"nonfinite": "nan"},
+      "expectation": "Index71 is outside all four declared sectors; ordinary invalid data must not be promoted to a declared mask or positive nonreturn."
+    },
+    {
+      "name": "different_current_evidence_must_not_reuse_proof",
+      "base_reference_s": 19.22,
+      "method": "Keep the reference19.22 proof candidate as one object; present the actual24.32 scan/context or a different epoch as the target current input.",
+      "expectation": "Proofs from different current scenes cannot be combined. Recompute from the same current scene or reject mismatched evidence; do not copy an accepted bit."
+    },
+    {
+      "name": "actual_first_current_measured_speed_preserved",
+      "base_trace_seq": 823,
+      "measured_speed_mps": 0.3673502520864255,
+      "target_speed_mps": 0.35,
+      "expectation": "If the revised input scope accepts this measurement, the original .367350252 value must still drive braking distance and motion queries. Acceptance by clamping to .35 is not equivalent."
+    }
+  ]
+}

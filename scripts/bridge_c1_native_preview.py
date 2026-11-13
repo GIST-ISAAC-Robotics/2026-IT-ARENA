@@ -15,6 +15,7 @@ import time
 from arena_vehicle_interface.c1_native_preview import C1NativePreview
 from arena_vehicle_interface.c1_sample_clock import C1SampleClock
 from arena_vehicle_interface.host_clock_pair import sample_clocks
+from sensor_stream_selection import add_stream_arguments, validate_stream
 
 TOPIC = '/hardware_preview/c1/native'
 
@@ -27,11 +28,12 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--scan-clock', choices=('sdk_nominal', 'tracking'), default='sdk_nominal',
                         help='tracking은 10 Hz Standard용 선택형 호스트 추정이며 취득 교정이 아닙니다')
+    add_stream_arguments(parser, TOPIC)
     args = parser.parse_args()
     if not math.isfinite(args.seconds) or not 1 <= args.seconds <= 120:
         parser.error('seconds must be within 1..120')
-    if os.environ.get('ROS_LOCALHOST_ONLY') != '1' or os.environ.get('ROS_DOMAIN_ID') != '216':
-        parser.error('preview requires ROS_LOCALHOST_ONLY=1 and isolated ROS_DOMAIN_ID=216')
+    try: stream_selection = validate_stream(args.ros_domain, args.topic, os.environ)
+    except ValueError as error: parser.error(str(error))
     executable = args.executable.resolve(strict=True)
     args.output.mkdir(parents=True, exist_ok=False)
     import rclpy
@@ -45,7 +47,7 @@ def main():
         raise RuntimeError('hardware preview requires host ROS clock')
     tracking = args.scan_clock == 'tracking'
     converter = (C1SampleClock if tracking else C1NativePreview)(source_epoch=time.time_ns())
-    publisher = node.create_publisher(String, TOPIC, qos_profile_sensor_data)
+    publisher = node.create_publisher(String, args.topic, qos_profile_sensor_data)
     counts = Counter()
     pending = Counter()
     intervals = []
@@ -64,7 +66,7 @@ def main():
         if decoded.time_basis != 'unverified_estimate':
             raise RuntimeError('time basis changed')
 
-    subscription = node.create_subscription(String, TOPIC, receive, qos_profile_sensor_data)
+    subscription = node.create_subscription(String, args.topic, receive, qos_profile_sensor_data)
     process = None
     error = None
     started = time.monotonic()
@@ -176,7 +178,7 @@ def main():
             maximum_nominal_future_ns=max((s['nominal_end_after_receipt_ns'] for s in summaries), default=0),
             maximum_requested_wait_ns=max((s.get('publication_wait_ns', 0) for s in summaries), default=0),
             wall_elapsed_s=time.monotonic()-started, time_contract_verified=False,
-            time_estimator=converter.estimator, topic=TOPIC, drive_output=False,
+            time_estimator=converter.estimator, topic=args.topic, stream_selection=stream_selection, drive_output=False,
             mounting_calibrated=False, source_epoch=converter.epoch)
         if tracking:
             summary['nominal_clock'] = dict(converter.raw.counts)

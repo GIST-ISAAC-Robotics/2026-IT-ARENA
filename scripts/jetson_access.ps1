@@ -7,10 +7,21 @@ param(
     [switch]$Sudo,
     [int]$Timeout = 900,
     [string]$ConnectAddress,
+    [string]$InterfaceAlias = 'Wi-Fi',
     [string]$CredentialFile = "$env:LOCALAPPDATA\IT-Arena\private\jetson-access.clixml"
 )
 $ErrorActionPreference = 'Stop'
 $record = Import-Clixml -LiteralPath $CredentialFile
+if (-not $ConnectAddress -and $record.HostName.EndsWith('.local')) {
+    # 일반 DNS의 잘못된 .local 응답을 우회한다. 인증 전 기존 장비 키로 확인한다.
+    $discoveryOutput = & "$PSScriptRoot/discover_jetson.ps1" -InterfaceAlias $InterfaceAlias -CredentialFile $CredentialFile
+    $discoveryExit = $LASTEXITCODE
+    $discovery = ($discoveryOutput -join "`n") | ConvertFrom-Json
+    if ($discoveryExit -ne 0 -or -not $discovery.ok) {
+        throw "Jetson discovery failed ($($discovery.reason)). Check Wi-Fi/client isolation or use -ConnectAddress with a known current IPv4 address."
+    }
+    $ConnectAddress = $discovery.verified_address
+}
 $request = @{
     host = $record.HostName; user = $record.Credential.UserName; port = $record.Port
     password = $record.Credential.GetNetworkCredential().Password

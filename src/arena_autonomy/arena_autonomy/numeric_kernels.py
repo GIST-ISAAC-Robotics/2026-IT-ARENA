@@ -70,3 +70,18 @@ def polygon(points,polygon):
     out=np.empty(len(q),dtype=np.float64)
     _backend.polygon(len(q),len(p),int(area>1e-15),q,p,out)
     return out
+
+
+def current_mask_occupied(queries,hits,padding):
+    """현재 자기 가림 질의와 실제 반환의 기존 inclusive 패딩 충돌만 계산한다."""
+    if _backend is None:return None
+    if not hasattr(_backend,'current_mask_occupied'):
+        raise RuntimeError('native current mask occupancy kernel missing; rebuild arena_autonomy')
+    q=np.ascontiguousarray(queries,dtype=np.float64)
+    h=np.ascontiguousarray(hits,dtype=np.float64)
+    pad=np.ascontiguousarray(padding,dtype=np.float64)
+    if q.shape!=(len(q),2) or h.shape!=(len(h),2) or pad.shape!=(len(h),):
+        raise ValueError('native current mask occupancy dimensions differ')
+    out=np.empty(1,dtype=np.uint8)
+    _backend.current_mask_occupied(len(q),len(h),q,h,pad,out)
+    return bool(out[0])

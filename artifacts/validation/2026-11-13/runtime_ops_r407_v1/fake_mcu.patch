@@ -1,0 +1,11 @@
+--- r394/FakeMcu
++++ r407/FakeMcu
+@@ -4,7 +4,7 @@
+         self.master=master;self.stop=threading.Event();self.arm_seen=threading.Event();self.release_arm=threading.Event()
+         self.decoder=Decoder();self.commands=[];self.events=[];self.error=None;self.pending=None
+         self.rx=ActuationReceiver(ContractConfig(feedback_mode=MODE_MOTOR,ticks_per_rev=28,
+-            gear_ratio=2.5*81/17,wheel_radius_m=.0325,max_speed_mps=1.,max_steering_rad=.45),boot_id='r394-pty-only')
++            gear_ratio=2.5*81/17,wheel_radius_m=.0325,max_speed_mps=1.5,max_steering_rad=.4578436017036438),boot_id='r407-pty-only')
+         self.sequence=0;self.started=time.monotonic_ns()
+         self.thread=threading.Thread(target=self.run,name='fake-mcu-PTY',daemon=True)
+ 

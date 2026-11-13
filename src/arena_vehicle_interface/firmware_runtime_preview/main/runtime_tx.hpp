@@ -16,11 +16,11 @@ class RuntimeTx {
     std::memcpy(observation_.data(),data,size);observation_size_=size;return true;
   }
   template<class Endpoint,class Sink>
-  bool pump(std::int64_t now,Endpoint& endpoint,Sink&& sink) {
+  bool pump(std::int64_t now,Endpoint& endpoint,Sink&& sink,bool ready=false) {
     if(failed_)return false;
     if(observation_offset_)return send_observation(sink);
     if(imu_offset_)return send_imu(sink);
-    endpoint.pump(now,sink,false); // 이 preview는 준비/ARM/구동을 허가하지 않는다.
+    endpoint.pump(now,sink,ready); // 기본 preview는 false. 운영 호출자는 같은 루프의 준비 증거를 명시한다.
     if(endpoint.tx().fault()!=arena_actuation::TxFault::kNone)return fail();
     if(endpoint.tx().frame_in_flight())return true;
     if(observation_size_ && (prefer_observation_ || !count_))return send_observation(sink);
@@ -30,13 +30,13 @@ class RuntimeTx {
   // UART FIFO가 빈 공간을 반환하는 동안만 최대4회 처리한다.
   // 프레임 경계/우선순위는 기존 pump가 소유하며 busy wait는 하지 않는다.
   template<class Endpoint,class Sink>
-  bool pump_bounded(std::int64_t now,Endpoint& endpoint,Sink&& sink) {
+  bool pump_bounded(std::int64_t now,Endpoint& endpoint,Sink&& sink,bool ready=false) {
     for(unsigned i=0;i<4;++i){
       std::size_t accepted=0;
       auto measured=[&](const std::uint8_t* p,std::size_t n)->std::size_t {
         auto sent=sink(p,n);accepted+=sent;return sent;
       };
-      if(!pump(now,endpoint,measured))return false;
+      if(!pump(now,endpoint,measured,ready))return false;
       if(!accepted)break;
     }
     return true;

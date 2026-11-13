@@ -1,0 +1,1238 @@
+FFFFFFF..                                                                [100%]
+================================== FAILURES ===================================
+___ test_original_stall_input_has_current_path_and_existing_sweep_positive ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002B0D627E190>
+
+    def test_original_stall_input_has_current_path_and_existing_sweep_positive(monkeypatch):
+        before=copy.deepcopy(PREFIX)
+        observed=policy.observed_command
+        monkeypatch.setattr(policy,'observed_command',lambda *a,**k:None)
+>       baseline=call(warm(),PREFIX[-1])
+                      ^^^^^^
+
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:33: in warm
+    for data in PREFIX[:-1]:call(owner,data)
+                            ^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:27: in call
+    return owner.command(scene,history,data['speed_mps'],data['side'],
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:582: in command
+    output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:596: in _forward_command
+    output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:611: in _observed_command
+    return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:661: in _partial_command
+    output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:712: in _path_command
+    baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:842: in _baseline_command
+    candidate, info = observed_path(points, side)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:807: in observed_path
+    path, info = local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_path.py:306: in local_path
+    path = corner_path(samples, side, offset, minimum_radius)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:33: in corner_path
+    vertices = _vertices(samples)
+               ^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:15: in _vertices
+    distance = np.abs(np.cross(chord, points-points[0]))/length
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([2.04918543, 0.0462644 ])
+b = array([[0.00000000e+00, 0.00000000e+00],
+       [2.49892387e-02, 5.09400243e-04],
+       [4.99778308e-02, 1.20029558e-...   [1.99920050e+00, 4.50371637e-02],
+       [2.02419296e+00, 4.56507799e-02],
+       [2.04918543e+00, 4.62643962e-02]])
+axisa = 0, axisb = 1, axisc = -1, axis = None
+
+    @array_function_dispatch(_cross_dispatcher)
+    def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
+        """
+        Return the cross product of two (arrays of) vectors.
+    
+        The cross product of `a` and `b` in :math:`R^3` is a vector perpendicular
+        to both `a` and `b`.  If `a` and `b` are arrays of vectors, the vectors
+        are defined by the last axis of `a` and `b` by default, and these axes
+        must have 3 dimensions.
+    
+        Parameters
+        ----------
+        a : array_like
+            Components of the first vector(s).
+        b : array_like
+            Components of the second vector(s).
+        axisa : int, optional
+            Axis of `a` that defines the vector(s).  By default, the last axis.
+        axisb : int, optional
+            Axis of `b` that defines the vector(s).  By default, the last axis.
+        axisc : int, optional
+            Axis of `c` containing the cross product vector(s).  By default, the last axis.
+        axis : int, optional
+            If defined, the axis of `a`, `b` and `c` that defines the vector(s)
+            and cross product(s).  Overrides `axisa`, `axisb` and `axisc`.
+    
+        Returns
+        -------
+        c : ndarray
+            Vector cross product(s).
+    
+        Raises
+        ------
+        ValueError
+            When the dimension of the vector(s) in `a` or `b` does not equal 3.
+    
+        See Also
+        --------
+        inner : Inner product
+        outer : Outer product.
+        linalg.cross : An Array API compatible variation of ``np.cross``.
+        ix_ : Construct index arrays.
+    
+        Notes
+        -----
+        Supports full broadcasting of the inputs.
+    
+        Examples
+        --------
+        Vector cross-product.
+    
+        >>> import numpy as np
+        >>> x = [1, 2, 3]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([-3,  6, -3])
+    
+        One vector with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([12, -6, -3])
+    
+        Both vectors with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 0]
+        >>> np.cross(x, y)
+        array([0, 0, -3])
+    
+        Multiple vector cross-products. Note that the direction of the cross
+        product vector is defined by the *right-hand rule*.
+    
+        >>> x = np.array([[1,2,3], [4,5,6]])
+        >>> y = np.array([[4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[-3,  6, -3],
+               [ 3, -6,  3]])
+    
+        The orientation of `c` can be changed using the `axisc` keyword.
+    
+        >>> np.cross(x, y, axisc=0)
+        array([[-3,  3],
+               [ 6, -6],
+               [-3,  3]])
+    
+        Change the vector definition of `x` and `y` using `axisa` and `axisb`.
+    
+        >>> x = np.array([[1,2,3], [4,5,6], [7, 8, 9]])
+        >>> y = np.array([[7, 8, 9], [4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[ -6,  12,  -6],
+               [  0,   0,   0],
+               [  6, -12,   6]])
+        >>> np.cross(x, y, axisa=0, axisb=0)
+        array([[-24,  48, -24],
+               [-30,  60, -30],
+               [-36,  72, -36]])
+    
+        """
+        if axis is not None:
+            axisa, axisb, axisc = (axis,) * 3
+        a = asarray(a)
+        b = asarray(b)
+    
+        if (a.ndim < 1) or (b.ndim < 1):
+            raise ValueError("At least one array has zero dimension")
+    
+        # Check axisa and axisb are within bounds
+        axisa = normalize_axis_index(axisa, a.ndim, msg_prefix='axisa')
+        axisb = normalize_axis_index(axisb, b.ndim, msg_prefix='axisb')
+    
+        # Move working axis to the end of the shape
+        a = moveaxis(a, axisa, -1)
+        b = moveaxis(b, axisb, -1)
+        if a.shape[-1] != 3 or b.shape[-1] != 3:
+>           raise ValueError(
+                f"Both input arrays must be (arrays of) 3-dimensional vectors, "
+                f"but they are {a.shape[-1]} and {b.shape[-1]} dimensional instead."
+            )
+E           ValueError: Both input arrays must be (arrays of) 3-dimensional vectors, but they are 2 and 2 dimensional instead.
+
+..\..\..\AppData\Roaming\Python\Python314\site-packages\numpy\_core\numeric.py:1680: ValueError
+_______ test_current_path_decision_precedes_legacy_partial_lateral_gate _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002B086CA3A80>
+
+    def test_current_path_decision_precedes_legacy_partial_lateral_gate(monkeypatch):
+>       owner=warm()
+              ^^^^^^
+
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:55: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:33: in warm
+    for data in PREFIX[:-1]:call(owner,data)
+                            ^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:27: in call
+    return owner.command(scene,history,data['speed_mps'],data['side'],
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:582: in command
+    output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:596: in _forward_command
+    output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:611: in _observed_command
+    return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:661: in _partial_command
+    output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:712: in _path_command
+    baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:842: in _baseline_command
+    candidate, info = observed_path(points, side)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:807: in observed_path
+    path, info = local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_path.py:306: in local_path
+    path = corner_path(samples, side, offset, minimum_radius)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:33: in corner_path
+    vertices = _vertices(samples)
+               ^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:15: in _vertices
+    distance = np.abs(np.cross(chord, points-points[0]))/length
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([2.04918543, 0.0462644 ])
+b = array([[0.00000000e+00, 0.00000000e+00],
+       [2.49892387e-02, 5.09400243e-04],
+       [4.99778308e-02, 1.20029558e-...   [1.99920050e+00, 4.50371637e-02],
+       [2.02419296e+00, 4.56507799e-02],
+       [2.04918543e+00, 4.62643962e-02]])
+axisa = 0, axisb = 1, axisc = -1, axis = None
+
+    @array_function_dispatch(_cross_dispatcher)
+    def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
+        """
+        Return the cross product of two (arrays of) vectors.
+    
+        The cross product of `a` and `b` in :math:`R^3` is a vector perpendicular
+        to both `a` and `b`.  If `a` and `b` are arrays of vectors, the vectors
+        are defined by the last axis of `a` and `b` by default, and these axes
+        must have 3 dimensions.
+    
+        Parameters
+        ----------
+        a : array_like
+            Components of the first vector(s).
+        b : array_like
+            Components of the second vector(s).
+        axisa : int, optional
+            Axis of `a` that defines the vector(s).  By default, the last axis.
+        axisb : int, optional
+            Axis of `b` that defines the vector(s).  By default, the last axis.
+        axisc : int, optional
+            Axis of `c` containing the cross product vector(s).  By default, the last axis.
+        axis : int, optional
+            If defined, the axis of `a`, `b` and `c` that defines the vector(s)
+            and cross product(s).  Overrides `axisa`, `axisb` and `axisc`.
+    
+        Returns
+        -------
+        c : ndarray
+            Vector cross product(s).
+    
+        Raises
+        ------
+        ValueError
+            When the dimension of the vector(s) in `a` or `b` does not equal 3.
+    
+        See Also
+        --------
+        inner : Inner product
+        outer : Outer product.
+        linalg.cross : An Array API compatible variation of ``np.cross``.
+        ix_ : Construct index arrays.
+    
+        Notes
+        -----
+        Supports full broadcasting of the inputs.
+    
+        Examples
+        --------
+        Vector cross-product.
+    
+        >>> import numpy as np
+        >>> x = [1, 2, 3]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([-3,  6, -3])
+    
+        One vector with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([12, -6, -3])
+    
+        Both vectors with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 0]
+        >>> np.cross(x, y)
+        array([0, 0, -3])
+    
+        Multiple vector cross-products. Note that the direction of the cross
+        product vector is defined by the *right-hand rule*.
+    
+        >>> x = np.array([[1,2,3], [4,5,6]])
+        >>> y = np.array([[4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[-3,  6, -3],
+               [ 3, -6,  3]])
+    
+        The orientation of `c` can be changed using the `axisc` keyword.
+    
+        >>> np.cross(x, y, axisc=0)
+        array([[-3,  3],
+               [ 6, -6],
+               [-3,  3]])
+    
+        Change the vector definition of `x` and `y` using `axisa` and `axisb`.
+    
+        >>> x = np.array([[1,2,3], [4,5,6], [7, 8, 9]])
+        >>> y = np.array([[7, 8, 9], [4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[ -6,  12,  -6],
+               [  0,   0,   0],
+               [  6, -12,   6]])
+        >>> np.cross(x, y, axisa=0, axisb=0)
+        array([[-24,  48, -24],
+               [-30,  60, -30],
+               [-36,  72, -36]])
+    
+        """
+        if axis is not None:
+            axisa, axisb, axisc = (axis,) * 3
+        a = asarray(a)
+        b = asarray(b)
+    
+        if (a.ndim < 1) or (b.ndim < 1):
+            raise ValueError("At least one array has zero dimension")
+    
+        # Check axisa and axisb are within bounds
+        axisa = normalize_axis_index(axisa, a.ndim, msg_prefix='axisa')
+        axisb = normalize_axis_index(axisb, b.ndim, msg_prefix='axisb')
+    
+        # Move working axis to the end of the shape
+        a = moveaxis(a, axisa, -1)
+        b = moveaxis(b, axisb, -1)
+        if a.shape[-1] != 3 or b.shape[-1] != 3:
+>           raise ValueError(
+                f"Both input arrays must be (arrays of) 3-dimensional vectors, "
+                f"but they are {a.shape[-1]} and {b.shape[-1]} dimensional instead."
+            )
+E           ValueError: Both input arrays must be (arrays of) 3-dimensional vectors, but they are 2 and 2 dimensional instead.
+
+..\..\..\AppData\Roaming\Python\Python314\site-packages\numpy\_core\numeric.py:1680: ValueError
+________________ test_actual_front_occupied_sweep_still_stops _________________
+
+    def test_actual_front_occupied_sweep_still_stops():
+>       owner=warm();data=copy.deepcopy(PREFIX[-1]);scene,_,_=scene_for(data)
+              ^^^^^^
+
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:33: in warm
+    for data in PREFIX[:-1]:call(owner,data)
+                            ^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:27: in call
+    return owner.command(scene,history,data['speed_mps'],data['side'],
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:582: in command
+    output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:596: in _forward_command
+    output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:611: in _observed_command
+    return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:661: in _partial_command
+    output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:712: in _path_command
+    baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:842: in _baseline_command
+    candidate, info = observed_path(points, side)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:807: in observed_path
+    path, info = local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_path.py:306: in local_path
+    path = corner_path(samples, side, offset, minimum_radius)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:33: in corner_path
+    vertices = _vertices(samples)
+               ^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:15: in _vertices
+    distance = np.abs(np.cross(chord, points-points[0]))/length
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([2.04918543, 0.0462644 ])
+b = array([[0.00000000e+00, 0.00000000e+00],
+       [2.49892387e-02, 5.09400243e-04],
+       [4.99778308e-02, 1.20029558e-...   [1.99920050e+00, 4.50371637e-02],
+       [2.02419296e+00, 4.56507799e-02],
+       [2.04918543e+00, 4.62643962e-02]])
+axisa = 0, axisb = 1, axisc = -1, axis = None
+
+    @array_function_dispatch(_cross_dispatcher)
+    def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
+        """
+        Return the cross product of two (arrays of) vectors.
+    
+        The cross product of `a` and `b` in :math:`R^3` is a vector perpendicular
+        to both `a` and `b`.  If `a` and `b` are arrays of vectors, the vectors
+        are defined by the last axis of `a` and `b` by default, and these axes
+        must have 3 dimensions.
+    
+        Parameters
+        ----------
+        a : array_like
+            Components of the first vector(s).
+        b : array_like
+            Components of the second vector(s).
+        axisa : int, optional
+            Axis of `a` that defines the vector(s).  By default, the last axis.
+        axisb : int, optional
+            Axis of `b` that defines the vector(s).  By default, the last axis.
+        axisc : int, optional
+            Axis of `c` containing the cross product vector(s).  By default, the last axis.
+        axis : int, optional
+            If defined, the axis of `a`, `b` and `c` that defines the vector(s)
+            and cross product(s).  Overrides `axisa`, `axisb` and `axisc`.
+    
+        Returns
+        -------
+        c : ndarray
+            Vector cross product(s).
+    
+        Raises
+        ------
+        ValueError
+            When the dimension of the vector(s) in `a` or `b` does not equal 3.
+    
+        See Also
+        --------
+        inner : Inner product
+        outer : Outer product.
+        linalg.cross : An Array API compatible variation of ``np.cross``.
+        ix_ : Construct index arrays.
+    
+        Notes
+        -----
+        Supports full broadcasting of the inputs.
+    
+        Examples
+        --------
+        Vector cross-product.
+    
+        >>> import numpy as np
+        >>> x = [1, 2, 3]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([-3,  6, -3])
+    
+        One vector with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([12, -6, -3])
+    
+        Both vectors with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 0]
+        >>> np.cross(x, y)
+        array([0, 0, -3])
+    
+        Multiple vector cross-products. Note that the direction of the cross
+        product vector is defined by the *right-hand rule*.
+    
+        >>> x = np.array([[1,2,3], [4,5,6]])
+        >>> y = np.array([[4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[-3,  6, -3],
+               [ 3, -6,  3]])
+    
+        The orientation of `c` can be changed using the `axisc` keyword.
+    
+        >>> np.cross(x, y, axisc=0)
+        array([[-3,  3],
+               [ 6, -6],
+               [-3,  3]])
+    
+        Change the vector definition of `x` and `y` using `axisa` and `axisb`.
+    
+        >>> x = np.array([[1,2,3], [4,5,6], [7, 8, 9]])
+        >>> y = np.array([[7, 8, 9], [4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[ -6,  12,  -6],
+               [  0,   0,   0],
+               [  6, -12,   6]])
+        >>> np.cross(x, y, axisa=0, axisb=0)
+        array([[-24,  48, -24],
+               [-30,  60, -30],
+               [-36,  72, -36]])
+    
+        """
+        if axis is not None:
+            axisa, axisb, axisc = (axis,) * 3
+        a = asarray(a)
+        b = asarray(b)
+    
+        if (a.ndim < 1) or (b.ndim < 1):
+            raise ValueError("At least one array has zero dimension")
+    
+        # Check axisa and axisb are within bounds
+        axisa = normalize_axis_index(axisa, a.ndim, msg_prefix='axisa')
+        axisb = normalize_axis_index(axisb, b.ndim, msg_prefix='axisb')
+    
+        # Move working axis to the end of the shape
+        a = moveaxis(a, axisa, -1)
+        b = moveaxis(b, axisb, -1)
+        if a.shape[-1] != 3 or b.shape[-1] != 3:
+>           raise ValueError(
+                f"Both input arrays must be (arrays of) 3-dimensional vectors, "
+                f"but they are {a.shape[-1]} and {b.shape[-1]} dimensional instead."
+            )
+E           ValueError: Both input arrays must be (arrays of) 3-dimensional vectors, but they are 2 and 2 dimensional instead.
+
+..\..\..\AppData\Roaming\Python\Python314\site-packages\numpy\_core\numeric.py:1680: ValueError
+______________ test_total_current_front_returns_lost_still_stops ______________
+
+    def test_total_current_front_returns_lost_still_stops():
+>       owner=warm();data=copy.deepcopy(PREFIX[-1]);scene,_,_=scene_for(data)
+              ^^^^^^
+
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:72: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:33: in warm
+    for data in PREFIX[:-1]:call(owner,data)
+                            ^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:27: in call
+    return owner.command(scene,history,data['speed_mps'],data['side'],
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:582: in command
+    output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:596: in _forward_command
+    output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:611: in _observed_command
+    return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:661: in _partial_command
+    output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:712: in _path_command
+    baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:842: in _baseline_command
+    candidate, info = observed_path(points, side)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:807: in observed_path
+    path, info = local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_path.py:306: in local_path
+    path = corner_path(samples, side, offset, minimum_radius)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:33: in corner_path
+    vertices = _vertices(samples)
+               ^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:15: in _vertices
+    distance = np.abs(np.cross(chord, points-points[0]))/length
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([2.04918543, 0.0462644 ])
+b = array([[0.00000000e+00, 0.00000000e+00],
+       [2.49892387e-02, 5.09400243e-04],
+       [4.99778308e-02, 1.20029558e-...   [1.99920050e+00, 4.50371637e-02],
+       [2.02419296e+00, 4.56507799e-02],
+       [2.04918543e+00, 4.62643962e-02]])
+axisa = 0, axisb = 1, axisc = -1, axis = None
+
+    @array_function_dispatch(_cross_dispatcher)
+    def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
+        """
+        Return the cross product of two (arrays of) vectors.
+    
+        The cross product of `a` and `b` in :math:`R^3` is a vector perpendicular
+        to both `a` and `b`.  If `a` and `b` are arrays of vectors, the vectors
+        are defined by the last axis of `a` and `b` by default, and these axes
+        must have 3 dimensions.
+    
+        Parameters
+        ----------
+        a : array_like
+            Components of the first vector(s).
+        b : array_like
+            Components of the second vector(s).
+        axisa : int, optional
+            Axis of `a` that defines the vector(s).  By default, the last axis.
+        axisb : int, optional
+            Axis of `b` that defines the vector(s).  By default, the last axis.
+        axisc : int, optional
+            Axis of `c` containing the cross product vector(s).  By default, the last axis.
+        axis : int, optional
+            If defined, the axis of `a`, `b` and `c` that defines the vector(s)
+            and cross product(s).  Overrides `axisa`, `axisb` and `axisc`.
+    
+        Returns
+        -------
+        c : ndarray
+            Vector cross product(s).
+    
+        Raises
+        ------
+        ValueError
+            When the dimension of the vector(s) in `a` or `b` does not equal 3.
+    
+        See Also
+        --------
+        inner : Inner product
+        outer : Outer product.
+        linalg.cross : An Array API compatible variation of ``np.cross``.
+        ix_ : Construct index arrays.
+    
+        Notes
+        -----
+        Supports full broadcasting of the inputs.
+    
+        Examples
+        --------
+        Vector cross-product.
+    
+        >>> import numpy as np
+        >>> x = [1, 2, 3]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([-3,  6, -3])
+    
+        One vector with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([12, -6, -3])
+    
+        Both vectors with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 0]
+        >>> np.cross(x, y)
+        array([0, 0, -3])
+    
+        Multiple vector cross-products. Note that the direction of the cross
+        product vector is defined by the *right-hand rule*.
+    
+        >>> x = np.array([[1,2,3], [4,5,6]])
+        >>> y = np.array([[4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[-3,  6, -3],
+               [ 3, -6,  3]])
+    
+        The orientation of `c` can be changed using the `axisc` keyword.
+    
+        >>> np.cross(x, y, axisc=0)
+        array([[-3,  3],
+               [ 6, -6],
+               [-3,  3]])
+    
+        Change the vector definition of `x` and `y` using `axisa` and `axisb`.
+    
+        >>> x = np.array([[1,2,3], [4,5,6], [7, 8, 9]])
+        >>> y = np.array([[7, 8, 9], [4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[ -6,  12,  -6],
+               [  0,   0,   0],
+               [  6, -12,   6]])
+        >>> np.cross(x, y, axisa=0, axisb=0)
+        array([[-24,  48, -24],
+               [-30,  60, -30],
+               [-36,  72, -36]])
+    
+        """
+        if axis is not None:
+            axisa, axisb, axisc = (axis,) * 3
+        a = asarray(a)
+        b = asarray(b)
+    
+        if (a.ndim < 1) or (b.ndim < 1):
+            raise ValueError("At least one array has zero dimension")
+    
+        # Check axisa and axisb are within bounds
+        axisa = normalize_axis_index(axisa, a.ndim, msg_prefix='axisa')
+        axisb = normalize_axis_index(axisb, b.ndim, msg_prefix='axisb')
+    
+        # Move working axis to the end of the shape
+        a = moveaxis(a, axisa, -1)
+        b = moveaxis(b, axisb, -1)
+        if a.shape[-1] != 3 or b.shape[-1] != 3:
+>           raise ValueError(
+                f"Both input arrays must be (arrays of) 3-dimensional vectors, "
+                f"but they are {a.shape[-1]} and {b.shape[-1]} dimensional instead."
+            )
+E           ValueError: Both input arrays must be (arrays of) 3-dimensional vectors, but they are 2 and 2 dimensional instead.
+
+..\..\..\AppData\Roaming\Python\Python314\site-packages\numpy\_core\numeric.py:1680: ValueError
+______________________ test_actual_path_loss_still_stops ______________________
+
+    def test_actual_path_loss_still_stops():
+>       owner=warm();data=copy.deepcopy(PREFIX[-1])
+              ^^^^^^
+
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:80: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:33: in warm
+    for data in PREFIX[:-1]:call(owner,data)
+                            ^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:27: in call
+    return owner.command(scene,history,data['speed_mps'],data['side'],
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:582: in command
+    output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:596: in _forward_command
+    output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:611: in _observed_command
+    return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:661: in _partial_command
+    output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:712: in _path_command
+    baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:842: in _baseline_command
+    candidate, info = observed_path(points, side)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:807: in observed_path
+    path, info = local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_path.py:306: in local_path
+    path = corner_path(samples, side, offset, minimum_radius)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:33: in corner_path
+    vertices = _vertices(samples)
+               ^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:15: in _vertices
+    distance = np.abs(np.cross(chord, points-points[0]))/length
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([2.04918543, 0.0462644 ])
+b = array([[0.00000000e+00, 0.00000000e+00],
+       [2.49892387e-02, 5.09400243e-04],
+       [4.99778308e-02, 1.20029558e-...   [1.99920050e+00, 4.50371637e-02],
+       [2.02419296e+00, 4.56507799e-02],
+       [2.04918543e+00, 4.62643962e-02]])
+axisa = 0, axisb = 1, axisc = -1, axis = None
+
+    @array_function_dispatch(_cross_dispatcher)
+    def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
+        """
+        Return the cross product of two (arrays of) vectors.
+    
+        The cross product of `a` and `b` in :math:`R^3` is a vector perpendicular
+        to both `a` and `b`.  If `a` and `b` are arrays of vectors, the vectors
+        are defined by the last axis of `a` and `b` by default, and these axes
+        must have 3 dimensions.
+    
+        Parameters
+        ----------
+        a : array_like
+            Components of the first vector(s).
+        b : array_like
+            Components of the second vector(s).
+        axisa : int, optional
+            Axis of `a` that defines the vector(s).  By default, the last axis.
+        axisb : int, optional
+            Axis of `b` that defines the vector(s).  By default, the last axis.
+        axisc : int, optional
+            Axis of `c` containing the cross product vector(s).  By default, the last axis.
+        axis : int, optional
+            If defined, the axis of `a`, `b` and `c` that defines the vector(s)
+            and cross product(s).  Overrides `axisa`, `axisb` and `axisc`.
+    
+        Returns
+        -------
+        c : ndarray
+            Vector cross product(s).
+    
+        Raises
+        ------
+        ValueError
+            When the dimension of the vector(s) in `a` or `b` does not equal 3.
+    
+        See Also
+        --------
+        inner : Inner product
+        outer : Outer product.
+        linalg.cross : An Array API compatible variation of ``np.cross``.
+        ix_ : Construct index arrays.
+    
+        Notes
+        -----
+        Supports full broadcasting of the inputs.
+    
+        Examples
+        --------
+        Vector cross-product.
+    
+        >>> import numpy as np
+        >>> x = [1, 2, 3]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([-3,  6, -3])
+    
+        One vector with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([12, -6, -3])
+    
+        Both vectors with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 0]
+        >>> np.cross(x, y)
+        array([0, 0, -3])
+    
+        Multiple vector cross-products. Note that the direction of the cross
+        product vector is defined by the *right-hand rule*.
+    
+        >>> x = np.array([[1,2,3], [4,5,6]])
+        >>> y = np.array([[4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[-3,  6, -3],
+               [ 3, -6,  3]])
+    
+        The orientation of `c` can be changed using the `axisc` keyword.
+    
+        >>> np.cross(x, y, axisc=0)
+        array([[-3,  3],
+               [ 6, -6],
+               [-3,  3]])
+    
+        Change the vector definition of `x` and `y` using `axisa` and `axisb`.
+    
+        >>> x = np.array([[1,2,3], [4,5,6], [7, 8, 9]])
+        >>> y = np.array([[7, 8, 9], [4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[ -6,  12,  -6],
+               [  0,   0,   0],
+               [  6, -12,   6]])
+        >>> np.cross(x, y, axisa=0, axisb=0)
+        array([[-24,  48, -24],
+               [-30,  60, -30],
+               [-36,  72, -36]])
+    
+        """
+        if axis is not None:
+            axisa, axisb, axisc = (axis,) * 3
+        a = asarray(a)
+        b = asarray(b)
+    
+        if (a.ndim < 1) or (b.ndim < 1):
+            raise ValueError("At least one array has zero dimension")
+    
+        # Check axisa and axisb are within bounds
+        axisa = normalize_axis_index(axisa, a.ndim, msg_prefix='axisa')
+        axisb = normalize_axis_index(axisb, b.ndim, msg_prefix='axisb')
+    
+        # Move working axis to the end of the shape
+        a = moveaxis(a, axisa, -1)
+        b = moveaxis(b, axisb, -1)
+        if a.shape[-1] != 3 or b.shape[-1] != 3:
+>           raise ValueError(
+                f"Both input arrays must be (arrays of) 3-dimensional vectors, "
+                f"but they are {a.shape[-1]} and {b.shape[-1]} dimensional instead."
+            )
+E           ValueError: Both input arrays must be (arrays of) 3-dimensional vectors, but they are 2 and 2 dimensional instead.
+
+..\..\..\AppData\Roaming\Python\Python314\site-packages\numpy\_core\numeric.py:1680: ValueError
+______________ test_unselected_policy_does_not_take_new_decision ______________
+
+    def test_unselected_policy_does_not_take_new_decision():
+>       owner=warm();data=PREFIX[-1];scene,raw,history=scene_for(data)
+              ^^^^^^
+
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:86: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:33: in warm
+    for data in PREFIX[:-1]:call(owner,data)
+                            ^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:27: in call
+    return owner.command(scene,history,data['speed_mps'],data['side'],
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:582: in command
+    output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:596: in _forward_command
+    output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:611: in _observed_command
+    return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:661: in _partial_command
+    output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:712: in _path_command
+    baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:842: in _baseline_command
+    candidate, info = observed_path(points, side)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:807: in observed_path
+    path, info = local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_path.py:306: in local_path
+    path = corner_path(samples, side, offset, minimum_radius)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:33: in corner_path
+    vertices = _vertices(samples)
+               ^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:15: in _vertices
+    distance = np.abs(np.cross(chord, points-points[0]))/length
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([2.04918543, 0.0462644 ])
+b = array([[0.00000000e+00, 0.00000000e+00],
+       [2.49892387e-02, 5.09400243e-04],
+       [4.99778308e-02, 1.20029558e-...   [1.99920050e+00, 4.50371637e-02],
+       [2.02419296e+00, 4.56507799e-02],
+       [2.04918543e+00, 4.62643962e-02]])
+axisa = 0, axisb = 1, axisc = -1, axis = None
+
+    @array_function_dispatch(_cross_dispatcher)
+    def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
+        """
+        Return the cross product of two (arrays of) vectors.
+    
+        The cross product of `a` and `b` in :math:`R^3` is a vector perpendicular
+        to both `a` and `b`.  If `a` and `b` are arrays of vectors, the vectors
+        are defined by the last axis of `a` and `b` by default, and these axes
+        must have 3 dimensions.
+    
+        Parameters
+        ----------
+        a : array_like
+            Components of the first vector(s).
+        b : array_like
+            Components of the second vector(s).
+        axisa : int, optional
+            Axis of `a` that defines the vector(s).  By default, the last axis.
+        axisb : int, optional
+            Axis of `b` that defines the vector(s).  By default, the last axis.
+        axisc : int, optional
+            Axis of `c` containing the cross product vector(s).  By default, the last axis.
+        axis : int, optional
+            If defined, the axis of `a`, `b` and `c` that defines the vector(s)
+            and cross product(s).  Overrides `axisa`, `axisb` and `axisc`.
+    
+        Returns
+        -------
+        c : ndarray
+            Vector cross product(s).
+    
+        Raises
+        ------
+        ValueError
+            When the dimension of the vector(s) in `a` or `b` does not equal 3.
+    
+        See Also
+        --------
+        inner : Inner product
+        outer : Outer product.
+        linalg.cross : An Array API compatible variation of ``np.cross``.
+        ix_ : Construct index arrays.
+    
+        Notes
+        -----
+        Supports full broadcasting of the inputs.
+    
+        Examples
+        --------
+        Vector cross-product.
+    
+        >>> import numpy as np
+        >>> x = [1, 2, 3]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([-3,  6, -3])
+    
+        One vector with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([12, -6, -3])
+    
+        Both vectors with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 0]
+        >>> np.cross(x, y)
+        array([0, 0, -3])
+    
+        Multiple vector cross-products. Note that the direction of the cross
+        product vector is defined by the *right-hand rule*.
+    
+        >>> x = np.array([[1,2,3], [4,5,6]])
+        >>> y = np.array([[4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[-3,  6, -3],
+               [ 3, -6,  3]])
+    
+        The orientation of `c` can be changed using the `axisc` keyword.
+    
+        >>> np.cross(x, y, axisc=0)
+        array([[-3,  3],
+               [ 6, -6],
+               [-3,  3]])
+    
+        Change the vector definition of `x` and `y` using `axisa` and `axisb`.
+    
+        >>> x = np.array([[1,2,3], [4,5,6], [7, 8, 9]])
+        >>> y = np.array([[7, 8, 9], [4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[ -6,  12,  -6],
+               [  0,   0,   0],
+               [  6, -12,   6]])
+        >>> np.cross(x, y, axisa=0, axisb=0)
+        array([[-24,  48, -24],
+               [-30,  60, -30],
+               [-36,  72, -36]])
+    
+        """
+        if axis is not None:
+            axisa, axisb, axisc = (axis,) * 3
+        a = asarray(a)
+        b = asarray(b)
+    
+        if (a.ndim < 1) or (b.ndim < 1):
+            raise ValueError("At least one array has zero dimension")
+    
+        # Check axisa and axisb are within bounds
+        axisa = normalize_axis_index(axisa, a.ndim, msg_prefix='axisa')
+        axisb = normalize_axis_index(axisb, b.ndim, msg_prefix='axisb')
+    
+        # Move working axis to the end of the shape
+        a = moveaxis(a, axisa, -1)
+        b = moveaxis(b, axisb, -1)
+        if a.shape[-1] != 3 or b.shape[-1] != 3:
+>           raise ValueError(
+                f"Both input arrays must be (arrays of) 3-dimensional vectors, "
+                f"but they are {a.shape[-1]} and {b.shape[-1]} dimensional instead."
+            )
+E           ValueError: Both input arrays must be (arrays of) 3-dimensional vectors, but they are 2 and 2 dimensional instead.
+
+..\..\..\AppData\Roaming\Python\Python314\site-packages\numpy\_core\numeric.py:1680: ValueError
+________________ test_near_invalid_return_not_excused_as_free _________________
+
+    def test_near_invalid_return_not_excused_as_free():
+>       owner=warm();data=copy.deepcopy(PREFIX[-1]);scene,_,_=scene_for(data)
+              ^^^^^^
+
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:94: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:33: in warm
+    for data in PREFIX[:-1]:call(owner,data)
+                            ^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\test_route_observation.py:27: in call
+    return owner.command(scene,history,data['speed_mps'],data['side'],
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:582: in command
+    output = self._forward_command(scene, history, planning, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:596: in _forward_command
+    output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:611: in _observed_command
+    return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:661: in _partial_command
+    output=self._path_command(scene,history,speed,side,previous_steering,control_dt,allow_partial=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:712: in _path_command
+    baseline = self._baseline_command(scene, history, speed, side, previous_steering, control_dt,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:842: in _baseline_command
+    candidate, info = observed_path(points, side)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_follow.py:807: in observed_path
+    path, info = local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\local_path.py:306: in local_path
+    path = corner_path(samples, side, offset, minimum_radius)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:33: in corner_path
+    vertices = _vertices(samples)
+               ^^^^^^^^^^^^^^^^^^
+artifacts\validation\2026-11-14\solo_finish_r481_v1\stage\src\arena_autonomy\arena_autonomy\piecewise_wall.py:15: in _vertices
+    distance = np.abs(np.cross(chord, points-points[0]))/length
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = array([2.04918543, 0.0462644 ])
+b = array([[0.00000000e+00, 0.00000000e+00],
+       [2.49892387e-02, 5.09400243e-04],
+       [4.99778308e-02, 1.20029558e-...   [1.99920050e+00, 4.50371637e-02],
+       [2.02419296e+00, 4.56507799e-02],
+       [2.04918543e+00, 4.62643962e-02]])
+axisa = 0, axisb = 1, axisc = -1, axis = None
+
+    @array_function_dispatch(_cross_dispatcher)
+    def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
+        """
+        Return the cross product of two (arrays of) vectors.
+    
+        The cross product of `a` and `b` in :math:`R^3` is a vector perpendicular
+        to both `a` and `b`.  If `a` and `b` are arrays of vectors, the vectors
+        are defined by the last axis of `a` and `b` by default, and these axes
+        must have 3 dimensions.
+    
+        Parameters
+        ----------
+        a : array_like
+            Components of the first vector(s).
+        b : array_like
+            Components of the second vector(s).
+        axisa : int, optional
+            Axis of `a` that defines the vector(s).  By default, the last axis.
+        axisb : int, optional
+            Axis of `b` that defines the vector(s).  By default, the last axis.
+        axisc : int, optional
+            Axis of `c` containing the cross product vector(s).  By default, the last axis.
+        axis : int, optional
+            If defined, the axis of `a`, `b` and `c` that defines the vector(s)
+            and cross product(s).  Overrides `axisa`, `axisb` and `axisc`.
+    
+        Returns
+        -------
+        c : ndarray
+            Vector cross product(s).
+    
+        Raises
+        ------
+        ValueError
+            When the dimension of the vector(s) in `a` or `b` does not equal 3.
+    
+        See Also
+        --------
+        inner : Inner product
+        outer : Outer product.
+        linalg.cross : An Array API compatible variation of ``np.cross``.
+        ix_ : Construct index arrays.
+    
+        Notes
+        -----
+        Supports full broadcasting of the inputs.
+    
+        Examples
+        --------
+        Vector cross-product.
+    
+        >>> import numpy as np
+        >>> x = [1, 2, 3]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([-3,  6, -3])
+    
+        One vector with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 6]
+        >>> np.cross(x, y)
+        array([12, -6, -3])
+    
+        Both vectors with dimension 2.
+    
+        >>> x = [1, 2, 0]
+        >>> y = [4, 5, 0]
+        >>> np.cross(x, y)
+        array([0, 0, -3])
+    
+        Multiple vector cross-products. Note that the direction of the cross
+        product vector is defined by the *right-hand rule*.
+    
+        >>> x = np.array([[1,2,3], [4,5,6]])
+        >>> y = np.array([[4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[-3,  6, -3],
+               [ 3, -6,  3]])
+    
+        The orientation of `c` can be changed using the `axisc` keyword.
+    
+        >>> np.cross(x, y, axisc=0)
+        array([[-3,  3],
+               [ 6, -6],
+               [-3,  3]])
+    
+        Change the vector definition of `x` and `y` using `axisa` and `axisb`.
+    
+        >>> x = np.array([[1,2,3], [4,5,6], [7, 8, 9]])
+        >>> y = np.array([[7, 8, 9], [4,5,6], [1,2,3]])
+        >>> np.cross(x, y)
+        array([[ -6,  12,  -6],
+               [  0,   0,   0],
+               [  6, -12,   6]])
+        >>> np.cross(x, y, axisa=0, axisb=0)
+        array([[-24,  48, -24],
+               [-30,  60, -30],
+               [-36,  72, -36]])
+    
+        """
+        if axis is not None:
+            axisa, axisb, axisc = (axis,) * 3
+        a = asarray(a)
+        b = asarray(b)
+    
+        if (a.ndim < 1) or (b.ndim < 1):
+            raise ValueError("At least one array has zero dimension")
+    
+        # Check axisa and axisb are within bounds
+        axisa = normalize_axis_index(axisa, a.ndim, msg_prefix='axisa')
+        axisb = normalize_axis_index(axisb, b.ndim, msg_prefix='axisb')
+    
+        # Move working axis to the end of the shape
+        a = moveaxis(a, axisa, -1)
+        b = moveaxis(b, axisb, -1)
+        if a.shape[-1] != 3 or b.shape[-1] != 3:
+>           raise ValueError(
+                f"Both input arrays must be (arrays of) 3-dimensional vectors, "
+                f"but they are {a.shape[-1]} and {b.shape[-1]} dimensional instead."
+            )
+E           ValueError: Both input arrays must be (arrays of) 3-dimensional vectors, but they are 2 and 2 dimensional instead.
+
+..\..\..\AppData\Roaming\Python\Python314\site-packages\numpy\_core\numeric.py:1680: ValueError
+============================== warnings summary ===============================
+..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anyio\pytest_plugin.py:14
+  C:\Users\Jinhyeong\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anyio\pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-14/solo_finish_r481_v1/test_route_observation.py::test_original_stall_input_has_current_path_and_existing_sweep_positive
+FAILED artifacts/validation/2026-11-14/solo_finish_r481_v1/test_route_observation.py::test_current_path_decision_precedes_legacy_partial_lateral_gate
+FAILED artifacts/validation/2026-11-14/solo_finish_r481_v1/test_route_observation.py::test_actual_front_occupied_sweep_still_stops
+FAILED artifacts/validation/2026-11-14/solo_finish_r481_v1/test_route_observation.py::test_total_current_front_returns_lost_still_stops
+FAILED artifacts/validation/2026-11-14/solo_finish_r481_v1/test_route_observation.py::test_actual_path_loss_still_stops
+FAILED artifacts/validation/2026-11-14/solo_finish_r481_v1/test_route_observation.py::test_unselected_policy_does_not_take_new_decision
+FAILED artifacts/validation/2026-11-14/solo_finish_r481_v1/test_route_observation.py::test_near_invalid_return_not_excused_as_free
+7 failed, 2 passed, 1 warning in 1.38s

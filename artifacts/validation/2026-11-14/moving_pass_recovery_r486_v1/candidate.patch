@@ -1,0 +1,118 @@
+--- a/src/arena_autonomy/arena_autonomy/moving_pass.py
++++ b/src/arena_autonomy/arena_autonomy/moving_pass.py
+@@ -282,10 +282,12 @@
+     def reset(self):
+         super().reset()
+         self.returning_behind=False
++        self.follow_headway=False
+ 
+     def evaluate(self,scene,history,speed,previous_steering,dt):
+         if self.path is not None or not source_valid(scene):
+             result=super().evaluate(scene,history,speed,previous_steering,dt)
++            result=self._current_follow_return(scene,history,speed,previous_steering,dt,result)
+             if result.get('entry_phase')=='rejoin' and result.get('rejoin_band'):
+                 self.returning_behind=result['rejoin_band'].get('return_behind_lead',False)
+             return result
+@@ -317,6 +319,59 @@
+         finally:
+             self.entry=original
+             self.reference_provider=None
++
++    def _current_follow_return(self,scene,history,speed,previous,dt,result):
++        """점유 제동으로 느려지는 추월에서 현재 관측의 중심 복귀를 비교한다.
++
++        대상의 현재 ahead-clear는 후보 비교 조건이며 자유 공간 증명이 아니다.
++        새 경로 전체의 원 점유·제동·이동영역 판정이 통과해야 상태를 바꾼다.
++        """
++        from arena_autonomy.bypass_entry_trial import _compare_entries,entry_path
++        from arena_autonomy.local_path import braking_speed
++        target=self.tracker.detail
++        if (self.phase!='entry' or result.get('entry_phase')!='entry'
++                or not target.get('observed') or not self.tracker.ahead_clear(scene)):
++            return result
++        candidates=result.get('candidates',())
++        if len(candidates)!=1:
++            return result
++        current=candidates[0]
++        clearance=current.get('command_clearance_m')
++        commanded=current.get('target_speed_mps')
++        if (clearance is None or commanded is None or commanded>=self.entry.speed_cap_mps
++                or not math.isclose(commanded,braking_speed(clearance,scene.t_ref_s-scene.source_first_s),
++                                    rel_tol=1e-12,abs_tol=1e-12)):
++            return result
++        reference=result.get('reference',{})
++        wall=reference.get('walls',{}).get(self.side)
++        if wall is None or reference.get('reason')!='current_outer_wall_rechecked_for_remembered_guide':
++            return result
++        fit=(wall['slope'],wall['intercept_m'],*wall['observed_x_m'])
++        transition=self.entry.transitions_m[-1]
++        try:
++            path=entry_path(fit,0.,self.config,self.entry,transition)
++        except (ValueError,MotionUnavailable):
++            return result
++        proposal=_compare_entries(scene,scene.t_ref_s,speed,previous,dt,
++            config=self.config,entry=self.entry,guide=dict(reference=reference,path=path,
++                offset_m=0.,transition_m=transition,outer_side=self.side,
++                stationary_outer_boundary=self.stationary_outer_boundary and self.wall_confirmations>=2),
++            padding_provider=self.padding_provider,follow_headway=True)
++        chosen=proposal.get('selected')
++        if chosen is None or chosen['speed_mps']<=0.:
++            return result
++        self.path=path
++        self.offset=0.;self.transition=transition;self.phase='rejoin'
++        self.returning_behind=True;self.follow_headway=True
++        self.rejoin_confirmations=0;self.center_confirmations=0
++        return {**result,**proposal,'entry_phase':'rejoin','rejoin_band':None,
++            'rejoin_confirmations':0,'center_confirmations':0,
++            'current_follow_return':dict(reason='current_center_path_after_occupied_pass_braking',
++                previous_target_mps=commanded,previous_clearance_m=clearance,
++                target_rear_bound_m=self.tracker.rear_bound(scene),
++                required_target_rear_bound_m=self.config.length_m/2+self.tracker.rear_margin_m,
++                target_currently_ahead=True,follow_headway_applied_before_motion_region=True,
++                same_scene=True,unknown_filled=False)}
+ 
+     def _faster_outer_padding(self, scene, config, side, wall, padding_growth_s=0.):
+         from arena_autonomy.moving_pass_wall_padding import current_outer_and_rear_padding
+--- a/src/arena_autonomy/arena_autonomy/bypass_entry_trial.py
++++ b/src/arena_autonomy/arena_autonomy/bypass_entry_trial.py
+@@ -244,7 +244,8 @@
+ 
+ 
+ def _compare_entries(scene, now, speed, previous_steering, dt, *, config=None, entry=None, guide=None,
+-                     stationary_boundaries=False, padding_growth_s=0., padding_provider=None, reference_provider=None, pursuit_provider=None):
++                     stationary_boundaries=False, padding_growth_s=0., padding_provider=None, reference_provider=None, pursuit_provider=None,
++                     follow_headway=False):
+     """순수 비교 출력. selected가 있어도 독립 보호/운영 연결 전까지 구동 허가 아님."""
+     config, entry = config or FollowConfig(), entry or EntryConfig()
+     # 기본은 기존 함수다. 명시 시험 후보만 같은 호출 형식의 공급자를 넘긴다.
+@@ -341,11 +342,17 @@
+         # 제동식과 모든 반환점 시차 팽창으로 속도를 제한한다. 독립 보호는 별도다.
+         target = min(entry.speed_cap_mps, cap, braking_speed(clearance, age))
+         old_available = max(0., clearance-config.standstill_gap_m)
++        follow_target = min(entry.speed_cap_mps, cap,
++            braking_speed(old_available, age), old_available/config.headway_s)
++        if follow_headway:
++            # 추월을 중단하는 새 중심 복귀 후보는 일반 추종 간격을 적용한다.
++            # 실제 속도는 그대로 아래 swept/이동영역의 입력으로 남는다.
++            target = follow_target
+         row.update(path_points=path.tolist(), steering_rad=steer, target_speed_mps=target,
+             command_clearance_m=clearance, reference_remaining_m=remaining,
+-            speed_policy='entry_reaction_braking_not_follow_headway',
+-            comparison_follow_target_mps=min(entry.speed_cap_mps, cap,
+-                braking_speed(old_available, age),old_available/config.headway_s),
++            speed_policy=('follow_reaction_braking_and_headway' if follow_headway
++                          else 'entry_reaction_braking_not_follow_headway'),
++            comparison_follow_target_mps=follow_target,
+             preview_return_progress_m=preview_clearance(path, points, padding, config),
+             preview_point_gap_m=preview_point_gap(path,points,padding,config) if stationary_boundaries else 0.,
+             maximum_occupancy_padding_m=float(np.max(padding)), occupied_points=len(points))
+@@ -732,7 +739,8 @@
+             guide=dict(reference=reference,path=path,offset_m=self.offset,transition_m=self.transition,
+                 outer_side=self.side,
+                 stationary_outer_boundary=self.stationary_outer_boundary and self.wall_confirmations>=2),
+-            padding_provider=self.padding_provider)
++            padding_provider=self.padding_provider,
++            follow_headway=getattr(self,'follow_headway',False))
+         result=_compare_entries(scene,now,speed,previous_steering,dt,**comparison)
+         if getattr(self,'adaptive_preview',False) and self.entry.speed_cap_mps <= .35:
+             from functools import partial

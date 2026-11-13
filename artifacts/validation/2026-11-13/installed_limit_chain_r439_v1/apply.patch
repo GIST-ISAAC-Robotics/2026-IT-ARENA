@@ -1,0 +1,367 @@
+diff --git a/scripts/runtime_installed_limits.py b/scripts/runtime_installed_limits.py
+new file mode 100644
+--- /dev/null
++++ b/scripts/runtime_installed_limits.py
+@@ -0,0 +1,180 @@
++#!/usr/bin/env python3
++"""검증된 설치 bundle에서 ROS 두 상한과 host 인자를 파생한다. 장치/노드 실행 없음."""
++import argparse
++import copy
++import hashlib
++import json
++import math
++from pathlib import Path
++import sys
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path[:0] = [str(ROOT/'scripts'), str(ROOT/'src/arena_autonomy'),
++                str(ROOT/'src/arena_vehicle_interface')]
++import yaml
++import runtime_installed_profile as installed
++from arena_autonomy import vehicle_geometry
++
++NODES = ('local_pursuit', 'lidar_safety')
++PARAMETER = 'max_steering_angle_rad'
++FILES = ('runtime_profile.base.yaml', 'runtime_profile.yaml', 'runtime_host_limits.json')
++SCHEMA = 'runtime_installed_limits_selection_v1'
++
++
++def digest(raw):
++    return hashlib.sha256(raw).hexdigest()
++
++
++def source_hashes():
++    return {name: digest(Path(path).read_bytes()) for name, path in (
++        ('runtime_installed_limits.py', __file__),
++        ('runtime_installed_profile.py', installed.__file__),
++        ('vehicle_geometry.py', vehicle_geometry.__file__))}
++
++
++class UniqueLoader(yaml.SafeLoader):
++    pass
++
++
++def unique_mapping(loader, node, deep=False):
++    loader.flatten_mapping(node)
++    result = {}
++    for key_node, value_node in node.value:
++        key = loader.construct_object(key_node, deep=deep)
++        if key in result:
++            raise ValueError('duplicate YAML key: '+str(key))
++        result[key] = loader.construct_object(value_node, deep=deep)
++    return result
++
++
++UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
++
++
++def profile_values(raw):
++    value = yaml.load(raw, Loader=UniqueLoader)
++    if type(value) is not dict:
++        raise ValueError('runtime YAML must contain both named ROS nodes')
++    for node in NODES:
++        entry = value.get(node)
++        parameters = entry.get('ros__parameters') if type(entry) is dict else None
++        limit = parameters.get(PARAMETER) if type(parameters) is dict else None
++        if type(limit) not in (int, float) or not math.isfinite(limit) or limit <= 0:
++            raise ValueError(node+' requires an existing finite positive '+PARAMETER)
++    return value
++
++
++def selected_contract(folder):
++    folder = Path(folder)
++    manifest = installed.verify(folder)
++    board = installed.read_json(folder/'runtime_board.json')
++    original = board['servo']['command_limit']
++    limit = vehicle_geometry.float32_limit_not_above(original)
++    return dict(assembly_id=manifest['assembly_id'],
++                installed_manifest_sha256=digest((folder/'manifest.json').read_bytes()),
++                runtime_board_sha256=digest((folder/'runtime_board.json').read_bytes()),
++                board_command_limit_rad=original, command_limit_rad=limit)
++
++
++def derived_profile(base_raw, limit):
++    value = copy.deepcopy(profile_values(base_raw))
++    for node in NODES:
++        if value[node]['ros__parameters'][PARAMETER] < limit:
++            raise ValueError(node+' would widen existing steering limit; '
++                             'choose an explicitly compatible base profile')
++        value[node]['ros__parameters'][PARAMETER] = limit
++    return value
++
++
++def host_limits(limit):
++    return dict(max_steering_rad=limit, arguments=['--max-steering-rad', repr(limit)])
++
++
++def json_bytes(value):
++    return (json.dumps(value, ensure_ascii=False, indent=2)+'\n').encode('utf-8')
++
++
++def prepare(installed_profile, runtime_params, output):
++    contract = selected_contract(installed_profile)
++    base_raw = Path(runtime_params).read_bytes()
++    value = derived_profile(base_raw, contract['command_limit_rad'])
++    files = dict(zip(FILES, (base_raw,
++        yaml.safe_dump(value, sort_keys=False, allow_unicode=True).encode('utf-8'),
++        json_bytes(host_limits(contract['command_limit_rad'])))))
++    if (contract != selected_contract(installed_profile)
++            or base_raw != Path(runtime_params).read_bytes()):
++        raise ValueError('input changed during runtime selection preparation')
++    manifest = dict(schema=SCHEMA, **contract, sources=source_hashes(),
++                    files={name: digest(raw) for name, raw in files.items()})
++    output = Path(output)
++    output.mkdir(parents=True, exist_ok=False)
++    for name, raw in files.items():
++        (output/name).write_bytes(raw)
++    (output/'manifest.json').write_bytes(json_bytes(manifest))
++    return manifest
++
++
++def verify(selection, installed_profile, *, runtime_params=None, host_steering_rad=None):
++    selection = Path(selection)
++    manifest = installed.read_json(selection/'manifest.json')
++    contract = selected_contract(installed_profile)
++    if (type(manifest) is not dict or set(manifest) != {'schema', 'sources', 'files', *contract}
++            or manifest.get('schema') != SCHEMA
++            or any(manifest.get(key) != value for key, value in contract.items())
++            or manifest.get('sources') != source_hashes()
++            or type(manifest.get('files')) is not dict or set(manifest['files']) != set(FILES)):
++        raise ValueError('runtime selection differs from selected installed bundle or sources')
++    for name, expected in manifest['files'].items():
++        if digest((selection/name).read_bytes()) != expected:
++            raise ValueError('runtime selection file changed: '+name)
++    expected = derived_profile((selection/FILES[0]).read_bytes(), contract['command_limit_rad'])
++    if profile_values((selection/FILES[1]).read_bytes()) != expected:
++        raise ValueError('runtime YAML differs beyond the two installed steering limits')
++    if installed.read_json(selection/FILES[2]) != host_limits(contract['command_limit_rad']):
++        raise ValueError('host arguments differ from installed steering limit')
++    if runtime_params is not None and profile_values(Path(runtime_params).read_bytes()) != expected:
++        raise ValueError('selected ROS YAML differs from generated runtime profile')
++    if host_steering_rad is not None and (
++            type(host_steering_rad) not in (int, float) or not math.isfinite(host_steering_rad)
++            or host_steering_rad != contract['command_limit_rad']):
++        raise ValueError('selected host steering argument differs from generated limit')
++    return manifest
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description=__doc__)
++    commands = parser.add_subparsers(dest='command', required=True)
++    make = commands.add_parser('prepare')
++    make.add_argument('--installed-profile', type=Path, required=True)
++    make.add_argument('--runtime-params', type=Path, required=True)
++    make.add_argument('--output', type=Path, required=True)
++    check = commands.add_parser('verify')
++    check.add_argument('--selection', type=Path, required=True)
++    check.add_argument('--installed-profile', type=Path, required=True)
++    check.add_argument('--runtime-params', type=Path)
++    check.add_argument('--host-steering-rad', type=float)
++    host = commands.add_parser('host-arguments')
++    host.add_argument('--selection', type=Path, required=True)
++    host.add_argument('--installed-profile', type=Path, required=True)
++    args = parser.parse_args(argv)
++    try:
++        if args.command == 'prepare':
++            result = prepare(args.installed_profile, args.runtime_params, args.output)
++        else:
++            result = verify(args.selection, args.installed_profile,
++                runtime_params=getattr(args, 'runtime_params', None),
++                host_steering_rad=getattr(args, 'host_steering_rad', None))
++        if args.command == 'host-arguments':
++            print(json.dumps(host_limits(result['command_limit_rad'])['arguments']))
++        else:
++            print(json.dumps(dict(assembly_id=result['assembly_id'],
++                board_command_limit_rad=result['board_command_limit_rad'],
++                command_limit_rad=result['command_limit_rad'], nodes_started=False,
++                firmware_modified=False), ensure_ascii=False))
++        return 0
++    except (ValueError, OSError, OverflowError, TypeError, yaml.YAMLError) as exc:
++        print(json.dumps(dict(error=str(exc), nodes_started=False, firmware_modified=False)))
++        return 2
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())
+diff --git a/tests/test_runtime_installed_limits.py b/tests/test_runtime_installed_limits.py
+new file mode 100644
+--- /dev/null
++++ b/tests/test_runtime_installed_limits.py
+@@ -0,0 +1,177 @@
++"""합성 설치 bundle의 상한 전달만 검사한다. 실제 장착값/장치/ROS 실행 없음."""
++import contextlib
++import copy
++import io
++import json
++from pathlib import Path
++import struct
++import sys
++import tempfile
++import unittest
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path[:0] = [str(ROOT/'scripts'), str(ROOT/'src/arena_autonomy'),
++                str(ROOT/'src/arena_vehicle_interface')]
++import yaml
++import runtime_installed_profile as firmware
++import runtime_installed_limits as subject
++from arena_vehicle_interface.steering_calibration import complete_mount_profile, record_zero
++
++
++BASE = {
++    'local_pursuit': {'ros__parameters': {'max_steering_angle_rad': .4578436017036438,
++        'max_speed_mps': 1.5, 'use_sim_time': False, 'g1_current_corner_budget': 'off',
++        'motion_lidar_frame_id': 'c1_unmounted_preview', 'nested_example': [1, 'kept', False]}},
++    'lidar_safety': {'ros__parameters': {'max_steering_angle_rad': .4578436017036438,
++        'wheelbase_m': .128, 'race_control_mode': 'b3_candidate', 'sensor_wall_timeout_s': 30.}},
++}
++
++
++def synthetic_bundle(root, limit=.2, name='installed'):
++    folder = root/name
++    board = dict(schema='runtime_installed_board_v1', assembly_id='SYNTHETIC-ONLY',
++        encoder_direction=-1, motor_direction_confirmed=True, forward_dir_high=True,
++        maximum_duty=.4, kp=.6, ki=1.2, maximum_speed_mps=2., feedback_period_us=20000,
++        servo=dict(id=1, goal_speed=120, goal_acceleration=10, position_period_us=100000,
++            observation_max_age_us=200000, command_limit=limit, wheelbase=.128,
++            track=.1239, wheel_limit=.5235987755982988))
++    zero = complete_mount_profile(record_zero(2000, assembly_id=board['assembly_id'],
++        straight_confirmed=True, evidence_note='SYNTHETIC TEST ONLY'), direction=1,
++        minimum=1000, maximum=3000, confirmed=True)
++    bp, zp = root/(name+'.json'), root/(name+'-zero.json')
++    bp.write_text(json.dumps(board), encoding='utf-8')
++    zp.write_text(json.dumps(zero), encoding='utf-8')
++    firmware.prepare(bp, zp, board['assembly_id'], folder)
++    return folder
++
++
++class InstalledLimitsTests(unittest.TestCase):
++    def setUp(self):
++        self.temp = tempfile.TemporaryDirectory()
++        self.addCleanup(self.temp.cleanup)
++        self.root = Path(self.temp.name)
++        self.base = self.root/'base.yaml'
++        self.base.write_text(yaml.safe_dump(BASE, sort_keys=False), encoding='utf-8')
++        self.installed = synthetic_bundle(self.root)
++        self.output = self.root/'selection'
++
++    def prepare(self):
++        return subject.prepare(self.installed, self.base, self.output)
++
++    def test_reduced_limit_is_not_rounded_above_mcu_and_other_values_are_preserved(self):
++        manifest = self.prepare()
++        limit = manifest['command_limit_rad']
++        self.assertEqual(limit, .19999998807907104)
++        self.assertLess(limit, manifest['board_command_limit_rad'])
++        self.assertEqual(struct.unpack('<f', struct.pack('<f', limit))[0], limit)
++        expected = copy.deepcopy(BASE)
++        for node in subject.NODES:
++            expected[node]['ros__parameters'][subject.PARAMETER] = limit
++        self.assertEqual(yaml.safe_load((self.output/'runtime_profile.yaml').read_bytes()), expected)
++        host = json.loads((self.output/'runtime_host_limits.json').read_bytes())
++        self.assertEqual(host, {'max_steering_rad': limit, 'arguments': ['--max-steering-rad', repr(limit)]})
++        self.assertEqual(subject.verify(self.output, self.installed,
++            runtime_params=self.output/'runtime_profile.yaml', host_steering_rad=limit), manifest)
++
++    def test_existing_cad_limit_stays_exact(self):
++        self.installed = synthetic_bundle(self.root, .4578436017036438, 'cad')
++        manifest = self.prepare()
++        self.assertEqual(manifest['command_limit_rad'], manifest['board_command_limit_rad'])
++        self.assertEqual(yaml.safe_load((self.output/'runtime_profile.yaml').read_bytes()), BASE)
++
++    def test_existing_lower_operational_limit_is_never_silently_increased(self):
++        for node in subject.NODES:
++            with self.subTest(node=node):
++                smaller = copy.deepcopy(BASE)
++                smaller[node]['ros__parameters'][subject.PARAMETER] = .1
++                self.base.write_text(yaml.safe_dump(smaller), encoding='utf-8')
++                with self.assertRaisesRegex(ValueError, 'would widen existing steering limit'):
++                    self.prepare()
++                self.assertFalse(self.output.exists())
++                self.assertEqual(yaml.safe_load(self.base.read_bytes()), smaller)
++
++    def test_original_export_bundle_and_base_are_unchanged_and_not_overwritten(self):
++        before = {p.name: p.read_bytes() for p in self.installed.iterdir()}
++        base_before = self.base.read_bytes()
++        manifest_before = firmware.verify(self.installed)
++        self.prepare()
++        self.assertEqual(firmware.verify(self.installed), manifest_before)
++        self.assertEqual({p.name: p.read_bytes() for p in self.installed.iterdir()}, before)
++        self.assertEqual(self.base.read_bytes(), base_before)
++        with self.assertRaises(FileExistsError):
++            self.prepare()
++
++    def test_both_named_node_limits_must_already_exist(self):
++        for missing in ('local_pursuit', 'lidar_safety'):
++            with self.subTest(missing=missing):
++                broken = copy.deepcopy(BASE)
++                del broken[missing]['ros__parameters'][subject.PARAMETER]
++                self.base.write_text(yaml.safe_dump(broken), encoding='utf-8')
++                with self.assertRaises(ValueError):
++                    self.prepare()
++                self.assertFalse(self.output.exists())
++
++    def test_duplicate_yaml_limit_is_rejected(self):
++        self.base.write_text('local_pursuit:\n  ros__parameters:\n    max_steering_angle_rad: .2\n'
++                             '    max_steering_angle_rad: .4\n', encoding='utf-8')
++        with self.assertRaisesRegex(ValueError, 'duplicate YAML key'):
++            self.prepare()
++        self.assertFalse(self.output.exists())
++
++    def test_different_firmware_bundle_cannot_be_mixed(self):
++        self.prepare()
++        other = synthetic_bundle(self.root, .15, 'other')
++        with self.assertRaisesRegex(ValueError, 'selected installed bundle'):
++            subject.verify(self.output, other)
++
++    def test_changed_generated_profile_is_rejected(self):
++        self.prepare()
++        (self.output/'runtime_profile.yaml').write_text(yaml.safe_dump(BASE), encoding='utf-8')
++        with self.assertRaisesRegex(ValueError, 'file changed'):
++            subject.verify(self.output, self.installed)
++
++    def test_updated_hash_does_not_hide_unrelated_parameter_change(self):
++        self.prepare()
++        path = self.output/'runtime_profile.yaml'
++        values = yaml.safe_load(path.read_bytes())
++        values['local_pursuit']['ros__parameters']['max_speed_mps'] = 9.
++        path.write_text(yaml.safe_dump(values), encoding='utf-8')
++        manifest_path = self.output/'manifest.json'
++        manifest = json.loads(manifest_path.read_bytes())
++        manifest['files'][path.name] = subject.digest(path.read_bytes())
++        manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
++        with self.assertRaisesRegex(ValueError, 'beyond the two'):
++            subject.verify(self.output, self.installed)
++
++    def test_selected_old_yaml_or_host_limit_is_rejected(self):
++        self.prepare()
++        with self.assertRaisesRegex(ValueError, 'selected ROS YAML'):
++            subject.verify(self.output, self.installed, runtime_params=self.base)
++        for bad in (.2, .4578436017036438, float('nan'), True):
++            with self.subTest(host_limit=bad), self.assertRaisesRegex(ValueError, 'selected host steering'):
++                subject.verify(self.output, self.installed, host_steering_rad=bad)
++
++    def test_cli_generates_checks_and_returns_host_arguments_without_starting_nodes(self):
++        def invoke(args):
++            output = io.StringIO()
++            with contextlib.redirect_stdout(output):
++                code = subject.main(args)
++            return code, json.loads(output.getvalue())
++        code, result = invoke(['prepare', '--installed-profile', str(self.installed),
++            '--runtime-params', str(self.base), '--output', str(self.output)])
++        self.assertEqual(code, 0)
++        self.assertFalse(result['nodes_started'])
++        self.assertFalse(result['firmware_modified'])
++        common = ['--selection', str(self.output), '--installed-profile', str(self.installed)]
++        code, result = invoke(['host-arguments', *common])
++        self.assertEqual((code, result), (0, ['--max-steering-rad', '0.19999998807907104']))
++        code, result = invoke(['verify', *common, '--runtime-params', str(self.output/'runtime_profile.yaml'),
++                              '--host-steering-rad', '.19999998807907104'])
++        self.assertEqual(code, 0)
++        code, result = invoke(['verify', *common, '--host-steering-rad', '.4578436017036438'])
++        self.assertEqual(code, 2)
++        self.assertIn('selected host steering', result['error'])
++
++
++if __name__ == '__main__':
++    unittest.main()

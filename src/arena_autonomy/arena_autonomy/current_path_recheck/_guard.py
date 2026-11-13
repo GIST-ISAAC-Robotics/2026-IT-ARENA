@@ -92,7 +92,8 @@ def rebase(output, submitted, current, scan, scene, history, cfg):
     poses = np.vstack([np.vstack((ps.command_arc(angle,max(distance,.01),lat),
                                   ps.extrema_arc(angle,max(distance,.01),lat)))
                        for angle in sorted({float(steering),float(previous)})])
-    approach = {}
+    approach, rejected = {}, []
+    policy = ps.SelectorConfig()
     for name, sign in ps.SIDES:
         if name not in guarded:
             continue
@@ -103,8 +104,10 @@ def rebase(output, submitted, current, scan, scene, history, cfg):
         present_extent = ps.side_extent(view['frame'], [[0.,0.,0.]], sign, lat)
         predicted = ps.side_extent(view['frame'], poses, sign, lat)
         approach[name] = dict(anchor_m=anchor, current_m=present_extent, predicted_m=predicted)
-        if predicted > anchor+.01 and predicted > present_extent+1e-9:
-            return stop('guard_rebase_toward_unreleased_side', guarded_sides=approach)
+        if predicted > anchor+policy.small_excursion_m and predicted > present_extent+1e-9:
+            if cfg.guard_observation_policy != 'selected_r181':
+                return stop('guard_rebase_toward_unreleased_side', guarded_sides=approach)
+            rejected.append(name)
     context = {}
     region = ps.motion_region(scene,speed,target,steering,previous,dt,cfg,lat,context=context)
     proof = dict(accepted=False, reason='not_needed', unknown_filled=False)
@@ -123,10 +126,25 @@ def rebase(output, submitted, current, scan, scene, history, cfg):
             # 현재 실제속도로 같은 좁은 위험 분류를 처음부터 검사한다.
             proof = adjacent.bounded_adjacent_structure(scene,scan,queries,context['padding'],
                 cfg.length_m,cfg.width_m,speed,target,parse_sectors(cfg.known_structure_sectors_json))
-    blocked = ps.region_blocked(region,ps.SelectorConfig(),bounded_unknown_risk=proof['accepted'])
+    blocked = ps.region_blocked(region,policy,bounded_unknown_risk=proof['accepted'])
     if blocked:
+        if rejected:
+            return stop('guard_rebase_toward_unreleased_side', region=region,
+                        current_gap_proof=proof, guarded_sides=approach, current_region_blocked=blocked)
         return stop('guard_rebase_'+blocked, region=region, current_gap_proof=proof)
-    return {**result, **diagnostic, 'reason':'rebase_current_guard',
+    approach_detail = {}
+    if rejected:
+        if not context:
+            _, queries = ps.motion_queries(scene,speed,target,steering,previous,dt,cfg,lat)
+            pad = ps.mx.ray_padding(scene,lat,cfg.object_motion_bound_mps)
+            context = dict(queries=queries,free=ps.depth_support(scene,queries,pad))
+        observed = ps.observed_guard_approach(view['frame'],context,approach,rejected,
+            region=region,selector_config=policy,length_m=cfg.length_m,width_m=cfg.width_m)
+        approach_detail['current_approach'] = observed
+        if not observed['accepted']:
+            return stop('guard_rebase_toward_unreleased_side',guarded_sides=approach,
+                        region=region,current_gap_proof=proof,**approach_detail)
+    return {**result, **diagnostic, **approach_detail, 'reason':'rebase_current_guard',
             'guarded_sides':approach, 'region':region, 'current_gap_proof':proof,
             'current_side_presence':{name:view[name]['present'] for name,_ in ps.SIDES},
             'forward_coverage_only':True}

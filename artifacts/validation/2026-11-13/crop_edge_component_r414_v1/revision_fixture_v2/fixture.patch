@@ -1,0 +1,25 @@
+--- reference_v1/test_edge_component.py
++++ revision_fixture_v2/test_edge_component.py
+@@ -11,7 +11,7 @@
+ import numpy as np
+ import pytest
+ 
+-A=Path(__file__).resolve().parent;ROOT=A.parents[3]
++A=Path(__file__).resolve().parent.parent;ROOT=A.parents[3]
+ sys.path[:0]=[str(ROOT/'src/arena_autonomy'),str(ROOT/'src/arena_vehicle_interface')]
+ import arena_autonomy
+ arena_autonomy.__path__.insert(0,str(A/'staged/arena_autonomy'))
+@@ -101,7 +101,12 @@
+     assert not result['allowed'] and p.latched
+     assert p.latch_reason=='previous_point_in_missing_sweep'
+     assert p.anchor_threat_summary['unique_points']==3 and p.anchor_threat_summary['complete']
+-    assert len(p.anchor_probe.retained)==3 and p.anchor_probe.anchor[1:]==(.1,0.)
++    assert len(p.anchor_probe.retained)==3
++    # 최초 위협의 원천과 재관측 후 rolling anchor의 현재 시각은 다른 계약이다.
++    assert p.anchor_threat_summary['reference_s']==.1
++    assert p.anchor_threat_summary['source_first_s']==0.
++    assert p.anchor_probe.created==.1
++    assert p.anchor_probe.anchor[1:]==(.2,.1)
+     proof=result['crop_edge_component']
+     assert len(proof['source_indices'])==7 and len(proof['inside_source_indices'])==1
+     assert result['timed_missing_diagnostic']['missing_rays']==7

@@ -1038,7 +1038,8 @@ class M3ExecutionFollow:
         self.trial_speed_cap_mps = min(.35, c.max_speed_mps)
         self.lateral_config = LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass',
             wheelbase_m=c.wheelbase_m, length_m=c.length_m, width_m=c.width_m, max_steering_rad=c.max_steering_rad,
-            road_half_m=c.road_half_m)
+            road_half_m=c.road_half_m, track_m=c.track_m,
+            wheel_radius_m=c.wheel_radius_m, wheel_width_m=c.wheel_width_m)
         if not math.isclose(c.wall_offset_m, self.lateral_config.wall_offset_m, abs_tol=1e-12):
             raise ValueError('M3 requires the registered wall-to-road geometry')
         self.base = LocalFollow(c)
@@ -1079,6 +1080,8 @@ class M3ExecutionFollow:
         clearance = min(occupancy_limit(points, a, cfg.wheelbase_m, horizon=2.5, margin=padding,
                                    length=cfg.length_m, width=cfg.width_m)
                         for a in (steering, previous_steering))
+        from arena_autonomy.vehicle_marker_occupancy import additional_clearance
+        clearance = additional_clearance(clearance, steering, previous_steering, cfg)
         available = max(0., clearance-cfg.standstill_gap_m)
         target = min(self.trial_speed_cap_mps, cap, braking_speed(available, age), available/cfg.headway_s)
         envelope_speed = max(speed, target)

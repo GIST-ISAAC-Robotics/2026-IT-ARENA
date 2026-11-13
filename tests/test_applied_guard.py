@@ -1,6 +1,7 @@
 """가상 MCU 뒤 최종 출력 감시의 ROS 독립 회귀."""
 from pathlib import Path
 import sys
+import math
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src/arena_vehicle_interface'))
@@ -13,6 +14,34 @@ def status(t=1000, *, generation=1, state='ARMED', speed=0., boot='a', **extra):
 
 
 class AppliedGuardTests(unittest.TestCase):
+    def test_configured_steering_limit_accepts_endpoints_and_rejects_excess(self):
+        for limit in (.2, .45, .4578436017036438):
+            for sign in (-1., 1.):
+                with self.subTest(limit=limit, sign=sign):
+                    g = AppliedGuard(max_angle=limit)
+                    self.assertTrue(g.update(status(), 1000, 1.))
+                    row = status(2000, state='ACTIVE', speed=.35)
+                    row['steering_rad'] = sign*limit
+                    self.assertTrue(g.update(row, 2000, 1.001))
+                    self.assertEqual(g.steering, sign*limit)
+                    row = {**row, 'now_us': 3000,
+                           'steering_rad': sign*math.nextafter(limit, math.inf)}
+                    self.assertFalse(g.update(row, 3000, 1.002))
+                    self.assertEqual(g.reason, 'invalid_applied_status')
+                    self.assertEqual(g.speed, 0.)
+
+    def test_previous_default_still_rejects_cad_endpoint(self):
+        g = self.armed()
+        row = status(3000, state='ACTIVE', speed=.35)
+        row['steering_rad'] = .4578436017036438
+        self.assertFalse(g.update(row, 3000, 1.002))
+        self.assertEqual(g.reason, 'invalid_applied_status')
+
+    def test_invalid_configured_angle_rejected(self):
+        for value in (0., -1., float('nan'), float('inf'), True):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                AppliedGuard(max_angle=value)
+
     def armed(self):
         g = AppliedGuard()
         self.assertTrue(g.update(status(), 1000, 1.))

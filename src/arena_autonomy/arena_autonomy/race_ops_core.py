@@ -9,7 +9,7 @@ import copy
 import math
 import threading
 
-OPERATIONS = ('stop', 'recovery_reset', 'resume_start', 'prepare_start', 'new_race', 'restore_race', 'set_speed_limit')
+OPERATIONS = ('stop', 'recovery_reset', 'resume_start', 'prepare_start', 'manual_visual_start', 'new_race', 'restore_race', 'set_speed_limit')
 BOUND = tuple(op for op in OPERATIONS if op != 'stop')
 PHYSICAL_STOP = '미확인'
 MAX_COMMANDS = 32
@@ -120,9 +120,9 @@ class OpsCore:
         race = status.get('race') or {}
         keys = dict(state=status.get('state'), reason=status.get('reason'), behavior=status.get('behavior'),
                     handoff=status.get('handoff_state'), side=side_of(status), latch=race.get('latch'),
-                    started=race.get('started'), speed_limit=(race.get('development') or {}).get('limit_mps'))
+                    started=race.get('started'), start_source=race.get('start_source'), speed_limit=(race.get('development') or {}).get('limit_mps'))
         names = dict(state='상태', reason='이유', behavior='거동', handoff='전환', side='기준 벽',
-                    latch='래치', started='출발 사실', speed_limit='시험 속도 상한 m/s')
+                    latch='래치', started='출발 사실', start_source='출발 확인 출처', speed_limit='시험 속도 상한 m/s')
         for key, value in keys.items():
             if self.previous.get(key, value) != value:
                 self._event(wall, key, f"{names[key]}: {self.previous[key]} → {value}", source='autonomy')
@@ -168,6 +168,8 @@ class OpsCore:
         latch, started = race.get('latch'), race.get('started')
         offer = self._restore_offer(wall)
         result.update(
+            manual_visual_start=(bool((self.status or {}).get('state') == 'WAIT_GREEN' and started is False
+                                      and not latch and not race.get('resume')), 'wait_green_required'),
             recovery_reset=(bool(latch and started and not race.get('resume')),
                             None if latch and started else 'stop_required' if started else 'race_not_started'),
             resume_start=(bool(race.get('resume_start_ready', race.get('recovery_ready'))),
@@ -213,6 +215,8 @@ class OpsCore:
         if type(view) is not dict or any(view.get(key) != race.get(key)
                                          for key in ('session', 'race_id', 'race_epoch', 'intervention')):
             return 'stale_view'
+        if op == 'manual_visual_start' and confirm != 'SIGNAL_CONFIRMED':
+            return 'signal_confirmation_required'
         if op == 'new_race' and confirm != 'NEW_RACE':
             return 'new_race_confirmation_required'
         if op == 'restore_race' and confirm != 'SAME_RACE':
@@ -243,6 +247,8 @@ class OpsCore:
                 return None
             accepted = payload.get('accepted') is True
             entry['policy'] = dict(accepted=accepted, reason=payload.get('reason'), wall_s=wall)
+            if 'start_source' in payload:
+                entry['policy']['start_source'] = payload['start_source']
             if 'speed_limit_mps' in payload:
                 entry['policy']['speed_limit_mps'] = payload['speed_limit_mps']
             entry['stage'] = 'policy_accepted' if accepted else 'policy_rejected'

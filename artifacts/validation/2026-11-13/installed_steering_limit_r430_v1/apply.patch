@@ -1,0 +1,254 @@
+--- a/scripts/runtime_installed_profile.py
++++ b/scripts/runtime_installed_profile.py
+@@ -69,7 +69,8 @@
+         raise ValueError('board assembly identity changed')
+     if type(board['servo']) is not dict or set(board['servo']) != set(SERVO_TYPES):
+         raise ValueError('exact explicit RuntimeServoConfig fields required')
+-    zero_header, zero_digest = cpp_zero_profile(zero, assembly_id=assembly_id)
++    zero_header, zero_digest = cpp_zero_profile(zero, assembly_id=assembly_id,
++        **{key: board['servo'][key] for key in ('command_limit', 'wheelbase', 'track', 'wheel_limit')})
+     lines = ['#pragma once', '#include "mounted_steering_zero.hpp"',
+              '// Explicit installed values; build only, no automatic ARM.',
+              'namespace arena_runtime_mount {', 'inline RuntimeBoardProfile Profile() {',
+--- a/src/arena_vehicle_interface/arena_vehicle_interface/steering_calibration.py
++++ b/src/arena_vehicle_interface/arena_vehicle_interface/steering_calibration.py
+@@ -223,15 +223,26 @@
+     return profile['safe_min_count'] <= min(a, b) and max(a, b) <= profile['safe_max_count']
+ 
+ 
+-def cad_servo_goal(profile, steering_rad):
++def _cad_contract(command_limit, wheelbase, track, wheel_limit):
++    mapping = CadMapping.default()
++    geometry = dict(wheelbase=wheelbase, track=track, wheel_limit=wheel_limit)
++    limit = mapping.command_limit(**geometry) if command_limit is None else command_limit
++    if not finite(limit) or limit <= 0:
++        raise ValueError('invalid central command limit')
++    ends = [mapping.central(sign*limit, **geometry) for sign in (-1, 1)]
++    if any(goal.clamped for goal in ends):
++        raise ValueError('outside CAD central command range')
++    return mapping, geometry, limit, ends
++
++
++def cad_servo_goal(profile, steering_rad, *, command_limit=None, wheelbase=.128,
++                   track=.1239, wheel_limit=math.pi/6):
+     """오프라인 목표 계산. 영점은 실장 관측, 링크 각도는 CAD 추정이며 송신하지 않는다."""
+     check_profile(profile, ready=True)
+-    mapping = CadMapping.default()
+-    geometry = dict(wheelbase=.128, track=.1239, wheel_limit=math.pi/6)
+-    limit = mapping.command_limit(**geometry)
++    mapping, geometry, limit, endpoints = _cad_contract(command_limit, wheelbase, track, wheel_limit)
+     if not finite(steering_rad) or abs(steering_rad) > limit:
+         raise ValueError('outside CAD central command range')
+-    ends = [mapping.central(sign*limit, **geometry).servo_rad for sign in (-1, 1)]
++    ends = [goal.servo_rad for goal in endpoints]
+     if not covers(profile, min(ends), max(ends)):
+         raise ValueError('required range crosses mounted or count limit')
+     ideal = mapping.central(steering_rad, **geometry)
+@@ -245,6 +256,7 @@
+                                         (profile['count_direction_per_cad_positive']*4096))
+         actual = mapping.relative(goal['realized_relative_rad'])
+     if (goal['clamped'] or actual.clamped or
++            max(abs(actual.left_rad), abs(actual.right_rad)) > geometry['wheel_limit'] or
+             not profile['safe_min_count'] <= goal['position'] <= profile['safe_max_count']):
+         raise ValueError('quantized target outside mounted range')
+     return dict(position=goal['position'], central_requested_rad=steering_rad,
+@@ -253,11 +265,16 @@
+                 hardware_angle_measured=False, output_enabled=False)
+ 
+ 
+-def cpp_zero_profile(profile, *, assembly_id):
++def cpp_zero_profile(profile, *, assembly_id, command_limit=None, wheelbase=.128,
++                     track=.1239, wheel_limit=math.pi/6):
+     """실장 확인 JSON을 같은 C++ ZeroProfile 값으로 내보낸다. 출력/flash는 하지 않는다."""
+     check_profile(profile, ready=True, assembly_id=assembly_id)
+-    # 중립 요청에서도 CAD 전 조향 범위와 설치 count 구간을 대조한다.
+-    cad_servo_goal(profile, 0.0)
++    # 미지정은 기존 CAD 전체 범위다. 운영 빌드는 board와 같은 명시 범위를 전달한다.
++    # 중립뿐 아니라 선택한 양 끝의 count 양자화도 장착/기하 범위 안이어야 한다.
++    _, _, limit, _ = _cad_contract(command_limit, wheelbase, track, wheel_limit)
++    for steering in (-limit, 0.0, limit):
++        cad_servo_goal(profile, steering, command_limit=limit, wheelbase=wheelbase,
++                       track=track, wheel_limit=wheel_limit)
+     canonical = json.dumps(profile, ensure_ascii=True, sort_keys=True, separators=(',', ':'), allow_nan=False)
+     digest = hashlib.sha256(canonical.encode('ascii')).hexdigest()
+     from .steering_cad_table import SOURCE_SHA256
+--- a/tests/test_runtime_installed_profile.py
++++ b/tests/test_runtime_installed_profile.py
+@@ -1,5 +1,6 @@
+ """실장 입력 전달의 합성 회귀. 테스트 값은 운영 교정값이 아니며 장치를 실행하지 않는다."""
+ import json
++import math
+ from pathlib import Path
+ import shutil
+ import subprocess
+@@ -11,7 +12,9 @@
+ sys.path.insert(0, str(ROOT/'scripts'))
+ sys.path.insert(0, str(ROOT/'src/arena_vehicle_interface'))
+ import runtime_installed_profile as subject
+-from arena_vehicle_interface.steering_calibration import record_zero, complete_mount_profile, cpp_zero_profile
++from arena_vehicle_interface.steering_calibration import (
++    record_zero, complete_mount_profile, cpp_zero_profile, cad_servo_goal, CadMapping,
++)
+ 
+ 
+ def synthetic_inputs(tmp_path, direction=1):
+@@ -38,6 +41,44 @@
+     return board, zero, folder, result
+ 
+ 
++def narrow_prepared(tmp_path, direction=1):
++    board, zero, bp, zp = synthetic_inputs(tmp_path, direction)
++    board['servo'].update(command_limit=.15, wheel_limit=.2)
++    zero.update(safe_min_count=1880, safe_max_count=2120)
++    bp.write_text(json.dumps(board), encoding='utf-8')
++    zp.write_text(json.dumps(zero), encoding='utf-8')
++    folder = tmp_path/'narrow'
++    result = subject.prepare(bp, zp, board['assembly_id'], folder)
++    return board, zero, folder, result
++
++
++@pytest.mark.parametrize('direction', [-1, 1])
++def test_narrow_installed_range_uses_board_contract_and_preserves_limits(tmp_path, direction):
++    board, zero, folder, result = narrow_prepared(tmp_path, direction)
++    with pytest.raises(ValueError, match='range crosses'):
++        cpp_zero_profile(zero, assembly_id=board['assembly_id'])
++    contract = {key: board['servo'][key] for key in ('command_limit', 'wheelbase', 'track', 'wheel_limit')}
++    expected, digest = cpp_zero_profile(zero, assembly_id=board['assembly_id'], **contract)
++    assert (folder/'mounted_steering_zero.hpp').read_bytes() == expected.encode('ascii')
++    assert result['canonical_zero_sha256'] == digest
++    assert subject.verify(folder) == result
++    assert json.loads((folder/'steering_zero.json').read_text()) == zero
++    assert json.loads((folder/'runtime_board.json').read_text()) == board
++
++
++@pytest.mark.parametrize('field,value', [
++    ('command_limit', .6), ('command_limit', -.1), ('command_limit', float('nan')),
++    ('wheelbase', 0.), ('track', float('nan')), ('wheel_limit', .1), ('wheel_limit', -.1),
++])
++def test_installed_export_rejects_unusable_selected_geometry_before_writing(tmp_path, field, value):
++    board, _, bp, zp = synthetic_inputs(tmp_path)
++    board['servo'][field] = value
++    bp.write_text(json.dumps(board), encoding='utf-8')
++    with pytest.raises(ValueError):
++        subject.prepare(bp, zp, board['assembly_id'], tmp_path/'rejected')
++    assert not (tmp_path/'rejected').exists()
++
++
+ def test_preserved_inputs_existing_zero_export_and_no_overwrite(tmp_path):
+     board, zero, folder, result = prepared(tmp_path)
+     assert subject.verify(folder) == result
+@@ -99,6 +140,7 @@
+     assert compiler, 'native g++ is required, no skip/pass substitution'
+     source = tmp_path/'check.cpp'; binary = tmp_path/'check'
+     source.write_text('#include "board_profile.hpp"\n#include "actuation_motor_endpoint.hpp"\n'
++        '#include <iostream>\n#include <iomanip>\n'
+         '#include <cassert>\nint main(){\nconst arena_steering::CadMapping map(arena_steering::kCadSamples,'
+         'sizeof(arena_steering::kCadSamples)/sizeof(arena_steering::kCadSamples[0]));\n'
+         'auto p=installed_board_profile();\n'+body+'\n}\n', encoding='ascii')
+@@ -112,6 +154,7 @@
+     assert result.returncode == 0, result.stderr
+     result = subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
+     assert result.returncode == 0, (result.stdout, result.stderr)
++    return result.stdout
+ 
+ 
+ BOOT_INACTIVE = '''
+@@ -144,6 +187,37 @@
+     compile_run(tmp_path, '\n'.join(expected), folder)
+ 
+ 
++@pytest.mark.parametrize('direction', [-1, 1])
++def test_narrow_installed_cpp_targets_match_python_and_reject_outside_contract(tmp_path, direction):
++    board, zero, folder, _ = narrow_prepared(tmp_path, direction)
++    contract = {key: board['servo'][key] for key in ('command_limit', 'wheelbase', 'track', 'wheel_limit')}
++    # Include half-count neighborhoods and both selected endpoints, without treating these as real values.
++    mapping = CadMapping.default()
++    angles = [-.15, -.075, 0., .075, .15]
++    angles += [mapping.relative((10.5+epsilon)*2*math.pi/4096).equivalent_rad
++               for epsilon in (-.001, .001)]
++    body = ['assert(p.valid(map));', BOOT_INACTIVE, 'std::cout << std::setprecision(17);']
++    for angle in angles:
++        body.append('{ const auto g=arena_steering::ResolveCadServoGoal(map,p.servo.zero,'+repr(angle)+
++            ',p.servo.command_limit,p.servo.wheelbase,p.servo.track,p.servo.wheel_limit); '
++            'assert(g.valid); const auto actual=map.relative(g.servo.relative_rad); '
++            'std::cout << g.servo.position << " " << g.servo.relative_rad << " " '
++            '<< actual.left_rad << " " << actual.right_rad << "\\n"; }')
++    body += ['assert(!arena_steering::ResolveCadServoGoal(map,p.servo.zero,.15001,'
++             'p.servo.command_limit,p.servo.wheelbase,p.servo.track,p.servo.wheel_limit).valid);',
++             'p.servo.zero.minimum=1999; p.servo.zero.maximum=2001; assert(!p.valid(map));',
++             'assert(!arena_steering::ResolveCadServoGoal(map,p.servo.zero,0.,'
++             'p.servo.command_limit,p.servo.wheelbase,p.servo.track,p.servo.wheel_limit).valid);']
++    lines = compile_run(tmp_path, '\n'.join(body), folder).splitlines()
++    assert len(lines) == len(angles)
++    for line, angle in zip(lines, angles):
++        count, relative, left, right = line.split()
++        expected = cad_servo_goal(zero, angle, **contract)
++        assert int(count) == expected['position']
++        assert [float(relative), float(left), float(right)] == pytest.approx(
++            [expected['servo_relative_rad'], expected['left_target_rad'], expected['right_target_rad']], abs=1e-12)
++
++
+ def test_builder_drive_only_option_and_shell_syntax(tmp_path):
+     for name in ('build_runtime_drive.sh', 'build_runtime_preview.sh'):
+         result = subprocess.run(['bash', '-n', str(ROOT/'scripts'/name)], capture_output=True, text=True, timeout=10)
+--- a/tests/test_steering_calibration.py
++++ b/tests/test_steering_calibration.py
+@@ -28,6 +28,58 @@
+ 
+ 
+ class SteeringCalibrationTests(unittest.TestCase):
++    def test_selected_command_range_accepts_narrow_mount_without_expanding_it(self):
++        for direction in (-1, 1):
++            profile = ready_profile(direction=direction)
++            profile.update(safe_min_count=1880, safe_max_count=2120)
++            original = dict(profile)
++            contract = dict(command_limit=.15, wheelbase=.128, track=.1239, wheel_limit=.2)
++            with self.assertRaisesRegex(ValueError, 'range crosses'):
++                cpp_zero_profile(profile, assembly_id='synthetic')
++            header, _ = cpp_zero_profile(profile, assembly_id='synthetic', **contract)
++            self.assertIn('p.minimum=1880; p.maximum=2120;', header)
++            for angle in (-.15, -.075, 0., .075, .15):
++                goal = cad_servo_goal(profile, angle, **contract)
++                self.assertLessEqual(1880, goal['position'])
++                self.assertLessEqual(goal['position'], 2120)
++                self.assertLessEqual(max(abs(goal['left_target_rad']), abs(goal['right_target_rad'])), .2)
++            self.assertEqual(profile, original)
++
++    def test_selected_contract_rejects_invalid_or_outside_cad_values(self):
++        profile = ready_profile()
++        valid = dict(command_limit=.15, wheelbase=.128, track=.1239, wheel_limit=.2)
++        faults = [('command_limit', value) for value in (0., -.1, math.nan, math.inf, True, .6)]
++        faults += [(key, value) for key in ('wheelbase', 'track', 'wheel_limit')
++                   for value in (0., -.1, math.nan, math.inf, True)]
++        faults += [('wheel_limit', .1)]
++        for key, value in faults:
++            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
++                cpp_zero_profile(profile, assembly_id='synthetic', **{**valid, key:value})
++        for command in (math.nan, math.inf, True, .15001, -.15001):
++            with self.subTest(command=command), self.assertRaises(ValueError):
++                cad_servo_goal(profile, command, **valid)
++
++    def test_fractional_count_outside_mount_is_not_rounded_into_acceptance(self):
++        mapping = CadMapping.default()
++        for direction in (-1, 1):
++            profile = ready_profile(direction=direction)
++            profile.update(safe_min_count=1880 if direction == 1 else 1700,
++                           safe_max_count=2300 if direction == 1 else 2120)
++            original = dict(profile)
++            # CAD-relative negative endpoint lies 0.1 count beyond the measured limit.
++            # Rounding would hide this violation; whole-range coverage must reject it first.
++            for offset, accepted in ((-119.9, True), (-120.1, False)):
++                limit = mapping.relative(offset*2*math.pi/4096).equivalent_rad
++                contract = dict(command_limit=limit, wheelbase=.128, track=.1239, wheel_limit=math.pi/6)
++                if accepted:
++                    cpp_zero_profile(profile, assembly_id='synthetic', **contract)
++                    endpoint = cad_servo_goal(profile, limit, **contract)
++                    self.assertEqual(endpoint['position'], 1880 if direction == 1 else 2120)
++                else:
++                    with self.assertRaisesRegex(ValueError, 'range crosses'):
++                        cpp_zero_profile(profile, assembly_id='synthetic', **contract)
++            self.assertEqual(profile, original)
++
+     def test_cpp_export_requires_same_verified_mount_and_preserves_offsets(self):
+         for direction in (-1, 1):
+             profile = ready_profile(zero=2137, direction=direction)

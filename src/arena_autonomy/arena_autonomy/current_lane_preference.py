@@ -9,7 +9,7 @@ import numpy as np
 
 from arena_autonomy.traffic_path_recovery_trial import SuspendedPassageSelector
 from arena_autonomy.observed_lane_preference_trial import front_extent, StraightLanePreferenceSelector
-from arena_autonomy.pass_release_trial import SIDES, NORMAL_BASELINE, extrema_arc, motion_region, region_blocked
+from arena_autonomy.pass_release_trial import SIDES, NORMAL_BASELINE, extrema_arc, motion_region, region_blocked, lateral_config
 from arena_autonomy.m3_observed_follow import command_arc
 import arena_autonomy.m3_execution_trial as mx
 from arena_autonomy.fresh_parallel_speed_trial import proposal as faster_proposal
@@ -92,8 +92,15 @@ class CurrentLaneSelector(SuspendedPassageSelector):
             faster = faster_proposal(scene, baseline, speed, previous, dt, self.follow_config, request)
             info['faster'] = {k:faster.get(k) for k in ('eligible','reason','target_speed_mps','clearance_m')}
             if faster.get('eligible') and faster['target_speed_mps'] > p_speed:
-                region = motion_region(scene, speed, faster['target_speed_mps'], faster['steering_rad'],
-                                       previous, dt, self.follow_config, self.lat)
+                # proposal이 같은 호출의 최종 명령에 대해 이미 계산한 영역이다.
+                # 이전 프레임/parallel 결과는 재사용하지 않으며 사용자 지정 lat는 다시 계산한다.
+                region = (faster.get('measured_region')
+                          if (faster.get('measured_above_target_cap') is True
+                              and faster.get('measured_speed_mps') == speed
+                              and self.lat == lateral_config(self.follow_config)) else None)
+                if region is None:
+                    region = motion_region(scene, speed, faster['target_speed_mps'], faster['steering_rad'],
+                                           previous, dt, self.follow_config, self.lat)
                 blocked = region_blocked(region, self.config)
                 info['faster']['blocked'] = blocked
                 if blocked is None:

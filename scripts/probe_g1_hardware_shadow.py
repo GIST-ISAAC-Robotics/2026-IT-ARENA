@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """공통 G1/G2 노드의 실물 입력 관측. 구동 토픽/MCU 없이 시계·입력·종료를 확인한다."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -8,10 +9,27 @@ import signal
 import time
 
 
-def ros_arguments(args,root):
+def vehicle_geometry_override(args):
+    path = getattr(args, 'vehicle_config', None)
+    if path is None:
+        return None
+    import yaml
+    from arena_autonomy.vehicle_geometry import preview_parameters
+    path = Path(path).expanduser().resolve(strict=True)
+    raw = path.read_bytes()
+    vehicle = yaml.safe_load(raw)['vehicle']
+    return dict(path=str(path), sha256=hashlib.sha256(raw).hexdigest(), parameters=preview_parameters(vehicle))
+
+
+def ros_arguments(args,root,*,geometry=None):
     result=['--ros-args','--params-file',str(root/'config/hardware/g1_input_shadow_v1.yaml'),
         '-p','g1_trace_path:='+str(args.output/'decisions.jsonl'),
         '-r','/scan/native:=/hardware_preview/c1/native']
+    if geometry is None:
+        geometry = vehicle_geometry_override(args)
+    if geometry is not None:
+        for name, value in geometry['parameters'].items():
+            result += ['-p', name+':='+str(value)]
     if args.estimated_time:result += ['-p','motion_scan_time_policy:=host_estimated_v1']
     if args.camera:result += ['-r','/camera/color/image_raw:=/hardware_preview/camera/image_raw',
         '-p','vision_execution:=process','-p','start_signal_mode:=official_4red_local_candidate']
@@ -21,6 +39,7 @@ def ros_arguments(args,root):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--vehicle-config',type=Path,default=None,help='명시 차량 YAML의 기하만 전달. 생략 시 기존 preview 설정 유지')
     p.add_argument('--seconds',type=float,default=40.)
     p.add_argument('--estimated-time',action='store_true',
         help='추정 시각을 명시 허용하는 비구동 계산. 시각 검증/엔코더 대체가 아님')
@@ -31,6 +50,7 @@ def main():
     if os.environ.get('ROS_LOCALHOST_ONLY')!='1' or os.environ.get('ROS_DOMAIN_ID')!='216':
         p.error('isolated localhost domain216 required')
     root=Path(__file__).resolve().parents[1]
+    geometry=vehicle_geometry_override(args)
     args.output.mkdir(parents=True,exist_ok=False)
     import rclpy
     from rclpy.signals import SignalHandlerOptions
@@ -42,7 +62,7 @@ def main():
         nonlocal stop
         stop=True
     signal.signal(signal.SIGINT,request_stop);signal.signal(signal.SIGTERM,request_stop)
-    rclpy.init(args=ros_arguments(args,root),
+    rclpy.init(args=ros_arguments(args,root,geometry=geometry),
         signal_handler_options=SignalHandlerOptions.NO)
     stamps=[];states=[];commands=[];accepted_scans=0;images=[];vision_results=[];motion_samples=[];mcu_states=[]
     class ObservedNode(G1G2Node):
@@ -97,6 +117,7 @@ def main():
             nonzero_private_commands=sum(c['speed']!=0 for c in commands),
             motion=dict(node.motion.counts) if node else None,drive_output=False,
             actuator_node_started=False,synthetic_encoder_published=False,time_contract_verified=False,
+            selected_vehicle_geometry=geometry,
             motion_time_policy=node.motion.timing_policy if node else None,
             camera_requested=args.camera,camera_connected=bool(images),mounting_calibrated=False,
             motion_samples_recorded=len(motion_samples),mcu_status_requested=args.mcu_status,

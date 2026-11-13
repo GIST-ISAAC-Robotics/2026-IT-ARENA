@@ -3,6 +3,8 @@
 각도 분해능과 짧은 평면 운동 이력을 전제로 한 표본 지지이며 연속 자유 공간,
 횡슬립, 동적 cut-in 또는 실물 제동을 인증하지 않는다. 명시 시험 옵션에서만 연결한다.
 """
+
+from arena_autonomy.lidar_source_frame import registered_source_frame
 from collections import deque
 from dataclasses import replace
 import math
@@ -139,7 +141,7 @@ def depth_and_masked_support(scene, queries, padding, *, cycle=None):
 
 def source_valid(scene):
     count = len(scene.rays)
-    if (scene.source_frame_id!='laser_frame' or scene.source_first_s is None
+    if (not registered_source_frame(scene.source_frame_id) or scene.source_first_s is None
             or not 0<=scene.t_ref_s-scene.source_first_s<.3
             or [r.source_index for r in scene.rays]!=list(range(count))):
         return False
@@ -183,15 +185,15 @@ class RecentScenes:
 
     def reset(self):
         self.scenes=deque(maxlen=3)
-        self.last_ref=self.epoch=None
+        self.last_ref=self.epoch=self.frame=None
 
     def observe(self,scene,history, *, transport=True):
         if (not source_valid(scene) or
                 (self.last_ref is not None and scene.t_ref_s<self.last_ref) or
                 (self.scenes and scene.source_first_s<self.scenes[-1].source_first_s)):
             self.reset(); return [],'observation_invalid_or_regressed'
-        if self.epoch is not None and self.epoch!=scene.source_epoch: self.reset()
-        self.last_ref,self.epoch=scene.t_ref_s,scene.source_epoch
+        if self.epoch is not None and (self.epoch!=scene.source_epoch or self.frame!=scene.source_frame_id): self.reset()
+        self.last_ref,self.epoch,self.frame=scene.t_ref_s,scene.source_epoch,scene.source_frame_id
         if not self.scenes or scene.source_first_s>self.scenes[-1].source_first_s: self.scenes.append(scene)
         while self.scenes and scene.t_ref_s-self.scenes[0].source_first_s>=.3: self.scenes.popleft()
         available=[scene]
@@ -324,7 +326,8 @@ def sweep_support(scenes,speed,target,steering,previous_steering,config, *, prot
                       rear_dynamic_risk_unresolved=True, lateral_rejected_queries=0)
     supported=np.zeros(len(queries),dtype=bool); sources=[]
     for i,s in enumerate(scenes):
-        if (s.source_epoch!=current.source_epoch or s.t_ref_s!=current.t_ref_s
+        if (s.source_frame_id!=current.source_frame_id
+                or s.source_epoch!=current.source_epoch or s.t_ref_s!=current.t_ref_s
                 or s.source_first_s>current.source_first_s): continue
         pad=np.array([.025+config.measurement_padding_m+config.object_motion_bound_mps*(s.t_ref_s-r.acquired_at_s) for r in s.rays])
         remaining=np.flatnonzero(~supported)

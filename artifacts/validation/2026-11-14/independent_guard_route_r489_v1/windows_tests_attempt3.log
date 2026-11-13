@@ -1,0 +1,27 @@
+..............................F                                  [100%]
+================================== FAILURES ===================================
+_ InstalledLimitsTests.test_updated_hash_does_not_hide_unrelated_parameter_change _
+ValueError: runtime YAML differs from installed limits and explicit guard policy selection
+
+During handling of the above exception, another exception occurred:
+
+self = <test_runtime_installed_limits.InstalledLimitsTests testMethod=test_updated_hash_does_not_hide_unrelated_parameter_change>
+
+    def test_updated_hash_does_not_hide_unrelated_parameter_change(self):
+        self.prepare()
+        path = self.output/'runtime_profile.yaml'
+        values = yaml.safe_load(path.read_bytes())
+        values['local_pursuit']['ros__parameters']['max_speed_mps'] = 9.
+        path.write_text(yaml.safe_dump(values), encoding='utf-8')
+        manifest_path = self.output/'manifest.json'
+        manifest = json.loads(manifest_path.read_bytes())
+        manifest['files'][path.name] = subject.digest(path.read_bytes())
+        manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
+>       with self.assertRaisesRegex(ValueError, 'beyond the two'):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: "beyond the two" does not match "runtime YAML differs from installed limits and explicit guard policy selection"
+
+tests\test_runtime_installed_limits.py:143: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_runtime_installed_limits.py::InstalledLimitsTests::test_updated_hash_does_not_hide_unrelated_parameter_change
+1 failed, 30 passed, 8 subtests passed in 0.86s

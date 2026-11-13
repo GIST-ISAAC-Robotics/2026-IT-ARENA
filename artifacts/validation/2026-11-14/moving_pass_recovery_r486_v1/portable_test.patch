@@ -1,0 +1,93 @@
+--- /dev/null
++++ b/tests/test_moving_pass_current_return.py
+@@ -0,0 +1,90 @@
++"""현재 관측 중심 복귀의 목표 계산·타깃 조건·경로 상태. 대형 trace/ROS 없이 사용."""
++import copy
++import numpy as np
++import pytest
++
++import arena_autonomy.bypass_entry_trial as entry_module
++from arena_autonomy.bypass_entry_trial import entry_path,straight_reference
++from arena_autonomy.local_follow import FollowConfig
++from arena_autonomy.local_path import braking_speed
++from arena_autonomy.moving_pass import MovingEntryConfig,MovingPassGuide,MovingTargetTrack
++from probe_bypass_entry import sensor_scene
++from test_bypass_entry_guide import stationary_history
++
++
++def current_guide():
++    scene,_=sensor_scene(targets=((1.2,0.),),rear_half=0.)
++    cfg=FollowConfig();guide=MovingPassGuide(cfg,MovingTargetTrack(cfg,'medium_v1'))
++    _,reference=straight_reference(scene,cfg)
++    wall=reference['walls']['left']
++    fit=(wall['slope'],wall['intercept_m'],*wall['observed_x_m'])
++    guide.path=entry_path(fit,.16,cfg,guide.entry,1.2)
++    guide.side='left';guide.offset=.16;guide.transition=1.2;guide.phase='entry'
++    guide.wall_confirmations=2;guide.reference_s=scene.t_ref_s
++    guide.last_source=scene.source_first_s;guide.epoch=scene.source_epoch
++    x=np.asarray(wall['observed_x_m']);guide.wall_line=np.c_[x,wall['slope']*x+wall['intercept_m']]
++    points=np.asarray(scene.occupied_endpoints_xy_m)
++    guide.tracker.current=points[(points[:,0]>1.)&(points[:,0]<1.3)&(abs(points[:,1])<.1)]
++    assert len(guide.tracker.current)>0
++    guide.tracker.source=scene.source_first_s;guide.tracker.reference=scene.t_ref_s
++    guide.tracker.detail={'observed':True}
++    # 기존 추월 쪽 점유 제동 결과를 전달하는 단위 fixture. 새 복귀 기하는 아래서 실제 계산한다.
++    current={'entry_phase':'entry','reference':{
++        'reason':'current_outer_wall_rechecked_for_remembered_guide','walls':{'left':wall}},
++        'candidates':[{'command_clearance_m':.30,
++            'target_speed_mps':braking_speed(.30,scene.t_ref_s-scene.source_first_s)}]}
++    return guide,scene,current,stationary_history()
++
++
++def test_follow_headway_is_applied_before_region_without_replacing_measured_speed(monkeypatch):
++    scene,_=sensor_scene(targets=((.6,0.),),rear_half=0.)
++    cfg=FollowConfig();entry=MovingEntryConfig(profile='medium_v1',speed_cap_mps=.9)
++    fit,reference=straight_reference(scene,cfg)
++    kwargs=dict(config=cfg,entry=entry,guide=dict(reference=reference,
++        path=entry_path(fit,0.,cfg,entry,1.2),offset_m=0.,transition_m=1.2,
++        outer_side='left',stationary_outer_boundary=False))
++    calls=[];original=entry_module.entry_motion_region
++    def observe(scene,measured,target,*args,**kw):
++        calls.append((measured,target))
++        return original(scene,measured,target,*args,**kw)
++    monkeypatch.setattr(entry_module,'entry_motion_region',observe)
++    normal=entry_module._compare_entries(scene,scene.t_ref_s,.45,0.,.1,**kwargs)
++    following=entry_module._compare_entries(scene,scene.t_ref_s,.45,0.,.1,follow_headway=True,**kwargs)
++    before,after=normal['candidates'][0],following['candidates'][0]
++    assert 0.<after['target_speed_mps']<before['target_speed_mps']
++    assert after['target_speed_mps']==pytest.approx(after['comparison_follow_target_mps'])
++    assert calls==[(.45,before['target_speed_mps']),(.45,after['target_speed_mps'])]
++    assert before['speed_policy']=='entry_reaction_braking_not_follow_headway'
++    assert after['speed_policy']=='follow_reaction_braking_and_headway'
++
++
++@pytest.mark.parametrize('where',['missing','alongside'])
++def test_no_current_target_ahead_does_not_replace_path(where,monkeypatch):
++    guide,scene,current,history=current_guide();old=guide.path.copy()
++    guide.tracker.current=None if where=='missing' else np.array([[.1,-.25],[.2,-.25]])
++    def forbidden(*args,**kwargs):
++        pytest.fail('a missing/alongside target cannot authorize a new return candidate')
++    monkeypatch.setattr(entry_module,'_compare_entries',forbidden)
++    assert guide._current_follow_return(scene,history,.4,0.,.1,current) is current
++    np.testing.assert_array_equal(guide.path,old)
++    assert guide.phase=='entry' and not guide.follow_headway
++
++
++def test_center_path_persists_until_centered_and_reset_clears_return_state():
++    guide,scene,current,history=current_guide();old=guide.path.copy()
++    out=guide._current_follow_return(scene,history,.4,0.,.1,current)
++    assert out is not current and out['selected']['offset_m']==0.
++    assert guide.phase=='rejoin' and guide.follow_headway and guide.returning_behind
++    np.testing.assert_array_equal(guide.path,out['candidates'][0]['path_points'])
++    assert not np.array_equal(guide.path,old)
++    assert out['reference']==current['reference']
++    previous=out['selected']['steering_rad']
++    for stamp in (.6,.7):
++        now,_=sensor_scene(targets=((1.2,0.),),rear_half=0.,now=stamp,first=round(stamp-.1,9))
++        out=guide.evaluate(now,history,.4,previous,.1)
++        assert out['selected'] is not None and out['selected']['offset_m']==0.
++        assert out['candidates'][0]['speed_policy']=='follow_reaction_braking_and_headway'
++        previous=out['selected']['steering_rad']
++    assert guide.phase=='centered'
++    guide.reset()
++    assert guide.path is None and not guide.follow_headway and not guide.returning_behind

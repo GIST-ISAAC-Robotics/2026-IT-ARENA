@@ -1,0 +1,122 @@
+--- a/src/arena_autonomy/arena_autonomy/known_structure.py
++++ b/src/arena_autonomy/arena_autonomy/known_structure.py
+@@ -36,6 +36,22 @@
+ SAMPLE_STEP_M = .03
+ 
+ 
++def _current_mask_query_batches(queries, origins, directions):
++    """전체 광선 bracket을 원 연산/동률 규칙으로 최대 32질의씩 계산한다."""
++    for start in range(0, len(queries), 32):
++        dx = queries[start:start+32, None, 0]-origins[None, :, 0]
++        dy = queries[start:start+32, None, 1]-origins[None, :, 1]
++        # 2원소 norm의 multiply/add/sqrt 순서를 유지한다. hypot나 제곱 임계값으로
++        # 바꾸지 않으며 dot의 +0은 np.sum([-0., -0.])의 양의 0도 보존한다.
++        radius = np.sqrt(dx*dx + dy*dy)
++        cross = directions[None, :, 0]*dy-directions[None, :, 1]*dx
++        dot = directions[None, :, 0]*dx + directions[None, :, 1]*dy + 0.
++        angles = np.arctan2(cross, dot)
++        lows = np.argmin(np.where(angles >= -1e-10, np.maximum(angles, 0.), np.inf), axis=1)
++        highs = np.argmin(np.where(angles <= 1e-10, np.maximum(-angles, 0.), np.inf), axis=1)
++        yield radius, angles, lows, highs
++
++
+ def current_mask_shadow(scene, scan, queries, padding, sectors):
+     """현재 선언 구조 그림자의 폭/양옆 깊이로 위험을 제한한다. free 증거가 아니다.
+ 
+@@ -44,7 +60,6 @@
+     양옆 반환 깊이에서 빼며, 가림 폭을 계산할 질의 위치를 이동시키지 않는다.
+     실제 점유 sweep과 숨은 기억은 호출 전 기하 검사/독립 보호층에 남는다.
+     """
+-    from arena_autonomy.rear_fringe_trial import _query_brackets
+     from arena_autonomy.observation_support import source_valid
+     result = dict(accepted=False, policy='current_declared_structure_shadow_v1',
+         unknown_filled=False, residual_hidden_object_risk=True,
+@@ -101,34 +116,64 @@
+             component = (a,b,angle,span)
+         for j in range(a,b+1): components[j] = component
+         i += 1
+-    for radius, angles, lo, hi in _query_brackets(q, origins, directions):
+-        if (np.any(radius <= 1e-9) or angles[lo] < -1e-10 or angles[hi] > 1e-10
+-                or abs(lo-hi) > 1 or abs(angles[lo])+abs(angles[hi]) > .025):
+-            return reject('unbracketed_current_mask_query')
+-        pair = (lo, hi)
+-        masked = [i for i in pair if status[i] == 'masked']
+-        if not masked or any(status[i] not in ('return', 'masked') for i in pair):
+-            return reject('not_declared_mask_only')
+-        for i in pair:
+-            if status[i] == 'return' and depths[i]-pad[i] <= radius[i]:
+-                return reject('near_current_mask_flank')
+-        for component in {components[i] for i in masked}:
+-            if component is None:
+-                return reject('unexplained_current_mask_component')
+-            a,b,angle,origin_span = component
+-            left, right = a-1, b+1
+-            reach = float(np.max(radius[left:right+1]))
+-            # 서로 다른 취득 시각의 원점 이동도 같은 현재 좌표에서 포함한다.
++    # 광선 전체와 각 취득 원점은 유지한다. 최대 32질의의 계산만 배열화한다.
++    # 첫 실패 질의와 그 질의의 기존 거절 우선순위는 아래 masks 순서로 보존한다.
++    by_id = list(dict.fromkeys(c for c in components.values() if c is not None))
++    ids = {c: i for i, c in enumerate(by_id)}
++    component_ids = np.full(len(rays), -1, dtype=int)
++    for ray, component in components.items():
++        if component is not None:
++            component_ids[ray] = ids[component]
++    available = depths-pad
++    for radius, angles, lo, hi in _current_mask_query_batches(q, origins, directions):
++        row = np.arange(len(radius))
++        low_angles, high_angles = angles[row, lo], angles[row, hi]
++        bracket_bad = (np.any(radius <= 1e-9, axis=1) | (low_angles < -1e-10)
++            | (high_angles > 1e-10) | (np.abs(lo-hi) > 1)
++            | (np.abs(low_angles)+np.abs(high_angles) > .025))
++        low_masked, high_masked = status[lo] == 'masked', status[hi] == 'masked'
++        low_return, high_return = valid[lo], valid[hi]
++        status_bad = (~(low_masked | high_masked) | ~(low_masked | low_return)
++            | ~(high_masked | high_return))
++        pair_near = ((low_return & (available[lo] <= radius[row, lo]))
++            | (high_return & (available[hi] <= radius[row, hi])))
++        selected = component_ids[np.where(low_masked, lo, hi)]
++        unexplained = selected < 0
++        wide, flank_near = np.zeros(len(row), dtype=bool), np.zeros(len(row), dtype=bool)
++        reaches, widths = np.zeros(len(row)), np.zeros(len(row))
++        # 인접한 두 masked 광선은 반드시 같은 연속 component다. 인접하지 않은
++        # 질의는 bracket_bad로 먼저 거절하므로 서로 다른 성분을 합치지 않는다.
++        ordered = list(dict.fromkeys(selected.tolist()))
++        for index in ordered:
++            if index < 0:
++                continue
++            a, b, angle, origin_span = by_id[index]
++            chosen = np.flatnonzero(selected == index)
++            reach = np.max(radius[chosen, a-1:b+2], axis=1)
+             width = 2*reach*math.sin(angle/2) + origin_span
+-            if angle >= math.pi/2 or width > ACCEPTED_HIDDEN_WIDTH_M:
+-                return reject('wide_current_structure_shadow')
+-            if depths[left]-pad[left] <= radius[left] or depths[right]-pad[right] <= radius[right]:
+-                return reject('near_current_mask_flank')
++            reaches[chosen], widths[chosen] = reach, width
++            wide[chosen] = (angle >= math.pi/2) | (width > ACCEPTED_HIDDEN_WIDTH_M)
++            flank_near[chosen] = ((available[a-1] <= radius[chosen, a-1])
++                | (available[b+1] <= radius[chosen, b+1]))
++        masks = (bracket_bad, status_bad, pair_near, unexplained, wide, flank_near)
++        reasons = ('unbracketed_current_mask_query', 'not_declared_mask_only',
++            'near_current_mask_flank', 'unexplained_current_mask_component',
++            'wide_current_structure_shadow', 'near_current_mask_flank')
++        failed = np.flatnonzero(np.logical_or.reduce(masks))
++        if len(failed):
++            first_bad = failed[0]
++            return reject(next(reason for reason, mask in zip(reasons, masks) if mask[first_bad]))
++        for index in ordered:
++            a, b, _, _ = by_id[index]
++            chosen = np.flatnonzero(selected == index)
++            # argmax의 첫 동률 선택과 batch 간 strict > 갱신으로 원 질의 순서 유지.
++            best = chosen[np.argmax(widths[chosen])]
++            width, reach = float(widths[best]), float(reaches[best])
+             key = (a, b)
+             old = groups.get(key)
+             if old is None or width > old['hidden_width_m']:
+-                groups[key] = dict(first=a, last=b, hidden_width_m=float(width),
+-                    flank_ranges_m=depths[[left, right]].tolist(), query_reach_m=reach)
++                groups[key] = dict(first=a, last=b, hidden_width_m=width,
++                    flank_ranges_m=depths[[a-1, b+1]].tolist(), query_reach_m=reach)
+     return {**result, 'accepted': True, 'reason': 'bounded_current_structure_shadow_risk',
+             'queries': len(q), 'components': list(groups.values())}
+ 

@@ -30,9 +30,13 @@ class MotionConfig:
     max_input_gap_s: float = .05
     max_extrapolation_s: float = .03
     scan_timeout_s: float = .45
+    lidar_frame_id: str = 'laser_frame'
 
     def __post_init__(self):
-        if not all(math.isfinite(float(v)) for v in vars(self).values()):
+        from arena_autonomy.lidar_source_frame import registered_source_frame
+        if not registered_source_frame(self.lidar_frame_id):
+            raise ValueError('explicit registered lidar source frame required')
+        if not all(math.isfinite(float(v)) for k,v in vars(self).items() if k != 'lidar_frame_id'):
             raise ValueError("운동 설정은 유한해야 합니다.")
         for name in ("wheel_radius_m", "wheel_scale", "history_s", "max_input_gap_s",
                      "max_extrapolation_s", "scan_timeout_s"):

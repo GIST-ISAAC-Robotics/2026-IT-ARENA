@@ -23,9 +23,14 @@ struct MotorIntent {
 // 설정은 객체 수명 동안 불변. 기본값은 Python 가상 모터 참조값이며 실차 튜닝값이 아니다.
 class SpeedPI {
  public:
-  explicit SpeedPI(double kp = 0.6, double ki = 1.2, double max_dt_s = 0.05) noexcept
-      : kp_(kp), ki_(ki), max_dt_s_(max_dt_s),
-        valid_(positive_finite(kp) && positive_finite(ki) && positive_finite(max_dt_s)) {}
+  // 정규화 출력 범위는 [-1,1] 안에서 0을 포함한다. 실차 duty는 명시 [0,교정 상한] 선택이다.
+  explicit SpeedPI(double kp = 0.6, double ki = 1.2, double max_dt_s = 0.05,
+                   double output_min = -1.0, double output_max = 1.0) noexcept
+      : kp_(kp), ki_(ki), max_dt_s_(max_dt_s), output_min_(output_min), output_max_(output_max),
+        valid_(positive_finite(kp) && positive_finite(ki) && positive_finite(max_dt_s) &&
+               std::isfinite(output_min) && std::isfinite(output_max) &&
+               -1.0 <= output_min && output_min <= 0.0 && 0.0 <= output_max &&
+               output_max <= 1.0 && output_min < output_max) {}
 
   bool valid() const noexcept { return valid_; }
   double integral() const noexcept { return integral_; }
@@ -43,7 +48,8 @@ class SpeedPI {
     const double raw = kp_ * error + candidate;
     if (!std::isfinite(error) || !std::isfinite(candidate) || !std::isfinite(raw))
       return inhibit(PiStatus::kArithmetic);
-    if ((raw >= -1.0 && raw <= 1.0) || (raw > 1.0 && error < 0.0) || (raw < -1.0 && error > 0.0))
+    if ((raw >= output_min_ && raw <= output_max_) ||
+        (raw > output_max_ && error < 0.0) || (raw < output_min_ && error > 0.0))
       integral_ = clamp(candidate);
     const double effort_raw = kp_ * error + integral_;
     if (!std::isfinite(effort_raw)) return inhibit(PiStatus::kArithmetic);
@@ -53,9 +59,9 @@ class SpeedPI {
 
  private:
   static bool positive_finite(double v) noexcept { return std::isfinite(v) && v > 0.0; }
-  static double clamp(double v) noexcept { return v < -1.0 ? -1.0 : v > 1.0 ? 1.0 : v; }
+  double clamp(double v) const noexcept { return v < output_min_ ? output_min_ : v > output_max_ ? output_max_ : v; }
   MotorIntent inhibit(PiStatus status) noexcept { reset(); return MotorIntent{0.0, true, status}; }
-  const double kp_, ki_, max_dt_s_;
+  const double kp_, ki_, max_dt_s_, output_min_, output_max_;
   const bool valid_;
   double integral_ = 0.0;
 };

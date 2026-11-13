@@ -33,14 +33,11 @@ class MotionInput:
         verified = bool(node.declare_parameter("motion_scan_timing_verified", False).value)
         self.verified = verified if timing_verified is None else timing_verified
         self.timing_policy = node.declare_parameter('motion_scan_time_policy', 'verified_only').value
-        if self.timing_policy not in ('verified_only', 'host_estimated_v1'):
-            raise ValueError('unknown motion scan time policy')
-        if self.timing_policy == 'host_estimated_v1' and (
-                getattr(node, 'execution_environment', None) != 'hardware_shadow_v1'
-                or node.get_parameter('use_sim_time').value or self.verified or self.mode != 'both'):
-            raise ValueError('host estimate policy requires unverified both compensation in isolated hardware shadow')
+        from arena_autonomy.execution_environment import validate_motion_time
+        validate_motion_time(node, self.mode, self.verified, self.timing_policy)
         defaults = vars(MotionConfig())
-        config = {name: float(node.declare_parameter("motion_" + name, value).value)
+        config = {name: (node.declare_parameter("motion_" + name, value).value if name == 'lidar_frame_id'
+                         else float(node.declare_parameter("motion_" + name, value).value))
                   for name, value in defaults.items()}
         self.history = MotionHistory(MotionConfig(**config), scan_time_policy=self.timing_policy)
         # 실물 연결 시 장착 축과 함께 명시할 입력 frame 계약. 빈 문자열은 기존
@@ -191,7 +188,7 @@ class MotionInput:
         diagnostic = {"gyro_rejections": dict(getattr(self, 'gyro_rejections', {})),
                       "last_gyro_rejection": getattr(self, 'last_gyro_rejection', None)}
         try:
-            if scan.header.frame_id != "laser_frame":
+            if scan.header.frame_id != self.history.config.lidar_frame_id:
                 raise MotionUnavailable("scan_frame_mismatch")
             from arena_autonomy.scan_input import project_scan
             points, indices, meta = project_scan(scan,self.history,now,self.mode,self.verified,

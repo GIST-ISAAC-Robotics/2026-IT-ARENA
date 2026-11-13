@@ -1,0 +1,153 @@
+{
+  "input_sha256": {
+    "early_stop.json": "d03048a80f10484e1832fd5b99f16680d0452bc4669e3c94f13dcfacb0857612",
+    "run1/report.json": "be40fdf7f6c1a33f9fd69f9c9b9f16081b17cd3e7d630e3d3ee600ffe3d86967",
+    "run1/stop_trace.json": "3902059e3f72e587b3a04577b198abdb77f10a75d84ee7a7dc01e6afa2c3c991"
+  },
+  "helper": {
+    "calls": [
+      {
+        "service": "/autonomy/enable",
+        "success": true,
+        "message": "사용자 정지"
+      },
+      {
+        "service": "/actuation/stop",
+        "success": true,
+        "message": "software_stop"
+      }
+    ],
+    "exact_request_time_recorded": false,
+    "final_mcu": {
+      "v": 1,
+      "boot": "f27a4ed7d88849fdb2cbb68e1a620353",
+      "generation": 2,
+      "state": "ESTOP_LATCHED",
+      "reason": "software_stop",
+      "owner": null,
+      "accepted_seq": -1,
+      "target_speed_mps": 0.0,
+      "steering_rad": 0.0,
+      "left_wheel_mps": null,
+      "right_wheel_mps": null,
+      "mean_wheel_mps": 0.0,
+      "feedback_mode": "drive_motor_shaft",
+      "stationary_scope": "mean_wheel_only_opposite_rotation_unobservable",
+      "feedback_valid": true,
+      "feedback_seq": 3983,
+      "left_ticks": null,
+      "right_ticks": null,
+      "motor_counts": 16144,
+      "feedback_capture_us": 39823000,
+      "deadline_us": null,
+      "estop_held": false,
+      "now_us": 39834000,
+      "output_ready": true,
+      "stationary_ready": false
+    },
+    "final_output": {
+      "now_us": 39836000,
+      "speed_mps": 0.0,
+      "blocked": true,
+      "reason": "software_stop",
+      "epoch": [
+        "f27a4ed7d88849fdb2cbb68e1a620353",
+        2
+      ],
+      "last_status_us": 39834000
+    },
+    "stop_confirmed": true
+  },
+  "evaluator": {
+    "abort": "mcu_latched_before_stop: software_stop",
+    "first_latched": {
+      "now_us": 39570000,
+      "state": "ESTOP_LATCHED",
+      "reason": "software_stop"
+    },
+    "request_sim_s": 39.965,
+    "request_clock_ns": 39967000000,
+    "time_limits": [
+      "request time is the evaluator /clock freshly received (two callbacks after a mark) just before the STOP call; nodes receive /clock at different times, so causal order is not proven",
+      "equal microseconds are attributed to the STOP response only for the configured STOP state and reason",
+      "latched status received before the STOP call is still caught by the case-loop abort in wall order"
+    ],
+    "final_mcu": {
+      "v": 1,
+      "boot": "f27a4ed7d88849fdb2cbb68e1a620353",
+      "generation": 3,
+      "state": "ESTOP_LATCHED",
+      "reason": "software_stop",
+      "owner": null,
+      "accepted_seq": -1,
+      "target_speed_mps": 0.0,
+      "steering_rad": 0.0,
+      "left_wheel_mps": null,
+      "right_wheel_mps": null,
+      "mean_wheel_mps": 0.0,
+      "feedback_mode": "drive_motor_shaft",
+      "stationary_scope": "mean_wheel_only_opposite_rotation_unobservable",
+      "feedback_valid": true,
+      "feedback_seq": 4046,
+      "left_ticks": null,
+      "right_ticks": null,
+      "motor_counts": 16144,
+      "feedback_capture_us": 40453000,
+      "deadline_us": null,
+      "estop_held": false,
+      "now_us": 40464000,
+      "output_ready": true,
+      "stationary_ready": true
+    },
+    "final_output": {
+      "now_us": 40464000,
+      "speed_mps": 0.0,
+      "blocked": true,
+      "reason": "software_stop",
+      "epoch": [
+        "f27a4ed7d88849fdb2cbb68e1a620353",
+        3
+      ],
+      "last_status_us": 40464000
+    },
+    "stop_checks": {
+      "model_stop_stable": true,
+      "dense_pose_stop_evidence": true,
+      "explicit_mcu_stop": true,
+      "no_mcu_latch_before_stop": false,
+      "no_deadline_diagnostic": true,
+      "no_wall_collision": true
+    },
+    "stop": {
+      "stable": true,
+      "pose_evidence": {
+        "complete": true,
+        "passed": true,
+        "reason": "covered",
+        "required_first_s": 39.965,
+        "required_last_s": 40.465,
+        "covered_first_s": 39.965,
+        "covered_last_s": 40.465,
+        "segment_count": 250,
+        "maximum_gap_s": 0.0030000000000001137,
+        "maximum_allowed_gap_s": 0.05,
+        "maximum_speed_mps": 0.0007505434991317666
+      },
+      "wait_sim_s": 0.5,
+      "displacement_m": 0.00023004191314439877,
+      "wall_collision_samples": 0
+    },
+    "shutdown_clean": true,
+    "remaining_test_pids": []
+  },
+  "checks": {
+    "same_boot": true,
+    "helper_final_generation": 2,
+    "evaluator_final_generation": 3,
+    "helper_final_status_before_evaluator_clock": true,
+    "dense_stop_first_s": 39.965,
+    "dense_stop_last_s": 40.465,
+    "dense_samples": 251
+  },
+  "interpretation": "owned helper STOP is observed before the evaluator later issues its own STOP; first latch status is not exact request time; retain original pre-evaluator-STOP latch failure"
+}

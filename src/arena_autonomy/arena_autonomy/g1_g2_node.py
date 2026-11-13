@@ -1,5 +1,6 @@
 """G1/G2 전환을 별도 실행 파일에서만 선택한다. 기존 launch의 기본값은 유지한다."""
 from pathlib import Path
+from arena_autonomy.vehicle_marker_channel import snapshot_options
 from dataclasses import asdict, replace
 import math
 import time
@@ -42,22 +43,28 @@ def status_detail(detail):
         result['follow_entry_space'] = {key:detail['follow_entry_space'][key] for key in
             ('applied','reason','rear_axle_to_patch_m','reserve_m','cap_mps',
              'hold_age_s','maximum_age_s','current_front_evidence','bypass_permission') if key in detail['follow_entry_space']}
+    if 'vehicle_marker_occupancy' in detail:
+        result['vehicle_marker_occupancy'] = detail['vehicle_marker_occupancy']
     return freeze(result)
 
 
 class G1G2Node(LocalPursuit):
+    # capability는 입구만 연다. 아래 native2slot/r396 실제 선택 검증은 계속 필수다.
+    estimated_observation_runtime_capable = True
+    metric_marker_runtime_capable = True
     def __init__(self):
         self.decision_delivery = None
         self.decision_notice = None
         self.decision_guard = None
         self.recheck_in_worker = False
         self.current_path_recheck = None
+        self.runtime_dual_selected = False
         super().__init__()
         execution = self.declare_parameter('g1_decision_execution', 'inline').value
         if execution not in ('inline', 'process_candidate'):
             raise ValueError('registered decision execution required')
         submission = self.declare_parameter('g1_submission_policy', 'original_v1').value
-        native_representation = 'native_estimated_v1' if self.hardware_shadow else 'native_simulation_v1'
+        native_representation = 'native_estimated_v1' if self.hardware_inputs else 'native_simulation_v1'
         if submission not in ('original_v1', 'fresh_native_v1'):
             raise ValueError('registered decision submission policy required')
         if submission == 'fresh_native_v1' and (execution != 'process_candidate'
@@ -85,10 +92,24 @@ class G1G2Node(LocalPursuit):
         if self.recheck_in_worker and (execution != 'process_candidate' or submission != 'fresh_native_v1'
                 or recheck != 'selected_v1' or self.follow.config.guard_observation_policy != 'selected_r181'):
             raise ValueError('worker recheck requires process/fresh native/selected observation policy')
+        runtime_policy = self.declare_parameter('g1_runtime_policy', 'off').value
+        from arena_autonomy.runtime_node_backend import validate_selection, validate_corner_selection, observation_options
+        self.runtime_dual_selected = validate_selection(runtime_policy, execution=execution,
+            submission=submission, recheck_in_worker=self.recheck_in_worker,
+            retain_reference=retain_reference, numeric_execution=numeric_execution,
+            hardware_shadow=self.hardware_shadow)
+        self.complete_plan_trace = self.declare_parameter('g1_complete_plan_trace', False).value
+        if self.vehicle_marker_channel.profile is not None and not self.runtime_dual_selected:
+            raise ValueError('metric vehicle markers currently require registered dual plan/current runtime')
+        if self.complete_plan_trace and not self.runtime_dual_selected:
+            raise ValueError('complete plan trace requires the registered runtime policy')
+        validate_corner_selection(self.current_corner_budget, runtime_selected=self.runtime_dual_selected,
+            use_sim_time=self.get_parameter('use_sim_time').value, motion_verified=self.motion.verified,
+            motion_time_policy=self.motion.timing_policy, **observation_options(self))
         if execution == 'process_candidate':
-            if (not (self.get_parameter('use_sim_time').value is True or self.hardware_shadow)
+            if (not (self.get_parameter('use_sim_time').value is True or self.hardware_inputs)
                     or self.settings['control_rate_hz'] != 50.):
-                raise ValueError('process candidate requires simulation or isolated hardware shadow and a 50Hz parent')
+                raise ValueError('process candidate requires simulation or explicit hardware execution and a 50Hz parent')
             from arena_autonomy.decision_process import DecisionProcess
             from arena_autonomy.decision_delivery import DecisionDelivery
             delivery_type = DecisionDelivery
@@ -107,7 +128,17 @@ class G1G2Node(LocalPursuit):
             delivery_options = dict(align_first_source=True)
             if retain_reference:
                 delivery_options['retain_expired_reference'] = True
-            self.decision_delivery = delivery_type(worker_type(header), **delivery_options)
+            if self.runtime_dual_selected:
+                from arena_autonomy.runtime_node_backend import create_delivery
+                self.decision_delivery = create_delivery(self, header)
+                self.follow_trace.emit('runtime_factory_policy', dict(policy=runtime_policy,
+                    backend='runtime_dual_v1', motion_time_policy=self.motion.timing_policy,
+                    motion_timing_verified=self.motion.verified, physical_actuation_verified=False,
+                    source_timestamps_preserved=True, default_changed=False,
+                    **({'current_corner_budget': self.current_corner_budget}
+                       if self.current_corner_budget != 'off' else {})))
+            else:
+                self.decision_delivery = delivery_type(worker_type(header), **delivery_options)
             if self.recheck_in_worker:
                 from arena_autonomy.completion_notice import CompletionNotice
                 self.decision_guard = self.create_guard_condition(self.on_decision_ready)
@@ -119,11 +150,22 @@ class G1G2Node(LocalPursuit):
             if self.hardware_shadow:
                 self.follow_trace.emit('execution_environment', dict(mode='hardware_shadow_v1',
                     use_sim_time=False, drive_output=False, motion_timing_verified=self.motion.verified,
-                    motion_time_policy=getattr(self.motion,'timing_policy','verified_only')))
+                    **({'motion_time_policy': self.motion.timing_policy}
+                       if getattr(self.motion,'timing_policy','verified_only') != 'verified_only' else {})))
+            if self.hardware_runtime:
+                self.follow_trace.emit('execution_environment', dict(mode=self.execution_environment,
+                    use_sim_time=False, motion_timing_verified=False,
+                    motion_time_policy=self.motion.timing_policy,
+                    command_requires_independent_guard=True, physical_actuation_verified=False))
             if submission == 'fresh_native_v1':
-                self.follow_trace.emit('decision_submission_policy', dict(policy=submission,
-                    completion_window_s=FreshStartDelivery.completion_window_s,
-                    evaluation_delay_injection=False, source_timestamps_preserved=True))
+                if self.runtime_dual_selected:
+                    self.follow_trace.emit('decision_submission_policy', dict(policy='runtime_dual_latest_v1',
+                        minimum_reference_interval_s=.1, scan_timeout_s=.3, command_timeout_s=.2,
+                        evaluation_delay_injection=False, source_timestamps_preserved=True))
+                else:
+                    self.follow_trace.emit('decision_submission_policy', dict(policy=submission,
+                        completion_window_s=FreshStartDelivery.completion_window_s,
+                        evaluation_delay_injection=False, source_timestamps_preserved=True))
             if self.current_path_recheck is not None:
                 self.follow_trace.emit('current_path_recheck_policy', dict(policy=recheck,
                     independent_guard_required=True, evaluation_delay_injection=False,
@@ -150,6 +192,9 @@ class G1G2Node(LocalPursuit):
         super().stop()
 
     def control(self):
+        if getattr(self, 'runtime_dual_selected', False):
+            from arena_autonomy.runtime_node_backend import control
+            return control(self, super().control)
         delivery = self.decision_delivery
         if delivery is None:
             return super().control()
@@ -213,8 +258,11 @@ class G1G2Node(LocalPursuit):
         return super().destroy_node()
 
     def create_follow_trace(self, trace_path):
+        self.current_corner_budget = self.declare_parameter('g1_current_corner_budget', 'off').value
+        if type(self.current_corner_budget) is not str or self.current_corner_budget not in ('off', 'r396_v1'):
+            raise ValueError('registered current corner budget required')
         enabled = self.declare_parameter('g1_g2_simulation_trial',False).value
-        if enabled is not True or not (self.get_parameter('use_sim_time').value is True or self.hardware_shadow):
+        if enabled is not True or not (self.get_parameter('use_sim_time').value is True or self.hardware_inputs):
             raise ValueError('G1/G2 handoff requires explicit trial activation and a registered execution environment')
         # 기본은 기존 즉시 준비 감속이다. 새 관측 근거 조건은 이름으로 명시할 때만 쓴다.
         policy = self.declare_parameter('g1_g2_preparation_policy','front_patch_v0').value
@@ -275,7 +323,9 @@ class G1G2Node(LocalPursuit):
                                          rear_wall_witness=wall_witness)),
             allow_simulation_trial=True)
         trace = FollowTrace(trace_path,self.motion.history.config,self.follow.config,
-            mode='g1_g2_handoff_trial',execution_config=self.follow.execution)
+            mode='g1_g2_handoff_trial',execution_config=self.follow.execution,
+            current_corner_budget=self.current_corner_budget,
+            observation_input_scope=getattr(self, 'observation_input_scope', 'verified_native_simulation_v1'))
         self.get_logger().info('G1/G2 sensor handoff trial (preparation '+policy+'); /drive through independent safety')
         return trace
 
@@ -296,7 +346,8 @@ class G1G2Node(LocalPursuit):
                 current = snapshot_call(self.scan, self.motion.history, now, self.motion.counts['resets'],
                     speed, self.side, self.last_steering, self.decision_output_dt_s,
                     self.motion.verified, self.rear_blind_half_angle,
-                    timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'))
+                    timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'),
+                    **snapshot_options(self, now))
                 self.decision_delivery.offer_recheck(current)
                 return None
             # 출력과 적용 여부를 분리한다. 버린 결과도 실제 계산/재생 증거로 보존한다.
@@ -327,7 +378,8 @@ class G1G2Node(LocalPursuit):
                 current = snapshot_call(self.scan, self.motion.history, now, self.motion.counts['resets'],
                     speed, self.side, self.last_steering, self.decision_output_dt_s,
                     self.motion.verified, self.rear_blind_half_angle,
-                    timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'))
+                    timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'),
+                    **snapshot_options(self, now))
                 try:
                     scene = motion_scene(self.scan, self.motion.history, now,
                         timing_verified=self.motion.verified, epoch=self.motion.counts['resets'],

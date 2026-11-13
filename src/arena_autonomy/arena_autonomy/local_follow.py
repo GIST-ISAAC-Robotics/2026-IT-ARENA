@@ -54,6 +54,10 @@ class FollowConfig:
     boundary_evidence_mode: str = 'connected'
     occupancy_timing_mode: str = 'oldest'
     wheelbase_m: float = .135
+    # 옛 trace에 필드가 없으면 당시 측방 기본 기하를 유지한다.
+    track_m: float = .135
+    wheel_radius_m: float = .0325
+    wheel_width_m: float = .012
     length_m: float = .20
     width_m: float = .15
     wall_offset_m: float = .425
@@ -88,8 +92,13 @@ class FollowConfig:
     resume_clearance_m: float = .28
     headway_s: float = .8
     confirmations: int = 2
+    crop_edge_component_trial: bool = False  # 명시 verified native 시뮬 경계 성분 후보.
 
     def __post_init__(self):
+        for name in ('track_m', 'wheel_radius_m', 'wheel_width_m'):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+                raise ValueError(name + ' must be finite and positive')
         if (type(self.expiry_route_reference_trial) is not bool or
                 (self.expiry_route_reference_trial and not self.junction_continuity)):
             raise ValueError('expiry route reference requires junction continuity')
@@ -174,6 +183,9 @@ class FollowConfig:
             raise ValueError('unsupported G1 partial observation policy')
         if self.partial_observation_policy != 'strict' and (self.recent_observation_enabled or self.max_speed_mps>1.):
             raise ValueError('G1 partial observation requires <=1 m/s and no recent observation candidate')
+        from arena_autonomy.crop_edge_selection import validate_policy_selection
+        validate_policy_selection(self.crop_edge_component_trial, self.partial_observation_policy,
+                                  self.traffic_recovery_trial)
         from arena_autonomy.known_structure import validate as validate_structure
         validate_structure(self.known_structure_policy, self.known_structure_sectors_json)
         if self.known_structure_policy != 'off' and self.partial_observation_policy != 'bounded_local_v4':
@@ -207,7 +219,7 @@ class FollowConfig:
         if type(self.narrow_occluder_bridge) is not bool or type(self.junction_continuity) is not bool:
             raise ValueError('narrow occluder bridge and junction continuity must be bool')
         if any(isinstance(v, bool) or not math.isfinite(v) or v <= 0 for k, v in vars(self).items()
-               if k not in ('expiry_route_reference_trial', 'released_body_gap_trial', 'guard_observation_policy', 'traffic_boundary_refresh_trial', 'solo_corner_approach_trial', 'oblique_gap_trial', 'piecewise_wall_trial', 'solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'narrow_occluder_bridge', 'junction_continuity', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
+               if k not in ('crop_edge_component_trial', 'expiry_route_reference_trial', 'released_body_gap_trial', 'guard_observation_policy', 'traffic_boundary_refresh_trial', 'solo_corner_approach_trial', 'oblique_gap_trial', 'piecewise_wall_trial', 'solo_straight_budget_trial', 'known_structure_policy', 'known_structure_sectors_json', 'current_lane_preference_trial', 'current_lane_headroom_mps', 'side_departure_trial', 'standing_wall_reacquire', 'narrow_occluder_bridge', 'junction_continuity', 'static_side_release_trial', 'corridor_arc_agreement', 'ray_wall_continuity', 'solo_route_only', 'signed_motion_policy', 'open_route_speed_mps', 'blend_open_speed_by_length', 'preview_turn_speed', 'preview_above_base_speed', 'boundary_bridge', 'low_speed_arc_reacquire', 'boundary_evidence_mode', 'occupancy_timing_mode', 'corridor_fallback_enabled', 'short_boundary_prefix_enabled', 'recent_observation_enabled', 'partial_observation_policy', 'parallel_hold_trial', 'pass_release_trial', 'guard_curve_trial', 'traffic_recovery_trial', 'released_rear_sweep_trial', 'traffic_path_recovery_trial', 'rear_lane_keep_trial', 'rear_lane_keep_policy')):
             raise ValueError('follow configuration must be finite and positive')
         if (type(self.corridor_fallback_enabled) is not bool or
                 (self.corridor_fallback_enabled and (self.boundary_evidence_mode != 'corner_distance_candidate' or
@@ -485,7 +497,8 @@ class LocalFollow:
             self.partial_policy = PartialObservationPolicy(allow_narrow_forward=True,
                 surface_translation_enabled=self.config.partial_observation_policy in ('bounded_local_v3','bounded_local_v4'),
                 lateral_metric_enabled=self.config.partial_observation_policy=='bounded_local_v4',
-                oblique_metric_enabled=self.config.oblique_gap_trial and self.config.solo_route_only)
+                oblique_metric_enabled=self.config.oblique_gap_trial and self.config.solo_route_only,
+                crop_edge_component_trial=self.config.crop_edge_component_trial)
         self.observation_cache = None
         if self.config.recent_observation_enabled:
             from arena_autonomy.observation_support import RecentScenes
@@ -649,6 +662,13 @@ class LocalFollow:
         finally:
             self.structure_explained_now=None
         cfg=self.config
+        # 명시 r474 운용은 현재 경로/원시 점유/제동 계산을 먼저 결정한다.
+        # 양수 후보를 다시 lateral 결측 폭이나 저속시험 범위 때문에 정지시키지
+        # 않는다. 원시 ray/free·경로가 없을 때의 정지·기존 partial 상태는 바꾸지 않는다.
+        from arena_autonomy.race_runtime_policy.current_route_priority import observed_command
+        current_route=observed_command(cfg,scene,output,raw_scan,history.config.lidar_yaw_rad)
+        # 선택은 먼저 정하지만 아래 관측기의 기존 기억 갱신은 매번 유지한다.
+        # 이를 생략하면 다음 memory 경로에서 오래된 점의 transport가 실패한다.
         # 경로의 큰 요청을 관측 관문에서 거절한 뒤 대기/재출발을 반복하지 않도록
         # 먼저 기존 저속 후보를 선택한다. 측정속도·기억·독립 보호 판정은 그대로다.
         original_oblique = self.partial_policy.oblique_metric_enabled
@@ -668,6 +688,8 @@ class LocalFollow:
                 cfg.wheelbase_m,cfg.length_m,cfg.width_m)
         finally:
             self.partial_policy.oblique_metric_enabled = original_oblique
+        if current_route is not None:
+            return current_route
         detail={**output[2],**detail,'partial_observation':observation}
         # raw 기준 밖 결측이 운동 변환 뒤 전방으로 들어온 경우를 몰래 허용하지 않는다.
         from arena_autonomy.scan_input import scan_angles
@@ -851,6 +873,16 @@ class LocalFollow:
                         eligible = match is not None
                         if match == 'shared_arc':
                             detail['boundary_history_agreement'] = 'current_corner_arc'
+                    elif (eligible and cfg.junction_continuity and cfg.expiry_route_reference_trial
+                            and cfg.piecewise_wall_trial and self.path_wall == side
+                            and info.get('wall_model') == 'piecewise_corner'):
+                        # 동일 벽의 충분한 현재 관측과 유효 이력만 비교한다. 코너 출구의
+                        # x 창 길이 차이로 갱신을 놓치지 않게 기존 호길이 비교를 재사용한다.
+                        # 초기/만료 경로 획득, 벽 전환, TTL과 이후 점유 검사는 그대로다.
+                        eligible = path_agrees(candidate, carried, cfg.boundary_agreement_m)
+                        if not eligible and path_agrees_arc(candidate, carried, cfg.boundary_agreement_m):
+                            eligible = True
+                            detail['boundary_history_agreement'] = 'current_same_wall_corner_arc'
                     else:
                         eligible = eligible and path_agrees(candidate, carried, cfg.boundary_agreement_m)
                     if not eligible:
@@ -1157,6 +1189,9 @@ class LocalFollow:
             clearance = min(swept_limit(points, angle, cfg.wheelbase_m, horizon=max(2.5,horizon) if open_route else 2.5, margin=margin,
                                          length=cfg.length_m, width=cfg.width_m)
                             for angle in (steering, previous_steering))
+            from arena_autonomy.vehicle_marker_occupancy import additional_clearance
+            clearance = additional_clearance(clearance, steering, previous_steering, cfg,
+                horizon=max(2.5,horizon) if open_route else 2.5)
             available = max(0., clearance-cfg.standstill_gap_m)
             target = min(cap, braking_speed(available, age), available/cfg.headway_s)
             detail.update(path_source_s=self.path_source, boundary_age_s=memory_age,

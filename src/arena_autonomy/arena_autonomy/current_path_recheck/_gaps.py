@@ -11,13 +11,13 @@ from arena_autonomy.known_structure import sector_rays
 from arena_autonomy.scan_input import scan_angles
 
 
-def bounded_body_nonreturn(scene,raw_scan,queries,padding,length,width,speed,target):
+def bounded_body_nonreturn(scene,raw_scan,queries,padding,length,width,speed,target,*,relative_neighbor=False):
     result=dict(accepted=False,reason='invalid_input',unknown_filled=False,
         residual_hidden_object_risk=True,maximum_exterior_m=.01,
         maximum_gap_rad=math.radians(6),minimum_neighbor_range_m=.6,
         maximum_local_chord_m=.05,policy='guard_low_speed_body_nonreturn_r136')
     def reject(reason):return {**result,'reason':reason}
-    if (raw_scan is None or not source_valid(scene)
+    if (type(relative_neighbor) is not bool or raw_scan is None or not source_valid(scene)
             or any(isinstance(x,bool) or not isinstance(x,(int,float)) or not math.isfinite(x)
                    for x in (length,width,speed,target))
             or length<=0 or width<=0 or not 0<=speed<=.35 or not 0<target<=.35):
@@ -30,6 +30,23 @@ def bounded_body_nonreturn(scene,raw_scan,queries,padding,length,width,speed,tar
     result.update(queries=len(q),exterior_max_m=float(exterior.max()))
     if np.any(abs(q[:,0])>length/2) or np.any(exterior<=0) or np.any(exterior>.01):
         return reject('outside_small_body_side')
+    if relative_neighbor:
+        # 명시 선택: 모든 이동 질의와 모든 광선 원점을 포함하는 반경에 기존
+        # 시간/거리/물체 운동 padding의 최댓값을 더한다. 이웃이 이 범위 밖에
+        # 있는지 확인하며, 고정 0.6m를 작은 다른 상수로 교체하지 않는다.
+        # 근접 실제 점유·최대 공백·전방 제외·차체 옆 1cm 조건은 그대로다.
+        if not 0<=speed<=.15 or not 0<target<=.10:
+            return reject('relative_neighbor_speed_outside_scope')
+        origins=np.asarray([r.ray_origin_xy_m for r in scene.rays],dtype=float)
+        if not len(origins) or not np.all(np.isfinite(origins)):
+            return reject('invalid_ray_origins')
+        reach=float(np.max(np.linalg.norm(q[:,None,:]-origins[None,:,:],axis=2)))
+        minimum=reach+float(pad.max())
+        if not math.isfinite(minimum) or minimum<=0:
+            return reject('invalid_relative_neighbor_range')
+        result.update(policy='guard_relative_body_nonreturn_v1',minimum_neighbor_range_m=minimum,
+                      query_reach_m=reach,maximum_padding_m=float(pad.max()),
+                      maximum_speed_mps=.15,maximum_target_mps=.10)
     checked=_bounded_nonreturn(scene,raw_scan,q,pad,result)
     if not checked['accepted']:return checked
     chords=[]
@@ -41,7 +58,8 @@ def bounded_body_nonreturn(scene,raw_scan,queries,padding,length,width,speed,tar
         chord=2*(radius+float(pad.max()))*math.sin(gap['gap_rad']/2)
         chords.append(chord)
         if chord>.05:return {**checked,'accepted':False,'reason':'wide_local_gap','maximum_chord_m':chord}
-    return {**checked,'reason':'bounded_low_speed_body_nonreturn_risk','maximum_chord_m':max(chords)}
+    reason='bounded_relative_body_nonreturn_risk' if relative_neighbor else 'bounded_low_speed_body_nonreturn_risk'
+    return {**checked,'reason':reason,'maximum_chord_m':max(chords)}
 
 
 def bounded_adjacent_structure(scene,raw_scan,queries,padding,length,width,speed,target,sectors):

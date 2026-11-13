@@ -104,6 +104,7 @@ def lateral_config(follow_config):
     c = follow_config
     return LateralIntentConfig(enabled=True, surface_policy='two_wheel_grass', wheelbase_m=c.wheelbase_m,
                                length_m=c.length_m, width_m=c.width_m, max_steering_rad=c.max_steering_rad,
+                               track_m=c.track_m, wheel_radius_m=c.wheel_radius_m, wheel_width_m=c.wheel_width_m,
                                road_half_m=c.road_half_m)
 
 
@@ -133,10 +134,13 @@ def threat_view(scene, path_points, cfg):
 
 
 
-def observed_guard_approach(frame, context, guarded_sides, rejected_sides):
+def observed_guard_approach(frame, context, guarded_sides, rejected_sides, *, region=None, selector_config=None,
+                            length_m=None, width_m=None):
     """옆차 쪽으로 추가 접근하는 모든 이동 표본의 현재 관측을 요구한다.
 
-    과거 횡위치 초과의 대안 근거이며 미관측/장착 마스크는 통과시키지 않는다.
+    옵션 없는 기존 호출은 모든 접근 표본의 현재 자유 관측을 요구한다.
+    명시한 현재 region/config가 같은 표본의 제한된 자기 가림을 허용한 경우에만
+    그 가림을 별도 위험으로 센다. 자유 관측으로 바꾸거나 얇은 숨은 물체의 부재를 보증하지 않는다.
     context의 free는 원시 반환과 기존 거리/시간 여유를 적용한 depth_support다.
     """
     evidence = {'accepted': False, 'unknown_filled': False, 'sides': {}}
@@ -145,6 +149,26 @@ def observed_guard_approach(frame, context, guarded_sides, rejected_sides):
     queries = context['queries']
     if not len(queries):
         return evidence
+    bounded = False
+    explicit = region is not None or selector_config is not None
+    masked = context.get('masked') if explicit else None
+    if explicit and masked is None:
+        masked = np.zeros(len(queries), dtype=bool)
+    if region is not None and selector_config is not None:
+        tail = region.get('masked_tail_extent_m')
+        bounded = (region.get('queries') == len(queries)
+            and region.get('unobserved') == 0 and region.get('masked_front_samples') == 0
+            and isinstance(tail, (int, float)) and not isinstance(tail, bool) and math.isfinite(tail)
+            and 0 <= tail <= selector_config.masked_tail_allowance_m
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) and v > 0
+                    for v in (length_m, width_m))
+            and masked.shape == context['free'].shape == (len(queries),)
+            and not np.any(~context['free'] & ~masked)
+            and region.get('masked_left', 0) + region.get('masked_right', 0) == int(np.count_nonzero(masked))
+            and region_blocked(region, selector_config) is None)
+    if explicit:
+        evidence.update(bounded_mask_eligible=bool(bounded), residual_hidden_object_risk=False,
+                        basis='observed')
     _, lateral = frame.project(queries)
     for name in rejected_sides:
         sign = 1. if name == 'left' else -1.
@@ -152,7 +176,37 @@ def observed_guard_approach(frame, context, guarded_sides, rejected_sides):
         count = int(np.count_nonzero(beyond))
         free = int(np.count_nonzero(context['free'][beyond]))
         evidence['sides'][name] = {'samples': count, 'currently_observed': free}
-        if count == 0 or free != count:
+        bounded_count = 0
+        mask_span = None
+        before_mask = after_mask = 0
+        if bounded:
+            failed_mask = beyond & masked & ~context['free']
+            points = queries[failed_mask]
+            if len(points):
+                # 앞/뒤 돌출을 포함하지 않는 현재 차체 옆면의 작은 띠만 허용한다.
+                # .05m는 known_structure의 허용 가림 폭을 종방향 span 상한으로
+                # 보수적으로 재사용한 값이며, 연속 관측이나 물체 부재 보증이 아니다.
+                from arena_autonomy.known_structure import ACCEPTED_HIDDEN_WIDTH_M
+                exterior = np.abs(points[:, 1]) - width_m/2
+                mask_span = float(np.ptp(points[:, 0]))
+                free_x = queries[beyond & context['free'], 0]
+                before_mask = int(np.count_nonzero(free_x < np.min(points[:, 0])))
+                after_mask = int(np.count_nonzero(free_x > np.max(points[:, 0])))
+                if (np.all(np.isfinite(points)) and np.all(np.abs(points[:, 0]) <= length_m/2)
+                        and np.all((exterior >= 0) & (exterior <= selector_config.masked_tail_allowance_m))
+                        and mask_span <= ACCEPTED_HIDDEN_WIDTH_M):
+                    bounded_count = len(points)
+        if explicit:
+            known_count = int(np.count_nonzero(masked[beyond] & ~context['free'][beyond]))
+            evidence['sides'][name].update(known_masked=known_count, bounded_mask=bounded_count,
+                unaccepted_masked=known_count-bounded_count, unknown=count-free-known_count)
+            if mask_span is not None:
+                evidence['sides'][name].update(masked_x_span_m=mask_span,
+                    observed_before_mask=before_mask, observed_after_mask=after_mask)
+            evidence['residual_hidden_object_risk'] |= bounded_count > 0
+            if bounded_count:
+                evidence['basis'] = 'observed_with_mask_budget'
+        if free == 0 or free + bounded_count != count:
             return evidence
     evidence['accepted'] = True
     return evidence
@@ -172,10 +226,11 @@ def band_check(scene, frame, sign, cfg, sel, longitudinal=None):
     if not len(q):
         return {'free': False, 'samples': 0, 'observed_free': 0, 'masked': 0, 'unobserved': 0}
     pad = mx.ray_padding(scene, cfg, .5)
-    free = depth_support(scene, q, pad)
+    classified = depth_and_masked_support(scene, q, pad)
+    free = depth_support(scene, q, pad) if classified is None else classified[0]
     masked = np.zeros(len(q), dtype=bool)
     if np.any(~free):
-        masked[~free] = mx.masked_only(scene, q[~free], pad)
+        masked[~free] = mx.masked_only(scene, q[~free], pad) if classified is None else classified[1][~free]
     unobserved = ~free & ~masked
     return {'free': bool(np.any(free)) and not bool(np.any(unobserved)), 'samples': int(len(q)), 'observed_free': int(free.sum()),
             'masked': int(masked.sum()), 'unobserved': int(unobserved.sum())}
@@ -535,7 +590,10 @@ class PassReleaseSelector:
                 _, queries = motion_queries(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
                 pad = mx.ray_padding(scene, self.lat, self.follow_config.object_motion_bound_mps)
                 context = {'queries': queries, 'free': depth_support(scene, queries, pad)}
-            approach = observed_guard_approach(view['frame'], context, info['guarded_sides'], rejected_sides)
+            approach = observed_guard_approach(view['frame'], context, info['guarded_sides'], rejected_sides,
+                **(dict(region=region, selector_config=self.config, length_m=self.follow_config.length_m,
+                        width_m=self.follow_config.width_m) if self.follow_config.traffic_recovery_trial
+                        and self.follow_config.guard_observation_policy == 'selected_r181' else {}))
             info['current_approach'] = approach
             if not approach['accepted']:
                 return reject(f'toward_{rejected_sides[0]}')
@@ -545,7 +603,9 @@ class PassReleaseSelector:
                   'guard_curve_bounded_same_path_gap' if same['accepted'] else
                   'guard_curve_observed_motion_small_masked_tail' if small_tail else 'guard_curve_observed_motion')
         if rejected_sides:
-            reason = 'guard_curve_current_approach_observed'
+            reason = ('guard_curve_current_approach_observed_with_mask_budget'
+                      if approach.get('basis') == 'observed_with_mask_budget'
+                      else 'guard_curve_current_approach_observed')
         risk_detail = ({'selector_same_path_gap_risk_accepted': same['accepted']}
                        if self.follow_config.traffic_recovery_trial else {})
         return target, b_steer, {**b_detail, **detail, 'selector_choice': 'guard_baseline', 'selector_reason': reason,
@@ -659,6 +719,10 @@ class PassReleaseSelector:
                 return self._hold(previous, detail, 'baseline_not_normal_positive_blocked')
             return chosen[0], chosen[1], {**chosen[2], **detail, 'selector_reason': 'baseline_not_normal',
                                           'selector_choice': 'baseline' if mode == 'SOLO' else 'parallel'}
+        from arena_autonomy.race_runtime_policy.current_route_priority import select
+        current_route = select(c, scene, baseline, view, detail)
+        if current_route is not None:
+            return current_route
         if mode == 'SOLO':
             departure = (parallel[2].get('parallel_hold_trial') or {}).get('side_departure') or {}
             if (c.side_departure_trial and b_speed <= 0 < parallel[0]
@@ -715,7 +779,20 @@ class PassReleaseSelector:
             context.clear()
             region = motion_region(scene, speed, b_speed, b_steer, previous, dt,
                                    self.follow_config, self.lat, context=context)
-        if self.follow_config.traffic_recovery_trial and not retained:
+        structure = None
+        # 통과 이력이 남아도 같은 차체 구조 가림을 단독 주행과 다른 1 cm
+        # 횡이동 한계로 재차 막지 않는다. 현재 점유/숨은 기억은 baseline 및
+        # 독립 보호에서 유지하고, 이력과 retained의 기존 속도 상한도 보존한다.
+        if (region_blocked(region, self.config) in
+                ('large_motion_masked_toward_left', 'large_motion_masked_toward_right')
+                and not any(s['present'] for s in self.sides.values())):
+            from arena_autonomy.structure_region import released_structure_region
+            structure = released_structure_region(scene, raw_scan, region, context,
+                                                   self.follow_config, partial)
+            if structure.get('reason') != 'outside_released_structure_scope':
+                detail['selector_structure_risk'] = structure
+        if (self.follow_config.traffic_recovery_trial and not retained
+                and not (structure or {}).get('accepted')):
             from arena_autonomy.masked_motion_speed import lower_masked_motion
             def evaluate_reduced_target(target):
                 reduced_context = {}
@@ -755,11 +832,15 @@ class PassReleaseSelector:
                 detail['selector_released_rear_sweep_risk_accepted'] = bool((detail.get('selector_released_rear_sweep') or {}).get('accepted'))
             detail['selector_same_path_gap_risk_accepted'] = same['accepted']
         blocked = region_blocked(region, self.config, bounded_unknown_risk=fringe['accepted'] or same['accepted'])
+        if ((structure or {}).get('accepted') and blocked in
+                ('large_motion_masked_toward_left', 'large_motion_masked_toward_right')):
+            blocked = None
         if blocked is None:
             small_tail=bool(region['masked_left'] or region['masked_right'])
             return b_speed, b_steer, {**b_detail, **detail, 'selector_choice': 'baseline',
                 'selector_masked_tail_risk_accepted':small_tail,
-                'selector_reason':'released_masked_motion_speed_limited' if detail.get('selector_masked_speed_recheck',{}).get('applied') else
+                'selector_reason':'released_declared_structure_motion' if (structure or {}).get('accepted') else
+                                  'released_masked_motion_speed_limited' if detail.get('selector_masked_speed_recheck',{}).get('applied') else
                                   'released_bounded_rear_sweep' if fringe.get('policy') in ('released_low_speed_rear_sweep_v1','released_low_speed_body_fringe_v2') and fringe['accepted'] else
                                   'released_bounded_rear_fringe' if fringe['accepted'] else
                                   'released_bounded_same_path_gap' if same['accepted'] else

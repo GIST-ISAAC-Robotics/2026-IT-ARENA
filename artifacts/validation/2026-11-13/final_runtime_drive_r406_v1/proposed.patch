@@ -1,0 +1,24 @@
+--- a/src/arena_bringup/launch/simulation.launch.py
++++ b/src/arena_bringup/launch/simulation.launch.py
+@@ -1549,6 +1549,8 @@
+                                           p22_entry_trial=p22_trial)
+         controller_parameters = {
+             **planning_geometry,
++            "g1_runtime_policy": LaunchConfiguration("g1_runtime_policy").perform(context),
++            "g1_current_corner_budget": LaunchConfiguration("g1_current_corner_budget").perform(context),
+             "use_sim_time": True,
+             "timing_probe": LaunchConfiguration('timing_probe').perform(context) == 'true',
+             **speed_profile,
+@@ -1723,6 +1725,12 @@
+             DeclareLaunchArgument("lidar_source_rate_hz", default_value="500", choices=["500", "1000"],
+                                   description="순차 취득의 내부 광선 계산 주기; C1 회전 주기 아님"),
+             DeclareLaunchArgument("autonomy", default_value="false", description="RGB 출발 신호 + 선택한 센서의 본선 벽 추종"),
++            DeclareLaunchArgument('g1_runtime_policy', default_value='off',
++                                  choices=['off', 'cad_runtime_r377_v1'],
++                                  description='명시 두 계산 정책; process/fresh/worker/native 조건은 노드가 검사'),
++            DeclareLaunchArgument('g1_current_corner_budget', default_value='off',
++                                  choices=['off', 'r396_v1'],
++                                  description='명시 현재 코너 거리·성분 후보; verified simulation 전용'),
+             DeclareLaunchArgument(
+                 "autonomy_mode", default_value="lidar", choices=list(AUTONOMY_MODES),
+                 description="lidar: C1+ToF6, stereo: 전방 D435i 깊이+측면 ToF4 개인 비교안",

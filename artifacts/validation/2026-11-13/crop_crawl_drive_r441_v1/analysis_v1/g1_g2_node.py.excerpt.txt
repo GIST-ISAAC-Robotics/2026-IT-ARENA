@@ -1,0 +1,9 @@
+340:             # 출력과 적용 여부를 분리한다. 버린 결과도 실제 계산/재생 증거로 보존한다.
+341:             evidence = dict(input=item['input'], output=item['result']['output'],
+342:                 delivery={k:v for k,v in item.items() if k not in ('input','result','output','recheck_input','recheck_result')},
+343:                 compute={k:v for k,v in item['result'].items() if k != 'output'})
+344:             checked = item.get('recheck_result')
+345:             if checked is not None:
+346:                 evidence['current_rebase'] = dict(input=item['recheck_input'], output=checked['output'],
+347:                     computation_wall_ms=1000*(checked['completed_wall_s']-checked['began_wall_s']),
+348:                     compute={k:v for k,v in checked.items() if k != 'output'})

@@ -67,3 +67,32 @@ def test_sentinel_and_invalid_native_input():
     assert backend.support_classes(q,np.array([[2,2]]),origins,directions,indices,status,depth,padding,None)[0]==0
     with pytest.raises(ValueError,match='index outside'):
         backend.support_classes(q,np.array([[-1,1]]),origins,directions,indices,status,depth,padding,None)
+
+
+@pytest.mark.parametrize('mode',['python','native_v1'])
+def test_common_band_uses_shared_classification_without_changing_mask_semantics(monkeypatch,mode):
+    from arena_autonomy import pass_release_trial as ps
+    from arena_autonomy.local_follow import FollowConfig
+    class Frame:
+        def project(self,q):
+            return q[:,0],q[:,1]
+    count=508
+    angles=-(-math.pi+np.arange(count)*math.tau/count)
+    ranges=np.full(count,3.);ranges[::23]=np.inf;ranges[::71]=np.nan;ranges[::53]=.08
+    scene=scene_from_measurements(ranges,angles_rad=angles,
+        acquired_at_s=np.linspace(.8,.9,count),t_ref_s=1.,range_min=.05,range_max=12.,
+        rear_half_angle_deg={'sectors_deg':[[170,12],[-90,5]]},preserve_sampling=True)
+    cfg,sel=ps.lateral_config(FollowConfig()),ps.SelectorConfig()
+    backend.configure(mode)
+    original=ps.depth_and_masked_support
+    calls=[]
+    def shared(*args):
+        result=original(*args);calls.append(result is not None);return result
+    for sign in (-1.,1.):
+        for longitudinal in (None,(-cfg.band_behind_m,cfg.band_ahead_m)):
+            monkeypatch.setattr(ps,'depth_and_masked_support',lambda *args:None)
+            expected=ps.band_check(scene,Frame(),sign,cfg,sel,longitudinal)
+            monkeypatch.setattr(ps,'depth_and_masked_support',shared)
+            actual=ps.band_check(scene,Frame(),sign,cfg,sel,longitudinal)
+            assert actual==expected
+    assert calls==[mode=='native_v1']*4

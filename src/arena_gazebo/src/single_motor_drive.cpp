@@ -1,5 +1,6 @@
 #include "arena_gazebo/command_trace.hpp"
 #include "arena_gazebo/drivetrain.hpp"
+#include "cad_steering_table.hpp"
 #include "arena_gazebo/scheduled_apply.hpp"
 
 #include <chrono>
@@ -56,6 +57,16 @@ public:
     wheelbase = get("wheelbase", 0.135);  // SDF 누락 시 대체값. 실행값은 vehicle.yaml 주입
     track = get("track_width", 0.135);
     wheelLimit = get("steering_limit", 0.45);
+    steeringModel = sdf->Get<std::string>("steering_model", "ideal_ackermann").first;
+    if (steeringModel != "ideal_ackermann" && steeringModel != "fusion_cad_2026_11_13")
+      throw std::invalid_argument("unknown steering model");
+    if (steeringModel == "fusion_cad_2026_11_13") {
+      if (std::abs(wheelbase-.128)>1e-6 || std::abs(track-.1239)>1e-6)
+        throw std::invalid_argument("CAD steering requires final geometry");
+      cadMapping = std::make_unique<arena_steering::CadMapping>(
+        arena_steering::kCadSamples,arena_steering::kCadSampleCount);
+      if (!cadMapping->valid()) throw std::invalid_argument("invalid CAD steering table");
+    }
     servoGain = get("steering_gain", 0.40);
     servoIntegralGain = get("steering_integral_gain", 0.25);
     servoDamping = get("steering_velocity_gain", 0.003);
@@ -201,7 +212,12 @@ public:
     }
     gz::sim::Joint(joints[0]).SetForce(ecm, {state.leftTorque});
     gz::sim::Joint(joints[1]).SetForce(ecm, {state.rightTorque});
-    const auto angles = SteeringAngles(steering, wheelbase, track, wheelLimit);
+    auto angles = SteeringAngles(steering, wheelbase, track, wheelLimit);
+    if (cadMapping) {
+      cadGoal = cadMapping->central(steering, wheelbase, track, wheelLimit);
+      if (!cadGoal.valid) throw std::runtime_error("invalid CAD steering target");
+      angles = {cadGoal.left_rad, cadGoal.right_rad};
+    }
     double efforts[2]{};
     for (int index = 0; index != 2; ++index)
     {
@@ -308,6 +324,12 @@ public:
       << ",\"truth_roll_rad\":" << worldPose.Rot().Roll()
       << ",\"truth_pitch_rad\":" << worldPose.Rot().Pitch()
       << ",\"truth_yaw_rad\":" << worldPose.Rot().Yaw()
+      << ",\"steering_model\":\"" << steeringModel << "\""
+      << ",\"cad_table_sha256\":\"" << (cadMapping?arena_steering::kCadSha256:"") << "\""
+      << ",\"cad_hardware_measured\":false"
+      << ",\"cad_relative_target_rad\":" << cadGoal.servo_rad
+      << ",\"cad_equivalent_target_rad\":" << cadGoal.equivalent_rad
+      << ",\"cad_target_clamped\":" << (cadGoal.clamped?"true":"false")
       << ",\"truth_longitudinal_mps\":" << localVelocity.X()
       << ",\"truth_lateral_mps\":" << localVelocity.Y()
       << ",\"truth_yaw_rate_rad_s\":" << angular.Z()
@@ -332,6 +354,9 @@ private:
   double zeroPositiveWork{};
   uint64_t zeroPositivePowerSteps{}, zeroSteps{};
   std::unique_ptr<SingleMotor> motor;
+  std::string steeringModel="ideal_ackermann";
+  std::unique_ptr<arena_steering::CadMapping> cadMapping;
+  arena_steering::CadGoal cadGoal;
   gz::transport::Node transport;
   gz::transport::Node::Publisher telemetry, odometry, transform;
   std::vector<gz::sim::Entity> joints;

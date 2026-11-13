@@ -1,0 +1,111 @@
+..................................................................................................................................................................F................FProcess SpawnProcess-1:
+FProcess SpawnProcess-2:
+F.
+=================================== FAILURES ===================================
+____________ test_old_header_defaults_and_selected_config_roundtrip ____________
+
+    def test_old_header_defaults_and_selected_config_roundtrip():
+        old = header(None)
+        follow, motion = make_controller(old)
+        expected = dict(old['follow_config'], crop_edge_component_trial=False)
+        assert asdict(follow.config) == expected
+>       assert not hasattr(follow.partial_policy, 'crop_edge_component_trial')
+E       AttributeError: 'BypassHandoffFollow' object has no attribute 'partial_policy'
+
+artifacts/validation/2026-11-13/crop_edge_runtime_r417_v1/test_crop_edge_runtime.py:56: AttributeError
+___________ test_independent_policy_state_and_raw_snapshot_roundtrip ___________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-0/test_independent_policy_state_0')
+
+    def test_independent_policy_state_and_raw_snapshot_roundtrip(tmp_path):
+        from arena_autonomy.lidar_motion import MotionHistory
+        from arena_autonomy.scan_input import project_scan
+        from arena_autonomy.follow_trace import snapshot_call, restore_call, freeze, FollowTrace
+        one, motion = make_controller(header()); two, _ = make_controller(header())
+>       assert one.partial_policy is not two.partial_policy
+E       AttributeError: 'BypassHandoffFollow' object has no attribute 'partial_policy'
+
+artifacts/validation/2026-11-13/crop_edge_runtime_r417_v1/test_crop_edge_runtime.py:129: AttributeError
+__________ test_fresh_native_factory_keeps_selection_and_reset[plan] ___________
+
+stage = 'plan'
+
+    @pytest.mark.parametrize('stage', ['plan', 'current'])
+    def test_fresh_native_factory_keeps_selection_and_reset(stage):
+        context = mp.get_context('spawn')
+        parent, child = context.Pipe(duplex=False)
+        process = context.Process(target=spawned_factory, args=(stage, child))
+        process.start(); child.close()
+        try:
+            assert parent.poll(30.), 'fresh child did not report selection'
+>           result = parent.recv()
+
+artifacts/validation/2026-11-13/crop_edge_runtime_r417_v1/test_crop_edge_runtime.py:189: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/multiprocessing/connection.py:250: in recv
+    buf = self._recv_bytes()
+/usr/lib/python3.12/multiprocessing/connection.py:430: in _recv_bytes
+    buf = self._recv(4)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <multiprocessing.connection.Connection object at 0x71fa1331ed20>
+size = 4, read = <built-in function read>
+
+    def _recv(self, size, read=_read):
+        buf = io.BytesIO()
+        handle = self._handle
+        remaining = size
+        while remaining > 0:
+            chunk = read(handle, remaining)
+            n = len(chunk)
+            if n == 0:
+                if remaining == size:
+>                   raise EOFError
+E                   EOFError
+
+/usr/lib/python3.12/multiprocessing/connection.py:399: EOFError
+_________ test_fresh_native_factory_keeps_selection_and_reset[current] _________
+
+stage = 'current'
+
+    @pytest.mark.parametrize('stage', ['plan', 'current'])
+    def test_fresh_native_factory_keeps_selection_and_reset(stage):
+        context = mp.get_context('spawn')
+        parent, child = context.Pipe(duplex=False)
+        process = context.Process(target=spawned_factory, args=(stage, child))
+        process.start(); child.close()
+        try:
+            assert parent.poll(30.), 'fresh child did not report selection'
+>           result = parent.recv()
+
+artifacts/validation/2026-11-13/crop_edge_runtime_r417_v1/test_crop_edge_runtime.py:189: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/multiprocessing/connection.py:250: in recv
+    buf = self._recv_bytes()
+/usr/lib/python3.12/multiprocessing/connection.py:430: in _recv_bytes
+    buf = self._recv(4)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <multiprocessing.connection.Connection object at 0x71fa133264b0>
+size = 4, read = <built-in function read>
+
+    def _recv(self, size, read=_read):
+        buf = io.BytesIO()
+        handle = self._handle
+        remaining = size
+        while remaining > 0:
+            chunk = read(handle, remaining)
+            n = len(chunk)
+            if n == 0:
+                if remaining == size:
+>                   raise EOFError
+E                   EOFError
+
+/usr/lib/python3.12/multiprocessing/connection.py:399: EOFError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-13/crop_edge_runtime_r417_v1/verify_native_v1/related.xml -
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-13/crop_edge_runtime_r417_v1/test_crop_edge_runtime.py::test_old_header_defaults_and_selected_config_roundtrip
+FAILED artifacts/validation/2026-11-13/crop_edge_runtime_r417_v1/test_crop_edge_runtime.py::test_independent_policy_state_and_raw_snapshot_roundtrip
+FAILED artifacts/validation/2026-11-13/crop_edge_runtime_r417_v1/test_crop_edge_runtime.py::test_fresh_native_factory_keeps_selection_and_reset[plan]
+FAILED artifacts/validation/2026-11-13/crop_edge_runtime_r417_v1/test_crop_edge_runtime.py::test_fresh_native_factory_keeps_selection_and_reset[current]
+4 failed, 179 passed in 19.60s

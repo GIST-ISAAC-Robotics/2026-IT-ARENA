@@ -1,0 +1,32 @@
+............................F........................................... [ 36%]
+........................................................................ [ 73%]
+...................................................                      [100%]
+================================== FAILURES ===================================
+___________ test_actual_local_follow_point_path_and_wall_preserved ____________
+
+profile = {'schema': 1, 'profile_id': 'b0390_cad_vehicle_marker_approx_v1', 'mode': 'approximate_v1', 'purpose': 'occupancy_assist', ...}
+
+    def test_actual_local_follow_point_path_and_wall_preserved(profile):
+        h=full_history();baseline=LocalFollow();warm(baseline,h)
+        other=copy.deepcopy(baseline);s=scene(1.1);before=copy.deepcopy(s)
+        out=baseline.command(s,h,0.,'left')
+        p=wire_packet(profile)
+        with marker_scope(dict(reference_s=1.1,vehicle_marker_regions=p),h,other.config,profile,'ros_sim') as scope:
+            marked=other.command(s,h,0.,'left')
+        assert out[0]>marked[0] and scope['limited_checks']>0
+>       assert marked[1]==out[1] and marked[2]['path_points']==out[2]['path_points']
+E       assert (0.0 == -5.558063712581624e-16)
+
+artifacts\validation\2026-11-13\vehicle_marker_r466_v1\stage\tests\test_vehicle_marker_connection.py:74: AssertionError
+============================== warnings summary ===============================
+..\..\..\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anyio\pytest_plugin.py:14
+  C:\Users\Jinhyeong\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anyio\pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-13/vehicle_marker_r466_v1/stage/tests/test_vehicle_marker_connection.py::test_actual_local_follow_point_path_and_wall_preserved
+1 failed, 194 passed, 2 deselected, 1 warning in 4.34s

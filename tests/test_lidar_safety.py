@@ -26,6 +26,8 @@ def node_double():
                            wall_timeout=3., limit=.37, last_clock=None, wheelbase=.145, length=.20, width=.15,
                            motion=SimpleNamespace(project=project, history=SimpleNamespace(
                                config=SimpleNamespace(lidar_yaw_rad=0.))),
+                           vehicle_marker_channel=SimpleNamespace(profile=None,
+                               snapshot=lambda _: None, reset=lambda *args: None),
                            publisher=SimpleNamespace(publish=commands.append), status=SimpleNamespace(publish=statuses.append),
                            get_clock=lambda: SimpleNamespace(now=lambda: SimpleNamespace(nanoseconds=10_100_000_000,
                              to_msg=lambda: command.header.stamp)))

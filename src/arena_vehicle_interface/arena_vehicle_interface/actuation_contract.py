@@ -89,6 +89,7 @@ class ActuationReceiver:
         self.owner = None
         self.sequence = -1
         self.target_speed = self.steering = 0.
+        self.drive_seen = False
         self.deadline_us = None
         self.now_us = None
         self.last_control_us = None
@@ -114,6 +115,7 @@ class ActuationReceiver:
     def _transition(self, state, reason):
         self.state, self.reason = state, reason
         self.target_speed = 0.
+        self.drive_seen = False
         # 정지 중 갑작스러운 중앙 조향은 하지 않는다. 실차 정책은 별도 확인한다.
         self.deadline_us = None
         self.owner, self.sequence = None, -1
@@ -176,6 +178,11 @@ class ActuationReceiver:
         # 통신 수신/상태 발행이 아니라 실제 제어 작업만 이 시각을 갱신한다.
         if self._check(now_us, "tick"):
             self.last_control_us = now_us
+        return self.status()
+
+    def check_deadlines(self, now_us):
+        """통신/서보 처리 전 만료만 확인한다. 제어 heartbeat를 갱신하지 않는다."""
+        self._check(now_us, "check_deadlines")
         return self.status()
 
     def update_encoder(self, now_us, *, sequence, capture_us, left_ticks, right_ticks):
@@ -329,6 +336,7 @@ class ActuationReceiver:
             elif self._motor_progress_since_us is None:
                 self._motor_progress_since_us = now_us
         self.target_speed, self.steering = float(speed), float(angle)
+        self.drive_seen = True
         self.deadline_us = deadline
         self.state = State.ACTIVE if speed > 0 else State.ARMED
         self.reason = "drive" if speed > 0 else "zero_target"

@@ -1,0 +1,94 @@
+.....................F.FFFF...                                           [100%]
+=================================== FAILURES ===================================
+__ test_composed_profile_cannot_drop_contract_or_mix_old_mask[missing_guard] ___
+
+fault = 'missing_guard'
+
+    @pytest.mark.parametrize('fault',['missing_guard','old_shadow','wrong_clock','wrong_mask','wrong_gear','wrong_host_count'])
+    def test_composed_profile_cannot_drop_contract_or_mix_old_mask(fault):
+        profile,motor,mask,registration=gp.build(*inputs())
+        if fault=='missing_guard':profile.pop('lidar_safety')
+        elif fault=='old_shadow':profile=gp.read_yaml(ROOT/'config/hardware/g1_input_shadow_v1.yaml')
+        elif fault=='wrong_clock':profile['lidar_safety']['ros__parameters']['motion_scan_timing_verified']=True
+        elif fault=='wrong_mask':profile['local_pursuit']['ros__parameters']['lidar_blind_sectors_json']=OLDMASK.read_text()
+        elif fault=='wrong_gear':profile['lidar_safety']['ros__parameters']['motion_gear_ratio']=10.
+        else:motor['counts_per_motor_revolution']=2048
+>       with pytest.raises(ValueError,match='missing/mixed'):gp.validate_final(profile,motor,registration)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+artifacts/validation/2026-11-13/runtime_profile_r399_v1/test_runtime_profile.py:135: Failed
+___ test_composed_profile_cannot_drop_contract_or_mix_old_mask[wrong_clock] ____
+
+fault = 'wrong_clock'
+
+    @pytest.mark.parametrize('fault',['missing_guard','old_shadow','wrong_clock','wrong_mask','wrong_gear','wrong_host_count'])
+    def test_composed_profile_cannot_drop_contract_or_mix_old_mask(fault):
+        profile,motor,mask,registration=gp.build(*inputs())
+        if fault=='missing_guard':profile.pop('lidar_safety')
+        elif fault=='old_shadow':profile=gp.read_yaml(ROOT/'config/hardware/g1_input_shadow_v1.yaml')
+        elif fault=='wrong_clock':profile['lidar_safety']['ros__parameters']['motion_scan_timing_verified']=True
+        elif fault=='wrong_mask':profile['local_pursuit']['ros__parameters']['lidar_blind_sectors_json']=OLDMASK.read_text()
+        elif fault=='wrong_gear':profile['lidar_safety']['ros__parameters']['motion_gear_ratio']=10.
+        else:motor['counts_per_motor_revolution']=2048
+>       with pytest.raises(ValueError,match='missing/mixed'):gp.validate_final(profile,motor,registration)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+artifacts/validation/2026-11-13/runtime_profile_r399_v1/test_runtime_profile.py:135: Failed
+____ test_composed_profile_cannot_drop_contract_or_mix_old_mask[wrong_mask] ____
+
+fault = 'wrong_mask'
+
+    @pytest.mark.parametrize('fault',['missing_guard','old_shadow','wrong_clock','wrong_mask','wrong_gear','wrong_host_count'])
+    def test_composed_profile_cannot_drop_contract_or_mix_old_mask(fault):
+        profile,motor,mask,registration=gp.build(*inputs())
+        if fault=='missing_guard':profile.pop('lidar_safety')
+        elif fault=='old_shadow':profile=gp.read_yaml(ROOT/'config/hardware/g1_input_shadow_v1.yaml')
+        elif fault=='wrong_clock':profile['lidar_safety']['ros__parameters']['motion_scan_timing_verified']=True
+        elif fault=='wrong_mask':profile['local_pursuit']['ros__parameters']['lidar_blind_sectors_json']=OLDMASK.read_text()
+        elif fault=='wrong_gear':profile['lidar_safety']['ros__parameters']['motion_gear_ratio']=10.
+        else:motor['counts_per_motor_revolution']=2048
+>       with pytest.raises(ValueError,match='missing/mixed'):gp.validate_final(profile,motor,registration)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+artifacts/validation/2026-11-13/runtime_profile_r399_v1/test_runtime_profile.py:135: Failed
+____ test_composed_profile_cannot_drop_contract_or_mix_old_mask[wrong_gear] ____
+
+fault = 'wrong_gear'
+
+    @pytest.mark.parametrize('fault',['missing_guard','old_shadow','wrong_clock','wrong_mask','wrong_gear','wrong_host_count'])
+    def test_composed_profile_cannot_drop_contract_or_mix_old_mask(fault):
+        profile,motor,mask,registration=gp.build(*inputs())
+        if fault=='missing_guard':profile.pop('lidar_safety')
+        elif fault=='old_shadow':profile=gp.read_yaml(ROOT/'config/hardware/g1_input_shadow_v1.yaml')
+        elif fault=='wrong_clock':profile['lidar_safety']['ros__parameters']['motion_scan_timing_verified']=True
+        elif fault=='wrong_mask':profile['local_pursuit']['ros__parameters']['lidar_blind_sectors_json']=OLDMASK.read_text()
+        elif fault=='wrong_gear':profile['lidar_safety']['ros__parameters']['motion_gear_ratio']=10.
+        else:motor['counts_per_motor_revolution']=2048
+>       with pytest.raises(ValueError,match='missing/mixed'):gp.validate_final(profile,motor,registration)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+artifacts/validation/2026-11-13/runtime_profile_r399_v1/test_runtime_profile.py:135: Failed
+_ test_composed_profile_cannot_drop_contract_or_mix_old_mask[wrong_host_count] _
+
+fault = 'wrong_host_count'
+
+    @pytest.mark.parametrize('fault',['missing_guard','old_shadow','wrong_clock','wrong_mask','wrong_gear','wrong_host_count'])
+    def test_composed_profile_cannot_drop_contract_or_mix_old_mask(fault):
+        profile,motor,mask,registration=gp.build(*inputs())
+        if fault=='missing_guard':profile.pop('lidar_safety')
+        elif fault=='old_shadow':profile=gp.read_yaml(ROOT/'config/hardware/g1_input_shadow_v1.yaml')
+        elif fault=='wrong_clock':profile['lidar_safety']['ros__parameters']['motion_scan_timing_verified']=True
+        elif fault=='wrong_mask':profile['local_pursuit']['ros__parameters']['lidar_blind_sectors_json']=OLDMASK.read_text()
+        elif fault=='wrong_gear':profile['lidar_safety']['ros__parameters']['motion_gear_ratio']=10.
+        else:motor['counts_per_motor_revolution']=2048
+>       with pytest.raises(ValueError,match='missing/mixed'):gp.validate_final(profile,motor,registration)
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+artifacts/validation/2026-11-13/runtime_profile_r399_v1/test_runtime_profile.py:135: Failed
+=========================== short test summary info ============================
+FAILED artifacts/validation/2026-11-13/runtime_profile_r399_v1/test_runtime_profile.py::test_composed_profile_cannot_drop_contract_or_mix_old_mask[missing_guard]
+FAILED artifacts/validation/2026-11-13/runtime_profile_r399_v1/test_runtime_profile.py::test_composed_profile_cannot_drop_contract_or_mix_old_mask[wrong_clock]
+FAILED artifacts/validation/2026-11-13/runtime_profile_r399_v1/test_runtime_profile.py::test_composed_profile_cannot_drop_contract_or_mix_old_mask[wrong_mask]
+FAILED artifacts/validation/2026-11-13/runtime_profile_r399_v1/test_runtime_profile.py::test_composed_profile_cannot_drop_contract_or_mix_old_mask[wrong_gear]
+FAILED artifacts/validation/2026-11-13/runtime_profile_r399_v1/test_runtime_profile.py::test_composed_profile_cannot_drop_contract_or_mix_old_mask[wrong_host_count]
+5 failed, 25 passed in 3.46s

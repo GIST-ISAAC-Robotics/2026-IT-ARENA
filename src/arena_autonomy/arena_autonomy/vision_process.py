@@ -33,22 +33,25 @@ def recognize(request, data):
     decoded = time.perf_counter_ns()
     signal_mode = request.get('signal_mode', 'temporary_3light')
     vehicle_ids = request.get('vehicle_marker_ids', ())
+    region_profile = request.get('vehicle_region_profile')
     start = make_start_signal(signal_mode)
     start.__dict__.update(copy.deepcopy(request['signal']))
     if signal_mode == 'official_marker_late_candidate':
         observations = marker_observations(rgb, .02)
         marked = time.perf_counter_ns()
-        start.update(rgb, request['stamp'], observations)
+        if request.get('signal_detection_enabled', True):
+            start.update(rgb, request['stamp'], observations)
         ended = time.perf_counter_ns()
         ids = sorted({identity for identity, _ in observations})
         signal_ms, markers_ms = (ended-marked)/1e6, (marked-decoded)/1e6
     else:
-        if signal_mode in ('official_4red_candidate', 'official_4red_local_candidate'):
-            start.update(rgb, request['stamp'])
-        else:
-            start.update(rgb)
+        if request.get('signal_detection_enabled', True):
+            if signal_mode in ('official_4red_candidate', 'official_4red_local_candidate'):
+                start.update(rgb, request['stamp'])
+            else:
+                start.update(rgb)
         signaled = time.perf_counter_ns()
-        if vehicle_ids:
+        if vehicle_ids or region_profile is not None:
             observations = marker_observations(rgb, .02)
             ids = sorted({identity for identity, _ in observations})
         else:
@@ -59,6 +62,17 @@ def recognize(request, data):
     if vehicle_ids:
         from arena_autonomy.vehicle_markers import summarize_markers
         extra['vehicle_markers'] = summarize_markers(observations, rgb.shape[1], rgb.shape[0], vehicle_ids)
+        ended = time.perf_counter_ns()
+    if region_profile is not None:
+        import cv2
+        from arena_autonomy.vehicle_marker_geometry import estimate_regions, empty_packet
+        coordinates = dict(source_stamp_s=request['stamp'], frame_id=request.get('image_frame_id',''), epoch=request['epoch'])
+        try:
+            extra['vehicle_regions'] = estimate_regions(rgb, observations, region_profile, **coordinates)
+        except (cv2.error, ValueError, TypeError, KeyError) as error:
+            # 선택 보조 실패 때문에 기존 출발 신호/코스 검출 작업을 종료하지 않는다.
+            extra['vehicle_regions'] = empty_packet(region_profile, **coordinates,
+                reason='optional_geometry_error:'+type(error).__name__)
         ended = time.perf_counter_ns()
     return dict(epoch=request['epoch'], sequence=request['sequence'], stamp=request['stamp'],
         signal=vars(start), signal_mode=signal_mode, ids=ids, stages_ms=dict(decode=(decoded-began)/1e6,
@@ -152,7 +166,7 @@ class VisionProcess:
 class VisionPipeline:
     """부모 단일 executor 전용. 결과의 세대·촬영 시각·수신 후 나이를 함께 검사한다."""
     def __init__(self, worker, image_timeout=1., wall_timeout=3., work_timeout=1., signal_mode='temporary_3light',
-                 vehicle_marker_ids=()):
+                 vehicle_marker_ids=(), vehicle_region_profile=None):
         if min(image_timeout, wall_timeout, work_timeout) <= 0:
             raise ValueError('Vision timeouts must be positive')
         self.worker = worker
@@ -163,11 +177,17 @@ class VisionPipeline:
         self.pending = None
         self.signal_mode = signal_mode
         self.signal = make_start_signal(signal_mode)
+        self.signal_detection_enabled = True
         self.ids = []
         self.vehicle_observer = None
         if vehicle_marker_ids:
             from arena_autonomy.vehicle_markers import VehicleMarkerObserver
             self.vehicle_observer = VehicleMarkerObserver(vehicle_marker_ids)
+        self.vehicle_region_profile = copy.deepcopy(vehicle_region_profile)
+        self.vehicle_regions = None
+        if vehicle_region_profile is not None:
+            from arena_autonomy.vehicle_markers import VehicleRegionBuffer
+            self.vehicle_regions = VehicleRegionBuffer(vehicle_region_profile)
         self.last_submitted = float('-inf')
         self.last_received = float('-inf')
         self.last_accepted = float('-inf')
@@ -182,9 +202,12 @@ class VisionPipeline:
         self.epoch += 1
         self.pending = None
         self.signal = make_start_signal(self.signal_mode)
+        self.signal_detection_enabled = True
         self.ids = []
         if self.vehicle_observer is not None:
             self.vehicle_observer.reset()
+        if self.vehicle_regions is not None:
+            self.vehicle_regions.reset()
         self.last_submitted = self.last_received = self.last_accepted = float('-inf')
         self.input_floor_s = float('-inf')
         self.last_result = None
@@ -201,6 +224,8 @@ class VisionPipeline:
         self.ids = []
         if self.vehicle_observer is not None:
             self.vehicle_observer.reset()
+        if self.vehicle_regions is not None:
+            self.vehicle_regions.reset()
         self.last_submitted = self.last_received = self.last_accepted = float('-inf')
         self.input_floor_s = boundary_s
         self.last_result = None
@@ -261,11 +286,15 @@ class VisionPipeline:
                       or request['stamp'] <= self.last_accepted):
                     self.stats['rejected_stale'] += 1
                 else:
-                    self.signal.__dict__.update(result['signal'])
+                    if self.signal_detection_enabled:
+                        self.signal.__dict__.update(result['signal'])
                     self.ids = result['ids']
                     if self.vehicle_observer is not None:
                         self.vehicle_observer.update(request['stamp'], result['vehicle_markers'],
                             (request['image']['height'], request['image']['width']))
+                    if self.vehicle_regions is not None:
+                        self.vehicle_regions.update(result.get('vehicle_regions'),
+                            stamp=request['stamp'], epoch=request['epoch'])
                     self.last_accepted = request['stamp']
                     self.last_result = dict(stamp=request['stamp'], received=request['received'],
                         processing_ms=result['duration_ms'], stages_ms=result['stages_ms'],
@@ -289,10 +318,13 @@ class VisionPipeline:
                     self.sequence += 1
                     request = dict(epoch=self.epoch, sequence=self.sequence, stamp=stamp,
                         received=received, submitted=wall_now, image=image,
-                        signal_mode=self.signal_mode,
+                        signal_mode=self.signal_mode, signal_detection_enabled=self.signal_detection_enabled,
                         signal=copy.deepcopy(vars(self.signal)))
                     if self.vehicle_observer is not None:
                         request['vehicle_marker_ids'] = self.vehicle_observer.ids
+                    if self.vehicle_region_profile is not None:
+                        request['vehicle_region_profile'] = self.vehicle_region_profile
+                        request['image_frame_id'] = getattr(message.header,'frame_id','')
                     self.worker.submit(request, message.data)
                     self.inflight = request
                     self.last_submitted = stamp
@@ -304,7 +336,8 @@ class VisionPipeline:
         return accepted
 
     def snapshot(self):
-        return dict(mode='process', signal_mode=self.signal_mode, epoch=self.epoch, fault=self.fault, stats=dict(self.stats),
+        return dict(mode='process', signal_mode=self.signal_mode, signal_detection_enabled=self.signal_detection_enabled,
+                    epoch=self.epoch, fault=self.fault, stats=dict(self.stats),
                     inflight=self.inflight is not None, pending=self.pending is not None,
                     last_result=self.last_result, processing=dict(self.processing),
                     worker_pid=getattr(getattr(self.worker, 'process', None), 'pid', None))

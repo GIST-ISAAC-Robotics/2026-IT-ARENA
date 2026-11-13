@@ -1,0 +1,153 @@
+...........................................F...................FFFFFF    [100%]
+=================================== FAILURES ===================================
+_ test_current_baseline_called_once_and_noneligible_does_not_call_proposal[True] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x71a6ecf94e00>
+enabled = True
+
+    @pytest.mark.parametrize('enabled', [False,True])
+    def test_current_baseline_called_once_and_noneligible_does_not_call_proposal(monkeypatch,enabled):
+        import arena_autonomy.follow_trace as trace
+        import arena_autonomy.scene_motion as scenes
+        calls=[];before=dict(speed_mps=.2,steering_rad=.1,reason='original_positive')
+        evaluator=Evaluator.__new__(Evaluator)
+        evaluator.stage='current';evaluator.time_policy='verified_only';evaluator.corner_budget=enabled
+        evaluator.follow=NS(config=FollowConfig());evaluator.motion=MotionConfig()
+        def base(*args,**kwargs):calls.append('baseline');return before
+        evaluator.current_policy=NS(rebase=base)
+        info=dict(reference_s=1.,timing_verified=True,epoch=0,rear_half_angle_deg=0.)
+        monkeypatch.setattr(trace,'restore_call',lambda *args:(info,object(),object()))
+        monkeypatch.setattr(scenes,'motion_scene',lambda *args,**kwargs:object())
+        def forbidden(*args,**kwargs):raise AssertionError('noneligible attempted distance proposal')
+        monkeypatch.setattr(corner_candidate,'propose',forbidden)
+>       result=evaluator(dict(output=[.2,.1,{}],submitted={},current={'timing_verified':True}))
+
+tests/test_current_corner_runtime.py:149: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.race_runtime_policy.evaluator.Evaluator object at 0x71a6eb4db9b0>
+data = {'current': {'timing_verified': True}, 'output': [0.2, 0.1, {}], 'submitted': {}}
+
+    def __call__(self, data):
+        from arena_autonomy.follow_trace import freeze, replay_call, restore_call
+        from arena_autonomy.lidar_motion import MotionUnavailable
+        from arena_autonomy.scene_motion import motion_scene
+        current = data if self.stage == 'plan' else data['current']
+        if current.get('timing_policy', 'verified_only') != self.time_policy:
+            raise ValueError('input acquisition policy differs from selected runtime evaluator')
+        scope = getattr(self, 'observation_scope', SIMULATION_SCOPE)
+        if self.corner_budget:
+            if scope == ESTIMATED_SCOPE:
+                raw = current.get('scan', {})
+                if (raw.get('representation')!='native_measurements_v1' or not timing_matches(
+                        scope,current.get('timing_verified'),current.get('timing_policy'),
+                        raw.get('measurements',{}).get('time_basis'))):
+                    raise ValueError('estimated observation requires unchanged false/host-estimated input timing')
+            elif current.get('timing_verified') is not True:
+                raise ValueError('current corner budget requires verified input timing')
+        if self.stage == 'plan':
+            return freeze(replay_call(self.follow, data, self.motion))
+        info, scan, history = restore_call(current, self.motion)
+        try:
+            scene = motion_scene(scan, history, info['reference_s'], timing_verified=info['timing_verified'],
+                                 epoch=info['epoch'], rear_half_angle_deg=info['rear_half_angle_deg'],
+                                 timing_policy=self.time_policy)
+            result = self.current_policy.rebase(data['output'], data['submitted'], current, scene,
+                                               history, self.follow.config, require_current_region=True)
+            if self.corner_budget:
+                result = self.apply_corner(result, data, info, scene, history)
+                from .crop_current_candidate import try_from_current_result
+                result = try_from_current_result(result, data, scene, history, self.follow.config,
+>                   registered_environment=self.corner_budget, core_rebase=self.current_policy.core_policy.rebase,
+                    **(dict(observation_scope=scope) if scope==ESTIMATED_SCOPE else {}))
+E                   AttributeError: 'types.SimpleNamespace' object has no attribute 'core_policy'
+
+src/arena_autonomy/arena_autonomy/race_runtime_policy/evaluator.py:96: AttributeError
+_ test_current_recheck_keeps_same_result_for_explicit_estimate_contract[solo_baseline] _
+
+scope = 'solo_baseline'
+
+    @pytest.mark.parametrize('scope',['solo_baseline','solo_or_guard_parallel','absent_guard_baseline',
+                                     'released_baseline','present_guard_baseline','released_parallel'])
+    def test_current_recheck_keeps_same_result_for_explicit_estimate_contract(scope):
+        import copy
+        from arena_autonomy import current_path_recheck
+>       from test_current_path_recheck import fixture_for
+E       ModuleNotFoundError: No module named 'test_current_path_recheck'
+
+tests/test_estimated_motion_time.py:97: ModuleNotFoundError
+_ test_current_recheck_keeps_same_result_for_explicit_estimate_contract[solo_or_guard_parallel] _
+
+scope = 'solo_or_guard_parallel'
+
+    @pytest.mark.parametrize('scope',['solo_baseline','solo_or_guard_parallel','absent_guard_baseline',
+                                     'released_baseline','present_guard_baseline','released_parallel'])
+    def test_current_recheck_keeps_same_result_for_explicit_estimate_contract(scope):
+        import copy
+        from arena_autonomy import current_path_recheck
+>       from test_current_path_recheck import fixture_for
+E       ModuleNotFoundError: No module named 'test_current_path_recheck'
+
+tests/test_estimated_motion_time.py:97: ModuleNotFoundError
+_ test_current_recheck_keeps_same_result_for_explicit_estimate_contract[absent_guard_baseline] _
+
+scope = 'absent_guard_baseline'
+
+    @pytest.mark.parametrize('scope',['solo_baseline','solo_or_guard_parallel','absent_guard_baseline',
+                                     'released_baseline','present_guard_baseline','released_parallel'])
+    def test_current_recheck_keeps_same_result_for_explicit_estimate_contract(scope):
+        import copy
+        from arena_autonomy import current_path_recheck
+>       from test_current_path_recheck import fixture_for
+E       ModuleNotFoundError: No module named 'test_current_path_recheck'
+
+tests/test_estimated_motion_time.py:97: ModuleNotFoundError
+_ test_current_recheck_keeps_same_result_for_explicit_estimate_contract[released_baseline] _
+
+scope = 'released_baseline'
+
+    @pytest.mark.parametrize('scope',['solo_baseline','solo_or_guard_parallel','absent_guard_baseline',
+                                     'released_baseline','present_guard_baseline','released_parallel'])
+    def test_current_recheck_keeps_same_result_for_explicit_estimate_contract(scope):
+        import copy
+        from arena_autonomy import current_path_recheck
+>       from test_current_path_recheck import fixture_for
+E       ModuleNotFoundError: No module named 'test_current_path_recheck'
+
+tests/test_estimated_motion_time.py:97: ModuleNotFoundError
+_ test_current_recheck_keeps_same_result_for_explicit_estimate_contract[present_guard_baseline] _
+
+scope = 'present_guard_baseline'
+
+    @pytest.mark.parametrize('scope',['solo_baseline','solo_or_guard_parallel','absent_guard_baseline',
+                                     'released_baseline','present_guard_baseline','released_parallel'])
+    def test_current_recheck_keeps_same_result_for_explicit_estimate_contract(scope):
+        import copy
+        from arena_autonomy import current_path_recheck
+>       from test_current_path_recheck import fixture_for
+E       ModuleNotFoundError: No module named 'test_current_path_recheck'
+
+tests/test_estimated_motion_time.py:97: ModuleNotFoundError
+_ test_current_recheck_keeps_same_result_for_explicit_estimate_contract[released_parallel] _
+
+scope = 'released_parallel'
+
+    @pytest.mark.parametrize('scope',['solo_baseline','solo_or_guard_parallel','absent_guard_baseline',
+                                     'released_baseline','present_guard_baseline','released_parallel'])
+    def test_current_recheck_keeps_same_result_for_explicit_estimate_contract(scope):
+        import copy
+        from arena_autonomy import current_path_recheck
+>       from test_current_path_recheck import fixture_for
+E       ModuleNotFoundError: No module named 'test_current_path_recheck'
+
+tests/test_estimated_motion_time.py:97: ModuleNotFoundError
+----- generated xml file: /home/jinhyeong/it-arena-r444-verify-a/units.xml -----
+=========================== short test summary info ============================
+FAILED tests/test_current_corner_runtime.py::test_current_baseline_called_once_and_noneligible_does_not_call_proposal[True]
+FAILED tests/test_estimated_motion_time.py::test_current_recheck_keeps_same_result_for_explicit_estimate_contract[solo_baseline]
+FAILED tests/test_estimated_motion_time.py::test_current_recheck_keeps_same_result_for_explicit_estimate_contract[solo_or_guard_parallel]
+FAILED tests/test_estimated_motion_time.py::test_current_recheck_keeps_same_result_for_explicit_estimate_contract[absent_guard_baseline]
+FAILED tests/test_estimated_motion_time.py::test_current_recheck_keeps_same_result_for_explicit_estimate_contract[released_baseline]
+FAILED tests/test_estimated_motion_time.py::test_current_recheck_keeps_same_result_for_explicit_estimate_contract[present_guard_baseline]
+FAILED tests/test_estimated_motion_time.py::test_current_recheck_keeps_same_result_for_explicit_estimate_contract[released_parallel]
+7 failed, 62 passed in 0.77s

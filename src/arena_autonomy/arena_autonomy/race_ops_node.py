@@ -1,7 +1,8 @@
 """온보드 경기 운영 어댑터: 제한 HTTP API ↔ 기존 /race/command·MCU 서비스.
 
-제어 콜백과 다른 프로세스다. /drive, /drive/safe에 발행하지 않는다. 개발 모드에는 정지 중 속도 상한 설정만 제공한다.
-HTTP 스레드는 큐에만 넣고 ROS 호출은 단일 실행기 타이머가 수행한다. 파일 기록은 별도 스레드다.
+제어 콜백과 다른 프로세스다. 기본 패널은 정지 중 속도 상한 설정을 제공한다.
+명시적인 별도 수동 구성만 기존 jog의 /drive 발행을 사용하며 /drive/safe에 직접 발행하지 않는다.
+ROS 호출은 단일 실행기 타이머가 수행한다. 파일 기록과 선택형 JPEG 처리는 별도 스레드다.
 """
 import hmac
 import json
@@ -23,6 +24,9 @@ from std_srvs.srv import Trigger
 from arena_autonomy import race_ops_export
 from arena_autonomy.race_ops_core import ARMED_MCU, LATCHED_MCU, OpsCore, token
 from arena_autonomy.race_ops_page import PAGE
+from arena_autonomy.race_ops_manual import ManualPanel, graph_reason
+from arena_autonomy.race_ops_preview import Preview
+from arena_autonomy.development_jog import fresh_status, valid_mcu, mcu_identity
 from arena_vehicle_interface.node_lifecycle import run_node
 from arena_vehicle_interface.queued_log import QueuedLog
 
@@ -94,8 +98,15 @@ class Handler(BaseHTTPRequestHandler):
             client = query.get('client', [''])[0]
             if token(client) and role == 'operator':
                 ops.core.client_seen(client, wall)
+            if token(client):ops.preview.keepalive(client)
             state = ops.core.view(wall, time.time())
+            state['manual'] = ops.manual.snapshot()
+            state['preview'] = ops.preview.snapshot()
             return self.respond(200, json.dumps(state, ensure_ascii=False, allow_nan=False), X_Arena_Role=role)
+        if url.path == '/api/preview.jpg':
+            data = ops.preview.jpeg()
+            if data is None:return self.respond(404, json.dumps(dict(error='preview_off_stale_or_pending')))
+            return self.respond(200, data, 'image/jpeg')
         if url.path in ('/api/export.csv', '/api/export.html'):
             seconds = float(query.get('seconds', ['120'])[0])
             table = race_ops_export.merge(ops.core.export_rows(max(1., min(seconds, 3600.)), wall))
@@ -109,9 +120,10 @@ class Handler(BaseHTTPRequestHandler):
         role = self.role()
         if role is None:
             return None
-        if urlsplit(self.path).path != '/api/command':
+        path = urlsplit(self.path).path
+        if path not in ('/api/command', '/api/manual', '/api/preview'):
             return self.respond(404, json.dumps(dict(error='not_found')))
-        if role != 'operator':
+        if role != 'operator' and path != '/api/preview':
             return self.respond(403, json.dumps(dict(error='read_only')))
         size = int(self.headers.get('Content-Length', '0') or 0)
         if not 0 < size <= MAX_BODY:
@@ -120,11 +132,23 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(size))
         except ValueError:
             return self.respond(400, json.dumps(dict(error='invalid_json')))
+        if path == '/api/preview':
+            if type(body) is not dict or not token(body.get('client')):
+                return self.respond(400, json.dumps(dict(error='invalid_preview_client')))
+            try:
+                result = self.server.ops.preview.configure(body.get('config'), body['client'])
+            except ValueError as error:
+                return self.respond(400, json.dumps(dict(error=str(error))))
+            return self.respond(200, json.dumps(result, ensure_ascii=False, allow_nan=False))
         if (type(body) is not dict or not token(body.get('request')) or type(body.get('op')) is not str
                 or not token(body.get('client'))):
             return self.respond(400, json.dumps(dict(error='schema')))
-        entry = self.server.ops.core.submit(body['op'], body['request'], body.get('view'), body['client'],
-                                            body.get('confirm'), time.monotonic(), value=body.get('value'))
+        if path == '/api/manual':
+            entry = self.server.ops.manual.submit(body['op'], body['request'], body['client'],
+                body.get('view'), body.get('value'), time.monotonic())
+        else:
+            entry = self.server.ops.core.submit(body['op'], body['request'], body.get('view'), body['client'],
+                                                body.get('confirm'), time.monotonic(), value=body.get('value'))
         return self.respond(200, json.dumps(entry, ensure_ascii=False, allow_nan=False, default=str))
 
 
@@ -133,7 +157,9 @@ class RaceOps(Node):
         super().__init__('race_ops')
         declared = dict(vehicle_id='arena', host='127.0.0.1', port=8765, token_path='', view_token_path='',
                         record_path='', log_path='', status_stale_s=1., client_timeout_s=2., record_max_age_s=7200.,
-                        result_timeout_s=3., mcu_timeout_s=30., log_max_bytes=64*1024*1024)
+                        result_timeout_s=3., mcu_timeout_s=30., log_max_bytes=64*1024*1024,
+                        operation_mode='autonomous', manual_maximum_mps=1.5, manual_steering_limit_rad=.2,
+                        manual_output_root='build/panel_manual')
         values = {key: self.declare_parameter(key, value).value for key, value in declared.items()}
         self.vehicle_id = str(values['vehicle_id'])
         if not token(self.vehicle_id):
@@ -167,6 +193,10 @@ class RaceOps(Node):
         self.rearm = None     # 진행 중인 CLEAR/ARM 묶음
         self.last_link = self.last_record = 0.
         self.last_written = None
+        self.manual = ManualPanel(str(values['operation_mode']), float(values['manual_maximum_mps']),
+            float(values['manual_steering_limit_rad']), str(values['manual_output_root']))
+        self.manual_prepare = None
+        self.preview = Preview()
         self.create_timer(.02, self.tick, clock=Clock(clock_type=ClockType.STEADY_TIME))
         self.server = ThreadingHTTPServer((str(values['host']), int(values['port'])), Handler)
         self.server.daemon_threads = True
@@ -270,7 +300,11 @@ class RaceOps(Node):
 
     def execute(self, entry):
         op, wall = entry['op'], time.monotonic()
+        if self.manual.mode == 'manual' and op != 'stop':
+            return self.core.mark(entry, wall, stage='rejected_by_adapter', adapter_reason='manual_configuration')
         if op == 'stop':
+            self.manual.stop('explicit_stop', wall)
+            self.manual_prepare = None
             self.publish(dict(v=1, request=entry['request'], op='stop'))
             self.call(entry, 'stop')
         elif op == 'new_race':
@@ -280,6 +314,8 @@ class RaceOps(Node):
             self.call(entry, 'stop')
         elif op in ('recovery_reset', 'resume_start'):
             self.publish(self.bound(entry, op))
+        elif op == 'manual_visual_start':
+            self.publish({**self.bound(entry, op), 'signal_confirmed': True})
         elif op == 'set_speed_limit':
             self.publish({**self.bound(entry, op), 'speed_limit_mps': entry['value']})
         elif op == 'prepare_start':
@@ -291,6 +327,117 @@ class RaceOps(Node):
             self.publish({**self.bound(entry, 'restore_race'), 'race_id': record['race_id'],
                           'side': record['side'], 'same_race_confirmed': True})
         self.core.mark(entry, wall, stage='sent', sent_wall=wall)
+
+    def manual_mcu_fresh(self, wall):
+        return fresh_status(self.core.mcu, self.get_clock().now().nanoseconds*1e-9,
+                            self.core.mcu_wall, wall)
+
+    def manual_abort(self, entry, reason, wall):
+        self.manual.stop(reason, wall)
+        self.manual_prepare = None
+        self.manual.mark(entry, 'failed', reason, state='stopping' if self.manual.process else 'idle')
+        self.call(entry, 'stop')
+        self.core.mark(entry, wall, manual_reason=reason)
+
+    def execute_manual(self, entry, wall):
+        op = entry['op']
+        if op == 'stop':
+            self.manual.stop('explicit_manual_stop', wall)
+            self.manual_prepare = None
+            self.call(entry, 'stop')
+            self.manual.mark(entry, 'stop_requested', 'stop_ack_and_state_are_separate')
+            return
+        reason = graph_reason(self)
+        if not self.core.client_fresh(entry['client'], wall):
+            reason = 'operator_link_lost'
+        if reason or not self.manual_mcu_fresh(wall):
+            self.manual.mark(entry, 'rejected', reason or 'fresh_mcu_required')
+            return
+        mcu = self.core.mcu
+        if op == 'set_speed_limit':
+            if mcu.get('state') not in (*LATCHED_MCU, 'DISARMED'):
+                return self.manual.mark(entry, 'rejected', 'mcu_stop_required')
+            self.manual.apply_limit(entry)
+        elif op == 'prepare':
+            if mcu.get('estop_held') is not False or mcu.get('state') not in (*LATCHED_MCU, 'DISARMED', 'ARMED'):
+                return self.manual.mark(entry, 'rejected', 'manual_prepare_state_invalid')
+            self.manual.begin_prepare(entry)
+            self.manual_prepare = dict(entry=entry, deadline=wall+10., future=None,
+                expected=None, waiting_until=0.)
+        elif op == 'run':
+            now = self.get_clock().now().nanoseconds*1e-9
+            if (not valid_mcu(mcu, now, self.core.mcu_wall, wall)
+                or mcu_identity(mcu) != self.manual.prepared_identity):
+                return self.manual_abort(entry, 'prepared_mcu_changed_or_stale', wall)
+            try:
+                self.manual.launch(entry, wall)
+            except BaseException as error:
+                return self.manual_abort(entry, 'jog_launch_failed:'+str(error), wall)
+        self.core.mark(entry, wall, stage=entry['stage'])
+
+    def tick_manual_prepare(self, wall):
+        job = self.manual_prepare
+        if job is None:
+            return
+        entry, mcu = job['entry'], self.core.mcu or {}
+        reason = graph_reason(self)
+        if not self.core.client_fresh(entry['client'], wall): reason = 'operator_link_lost'
+        if wall >= job['deadline']: reason = 'manual_prepare_timeout'
+        if not self.manual_mcu_fresh(wall): reason = 'fresh_mcu_required'
+        if mcu.get('estop_held') is not False: reason = 'physical_stop_held'
+        if reason:
+            return self.manual_abort(entry, reason, wall)
+        future = job['future']
+        if future is not None:
+            if not future.done(): return
+            try:
+                response = future.result()
+                accepted = response is not None and response.success is True
+            except BaseException:
+                accepted = False
+            if not accepted: return self.manual_abort(entry, 'manual_prepare_service_rejected', wall)
+            job['future'] = None
+            job['waiting_until'] = wall+self.result_timeout_s
+        state = mcu.get('state')
+        if job['expected'] and state != job['expected']:
+            if wall >= job['waiting_until']:
+                return self.manual_abort(entry, 'manual_prepare_state_unconfirmed', wall)
+            return
+        job['expected'] = None
+        if state == 'ARMED':
+            now = self.get_clock().now().nanoseconds*1e-9
+            if not valid_mcu(mcu, now, self.core.mcu_wall, wall):
+                return self.manual_abort(entry, 'armed_feedback_not_ready', wall)
+            self.manual.prepared(entry, mcu_identity(mcu))
+            self.manual_prepare = None
+            return
+        step = 'clear_stop' if state in LATCHED_MCU else 'arm' if state == 'DISARMED' else None
+        if step is None or not self.call(entry, step):
+            return self.manual_abort(entry, 'manual_prepare_service_unavailable', wall)
+        job['future'] = self.calls[-1][2]
+        job['expected'] = 'DISARMED' if step == 'clear_stop' else 'ARMED'
+
+    def tick_manual(self, wall):
+        if self.manual.mode != 'manual':
+            return  # 자율 구성에는 수동 publisher/자식/graph 폴링을 추가하지 않는다.
+        while (entry := self.manual.next_action()) is not None:
+            self.execute_manual(entry, wall)
+        self.tick_manual_prepare(wall)
+        if self.manual.process is not None:
+            # 실행 중 graph 소유권은 실제 발행자인 기존 jog가 매 송신 전에 검사한다.
+            # parent DDS discovery에서 새 child endpoint를 중복 판정하지 않는다.
+            ended = self.manual.tick(wall, self.core.client_fresh(self.manual.client, wall))
+            if ended is not None:
+                self.call(ended, 'stop')  # 자식 정상 종료/실패와 무관하게 기존 STOP 서비스도 요청한다.
+                self.core.mark(ended, wall, stage=ended['stage'])
+        elif self.manual.prepared_identity is not None:
+            now = self.get_clock().now().nanoseconds*1e-9
+            reason = graph_reason(self)
+            if (reason or not self.core.client_fresh(self.manual.client, wall)
+                or not valid_mcu(self.core.mcu, now, self.core.mcu_wall, wall,
+                                 identity=self.manual.prepared_identity)):
+                entry = dict(op='manual_watchdog', request='manual-watchdog', mcu_steps=[])
+                self.manual_abort(entry, reason or 'prepared_connection_or_mcu_lost', wall)
 
     def call(self, entry, name):
         client = self.mcu_clients[name]
@@ -307,7 +454,20 @@ class RaceOps(Node):
             entry, name, future, deadline = item
             if future.done():
                 self.calls.remove(item)
-                result = future.result()
+                try:
+                    result = future.result()
+                except BaseException as error:
+                    self.core.mark(entry, mcu=name+':응답 오류(결과 미확인)')
+                    entry['mcu_steps'].append(dict(step=name, success=False, message=type(error).__name__, wall_s=wall))
+                    if self.rearm is not None and self.rearm.get('future') is future:
+                        self.rearm = None
+                    continue
+                if result is None:
+                    self.core.mark(entry, mcu=name+':빈 응답(결과 미확인)')
+                    entry['mcu_steps'].append(dict(step=name, success=False, message='empty_response', wall_s=wall))
+                    if self.rearm is not None and self.rearm.get('future') is future:
+                        self.rearm = None
+                    continue
                 self.core.mark(entry, mcu=f"{name}:{'확인' if result.success else '거절'} {result.message}")
                 entry['mcu_steps'].append(dict(step=name, success=result.success, message=result.message, wall_s=wall))
                 if self.rearm is not None and self.rearm.get('future') is future:
@@ -409,9 +569,11 @@ class RaceOps(Node):
 
     def tick(self):
         wall = time.monotonic()
+        if self.preview.needs_sync():self.preview.sync(self)
         while (entry := self.core.next_action()) is not None:
             self.execute(entry)
         self.poll_calls(wall)
+        self.tick_manual(wall)
         self.tick_start(wall)
         self.tick_prepare(wall)
         self.core.expire(wall, self.result_timeout_s)
@@ -419,6 +581,17 @@ class RaceOps(Node):
         self.tick_log()
 
     def destroy_node(self):
+        self.preview.close(self)
+        manual_active = (self.manual.mode == 'manual' and (self.manual.prepared_identity is not None
+                         or self.manual_prepare is not None or self.manual.process is not None))
+        if manual_active:
+            self.call(dict(op='manual_shutdown', request='manual-shutdown', mcu_steps=[]), 'stop')
+        self.manual.stop('panel_shutdown', time.monotonic())
+        if self.manual.process is not None:
+            deadline = time.monotonic()+4.
+            while self.manual.process is not None and time.monotonic() < deadline:
+                self.manual.tick(time.monotonic(), False)
+                time.sleep(.02)
         self.server.shutdown()
         self.server.server_close()
         self.log.close()

@@ -1,0 +1,179 @@
+377:     def _guard_curve_original(self, scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan):
+378:         """GUARD의 가림 꼬리 초과는 같은 경로의 낮은 목표로 제한 재검사한다.
+379: 
+380:         현재 측정속도와 두 조향은 그대로다. RELEASED에서 쓰는 .25/.15 m/s
+381:         후보만 비교하며 각 후보의 측방 누적 접근·점유/관측도 전부 다시 검사한다.
+382:         미관측/전면 가림·기존 G1 정지를 완화하지 않고 통과 증거도 바꾸지 않는다.
+383:         """
+384:         args = (scene, view, baseline, parallel, speed, previous, dt, age, detail, raw_scan)
+385:         result = self._guard_curve_at_cap(*args)
+386:         if result is None or not self.follow_config.traffic_recovery_trial:
+387:             return result
+388:         info = result[2].get('selector_guard_candidate') or {}
+389:         region = info.get('region') or {}
+390:         partial = baseline[2].get('partial_observation') or {}
+391:         reason = result[2].get('selector_reason')
+392:         target = info.get('target_speed_mps', 0.)
+393:         if (reason not in ('guard_curve_rejected_large_motion_masked_toward_left',
+394:                            'guard_curve_rejected_large_motion_masked_toward_right')
+395:                 or partial.get('allowed') is not True or partial.get('reason') != 'fully_observed'
+396:                 or region.get('unobserved') != 0 or region.get('masked_front_samples') != 0
+397:                 or target <= .15 or speed >= target):
+398:             return result
+399:         attempts = []
+400:         for cap in (.25, .15):
+401:             if cap >= target or cap > self.config.guard_speed_cap_mps:
+402:                 continue
+403:             candidate = self._guard_curve_at_cap(*args, target_cap=cap)
+404:             if candidate is None:
+405:                 continue
+406:             checked = candidate[2].get('selector_guard_candidate') or {}
+407:             accepted = candidate[0] > 0 and checked.get('accepted') is True
+408:             attempts.append({'target_mps': cap, 'accepted': accepted,
+409:                              'reason': candidate[2].get('selector_reason'),
+410:                              'region': checked.get('region')})
+411:             if accepted:
+412:                 result = candidate
+413:                 break
+414:         diagnostic = {'applied': result[0] > 0, 'original_target_mps': target,
+415:                       'original_region': region, 'attempts': attempts,
+416:                       'measured_motion_preserved': True, 'unknown_filled': False}
+417:         return result[0], result[1], {**result[2], 'selector_guard_speed_recheck': diagnostic}
+418: 
+419:     def _guard_curve_at_cap(self, scene, view, baseline, parallel, speed, previous, dt, age, detail,
+420:                             raw_scan, *, target_cap=None):
+421:         """GUARD 후보(선택형). 직선 적합 실패 또는 허용된 부분 관측에서 같은 G1 출력을 저속으로 검사한다.
+422: 
+423:         G1 경로·점유·팽창·조향 변화율·hysteresis는 기존 출력 그대로이며 속도만 min(G1, 0.35 m/s)로 낮춘다. 측정 속도가 더 크면
+424:         감속 완료를 가정하지 않고 큰 쪽으로 예측한다. 위협을 본(해제되지 않은) 쪽마다 현재/직전 조향 원호의 차체 모서리
+425:         경로 횡위치가 GUARD 진입 때보다 1 cm 넘고 현재보다도 증가하면 거절한다(누적 접근 포함). 이미 기준 밖이어도 더
+426:         접근하지 않는 진행/회복은 막지 않는다. 경로 좌표 추정 변화의 영향은 남으므로 실제 이동 영역도 매번 검사한다.
+427:         통과 증거·vanish·GUARD 상태는 바꾸지 않으며 숨은 물체 위험을 지우지 않는다.
+428:         거절하거나 조건 밖이면 None/평행 후보(정지)를 돌려준다.
+429:         """
+430:         b_speed, b_steer, b_detail = baseline
+431:         p_speed, p_steer, p_detail = parallel
+432:         trigger = p_detail.get('reason')
+433:         continuing = trigger == 'parallel_hold_release_wait' and self.last_choice == 'guard_baseline'
+434:         partial = b_detail.get('partial_observation') or {}
+435:         partial_cap = partial.get('speed_cap_mps')
+436:         partial_baseline = (trigger == 'parallel_hold_partial_observation_outside_trial'
+437:                             and partial.get('allowed') is True
+438:                             and partial.get('reason') in GUARD_PARTIAL_REASONS
+439:                             and isinstance(partial_cap, (int, float)) and math.isfinite(partial_cap)
+440:                             and 0 < b_speed <= partial_cap <= .5)
+441:         # 관측 정책은 이미 이 G1 조향/직전 조향과 더 큰 속도의 제동 구간을 검사했다.
+442:         # 그 승인을 평행 이동한 경로에 복사하지 않고 같은 G1 경로만 아래 GUARD 검사에 넣는다.
+443:         # 평행 이동한 후보만 막힌 경우에도 현재 관측의 원래 경로는 별개다.
+444:         # 명시 재획득의 낮은 측정속도에서 시작하며, 같은 GUARD 검사를 통과한
+445:         # 연속 진행만 잇는다. 위협 쪽 접근·점유·미관측/후방 검사는 아래 그대로다.
+446:         current_gap_recovery = (trigger == 'parallel_hold_unchanged_gap_hold'
+447:             and self.follow_config.standing_wall_reacquire
+448:             and (abs(speed) <= .10 or self.last_choice == 'guard_baseline')
+449:             and b_detail.get('boundary_from_memory') is False
+450:             and b_detail.get('path_source_s') == scene.source_first_s)
+451:         # 평행 이동한 경로의 횡이동 거절이 현재 관측 G1 경로의 점유를 뜻하지는 않는다.
+452:         # 원래 경로를 저속 후보로 검사하되, 실제 측정속도의 제동 영역과 측방 접근을
+453:         # 아래에서 그대로 검사한다. 과거 경로만 있거나 교통 회복이 꺼져 있으면 미적용이다.
+454:         current_lateral_recovery = (trigger == 'parallel_hold_lateral_motion_not_small'
+455:             and self.follow_config.traffic_recovery_trial
+456:             and b_detail.get('boundary_from_memory') is False
+457:             and b_detail.get('path_source_s') == scene.source_first_s)
+458:         if p_speed > 0 or not (trigger in GUARD_GEOMETRY_REASONS or continuing or partial_baseline
+459:                                or current_gap_recovery or current_lateral_recovery):
+460:             return None
+461:         if b_detail.get('reason') not in GUARD_BASELINE_REASONS or not b_speed > 0 or speed < 0:
+462:             return None
+463:         target = min(b_speed, self.config.guard_speed_cap_mps)
+464:         if target_cap is not None:
+465:             target = min(target, target_cap)
+466:         v = max(speed, target)
+467:         info = {'trigger': trigger, 'path': 'baseline_g1', 'baseline_reason': b_detail.get('reason'),
+468:                 'baseline_speed_mps': b_speed, 'target_speed_mps': target, 'prediction_speed_mps': v,
+469:                 'steering_rad': b_steer, 'previous_steering_rad': previous, 'accepted': False}
+470:         if partial_baseline:
+471:             info['baseline_partial_reason'] = partial['reason']
+472: 
+473:         def reject(reason):
+474:             return p_speed, p_steer, {**p_detail, **detail, 'selector_choice': 'parallel',
+475:                                       'selector_reason': 'guard_curve_rejected_'+reason,
+476:                                       'selector_guard_candidate': info}
+477:         if view is None:
+478:             return reject('no_baseline_view')
+479:         distance = mx.envelope_distance(v, age, dt, mx.ExecutionConfig())
+480:         poses = np.vstack([np.vstack((command_arc(a, max(distance, .01), self.lat),
+481:                                       extrema_arc(a, max(distance, .01), self.lat)))
+482:                            for a in sorted({float(b_steer), float(previous)})])
+483:         info.update(envelope_distance_m=distance, guarded_sides={})
+484:         rejected_sides = []
+485:         for name, sign in SIDES:
+486:             side = self.sides[name]
+487:             if not side['seen'] or (side['passed'] and not side['present']):
+488:                 continue
+489:             current = side_extent(view['frame'], [[0., 0., 0.]], sign, self.lat)
+490:             predicted = side_extent(view['frame'], poses, sign, self.lat)
+491:             anchor = self.guard_anchor.get(name, current)
+492:             info['guarded_sides'][name] = {'anchor_m': anchor, 'current_m': current, 'predicted_m': predicted,
+493:                                            'increase_over_anchor_m': predicted-anchor,
+494:                                            'additional_approach_m': predicted-current,
+495:                                            'not_increasing_present_extent': predicted <= current+1e-9}
+496:             if predicted > anchor+self.config.small_excursion_m and predicted > current+1e-9:
+497:                 rejected_sides.append(name)
+498:         if rejected_sides and not (
+499:                 self.follow_config.traffic_recovery_trial
+500:                 and b_detail.get('boundary_from_memory') is False
+501:                 and b_detail.get('path_source_s') == scene.source_first_s):
+502:             return reject(f'toward_{rejected_sides[0]}')
+503:         excursion = lateral_excursion(v, age, b_steer, previous, dt, self.follow_config)
+504:         info['excursion_m'] = excursion
+505:         # GUARD에는 미해제 물체가 있다. 작은 움직임도 현재 관측/마스크 분류를 생략하지 않는다.
+506:         context = {} if self.follow_config.traffic_recovery_trial else None
+507:         if context is None:
+508:             region = motion_region(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
+509:         else:
+510:             region = motion_region(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat, context=context)
+511:         info['region'] = region
+512:         fringe = {'accepted': False, 'reason': 'not_needed', 'unknown_filled': False}
+513:         if region['unobserved'] and raw_scan is not None:
+514:             if context is not None:
+515:                 queries, pad = context['queries'], context['padding']
+516:                 free, masked = context['free'], context['masked']
+517:             else:
+518:                 _, queries = motion_queries(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
+519:                 pad = mx.ray_padding(scene, self.lat, .5)
+520:                 free = depth_support(scene, queries, pad)
+521:                 masked = np.zeros(len(queries), dtype=bool)
+522:                 masked[~free] = mx.masked_only(scene, queries[~free], pad)
+523:             fringe = bounded_rear_fringe(scene, raw_scan, queries[~free & ~masked], pad,
+524:                                          self.follow_config.length_m, self.follow_config.width_m)
+525:         same = dict(accepted=False)
+526:         if self.follow_config.traffic_recovery_trial and not fringe['accepted']:
+527:             same = same_path_risk(self,scene,raw_scan,region,context,speed,target,b_steer,previous,b_detail)
+528:             info['same_path_gap'] = same
+529:         info['rear_fringe'] = fringe
+530:         blocked = region_blocked(region, self.config, bounded_unknown_risk=fringe['accepted'] or same['accepted'])
+531:         if blocked is not None:
+532:             return reject(blocked)
+533:         if rejected_sides:
+534:             # 통과/해제 이력을 조작하지 않는다. 기존 전체 이동 검사에 더하여
+535:             # 위협 방향의 추가 접근 표본 모두에 현재 자유 관측을 요구한다.
+536:             if not context:
+537:                 _, queries = motion_queries(scene, speed, target, b_steer, previous, dt, self.follow_config, self.lat)
+538:                 pad = mx.ray_padding(scene, self.lat, self.follow_config.object_motion_bound_mps)
+539:                 context = {'queries': queries, 'free': depth_support(scene, queries, pad)}
+540:             approach = observed_guard_approach(view['frame'], context, info['guarded_sides'], rejected_sides)
+541:             info['current_approach'] = approach
+542:             if not approach['accepted']:
+543:                 return reject(f'toward_{rejected_sides[0]}')
+544:         small_tail = bool(region['masked_left'] or region['masked_right'])
+545:         info['accepted'] = True
+546:         reason = ('guard_curve_bounded_rear_fringe' if fringe['accepted'] else
+547:                   'guard_curve_bounded_same_path_gap' if same['accepted'] else
+548:                   'guard_curve_observed_motion_small_masked_tail' if small_tail else 'guard_curve_observed_motion')
+549:         if rejected_sides:
+550:             reason = 'guard_curve_current_approach_observed'
+551:         risk_detail = ({'selector_same_path_gap_risk_accepted': same['accepted']}
+552:                        if self.follow_config.traffic_recovery_trial else {})
+553:         return target, b_steer, {**b_detail, **detail, 'selector_choice': 'guard_baseline', 'selector_reason': reason,
+554:                                  'selector_masked_tail_risk_accepted': small_tail,
+555:                                  'selector_bounded_rear_fringe_risk_accepted': fringe['accepted'],

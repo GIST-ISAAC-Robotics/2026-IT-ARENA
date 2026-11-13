@@ -116,3 +116,37 @@ class VehicleMarkerObserver:
                     fresh=fresh, observations=self.observations if fresh else [],
                     no_detection_is_clear=False, metric_range_available=False,
                     controls_speed=False)
+
+
+class VehicleRegionBuffer:
+    """최신 채택 영상 한 개만 보존. 미검출 즉시 비움, 예측/누적 유령 영역 없음."""
+    def __init__(self, profile):
+        from arena_autonomy.vehicle_marker_geometry import validate_profile
+        validate_profile(profile)
+        self.profile_id=profile['profile_id']
+        self.max_age_s=profile.get('max_age_s',.25)
+        self.reset()
+
+    def reset(self):
+        self.packet=None
+
+    def update(self, packet, *, stamp, epoch):
+        if (not isinstance(packet,dict) or packet.get('source_stamp_s')!=stamp
+                or packet.get('vision_epoch')!=epoch or packet.get('profile_id')!=self.profile_id
+                or packet.get('frame_id')!='base_link'):
+            self.reset()
+            return False
+        import copy
+        self.packet=copy.deepcopy(packet)
+        return True
+
+    def snapshot(self, now, epoch):
+        import copy
+        packet=self.packet
+        age=None if packet is None else now-packet['source_stamp_s']
+        fresh=(age is not None and math.isfinite(age) and 0<=age<self.max_age_s
+               and packet['vision_epoch']==epoch)
+        if not fresh:
+            return dict(regions=[],fresh=False,source_stamp_s=None if packet is None else packet['source_stamp_s'],
+                        age_s=age,no_detection_is_clear=False,free_space_added=False)
+        return dict(copy.deepcopy(packet),fresh=True,age_s=age)

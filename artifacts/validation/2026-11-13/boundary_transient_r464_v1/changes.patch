@@ -1,0 +1,19 @@
+--- a/src/arena_autonomy/arena_autonomy/local_follow.py
++++ b/src/arena_autonomy/arena_autonomy/local_follow.py
+@@ -864,6 +864,16 @@
+                         eligible = match is not None
+                         if match == 'shared_arc':
+                             detail['boundary_history_agreement'] = 'current_corner_arc'
++                    elif (eligible and cfg.junction_continuity and cfg.expiry_route_reference_trial
++                            and cfg.piecewise_wall_trial and self.path_wall == side
++                            and info.get('wall_model') == 'piecewise_corner'):
++                        # 동일 벽의 충분한 현재 관측과 유효 이력만 비교한다. 코너 출구의
++                        # x 창 길이 차이로 갱신을 놓치지 않게 기존 호길이 비교를 재사용한다.
++                        # 초기/만료 경로 획득, 벽 전환, TTL과 이후 점유 검사는 그대로다.
++                        eligible = path_agrees(candidate, carried, cfg.boundary_agreement_m)
++                        if not eligible and path_agrees_arc(candidate, carried, cfg.boundary_agreement_m):
++                            eligible = True
++                            detail['boundary_history_agreement'] = 'current_same_wall_corner_arc'
+                     else:
+                         eligible = eligible and path_agrees(candidate, carried, cfg.boundary_agreement_m)
+                     if not eligible:
