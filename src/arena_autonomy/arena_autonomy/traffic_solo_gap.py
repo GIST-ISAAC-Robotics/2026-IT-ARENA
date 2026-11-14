@@ -4,11 +4,51 @@
 보호층이 검사한다. 상태/소실 이력은 지우지 않고 현재 반환의 옆차도 대조한다.
 """
 import math
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 import numpy as np
 from arena_autonomy.scan_input import scan_angles
 
 
-def eligible(selector, scene, baseline, scan, yaw, explained):
+@dataclass(frozen=True)
+class ThreatViewTransfer:
+    """이번 eligible 계산만 select에 전달한다. 다른 scene/경로에는 쓰지 않는다."""
+    scene: object
+    path: object
+    config: object
+    view: object
+
+    def matches(self, scene, path, config):
+        return (scene is self.scene and config == self.config
+                and np.array_equal(self.path, np.asarray(
+                    path if path is not None else [], dtype=float).reshape(-1, 2)))
+
+
+_selection_view = ContextVar('traffic_solo_gap_selection_view', default=None)
+
+
+@contextmanager
+def selection_view(selector, transfer):
+    # override/runtime wrapper 서명은 유지한다. 중첩/예외에서도 이전 호출로 복원한다.
+    token = _selection_view.set((selector, transfer))
+    try:
+        yield
+    finally:
+        _selection_view.reset(token)
+
+
+def view_for_selection(selector, scene, path):
+    from arena_autonomy.pass_release_trial import threat_view
+    selected = _selection_view.get()
+    if selected is not None and selected[0] is selector:
+        transfer = selected[1]
+        if transfer is not None and transfer.matches(scene, path, selector.lat):
+            return transfer.view
+    return threat_view(scene, path, selector.lat)
+
+
+def eligible(selector, scene, baseline, scan, yaw, explained, *, view_transfer=None):
     if (selector is None or selector.mode != 'SOLO' or set(selector.sides) != {'left', 'right'}
             or any(s.get('seen') is not False or s.get('present') is not False
                    for s in selector.sides.values())):
@@ -23,4 +63,9 @@ def eligible(selector, scene, baseline, scan, yaw, explained):
         return False
     from arena_autonomy.pass_release_trial import threat_view, SIDES
     view = threat_view(scene, baseline[2].get('path_points'), selector.lat)
+    if view_transfer is not None:
+        path = baseline[2].get('path_points')
+        snapshot = np.array(path if path is not None else [], dtype=float, copy=True).reshape(-1, 2)
+        snapshot.setflags(write=False)
+        view_transfer.append(ThreatViewTransfer(scene, snapshot, selector.lat, view))
     return view is not None and all(view[name]['present'] is False for name, _ in SIDES)

@@ -76,7 +76,8 @@ input{font:inherit;background:#0e1114;color:#eee;border:1px solid #444;padding:3
 "use strict";
 const $=id=>document.getElementById(id);
 const client=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join('');
-let auth=null,last=null,lastOk=0,busy=false,speedDirty=false,speedInitialized=false;
+let auth=null,last=null,lastOk=null,busy=false,speedDirty=false,speedInitialized=false;
+let pollSequence=0,renderedPoll=0;
 let previewLidar=null,previewLidarSequence=null,previewCameraSequence=null,previewCameraUrl=null,previewImageBusy=false,previewCanvasDrawn=false;
 const rid=()=>Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>b.toString(16).padStart(2,'0')).join('');
 const fmt=(v,d=2)=>v===null||v===undefined?'-':typeof v==='number'?v.toFixed(d):String(v);
@@ -116,10 +117,11 @@ function renderPreview(p){
  else{$('camerameta').textContent=p.errors.camera?'오류: '+p.errors.camera:cfg.camera?'새 RGB 입력 대기':'OFF';if(!cfg.camera)clearCamera()}
 }
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const headers=()=>({'X-Arena-Token':auth.token,'X-Arena-Vehicle':auth.vehicle,'Content-Type':'application/json'});
+const headers=(connection=auth)=>({'X-Arena-Token':connection.token,'X-Arena-Vehicle':connection.vehicle,'Content-Type':'application/json'});
 const STAGE={queued:'접수',sent:'전송, 응답 대기',policy_accepted:'정책 수락',policy_rejected:'정책 거절',rejected_by_adapter:'어댑터 거절',unknown_after_send:'결과 미확인',preparing:'준비 중',permitted:'주행 허가',cancelled:'취소'};
 const OPS={stop:'STOP',recovery_reset:'복구 RESET',resume_start:'재개 START',prepare_start:'출발 준비',manual_visual_start:'신호 확인 후 수동 출발',new_race:'새 경기',restore_race:'같은 경기 복구',set_speed_limit:'운영 속도 상한'};
 function rows(id,list){$(id).innerHTML=list.map(r=>'<tr>'+r.map(c=>c).join('')+'</tr>').join('')}
+function disableBoundControls(){['reset','start','prepare','manualstart','newrace','restore','setspeedlimit','manualprepare','manualrun'].forEach(k=>$(k).disabled=true)}
 function setStale(text){$('conn').textContent=text;$('conn').className='stale';
  if(last?.preview?.active){$('previewstate').textContent='연결 미확인 · 마지막 입력 오래됨';clearCamera();
   if(previewLidar&&!previewLidar.stale){previewLidar={...previewLidar,stale:true};drawLidar()}}}
@@ -171,28 +173,33 @@ function render(s){
 }
 async function poll(){
  if(!auth)return;
- try{const r=await fetch('/api/state?client='+client,{headers:headers(),cache:'no-store'});
-  if(r.status===401||r.status===409){setStale('인증/차량 불일치 '+r.status);return}
-  const s=await r.json();auth.readonly=r.headers.get('X-Arena-Role')==='view';lastOk=performance.now();render(s)
- }catch(e){setStale('연결 끊김: 상태·명령 결과 미확인 '+fmt((performance.now()-lastOk)/1000,1)+'s');
-  ['reset','start','prepare','manualstart','newrace','restore','setspeedlimit','manualprepare','manualrun'].forEach(k=>$(k).disabled=true)}
+ // 재연결 전 응답과 더 새 상태 뒤에 도착한 응답은 화면/권한을 덮지 않는다.
+ const connection=auth,sequence=++pollSequence,current=()=>auth===connection&&sequence>=renderedPoll;
+ try{const r=await fetch('/api/state?client='+client,{headers:headers(connection),cache:'no-store'});
+  if(!current())return;
+  if(!r.ok){renderedPoll=sequence;lastOk=null;disableBoundControls();setStale((r.status===401||r.status===409?'인증/차량 불일치 ':'상태 조회 실패 ')+r.status);return}
+  const s=await r.json();if(!current())return;
+  renderedPoll=sequence;connection.readonly=r.headers.get('X-Arena-Role')==='view';lastOk=performance.now();render(s)
+ }catch(e){if(!current())return;renderedPoll=sequence;lastOk=null;disableBoundControls();setStale('연결 끊김: 상태·명령 결과 미확인')}
 }
 async function send(op,confirm,value){
- const stale=!last||performance.now()-lastOk>1500;
+ if(!auth)return;
+ const connection=auth,stale=!last||lastOk===null||performance.now()-lastOk>1500;
  if(op!=='stop'&&stale)return;
  busy=op!=='stop';const body={op,request:rid(),client,view:last?last.binding:null,confirm:confirm||null};
  if(op==='set_speed_limit')body.value=value;
- try{const r=await fetch('/api/command',{method:'POST',headers:headers(),body:JSON.stringify(body)});if(!r.ok)$('why').textContent='요청 거절 '+r.status}
- catch(e){$('why').textContent='응답 없음: 결과 미확인. 상태를 다시 확인하십시오. 자동 재전송하지 않습니다.'}
- busy=false;poll()
+ try{const r=await fetch('/api/command',{method:'POST',headers:headers(connection),body:JSON.stringify(body)});if(auth===connection&&!r.ok)$('why').textContent='요청 거절 '+r.status}
+ catch(e){if(auth===connection)$('why').textContent='응답 없음: 결과 미확인. 상태를 다시 확인하십시오. 자동 재전송하지 않습니다.'}
+ if(auth===connection){busy=false;poll()}
 }
 async function sendManual(op,value){
- if(!auth||(op!=='stop'&&(!last||performance.now()-lastOk>1500)))return;
+ if(!auth||(op!=='stop'&&(!last||lastOk===null||performance.now()-lastOk>1500)))return;
+ const connection=auth;
  busy=op!=='stop';
- try{const response=await fetch('/api/manual',{method:'POST',headers:headers(),body:JSON.stringify({op,request:rid(),client,view:last?.manual?.binding,value})});
-  const receipt=await response.json();$('manualresult').textContent=receipt.stage+' · '+(receipt.reason||'요청 접수')}
- catch(e){$('manualresult').textContent='결과 미확인. 자동 재전송하지 않습니다.'}
- busy=false;poll();
+ try{const response=await fetch('/api/manual',{method:'POST',headers:headers(connection),body:JSON.stringify({op,request:rid(),client,view:last?.manual?.binding,value})});
+  const receipt=await response.json();if(auth===connection)$('manualresult').textContent=receipt.stage+' · '+(receipt.reason||'요청 접수')}
+ catch(e){if(auth===connection)$('manualresult').textContent='결과 미확인. 자동 재전송하지 않습니다.'}
+ if(auth===connection){busy=false;poll()}
 }
 $('stop').onclick=()=>last?.manual?.mode==='manual'?sendManual('stop'):send('stop');$('reset').onclick=()=>send('recovery_reset');$('start').onclick=()=>send('resume_start');$('prepare').onclick=()=>send('prepare_start');
 $('manualstart').onclick=()=>{if(!busy&&!$('manualstart').disabled){$('manualstart').disabled=true;send('manual_visual_start','SIGNAL_CONFIRMED')}};
@@ -226,8 +233,13 @@ $('lidarcanvas').onmousemove=event=>{if(!previewLidar)return;const canvas=$('lid
 $('newrace').onclick=()=>{send('new_race','NEW_RACE');$('newok').checked=false};$('restore').onclick=()=>{send('restore_race','SAME_RACE');$('restoreok').checked=false};
 function exportLink(id,kind){$(id).onclick=async e=>{e.preventDefault();const r=await fetch('/api/export.'+kind+'?seconds=120',{headers:headers()});const u=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=u;a.download='arena_events.'+kind;a.click();URL.revokeObjectURL(u)}}
 exportLink('csv','csv');exportLink('html','html');
-$('login').onclick=()=>{auth={vehicle:$('vehicle').value.trim(),token:$('token').value,readonly:false};$('authmsg').textContent='연결 시도';sessionStorage.setItem('arena_vehicle',auth.vehicle);poll().then(()=>{$('authmsg').textContent=''})};
+$('login').onclick=()=>{const connection={vehicle:$('vehicle').value.trim(),token:$('token').value,readonly:false};auth=connection;
+ last=null;lastOk=null;busy=false;speedInitialized=false;speedDirty=false;disableBoundControls();$('stop').disabled=false;$('manualstop').disabled=true;
+ $('badge').textContent='연결 확인 중';$('badge').className='setup';$('vid').textContent=connection.vehicle;$('race').textContent='';setStale('연결 확인 중');
+ $('speedlimitcurrent').textContent='미확인';$('speedlimit').value='';$('speedlimitkmh').value='';$('speededitstate').textContent='서버값 대기';
+ $('authmsg').textContent='연결 시도';sessionStorage.setItem('arena_vehicle',connection.vehicle);poll().then(()=>{if(auth===connection)$('authmsg').textContent=''})};
 $('vehicle').value=sessionStorage.getItem('arena_vehicle')||'';
+disableBoundControls();
 setInterval(poll,200);
 </script></body></html>
 """

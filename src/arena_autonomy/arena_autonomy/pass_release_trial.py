@@ -407,8 +407,11 @@ class PassReleaseSelector:
         return 0., steer, {**detail, 'selector_reason': reason, 'selector_choice': 'hold_fault',
                           'reason': 'pass_release_'+reason, 'behavior':'HOLD'}
 
-    def select(self, scene, baseline, parallel, speed, previous, dt, *, raw_scan=None):
-        out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
+    def select(self, scene, baseline, parallel, speed, previous, dt, *, raw_scan=None,
+               threat_view_transfer=None):
+        from arena_autonomy.traffic_solo_gap import selection_view
+        with selection_view(self, threat_view_transfer):
+            out = self._select(scene, baseline, parallel, speed, previous, dt, raw_scan=raw_scan)
         if (self.follow_config.traffic_recovery_trial and self.follow_config.released_rear_sweep_trial
                 and out[2].get('selector_reason') == 'large_motion_region_unobserved'):
             # 통과 확인이 더 진행됐다는 이유로 기존 후방 띠 검사를 잃지 않는다.
@@ -647,7 +650,8 @@ class PassReleaseSelector:
             tracker.advance_to(now, speed)
         self.epoch, self.last_source, self.last_ref = scene.source_epoch, source, now
         b_speed, b_steer, b_detail = baseline
-        view = threat_view(scene, b_detail.get('path_points'), self.lat)
+        from arena_autonomy.traffic_solo_gap import view_for_selection
+        view = view_for_selection(self, scene, b_detail.get('path_points'))
         evidence = {'fresh': fresh}
         if view is not None and fresh:
             for name, sign in SIDES:

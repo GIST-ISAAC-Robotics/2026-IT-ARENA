@@ -593,12 +593,15 @@ class LocalFollow:
         return signed_feedback_detail(output, speed, planning)
 
     def _forward_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+        view_transfer = [] if self.config.oblique_gap_trial and not self.config.solo_route_only else None
         output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
-                                        raw_scan=raw_scan)
+                                        raw_scan=raw_scan,
+                                        **({'view_transfer': view_transfer} if view_transfer is not None else {}))
         if self.parallel_trial is not None:
             parallel = self.parallel_trial.apply(scene, output, speed, previous_steering, control_dt)
             if self.pass_selector is not None:
                 selected = self.pass_selector.select(scene, output, parallel, speed, previous_steering, control_dt,
+                    **({'threat_view_transfer': view_transfer[0]} if view_transfer else {}),
                     **({'raw_scan': raw_scan} if self.config.guard_curve_trial else {}))
                 if selected[2].get('selector_choice') == 'hold_fault':
                     return selected[0], selected[1], {**output[2], **selected[2]}
@@ -606,9 +609,11 @@ class LocalFollow:
             return parallel
         return output
 
-    def _observed_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+    def _observed_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None,
+                          view_transfer=None):
         if self.partial_policy is not None:
-            return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
+            return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan,
+                **({'view_transfer': view_transfer} if view_transfer is not None else {}))
         output = self._path_command(scene, history, speed, side, previous_steering, control_dt)
         if self.observation_cache is None:
             return output
@@ -633,7 +638,7 @@ class LocalFollow:
         detail.update(recent_observation_selected=True, observation_speed_cap_mps=.2)
         return target, output[1], detail
 
-    def _partial_command(self,scene,history,speed,side,previous_steering,control_dt,raw_scan):
+    def _partial_command(self,scene,history,speed,side,previous_steering,control_dt,raw_scan,*,view_transfer=None):
         detail={'mode':'g1_follow','partial_observation_policy':self.config.partial_observation_policy,
                 'passing_enabled':False,'relative_velocity_credit':False}
         if raw_scan is None:
@@ -675,7 +680,8 @@ class LocalFollow:
         if cfg.oblique_gap_trial and not cfg.solo_route_only:
             from arena_autonomy.traffic_solo_gap import eligible
             self.partial_policy.oblique_metric_enabled = eligible(
-                self.pass_selector, scene, output, raw_scan, history.config.lidar_yaw_rad, explained_now)
+                self.pass_selector, scene, output, raw_scan, history.config.lidar_yaw_rad, explained_now,
+                **({'view_transfer': view_transfer} if view_transfer is not None else {}))
         try:
             requested=self.partial_policy.requested_speed(raw_scan,history.config.lidar_yaw_rad,
                                                          output[0],explained_now)
