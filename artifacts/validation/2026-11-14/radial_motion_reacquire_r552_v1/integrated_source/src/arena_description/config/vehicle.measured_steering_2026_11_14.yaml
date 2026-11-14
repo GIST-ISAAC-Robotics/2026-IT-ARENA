@@ -1,0 +1,357 @@
+# 선택형 확정 CAD 주행 기하. 질량/접지/조향은 Fusion CAD 표이며 실물 한계/유격은 미측정.
+vehicle:
+  status: cad_20261113_geometry_candidate_mass_tires_mount_not_measured
+  reference_frame: model_origin
+  rule_envelope:
+    max_length_m: 0.2
+    max_width_m: 0.15
+    max_height_m: null
+  footprint:
+    status: symmetric_planning_envelope_about_axle_midpoint_not_rule_size
+    length_m: 0.207
+    width_m: 0.15
+    inspection_steering_state: unconfirmed
+    source_bbox_m:
+    - -0.0962
+    - 0.1035
+    - -0.075
+    - 0.075
+    note: 실제 CAD 전후 비대칭을 덮는 계획/보호용 대칭 상자. 검차 길이207mm라는 뜻이 아니다. 최종 마커/배선 외곽은 미측정.
+  identification_marker:
+    enabled: true
+    dictionary: DICT_4X4_50
+    id: 49
+    printed_board_size_m: 0.05
+    black_code_size_m: 0.0348
+    quiet_zone_each_side_m: 0.0076
+    xyz_m:
+    - -0.1005
+    - 0.0
+    - 0.09
+    rpy_rad:
+    - 0.0
+    - 0.0
+    - 3.1415926536
+    representation: visual_only_sdf_cells
+    purpose: registered_team_vehicle_identification_marker
+    status: team_selected_registered_mount_provisional
+    source_image: artifacts/markers/2026-09-28/id49_preview/marker_DICT_4X4_50_id49.png
+    registration: https://github.com/MOSW626/istech-it-arena/issues/1#issuecomment-5858748518
+  body:
+    length_m: 0.1997
+    width_m: 0.15
+    height_m: 0.06
+    mass_kg: 1.635
+    center_of_mass_z_offset_m: 0.0
+    height_and_mass_status: old_box_height_and_2kg_mass_proxy_retained_not_final_CAD_inertia
+    geometry_center_x_m: 0.00365
+  drivetrain:
+    status: single_motor_mechanical_differential_selected_parameters_provisional
+    layout: rear_wheel_drive_ackermann
+    simulation_drive_mode: single_motor
+    simulation_steering_model: fusion_cad_2026_11_13
+    steering_source: CAD_96_samples_not_installed_measurement
+    wheelbase_m: 0.128
+    wheelbase_status: user_final_CAD_128mm_installed_unmeasured
+    track_width_m: 0.1239
+    wheel_radius_m: 0.0325
+    wheel_radius_status: confirmed_65mm_outer_diameter_effective_rolling_radius_unmeasured
+    wheel_width_m: 0.0261
+    wheel_width_status: CAD_tire_bbox_26_1mm
+    max_steering_angle_rad: 0.30666234131856146 # count2600..2980-derived CAD joint cap; wheel angles unmeasured
+    max_speed_mps: 5.5555555556
+    simulation_steering_p_gain: 12.0
+    simulation_acceleration_limit_mps2: 4.0
+    mechanical_differential:
+      active_profile: ideal_open
+      profiles:
+        ideal_open:
+          gear_efficiency: 1.0
+          carrier_drag_nm_per_rad_s: 0.0
+          coupling_nm_per_rad_s: 0.0
+          coupling_limit_nm: 0.0
+        lossy_open:
+          gear_efficiency: 0.9
+          carrier_drag_nm_per_rad_s: 0.0001
+          coupling_nm_per_rad_s: 0.0
+          coupling_limit_nm: 0.0
+        viscous_lsd:
+          gear_efficiency: 0.9
+          carrier_drag_nm_per_rad_s: 0.0001
+          coupling_nm_per_rad_s: 0.002
+          coupling_limit_nm: 0.03
+    motor:
+      model_reference: MB4266-24180_rear_shaft
+      driver_reference: Cytron_MD20A_PWM_DIR_not_modeled
+      specification_points_not_measured:
+        supply_voltage_v: 24.0
+        no_load_rpm: 18000.0
+        no_load_current_a: 2.0
+        rated_rpm: 16474.0
+        rated_current_a: 10.28
+        rated_torque_nm: 0.1058
+      gear_ratio: 11.911764705882353
+      gear_ratio_status: user_81T_17T_same_2p5_stage_assembly_and_pitch_unverified
+      gearing_reference:
+        spur_teeth: 81
+        pinion_teeth: 17
+        internal_reduction: 2.5
+        source: assets/hardware/procurement/2026-11-11/spur_81t_user_notice.png
+        prior_quote: assets/hardware/procurement/2026-11-01/RC카 제작물품구매 견적_ISAAC.xlsx
+        prior_quote_cells: Sheet1!D21,Sheet1!D31
+        internal_reduction_source: user_2p5_differential_assumed_same_previous_stage
+      torque_limit_nm: 0.06
+      torque_limit_status: provisional_simulation_cap_not_stall_capability
+      brake_torque_limit_nm: 0.045
+      free_speed_rad_s: 1884.9555921539
+      free_speed_status: vendor_24v_no_load_18000rpm_not_measured
+      response_time_s: 0.04
+      speed_kp: 0.1
+      speed_ki: 0.2
+      acceleration_limit_mps2: 3.0
+      command_timeout_s: 0.5
+    steering_servo:
+      position_gain: 0.4
+      integral_gain: 0.25
+      velocity_gain: 0.003
+      torque_limit_nm: 0.12
+      rate_limit_rad_s: 4.0
+    tire_contact:
+      friction_lateral: 0.9
+      friction_longitudinal: 0.9
+      rear_left_friction_scale: 1.0
+      slip_compliance_lateral: 0.02
+      slip_compliance_longitudinal: 0.02
+      nominal_wheel_normal_force_n: 4.905
+      joint_viscous_damping_nm_per_rad_s: 5.0e-06
+    track_width_status: rear_tire_bbox_centers_CAD_123_89985mm_rounded
+    geometry_source_sha256: c9c203b5a66585ccde71313ea888c16804a1ddb71e6e91514a46bebededbfce6
+  sensors:
+    drive_feedback:
+      enabled: true
+      mode: drive_motor_shaft
+      drive_motor_encoder:
+        model_reference: PGE-213
+        mount: MB4266-24180 rear shaft; exact assembly position unconfirmed
+        pulses_per_revolution_per_channel: 7
+        quadrature_edges_per_pulse: 4
+        counts_per_motor_revolution: 28
+        resolution_status: vendor_7ppr_x4_delivered_unit_unverified
+        sample_rate_hz: 100.0
+        latency_ms: 2.0
+        dropout_probability: 0.0
+        timing_status: provisional_simulation_values_not_mcu_measured
+        simulation_source_joints:
+        - rear_left_wheel_joint
+        - rear_right_wheel_joint
+      legacy_rear_wheel_encoders:
+        left_joint_name: rear_left_wheel_joint
+        right_joint_name: rear_right_wheel_joint
+        ticks_per_revolution: 2048
+        sample_rate_hz: 100.0
+        latency_ms: 2.0
+        dropout_probability: 0.0
+        status: superseded_2026_10_02_explicit_comparison_and_old_recordings_only
+    d435i:
+      enabled: true
+      xyz_m:
+      - 0.055
+      - 0.0
+      - 0.075
+      rpy_rad:
+      - 0.0
+      - 0.0
+      - 0.0
+      active_stream_profile: high_speed_async
+      stream_profiles:
+        high_speed_async:
+          color_rate_hz: 60.0
+          depth_rate_hz: 90.0
+          hardware_sync_compatible: false
+        synchronized_60:
+          color_rate_hz: 60.0
+          depth_rate_hz: 60.0
+          hardware_sync_compatible: true
+        low_load_30:
+          color_rate_hz: 30.0
+          depth_rate_hz: 30.0
+          hardware_sync_compatible: true
+      color:
+        width_px: 848
+        height_px: 480
+        horizontal_fov_deg: 69.4
+        vertical_fov_deg: 42.5
+        render_near_clip_m: 0.02
+        render_far_clip_m: 20.0
+        shutter_type: rolling
+      depth:
+        width_px: 848
+        height_px: 480
+        horizontal_fov_deg: 87.0
+        vertical_fov_deg: 58.0
+        minimum_depth_m: 0.195
+        qualified_quality_range_max_m: 2.0
+        nominal_range_max_m: 3.0
+        simulation_far_clip_m: 3.0
+        extended_test_far_clip_m: 4.0
+        shutter_type: global
+      imu:
+        update_rate_hz: 200.0
+        model_note: combined Gazebo IMU; verify BMI055/BMI085 revision on the real
+          device
+      specification_source: https://dev.realsenseai.com/download/42003/
+      model_note: separate nominal RGB and depth intrinsics; per-device calibration
+        and range-dependent errors remain pending
+      calibration_status: nominal_intrinsics_only
+      status: official_nominal_profile_with_documented_simulation_limits
+    lidar_2d:
+      enabled: true
+      model_reference: RPLIDAR_C1
+      xyz_m:
+      - -0.03
+      - 0.0
+      - 0.125
+      rpy_rad:
+      - 0.0
+      - 0.0
+      - 0.0
+      frame_id: laser_frame
+      scan_rate_hz: 10.0
+      samples_per_scan: 500
+      field_of_view_deg: 360.0
+      range_min_m: 0.05
+      range_max_m: 12.0
+      nominal_range_resolution_m: 0.015
+      simulated_noise_stddev_m: 0.0
+      nominal_accuracy_m: 0.03
+      dark_target_range_max_m: 6.0
+      mass_kg: 0.11
+      proxy_radius_m: 0.03
+      proxy_height_m: 0.035
+      specification_source: https://www.slamtec.com/en/c1/spec
+      status: provisional_C1_nominal_idealized_scan_not_hardware_selection
+    tof_ring:
+      enabled: true
+      model_reference: VL53L7CX
+      active_layout: lidar_tof6
+      layouts:
+        lidar_tof6:
+          modules:
+          - front
+          - front_left
+          - rear_left
+          - rear
+          - rear_right
+          - front_right
+          autonomy_source: lidar_2d
+          nominal_coverage: full_azimuth_without_spatial_occlusion_guarantee
+          status: user_personal_proposal_not_discussed_with_team
+        stereo_tof4:
+          modules:
+          - front_left
+          - rear_left
+          - rear_right
+          - front_right
+          autonomy_source: d435i_depth
+          nominal_coverage: front_camera_plus_both_side_arcs_rear_blind
+          status: user_personal_proposal_not_discussed_with_team
+      active_profile: tracking_8x8_15
+      profiles:
+        low_latency_4x4_60:
+          horizontal_zones: 4
+          vertical_zones: 4
+          update_rate_hz: 60.0
+          intended_use: close_range_latency_comparison
+        tracking_8x8_15:
+          horizontal_zones: 8
+          vertical_zones: 8
+          update_rate_hz: 15.0
+          intended_use: coarse_shape_and_bearing_experiments
+      horizontal_fov_deg: 60.0
+      vertical_fov_deg: 60.0
+      range_min_m: 0.02
+      range_max_m: 3.5
+      nominal_depth_resolution_m: 0.001
+      simulated_noise_stddev_m: 0.0
+      carrier_size_m:
+      - 0.003
+      - 0.013
+      - 0.018
+      carrier_mass_kg: 0.0005
+      specification_source: https://www.st.com/en/imaging-and-photonics-solutions/vl53l7cx.html
+      carrier_source: https://www.pololu.com/product/3418
+      modules:
+      - name: front
+        xyz_m:
+        - 0.098
+        - 0.0
+        - 0.04
+        rpy_rad:
+        - 0.0
+        - 0.0
+        - 0.0
+        frame_id: tof_front_frame
+        topic: /tof/front
+      - name: front_left
+        xyz_m:
+        - 0.0413
+        - 0.0715
+        - 0.04
+        rpy_rad:
+        - 0.0
+        - 0.0
+        - 1.0471975512
+        frame_id: tof_front_left_frame
+        topic: /tof/front_left
+      - name: rear_left
+        xyz_m:
+        - -0.0413
+        - 0.0715
+        - 0.04
+        rpy_rad:
+        - 0.0
+        - 0.0
+        - 2.0943951024
+        frame_id: tof_rear_left_frame
+        topic: /tof/rear_left
+      - name: rear
+        xyz_m:
+        - -0.098
+        - 0.0
+        - 0.04
+        rpy_rad:
+        - 0.0
+        - 0.0
+        - 3.1415926536
+        frame_id: tof_rear_frame
+        topic: /tof/rear
+      - name: rear_right
+        xyz_m:
+        - -0.0413
+        - -0.0715
+        - 0.04
+        rpy_rad:
+        - 0.0
+        - 0.0
+        - -2.0943951024
+        frame_id: tof_rear_right_frame
+        topic: /tof/rear_right
+      - name: front_right
+        xyz_m:
+        - 0.0413
+        - -0.0715
+        - 0.04
+        rpy_rad:
+        - 0.0
+        - 0.0
+        - -1.0471975512
+        frame_id: tof_front_right_frame
+        topic: /tof/front_right
+      status: provisional_six_module_reference_under_team_selected_lidar_tof_architecture
+  cad_geometry_provenance:
+    source_sha256: c9c203b5a66585ccde71313ea888c16804a1ddb71e6e91514a46bebededbfce6
+    frame: X=-c-64 Y=21.2-a Z=b+32.2 mm; axle midpoint ground origin
+    effective_rolling_radius_measured: false
+    steering_limit_measured: false
+    installed_mass_inertia_measured: false
+    full_CAD_collision_mesh: false

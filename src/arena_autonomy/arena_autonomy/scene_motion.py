@@ -78,7 +78,8 @@ def measurement_motion_scene(scan, history, now, *, timing_verified, rear_half_a
         range_max=scan.range_max_m, source_frame_id=scan.source_frame_id,
         source_epoch=epoch, sensor_xy_m=(config.lidar_x_m, config.lidar_y_m),
         sensor_yaw_rad=config.lidar_yaw_rad, acquisition_to_ref_se2=transforms.tolist(),
-        rear_half_angle_deg=rear_half_angle_deg, preserve_sampling=True)
+        rear_half_angle_deg=rear_half_angle_deg, preserve_sampling=True,
+        self_masked_indices=scan.self_masked_indices)
 
 
 def measurement_motion_points(scan, history, now, *, timing_verified, timing_policy=None):
@@ -133,6 +134,7 @@ def motion_scene(scan, history, now, *, timing_verified, epoch=0, rear_half_angl
             range_max=float(scan.range_max), acquired_at_s=stamps.tolist(), t_ref_s=float(now),
             source_frame_id=scan.header.frame_id, source_epoch=epoch,
             sensor_xy_m=(config.lidar_x_m, config.lidar_y_m), sensor_yaw_rad=config.lidar_yaw_rad,
-            acquisition_to_ref_se2=transforms.tolist(), rear_half_angle_deg=rear_half_angle_deg)
+            acquisition_to_ref_se2=transforms.tolist(), rear_half_angle_deg=rear_half_angle_deg,
+            self_masked_indices=getattr(scan, 'self_masked_indices', ()))
     except (ValueError, TypeError) as error:
         raise MotionUnavailable('scene_invalid') from error

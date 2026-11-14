@@ -1,0 +1,19 @@
+.......F.                                                                [100%]
+================================== FAILURES ===================================
+_____ test_real_moving_pass_guide_failure_connects_to_same_current_helper _____
+
+    def test_real_moving_pass_guide_failure_connects_to_same_current_helper():
+        owner = active_owner_with_old_wall()
+        scene, raw = sensor(.7, shift=.16, closed=True)
+        baseline = owner.moving_pass.command(scene, history(), 0., 'left', 0., .1, raw_scan=raw)
+        assert baseline[0] == 0
+>       assert baseline[2]['reason'] == 'moving_pass_current_path_unavailable'
+E       AssertionError: assert 'moving_pass_source_reset' == 'moving_pass_...h_unavailable'
+E         
+E         - moving_pass_current_path_unavailable
+E         + moving_pass_source_reset
+
+artifacts\validation\2026-11-14\current_wall_reacquire_r521_v1\test_stage.py:194: AssertionError
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-14/current_wall_reacquire_r521_v1/test_stage.py::test_real_moving_pass_guide_failure_connects_to_same_current_helper
+1 failed, 8 passed in 0.73s

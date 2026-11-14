@@ -190,14 +190,27 @@ class G1G2Node(LocalPursuit):
             self.last_request_time_s = self.now_s()
             self.decision_delivery.last_application = self.last_request_time_s
         super().stop()
+        self.trace_control(explicit_stop=True)
+
+    def trace_control(self, *, explicit_stop=False):
+        trace = getattr(self, 'follow_trace', None)
+        if getattr(trace, 'detail', 'full') == 'compact_v1' and not trace.closed:
+            trace.record_control(self.now_s(), 'EXPLICIT_STOP' if explicit_stop else self.last_status,
+                self.last_speed, 0. if explicit_stop else self.last_steering,
+                True if explicit_stop else self.command_was_published, explicit_stop=explicit_stop)
 
     def control(self):
+        self.motion.drain_pending(budget_s=.006)
         if getattr(self, 'runtime_dual_selected', False):
             from arena_autonomy.runtime_node_backend import control
-            return control(self, super().control)
+            result = control(self, super().control)
+            self.trace_control()
+            return result
         delivery = self.decision_delivery
         if delivery is None:
-            return super().control()
+            result = super().control()
+            self.trace_control()
+            return result
         notice = getattr(self, 'decision_notice', None)
         if notice is not None and notice.fault:
             delivery.worker.fault = 'completion_notice: '+notice.fault
@@ -224,6 +237,7 @@ class G1G2Node(LocalPursuit):
                     self.motion.verified, self.rear_blind_half_angle,
                     timing_policy=getattr(self.motion, 'timing_policy', 'verified_only'))
                 delivery.offer(snapshot)
+        self.trace_control()
         return result
 
     def on_decision_ready(self):
@@ -258,6 +272,7 @@ class G1G2Node(LocalPursuit):
         return super().destroy_node()
 
     def create_follow_trace(self, trace_path):
+        trace_detail = self.declare_parameter('g1_trace_detail', 'full').value
         self.current_corner_budget = self.declare_parameter('g1_current_corner_budget', 'off').value
         if type(self.current_corner_budget) is not str or self.current_corner_budget not in ('off', 'r396_v1'):
             raise ValueError('registered current corner budget required')
@@ -325,7 +340,8 @@ class G1G2Node(LocalPursuit):
         trace = FollowTrace(trace_path,self.motion.history.config,self.follow.config,
             mode='g1_g2_handoff_trial',execution_config=self.follow.execution,
             current_corner_budget=self.current_corner_budget,
-            observation_input_scope=getattr(self, 'observation_input_scope', 'verified_native_simulation_v1'))
+            observation_input_scope=getattr(self, 'observation_input_scope', 'verified_native_simulation_v1'),
+            detail=trace_detail)
         self.get_logger().info('G1/G2 sensor handoff trial (preparation '+policy+'); /drive through independent safety')
         return trace
 
@@ -334,7 +350,9 @@ class G1G2Node(LocalPursuit):
             self.async_inputs_ready = True
             item = self.decision_delivery.poll(self.now_s(), previous_steering_rad=self.last_steering,
                 side=self.side, motion_epoch=self.motion.counts['resets'],
-                sensor_epoch=getattr(self.scan, 'source_epoch', 0))
+                sensor_epoch=getattr(self.scan, 'source_epoch', 0),
+                **({'output_dt_s': self.decision_output_dt_s}
+                   if getattr(self, 'runtime_dual_selected', False) else {}))
             if item is None:
                 return None
             if item['kind'] == 'fault':
@@ -399,7 +417,9 @@ class G1G2Node(LocalPursuit):
                     detail['reason'] = current_result['reason']
                 output = (current_result['speed_mps'], current_result['steering_rad'], detail)
                 reference = current_result['reference_s']
-                evidence['current_rebase'] = dict(input=current, output=freeze(current_result),
+                evidence['current_rebase'] = dict(input=current,
+                    output=(current_result if getattr(self.follow_trace, 'detail', 'full') == 'compact_v1'
+                            else freeze(current_result)),
                     computation_wall_ms=1000*(time.perf_counter()-began))
             self.follow_trace.emit('call', evidence)
             self.decision_command_stamp_s = reference

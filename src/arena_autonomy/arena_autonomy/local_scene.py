@@ -206,7 +206,7 @@ def rear_masked(angle_rad, rear_half_angle_deg=30., distance=None):
 def scene_from_scan(ranges, *, angle_min, angle_increment, range_min, range_max,
                     acquired_at_s, t_ref_s, source_frame_id='laser_frame', source_epoch=0,
                     sensor_xy_m=(.06, 0.), sensor_yaw_rad=0.,
-                    acquisition_to_ref_se2=None, rear_half_angle_deg=30.):
+                    acquisition_to_ref_se2=None, rear_half_angle_deg=30., self_masked_indices=()):
     """각 취득 base_link→기준 base_link SE(2)를 받는 순수 함수.
 
     acquisition_to_ref_se2[i]=(dx,dy,dyaw)는 엔코더/자이로 이력으로 계산할
@@ -225,14 +225,14 @@ def scene_from_scan(ranges, *, angle_min, angle_increment, range_min, range_max,
         raise ValueError('invalid scan metadata')
     return _scene_from_angles(values, stamps, (start + i * increment for i in range(len(values))),
         minimum, maximum, t_ref_s, source_frame_id, source_epoch, sx, sy, yaw,
-        acquisition_to_ref_se2, rear_half_angle_deg)
+        acquisition_to_ref_se2, rear_half_angle_deg, self_masked_indices)
 
 
 def scene_from_measurements(ranges, *, angles_rad, range_min, range_max,
                             acquired_at_s, t_ref_s, source_frame_id='laser_frame', source_epoch=0,
                             sensor_xy_m=(.06, 0.), sensor_yaw_rad=0.,
                             acquisition_to_ref_se2=None, rear_half_angle_deg=30.,
-                            preserve_sampling=False):
+                            preserve_sampling=False, self_masked_indices=()):
     """가변 개수·비균일 각도의 원천 측정을 취득 순서 그대로 지역 장면으로 투영한다.
 
     angles_rad는 센서 좌표의 +x에서 반시계 방향인 rad 값이다. 배열의 각도가
@@ -259,18 +259,25 @@ def scene_from_measurements(ranges, *, angles_rad, range_min, range_max,
     if type(preserve_sampling) is not bool:
         raise ValueError('preserve_sampling must be bool')
     scene = _scene_from_angles(values, stamps, angles, minimum, maximum, t_ref_s,
-        source_frame_id, source_epoch, sx, sy, yaw, acquisition_to_ref_se2, rear_half_angle_deg)
+        source_frame_id, source_epoch, sx, sy, yaw, acquisition_to_ref_se2, rear_half_angle_deg,
+        self_masked_indices)
     return replace(scene, source_angles_rad=angles) if preserve_sampling else scene
 
 
 def _scene_from_angles(values, stamps, angles, minimum, maximum, t_ref_s,
                        source_frame_id, source_epoch, sx, sy, yaw,
-                       acquisition_to_ref_se2, rear_half_angle_deg):
+                       acquisition_to_ref_se2, rear_half_angle_deg, self_masked_indices=()):
     """균일 스캔과 명시 각도 입력의 같은 변환·마스크·출처 검사."""
     poses = ((0., 0., 0.),) * len(values) if acquisition_to_ref_se2 is None else tuple(acquisition_to_ref_se2)
     if len(poses) != len(values):
         raise ValueError('transform count mismatch')
     rays = []
+    self_masked = tuple(self_masked_indices)
+    if (any(type(i) is not int or not 0 <= i < len(values) for i in self_masked)
+            or len(set(self_masked)) != len(self_masked)
+            or any(not math.isnan(values[i]) for i in self_masked)):
+        raise ValueError('self masked indices require unique in-range NaN rays')
+    self_masked = frozenset(self_masked)
     # 마스크 spec은 첫 광선에서 한 번만 검증·파싱한다(광선 0개면 검증하지 않는 기존 동작, 같은 예외 순서 유지).
     limits = None
     reuse = _reusable_blind_spec(rear_half_angle_deg)
@@ -290,7 +297,7 @@ def _scene_from_angles(values, stamps, angles, minimum, maximum, t_ref_s,
             masked = rear_masked(angle, rear_half_angle_deg,distance)
         valid = (not isinstance(distance, bool) and isinstance(distance, (int, float))
                  and math.isfinite(distance) and minimum <= distance <= maximum)
-        status = 'masked' if masked else ('return' if valid else 'unknown')
+        status = 'masked' if masked or index in self_masked else ('return' if valid else 'unknown')
         bearing = angle + yaw + turn
         direction = (math.cos(bearing), math.sin(bearing))
         hit = None

@@ -82,8 +82,8 @@ def test_config_is_opt_in_and_no_unknown_mode_falls_back():
 
 def test_candidate_runs_after_final_reacquisition_check_fails(monkeypatch):
     original = lf.local_path
-    def folded_preferred(points, side, offset):
-        path, details = original(points, side, offset)
+    def folded_preferred(points, side, offset, **kwargs):
+        path, details = original(points, side, offset, **kwargs)
         if side == 'left' and path is not None:
             # 관측 벽은 길지만 그 끝면 오프셋이 접혀 경로 자체는 짧은 경우.
             details = {**details, 'boundary_observed_ahead_m': 1.2}

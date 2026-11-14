@@ -60,10 +60,13 @@ def snapshot_call(scan, history, reference_s, epoch, speed, side, steering, dt,
     timing_policy = history.scan_time_policy if timing_policy is None else timing_policy
     # frozen MeasurementScan의 중간 deepcopy를 생략하고 아래 freeze에서
     # 최종 저장 사본을 만든다. 원시 배열/이력/비유한값을 줄이거나 공유하지 않는다.
-    raw=({'representation':'native_measurements_v1','measurements':{f.name:getattr(scan,f.name) for f in fields(scan)}}
+    raw=({'representation':'native_measurements_v1','measurements':{f.name:getattr(scan,f.name) for f in fields(scan)
+          if f.name != 'self_masked_indices' or scan.self_masked_indices}}
          if isinstance(scan,MeasurementScan) else {
             'sec':scan.header.stamp.sec,'nanosec':scan.header.stamp.nanosec,
             'frame_id':scan.header.frame_id,'ranges':list(scan.ranges),
+            **({'self_masked_indices':list(scan.self_masked_indices)}
+               if getattr(scan, 'self_masked_indices', ()) else {}),
             **{k:getattr(scan,k) for k in ('angle_min','angle_increment','range_min','range_max','time_increment')}})
     return freeze({
         'scan': raw,
@@ -99,7 +102,12 @@ def controller_mode(follow):
 
 class FollowTrace:
     def __init__(self, path, motion_config, follow_config, capacity=128, *, mode='g1_follow', execution_config=None,
-                 current_corner_budget='off', observation_input_scope='verified_native_simulation_v1'):
+                 current_corner_budget='off', observation_input_scope='verified_native_simulation_v1', detail='full'):
+        if type(detail) is not str or detail not in ('full', 'compact_v1'):
+            raise ValueError('registered trace detail required')
+        self.detail = detail
+        self.last_control_state = None
+        self.last_published_speed = None
         from arena_autonomy.crop_edge_selection import SIMULATION_SCOPE, validate_observation_scope
         validate_observation_scope(observation_input_scope)
         if (type(current_corner_budget) is not str or current_corner_budget not in ('off', 'r396_v1')
@@ -148,6 +156,7 @@ class FollowTrace:
             identity = {'schema': 7, 'scope': 'p22_limited_solo_entry_exit', 'controller_mode': mode,
                         'simulation_trial_only': True, 'vision_events': 'p22_frame'}
         self.emit('header', {**identity,
+                            **({'trace_detail': detail, 'replayable': False} if detail != 'full' else {}),
                             'history_units': {'wheels': 'm/s_after_conversion', 'gyro': 'rad/s_after_bias'},
                             'motion_config': asdict(motion_config), 'follow_config': asdict(follow_config),
                             **({'current_corner_budget': current_corner_budget} if current_corner_budget != 'off' else {}),
@@ -157,6 +166,50 @@ class FollowTrace:
     def _write(self, event):
         self.stream.write(json.dumps(event, ensure_ascii=False, allow_nan=False, separators=(',', ':'))+'\n')
 
+    @staticmethod
+    def _scalars(data, keys):
+        # 지정된 작은 사건 필드만 읽는다. scan/history/path나 임의 하위 객체를 순회하지 않는다.
+        if not isinstance(data, dict):
+            return {}
+        return {k: data[k] for k in keys if k in data
+                and (data[k] is None or isinstance(data[k], (str, bool, Real)))}
+
+    @classmethod
+    def _output_summary(cls, output):
+        if not isinstance(output, (tuple, list)) or len(output) != 3:
+            return {}
+        fields = ('reason', 'behavior', 'mode', 'handoff_state', 'mode_before', 'input_error',
+                  'ready', 'completed', 'phase', 'target', 'admission',
+                  'independent_guard_required', 'runtime_authorized')
+        detail = output[2]
+        result = dict(speed_mps=output[0], steering_rad=output[1], **cls._scalars(detail, fields))
+        if isinstance(detail, dict):
+            for key in ('normal', 'moving_pass', 'bypass', 'preparation', 'current_rebase'):
+                summary = cls._scalars(detail.get(key), fields)
+                if summary:
+                    result[key] = summary
+        return result
+
+    @classmethod
+    def _compact_event(cls, kind, data):
+        metadata = ('stage', 'generation', 'sequence', 'reset_reason', 'submitted_wall_s',
+                    'began_wall_s', 'completed_wall_s', 'received_wall_s')
+        if kind == 'runtime_plan_submitted':
+            return kind+'_summary', cls._scalars(data, metadata)
+        if kind == 'runtime_plan_completed':
+            return kind+'_summary', dict(cls._scalars(data, metadata), output=cls._output_summary(data['output']))
+        if kind != 'call':
+            return kind, data
+        current = data.get('current_rebase', {})
+        return 'call_summary', dict(
+            input=cls._scalars(data.get('input'), ('reference_s', 'epoch', 'speed_mps', 'side',
+                'previous_steering_rad', 'dt_s', 'timing_verified', 'timing_policy')),
+            output=cls._output_summary(data['output']),
+            delivery=cls._scalars(data.get('delivery'), ('kind', 'reason', 'reference_s', 'command_reference_s', 'source_age_s')),
+            compute=cls._scalars(data.get('compute'), metadata),
+            current_rebase=cls._scalars(current.get('output'), ('speed_mps', 'steering_rad', 'reference_s',
+                'reason', 'input_error', 'independent_guard_required', 'runtime_authorized')))
+
     def emit(self, kind, data):
         if self.closed:
             self.capture_errors += 1
@@ -164,6 +217,8 @@ class FollowTrace:
         seq = self.sequence
         self.sequence += 1
         try:
+            if self.detail == 'compact_v1':
+                kind, data = self._compact_event(kind, data)
             self.writer.submit({'seq': seq, 'kind': kind, 'data': freeze(data)})
         except Exception:
             # 기록 실패로 제어 출력을 바꾸지 않는다. footer에서 전체 기록을 무효화한다.
@@ -172,9 +227,30 @@ class FollowTrace:
     def record_call(self, scan, history, reference_s, epoch, speed, side, steering, dt,
                     verified, rear_half_angle, output, *, timing_policy=None):
         try:
+            if self.detail == 'compact_v1':
+                self.emit('call', dict(input=dict(reference_s=reference_s, epoch=epoch, speed_mps=speed,
+                    side=side, previous_steering_rad=steering, dt_s=dt, timing_verified=verified,
+                    timing_policy=timing_policy), output=output))
+                return
             inputs = snapshot_call(scan, history, reference_s, epoch, speed, side, steering,
                                    dt, verified, rear_half_angle, timing_policy=timing_policy)
             self.emit('call', {'input': inputs, 'output': output})
+        except Exception:
+            self.capture_errors += 1
+
+    def record_control(self, at_s, state, speed, steering, published, *, explicit_stop=False):
+        """실제 /drive 발행 뒤 사건. 독립 guard/MCU 제동 적용을 증명하지 않는다."""
+        if self.detail != 'compact_v1' or self.closed:
+            return
+        try:
+            decreased = (published and self.last_published_speed is not None and speed < self.last_published_speed)
+            if explicit_stop or state != self.last_control_state or decreased:
+                self.emit('control_event', dict(at_s=at_s, state=state, published=published,
+                    speed_mps=speed, steering_rad=steering, command_decreased=bool(decreased),
+                    explicit_stop=explicit_stop, scope='drive_publication_not_guard_or_mcu'))
+            self.last_control_state = state
+            if published:
+                self.last_published_speed = speed
         except Exception:
             self.capture_errors += 1
 
@@ -186,7 +262,9 @@ class FollowTrace:
             status = self.writer.snapshot()
             try:
                 self._write({'seq': self.sequence, 'kind': 'footer',
-                             'data': {**status, 'capture_errors': self.capture_errors}})
+                             'data': {**status, 'capture_errors': self.capture_errors,
+                                      **({'trace_detail': self.detail, 'replayable': False}
+                                         if self.detail != 'full' else {})}})
             finally:
                 self.stream.close()
         # 늦은 writer와 같은 파일을 동시에 닫지 않는다. footer 없는 기록은 재생 불합격.
@@ -294,6 +372,8 @@ def replay_events(events):
         count += 1
         kind, data = event['kind'], event['data']
         if count == 1:
+            if data.get('trace_detail') == 'compact_v1':
+                raise ValueError('compact trace is event evidence, not replay input')
             standard = data.get('schema') == 1 and data.get('scope') == 'g1_decision_stage_only'
             plus = (data.get('schema') == 2 and data.get('scope') == 'r0plus_decision_stage_only'
                     and data.get('controller_mode') == 'r0_plus_candidate')

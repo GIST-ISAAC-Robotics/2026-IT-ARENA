@@ -1,0 +1,61 @@
+--- a/src/arena_autonomy/arena_autonomy/bypass_wall_fit.py
++++ b/src/arena_autonomy/arena_autonomy/bypass_wall_fit.py
+@@ -2,6 +2,36 @@
+ import math
+ import numpy as np
+ from arena_autonomy.observation_support import source_valid
++
++
++def small_wall_joints(scene, points, ids, candidates, breaks, padding):
++    """짧은 벽 연결 틈을 경로 적합에만 연결한다. unknown/점유는 바꾸지 않는다."""
++    pieces=np.split(candidates,np.flatnonzero(breaks)+1)
++    rays={ray.source_index:ray for ray in scene.rays}
++    joined=[]
++    for before,after in zip(pieces[:-1],pieces[1:]):
++        if min(len(before),len(after))<12:continue
++        left,right=points[before],points[after]
++        if min(np.ptp(left[:,0]),np.ptp(right[:,0]))<.30:continue
++        a,b=int(ids[before[-1]]),int(ids[after[0]])
++        missing=list(range(a+1,b))
++        if not missing or any(i not in rays or rays[i].status!='unknown' for i in missing):continue
++        # 실제 반환 양끝의 전체 현이 기존 30 mm 측정 여유 이내인 연결부만.
++        # 원천 번호 차이만 무제한으로 무시하거나 실제 장애물 반환을 건너뛰지 않는다.
++        if np.linalg.norm(right[0]-left[-1])>padding:continue
++        tangents=[]
++        for part in (left[-12:],right[:12]):
++            tangent=np.linalg.svd(part-part.mean(axis=0),full_matrices=False)[2][0]
++            if tangent[0]<0:tangent=-tangent
++            tangents.append(tangent)
++        # 기존 ray_continuous_gaps의 20도 방향 근거를 두 이웃 면에 적용한다.
++        if float(tangents[0]@tangents[1])<math.cos(math.radians(20)):continue
++        near=np.vstack((left[-12:],right[:12]));center=near.mean(axis=0)
++        tangent=np.linalg.svd(near-center,full_matrices=False)[2][0]
++        normal=np.array([-tangent[1],tangent[0]])
++        if max(abs((near-center)@normal))>padding:continue
++        joined.append((a,b))
++    return joined
+ 
+ 
+ def tracked_straight_wall(scene,config,side,remembered_centerline):
+@@ -52,6 +82,9 @@
+     breaks=(gaps>limits)|(np.diff(ids[candidates])!=1)
+     for i,(before,after) in enumerate(zip(candidates,candidates[1:])):
+         if (int(ids[before]),int(ids[after])) in joins:breaks[i]=False
++    small_joins=small_wall_joints(scene,points,ids,candidates,breaks,config.measurement_padding_m)
++    for i,(before,after) in enumerate(zip(candidates,candidates[1:])):
++        if (int(ids[before]),int(ids[after])) in small_joins:breaks[i]=False
+     fits=[]
+     for piece in np.split(candidates,np.flatnonzero(breaks)+1):
+         part=points[piece]
+@@ -83,6 +116,11 @@
+         if used:
+             detail['narrow_occluders_bridged']=len(used)
+             detail['wall_reference_only_not_free_space']=True
++        used_small=[pair for pair in small_joins if pair[0] in ids[piece] and pair[1] in ids[piece]]
++        if used_small:
++            detail['small_wall_joints_joined']=len(used_small)
++            detail['small_wall_joint_source_pairs']=used_small
++            detail['wall_reference_only_not_free_space']=True
+         fits.append((score,fit,detail))
+     if not fits:return fail('tracked_wall_current_line_unconfirmed')
+     _,fit,detail=min(fits,key=lambda item:item[0])

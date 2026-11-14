@@ -1,0 +1,104 @@
+--- a/src/arena_autonomy/arena_autonomy/race_ops_page.py
++++ b/src/arena_autonomy/arena_autonomy/race_ops_page.py
+@@ -98,12 +98,13 @@
+ }
+ async function cameraPreview(row){
+  if(previewImageBusy||row.sequence===previewCameraSequence)return;
++ const connection=auth;
+  previewImageBusy=true;
+- try{const response=await fetch('/api/preview.jpg?sequence='+row.sequence,{headers:headers(),cache:'no-store'});if(!response.ok)throw Error('JPEG '+response.status);
+-  const blob=await response.blob();if(!last?.preview?.config.camera||!$('previewcamera').checked)return;
++ try{const response=await fetch('/api/preview.jpg?sequence='+row.sequence,{headers:headers(connection),cache:'no-store'});if(auth!==connection)return;if(!response.ok)throw Error('JPEG '+response.status);
++  const blob=await response.blob();if(auth!==connection||!last?.preview?.config.camera||!$('previewcamera').checked)return;
+   if(previewCameraUrl)URL.revokeObjectURL(previewCameraUrl);previewCameraUrl=URL.createObjectURL(blob);previewCameraSequence=row.sequence;
+   $('camerapreview').src=previewCameraUrl;$('camerapreview').hidden=false;
+- }catch(error){$('camerameta').textContent='미리보기 오류: '+error.message}finally{previewImageBusy=false}
++ }catch(error){if(auth===connection)$('camerameta').textContent='미리보기 오류: '+error.message}finally{previewImageBusy=false}
+ }
+ function renderPreview(p){
+  if(!p)return;const cfg=p.config;
+@@ -216,12 +217,13 @@
+  sendManual('run',{speed_mps:v,seconds:t,steering_deg:a})};
+ async function configurePreview(off=false){
+  if(!auth){$('previewstate').textContent='차량/토큰을 먼저 연결하십시오.';return}
++ const connection=auth;
+  if(off){$('previewlidar').checked=false;$('previewcamera').checked=false;previewLidar=null;drawLidar();clearCamera()}
+  const config={lidar:$('previewlidar').checked,camera:$('previewcamera').checked,lidar_type:$('previewkind').value,
+   lidar_topic:$('previewlidartopic').value.trim(),camera_topic:$('previewcameratopic').value.trim()};
+- try{const response=await fetch('/api/preview',{method:'POST',headers:headers(),body:JSON.stringify({client,config})});
+-  const result=await response.json();if(!response.ok)throw Error(result.error||response.status);renderPreview(result);poll()}
+- catch(error){$('previewstate').textContent='미리보기 설정 오류: '+error.message}
++ try{const response=await fetch('/api/preview',{method:'POST',headers:headers(connection),body:JSON.stringify({client,config})});
++  const result=await response.json();if(auth!==connection)return;if(!response.ok)throw Error(result.error||response.status);renderPreview(result);poll()}
++ catch(error){if(auth===connection)$('previewstate').textContent='미리보기 설정 오류: '+error.message}
+ }
+ $('previewapply').onclick=()=>configurePreview();$('previewoff').onclick=()=>configurePreview(true);
+ $('previewrange').oninput=drawLidar;
+@@ -235,6 +237,8 @@
+ exportLink('csv','csv');exportLink('html','html');
+ $('login').onclick=()=>{const connection={vehicle:$('vehicle').value.trim(),token:$('token').value,readonly:false};auth=connection;
+  last=null;lastOk=null;busy=false;speedInitialized=false;speedDirty=false;disableBoundControls();$('stop').disabled=false;$('manualstop').disabled=true;
++ clearCamera();previewLidar=null;previewLidarSequence=null;drawLidar();
++ $('previewstate').textContent='연결 확인 중';$('lidarmeta').textContent='새 연결 입력 대기';$('camerameta').textContent='새 연결 입력 대기';
+  $('badge').textContent='연결 확인 중';$('badge').className='setup';$('vid').textContent=connection.vehicle;$('race').textContent='';setStale('연결 확인 중');
+  $('speedlimitcurrent').textContent='미확인';$('speedlimit').value='';$('speedlimitkmh').value='';$('speededitstate').textContent='서버값 대기';
+  $('authmsg').textContent='연결 시도';sessionStorage.setItem('arena_vehicle',connection.vehicle);poll().then(()=>{if(auth===connection)$('authmsg').textContent=''})};
+--- a/tests/operator_panel_page_checks.js
++++ b/tests/operator_panel_page_checks.js
+@@ -84,4 +84,44 @@
+   assert.equal(h.elements.manualresult.textContent,'새 연결');assert.equal(h.requests.length,2);
+  }
+ };
++
++function previewRow(on=false){return {config:{lidar:false,camera:on,lidar_type:'native',lidar_topic:'/scan/native',camera_topic:'/rgb'},active:on,errors:{},lidar:null,camera:null}}
++checks.preview_late_configuration_does_not_cross_connection=async()=>{
++ const h=harness();h.elements.previewcamera.checked=true;
++ const pending=h.run('configurePreview()');
++ h.elements.vehicle.value='new-car';h.elements.token.value='new-token';h.elements.login.onclick();
++ const next=fixture();next.vehicle_id='new-car';next.preview=previewRow(false);
++ h.requests[1].resolve(response(next));await flush();assert.equal(h.elements.previewstate.textContent,'OFF');
++ h.requests[0].resolve(response(previewRow(true)));await pending;
++ assert.equal(h.elements.previewstate.textContent,'OFF','previous connection cannot restore preview ON');
++ assert.equal(h.requests.length,2,'previous receipt must not create a new poll');
++};
++checks.preview_late_jpeg_does_not_cross_connection=async()=>{
++ const h=harness();h.context.URL.createObjectURL=blob=>blob.old?'blob:old-car':'blob:new-car';
++ h.elements.previewcamera.checked=true;h.context.fixture.preview=previewRow(true);h.run('render(fixture)');
++ const pending=h.run('cameraPreview({sequence:12})');
++ h.elements.vehicle.value='new-car';h.elements.token.value='new-token';h.elements.login.onclick();
++ const next=fixture();next.vehicle_id='new-car';next.preview=previewRow(true);
++ h.requests[1].resolve(response(next));await flush();
++ h.run('cameraPreview({sequence:13})');assert.equal(h.requests.length,2,'old pending image keeps one request at a time');
++ h.requests[0].resolve({ok:true,status:200,blob:async()=>({old:true})});await pending;
++ assert.equal(h.elements.camerapreview.hidden,true,'previous JPEG cannot become new vehicle image');
++ assert.equal(h.run('previewCameraSequence'),null);
++ assert.equal(h.run('previewImageBusy'),false);
++ const fresh=h.run('cameraPreview({sequence:13})');assert.equal(h.requests.length,3);
++ assert.equal(h.requests[2].options.headers['X-Arena-Token'],'new-token');
++ h.requests[2].resolve({ok:true,status:200,blob:async()=>({old:false})});await fresh;
++ assert.equal(h.elements.camerapreview.src,'blob:new-car');assert.equal(h.elements.camerapreview.hidden,false);
++};
++checks.preview_reconnect_clears_displayed_inputs=async()=>{
++ const h=harness();h.context.URL.createObjectURL=()=> 'blob:old-car';
++ h.elements.previewcamera.checked=true;h.context.fixture.preview=previewRow(true);h.run('render(fixture)');
++ const pending=h.run('cameraPreview({sequence:12})');
++ h.requests[0].resolve({ok:true,status:200,blob:async()=>({old:true})});await pending;
++ assert.equal(h.elements.camerapreview.hidden,false);
++ h.run('previewLidar={sequence:7,points:[[1,0,1]],stale:false};previewLidarSequence=7');
++ h.elements.vehicle.value='new-car';h.elements.token.value='new-token';h.elements.login.onclick();
++ assert.equal(h.elements.camerapreview.hidden,true,'login immediately removes old image');
++ assert.equal(h.run('previewLidar'),null);assert.equal(h.run('previewLidarSequence'),null);
++};
+ (async()=>{const name=process.argv[3];assert(checks[name],name);await checks[name]();console.log(JSON.stringify({check:name,passed:true,scope:'Windows local DOM and mocked HTTP only'}))})().catch(error=>{console.error(error);process.exitCode=1});
+--- a/tests/test_operator_panel_page.py
++++ b/tests/test_operator_panel_page.py
+@@ -11,6 +11,9 @@
+     'late_old_connection_is_ignored', 'late_old_snapshot_does_not_restore_wait_green',
+     'old_failure_does_not_break_new_connection', 'stop_remains_available_without_snapshot',
+     'old_command_receipt_does_not_overwrite_new_connection',
++    'preview_late_configuration_does_not_cross_connection',
++    'preview_late_jpeg_does_not_cross_connection',
++    'preview_reconnect_clears_displayed_inputs',
+ ])
+ def test_operator_panel_page(case):
+     node = shutil.which('node')

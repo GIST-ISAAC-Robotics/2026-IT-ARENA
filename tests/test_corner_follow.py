@@ -35,7 +35,7 @@ def contract_scene(now, *, inner=True, block=False, unknown=False, source=None):
 @pytest.fixture
 def isolated_path(monkeypatch):
     # 외측 fitting의 성공/실패와 새 증거 계약/상태기계를 분리한 검사.
-    def fitted(points,side,offset):
+    def fitted(points,side,offset,**kwargs):
         if side=='left':
             return None,{'reason':'wall_segment_short'}
         return reference(),{'reason':'ok','wall_distance_m':.425,'boundary_observed_ahead_m':1.2}

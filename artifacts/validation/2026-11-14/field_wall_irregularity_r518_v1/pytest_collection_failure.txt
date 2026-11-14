@@ -1,0 +1,11 @@
+2026-11-14 Windows Python 3.14. 원 패키지에 pytest가 없어 r518/test_deps에만 pytest를 설치했다.
+check_candidate.py의 독립 기하 반례 7개와 124개 비변형 상세 출력 일치 검사는 통과했다.
+기존 저장소 테스트 3파일 collection은 아래 의존성 때문에 실패했다.
+tests/test_bypass_wall_fit.py -> scripts/probe_bypass_entry_sequence.py -> ModuleNotFoundError: No module named 'shapely'
+tests/test_moving_pass_wall_padding.py / tests/test_moving_pass.py -> test_bypass_handoff.py -> g1_g2_node.py -> wall_follow.py -> ModuleNotFoundError: No module named 'rclpy'
+ROS/WSL/공통 환경은 변경하지 않았다. 기존 회귀 통과로 기록하지 않는다.
+후속 통합 담당은 준비된 WSL 환경에서 위 3파일을 실행해야 한다.
+
+최초 실제 장애물 반례는 'fit도 짧아져야 한다'는 부정확한 테스트 기대 때문에 실패했다.
+기존 narrow_occluder_bridge가 이미 같은 실제 반환을 벽 reference에서만 건너뛰며 원점유를 유지하고 있었다.
+수정된 반례는 새 small_wall_joints 사용 0, 기존 baseline fit/상세 결과 동일, scene/실제 반환 불변을 검사한다.

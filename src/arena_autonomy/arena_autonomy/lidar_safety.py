@@ -121,6 +121,11 @@ class LidarSafety(Node):
             self.create_subscription(String, '/race/input_boundary', self.on_input_boundary, 10)
         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive/safe", 10)
         self.status = self.create_publisher(String, "/safety/status", 10)
+        from arena_autonomy.guard_status_payload import make_encoder
+        self.status_encoder = make_encoder(
+            self.declare_parameter('safety_status_detail', 'full').value,
+            self.declare_parameter('safety_status_evidence_path', '').value,
+            self.get_logger().warning)
         from arena_autonomy.native_lidar_input import subscribe_scan
         subscribe_scan(self,self.timing.wrap('scan',self.on_scan),qos_profile_sensor_data)
         self.create_subscription(AckermannDriveStamped, "/drive", self.timing.wrap('command', self.on_command), 10)
@@ -146,6 +151,7 @@ class LidarSafety(Node):
             self.command, self.command_wall = msg, time.monotonic()
 
     def control(self):
+        self.motion.drain_pending()
         now = self.get_clock().now().nanoseconds * 1e-9
         if self.last_clock is not None and now < self.last_clock:
             self.scan = self.command = None
@@ -216,6 +222,18 @@ class LidarSafety(Node):
                 # 센서/운동 자체의 공백과 이미 보인 장애물의 래치는 그대로 유지한다.
                 if command_stale:
                     raise MotionUnavailable('stale_input')
+                if (not partial['allowed'] and self.command_observation_priority
+                        and partial.get('reason') == 'known_obstacle_latched'):
+                    from arena_autonomy.guard_memory_command import limited_memory_command
+                    crawl = limited_memory_command(partial_policy, partial, self.scan, points,
+                        self.motion.history, now, speed, measured, output.drive.steering_angle,
+                        getattr(self, 'previous_safe_steering', 0.), self.wheelbase, self.length, self.width)
+                    partial = {**partial, 'retained_memory_command': crawl}
+                    if crawl['accepted']:
+                        old_cap = partial.get('speed_cap_mps')
+                        cap = crawl['speed_cap_mps'] if old_cap is None else min(old_cap, crawl['speed_cap_mps'])
+                        partial.update(allowed=True, reason=crawl['reason'],
+                            speed_cap_mps=cap, original_latch_reason=partial_policy.latch_reason)
                 if not partial['allowed']:
                     raise MotionUnavailable(partial['reason'])
                 if partial['speed_cap_mps'] is not None:
@@ -270,10 +288,12 @@ class LidarSafety(Node):
                 or self.vehicle_marker_channel.profile is not None):
             self.previous_safe_steering = output.drive.steering_angle
         self.publisher.publish(output)
-        self.status.publish(String(data=json.dumps({"reason": reason, "safe_speed_mps": output.drive.speed,
+        self.status.publish(String(data=(getattr(self, 'status_encoder', None) or json.dumps)({"reason": reason, "safe_speed_mps": output.drive.speed,
                                                     "reference_s": now, "command_stale": command_stale,
                                                     "swept_clearance_m": clearance, "sensor": "C1",
                                                     "no_return_policy": "unknown",
+                                                    **({'self_return_mask': self.quick_self_mask.snapshot()}
+                                                       if getattr(self, 'quick_self_mask', None) is not None else {}),
                                                     **({'execution_environment': self.execution_environment,
                                                         'motion_timing_verified': False,
                                                         'motion_time_policy': self.motion.timing_policy,
@@ -283,6 +303,11 @@ class LidarSafety(Node):
                                                     "front_observation": vars(observation) if observation else None,
                                                     **({'partial_observation':partial} if getattr(self,'partial_policy',None) is not None else {}),
                                                     **({'recent_observation':recent} if getattr(self,'recent_observation_enabled',False) else {})})))
+
+    def destroy_node(self):
+        from arena_autonomy.guard_status_payload import close_encoder
+        close_encoder(getattr(self, 'status_encoder', None))
+        return super().destroy_node()
 
 
 def main(args=None):

@@ -1,0 +1,60 @@
+--- src/arena_autonomy/arena_autonomy/moving_pass.py.before
++++ src/arena_autonomy/arena_autonomy/moving_pass.py
+@@ -288,6 +288,7 @@
+     def evaluate(self,scene,history,speed,previous_steering,dt):
+         if self.path is not None or not source_valid(scene):
+             result=super().evaluate(scene,history,speed,previous_steering,dt)
++            result=self._current_path_preview(scene,speed,previous_steering,dt,result)
+             result=self._current_follow_return(scene,history,speed,previous_steering,dt,result)
+             if result.get('entry_phase')=='rejoin' and result.get('rejoin_band'):
+                 self.returning_behind=result['rejoin_band'].get('return_behind_lead',False)
+@@ -320,6 +321,49 @@
+         finally:
+             self.entry=original
+             self.reference_provider=None
++
++    def _current_path_preview(self,scene,speed,previous,dt,result):
++        """점유 제동에 걸린 긴 주시 원호 대신 같은 관측 경로의 가까운 점을 비교한다.
++
++        경로·목표 편이·점유 여유를 바꾸지 않는다. 실제 직전 조향의 변화율과
++        현재 점유/제동을 모두 다시 통과한 양수 후보만 선택한다.
++        """
++        from functools import partial
++        from arena_autonomy.adaptive_entry_preview import shorter_pursuit
++        from arena_autonomy.bypass_entry_trial import _compare_entries
++        from arena_autonomy.local_path import braking_speed
++        from arena_autonomy.race_runtime_policy.current_route_priority import enabled
++        if not enabled(self.config) or self.path is None or self.follow_headway:
++            return result
++        reference=result.get('reference',{})
++        rows=result.get('candidates',())
++        if (reference.get('reason')!='current_outer_wall_rechecked_for_remembered_guide'
++                or self.side not in reference.get('walls',{}) or len(rows)!=1):
++            return result
++        row=rows[0]
++        clearance=row.get('command_clearance_m');target=row.get('target_speed_mps')
++        if (row.get('reason') not in ('known_occupied_command_hold','observed_entry_command_candidate')
++                or not all(isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v)
++                           for v in (clearance,target)) or not 0 <= target < self.entry.speed_cap_mps
++                or not math.isclose(target,braking_speed(clearance,scene.t_ref_s-scene.source_first_s),
++                                    rel_tol=1e-12,abs_tol=1e-12)):
++            return result
++        comparison=dict(config=self.config,entry=self.entry,
++            guide=dict(reference=reference,path=self.path,offset_m=self.offset,transition_m=self.transition,
++                outer_side=self.side,
++                stationary_outer_boundary=self.stationary_outer_boundary and self.wall_confirmations>=2),
++            padding_provider=self.padding_provider,follow_headway=False)
++        # 이미 쓰는 짧은 주시거리 중 가장 완만한 24 cm 하나만 비교한다.
++        # 기존 명령이 충분하면 계산하지 않으며 더 작은 반경을 연속 탐색하지 않는다.
++        lookahead=.24
++        proposal=_compare_entries(scene,scene.t_ref_s,speed,previous,dt,
++            pursuit_provider=partial(shorter_pursuit,lookahead_m=lookahead),**comparison)
++        chosen=proposal.get('selected')
++        applied=chosen is not None and chosen['speed_mps']>target
++        detail=dict(applied=applied,lookahead_m=lookahead,previous_target_mps=target,
++                    previous_clearance_m=clearance,same_observed_path=True,
++                    same_occupied_returns_and_padding=True,actual_steering_rate_checked=True)
++        return {**result,**(proposal if applied else {}),'moving_path_preview':detail}
+ 
+     def _current_follow_return(self,scene,history,speed,previous,dt,result):
+         """점유 제동으로 느려지는 추월에서 현재 관측의 중심 복귀를 비교한다.

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="18" time="0.922" timestamp="2026-11-14T03:17:58.252836+09:00" hostname="DESKTOP-KA11CHH"><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_actual_speed_kept_and_headway_applied_before_region" time="0.058" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_next_actual_input_keeps_rejoin_path_and_follow_headway" time="0.103" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_late_input_cannot_be_forced_positive[560]" time="0.016" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_late_input_cannot_be_forced_positive[563]" time="0.013" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_current_target_not_ahead_cannot_start_return[missing]" time="0.005" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_current_target_not_ahead_cannot_start_return[alongside]" time="0.005" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_front_diagonal_and_near_side_returns_reject_new_return[center0-0.0]" time="0.085" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_front_diagonal_and_near_side_returns_reject_new_return[center1-0.65]" time="0.064" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_front_diagonal_and_near_side_returns_reject_new_return[center2-0.0]" time="0.060" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_side_return_outside_return_path_does_not_erase_current_free_path" time="0.008"><failure message="assert 0 &gt; 0">def test_side_return_outside_return_path_does_not_erase_current_free_path():
+        guide,row,d,scan,history,scene,result=probe.at_entry(524)
+&gt;       changed=visible_box(scene,np.array([.30,.65]),0.)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+artifacts\validation\2026-11-14\moving_pass_recovery_r486_v1\test_current_follow_return.py:94: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+scene = LocalScene(t_ref_s=10.92, source_first_s=10.802999999999978, source_last_s=10.902801587301566, source_frame_id='laser_...10902488604188, -3.023468859028071, -3.034778592409566, -3.0473449628334492, -3.0599113332573324, -3.0724777036812156))
+center = array([0.3 , 0.65]), yaw = 0.0, size = (0.2, 0.15)
+
+    def visible_box(scene, center, yaw=0., size=(.2,.15)):
+        # 평가용 합성 직사각형을 현재 광선에 ray cast. 원 unknown/mask는 바꾸지 않는다.
+        c,s=math.cos(yaw),math.sin(yaw)
+        rot=np.array([[c,s],[-s,c]]);half=np.asarray(size)/2;rays=[];changed=0
+        for ray in scene.rays:
+            if ray.status!='return':rays.append(ray);continue
+            origin=rot@(np.asarray(ray.ray_origin_xy_m)-center)
+            direction=rot@np.asarray(ray.direction_xy);low,high=0.,math.inf
+            for axis in range(2):
+                if abs(direction[axis])&lt;1e-12:
+                    if abs(origin[axis])&gt;half[axis]:low=math.inf;break
+                else:
+                    a,b=sorted(((-half[axis]-origin[axis])/direction[axis],(half[axis]-origin[axis])/direction[axis]))
+                    low=max(low,a);high=min(high,b)
+            old=np.linalg.norm(np.asarray(ray.hit_xy_m)-ray.ray_origin_xy_m)
+            if 0.&lt;low&lt;=high and low&lt;old:
+                point=np.asarray(ray.ray_origin_xy_m)+low*np.asarray(ray.direction_xy)
+                ray=replace(ray,hit_xy_m=tuple(map(float,point)));changed+=1
+            rays.append(ray)
+&gt;       assert changed&gt;0
+E       assert 0 &gt; 0
+
+artifacts\validation\2026-11-14\moving_pass_recovery_r486_v1\test_current_follow_return.py:40: AssertionError</failure></testcase><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_epoch_change_resets_return_state" time="0.049" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_current_front_path_loss_keeps_return_stopped" time="0.057" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_reapproaching_lead_blocks_an_already_started_return" time="0.059" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_centered_handoff_keeps_prepared_follow_state_and_its_stop[0.0]" time="0.057" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_centered_handoff_keeps_prepared_follow_state_and_its_stop[0.4]" time="0.007" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_invalid_input_cannot_bypass_reset" time="0.006" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_default_entry_comparison_output_preserved[524]" time="0.099" /><testcase classname="artifacts.validation.2026-11-14.moving_pass_recovery_r486_v1.test_current_follow_return" name="test_default_entry_comparison_output_preserved[563]" time="0.028" /></testsuite></testsuites>

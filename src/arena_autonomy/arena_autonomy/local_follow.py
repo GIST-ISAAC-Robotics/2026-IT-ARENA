@@ -593,12 +593,15 @@ class LocalFollow:
         return signed_feedback_detail(output, speed, planning)
 
     def _forward_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+        view_transfer = [] if self.config.oblique_gap_trial and not self.config.solo_route_only else None
         output = self._observed_command(scene, history, speed, side, previous_steering, control_dt,
-                                        raw_scan=raw_scan)
+                                        raw_scan=raw_scan,
+                                        **({'view_transfer': view_transfer} if view_transfer is not None else {}))
         if self.parallel_trial is not None:
             parallel = self.parallel_trial.apply(scene, output, speed, previous_steering, control_dt)
             if self.pass_selector is not None:
                 selected = self.pass_selector.select(scene, output, parallel, speed, previous_steering, control_dt,
+                    **({'threat_view_transfer': view_transfer[0]} if view_transfer else {}),
                     **({'raw_scan': raw_scan} if self.config.guard_curve_trial else {}))
                 if selected[2].get('selector_choice') == 'hold_fault':
                     return selected[0], selected[1], {**output[2], **selected[2]}
@@ -606,9 +609,11 @@ class LocalFollow:
             return parallel
         return output
 
-    def _observed_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None):
+    def _observed_command(self, scene, history, speed, side, previous_steering=0., control_dt=.02, *, raw_scan=None,
+                          view_transfer=None):
         if self.partial_policy is not None:
-            return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan)
+            return self._partial_command(scene,history,speed,side,previous_steering,control_dt,raw_scan,
+                **({'view_transfer': view_transfer} if view_transfer is not None else {}))
         output = self._path_command(scene, history, speed, side, previous_steering, control_dt)
         if self.observation_cache is None:
             return output
@@ -633,7 +638,7 @@ class LocalFollow:
         detail.update(recent_observation_selected=True, observation_speed_cap_mps=.2)
         return target, output[1], detail
 
-    def _partial_command(self,scene,history,speed,side,previous_steering,control_dt,raw_scan):
+    def _partial_command(self,scene,history,speed,side,previous_steering,control_dt,raw_scan,*,view_transfer=None):
         detail={'mode':'g1_follow','partial_observation_policy':self.config.partial_observation_policy,
                 'passing_enabled':False,'relative_velocity_credit':False}
         if raw_scan is None:
@@ -675,7 +680,8 @@ class LocalFollow:
         if cfg.oblique_gap_trial and not cfg.solo_route_only:
             from arena_autonomy.traffic_solo_gap import eligible
             self.partial_policy.oblique_metric_enabled = eligible(
-                self.pass_selector, scene, output, raw_scan, history.config.lidar_yaw_rad, explained_now)
+                self.pass_selector, scene, output, raw_scan, history.config.lidar_yaw_rad, explained_now,
+                **({'view_transfer': view_transfer} if view_transfer is not None else {}))
         try:
             requested=self.partial_policy.requested_speed(raw_scan,history.config.lidar_yaw_rad,
                                                          output[0],explained_now)
@@ -702,6 +708,15 @@ class LocalFollow:
                  abs(math.atan2(r.direction_xy[1],r.direction_xy[0]))<=math.radians(100)]
         if any(r.source_index not in covered for r in missing):
             return self._hold('follow_partial_transformed_gap_uncovered',detail)
+        from arena_autonomy.race_runtime_policy.current_route_priority import enabled
+        if (enabled(cfg) and observation.get('reason') == 'partial_history_warmup'
+                and output[0] == 0 and output[2].get('reason') == 'follow_release_wait'
+                and output[2].get('boundary_from_memory') is False
+                and output[2].get('path_source_s') == scene.source_first_s
+                and output[2].get('target_speed_before_hold_mps', 0.) > 0):
+            # 이번에는 계속 0을 내되, 새 현재 경로의 재개 확인 횟수를
+            # 별도 관측기 warmup 때문에 매번 다시 0으로 만들지 않는다.
+            return output[0], output[1], {**detail, 'partial_release_wait_preserved': True}
         if not observation['allowed'] or speed<0:
             return self._hold('follow_'+('reverse_motion' if speed<0 else observation['reason']),detail)
         cap=observation['speed_cap_mps']
@@ -803,13 +818,17 @@ class LocalFollow:
             # 경계 선택이 넘기는 부분집합도 같은 실제 점이므로 좌표로 원시 광선 번호를 찾는다.
             ray_index = dict(zip(map(tuple, points.tolist()),
                                  (r.source_index for r in scene.rays if r.status == 'return')))
+        bearing_by_point = {tuple(ray.hit_xy_m): math.atan2(ray.direction_xy[1], ray.direction_xy[0])
+                            for ray in scene.rays if ray.status == "return"}
         bridge = {'narrow_occluder_bridge': True} if cfg.narrow_occluder_bridge else {}
         def observed_path(cloud, wall_side):
+            # 경계 후보 부분집합도 원시 반환점이다. 경로용 정렬만 바꾸며 점유점은 그대로 둔다.
+            observed = dict(bridge, bearings_rad=[bearing_by_point[tuple(p)] for p in cloud.tolist()])
             if cfg.piecewise_wall_trial:
                 path, info = local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
                                   rays=None if ray_index is None else [ray_index[tuple(p)] for p in cloud.tolist()],
                                   piecewise_corner=True, minimum_radius=cfg.wheelbase_m/math.tan(cfg.max_steering_rad),
-                                  **bridge)
+                                  **observed)
                 if cfg.traffic_boundary_refresh_trial and info.get('wall_model') != 'piecewise_corner':
                     from arena_autonomy.fragmented_wall_hypothesis import propose
                     candidate, evidence = propose(cloud, wall_side, cfg.wall_offset_m,
@@ -826,10 +845,10 @@ class LocalFollow:
                 return path,info
             if ray_index is not None:
                 return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon,
-                                  rays=[ray_index[tuple(p)] for p in cloud.tolist()], **bridge)
+                                  rays=[ray_index[tuple(p)] for p in cloud.tolist()], **observed)
             if horizon == 1.8:
-                return local_path(cloud, wall_side, cfg.wall_offset_m, **bridge)
-            return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon, **bridge)
+                return local_path(cloud, wall_side, cfg.wall_offset_m, **observed)
+            return local_path(cloud, wall_side, cfg.wall_offset_m, horizon=horizon, **observed)
         carried = None
         try:
             if self.path is not None and now-self.path_source < cfg.memory_ttl_s:
@@ -1147,7 +1166,16 @@ class LocalFollow:
                 if cfg.junction_continuity and self.path is not None:
                     self.recent_path = self._recent_route_reference()
                 self.path = None
-                return self._hold('follow_boundary_unconfirmed', detail)
+                baseline = self._hold('follow_boundary_unconfirmed', detail)
+                # 과거 벽/앵커 불일치만으로 현재의 짧은 관측 경로까지 버리지 않는다.
+                # 새 경로는 기억에 승인하지 않고 이번 조향·원시 점유·제동을 다시 검사한다.
+                from arena_autonomy.current_wall_reacquire import current_wall_candidate
+                reacquired = current_wall_candidate(scene, speed, side, previous_steering,
+                                                    control_dt, cfg)
+                if reacquired is not None:
+                    return reacquired[0], reacquired[1], {**baseline[2], **reacquired[2],
+                        'underlying_reason': 'follow_boundary_unconfirmed'}
+                return baseline
             memory_age = now-self.path_source
             # 단독 선택에서는 양측 근거로 이미 승인한 현재 반대 벽 경로도 쓴다.
             # 관측이 없는 경로/기억만 남은 경로/교통 모드의 속도 범위는 넓히지 않는다.

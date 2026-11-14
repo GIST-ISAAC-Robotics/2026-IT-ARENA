@@ -1,0 +1,58 @@
+--- a/src/arena_bringup/launch/g1_follow.launch.py
++++ b/src/arena_bringup/launch/g1_follow.launch.py
+@@ -3,11 +3,17 @@
+ 
+ from ament_index_python.packages import get_package_share_directory
+ from launch import LaunchDescription
+-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
++from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, OpaqueFunction
+ from launch.launch_description_sources import PythonLaunchDescriptionSource
+ from launch.substitutions import LaunchConfiguration
+ from launch_ros.actions import SetParameter
+ from launch_ros.parameter_descriptions import ParameterValue
++
++
++def _trace_path_parameters(context):
++    # 빈 global parameter를 name:=로 보내지 않고 소비자의 기록 OFF 기본값을 쓴다.
++    if not LaunchConfiguration('g1_trace_path').perform(context):return []
++    return [SetParameter(name='g1_trace_path', value=LaunchConfiguration('g1_trace_path'))]
+ 
+ 
+ def generate_launch_description():
+@@ -132,7 +138,7 @@
+         SetParameter(name='g1_m3_defer_center_on_straight', value=LaunchConfiguration('g1_m3_defer_center_on_straight')),
+         DeclareLaunchArgument('g1_trace_path', default_value='', description='선택형 판단 단계 JSONL 기록; 기본 꺼짐'),
+         DeclareLaunchArgument('pilot_marker_z', default_value='', description='파일럿 전용 ID49 판 중심 높이 덮어쓰기'),
+-        SetParameter(name='g1_trace_path', value=LaunchConfiguration('g1_trace_path')),
++        OpaqueFunction(function=_trace_path_parameters),
+         SetParameter(name='g1_follow_enabled', value=True),
+         IncludeLaunchDescription(PythonLaunchDescriptionSource(str(launch_file)),
+                                  launch_arguments={'pilot_marker_z': LaunchConfiguration('pilot_marker_z')}.items()),
+--- a/src/arena_bringup/launch/r0_plus.launch.py
++++ b/src/arena_bringup/launch/r0_plus.launch.py
+@@ -2,17 +2,23 @@
+ from pathlib import Path
+ from ament_index_python.packages import get_package_share_directory
+ from launch import LaunchDescription
+-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
++from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, OpaqueFunction
+ from launch.launch_description_sources import PythonLaunchDescriptionSource
+ from launch.substitutions import LaunchConfiguration
+ from launch_ros.actions import SetParameter
++
++
++def _trace_path_parameters(context):
++    # 빈 global parameter를 name:=로 보내지 않고 소비자의 기록 OFF 기본값을 쓴다.
++    if not LaunchConfiguration('g1_trace_path').perform(context):return []
++    return [SetParameter(name='g1_trace_path', value=LaunchConfiguration('g1_trace_path'))]
+ 
+ 
+ def generate_launch_description():
+     source = Path(get_package_share_directory('arena_bringup'))/'launch/local_pursuit.launch.py'
+     return LaunchDescription([GroupAction(scoped=False, actions=[
+         DeclareLaunchArgument('g1_trace_path', default_value=''),
+-        SetParameter(name='g1_trace_path', value=LaunchConfiguration('g1_trace_path')),
++        OpaqueFunction(function=_trace_path_parameters),
+         SetParameter(name='r0_plus_enabled', value=True),
+         SetParameter(name='g1_follow_enabled', value=False),
+         SetParameter(name='g1_boundary_evidence_mode', value='connected'),

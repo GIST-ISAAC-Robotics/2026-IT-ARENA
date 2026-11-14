@@ -1,0 +1,81 @@
+{
+  "status": "RECIPE_READY_WAIT_ROOT_GO_AFTER_R560",
+  "go_required": true,
+  "execute_automatically": false,
+  "WSL_used": false,
+  "build_started": false,
+  "drive_started": false,
+  "baseline_artifact": "artifacts/validation/2026-11-14/measured_steering_radial_lap_r553_v1",
+  "source_selection": "source_selection.json: four changed sources proposed; all authorizations false",
+  "native_sha256": "1bbe89cdcff6662fda699847756ff9c776e1b70c0d406ec97df469666dc3b16c",
+  "steps": [
+    {
+      "stage": "first_competition_check",
+      "operation": "After WSL handover inspect /proc; require competing Gazebo/ROS/build/test processes 0"
+    },
+    {
+      "stage": "root_select_after_go",
+      "operation": "Verify preparation-time source hashes and r557/r554 adoption after r560; root records explicit source/build/freeze/drive authorization and WSL ownership. After freeze, create fresh root_execution_review.json bound to this prepared.json/archive; never reuse r553 receipt."
+    },
+    {
+      "stage": "build_if_required",
+      "shell_command": [
+        "wsl.exe",
+        "-d",
+        "Ubuntu-24.04",
+        "--",
+        "bash",
+        "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/r558_solo_observed_crawl_ready_v1/build_once.sh"
+      ]
+    },
+    {
+      "stage": "actual_import_and_freeze",
+      "shell_command": [
+        "wsl.exe",
+        "-d",
+        "Ubuntu-24.04",
+        "--",
+        "bash",
+        "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/r558_solo_observed_crawl_ready_v1/prepare_once.sh"
+      ]
+    },
+    {
+      "stage": "single_drive_after_review_receipt",
+      "shell_command": [
+        "wsl.exe",
+        "-d",
+        "Ubuntu-24.04",
+        "--",
+        "bash",
+        "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/r558_solo_observed_crawl_ready_v1/execution_v1/execute_once.sh"
+      ]
+    },
+    {
+      "stage": "registered_stop_when_required",
+      "shell_command": [
+        "wsl.exe",
+        "-d",
+        "Ubuntu-24.04",
+        "--",
+        "bash",
+        "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/r558_solo_observed_crawl_ready_v1/execution_v1/stop_once.sh"
+      ]
+    },
+    {
+      "stage": "collect_and_return",
+      "shell_command": [
+        "wsl.exe",
+        "-d",
+        "Ubuntu-24.04",
+        "--",
+        "bash",
+        "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/r558_solo_observed_crawl_ready_v1/execution_v1/finish_collection.bash"
+      ]
+    }
+  ],
+  "planned_scripts_exist": true,
+  "actual_execution_input_hash": null,
+  "source_archive_created": false,
+  "frozen": false,
+  "after_execution": "r560_sparse_actor_drive_v1: owned shutdown/PID0 and explicit WSL handover first"
+}

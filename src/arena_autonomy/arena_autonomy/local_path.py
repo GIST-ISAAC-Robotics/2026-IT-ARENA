@@ -218,23 +218,30 @@ def _sample_count(first, last, spacing=.025):
 
 
 def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corner=False, minimum_radius=0.,
-               narrow_occluder_bridge=False):
+               narrow_occluder_bridge=False, minimum_ahead_m=.28, bearings_rad=None):
     """연결된 관측 벽의 호길이 매개곡선. 수직 벽/급커브도 y=f(x)로 강제하지 않는다.
 
     rays는 points와 같은 순서의 원시 광선 번호다. 주지 않으면 거리 간격만으로 연결한다.
+    bearings_rad는 같은 실제 반환 광선의 보정 후 방향이다. 주어지면 이 각도로 정렬한다.
+    센서 원점과 차체 원점의 차이로 가까운 벽과 먼 배경이 교차 정렬되는 것을 막는다.
     narrow_occluder_bridge(선택형, 기본 꺼짐)는 벽 앞 좁은 가림체 묶음을 벽 사슬에서만 빼고
     그 앞뒤 실제 벽점을 잇는다. 가림체 점은 호출자의 점유·보호 검사에 그대로 남는다.
+    minimum_ahead_m은 벽 앵커 앞 최소 관측 호길이다. 기본0.28m는 유지하며,
+    저속 재획득 호출만 차체 길이 기준을 전달한다. 경로의 전방 길이 검사는 별도다.
     """
     sign = 1 if side == "left" else -1
     points = np.asarray(points, dtype=float)
     if points.ndim != 2 or points.shape[1] != 2:
         return None, {"reason": "wall_lost"}
+    bearings = None if bearings_rad is None else np.asarray(bearings_rad, dtype=float)
+    if bearings is not None and (bearings.shape != (len(points),) or not np.all(np.isfinite(bearings))):
+        return None, {"reason": "wall_bearings_invalid"}
     finite = np.all(np.isfinite(points), axis=1)
     points = points[finite]
     if len(points) < 12:
         return None, {"reason": "wall_lost"}
-    # 보정이 끝난 현재 좌표의 방위 순서. 왼쪽은 감소, 오른쪽은 증가 방향이 전진이다.
-    angles = np.arctan2(points[:, 1], points[:, 0])
+    # 왼쪽은 감소, 오른쪽은 증가 방향이 전진이다. 광선이 없으면 기존 원점 방위를 유지한다.
+    angles = np.arctan2(points[:, 1], points[:, 0]) if bearings is None else bearings[finite]
     order = np.argsort(-sign * angles)
     points = points[order]
     gaps = np.linalg.norm(np.diff(points, axis=0), axis=1)
@@ -291,7 +298,7 @@ def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corn
         arc = np.r_[0., np.cumsum(steps)]
         anchor_s = arc[anchor]
         first, last = max(0., anchor_s-.25), min(arc[-1], anchor_s+horizon)
-        if last-anchor_s >= .28:
+        if last-anchor_s >= minimum_ahead_m:
             eligible.append((score, wall, arc, anchor, anchor_s, first, last))
     if not eligible:
         return None, {"reason": "wall_segment_short"}
@@ -432,9 +439,24 @@ def _pursuit_for_wall(points, side, speed, wheelbase, max_steering, max_speed,
                                    "target_xy_rear_m": target.tolist(), "curvature_m_inv": curvature}
 
 
-def swept_limit(points, steering, wheelbase=.145, horizon=3., margin=.025, length=.20, width=.15):
-    """정곡률 예측 차체와 점군의 첫 간섭까지 후륜축 이동 거리를 계산한다."""
+def swept_limit(points, steering, wheelbase=.145, horizon=3., margin=.025, length=.20, width=.15,
+                *, radial_margin=None):
+    """첫 간섭까지 후륜축 이동 거리. 선택형 운동 반경만 고정 여유 사각형 밖에 원형으로 더한다."""
     points = np.asarray(points, dtype=float)
+    if radial_margin is not None:
+        try:
+            radial = np.asarray(radial_margin)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise ValueError('radial_margin must be a finite nonnegative scalar or per-point vector') from error
+        if (radial.dtype.kind not in 'iuf' or radial.ndim > 1 or
+                (radial.ndim == 1 and radial.shape != (len(points),))):
+            raise ValueError('radial_margin must be a finite nonnegative scalar or per-point vector')
+        # 혼합 목록의 bool이 float로 변환되어 유효 반경으로 통과하지 않게 한다.
+        if not isinstance(radial_margin, np.ndarray) and any(
+                isinstance(value, (bool, np.bool_)) for value in np.asarray(radial_margin, dtype=object).flat):
+            raise ValueError('radial_margin must not contain bool')
+        if not np.all(np.isfinite(radial)) or np.any(radial < 0):
+            raise ValueError('radial_margin must be finite and nonnegative')
     curvature = math.tan(steering) / wheelbase
     distances = np.arange(0., horizon + .001, .04)
     # 같은 4 cm 표본을 여덟 개씩 묶는다. libm 삼각함수와 연산 순서를 유지하여
@@ -451,7 +473,12 @@ def swept_limit(points, steering, wheelbase=.145, horizon=3., margin=.025, lengt
         dx, dy = points[:, 0] - rx, points[:, 1] - ry
         local_x = c * dx + s * dy - wheelbase / 2
         local_y = -s * dx + c * dy
-        hit = np.any((np.abs(local_x) <= length/2 + margin) & (np.abs(local_y) <= width/2 + margin), axis=1)
+        if radial_margin is None:
+            hit = np.any((np.abs(local_x) <= length/2 + margin) & (np.abs(local_y) <= width/2 + margin), axis=1)
+        else:
+            outside_x = np.maximum(0., np.abs(local_x) - (length/2 + margin))
+            outside_y = np.maximum(0., np.abs(local_y) - (width/2 + margin))
+            hit = np.any(np.hypot(outside_x, outside_y) <= radial, axis=1)
         indices = np.flatnonzero(hit)
         if len(indices):
             return max(0., float(steps[indices[0]]) - .04)  # 이산 검사 간격을 안전 여유로 차감

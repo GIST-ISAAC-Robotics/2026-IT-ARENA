@@ -1,0 +1,45 @@
+--- a/src/arena_autonomy/arena_autonomy/race_ops_page.py
++++ b/src/arena_autonomy/arena_autonomy/race_ops_page.py
+@@ -98,12 +98,13 @@
+ }
+ async function cameraPreview(row){
+  if(previewImageBusy||row.sequence===previewCameraSequence)return;
++ const connection=auth;
+  previewImageBusy=true;
+- try{const response=await fetch('/api/preview.jpg?sequence='+row.sequence,{headers:headers(),cache:'no-store'});if(!response.ok)throw Error('JPEG '+response.status);
+-  const blob=await response.blob();if(!last?.preview?.config.camera||!$('previewcamera').checked)return;
++ try{const response=await fetch('/api/preview.jpg?sequence='+row.sequence,{headers:headers(connection),cache:'no-store'});if(auth!==connection)return;if(!response.ok)throw Error('JPEG '+response.status);
++  const blob=await response.blob();if(auth!==connection||!last?.preview?.config.camera||!$('previewcamera').checked)return;
+   if(previewCameraUrl)URL.revokeObjectURL(previewCameraUrl);previewCameraUrl=URL.createObjectURL(blob);previewCameraSequence=row.sequence;
+   $('camerapreview').src=previewCameraUrl;$('camerapreview').hidden=false;
+- }catch(error){$('camerameta').textContent='미리보기 오류: '+error.message}finally{previewImageBusy=false}
++ }catch(error){if(auth===connection)$('camerameta').textContent='미리보기 오류: '+error.message}finally{previewImageBusy=false}
+ }
+ function renderPreview(p){
+  if(!p)return;const cfg=p.config;
+@@ -216,12 +217,13 @@
+  sendManual('run',{speed_mps:v,seconds:t,steering_deg:a})};
+ async function configurePreview(off=false){
+  if(!auth){$('previewstate').textContent='차량/토큰을 먼저 연결하십시오.';return}
++ const connection=auth;
+  if(off){$('previewlidar').checked=false;$('previewcamera').checked=false;previewLidar=null;drawLidar();clearCamera()}
+  const config={lidar:$('previewlidar').checked,camera:$('previewcamera').checked,lidar_type:$('previewkind').value,
+   lidar_topic:$('previewlidartopic').value.trim(),camera_topic:$('previewcameratopic').value.trim()};
+- try{const response=await fetch('/api/preview',{method:'POST',headers:headers(),body:JSON.stringify({client,config})});
+-  const result=await response.json();if(!response.ok)throw Error(result.error||response.status);renderPreview(result);poll()}
+- catch(error){$('previewstate').textContent='미리보기 설정 오류: '+error.message}
++ try{const response=await fetch('/api/preview',{method:'POST',headers:headers(connection),body:JSON.stringify({client,config})});
++  const result=await response.json();if(auth!==connection)return;if(!response.ok)throw Error(result.error||response.status);renderPreview(result);poll()}
++ catch(error){if(auth===connection)$('previewstate').textContent='미리보기 설정 오류: '+error.message}
+ }
+ $('previewapply').onclick=()=>configurePreview();$('previewoff').onclick=()=>configurePreview(true);
+ $('previewrange').oninput=drawLidar;
+@@ -235,6 +237,8 @@
+ exportLink('csv','csv');exportLink('html','html');
+ $('login').onclick=()=>{const connection={vehicle:$('vehicle').value.trim(),token:$('token').value,readonly:false};auth=connection;
+  last=null;lastOk=null;busy=false;speedInitialized=false;speedDirty=false;disableBoundControls();$('stop').disabled=false;$('manualstop').disabled=true;
++ clearCamera();previewLidar=null;previewLidarSequence=null;drawLidar();
++ $('previewstate').textContent='연결 확인 중';$('lidarmeta').textContent='새 연결 입력 대기';$('camerameta').textContent='새 연결 입력 대기';
+  $('badge').textContent='연결 확인 중';$('badge').className='setup';$('vid').textContent=connection.vehicle;$('race').textContent='';setStale('연결 확인 중');
+  $('speedlimitcurrent').textContent='미확인';$('speedlimit').value='';$('speedlimitkmh').value='';$('speededitstate').textContent='서버값 대기';
+  $('authmsg').textContent='연결 시도';sessionStorage.setItem('arena_vehicle',connection.vehicle);poll().then(()=>{if(auth===connection)$('authmsg').textContent=''})};

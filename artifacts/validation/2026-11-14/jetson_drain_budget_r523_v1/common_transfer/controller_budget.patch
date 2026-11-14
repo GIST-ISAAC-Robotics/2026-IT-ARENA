@@ -1,0 +1,30 @@
+--- a/src/arena_autonomy/arena_autonomy/lidar_motion_ros.py
++++ b/src/arena_autonomy/arena_autonomy/lidar_motion_ros.py
+@@ -126,14 +126,14 @@
+         self._ready_motion_subscriptions.append(node.create_subscription(
+             Imu, imu_topic, wrap('imu', self.on_imu), imu_qos))
+ 
+-    def drain_pending(self):
++    def drain_pending(self, *, budget_s=.002):
+         """현재 control callback 안에서 이미 준비된 표본만 기존 callback으로 소비한다.
+ 
+         control과 운동 subscriptions는 같은 기본 mutually-exclusive callback group을
+         사용한다. 호출 뒤 제어 함수가 now를 읽는다. 동시 직접 호출은 지원하지 않는다.
+         상한은 메시지 사이에서 검사하며 남은 표본과 원 stamp/만료 기준은 보존한다.
+         """
+-        self.last_drain = drain_ready_motion(self._ready_motion_subscriptions)
++        self.last_drain = drain_ready_motion(self._ready_motion_subscriptions, budget_s=budget_s)
+         return self.last_drain
+ 
+     def clock(self):
+--- a/src/arena_autonomy/arena_autonomy/g1_g2_node.py
++++ b/src/arena_autonomy/arena_autonomy/g1_g2_node.py
+@@ -192,7 +192,7 @@
+         super().stop()
+ 
+     def control(self):
+-        self.motion.drain_pending()
++        self.motion.drain_pending(budget_s=.006)
+         if getattr(self, 'runtime_dual_selected', False):
+             from arena_autonomy.runtime_node_backend import control
+             return control(self, super().control)

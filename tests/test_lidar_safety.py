@@ -23,8 +23,8 @@ def node_double():
         x = np.linspace(-1, 3, 60)
         return np.vstack((np.column_stack((x, x*0+.425)), np.column_stack((x, x*0-.425)))), 120
     node = SimpleNamespace(command=command, scan=scan, scan_wall=time.monotonic(), command_wall=time.monotonic(),
-                           wall_timeout=3., limit=.37, last_clock=None, wheelbase=.145, length=.20, width=.15,
-                           motion=SimpleNamespace(project=project, history=SimpleNamespace(
+                           command_observation_priority=False, wall_timeout=3., limit=.37, last_clock=None, wheelbase=.145, length=.20, width=.15,
+                           motion=SimpleNamespace(drain_pending=lambda: None, project=project, history=SimpleNamespace(
                                config=SimpleNamespace(lidar_yaw_rad=0.))),
                            vehicle_marker_channel=SimpleNamespace(profile=None,
                                snapshot=lambda _: None, reset=lambda *args: None),

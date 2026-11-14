@@ -1,0 +1,50 @@
+--- a/src/arena_autonomy/arena_autonomy/race_ops_page.py
++++ b/src/arena_autonomy/arena_autonomy/race_ops_page.py
+@@ -97,17 +97,17 @@
+  if(!previewLidar){ctx.fillStyle='#8a939c';ctx.fillText('유효 반환 점 없음 / OFF — 빈 공간 판정 아님',30,h-15)}
+ }
+ async function cameraPreview(row){
+- if(previewImageBusy||row.sequence===previewCameraSequence)return;
++ if(document.hidden||!$('previewcamera').checked||previewImageBusy||row.sequence===previewCameraSequence)return;
+  const connection=auth;
+  previewImageBusy=true;
+- try{const response=await fetch('/api/preview.jpg?sequence='+row.sequence,{headers:headers(connection),cache:'no-store'});if(auth!==connection)return;if(!response.ok)throw Error('JPEG '+response.status);
+-  const blob=await response.blob();if(auth!==connection||!last?.preview?.config.camera||!$('previewcamera').checked)return;
++ try{const response=await fetch('/api/preview.jpg?sequence='+row.sequence,{headers:headers(connection),cache:'no-store'});if(auth!==connection||document.hidden||!$('previewcamera').checked)return;if(!response.ok)throw Error('JPEG '+response.status);
++  const blob=await response.blob();if(auth!==connection||document.hidden||!last?.preview?.config.camera||!$('previewcamera').checked)return;
+   if(previewCameraUrl)URL.revokeObjectURL(previewCameraUrl);previewCameraUrl=URL.createObjectURL(blob);previewCameraSequence=row.sequence;
+   $('camerapreview').src=previewCameraUrl;$('camerapreview').hidden=false;
+  }catch(error){if(auth===connection)$('camerameta').textContent='미리보기 오류: '+error.message}finally{previewImageBusy=false}
+ }
+ function renderPreview(p){
+- if(!p)return;const cfg=p.config;
++ if(!p||document.hidden)return;const cfg=p.config;
+  $('previewstate').textContent=p.active?'ON · 조회 만료 시 자동 해제':'OFF';
+  const lidar=cfg.lidar?p.lidar:null;
+  if(lidar){$('lidarmeta').textContent=(lidar.stale?'오래됨 · ':'')+lidar.frame+' · 수신 '+fmt(lidar.receipt_age_s,2)+'s 전 · 표시 '+lidar.drawn_count+'/'+lidar.raw_count+' · 무효/무반환 '+lidar.invalid_count+' · 센서 좌표/운동보정 전';
+@@ -176,7 +176,7 @@
+  if(!auth)return;
+  // 재연결 전 응답과 더 새 상태 뒤에 도착한 응답은 화면/권한을 덮지 않는다.
+  const connection=auth,sequence=++pollSequence,current=()=>auth===connection&&sequence>=renderedPoll;
+- try{const r=await fetch('/api/state?client='+client,{headers:headers(connection),cache:'no-store'});
++ try{const r=await fetch('/api/state?client='+client+(document.hidden?'&preview=0':''),{headers:headers(connection),cache:'no-store'});
+   if(!current())return;
+   if(!r.ok){renderedPoll=sequence;lastOk=null;disableBoundControls();setStale((r.status===401||r.status===409?'인증/차량 불일치 ':'상태 조회 실패 ')+r.status);return}
+   const s=await r.json();if(!current())return;
+--- a/src/arena_autonomy/arena_autonomy/race_ops_node.py
++++ b/src/arena_autonomy/arena_autonomy/race_ops_node.py
+@@ -98,10 +98,13 @@
+             client = query.get('client', [''])[0]
+             if token(client) and role == 'operator':
+                 ops.core.client_seen(client, wall)
+-            if token(client):ops.preview.keepalive(client)
++            preview_requested = query.get('preview', ['1'])[0] != '0'
++            if token(client) and preview_requested:ops.preview.keepalive(client)
+             state = ops.core.view(wall, time.time())
+             state['manual'] = ops.manual.snapshot()
+             state['preview'] = ops.preview.snapshot()
++            if not preview_requested:
++                state['preview'].update(lidar=None, camera=None)
+             return self.respond(200, json.dumps(state, ensure_ascii=False, allow_nan=False), X_Arena_Role=role)
+         if url.path == '/api/preview.jpg':
+             data = ops.preview.jpeg()

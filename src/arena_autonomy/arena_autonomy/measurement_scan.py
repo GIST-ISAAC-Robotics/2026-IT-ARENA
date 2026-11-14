@@ -17,6 +17,8 @@ class MeasurementScan:
     source_epoch: int = 0
     # SDK 추정 시각은 이 값 그대로 남긴다. 센서 취득 시각으로 자동 승격하지 않는다.
     time_basis: str = 'unverified_estimate'
+    # 내부 자체 반환 필터의 원천 인덱스. 원시 native wire schema에는 없다.
+    self_masked_indices: tuple[int, ...] = ()
 
     def __post_init__(self):
         n = len(self.ranges_m)
@@ -40,6 +42,12 @@ class MeasurementScan:
         object.__setattr__(self, 'ranges_m', tuple(ranges))
         object.__setattr__(self, 'angles_rad', angles)
         object.__setattr__(self, 'acquired_at_s', stamps)
+        indices = tuple(self.self_masked_indices)
+        if (any(type(i) is not int or not 0 <= i < n for i in indices)
+                or len(set(indices)) != len(indices)
+                or any(not math.isnan(ranges[i]) for i in indices)):
+            raise ValueError('self masked indices require unique in-range NaN rays')
+        object.__setattr__(self, 'self_masked_indices', indices)
 
     @property
     def ranges(self):

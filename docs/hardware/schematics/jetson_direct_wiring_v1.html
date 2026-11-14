@@ -1,0 +1,309 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IT ARENA · ESP32 없는 Jetson 배선안</title>
+<style>body{margin:0;background:#eaf0f7;color:#14273d;font-family:"Malgun Gothic",sans-serif}main{max-width:2740px;margin:auto;padding:28px}h1{font-size:30px}p,li{line-height:1.7}section{margin:24px 0;background:white;border:1px solid #ccd6e4;border-radius:12px;padding:20px}.scroll{overflow:auto}.drawing svg{width:100%;height:auto}.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:16px 0}button{padding:10px 16px;cursor:pointer;border:1px solid #b7c8da;background:white;border-radius:6px}a{color:#2161ae}table{border-collapse:collapse;width:100%;min-width:800px;font-size:15px}td,th{padding:12px;border-bottom:1px solid #d8e0e9;text-align:left}th{background:#eaf0f7}.notice{padding:16px 20px;background:#fff1de;border-left:5px solid #a86800}.changes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.changes article{border:1px solid #ccd6e4;padding:16px;border-radius:8px}@media print{@page{size:A3 portrait;margin:8mm}main{padding:0}section{break-before:page;border:0;padding:0}.toolbar{display:none}.drawing svg{width:100%}header,.changes{display:none}}</style>
+<main><header><h1>ESP32 없는 Jetson 직접 제어 배선안</h1><p>2026-11-14 · 기존 배선도와 같은 부품 배치·색상 · J12 BOARD 물리 핀 번호</p><p class="notice"><b>설계안 / 그대로 통전하지 마십시오.</b> 조향 USB 경로와 물리 STOP 제외를 반영했습니다. 엔코더 입력 정합, pinmux와 PWM 종료는 미검증입니다. 발열 ESP32와 그 USB·전원·신호는 완전히 분리하는 구성입니다.</p>
+<p><b>공식 자료 대조:</b> 조향은 Jetson USB-C→데이터 C-to-C→Adapter(A), 점퍼캡 2개 B로 연결합니다. CF의 TXS→Jetson TXB 경로는 입력 구동 요구 충족 근거가 없어 직결 보류입니다. 물리 STOP은 사용자 지시로 제외했고 나머지 기능은 모두 유지합니다. <a href="jetson_existing_parts_check_2026_11_14.md">공식 근거와 판단</a></p>
+<p><a href="esp32_gpio_wiring_v1.html">기존 ESP32 도면</a> · <a href="jetson_direct_pin_table_v1.md">핀별 연결표</a> · <a href="jetson_direct_v1.json">설계 JSON</a> · <a href="jetson_direct_all_v1.png">PNG</a> · <a href="jetson_direct_all_v1.svg">SVG 원본</a></p></header>
+<div class="changes"><article><b>유지</b><p>J01/M01 전원, MD20A, 기존 서보 어댑터, 엔코더/CF, CSI 카메라와 USB 라이다</p></article><article><b>변경</b><p>ESP32 연결 제거. 조향 USB 및 Jetson PWM/GPIO 사용. IMU는 SPI에서 I2C로 변경하며 물리 STOP은 제외합니다.</p></article><article><b>미확정</b><p>점선은 엔코더 입력 정합 미완료 경로입니다. 27/28 우회도 미채택이며 Jetson 전원 OFF로 실물 검증은 하지 않았습니다.</p></article></div>
+<section><h2>신호·전원·분기 전체도</h2><div class="toolbar"><button onclick="zoomDiagram(false)">전체 보기</button><button onclick="zoomDiagram(true)">원본 크기</button><span>● 있는 곳만 접속 · BOARD는 ESP32 GPIO 번호가 아닙니다.</span></div><div class="scroll drawing"><svg xmlns="http://www.w3.org/2000/svg" width="2740" height="2600" viewBox="0 0 2740 2600" role="img" aria-label="ESP32 없는 전체 배선도 · Jetson 직접 제어안">
+<style>text{font-family:"Malgun Gothic","Noto Sans KR",sans-serif;fill:#14273d} .small{font-size:17px}</style>
+<rect width="2740" height="2600" fill="#f6f8fc"/>
+<text x="50" y="54" font-size="31" style="fill:#14273d" font-weight="700" text-anchor="start">ESP32 없는 전체 배선도 · Jetson 직접 제어안</text>
+<text x="50" y="90" font-size="19" style="fill:#576579" font-weight="400" text-anchor="start">기존 전원·모터·서보·센서 재사용 / 신호 핀은 J12 BOARD 번호 / 실제 핀1 방향·pinmux 확인 전 연결하지 않음</text>
+<path d="M50,113 L2690,113" fill="none" stroke="#cad4e0" stroke-width="1"/>
+<text x="50" y="145" font-size="21" style="fill:#14273d" font-weight="700" text-anchor="start">실선 = 연결 설계  |  점선 = 직결 보류/회로 없음  |  ● 접속점 · 점 없는 교차는 미접속</text>
+<text x="1660" y="145" font-size="19" style="fill:#ba3c36" font-weight="700" text-anchor="start">전기적 검증 전 설계안 · 그대로 통전하는 완성 회로가 아닙니다</text>
+<rect x="1130" y="180" width="340" height="110" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="1148" y="214" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">6S 배터리</text>
+<text x="1148" y="242" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">기존 XT60↔XT30 + Y 분기</text>
+<rect x="60" y="350" width="660" height="290" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="78" y="384" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">PDB · J01</text>
+<text x="78" y="412" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">CN1 입력 21–36 V DC</text>
+<rect x="1880" y="350" width="660" height="290" rx="9" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="1898" y="384" font-size="22" style="fill:#ba3c36" font-weight="700" text-anchor="start">PDB · M01</text>
+<text x="1898" y="412" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">CN1 입력 24–36 V DC</text>
+<rect x="1050" y="670" width="500" height="1430" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1068" y="704" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">Jetson Orin Nano Super</text>
+<text x="1068" y="732" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">J12 40핀 헤더 · BOARD 물리 번호</text>
+<rect x="340" y="710" width="380" height="155" rx="9" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="358" y="744" font-size="22" style="fill:#08776d" font-weight="700" text-anchor="start">B0390 카메라</text>
+<text x="358" y="772" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">기존 22↔22 FPC</text>
+<rect x="1880" y="710" width="380" height="155" rx="9" fill="white" stroke="#087f96" stroke-width="2"/>
+<text x="1898" y="744" font-size="22" style="fill:#087f96" font-weight="700" text-anchor="start">RPLIDAR C1</text>
+<text x="1898" y="772" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">기존 지급 USB 어댑터</text>
+<rect x="340" y="950" width="380" height="450" rx="9" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="358" y="984" font-size="22" style="fill:#08776d" font-weight="700" text-anchor="start">Adafruit 4438</text>
+<text x="358" y="1012" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">LSM6DSOX · SPI → I2C 변경안</text>
+<rect x="340" y="1470" width="380" height="320" rx="9" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="358" y="1504" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">CF-0108 / TXS0108E</text>
+<text x="358" y="1532" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">기존 기능 확인한 보드 · 채널1/2</text>
+<rect x="340" y="1890" width="380" height="240" rx="9" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="358" y="1924" font-size="22" style="fill:#a86800" font-weight="700" text-anchor="start">PGE-213 엔코더</text>
+<text x="358" y="1952" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">모터축 · 5 V 측 유지</text>
+<rect x="1880" y="950" width="380" height="120" rx="9" fill="white" stroke="#14273d" stroke-width="2"/>
+<text x="1898" y="984" font-size="22" style="fill:#14273d" font-weight="700" text-anchor="start">MB4266-24180</text>
+<text x="1898" y="1012" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">기존 MA/MB 연결 유지</text>
+<rect x="1880" y="1140" width="380" height="290" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1898" y="1174" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">Cytron MD20A</text>
+<text x="1898" y="1202" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">3.3 V PWM/DIR · 20 kHz 후보</text>
+<rect x="1880" y="1500" width="380" height="120" rx="9" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="1898" y="1534" font-size="22" style="fill:#7641a7" font-weight="700" text-anchor="start">ST3215-HS × 1</text>
+<text x="1898" y="1562" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">기존 위치 교정값 보존</text>
+<rect x="1880" y="1690" width="380" height="300" rx="9" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="1898" y="1724" font-size="22" style="fill:#7641a7" font-weight="700" text-anchor="start">Bus Servo Adapter(A)</text>
+<text x="1898" y="1752" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">USB-C 사용 · UART 헤더 미사용</text>
+<path d="M1260,290 L1260,325" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1260,290 L1260,325" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<text x="1260" y="278" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="middle">+</text>
+<path d="M1340,290 L1340,325" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1340,290 L1340,325" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<text x="1340" y="278" font-size="20" style="fill:#576579" font-weight="400" text-anchor="middle">−</text>
+<rect x="1240" y="325" width="120" height="35" rx="6" fill="#e8eef7" stroke="#576579"/>
+<text x="1300" y="349" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">+/− 2심</text>
+<path d="M1300,360 L1300,400" fill="none" stroke="#f6f8fc" stroke-width="15" stroke-linejoin="round"/>
+<path d="M1300,360 L1300,400" fill="none" stroke="#14273d" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1300,400 L1160,480 L810,480" fill="none" stroke="#f6f8fc" stroke-width="15" stroke-linejoin="round"/>
+<path d="M1300,400 L1160,480 L810,480" fill="none" stroke="#14273d" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1300,400 L1440,480 L1790,480" fill="none" stroke="#f6f8fc" stroke-width="15" stroke-linejoin="round"/>
+<path d="M1300,400 L1440,480 L1790,480" fill="none" stroke="#14273d" stroke-width="9" stroke-linejoin="round"/>
+<circle cx="1300" cy="400" r="6" fill="#14273d"/>
+<rect x="780" y="438" width="30" height="85" rx="5" fill="#e8eef7" stroke="#576579"/>
+<rect x="1790" y="438" width="30" height="85" rx="5" fill="#e8eef7" stroke="#576579"/>
+<path d="M720,455 L780,455" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,455 L780,455" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="455" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="706" y="462" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">CN1 +</text>
+<path d="M1820,455 L1880,455" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1820,455 L1880,455" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1880" cy="455" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="1894" y="462" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">CN1 +</text>
+<path d="M720,505 L780,505" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,505 L780,505" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="505" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="706" y="512" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">CN1 −</text>
+<path d="M1820,505 L1880,505" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1820,505 L1880,505" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1880" cy="505" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1894" y="512" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">CN1 −</text>
+<text x="1300" y="540" font-size="21" style="fill:#14273d" font-weight="700" text-anchor="middle">Y 분기 유지 · +끼리 / −끼리</text>
+<text x="1300" y="588" font-size="20" style="fill:#ba3c36" font-weight="700" text-anchor="middle">ESP32 본체·USB·전원·신호선은 모두 제거</text>
+<text x="80" y="455" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">CN2(CH1): 19 V / 최대2.3 A</text>
+<text x="80" y="503" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">CN5(CH4): 5 V / 최대0.5 A</text>
+<text x="80" y="551" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">3.3 V CH5/6은 이 안에서 미사용</text>
+<text x="1900" y="555" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">CH1: 입력 전압 그대로 / CH5: 12 V·최대2 A</text>
+<path d="M720,560 L840,560" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,560 L840,560" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="560" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="706" y="567" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">CN2 +</text>
+<path d="M720,610 L840,610" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,610 L840,610" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="610" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="706" y="617" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">CN2 −</text>
+<rect x="840" y="545" width="50" height="80" rx="6" fill="#e8eef7" stroke="#576579"/>
+<path d="M890,585 L950,585 L950,755 L1050,755" fill="none" stroke="#f6f8fc" stroke-width="14" stroke-linejoin="round"/>
+<path d="M890,585 L950,585 L950,755 L1050,755" fill="none" stroke="#576579" stroke-width="8" stroke-linejoin="round"/>
+<circle cx="1050" cy="755" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1064" y="762" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">DC IN 배럴잭</text>
+<text x="1070" y="790" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">19 V · 중앙 + / 외곽 −</text>
+<path d="M720,825 L1050,825" fill="none" stroke="#f6f8fc" stroke-width="13" stroke-linejoin="round"/>
+<path d="M720,825 L1050,825" fill="none" stroke="#08776d" stroke-width="7" stroke-linejoin="round"/>
+<circle cx="1050" cy="825" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="1064" y="832" font-size="20" style="fill:#08776d" font-weight="400" text-anchor="start">CSI</text>
+<text x="885" y="809" font-size="17" style="fill:#08776d" font-weight="400" text-anchor="middle">FPC 1개</text>
+<path d="M1550,825 L1880,825" fill="none" stroke="#f6f8fc" stroke-width="13" stroke-linejoin="round"/>
+<path d="M1550,825 L1880,825" fill="none" stroke="#087f96" stroke-width="7" stroke-linejoin="round"/>
+<circle cx="1550" cy="825" r="4" fill="white" stroke="#087f96" stroke-width="2"/>
+<text x="1536" y="832" font-size="20" style="fill:#087f96" font-weight="400" text-anchor="end">USB-A</text>
+<text x="1715" y="809" font-size="17" style="fill:#087f96" font-weight="400" text-anchor="middle">USB 1개</text>
+<text x="1070" y="910" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">J12 신호는 3.3 V 기준</text>
+<path d="M720,1040 L1050,1040" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1040 L1050,1040" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1040" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="706" y="1047" font-size="18" style="fill:#ba3c36" font-weight="400" text-anchor="end">VIN</text>
+<circle cx="1050" cy="1040" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="1064" y="1047" font-size="18" style="fill:#ba3c36" font-weight="400" text-anchor="start">1 · 3V3</text>
+<text x="885.0" y="1026" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="middle">T3V3</text>
+<path d="M720,1090 L1050,1090" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1090 L1050,1090" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1090" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="706" y="1097" font-size="18" style="fill:#576579" font-weight="400" text-anchor="end">GND</text>
+<circle cx="1050" cy="1090" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1064" y="1097" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">6 · GND</text>
+<path d="M720,1170 L1050,1170" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1170 L1050,1170" fill="none" stroke="#08776d" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1170" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="706" y="1177" font-size="18" style="fill:#08776d" font-weight="400" text-anchor="end">SDA</text>
+<circle cx="1050" cy="1170" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="1064" y="1177" font-size="18" style="fill:#08776d" font-weight="400" text-anchor="start">3 · I2C SDA</text>
+<path d="M720,1230 L1050,1230" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1230 L1050,1230" fill="none" stroke="#08776d" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1230" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="706" y="1237" font-size="18" style="fill:#08776d" font-weight="400" text-anchor="end">SCL</text>
+<circle cx="1050" cy="1230" r="4" fill="white" stroke="#08776d" stroke-width="2"/>
+<text x="1064" y="1237" font-size="18" style="fill:#08776d" font-weight="400" text-anchor="start">5 · I2C SCL</text>
+<path d="M875,1040 L875,1555 L720,1555" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M875,1040 L875,1555 L720,1555" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<path d="M720,1600 L875,1600 L875,1555" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1600 L875,1600 L875,1555" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="1555" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="706" y="1562" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">VA</text>
+<circle cx="720" cy="1600" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="706" y="1607" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">OE</text>
+<circle cx="875" cy="1040" r="6" fill="#ba3c36"/>
+<circle cx="875" cy="1555" r="6" fill="#ba3c36"/>
+<text x="360" y="1295" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">하단 CS → T3V3 (I2C 모드)</text>
+<text x="360" y="1324" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">하단 DO 미연결 · 0x6A/0x6B 확인</text>
+<text x="360" y="1353" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">3Vo·I1/I2·상단 보조핀 미연결</text>
+<text x="1070" y="1320" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">J12 3.3 V 공급: 합계100 mA 이내</text>
+<text x="1070" y="1352" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">IMU + CF + 추가 회로 부하 합산</text>
+<text x="1070" y="1384" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">PDB 3.3/5 V와 병렬 연결 금지</text>
+<path d="M160,640 L160,1980" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M160,640 L160,1980" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<text x="160" y="677" font-size="16" style="fill:#ba3c36" font-weight="400" text-anchor="middle">+</text>
+<path d="M240,640 L240,2050" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M240,640 L240,2050" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<text x="240" y="677" font-size="16" style="fill:#576579" font-weight="400" text-anchor="middle">−</text>
+<text x="200" y="720" font-size="17" style="fill:#576579" font-weight="400" text-anchor="middle">CN5(CH4)</text>
+<path d="M160,1555 L340,1555" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M160,1555 L340,1555" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="340" cy="1555" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="354" y="1562" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">VB</text>
+<path d="M160,1980 L340,1980" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M160,1980 L340,1980" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="340" cy="1980" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="354" y="1987" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="start">1 VCC</text>
+<path d="M240,1605 L340,1605" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M240,1605 L340,1605" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="340" cy="1605" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="354" y="1612" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">GND</text>
+<path d="M240,2050 L340,2050" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M240,2050 L340,2050" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="340" cy="2050" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="354" y="2057" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">2 GND</text>
+<path d="M240,1835 L1050,1835" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M240,1835 L1050,1835" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1050" cy="1835" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1064" y="1842" font-size="20" style="fill:#576579" font-weight="400" text-anchor="start">9 · GND</text>
+<circle cx="160" cy="1555" r="6" fill="#ba3c36"/>
+<circle cx="240" cy="1605" r="6" fill="#576579"/>
+<circle cx="240" cy="1835" r="6" fill="#576579"/>
+<text x="55" y="1485" font-size="18" style="fill:#ba3c36" font-weight="700" text-anchor="start">T5V · 5 V</text>
+<text x="270" y="1818" font-size="18" style="fill:#576579" font-weight="700" text-anchor="start">TGND · 센서 공통</text>
+<path d="M720,1680 L1050,1680" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1680 L1050,1680" fill="none" stroke="#a86800" stroke-width="3" stroke-linejoin="round" stroke-dasharray="10 7"/>
+<circle cx="720" cy="1680" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="706" y="1687" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="end">A1</text>
+<circle cx="1050" cy="1680" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="1064" y="1687" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="start">31 · ENC A</text>
+<text x="885.0" y="1666" font-size="16" style="fill:#a86800" font-weight="400" text-anchor="middle">TXS→TXB 구동 조건</text>
+<path d="M720,1740 L1050,1740" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M720,1740 L1050,1740" fill="none" stroke="#a86800" stroke-width="3" stroke-linejoin="round" stroke-dasharray="10 7"/>
+<circle cx="720" cy="1740" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="706" y="1747" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="end">A2</text>
+<circle cx="1050" cy="1740" r="4" fill="white" stroke="#a86800" stroke-width="2"/>
+<text x="1064" y="1747" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="start">33 · ENC B</text>
+<text x="885.0" y="1726" font-size="16" style="fill:#a86800" font-weight="400" text-anchor="middle">충족 근거 없음 · 보류</text>
+<path d="M510,1790 L510,1890" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M510,1790 L510,1890" fill="none" stroke="#a86800" stroke-width="3" stroke-linejoin="round"/>
+<text x="510" y="1770" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="middle">B1</text>
+<text x="525" y="1870" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="start">3 HA</text>
+<path d="M625,1790 L625,1890" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M625,1790 L625,1890" fill="none" stroke="#a86800" stroke-width="3" stroke-linejoin="round"/>
+<text x="625" y="1770" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="middle">B2</text>
+<text x="640" y="1870" font-size="18" style="fill:#a86800" font-weight="400" text-anchor="start">4 HB</text>
+<text x="360" y="2110" font-size="17" style="fill:#ba3c36" font-weight="400" text-anchor="start">5 V HA/HB를 J12에 직접 연결 금지</text>
+<path d="M1550,1240 L1880,1240" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1550,1240 L1880,1240" fill="none" stroke="#2161ae" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1550" cy="1240" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1536" y="1247" font-size="18" style="fill:#2161ae" font-weight="400" text-anchor="end">32 · PWM</text>
+<circle cx="1880" cy="1240" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1894" y="1247" font-size="18" style="fill:#2161ae" font-weight="400" text-anchor="start">PWM</text>
+<text x="1715.0" y="1226" font-size="16" style="fill:#2161ae" font-weight="400" text-anchor="middle">하드웨어 PWM</text>
+<path d="M1550,1300 L1880,1300" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1550,1300 L1880,1300" fill="none" stroke="#2161ae" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1550" cy="1300" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1536" y="1307" font-size="18" style="fill:#2161ae" font-weight="400" text-anchor="end">29 · DIR</text>
+<circle cx="1880" cy="1300" r="4" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1894" y="1307" font-size="18" style="fill:#2161ae" font-weight="400" text-anchor="start">DIR</text>
+<text x="1715.0" y="1286" font-size="16" style="fill:#2161ae" font-weight="400" text-anchor="middle">방향</text>
+<path d="M1550,1360 L1880,1360" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1550,1360 L1880,1360" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1550" cy="1360" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1536" y="1367" font-size="18" style="fill:#576579" font-weight="400" text-anchor="end">25 · GND</text>
+<circle cx="1880" cy="1360" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="1894" y="1367" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">신호 GND</text>
+<path d="M1980,1070 L1980,1140" fill="none" stroke="#f6f8fc" stroke-width="11" stroke-linejoin="round"/>
+<path d="M1980,1070 L1980,1140" fill="none" stroke="#14273d" stroke-width="5" stroke-linejoin="round"/>
+<text x="1980" y="1050" font-size="18" style="fill:#14273d" font-weight="400" text-anchor="middle">6 (+)</text>
+<text x="1992" y="1112" font-size="18" style="fill:#14273d" font-weight="400" text-anchor="start">MA</text>
+<path d="M2160,1070 L2160,1140" fill="none" stroke="#f6f8fc" stroke-width="11" stroke-linejoin="round"/>
+<path d="M2160,1070 L2160,1140" fill="none" stroke="#14273d" stroke-width="5" stroke-linejoin="round"/>
+<text x="2160" y="1050" font-size="18" style="fill:#14273d" font-weight="400" text-anchor="middle">5 (−)</text>
+<text x="2172" y="1112" font-size="18" style="fill:#14273d" font-weight="400" text-anchor="start">MB</text>
+<text x="1900" y="1408" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">PWM LOW = brake · MA/MB ≠ GND</text>
+<path d="M2540,430 L2660,430 L2660,1240 L2260,1240" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M2540,430 L2660,430 L2660,1240 L2260,1240" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="2540" cy="430" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="2526" y="437" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">CN2(CH1) +</text>
+<circle cx="2260" cy="1240" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="2246" y="1247" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">VB+</text>
+<text x="2400" y="1225" font-size="17" style="fill:#ba3c36" font-weight="400" text-anchor="middle">배터리 전압</text>
+<path d="M2540,480 L2700,480 L2700,1300 L2260,1300" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M2540,480 L2700,480 L2700,1300 L2260,1300" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="2540" cy="480" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="2526" y="487" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">CN2(CH1) −</text>
+<circle cx="2260" cy="1300" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="2246" y="1307" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">VB−</text>
+<text x="2400" y="1285" font-size="17" style="fill:#576579" font-weight="400" text-anchor="middle">전력 귀환</text>
+<path d="M2540,560 L2580,560 L2580,1800 L2260,1800" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M2540,560 L2580,560 L2580,1800 L2260,1800" fill="none" stroke="#ba3c36" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="2540" cy="560" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="2526" y="567" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">CN6(CH5) +</text>
+<circle cx="2260" cy="1800" r="4" fill="white" stroke="#ba3c36" stroke-width="2"/>
+<text x="2246" y="1807" font-size="20" style="fill:#ba3c36" font-weight="400" text-anchor="end">전원 +</text>
+<text x="2400" y="1785" font-size="17" style="fill:#ba3c36" font-weight="400" text-anchor="middle">12 V / 최대2 A</text>
+<path d="M2540,610 L2620,610 L2620,1860 L2260,1860" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M2540,610 L2620,610 L2620,1860 L2260,1860" fill="none" stroke="#576579" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="2540" cy="610" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="2526" y="617" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">CN6(CH5) −</text>
+<circle cx="2260" cy="1860" r="4" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="2246" y="1867" font-size="20" style="fill:#576579" font-weight="400" text-anchor="end">전원 −</text>
+<text x="2400" y="1845" font-size="17" style="fill:#576579" font-weight="400" text-anchor="middle">전력 귀환</text>
+<path d="M2070,1620 L2070,1690" fill="none" stroke="#f6f8fc" stroke-width="15" stroke-linejoin="round"/>
+<path d="M2070,1620 L2070,1690" fill="none" stroke="#7641a7" stroke-width="9" stroke-linejoin="round"/>
+<text x="2100" y="1664" font-size="17" style="fill:#7641a7" font-weight="400" text-anchor="start">전용 3선 케이블 1개</text>
+<path d="M1550,1800 L1880,1800" fill="none" stroke="#f6f8fc" stroke-width="9" stroke-linejoin="round"/>
+<path d="M1550,1800 L1880,1800" fill="none" stroke="#7641a7" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1550" cy="1800" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="1536" y="1807" font-size="18" style="fill:#7641a7" font-weight="400" text-anchor="end">USB-C Host</text>
+<circle cx="1880" cy="1800" r="4" fill="white" stroke="#7641a7" stroke-width="2"/>
+<text x="1894" y="1807" font-size="18" style="fill:#7641a7" font-weight="400" text-anchor="start">USB-C</text>
+<text x="1715.0" y="1786" font-size="16" style="fill:#7641a7" font-weight="400" text-anchor="middle">C-to-C · 데이터</text>
+<text x="1900" y="1860" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">점퍼캡 2개: B (USB)</text>
+<text x="1900" y="1896" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">UART TX/RX/GND: 미연결</text>
+<text x="1900" y="1932" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">USB 등록·직접 통신은 아직 미시험</text>
+<text x="1890" y="2060" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">J12 8/10/14 핀은 조향에 사용하지 않음</text>
+<text x="1890" y="2093" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">USB 통신 / 서보 12 V는 기존 별도 전원</text>
+<text x="1890" y="2126" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">모터·서보 전력 −는 M01로 직접 귀환</text>
+<text x="1070" y="1500" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">핀번호는 ESP32 GPIO가 아닙니다.</text>
+<text x="1070" y="1534" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">32: PWM / 29: 출력</text>
+<text x="1070" y="1568" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">31·33: GPIO 입력 후보</text>
+<text x="1070" y="1602" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">서보: ID1 / 1 Mbps / 8N1</text>
+<text x="1070" y="1980" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">서보: USB 직렬 포트로 직접 통신</text>
+<text x="1070" y="2012" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">DC·IMU 핀 설정 시 기존 CSI 구성 보존</text>
+<rect x="340" y="2230" width="380" height="150" rx="9" fill="white" stroke="#576579" stroke-width="2"/>
+<text x="358" y="2264" font-size="22" style="fill:#576579" font-weight="700" text-anchor="start">물리 STOP · 사용자 제외</text>
+<text x="358" y="2292" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">연결 없음 · 핀15 사용하지 않음</text>
+<rect x="1050" y="2190" width="500" height="190" rx="9" fill="white" stroke="#2161ae" stroke-width="2"/>
+<text x="1068" y="2224" font-size="22" style="fill:#2161ae" font-weight="700" text-anchor="start">나머지 기능은 모두 유지</text>
+<text x="1068" y="2252" font-size="16" style="fill:#576579" font-weight="400" text-anchor="start">서보 · DC · 엔코더 · IMU · 카메라 · 라이다</text>
+<text x="1070" y="2305" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">엔코더 27/28 우회도 미채택</text>
+<text x="1070" y="2336" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">USB-C·전력 감시 I2C 공유 / LOW 여유 문제</text>
+<text x="1650" y="2240" font-size="19" style="fill:#ba3c36" font-weight="400" text-anchor="start">구동 명령 만료 시 PWM 0 처리 필요</text>
+<text x="1650" y="2275" font-size="19" style="fill:#ba3c36" font-weight="400" text-anchor="start">OS 정지 시 독립 차단은 구현되지 않음</text>
+<text x="1650" y="2310" font-size="19" style="fill:#ba3c36" font-weight="400" text-anchor="start">Jetson 전원 OFF · 실제 통신/출력 미시험</text>
+<text x="50" y="2450" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">미완료: 엔코더 TXS→TXB 입력 정합 · pinmux · PWM 종료 / 조향은 USB 경로 채택 / 물리 STOP 제외</text>
+<text x="50" y="2480" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">J12 I2C 외 외부 pull-up/down은 &gt;50 kΩ 조건. 저항만 추가해 동작·정지를 보장할 수 없습니다.</text>
+<text x="50" y="2510" font-size="18" style="fill:#576579" font-weight="400" text-anchor="start">배터리 Y의 각 가지는 +/− 2심이며 +/−를 묶지 않습니다. 기존 M01 입력24 V 미만 운용 가능성은 별도 미해결입니다.</text>
+<text x="50" y="2572" font-size="17" style="fill:#576579" font-weight="400" text-anchor="start">IT ARENA · 2026-11-14 · Jetson 직접 제어 v1 / 설계안 · BOARD=J12 물리 핀 · 통전·구동 미실행</text>
+</svg>
+</div></section><section><h2>USB 연결</h2><div class="scroll"><table><thead><tr><th>기능</th><th>호스트</th><th>장치</th><th>케이블</th><th>조건 / 현재 상태</th></tr></thead><tbody><tr><td>조향</td><td>Jetson USB-C (Host)</td><td>Bus Servo Adapter(A) USB-C</td><td>데이터 지원 USB-C ↔ USB-C</td><td>점퍼캡 2개 B; 외부 UART TX/RX/GND 미연결; 별도12V 필요; USB 등록·통신 미시험</td></tr></tbody></table></div></section><section><h2>J12 신호 연결표</h2><div class="scroll"><table><thead><tr><th>BOARD 핀</th><th>net</th><th>기능</th><th>연결 대상</th><th>미확인 / 변경</th></tr></thead><tbody><tr><td>3</td><td>IMU_SDA</td><td>I2C SDA</td><td>Adafruit 4438 하단 SDA</td><td>SPI에서 I2C로 변경; 드라이버·통신 미검증</td></tr><tr><td>5</td><td>IMU_SCL</td><td>I2C SCL</td><td>Adafruit 4438 하단 SCL</td><td>3.3 V 구동; 기존 SPI 펌웨어 재사용 불가</td></tr><tr><td>29</td><td>MOTOR_DIR</td><td>GPIO output / PQ.05</td><td>MD20A DIR</td><td>전진/후진 부호와 부팅 LOW 미검증</td></tr><tr><td>31</td><td>ENC_A_3V3</td><td>GPIO input / PQ.06</td><td>CF A1 (현재 직결 미채택)</td><td>TXS 내부풀업·지속 구동으로TXB ±2mA 요구 충족 근거 없음</td></tr><tr><td>32</td><td>MOTOR_PWM</td><td>PWM / PG.06 / 32e0000.pwm</td><td>MD20A PWM</td><td>20 kHz 후보; pinmux·파형·0출력·종료·OS정지 시 차단 미검증</td></tr><tr><td>33</td><td>ENC_B_3V3</td><td>GPIO input / PH.00</td><td>CF A2 (입력 정합 확인 경로)</td><td>이 핀은 PWM이 아닌 GPIO 입력으로 설정</td></tr></tbody></table></div></section><section><h2>J12 전원·접지</h2><div class="scroll"><table><thead><tr><th>BOARD 핀</th><th>연결 대상</th><th>역할</th></tr></thead><tbody><tr><td>1</td><td>T3V3 → IMU VIN + IMU CS + CF VA/OE</td><td>3.3 V 공급; J12 전체 합계100 mA 이내 후보</td></tr><tr><td>6</td><td>IMU GND</td><td>신호/전원 GND; 하단 DO는 미연결</td></tr><tr><td>9</td><td>TGND → CF GND + 엔코더 GND + J01 CN5−</td><td>센서 공통 기준; 모터 전력 귀환 아님</td></tr><tr><td>25</td><td>MD20A 신호 GND</td><td>PWM/DIR 기준; VB− 전력선 별도</td></tr></tbody></table></div></section><section><h2>기존 PDB 채널 유지</h2><div class="scroll"><table><thead><tr><th>보드</th><th>채널 / 단자</th><th>전압</th><th>한도</th><th>대상</th></tr></thead><tbody><tr><td>J01</td><td>CH1 / CN2</td><td>19 V</td><td>최대 2.3 A</td><td>Jetson DC 입력</td></tr><tr><td>J01</td><td>CH2 / CN3</td><td>5 V</td><td>CH2+CH3 합계 최대 1.5 A</td><td>미사용 / 예비</td></tr><tr><td>J01</td><td>CH3 / CN4</td><td>5 V</td><td>CH2+CH3 합계 최대 1.5 A</td><td>미사용 / 예비</td></tr><tr><td>J01</td><td>CH4 / CN5</td><td>5 V</td><td>최대 0.5 A</td><td>T5V → 엔코더 VCC + CF VB</td></tr><tr><td>J01</td><td>CH5 / CN6</td><td>3.3 V</td><td>CH5+CH6 합계 최대 0.6 A</td><td>미사용 / 예비</td></tr><tr><td>J01</td><td>CH6 / CN7</td><td>3.3 V</td><td>CH5+CH6 합계 최대 0.6 A</td><td>미사용 / 예비</td></tr><tr><td>M01</td><td>CH1 / CN2</td><td>입력 전압 그대로</td><td>입력 전류 공급 능력에 따름; 고정 A 정격 미제시</td><td>MD20A VB+ / VB−</td></tr><tr><td>M01</td><td>CH2 / CN3</td><td>입력 전압 그대로</td><td>입력 전류 공급 능력에 따름</td><td>미사용 / 예비</td></tr><tr><td>M01</td><td>CH3 / CN4</td><td>입력 전압 그대로</td><td>입력 전류 공급 능력에 따름</td><td>미사용 / 예비</td></tr><tr><td>M01</td><td>CH4 / CN5</td><td>입력 전압 그대로</td><td>입력 전류 공급 능력에 따름</td><td>미사용 / 예비</td></tr><tr><td>M01</td><td>CH5 / CN6</td><td>12 V</td><td>이 채널 최대 2.0 A</td><td>Adapter A 전원 입력 → 서보 1개</td></tr><tr><td>M01</td><td>CH6 / CN7</td><td>12 V</td><td>이 채널 최대 2.0 A</td><td>예비; CH5와 병렬 금지</td></tr></tbody></table></div></section><section><h2>확인 범위와 근거</h2><ul><li>발열 ESP32는 USB·전원·신호에서 완전히 분리; 기존 외부 배선 이상 미확정</li><li>서보는USB 경로 채택; J12 UART 미사용으로TX 풀업 조건 문제 회피. USB 등록·직접 통신 구현/시험은 별도</li><li>CF TXS→Jetson TXB 입력 구동 요구 충족 근거 없음; 전압3.3V만으로 직결 승인 불가</li><li>J12 I2C 이외 신호의 외부 pull-up/down은 &gt;50 kΩ 조건; 10kΩ을 임의 추가하지 않음</li><li>J12 3.3V와 PDB 3.3V/5V를 병렬 연결하지 않음; 총부하100mA와 전원 순서 확인</li><li>물리STOP은 사용자 지시로 제외. 명령 시간 만료·실행 오류 시 PWM0 처리는 구현/검증 대상</li><li>27/28 엔코더 우회안 미채택: USB-C/전력감시 I2C 공유와 LOW 여유 문제</li><li>Jetson 전원OFF 사용자 확인: 이번 자료 검토 뒤 새 실물 통신·GPIO/PWM 출력 검증 없음</li></ul><p>IMU 하단 CS→3.3V, DO 미연결로 기존 주소 선택을 유지하고0x6A/0x6B를 확인합니다. 주소 SJ1이 닫힌 보드에서 DO를 GND에 연결하면3.3V 단락 위험이 있습니다. 3Vo와 보조 핀은 사용하지 않습니다. 핀배정·문서 검토 결과이며 실제 통신·구동 성공이 아닙니다.</p><ul><li><a href="jetson_existing_parts_check_2026_11_14.md">추가 부품 없는 현재 검토 결과·실측 대기</a></li><li><a href="esp32_gpio_pin_table_v1.md">기존 ESP32 연결표</a></li><li><a href="../MOUNTED_DC_TEST_2026_11_14.md#esp32-없이-제어하는-대안-조사">ESP32 없는 제어 조사</a></li><li><a href="https://developer.nvidia.com/downloads/assets/embedded/secure/jetson/orin_nano/docs/jetson_orin_nano_devkit_carrier_board_specification_sp.pdf">NVIDIA carrier SP-11324 v1.3 (§3.3, Table3-3, Table5-3)</a></li><li><a href="https://github.com/NVIDIA/jetson-gpio/blob/master/lib/python/Jetson/GPIO/gpio_pin_data.py">NVIDIA Jetson.GPIO 핀 정의</a></li><li><a href="https://github.com/NVIDIA/jetson-gpio#11-pwm">NVIDIA GPIO/PWM 및 pinmux</a></li><li><a href="https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts">Adafruit 4438 핀 설명</a></li><li><a href="https://github.com/adafruit/Adafruit-LSM6DSOX-PCB/blob/master/Adafruit_LSM6DSOX.sch">Adafruit 4438 공식 회로도 / 주소 SJ1</a></li><li><a href="https://www.ti.com/lit/ds/symlink/txb0108.pdf">TI TXB0108 입력 구동 조건</a></li><li><a href="https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver">Cytron MD20A 사양</a></li><li><a href="https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example">Waveshare USB 제어·B점퍼 공식 연결</a></li><li><a href="https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/hardware_layout.html">NVIDIA USB-C Host 모드</a></li></ul></section></main><script>function zoomDiagram(full){document.querySelector(".drawing svg").style.width=full?"2740px":"100%";}</script></html>

@@ -28,13 +28,14 @@ def _geometry(scan, transforms, now, config, epoch, mask):
     if scan.acquired_at_s[-1] > now:
         raise ValueError('source interval/reference time mismatch')
     limits = _blind_limits(mask)
+    self_masked = frozenset(scan.self_masked_indices)
     for index, (distance, pose, source_angle) in enumerate(zip(
             scan.ranges_m, transforms.tolist(), scan.angles_rad)):
         dx, dy, turn = pose
         c, s = math.cos(turn), math.sin(turn)
         origin = (dx + c*sx - s*sy, dy + s*sx + c*sy)
         angle = math.remainder(source_angle, math.tau)
-        masked = _masked_by(math.remainder(angle, math.tau), limits,distance)
+        masked = index in self_masked or _masked_by(math.remainder(angle, math.tau), limits,distance)
         valid = math.isfinite(distance) and scan.range_min_m <= distance <= scan.range_max_m
         status = 'masked' if masked else ('return' if valid else 'unknown')
         bearing = angle + yaw + turn
@@ -69,7 +70,7 @@ def native_motion_scene(scan, transforms, now, config, epoch, mask):
             range_max=scan.range_max_m, source_frame_id=scan.source_frame_id, source_epoch=epoch,
             sensor_xy_m=(config.lidar_x_m, config.lidar_y_m), sensor_yaw_rad=config.lidar_yaw_rad,
             acquisition_to_ref_se2=transforms.tolist(), rear_half_angle_deg=mask,
-            preserve_sampling=True)
+            preserve_sampling=True, self_masked_indices=scan.self_masked_indices)
     rays = []
     assign = object.__setattr__
     for index, origin, direction, hit, status in _geometry(scan, transforms, now, config, epoch, mask):

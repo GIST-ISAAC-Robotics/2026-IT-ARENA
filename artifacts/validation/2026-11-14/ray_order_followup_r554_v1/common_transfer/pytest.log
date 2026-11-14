@@ -1,0 +1,77 @@
+........................................................................ [ 32%]
+.......................................F.F.............................. [ 65%]
+........................................................................ [ 98%]
+...                                                                      [100%]
+=================================== FAILURES ===================================
+____________ test_ros_command_recording_matches_schema5_and_resets _____________
+
+tmp_path = PosixPath('/tmp/pytest-of-jinhyeong/pytest-12/test_ros_command_recording_mat0')
+
+    def test_ros_command_recording_matches_schema5_and_resets(tmp_path):
+        node=G1G2Node.__new__(G1G2Node)
+        node.follow=subject();scan,history,scene=context()
+        node.motion=SimpleNamespace(history=history,last_meta={'reference_stamp_s':.5},verified=True,counts={'resets':0})
+        node.side='left';node.last_steering=0.;node.settings={'control_rate_hz':50.};node.rear_blind_half_angle=30.
+        path=tmp_path/'handoff.jsonl'
+        node.follow_trace=FollowTrace(path,history.config,node.follow.config,
+            mode='g1_g2_handoff_trial',execution_config=node.follow.execution)
+        for now in np.round(np.arange(.5,1.61,.1),9):
+            node.scan=context(float(now))[0];node.motion.last_meta['reference_stamp_s']=float(now)
+>           output=node.command(None)
+
+tests/test_bypass_handoff.py:244: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <arena_autonomy.g1_g2_node.G1G2Node object at 0x7e83892386e0>
+points = None
+
+    def command(self, points):
+>       if self.decision_delivery is not None:
+E       AttributeError: 'G1G2Node' object has no attribute 'decision_delivery'
+
+src/arena_autonomy/arena_autonomy/g1_g2_node.py:349: AttributeError
+_______________ test_default_launch_and_drive_boundary_unchanged _______________
+
+    def test_default_launch_and_drive_boundary_unchanged():
+        import importlib.util
+        root=Path(__file__).resolve().parents[1]
+        path=root/'src/arena_bringup/launch/simulation.launch.py'
+        spec=importlib.util.spec_from_file_location('handoff_launch_check',path)
+        launch=importlib.util.module_from_spec(spec);spec.loader.exec_module(launch)
+        from launch.actions import DeclareLaunchArgument
+        from launch.utilities import perform_substitutions
+        from launch import LaunchContext
+        arg=next(a for a in launch.generate_launch_description().entities
+                 if isinstance(a,DeclareLaunchArgument) and a.name=='evaluation_handoff_reserve')
+        default=perform_substitutions(LaunchContext(),arg.default_value)
+        normal=dict(guarded=True,actor='test_actor.sdf',evidence='test_run',track='official')
+        assert default=='off' and launch._autonomy_executable('local_pursuit',default,**normal)=='local_pursuit'
+        assert launch._autonomy_executable('local_pursuit','closing',**normal)=='g1_g2_handoff_trial'
+        for override in ({'guarded':False},{'actor':None},{'evidence':''},{'track':'experimental'}):
+            with pytest.raises(ValueError):
+                launch._autonomy_executable('local_pursuit','closing',**{**normal,**override})
+        # 두 공식 2×5 파생 track만 허용하고, 새 track에서도 보호층·상대·기록 조건은 그대로 요구한다.
+        assert launch.OFFICIAL_2X5_TRACKS == ('official', 'official_v2026_11_06')
+        for track in launch.OFFICIAL_2X5_TRACKS:
+            assert launch._autonomy_executable('local_pursuit','paced',**{**normal,'track':track})=='g1_g2_handoff_trial'
+            for override in ({'guarded':False},{'actor':None},{'evidence':''},{'actor':''}):
+                with pytest.raises(ValueError):
+                    launch._autonomy_executable('local_pursuit','paced',**{**normal,'track':track,**override})
+            with pytest.raises(ValueError):
+                launch._autonomy_executable('lidar','paced',**{**normal,'track':track})
+            with pytest.raises(ValueError):
+                launch._autonomy_executable('local_pursuit','unknown',**{**normal,'track':track})
+        for track in ('experimental','original'):
+            with pytest.raises(ValueError):
+                launch._autonomy_executable('local_pursuit','paced',**{**normal,'track':track})
+>       assert G1G2Node.control is LocalPursuit.control
+E       assert <function G1G2Node.control at 0x7e838947d1c0> is <function LocalPursuit.control at 0x7e838947c5e0>
+E        +  where <function G1G2Node.control at 0x7e838947d1c0> = G1G2Node.control
+E        +  and   <function LocalPursuit.control at 0x7e838947c5e0> = LocalPursuit.control
+
+tests/test_bypass_handoff.py:304: AssertionError
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/ray_order_followup_r554_v1/common_transfer/junit.xml -
+=========================== short test summary info ============================
+FAILED tests/test_bypass_handoff.py::test_ros_command_recording_matches_schema5_and_resets
+FAILED tests/test_bypass_handoff.py::test_default_launch_and_drive_boundary_unchanged
+2 failed, 217 passed in 8.26s

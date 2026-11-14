@@ -4,7 +4,19 @@
 #include "freertos/semphr.h"
 
 #define MOTOR_MAX_PERMILLE 100
+#ifdef ARENA_MOTOR_GUARDED_5S
+#define MOTOR_MAX_MS 5000
+#ifdef ARENA_MOTOR_START15_5S
+#define MOTOR_LONG_MAX_PERMILLE 150
+#else
+#define MOTOR_LONG_MAX_PERMILLE 50
+#endif
+static bool long_motion_seen;
+static int long_start_count, long_poll_count;
+static int64_t long_poll_us, long_progress_us;
+#else
 #define MOTOR_MAX_MS 500
+#endif
 #define MOTOR_ARM_US 2000000LL
 #define MOTOR_COOLDOWN_US 3000000LL
 static SemaphoreHandle_t motor_lock;
@@ -26,6 +38,28 @@ static void motor_tick(void *arg) {
   (void)arg;
   xSemaphoreTake(motor_lock,portMAX_DELAY);
   int64_t now=esp_timer_get_time();
+  #ifdef ARENA_MOTOR_GUARDED_5S
+  if ((motor_active || motor_armed) && gpio_get_level(8)) motor_off_locked("physical_stop");
+  if (motor_active && motor_deadline-motor_started>500000 && now-long_poll_us>=20000) {
+    int count=0;
+    if (pcnt_unit_get_count(unit,&count)!=ESP_OK) motor_off_locked("encoder_read_fault");
+    else {
+      // 3600 counts/s is about 7.9 km/h under the current nominal gearing/counts.
+      // This is a sampled bench cutoff, not a guarantee of peak wheel speed.
+      int64_t interval=now-long_poll_us;
+      int change=count-long_poll_count;
+      if (interval>45000 || (int64_t)abs(change)*1000000>=interval*3600)
+        motor_off_locked("encoder_rate_limit");
+      else {
+        if (abs(count-long_start_count)>=4) long_motion_seen=true;
+        if (abs(change)>=2) long_progress_us=now;
+        if (!long_motion_seen && now-motor_started>=350000) motor_off_locked("no_encoder_start");
+        else if (long_motion_seen && now-long_progress_us>=160000) motor_off_locked("encoder_no_progress");
+      }
+      long_poll_count=count;long_poll_us=now;
+    }
+  }
+  #endif
   if(motor_active && now>=motor_deadline)motor_off_locked("deadline");
   else if(motor_armed && now>=motor_arm_deadline)motor_off_locked("arm_expired");
   xSemaphoreGive(motor_lock);
@@ -87,16 +121,34 @@ static void motor_command(char *line) {
   else {
     motor_last_id=id;
     if(motor_active){result="busy";motor_off_locked(result);}
+#ifdef ARENA_MOTOR_GUARDED_5S
+    else if(gpio_get_level(8)){result="physical_stop";motor_off_locked(result);}
+#endif
     else if(arm) {
       if(motor_ended && now-motor_ended<MOTOR_COOLDOWN_US){result="cooldown";motor_off_locked(result);}
       else {motor_armed=true;motor_token=esp_random();if(!motor_token)motor_token=1;
         motor_arm_deadline=now+MOTOR_ARM_US;issued=motor_token;result="armed";}
     } else if(!motor_armed || !token || token!=motor_token || now>=motor_arm_deadline) {
       result="not_armed";motor_off_locked(result);
-    } else if(duty<1 || duty>MOTOR_MAX_PERMILLE || ms<1 || ms>MOTOR_MAX_MS) {
+    } else if(duty<1 || ms<1 || ms>MOTOR_MAX_MS
+#ifdef ARENA_MOTOR_GUARDED_5S
+          || duty>(ms>500 ? MOTOR_LONG_MAX_PERMILLE : MOTOR_MAX_PERMILLE)
+#else
+          || duty>MOTOR_MAX_PERMILLE
+#endif
+    ) {
       result="out_of_range";motor_off_locked(result);
     } else {
+#ifdef ARENA_MOTOR_GUARDED_5S
+      if (ms>500) {
+        ESP_ERROR_CHECK(pcnt_unit_get_count(unit,&long_start_count));
+        long_poll_count=long_start_count;long_motion_seen=false;
+      }
+#endif
       motor_armed=false;motor_token=0;motor_started=esp_timer_get_time();
+#ifdef ARENA_MOTOR_GUARDED_5S
+      long_poll_us=long_progress_us=motor_started;
+#endif
       motor_deadline=motor_started+(int64_t)ms*1000;motor_per_mille=duty;
       ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE,LEDC_CHANNEL_0,(duty*1024+500)/1000));
       ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE,LEDC_CHANNEL_0));

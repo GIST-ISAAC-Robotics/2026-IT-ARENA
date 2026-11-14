@@ -1,0 +1,32 @@
+{
+  "status": "prepared only; root integrates after r530; no overlapping run",
+  "single_actor": true,
+  "base_recipe": "artifacts/validation/2026-11-14/field_wall_resource_drive_r530_v1",
+  "case": "right_side_start",
+  "seed": 0,
+  "duration_sim_s": 12.0,
+  "actor_config": "config.json",
+  "actor_adapter": "actor_fixture.wrap_actor_factory(existing_factory)",
+  "actor_sdf_reference": "actor.sdf",
+  "evaluation_schedule_and_planar_envelope_unchanged": true,
+  "same_marked_actor_for_off_and_on": true,
+  "off": {
+    "vehicle_marker_profile_path": "",
+    "vehicle_marker_observer_enabled": false
+  },
+  "on": {
+    "vehicle_marker_profile_path": "config/perception/vehicle_marker_approx_b0390.json",
+    "vision_execution": "process"
+  },
+  "parameter_delivery": "marker_course.launch.py: r537_marker_profile argument -> SetParameter before frozen course include; common CLI unchanged",
+  "postrun_evidence": [
+    "raw current C1 returns at134.6mm",
+    "camera image+image stamp",
+    "vehicle marker regions from actual image only",
+    "drive/safe and guard reason",
+    "actor/ego contact and planar gap evaluation only",
+    "STOP and process cleanup"
+  ],
+  "no_truth_to_controller": true,
+  "render_and_off_on_driving_not_executed": true
+}

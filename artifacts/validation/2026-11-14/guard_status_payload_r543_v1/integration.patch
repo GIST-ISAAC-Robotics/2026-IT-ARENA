@@ -1,0 +1,36 @@
+--- a/src/arena_autonomy/arena_autonomy/lidar_safety.py
++++ b/src/arena_autonomy/arena_autonomy/lidar_safety.py
+@@ -121,6 +121,11 @@
+             self.create_subscription(String, '/race/input_boundary', self.on_input_boundary, 10)
+         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive/safe", 10)
+         self.status = self.create_publisher(String, "/safety/status", 10)
++        from arena_autonomy.guard_status_payload import DetailArchive, StatusEncoder
++        status_detail = self.declare_parameter('safety_status_detail', 'full').value
++        detail_path = self.declare_parameter('safety_status_evidence_path', '').value
++        self.status_archive = DetailArchive(detail_path) if status_detail == 'compact_v1' else None
++        self.status_encoder = StatusEncoder(status_detail, self.status_archive)
+         from arena_autonomy.native_lidar_input import subscribe_scan
+         subscribe_scan(self,self.timing.wrap('scan',self.on_scan),qos_profile_sensor_data)
+         self.create_subscription(AckermannDriveStamped, "/drive", self.timing.wrap('command', self.on_command), 10)
+@@ -283,7 +288,7 @@
+                 or self.vehicle_marker_channel.profile is not None):
+             self.previous_safe_steering = output.drive.steering_angle
+         self.publisher.publish(output)
+-        self.status.publish(String(data=json.dumps({"reason": reason, "safe_speed_mps": output.drive.speed,
++        self.status.publish(String(data=self.status_encoder.encode({"reason": reason, "safe_speed_mps": output.drive.speed,
+                                                     "reference_s": now, "command_stale": command_stale,
+                                                     "swept_clearance_m": clearance, "sensor": "C1",
+                                                     "no_return_policy": "unknown",
+@@ -298,5 +303,12 @@
+                                                     **({'recent_observation':recent} if getattr(self,'recent_observation_enabled',False) else {})})))
+ 
+ 
++    def destroy_node(self):
++        archive = getattr(self, 'status_archive', None)
++        if archive is not None and not archive.close():
++            self.get_logger().error('guard status detail writer did not finish')
++        return super().destroy_node()
++
++
+ def main(args=None):
+     run_node(LidarSafety, args=args)

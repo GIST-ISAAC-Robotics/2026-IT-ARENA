@@ -1,0 +1,66 @@
+{
+  "commands": {
+    "node": [
+      "/usr/bin/python3",
+      "-B",
+      "/home/q/it-arena-r373b-20261113/scripts/probe_g1_hardware_shadow.py",
+      "--output",
+      "/home/q/it-arena-r373b-20261113/artifacts/validation/2026-11-13/camera_publish_r363_v1/actual/live/node",
+      "--seconds",
+      "40.0",
+      "--estimated-time",
+      "--camera"
+    ],
+    "imu": [
+      "/usr/bin/python3",
+      "-B",
+      "/home/q/it-arena-r373b-20261113/scripts/bridge_esp32_imu_preview.py",
+      "--port",
+      "/dev/serial/by-id/usb-1a86_USB_Single_Serial_5CE5031468-if00",
+      "--imu-clock",
+      "fifo_tick",
+      "--seconds",
+      "20.0",
+      "--output",
+      "/home/q/it-arena-r373b-20261113/artifacts/validation/2026-11-13/camera_publish_r363_v1/actual/live/imu"
+    ],
+    "c1": [
+      "/usr/bin/python3",
+      "-B",
+      "/home/q/it-arena-r373b-20261113/scripts/bridge_c1_native_preview.py",
+      "--port",
+      "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_362acd64b231f11190a78f5f30d20014-if00-port0",
+      "--executable",
+      "/home/q/it_arena_c1_preview_r204_20261112/stream_c1_native_preview",
+      "--scan-clock",
+      "tracking",
+      "--seconds",
+      "20.0",
+      "--output",
+      "/home/q/it-arena-r373b-20261113/artifacts/validation/2026-11-13/camera_publish_r363_v1/actual/live/c1"
+    ],
+    "camera": [
+      "/usr/bin/python3",
+      "-B",
+      "/home/q/it-arena-r373b-20261113/scripts/bridge_b0390_preview.py",
+      "--seconds",
+      "20.0",
+      "--output",
+      "/home/q/it-arena-r373b-20261113/artifacts/validation/2026-11-13/camera_publish_r363_v1/actual/live/camera",
+      "--publish-hz",
+      "20.0"
+    ]
+  },
+  "script_sha256": {
+    "/home/q/it-arena-r373b-20261113/scripts/probe_g1_hardware_shadow.py": "214af0892c6649287d9090ed308f6d64ad8447ee29be4b7517ebe979c1004f8e",
+    "/home/q/it-arena-r373b-20261113/scripts/bridge_esp32_imu_preview.py": "119e23caf99cad9a433578b37c95b20d75cf539b917f4e3a0c1fe887f5a91488",
+    "/home/q/it-arena-r373b-20261113/scripts/bridge_c1_native_preview.py": "997afb039ea5bdc7e6e4bda9bc06db239ed9c817c3b551834343c195875e2a8f",
+    "/home/q/it-arena-r373b-20261113/scripts/bridge_b0390_preview.py": "797ab6c273dcf5bff3427dd056d04483eb501c7b9fb8373335a6cae70a874134"
+  },
+  "c1_sha256": "d8f7d2a02ef47786022206e2a0278c6e7edc2d3ddb40bed2254706b590748e2d",
+  "ports": [
+    "/dev/ttyACM0",
+    "/dev/ttyUSB0"
+  ],
+  "scope": "unmounted input/compute observation; no actuator or encoder substitute"
+}

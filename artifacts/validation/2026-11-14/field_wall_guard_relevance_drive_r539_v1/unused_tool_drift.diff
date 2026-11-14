@@ -1,0 +1,54 @@
+--- frozen_r539_probe
++++ current_probe
+@@ -25,7 +25,7 @@
+ 
+ 
+ class Bench:
+-    def __init__(self, port, output):
++    def __init__(self, port, output, firmware='motor_probe_v1'):
+         import serial
+         self.output=output;output.mkdir(parents=True,exist_ok=False)
+         self.raw=(output/'uart-private.bin').open('wb')
+@@ -36,6 +36,7 @@
+         self.buffer=bytearray();self.frames=[];self.errors=collections.Counter()
+         self.boot=None;self.seq=None;self.info=None;self.motor=None;self.encoder=None
+         self.id=0;self.phase='startup';self.replies={};self.last_state=0
++        self.firmware=firmware
+ 
+     def send(self, data):
+         self.commands.write(json.dumps({'host_ns':time.monotonic_ns(),'phase':self.phase,
+@@ -63,7 +64,7 @@
+             self.frames.append(r);self.log.write(json.dumps(r)+'\n')
+             event=r['event']
+             if event=='info':
+-                if r['firmware']!='motor_probe_v1':raise RuntimeError('wrong firmware')
++                if r['firmware']!=self.firmware:raise RuntimeError('wrong firmware')
+                 self.info=r
+             elif event=='motor':self.motor=r;self.id=max(self.id,r['last_id'])
+             elif event=='status':self.encoder=r
+@@ -108,17 +109,21 @@
+                   and not self.motor['active'] and not self.motor['armed']
+                   and self.motor['reason']=='host_stop' and self.motor['pwm_pin']==0)
+ 
+-    def pulse(self,duty,ms):
+-        if not 1<=duty<=100 or not 1<=ms<=500:raise ValueError('host pulse bounds')
++    def pulse(self,duty,ms,*,observe_guard=False):
++        if observe_guard:
++            if self.firmware!='motor_probe_guarded_5s_v1' or not 1<=duty<=50 or not 501<=ms<=5000:
++                raise ValueError('guarded host pulse bounds')
++        elif not 1<=duty<=100 or not 1<=ms<=500:
++            raise ValueError('host pulse bounds')
+         self.collect(.1);before=dict(self.encoder);count=self.motor['pulses']
+         token=self.arm();r=self.request('PULSE',f'{token} {duty} {ms}')
+         if r['result']!='started':raise RuntimeError('pulse rejected: '+r['result'])
+         self.wait(lambda:self.motor['pulses']==count+1 and not self.motor['active']
+-                  and self.motor['reason']=='deadline',seconds=ms/1000+1)
++                  and (observe_guard or self.motor['reason']=='deadline'),seconds=ms/1000+1)
+         ended=dict(self.motor);self.collect(1)
+         after=dict(self.encoder)
+         late=ended['ended_us']-ended['deadline_us']
+-        if late<0 or late>20000:raise RuntimeError('cutoff time outside bench bound')
++        if ended['reason']=='deadline' and (late<0 or late>20000):raise RuntimeError('cutoff time outside bench bound')
+         if self.motor['pwm_pin']!=0 or self.motor['duty_permille']!=0:
+             raise RuntimeError('PWM idle readback not LOW')
+         fields=('pcnt_count','software_count','edges','a_rise','a_fall','b_rise','b_fall','invalid','ring_dropped')

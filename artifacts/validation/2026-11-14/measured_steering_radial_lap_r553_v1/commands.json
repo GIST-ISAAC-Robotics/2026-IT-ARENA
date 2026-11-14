@@ -1,0 +1,79 @@
+{
+  "status": "PLAN_ONLY_WAIT_ROOT_GO",
+  "go_required": true,
+  "execute_automatically": false,
+  "WSL_used": false,
+  "build_started": false,
+  "drive_started": false,
+  "baseline_artifact": "artifacts/validation/2026-11-14/measured_steering_reacquire_lap_r550_v1",
+  "source_selection": "root r552 final SHA and regressions pending",
+  "native_sha256": "1bbe89cdcff6662fda699847756ff9c776e1b70c0d406ec97df469666dc3b16c",
+  "steps": [
+    {
+      "stage": "first_competition_check",
+      "operation": "After WSL handover inspect /proc; require competing Gazebo/ROS/build/test processes 0"
+    },
+    {
+      "stage": "materialize_and_verify",
+      "operation": "Copy r550 local recipe, relocate paths only, select reviewed revision3+r552 SHA; keep header and seven numerical steering checks"
+    },
+    {
+      "stage": "build_if_required",
+      "shell_command": [
+        "wsl.exe",
+        "-d",
+        "Ubuntu-24.04",
+        "--",
+        "bash",
+        "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/measured_steering_radial_lap_r553_v1/build_once.sh"
+      ]
+    },
+    {
+      "stage": "actual_import_and_freeze",
+      "shell_command": [
+        "wsl.exe",
+        "-d",
+        "Ubuntu-24.04",
+        "--",
+        "bash",
+        "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/measured_steering_radial_lap_r553_v1/prepare_once.sh"
+      ]
+    },
+    {
+      "stage": "single_drive_after_review_receipt",
+      "shell_command": [
+        "wsl.exe",
+        "-d",
+        "Ubuntu-24.04",
+        "--",
+        "bash",
+        "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/measured_steering_radial_lap_r553_v1/execution_v1/execute_once.sh"
+      ]
+    },
+    {
+      "stage": "registered_stop_when_required",
+      "shell_command": [
+        "wsl.exe",
+        "-d",
+        "Ubuntu-24.04",
+        "--",
+        "bash",
+        "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/measured_steering_radial_lap_r553_v1/execution_v1/stop_once.sh"
+      ]
+    },
+    {
+      "stage": "collect_and_return",
+      "shell_command": [
+        "wsl.exe",
+        "-d",
+        "Ubuntu-24.04",
+        "--",
+        "bash",
+        "/mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/measured_steering_radial_lap_r553_v1/execution_v1/finish_collection.bash"
+      ]
+    }
+  ],
+  "planned_scripts_exist": false,
+  "actual_execution_input_hash": null,
+  "source_archive_created": false
+}

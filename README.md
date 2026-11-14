@@ -1,13 +1,23 @@
 # 2026 IT ARENA 자율주행 경주
 
-GIST-ISAAC-Robotics의 차량 소프트웨어·ROS 2 시뮬레이션 저장소입니다. 현재 신규 개발 구성은 **공식 v2026.11.06 코스 팀 파생 월드 + B0390 RGB + C1 LiDAR + 엔코더/자이로 운동 보정 + 지역 Pure Pursuit, 임시 차량 JR60P20**입니다. 이전 v2026.11.01 코스·B0183 구성은 재현용으로 보존합니다.
+GIST-ISAAC-Robotics의 차량 소프트웨어·ROS 2 시뮬레이션 및 대회 준비 기록 저장소입니다. **2026-11-14 경기 종료:** 사용자의 현장 보고에 따르면 MCU가 없고 Jetson에 운용 장치가 연결되지 않은 상태로 경기가 시작되어 차량이 움직이지 않았습니다. 세부 후기는 추후 추가합니다.
 
-- [현재 구성·검증 상태·다음 작업](docs/PROJECT_CONTEXT.md)
-- [코스 개편 전 보관 릴리스·복원 방법](docs/releases/PRE_TRACK_REDESIGN_2026_11_05.md)
-- [현행 개발 계획](docs/DEVELOPMENT_PLAN.md) · [하드웨어 설계 전달·규정 질문](docs/HARDWARE_AND_RULE_QUESTIONS.md)
-- [작업별 문서 안내와 기록 방식](docs/README.md)
-- [기여·에이전트 작업 규칙](AGENTS.md)
+**대회용 최종 기준은 Jetson + ESP32 버전입니다.** 이는 보존할 설계·소프트웨어 기준이며 경기 실차의 정상 작동이나 완주를 뜻하지 않습니다. 이후 시뮬레이션 변경과 미사용 UNO Q 대체안은 별도 개발 이력으로 보존합니다. `main`에는 이 세 범주의 자료가 함께 있으므로 최신 파일 전체를 하나의 실차 검증 완료 릴리스로 해석하지 않습니다.
+
+| 읽을 목적 | 기준 문서 |
+|---|---|
+| 실제 경기 결과·후기 | [경기 종료 기록](docs/reports/COMPETITION_RESULT_2026_11_14.md) |
+| 대회용 ESP32 최종 구성·소스 복원 | [최종 기준](docs/releases/FINAL_ESP32_2026_11_14.md) |
+| 이후 시뮬레이션·부분 성공·실패·중단 | [시뮬레이션 작업 색인](docs/reports/SIMULATION_WORK_INDEX_2026_11_14.md) |
+| 미사용 대체안 | [UNO Q 준비](docs/hardware/UNO_Q_DEPLOYMENT_2026_11_14.md) · [Jetson 직접 제어 검토](docs/hardware/schematics/jetson_existing_parts_check_2026_11_14.md) |
+| 산출물·원시 로그·바이너리 보존 위치 | [산출물 목록](docs/reports/ARTIFACT_CATALOG_2026_11_14.md) |
+
+- [정리된 현황](docs/PROJECT_CONTEXT.md) · [종료 후 보류 작업](docs/DEVELOPMENT_PLAN.md)
+- [작업별 문서 안내](docs/README.md) · [작업 규칙](AGENTS.md)
+- [코스 개편 전 보관 릴리스](docs/releases/PRE_TRACK_REDESIGN_2026_11_05.md)
 - [주최 측 공식 저장소](https://github.com/MOSW626/istech-it-arena)
+
+아래 실행 설명은 보존된 개발 환경을 재현하기 위한 것입니다. 공식 v2026.11.06 팀 파생 월드·B0390·C1·지역 Pure Pursuit 구성의 실험 결과는 해당 시험의 소스와 설정에서만 유효합니다. 장치 연결이나 시험을 자동으로 재개하지 않습니다.
 
 ## 시작하기
 

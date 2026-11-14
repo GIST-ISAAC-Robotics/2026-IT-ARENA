@@ -1,0 +1,369 @@
+.FFFFFFF                                                                 [100%]
+================================== FAILURES ===================================
+__________ test_operator_panel_page[auth_failure_disables_controls] ___________
+
+case = 'auth_failure_disables_controls'
+
+    @pytest.mark.parametrize('case', [
+        'units_and_pulse', 'auth_failure_disables_controls', 'reconnect_resets_binding_and_cap',
+        'late_old_connection_is_ignored', 'late_old_snapshot_does_not_restore_wait_green',
+        'old_failure_does_not_break_new_connection', 'stop_remains_available_without_snapshot',
+        'old_command_receipt_does_not_overwrite_new_connection',
+    ])
+    def test_operator_panel_page(case):
+        node = shutil.which('node')
+        if node is None:
+            pytest.skip('Node.js�� �ʿ��� ���� DOM �˻�')
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run([
+            node, str(root/'tests/operator_panel_page_checks.js'),
+            str(root/'src/arena_autonomy/arena_autonomy/race_ops_page.py'), case,
+        ], capture_output=True, text=True, encoding='utf-8', timeout=10)
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: AssertionError [ERR_ASSERTION]: 401: manualstart
+E             at Object.auth_failure_disables_controls (C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:45:98)
+E             at async C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:87:65 {
+E           generatedMessage: false,
+E           code: 'ERR_ASSERTION',
+E           actual: false,
+E           expected: true,
+E           operator: '==',
+E           diff: 'simple'
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['C:\\Program Files\\nodejs\\node.EXE', 'C:\\Users\\Jinhyeong\\Documents\\ChatGPT\\IT ARENA loca...sage: false,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n").returncode
+
+tests\test_operator_panel_page.py:24: AssertionError
+_________ test_operator_panel_page[reconnect_resets_binding_and_cap] __________
+
+case = 'reconnect_resets_binding_and_cap'
+
+    @pytest.mark.parametrize('case', [
+        'units_and_pulse', 'auth_failure_disables_controls', 'reconnect_resets_binding_and_cap',
+        'late_old_connection_is_ignored', 'late_old_snapshot_does_not_restore_wait_green',
+        'old_failure_does_not_break_new_connection', 'stop_remains_available_without_snapshot',
+        'old_command_receipt_does_not_overwrite_new_connection',
+    ])
+    def test_operator_panel_page(case):
+        node = shutil.which('node')
+        if node is None:
+            pytest.skip('Node.js�� �ʿ��� ���� DOM �˻�')
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run([
+            node, str(root/'tests/operator_panel_page_checks.js'),
+            str(root/'src/arena_autonomy/arena_autonomy/race_ops_page.py'), case,
+        ], capture_output=True, text=True, encoding='utf-8', timeout=10)
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+E         + actual - expected
+E         
+E         + {
+E         +   binding: {
+E         +     intervention: 1,
+E         +     race_epoch: 0,
+E         +     session: 'race'
+E         +   },
+E         +   commands: [],
+E         +   connection: {
+E         +     mcu_age_s: 0,
+E         +     status_age_s: 0,
+E         +     status_stale: false
+E         +   },
+E         +   controls: {
+E         +     manual_visual_start: {
+E         +       allowed: true
+E         +     },
+E         +     new_race: {
+E         +       allowed: true
+E         +     },
+E         +     prepare_start: {
+E         +       allowed: true
+E         +     },
+E         +     recovery_reset: {
+E         +       allowed: true
+E         +     },
+E         +     restore_race: {
+E         +       allowed: true
+E         +     },
+E         +     resume_start: {
+E         +       allowed: true
+E         +     },
+E         +     set_speed_limit: {
+E         +       allowed: true
+E         +     }
+E         +   },
+E         +   development: {
+E         +     enabled: true,
+E         +     limit_mps: 1.5,
+E         +     maximum_mps: 1.5
+E         +   },
+E         +   driving: {},
+E         +   events: [],
+E         +   log: {},
+E         +   manual: {
+E         +     binding: {
+E         +       generation: 0,
+E         +       session: 'manual'
+E         +     },
+E         +     commands: [],
+E         +     duration_max_s: 2,
+E         +     limit_mps: 0.1,
+E         +     maximum_mps: 1.5,
+E         +     mode: 'autonomous',
+E         +     prepared: false,
+E         +     pulse_limit_mps: 0.1,
+E         +     state: 'prepared',
+E         +     steering_limit_deg: 11.459
+E         +   },
+E         +   mcu: {
+E         +     state: 'DISARMED'
+E         +   },
+E         +   race: {
+E         +     started: false
+E         +   },
+E         +   sensors: [],
+E         +   speeds: {},
+E         +   state: 'signal',
+E         +   state_label: '��ȣ ���',
+E         +   vehicle_id: 'car'
+E         + }
+E         - null
+E         
+E             at Object.reconnect_resets_binding_and_cap (C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:53:10)
+E             at C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:87:83
+E             at Object.<anonymous> (C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:87:188)
+E             at Module._compile (node:internal/modules/cjs/loader:1871:14)
+E             at Object..js (node:internal/modules/cjs/loader:2002:10)
+E             at Module.load (node:internal/modules/cjs/loader:1594:32)
+E             at Module._load (node:internal/modules/cjs/loader:1396:12)
+E             at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+E             at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+E             at node:internal/main/run_main_module:33:47 {
+E           generatedMessage: true,
+E           code: 'ERR_ASSERTION',
+E           actual: [Object],
+E           expected: null,
+E           operator: 'strictEqual',
+E           diff: 'simple'
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['C:\\Program Files\\nodejs\\node.EXE', 'C:\\Users\\Jinhyeong\\Documents\\ChatGPT\\IT ARENA loca...\n  code: 'ERR_ASSERTION',\n  actual: [Object],\n  expected: null,\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n").returncode
+
+tests\test_operator_panel_page.py:24: AssertionError
+__________ test_operator_panel_page[late_old_connection_is_ignored] ___________
+
+case = 'late_old_connection_is_ignored'
+
+    @pytest.mark.parametrize('case', [
+        'units_and_pulse', 'auth_failure_disables_controls', 'reconnect_resets_binding_and_cap',
+        'late_old_connection_is_ignored', 'late_old_snapshot_does_not_restore_wait_green',
+        'old_failure_does_not_break_new_connection', 'stop_remains_available_without_snapshot',
+        'old_command_receipt_does_not_overwrite_new_connection',
+    ])
+    def test_operator_panel_page(case):
+        node = shutil.which('node')
+        if node is None:
+            pytest.skip('Node.js�� �ʿ��� ���� DOM �˻�')
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run([
+            node, str(root/'tests/operator_panel_page_checks.js'),
+            str(root/'src/arena_autonomy/arena_autonomy/race_ops_page.py'), case,
+        ], capture_output=True, text=True, encoding='utf-8', timeout=10)
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+E         
+E         'car' !== 'new-car'
+E         
+E             at Object.late_old_connection_is_ignored (C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:63:10)
+E             at async C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:87:65 {
+E           generatedMessage: true,
+E           code: 'ERR_ASSERTION',
+E           actual: 'car',
+E           expected: 'new-car',
+E           operator: 'strictEqual',
+E           diff: 'simple'
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['C:\\Program Files\\nodejs\\node.EXE', 'C:\\Users\\Jinhyeong\\Documents\\ChatGPT\\IT ARENA loca...  code: 'ERR_ASSERTION',\n  actual: 'car',\n  expected: 'new-car',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n").returncode
+
+tests\test_operator_panel_page.py:24: AssertionError
+___ test_operator_panel_page[late_old_snapshot_does_not_restore_wait_green] ___
+
+case = 'late_old_snapshot_does_not_restore_wait_green'
+
+    @pytest.mark.parametrize('case', [
+        'units_and_pulse', 'auth_failure_disables_controls', 'reconnect_resets_binding_and_cap',
+        'late_old_connection_is_ignored', 'late_old_snapshot_does_not_restore_wait_green',
+        'old_failure_does_not_break_new_connection', 'stop_remains_available_without_snapshot',
+        'old_command_receipt_does_not_overwrite_new_connection',
+    ])
+    def test_operator_panel_page(case):
+        node = shutil.which('node')
+        if node is None:
+            pytest.skip('Node.js�� �ʿ��� ���� DOM �˻�')
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run([
+            node, str(root/'tests/operator_panel_page_checks.js'),
+            str(root/'src/arena_autonomy/arena_autonomy/race_ops_page.py'), case,
+        ], capture_output=True, text=True, encoding='utf-8', timeout=10)
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+E         
+E           assert(h.elements.manualstart.disabled)
+E         
+E             at Object.late_old_snapshot_does_not_restore_wait_green (C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:69:58)
+E             at async C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:87:65 {
+E           generatedMessage: true,
+E           code: 'ERR_ASSERTION',
+E           actual: false,
+E           expected: true,
+E           operator: '==',
+E           diff: 'simple'
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['C:\\Program Files\\nodejs\\node.EXE', 'C:\\Users\\Jinhyeong\\Documents\\ChatGPT\\IT ARENA loca...ssage: true,\n  code: 'ERR_ASSERTION',\n  actual: false,\n  expected: true,\n  operator: '==',\n  diff: 'simple'\n}\n").returncode
+
+tests\test_operator_panel_page.py:24: AssertionError
+_____ test_operator_panel_page[old_failure_does_not_break_new_connection] _____
+
+case = 'old_failure_does_not_break_new_connection'
+
+    @pytest.mark.parametrize('case', [
+        'units_and_pulse', 'auth_failure_disables_controls', 'reconnect_resets_binding_and_cap',
+        'late_old_connection_is_ignored', 'late_old_snapshot_does_not_restore_wait_green',
+        'old_failure_does_not_break_new_connection', 'stop_remains_available_without_snapshot',
+        'old_command_receipt_does_not_overwrite_new_connection',
+    ])
+    def test_operator_panel_page(case):
+        node = shutil.which('node')
+        if node is None:
+            pytest.skip('Node.js�� �ʿ��� ���� DOM �˻�')
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run([
+            node, str(root/'tests/operator_panel_page_checks.js'),
+            str(root/'src/arena_autonomy/arena_autonomy/race_ops_page.py'), case,
+        ], capture_output=True, text=True, encoding='utf-8', timeout=10)
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+E         
+E         'stale' !== ''
+E         
+E             at Object.old_failure_does_not_break_new_connection (C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:74:77)
+E             at async C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:87:65 {
+E           generatedMessage: true,
+E           code: 'ERR_ASSERTION',
+E           actual: 'stale',
+E           expected: '',
+E           operator: 'strictEqual',
+E           diff: 'simple'
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['C:\\Program Files\\nodejs\\node.EXE', 'C:\\Users\\Jinhyeong\\Documents\\ChatGPT\\IT ARENA loca...ue,\n  code: 'ERR_ASSERTION',\n  actual: 'stale',\n  expected: '',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n").returncode
+
+tests\test_operator_panel_page.py:24: AssertionError
+______ test_operator_panel_page[stop_remains_available_without_snapshot] ______
+
+case = 'stop_remains_available_without_snapshot'
+
+    @pytest.mark.parametrize('case', [
+        'units_and_pulse', 'auth_failure_disables_controls', 'reconnect_resets_binding_and_cap',
+        'late_old_connection_is_ignored', 'late_old_snapshot_does_not_restore_wait_green',
+        'old_failure_does_not_break_new_connection', 'stop_remains_available_without_snapshot',
+        'old_command_receipt_does_not_overwrite_new_connection',
+    ])
+    def test_operator_panel_page(case):
+        node = shutil.which('node')
+        if node is None:
+            pytest.skip('Node.js�� �ʿ��� ���� DOM �˻�')
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run([
+            node, str(root/'tests/operator_panel_page_checks.js'),
+            str(root/'src/arena_autonomy/arena_autonomy/race_ops_page.py'), case,
+        ], capture_output=True, text=True, encoding='utf-8', timeout=10)
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+E         + actual - expected
+E         
+E         + {
+E         +   intervention: 1,
+E         +   race_epoch: 0,
+E         +   session: 'race'
+E         + }
+E         - null
+E         
+E             at Object.stop_remains_available_without_snapshot (C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:79:67)
+E             at C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:87:83
+E             at Object.<anonymous> (C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:87:188)
+E             at Module._compile (node:internal/modules/cjs/loader:1871:14)
+E             at Object..js (node:internal/modules/cjs/loader:2002:10)
+E             at Module.load (node:internal/modules/cjs/loader:1594:32)
+E             at Module._load (node:internal/modules/cjs/loader:1396:12)
+E             at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+E             at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+E             at node:internal/main/run_main_module:33:47 {
+E           generatedMessage: true,
+E           code: 'ERR_ASSERTION',
+E           actual: [Object],
+E           expected: null,
+E           operator: 'strictEqual',
+E           diff: 'simple'
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['C:\\Program Files\\nodejs\\node.EXE', 'C:\\Users\\Jinhyeong\\Documents\\ChatGPT\\IT ARENA loca...\n  code: 'ERR_ASSERTION',\n  actual: [Object],\n  expected: null,\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n").returncode
+
+tests\test_operator_panel_page.py:24: AssertionError
+_ test_operator_panel_page[old_command_receipt_does_not_overwrite_new_connection] _
+
+case = 'old_command_receipt_does_not_overwrite_new_connection'
+
+    @pytest.mark.parametrize('case', [
+        'units_and_pulse', 'auth_failure_disables_controls', 'reconnect_resets_binding_and_cap',
+        'late_old_connection_is_ignored', 'late_old_snapshot_does_not_restore_wait_green',
+        'old_failure_does_not_break_new_connection', 'stop_remains_available_without_snapshot',
+        'old_command_receipt_does_not_overwrite_new_connection',
+    ])
+    def test_operator_panel_page(case):
+        node = shutil.which('node')
+        if node is None:
+            pytest.skip('Node.js�� �ʿ��� ���� DOM �˻�')
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run([
+            node, str(root/'tests/operator_panel_page_checks.js'),
+            str(root/'src/arena_autonomy/arena_autonomy/race_ops_page.py'), case,
+        ], capture_output=True, text=True, encoding='utf-8', timeout=10)
+>       assert result.returncode == 0, result.stdout + result.stderr
+E       AssertionError: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+E         + actual - expected
+E         
+E         + 'rejected �� old receipt'
+E         - '�� ����'
+E         
+E             at Object.old_command_receipt_does_not_overwrite_new_connection (C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:84:10)
+E             at async C:\Users\Jinhyeong\Documents\ChatGPT\IT ARENA local\tests\operator_panel_page_checks.js:87:65 {
+E           generatedMessage: true,
+E           code: 'ERR_ASSERTION',
+E           actual: 'rejected �� old receipt',
+E           expected: '�� ����',
+E           operator: 'strictEqual',
+E           diff: 'simple'
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['C:\\Program Files\\nodejs\\node.EXE', 'C:\\Users\\Jinhyeong\\Documents\\ChatGPT\\IT ARENA loca...ERTION',\n  actual: 'rejected �� old receipt',\n  expected: '�� ����',\n  operator: 'strictEqual',\n  diff: 'simple'\n}\n").returncode
+
+tests\test_operator_panel_page.py:24: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_operator_panel_page.py::test_operator_panel_page[auth_failure_disables_controls]
+FAILED tests/test_operator_panel_page.py::test_operator_panel_page[reconnect_resets_binding_and_cap]
+FAILED tests/test_operator_panel_page.py::test_operator_panel_page[late_old_connection_is_ignored]
+FAILED tests/test_operator_panel_page.py::test_operator_panel_page[late_old_snapshot_does_not_restore_wait_green]
+FAILED tests/test_operator_panel_page.py::test_operator_panel_page[old_failure_does_not_break_new_connection]
+FAILED tests/test_operator_panel_page.py::test_operator_panel_page[stop_remains_available_without_snapshot]
+FAILED tests/test_operator_panel_page.py::test_operator_panel_page[old_command_receipt_does_not_overwrite_new_connection]
+7 failed, 1 passed in 5.93s

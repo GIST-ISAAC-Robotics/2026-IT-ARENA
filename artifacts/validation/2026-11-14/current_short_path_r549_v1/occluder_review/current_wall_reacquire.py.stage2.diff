@@ -1,0 +1,33 @@
+--- a/src/arena_autonomy/arena_autonomy/current_wall_reacquire.py
++++ b/src/arena_autonomy/arena_autonomy/current_wall_reacquire.py
+@@ -37,17 +37,16 @@
+     points = np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1, 2)
+     if len(points) < 30:
+         return None
++    # occupied_endpoints와 같은 return 순서이며 각 광선의 보정된 실제 방향을 쓴다.
++    bearings = [math.atan2(ray.direction_xy[1], ray.direction_xy[0])
++                for ray in scene.rays if ray.status == "return"]
+     try:
+-        # 저속 재획득은 차체 길이만큼 관측한 선호 벽을 사용할 수 있다.
+-        # 경로 자체의 전방0.25m·형상·제동/원시점유 검사는 뒤에서 그대로 적용한다.
+-        # 짧다는 이유로 반대 벽으로 전환해 갈림길 방향을 바꾸지 않는다.
+-        minimum_ahead = min(.28, cfg.length_m) if cap_mps <= .10 else .28
+         path, boundary = local_path(points, side, cfg.wall_offset_m,
+             horizon=cfg.boundary_min_ahead_m,
+             piecewise_corner=cfg.piecewise_wall_trial,
+             minimum_radius=cfg.wheelbase_m/math.tan(cfg.max_steering_rad),
+             narrow_occluder_bridge=cfg.narrow_occluder_bridge,
+-            minimum_ahead_m=minimum_ahead)
++            bearings_rad=bearings)
+         if path is None:
+             return None
+         cap, desired, remaining = pursue_path(path, speed, cfg, age, speed_cap=cap_mps)
+@@ -73,7 +72,7 @@
+         occupancy_timing_mode='per_ray_candidate', occupancy_padding_m=float(np.max(padding)),
+         target_speed_before_hold_mps=target,
+         current_wall_reacquire=dict(cap_mps=cap_mps,
+-            minimum_boundary_ahead_m=minimum_ahead,
++            minimum_boundary_ahead_m=.28,
+             current_boundary_ahead_m=boundary.get('boundary_observed_ahead_m'),
+             anchor_error_m=boundary.get('path_anchor_error_m'),
+             prior_anchor_agreement_required=False, path_memory_committed=False,

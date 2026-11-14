@@ -1,0 +1,93 @@
+{
+  "control_changes": [
+    {
+      "path": "src/arena_autonomy/arena_autonomy/bypass_entry_trial.py",
+      "before_sha256": "7ec85a945bc78d6bde801e0f6ab2ff5951473e0506098f728164e705438158ec",
+      "after_sha256": "354239c472dc95a116259ec3051239bdb945feddea30f8c51f3a08b788971185"
+    },
+    {
+      "path": "src/arena_autonomy/arena_autonomy/current_wall_reacquire.py",
+      "before_sha256": "ff072b2a1a2fddef7af4a7c25aca92706067ec1e6ee4e4714323f0a8d9a2090f",
+      "after_sha256": "5adeb48edb779220b11f6feba3b10898cf410986a33284ea5dae75cfb292222b"
+    },
+    {
+      "path": "src/arena_autonomy/arena_autonomy/current_path_recheck/_geometry.py",
+      "before_sha256": "5335e757d90891a86e5454f151ce17d5bb4c22419c03d4502aa89edf344872bd",
+      "after_sha256": "ea14171e36d014c2579e4dc9570f9d9a25220e09dfb81428b914ff9ef9bd4e15"
+    },
+    {
+      "path": "src/arena_autonomy/arena_autonomy/race_runtime_policy/retained_recheck/_geometry.py",
+      "before_sha256": "2846f8df614e3dd01b0e1d4bae7206630afb6719c3c9cb91dee04cbad9958911",
+      "after_sha256": "c5a4fe7553a1ceb451fabe7af3403158a1a336a07b1274abfbeebf4f30453fe0"
+    }
+  ],
+  "noncontrol_changes": [],
+  "additional_sources": [
+    "scripts/experimental_facilities.py"
+  ],
+  "additional_tests": [
+    "tests/test_observed_crawl_recheck.py",
+    "tests/test_reacquire_radial_recheck.py"
+  ],
+  "source_baseline": "artifacts/validation/2026-11-14/measured_steering_radial_lap_r553_v1",
+  "scenario_baseline": "artifacts/validation/2026-11-14/field_wall_guard_relevance_drive_r539_v1",
+  "freeze_authorized": true,
+  "wsl_exclusive_owner": true,
+  "drive_authorized": true,
+  "final_production_source_selection_pending": false,
+  "included_integrations": [
+    "r553 frozen production baseline",
+    "r554 observed_straight_wall ray bearings (one control file)",
+    "r557 observed low-speed current/retained geometry (three control files); root native215 passed",
+    "r559 optional empty profile wrapper reviewed by root; native smoke required in final preflight"
+  ],
+  "pending_integrations": [],
+  "excluded_integrations": [
+    "Jetson/ESP32/physical devices",
+    "marker assistance ON run"
+  ],
+  "status": "root GO: final technical checks, native parser smoke, freeze, one OFF drive",
+  "root_authorization": "root GO after r557 native215+stage8 passed; r559 wrapper reviewed; one 12sim OFF drive; runner owns WSL",
+  "status_detail": "full",
+  "field_geometry": "field_geometry_audit.json",
+  "reviewed_noncontrol_hashes": {},
+  "additional_source_hashes": {
+    "scripts/experimental_facilities.py": "b3e1d70cc024eeeb330ef1079171013f993730b3a9bf9447945b9e51588f7012"
+  },
+  "additional_test_hashes": {
+    "tests/test_observed_crawl_recheck.py": "8e73c1d7feefdb00149645004d299127d64338f096d9e72c37218f60fd128b67",
+    "tests/test_reacquire_radial_recheck.py": "97285691115f0d57cba082f8bfbb2d8450d7a05ba157b4036d16601cd89a28c8"
+  },
+  "integration_evidence_sha256": {
+    "artifacts/validation/2026-11-14/ray_order_followup_r554_v1/common_transfer/RESULT.md": "60c963efdc1c1f8dfc801af1094da63ba07e402c9dec619c8be46a3fad46eee3",
+    "artifacts/validation/2026-11-14/r557_current_radial_stall_v1/integrated_manifest.json": "73468d0debd5a9cf4159ab64025868e3e8e378d34a60a20cb4fdd44bba04b03b",
+    "artifacts/validation/2026-11-14/r559_optional_launch_parameter_v1/stage/native_parameter_smoke.py": "2b9ec003a0677bcc91f36bbac9a5b620d4de57ce6f86d46d0f90d750c26aba02",
+    "artifacts/validation/2026-11-14/r559_optional_launch_parameter_v1/stage/marker_course.launch.py": "130e4ac40952bd00cec98cf7d5db68d1924cea5cd8c1e0cf218ed89734479482"
+  },
+  "expected_control_change_paths": [
+    "src/arena_autonomy/arena_autonomy/bypass_entry_trial.py",
+    "src/arena_autonomy/arena_autonomy/current_wall_reacquire.py",
+    "src/arena_autonomy/arena_autonomy/current_path_recheck/_geometry.py",
+    "src/arena_autonomy/arena_autonomy/race_runtime_policy/retained_recheck/_geometry.py"
+  ],
+  "preflight_imports": [
+    "arena_autonomy.local_follow",
+    "arena_autonomy.local_path",
+    "arena_autonomy.moving_pass",
+    "arena_autonomy.lidar_safety",
+    "arena_autonomy.g1_g2_node",
+    "arena_autonomy.bypass_wall_fit",
+    "arena_autonomy.current_wall_reacquire",
+    "arena_autonomy.guard_status_payload",
+    "arena_autonomy.guard_memory_command",
+    "arena_autonomy.current_path_recheck._geometry",
+    "arena_autonomy.race_runtime_policy.retained_recheck._geometry",
+    "arena_autonomy.bypass_entry_trial"
+  ],
+  "final_review_delegated_to_runner": true,
+  "artifact_wrapper": {
+    "stage": "artifacts/validation/2026-11-14/r559_optional_launch_parameter_v1/stage/marker_course.launch.py",
+    "sha256": "130e4ac40952bd00cec98cf7d5db68d1924cea5cd8c1e0cf218ed89734479482",
+    "original_r555_sha256": "10da70ec61f6da8bf94916dfaf27a3541da1fac7093e1714acae68e6425d45a6"
+  }
+}

@@ -171,7 +171,9 @@ def test_actual_node_option_defaults_off_and_requires_registered_runtime():
     init=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='__init__')
     index=next(i for i,n in enumerate(init.body) if isinstance(n,ast.Assign) and
         any(isinstance(t,ast.Attribute) and t.attr=='complete_plan_trace' for t in n.targets))
-    f=ast.parse('def option(self):\n pass').body[0];f.body=copy.deepcopy(init.body[index:index+2])
+    guard=next(n for n in init.body[index+1:] if isinstance(n,ast.If)
+        and any(isinstance(v,ast.Attribute) and v.attr=='complete_plan_trace' for v in ast.walk(n.test)))
+    f=ast.parse('def option(self):\n pass').body[0];f.body=copy.deepcopy([init.body[index],guard])
     env={};exec(compile(ast.fix_missing_locations(ast.Module(body=[f],type_ignores=[])),'actual option boundary','exec'),env)
     def owner(selected,requested=None):
         def declare(name,default):

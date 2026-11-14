@@ -216,6 +216,8 @@ class WallFollow(Node):
                           motion_timing_verified=False, motion_time_policy=self.motion.timing_policy,
                           command_requires_independent_guard=True, physical_actuation_verified=False)
         status['text_log'] = self.state_log.snapshot()
+        if getattr(self, 'quick_self_mask', None) is not None:
+            status['self_return_mask'] = self.quick_self_mask.snapshot()
         if getattr(self, 'vision_pipeline', None) is not None:
             status['vision'] = self.vision_pipeline.snapshot()
             observer = getattr(self.vision_pipeline, 'vehicle_observer', None)

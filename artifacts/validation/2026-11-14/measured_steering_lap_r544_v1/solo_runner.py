@@ -1,0 +1,1407 @@
+#!/usr/bin/env python3
+"""G1-b: 공식 코스 Gazebo 상대차 + 순차 C1 + 독립 보호층 + 가상 MCU 저속 폐루프 평가기.
+
+상대차는 평가 전용 정적 모델을 실행 사본 월드에만 넣고, 평가기가 정답 일정으로
+set_pose한다. 제어기는 실제 렌더링된 순차 광선으로만 상대차를 본다. actor 일정·정답
+자세·중심선·신호 상태는 평가·actor 시작 기준에만 사용하며 제어 입력으로 보내지 않는다.
+판정선은 config/tests/g1_traffic_v1.json에 시험 전에 등록했다.
+"""
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+import math
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import threading
+import time
+import xml.etree.ElementTree as ET
+import zipfile
+
+import numpy as np
+from shapely.strtree import STRtree
+
+from audit_local_pursuit_road import road_polygon
+from build_experimental_track import obstacle_polygons, rectangle
+from lidar_shutdown import audit_shutdown, group_processes, stop_gazebo_service, stop_launch
+from validate_basic_autonomy import (DEMO_TRACK, DEMO_WORLD, REPO, TRACK_WORLDS, add_rate_metrics,
+                                     configured_feedback_topic, early_start_detected, start_demo_process)
+from validate_facility_visibility import yaw_of
+import g1_traffic_eval as ev
+import solo_evaluation
+import g1_handoff_eval
+from g1_lidar_stress import load_test_profile, audit_injection, require_injection_evidence
+from native_traffic_contract import NativeSamplingAudit, native_received_row
+from g1_motion_stress import load_motion_profile, require_motion_evidence, motor_count_resolution
+from g1_partial_trial import (POLICIES, partial_trial_arguments, partial_trace_fields, partial_trial_evidence,
+                              parallel_trial_arguments, parallel_trial_evidence,
+                              pass_release_arguments, pass_release_evidence, guard_curve_arguments)
+from traffic_actors import actor_specs, compose_sdf, overlay_case, check_additional_routes, contact_events
+from traffic_actor_runtime import ExtraActors
+from traffic_road_route import check_onroad_route
+from traffic_merge import (merge_profile_for_case, scheduled_merge_pose, validate_merge_route,
+                           audit_merge_motion)
+
+CONFIG = REPO/'config/tests/g1_traffic_v1.json'
+# 새 코스 g1g2 C1 주입은 이 등록 프로필(경로·ImpairmentConfig 전체 값) 하나만 허용한다.
+G1G2_LIDAR_PROFILE = REPO/'config/tests/lidar_uniform30_delay50_jitter20.json'
+G1G2_LIDAR_REQUESTED = dict(mode='uniform', amplitude_m=0.03, bias_m=0., delay_s=0.05, jitter_s=0.02, seed=23)
+WORLD_NAME = 'it_arena_track'
+SET_POSE_SERVICE = f'/world/{WORLD_NAME}/set_pose'
+CONTACT_TOPIC = '/eval/g1b_actor/contact'
+CONTACT_PROBE_REPORT = REPO/'artifacts/validation/2026-10-07/g1b_contact_probe_v1/report.json'
+SOURCE_FILES = [
+    'config/tests/local_start_signal_r0_sha256.json',
+    'scripts/g1_handoff_eval.py',
+    'scripts/g1_partial_trial.py', 'config/tests/partial_observation_r0_sha256.json',
+    'scripts/g1_motion_stress.py', 'scripts/motion_fault_audit.py',
+    'scripts/g1_lidar_stress.py', 'scripts/native_traffic_contract.py', 'scripts/g1_course_eval.py',
+    'src/arena_vehicle_interface/arena_vehicle_interface/native_lidar_sampling.py',
+    'scripts/validate_g1_traffic.py', 'scripts/g1_traffic_eval.py', 'scripts/validate_basic_autonomy.py',
+    'scripts/lidar_shutdown.py', 'scripts/audit_local_pursuit_road.py', 'scripts/probe_static_actor_contact.py',
+    'scripts/traffic_actors.py', 'scripts/traffic_actor_runtime.py',
+    'scripts/traffic_road_route.py', 'scripts/traffic_corner_route.py', 'scripts/traffic_encounter.py', 'scripts/traffic_merge.py',
+    'scripts/m4_operation_trial.py', 'scripts/m4_operation_eval.py', 'scripts/m4_second_start.py',
+    'config/tests/g1_traffic_v1.json', 'config/tests/g1b_r0_sha256.json',
+    'config/tests/m3_execution_r0_sha256.json',
+    'config/tests/m3_command_selection_r0_sha256.json',
+    'config/tests/m3_baseline_release_r0_sha256.json',
+    'config/tests/m3_release_gate_r0_sha256.json',
+    'config/tests/m3_small_center_r0_sha256.json',
+    'config/tests/m3_retained_threats_r0_sha256.json',
+    'config/tests/m3_sensor_stress_r0_sha256.json',
+    'config/tests/m4_operation_r0_sha256.json',
+    'config/tests/m3_guarded_return_r0_sha256.json',
+    'config/tests/m4_second_start_r0_sha256.json',
+    'config/tests/m2_merge_r0_sha256.json',
+    'config/tests/m3_surface_commitment_r0_sha256.json',
+    'src/arena_gazebo/worlds/it_arena_official/world.sdf', 'src/arena_gazebo/worlds/it_arena_official/scene.json',
+    'src/arena_gazebo/worlds/it_arena_official/centerline.csv',
+    'src/arena_description/config/vehicle.yaml', 'src/arena_description/config/b0183_c1.yaml',
+    'src/arena_description/models/arena_car/model.sdf.xacro',
+    'src/arena_bringup/launch/simulation.launch.py', 'src/arena_bringup/launch/demo.launch.py',
+    'src/arena_bringup/launch/local_pursuit.launch.py', 'src/arena_bringup/launch/g1_follow.launch.py',
+    'src/arena_bringup/launch/r0_plus.launch.py',
+    'src/arena_bringup/config/b0183_imu_bridge.yaml',
+    *[f'src/arena_autonomy/arena_autonomy/{name}.py' for name in (
+        'core', 'wall_follow', 'local_path', 'local_pursuit', 'local_follow', 'r0_plus', 'scene_motion', 'local_scene',
+        'm3_execution_trial', 'm3_observed_follow', 'lateral_intent', 'observed_lateral_trial',
+        'polygon_batch', 'rounded_occupancy_candidate',
+        'vision_process', 'lidar_safety', 'lidar_observation', 'lidar_motion', 'lidar_motion_ros', 'follow_trace',
+        'partial_observation', 'partial_surface_alignment', 'parallel_lane_trial', 'pass_release_trial',
+        'traffic_recovery_trial', 'traffic_path_recovery_trial', 'corridor_roles',
+        'recovery_geometry', 'surface_anchor_trial', 'surface_reobservation', 'anchor_clearance_trial', 'bypass_wall_fit', 'bypass_entry_trial', 'bypass_entry_follow', 'bypass_handoff', 'same_path_gap_trial', 'rear_fringe_trial', 'released_rear_sweep', 'rear_lane_keep_trial', 'observed_lane_preference_trial', 'observed_parallel_speed_trial', 'measured_lane_preference_trial', 'measured_parallel_speed_trial', 'measured_parallel_trial', 'fresh_parallel_trial', 'fresh_parallel_speed_trial', 'current_lane_preference',
+        'boundary_evidence', 'corner_evidence', 'corner_distance', 'corner_corridor', 'corridor_observer', 'continuous_prefix', 'occupancy_timing', 'race_start', 'race_start_local',
+        'observation_support', 'scan_topology', 'observation_lateral', 'linear_observation', 'race_session', 'race_permission')],
+    *[f'src/arena_vehicle_interface/arena_vehicle_interface/{name}.py' for name in (
+        'rotating_lidar', 'lidar_impairment', 'sim_wheel_encoder', 'ackermann_to_twist', 'timing_probe', 'queued_log',
+        'actuation_ros', 'applied_guard', 'actuation_contract', 'actuation_wire', 'motion_fault_relay',
+        'motion_impairment', 'motor_count_impairment', 'drive_feedback')],
+    'src/arena_gazebo/src/single_motor_drive.cpp', 'src/arena_gazebo/include/arena_gazebo/drivetrain.hpp',
+    'src/arena_gazebo/scripts/traffic_light_controller.py',
+]
+
+
+def sha256(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def traffic_path_recovery_arguments(enabled, recovery, corridor):
+    if enabled and not (recovery and corridor):
+        raise ValueError('traffic path recovery requires explicit traffic recovery and corridor fallback')
+    return ['g1_traffic_path_recovery_trial:=true'] if enabled else []
+
+
+ZERO_SPEED_MODES = ('legacy', 'reset_integral', 'no_lag', 'passive_damping')
+PHYSICS_STEPS = ('0.0005', '0.00025')
+
+
+def drivetrain_evaluation_arguments(zero_speed_mode='legacy', physics_step=None):
+    """평가 전용 구동 대조 인자. 기본값은 빈 목록이라 기존 G1 실행 인자와 같다."""
+    if zero_speed_mode not in ZERO_SPEED_MODES or physics_step not in (None, *PHYSICS_STEPS):
+        raise ValueError('unsupported drivetrain evaluation option')
+    extra = [] if zero_speed_mode == 'legacy' else [f'evaluation_zero_speed_mode:={zero_speed_mode}']
+    return extra+([f'evaluation_physics_step:={physics_step}'] if physics_step else [])
+
+
+def load_config(path=CONFIG):
+    config = json.loads(Path(path).read_text(encoding='utf-8'))
+    if config.get('schema_version') != 1:
+        raise ValueError('unsupported G1-b config')
+    names = [case['name'] for case in config['cases']]
+    if len(set(names)) != len(names):
+        raise ValueError('duplicate case')
+    for case in config['cases']:
+        ev.validate_schedule(case['schedule'], case['duration_s'])
+        lateral = actor_lateral_offset(config, case)
+        if not math.isfinite(lateral) or abs(lateral) > .45:
+            raise ValueError('invalid actor lateral offset')
+        if lateral and case.get('route_kind') not in ('side_grass_straight', 'side_road_straight', 'side_two_wheel_straight', 'side_first_curve', 'merge_straight'):
+            raise ValueError('lateral actor requires registered road or grass side route')
+        merge_profile_for_case(case)
+    if set(config['seeds']) != {'0', '1', '2'}:
+        raise ValueError('three fixed seeds are required')
+    return config
+
+
+def case_named(config, name):
+    for case in config['cases']:
+        if case['name'] == name:
+            return case
+    raise ValueError(f'unknown case {name}')
+
+
+def load_centerline(world=DEMO_WORLD):
+    route = np.genfromtxt(world/'centerline.csv', delimiter=',', names=True)
+    scene = json.loads((world/'scene.json').read_text(encoding='utf-8'))
+    return ev.Centerline(route['x_m'], route['y_m'], route['s_m'], scene['track']['lap_length_m']), scene
+
+
+def actor_start_s(config, scene, seed, case=None):
+    slot = {int(s['index']): s for s in scene['starting_grid']['slots']}[config['launch']['grid_slot']]
+    gap = (case or {}).get('actor_start_center_gap_m', config['actor']['start_center_gap_m'])
+    return slot['s_m']+gap+config['seeds'][str(seed)]['actor_start_offset_m']
+
+
+def check_straight(config, centerline, case, s0):
+    """actor 마지막 위치가 첫 코너 전에 머무는지 시험 전 확인한다."""
+    end = centerline.unwrap(s0+ev.actor_travel_m(case['schedule'], case['duration_s']), s0)
+    corner = centerline.unwrap(config['first_corner_s_m'], s0)
+    if corner < s0:
+        corner += centerline.lap
+    if end > corner-1.0:
+        raise ValueError(f'actor leaves the registered straight section: end s={end:.3f}, corner s={corner:.3f}')
+    return {'actor_start_s_m': s0, 'actor_end_s_m': end, 'first_corner_s_m': corner}
+
+
+def check_route(config, centerline, case, s0, road=None, obstacles=()):
+    """확장 시험만 등록한 첫 코너까지 허용한다. 기존 직선 제한은 유지한다."""
+    kind = case.get('route_kind', 'straight')
+    if kind == 'side_first_curve':
+        from traffic_corner_route import check_corner_route
+        return check_corner_route(config, centerline, case, s0, road, obstacles)
+    if kind == 'full_course':
+        from g1_course_eval import check_full_course
+        return check_full_course(config, centerline, case, s0, road, obstacles)
+    if kind == 'merge_straight':
+        return validate_merge_route(config, centerline, case, s0, road, obstacles, check_straight)
+    if kind in ('side_road_straight', 'side_two_wheel_straight'):
+        return check_onroad_route(config, centerline, case, s0, road, obstacles, check_straight, actor_pose_at)
+    if kind == 'straight':
+        return {'kind': kind, **check_straight(config, centerline, case, s0)}
+    if kind == 'side_grass_straight':
+        straight = check_straight(config, centerline, case, s0)
+        lateral = actor_lateral_offset(config, case)
+        if road is None or not lateral:
+            raise ValueError('side-grass route needs road and a nonzero offset')
+        actor = config['actor']
+        travel = ev.actor_travel_m(case['schedule'], case['duration_s'])
+        samples = np.linspace(s0, s0+travel, math.ceil(travel/.01)+1)
+        tree = STRtree(obstacles)
+        corridor = road.buffer(.20)  # 현재 공식 직선의 20 cm 잔디 폭. 차량 도로 기준은 바꾸지 않음.
+        for s in samples:
+            pose = actor_pose_at(centerline, s, [], 0., lateral)
+            footprint = rectangle(*pose, actor['length_m'], actor['width_m'])
+            if (footprint.intersection(road).area > 1e-6 or footprint.difference(corridor).area > 1e-6 or
+                    any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))):
+                raise ValueError(f'side actor not wholly off-road inside wall corridor at s={s:.4f}')
+        return {'kind': kind, **straight, 'lateral_offset_m': lateral,
+                'actor_offroad_samples': len(samples), 'maximum_sample_step_m': .01,
+                'scope': '잔디 쪽 사고/정지차 가림 시험. 정상 병렬 주행이나 잔디 사용 허가가 아님.'}
+    if kind != 'first_curve':
+        raise ValueError(f'unknown route kind: {kind}')
+    rules = config['acceptance'][case['name']]
+    travel = ev.actor_travel_m(case['schedule'], case['duration_s'])
+    end = s0+travel
+    exit_s = centerline.unwrap(rules['required_exit_s_m'], s0)
+    if exit_s < s0:
+        exit_s += centerline.lap
+    limit = centerline.unwrap(rules['maximum_actor_s_m'], s0)
+    if limit < s0:
+        limit += centerline.lap
+    if not (s0 < exit_s <= end <= limit) or road is None:
+        raise ValueError('curve route not covered, exceeds registered extent, or road is missing')
+    actor = config['actor']
+    samples = np.linspace(s0, end, math.ceil(travel/.01)+1)
+    tree = STRtree(obstacles)
+    for s in samples:
+        footprint = rectangle(*centerline.pose(s), actor['length_m'], actor['width_m'])
+        if (footprint.difference(road).area > 1e-6 or
+                any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))):
+            raise ValueError(f'actor route footprint outside road or into wall at s={s:.4f}')
+    return {'kind': kind, 'actor_start_s_m': s0, 'actor_end_s_m': end,
+            'required_exit_s_m': exit_s, 'maximum_actor_s_m': limit,
+            'actor_road_wall_samples': len(samples), 'maximum_sample_step_m': .01}
+
+
+def source_paths(config_path, lidar_profile=None, actor_overlay=None, motion_profile=None):
+    """사용자 지정 시험 설정도 소스 사본에 포함하며 저장소 내부 경로만 허용한다."""
+    relative = Path(config_path).resolve().relative_to(REPO).as_posix()
+    extra = [Path(lidar_profile).resolve().relative_to(REPO).as_posix()] if lidar_profile else []
+    if actor_overlay:
+        extra.append(Path(actor_overlay).resolve().relative_to(REPO).as_posix())
+    if motion_profile:
+        extra.append(Path(motion_profile).resolve().relative_to(REPO).as_posix())
+    return list(dict.fromkeys([*SOURCE_FILES, relative, *extra]))
+
+
+def actor_lateral_offset(config, case):
+    return float(case.get('actor_lateral_offset_m', config['actor'].get('lateral_offset_m', 0.)))
+
+
+def actor_pose_at(centerline, s0, schedule, elapsed, lateral_offset=0.):
+    x, y, yaw = centerline.pose(s0+ev.actor_travel_m(schedule, elapsed))
+    return x-lateral_offset*math.sin(yaw), y+lateral_offset*math.cos(yaw), yaw
+
+
+def primary_pose_at(config, centerline, s0, case, elapsed):
+    """주 actor만 명시 합류 경로를 선택한다. 기존/추가 actor의 자세 계산은 그대로다."""
+    if case.get('route_kind') == 'side_first_curve':
+        from traffic_corner_route import corner_pose
+        return corner_pose(config, centerline, s0, case, elapsed)
+    profile = merge_profile_for_case(case)
+    lateral = actor_lateral_offset(config, case)
+    if profile is not None:
+        return scheduled_merge_pose(centerline, s0, case['schedule'], elapsed, lateral, profile)
+    return actor_pose_at(centerline, s0, case['schedule'], elapsed, lateral)
+
+
+def actor_sdf(config, pose):
+    actor = config['actor']
+    outline = actor.get('visual_outline', 'box')
+    if outline not in ('box', 'recessed_sides', 'thin_upper_blade', 'sparse_upper_posts'):
+        raise ValueError('unknown evaluation actor visual outline')
+    x, y, yaw = pose
+    z = actor['bottom_m']+actor['height_m']/2
+    size = f"{actor['length_m']} {actor['width_m']} {actor['height_m']}"
+    root = ET.Element('sdf', version='1.9')
+    ET.SubElement(root, 'plugin', filename='gz-sim-contact-system', name='gz::sim::systems::Contact')
+    model = ET.SubElement(root, 'model', name=actor['model_name'])
+    ET.SubElement(model, 'static').text = 'true'
+    ET.SubElement(model, 'pose').text = f'{x:.6f} {y:.6f} {z:.6f} 0 0 {yaw:.9f}'
+    link = ET.SubElement(model, 'link', name='body')
+    collision = ET.SubElement(link, 'collision', name='collision')
+    ET.SubElement(ET.SubElement(ET.SubElement(collision, 'geometry'), 'box'), 'size').text = size
+    # 감지 윤곽만 달리한다. 접촉·간격 평가는 기존 외접 상자로 보수적으로 유지한다.
+    visuals = [('visual', None, size)]
+    if outline == 'recessed_sides':
+        length, width, height = (float(actor[k]) for k in ('length_m', 'width_m', 'height_m'))
+        if not all(math.isfinite(v) and v > 0 for v in (length, width, height)):
+            raise ValueError('recessed actor requires finite positive dimensions')
+        visuals = [
+            ('visual_center', '0 0 0 0 0 0', f'{length*.8} {width*2/3} {height}'),
+            ('visual_front', f'{length*.45} 0 0 0 0 0', f'{length*.1} {width} {height}'),
+            ('visual_rear', f'{-length*.45} 0 0 0 0 0', f'{length*.1} {width} {height}'),
+        ]
+    elif outline in ('thin_upper_blade', 'sparse_upper_posts'):
+        length, width, height = (float(actor[k]) for k in ('length_m', 'width_m', 'height_m'))
+        if not all(math.isfinite(v) and v > 0 for v in (length, width, height)) or height < .15:
+            raise ValueError('sparse upper actor requires positive dimensions and height >= .15 m')
+        lower = min(.08, height*.45)
+        upper = height-lower
+        visuals = [('visual_lower_body', f'0 0 {-height/2+lower/2} 0 0 0', f'{length} {width} {lower}'),
+                   ('visual_top', f'0 0 {height/2-.002} 0 0 0', f'{length*.8} {width*.8} .004')]
+        if outline == 'thin_upper_blade':
+            visuals.append(('visual_blade', f'0 0 {lower/2} 0 0 0', f'.004 {width*.8} {upper}'))
+        else:
+            for i, (px, py) in enumerate(((-1, -1), (-1, 1), (1, -1), (1, 1))):
+                visuals.append((f'visual_post_{i}', f'{px*length*.38} {py*width*.36} {lower/2} 0 0 0',
+                                f'.008 .008 {upper}'))
+    for name, local_pose, visual_size in visuals:
+        visual = ET.SubElement(link, 'visual', name=name)
+        if local_pose is not None:
+            ET.SubElement(visual, 'pose').text = local_pose
+        ET.SubElement(ET.SubElement(ET.SubElement(visual, 'geometry'), 'box'), 'size').text = visual_size
+        material = ET.SubElement(visual, 'material')
+        for tag in ('ambient', 'diffuse'):
+            ET.SubElement(material, tag).text = '.55 .08 .08 1'
+    sensor = ET.SubElement(link, 'sensor', name='eval_contact', type='contact')
+    ET.SubElement(sensor, 'always_on').text = 'true'
+    ET.SubElement(sensor, 'update_rate').text = '200'
+    contact = ET.SubElement(sensor, 'contact')
+    ET.SubElement(contact, 'collision').text = 'collision'
+    ET.SubElement(contact, 'topic').text = CONTACT_TOPIC
+    publisher = ET.SubElement(model, 'plugin', filename='gz-sim-pose-publisher-system',
+                              name='gz::sim::systems::PosePublisher')
+    for tag, value in (('publish_model_pose', 'true'), ('publish_link_pose', 'false'),
+                       ('use_pose_vector_msg', 'true'), ('static_publisher', 'false'),
+                       ('update_frequency', str(int(actor['pose_publish_hz'])))):
+        ET.SubElement(publisher, tag).text = value
+    return ET.tostring(root, encoding='unicode')
+
+
+def stamp(message):
+    return message.sec+message.nanosec*1e-9
+
+
+class EvaluationCaptureGate:
+    """시험 종료 후 자료 저장 동안 일부 transport 스트림만 길어지지 않게 한다."""
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.closed = False
+
+    def wrap(self, handler):
+        def accept(data):
+            with self.lock:
+                if not self.closed:
+                    handler(data)
+        return accept
+
+    def close(self):
+        with self.lock:
+            self.closed = True
+
+
+def drain_actor_tail(target_s, pose_streams, spin_once, *, wall_timeout_s=1., clock=time.monotonic):
+    """고정한 자차 마지막 시각까지 ROS 상대차 큐만 회수한다. 자료를 합성하지 않는다."""
+    began = clock()
+    if (not math.isfinite(target_s) or not math.isfinite(wall_timeout_s) or
+            wall_timeout_s <= 0 or not pose_streams):
+        raise ValueError('invalid actor tail drain target')
+    def latest():
+        return {name: float(rows[-1][0]) if rows else None for name, rows in pose_streams.items()}
+    before = latest()
+    polls = 0
+    while True:
+        after = latest()
+        complete = all(t is not None and math.isfinite(t) and t >= target_s for t in after.values())
+        remaining = wall_timeout_s-(clock()-began)
+        if complete or remaining <= 0:
+            return dict(target_sim_s=target_s, completed=complete, before_sim_s=before,
+                        after_sim_s=after, spin_calls=polls, elapsed_wall_s=clock()-began,
+                        scope='receive existing actor poses after ego capture closes; no extrapolation')
+        spin_once(min(.01, remaining))
+        polls += 1
+
+
+def json_reader(command, handler, log, audit):
+    """gz topic JSON 출력의 평가 전용 수신기. 시험자 소유 프로세스 그룹."""
+    process = subprocess.Popen(command, cwd=REPO, stdout=subprocess.PIPE, stderr=log, text=True,
+                               start_new_session=True)
+
+    def run():
+        for line in process.stdout:
+            try:
+                data = json.loads(line)
+            except (ValueError, TypeError) as error:
+                audit['parse_errors'] += 1
+                audit['last_error'] = f'{type(error).__name__}: {error}'
+                continue
+            audit['json_messages'] += 1
+            try:
+                handler(data)
+                audit['handled_messages'] += 1
+            except (ValueError, TypeError, KeyError) as error:
+                audit['handler_errors'] += 1
+                audit['last_error'] = f'{type(error).__name__}: {error}'
+                continue
+    threading.Thread(target=run, daemon=True).start()
+    return process
+
+
+def stop_owned(process, timeouts=((signal.SIGINT, 15), (signal.SIGTERM, 5), (signal.SIGKILL, 5))):
+    forced = []
+    for sig, timeout in timeouts:
+        if process.poll() is not None:
+            break
+        try:
+            if sig != signal.SIGINT:
+                forced.append(sig.name)
+            os.killpg(process.pid, sig)
+            process.wait(timeout=timeout)
+        except (subprocess.TimeoutExpired, ProcessLookupError):
+            continue
+    return forced
+
+
+def piecewise_arguments(enabled, mode, recorded):
+    """단독에서 확인한 직각 경로를 교통에서도 명시 선택. 속도·점유/STOP 불변."""
+    if not enabled:
+        return []
+    if mode not in ('g1', 'g1g2') or not recorded:
+        raise ValueError('piecewise walls require recorded G1 or G1/G2 traffic')
+    return ['g1_piecewise_wall_trial:=true']
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--case', required=True)
+    parser.add_argument('--diagnostic-stop-after-green-s', type=float,
+                        help='원인 진단 전용 관측 단축. 원 일정/판정은 유지하고 정상 STOP을 수행하며 전체 시험 통과로 판정하지 않는다.')
+    parser.add_argument('--team-signal-course', action='store_true',
+                        help='11/1 등록된 155초 앞차·옆차와 2×5 픽셀 출발을 사용한다.')
+    parser.add_argument('--official-signal-course', action='store_true',
+                        help='공식 v2026.11.01 실행 월드와 2×5 점등을 쓰는 선정 교통 시험. 11/1 fixture 경로와 별개다.')
+    parser.add_argument('--track', choices=tuple(TRACK_WORLDS), default=DEMO_TRACK,
+                        help='공식 교통 경로의 실행·평가 월드. 새 코스는 official_v2026_11_06 명시, 같은 track으로 등록한 설정 필요')
+    parser.add_argument('--seed', type=int, choices=(0, 1, 2), required=True)
+    parser.add_argument('--mode', choices=('g1', 'r0', 'r0plus', 'm3', 'g1g2'), required=True)
+    parser.add_argument('--handoff-reserve', choices=('fixed','moving','closing','recent','low_motion','paced'),
+                        help='G1/G2 앞차 비교: 고정 여유, 이동 속도 추종, 또는 이동 속도와 남은 거리로 접근.')
+    parser.add_argument('--handoff-control-rate-hz', type=float, choices=(10., 50.), default=50.,
+                        help='G1/G2 주기 비교 전용. 설정 파일의 control_rate_hz와 일치해야 하며 기본은50Hz다.')
+    parser.add_argument('--handoff-decision-execution', choices=('inline','process_candidate'), default='inline',
+                        help='기본 OFF 별도 판단 프로세스. 수신 부모50Hz·판단10Hz와 원 시각/독립 보호 유지')
+    parser.add_argument('--handoff-rear-sweep', action='store_true', help='통과 후 저속 후반부 이동 시험')
+    parser.add_argument('--current-lane-preference-trial', action='store_true', help='정지 측방 반환 뒤 현재 관측 직선의 차선 유지 선호')
+    parser.add_argument('--side-departure-trial', action='store_true', help='완전 관측 직선의 측방 시차 겹침에서 비접근 저속 출발 후보')
+    parser.add_argument('--handoff-observed-motion', action='store_true',
+                        help='세계 고정 측방 반환과 전진 시작 조각을 구별하는 선택형 후보. 공식 교통 경로 전용.')
+    parser.add_argument('--handoff-yield-progress', action='store_true',
+                        help='현재 면의 전진 근거로 우회 양보 예산을 갱신하는 선택형 비교')
+    parser.add_argument('--handoff-continuous-pace', action='store_true',
+                        help='paced+관측 이동 후보에서 연속 전진율로 고정 우회 여유만 보완하는 선택형 비교(기본 꺼짐)')
+    parser.add_argument('--handoff-wall-witness', action='store_true',
+                        help='Use existing current rear-wall returns across a known structure shadow in the stationary bypass guide')
+    parser.add_argument('--moving-pass-profile', choices=['slow_v1','medium_v1','faster_v1'], default='slow_v1',
+                        help='Explicit moving-pass speed/tracking envelope; medium requires moving-pass-trial')
+    parser.add_argument('--moving-pass-trial', action='store_true',
+                        help='연속 전진 관측·후방 복귀 확인을 사용하는 저속 이동차 추월(기본 꺼짐)')
+    parser.add_argument('--handoff-boundary-refresh', action='store_true',
+                        help='교통의 관측 벽 조각 경로와 기존 승인 벽 갱신을 선택하는 시험')
+    parser.add_argument('--handoff-standing-wall-reacquire', action='store_true',
+                        help='기존 저속 현재 선호 벽 재획득을 G1/G2 교통에서 명시 선택(기본 꺼짐)')
+    parser.add_argument('--g1-piecewise-wall', action='store_true',
+                        help='기존 관측 벽의 두 직선+원호 경로를 교통에서도 명시 선택(기본 꺼짐)')
+    parser.add_argument('--m3-command-fallback', action='store_true',
+                        help='M3 실제 발행 검사까지 포함한 경로 후보 선택 비교; 기본 비활성')
+    parser.add_argument('--m3-release-to-baseline', action='store_true',
+                        help='M3 옆차가 앞으로 지나간 뒤 기본 G1 복귀 비교; 기본 비활성')
+    parser.add_argument('--m3-small-center-straight', action='store_true',
+                        help='M3 중앙 복귀 보정이 직선 추종 오차 예산 안이면 직진 먼저 검사; 관측 복귀 필요, 기본 비활성')
+    parser.add_argument('--m3-straight-surface-commitment', action='store_true',
+                        help='M3 직진 노면 검사 범위 정합성 비교; 관측 복귀/명령 재선택 필요, 기본 비활성')
+    for name in ('rounded-occupancy', 'straight-with-threat', 'defer-center-on-straight'):
+        parser.add_argument('--m3-'+name, action='store_true',
+                            help='선택형 M3 밀집 출발 후보 비교; 기본 비활성, 원래 보호/관측 검사 유지')
+    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--config', type=Path, default=CONFIG)
+    parser.add_argument('--actor-overlay', type=Path,
+                        help='명시한 사전 등록 overlay에서만 추가 actor 삽입; 기본 단일 actor 유지')
+    parser.add_argument('--corridor-fallback', action='store_true',
+                        help='고정 E3 G1 회랑 후보. corner-distance/per-ray/판단 기록 필요, 최근 관측 OFF')
+    parser.add_argument('--lidar-test-profile', type=Path,
+                        help='선택형 G1/M3 시험용 거리오차/추가 지연. 기본 무주입, 취득 시각 유지')
+    parser.add_argument('--lidar-native-sampling-profile', type=Path,
+                        help='선택형 C1 원천 가변 점/각도 입력. 기본 균일500점 유지, 시간은 시뮬 근사')
+    parser.add_argument('--motion-test-profile', type=Path,
+                        help='선택형 G1/M3 시험용 IMU/단일 모터축 오차·지연. 기본 무주입')
+    parser.add_argument('--vehicle-config', type=Path, default=None,
+                        help='선택형 차량 기하/구동 YAML. 시뮬·제어·보호·평가에 함께 전달')
+    parser.add_argument('--local-sensor-config', default=None,
+                        help='시험 전용 local_pursuit 센서/장착 YAML. 기본은 패키지 b0183_c1.yaml')
+    parser.add_argument('--pilot-marker-z', type=float, default=None,
+                        help='선택형 G1 자차 후면 ID49 판 중심 높이(0.115..0.30 m). 기본은 vehicle.yaml 그대로')
+    parser.add_argument('--record-braking-diagnostics', action='store_true',
+                        help='평가 전용 바퀴/차체/토크 시계열 보존; 제어 및 판정은 변경하지 않음')
+    parser.add_argument('--record-wheel-contacts', action='store_true',
+                        help='실행 사본에 평가용 바퀴 접촉 센서를 추가하여 원시 접촉 메시지 보존')
+    parser.add_argument('--record-follow-decisions', action='store_true',
+                        help='선택형 G1 판단 시점의 스캔/운동 이력/출력을 기록; 제어 변경 없음')
+    parser.add_argument('--partial-observation-policy', choices=POLICIES, default='strict',
+                        help='선택형 G1 부분 관측 비교; 기록·순차10 Hz·both·1 m/s·가상 MCU 필요')
+    parser.add_argument('--parallel-hold-trial', action='store_true',
+                        help='직선 전용 현재 횡위치 유지 비교. 기본 OFF, v4·corner-distance·per-ray 필요')
+    parser.add_argument('--pass-release-trial', action='store_true',
+                        help='옆차 관측/통과에 따라 평행 후보와 G1을 선택. 기본 OFF, parallel-hold 필요')
+    parser.add_argument('--guard-curve-trial', action='store_true',
+                        help='GUARD 곡선 저속 후보. 기본 OFF, pass-release 필요')
+    parser.add_argument('--traffic-recovery-trial', action='store_true',
+                        help='점별 소실/재관측/같은 경로 통과 회복 후보. 기본 OFF, GUARD 필요')
+    parser.add_argument('--traffic-path-recovery-trial', action='store_true',
+                        help='선호 벽/코너 역할 및 완료 통과 이력 분리. 기본 OFF, traffic-recovery/corridor 필요')
+    parser.add_argument('--short-boundary-prefix',action='store_true',
+                        help='명시 선택형 짧은 관측 경로. G1·corridor/per-ray/기록 필요, 기본 OFF')
+    parser.add_argument('--boundary-evidence', choices=('connected', 'fragmented_candidate', 'corner_anchor_candidate', 'corner_distance_candidate'), default='connected',
+                        help='G1 경계 증거 후보; 기본 connected 유지, fragmented는 명시 선택형')
+    parser.add_argument('--occupancy-timing', choices=('oldest', 'per_ray_candidate'), default='oldest',
+                        help='점별 취득 시각 팽창 후보. 기본 oldest 유지, 점/거리 여유/운동 상한 유지')
+    parser.add_argument('--zero-speed-mode', choices=ZERO_SPEED_MODES, default='legacy',
+                        help='평가 전용 0목표 구동 특성 대조. 기본 legacy는 실행 인자를 추가하지 않음')
+    parser.add_argument('--grass-alignment', choices=('original', 'road_level', 'grass_above_3mm'), default='original',
+                        help='v11.06 잔디 1 mm 단차 대조. 기본 원본 유지')
+    parser.add_argument('--physics-step', choices=PHYSICS_STEPS,
+                        help='평가 전용 물리 step. 생략하면 월드 기본 1 ms')
+    parser.add_argument('--race-operation-test', nargs='?', const='same_race', choices=('same_race', 'new_race', 'new_race_restart'),
+                        help='격리 Gazebo 전용 B3 운영자 명령 순서; 실제 운영 자동 해제 아님')
+    args = parser.parse_args()
+    # 단독 검사기 --pilot-marker-z와 같은 범위·전달. 지정하지 않으면 기존 launch 인자 그대로.
+    if args.pilot_marker_z is not None and (args.mode not in ('g1', 'm3', 'g1g2')
+                                            or not 0.115 <= args.pilot_marker_z <= 0.30):
+        parser.error('--pilot-marker-z is a G1 board center height override (0.115..0.30 m)')
+    if args.partial_observation_policy != 'strict' and (
+            args.mode != 'g1' or not args.record_follow_decisions or args.race_operation_test):
+        parser.error('partial observation trial requires recorded G1 without a race-operation trial')
+    if args.race_operation_test and (args.mode != 'g1' or args.case != 'stop_restart'
+                                    or not args.record_follow_decisions or args.actor_overlay
+                                    or args.lidar_test_profile or args.motion_test_profile):
+        parser.error('--race-operation-test requires recorded G1 stop_restart without additional actors or sensor stress')
+    if args.m3_command_fallback and args.mode != 'm3':
+        parser.error('--m3-command-fallback requires --mode m3')
+    if args.m3_release_to_baseline and args.mode != 'm3':
+        parser.error('--m3-release-to-baseline requires --mode m3')
+    if args.m3_small_center_straight and (args.mode != 'm3' or not args.m3_release_to_baseline):
+        parser.error('--m3-small-center-straight requires --mode m3 and --m3-release-to-baseline')
+    if args.m3_straight_surface_commitment and (args.mode != 'm3' or not args.m3_release_to_baseline
+                                               or not args.m3_command_fallback):
+        parser.error('--m3-straight-surface-commitment requires --mode m3, --m3-release-to-baseline and --m3-command-fallback')
+    departure_options = ('rounded_occupancy', 'straight_with_threat', 'defer_center_on_straight')
+    if any(getattr(args, 'm3_'+name) for name in departure_options) and args.mode != 'm3':
+        parser.error('M3 departure options require --mode m3')
+    if (args.m3_straight_with_threat or args.m3_defer_center_on_straight) and not args.m3_command_fallback:
+        parser.error('M3 straight priority requires --m3-command-fallback')
+    if args.m3_defer_center_on_straight and not args.m3_release_to_baseline:
+        parser.error('--m3-defer-center-on-straight requires --m3-release-to-baseline')
+    if args.mode in ('r0plus', 'm3') and (not args.record_follow_decisions or args.occupancy_timing != 'per_ray_candidate'):
+        parser.error('R0+/M3 requires per-ray occupancy and decision recording')
+    if args.occupancy_timing != 'oldest' and (args.mode not in ('g1', 'r0plus', 'm3') or not args.record_follow_decisions):
+        parser.error('--occupancy-timing candidate requires G1 with decision recording')
+    if args.lidar_test_profile and (args.mode not in ('g1', 'm3', 'g1g2') or not args.record_follow_decisions):
+        parser.error('--lidar-test-profile requires G1/M3/G1G2 with decision recording')
+    g1g2_lidar_stress = bool(args.lidar_test_profile) and args.mode == 'g1g2'
+    if g1g2_lidar_stress and (args.track != 'official_v2026_11_06' or not args.official_signal_course
+                              or args.team_signal_course or args.handoff_reserve != 'paced' or args.seed != 0):
+        parser.error('G1/G2 lidar stress requires recorded paced official_v2026_11_06 signal course, seed 0')
+    if args.motion_test_profile and (args.mode not in ('g1','m3') or not args.record_follow_decisions
+                                    or args.lidar_test_profile or args.actor_overlay):
+        parser.error('--motion-test-profile requires recorded G1/M3 without other stress or actor overlays')
+    lidar_profile, lidar_requested = load_test_profile(args.lidar_test_profile, REPO)
+    if g1g2_lidar_stress and (lidar_profile != G1G2_LIDAR_PROFILE or lidar_requested != G1G2_LIDAR_REQUESTED):
+        parser.error('G1/G2 lidar stress accepts only config/tests/lidar_uniform30_delay50_jitter20.json')
+    motion_profile, motion_requested = load_motion_profile(args.motion_test_profile, REPO)
+    if motion_profile and configured_feedback_topic() != '/drive_motor/encoder':
+        parser.error('registered motion stress requires current single motor-shaft feedback')
+    if args.record_follow_decisions and args.mode not in ('g1', 'r0plus', 'm3', 'g1g2'):
+        parser.error('--record-follow-decisions requires a recorded controller mode')
+    if args.boundary_evidence != 'connected' and (args.mode not in ('g1', 'm3') or not args.record_follow_decisions):
+        parser.error('fragmented candidate requires G1 with decision recording')
+    if (args.zero_speed_mode != 'legacy' or args.physics_step) and not args.record_braking_diagnostics:
+        parser.error('구동 평가 옵션은 --record-braking-diagnostics로 적용 상태를 보존해야 합니다.')
+    if args.corridor_fallback and (args.mode not in ('g1', 'm3') or args.boundary_evidence != 'corner_distance_candidate'
+                                  or args.occupancy_timing != 'per_ray_candidate' or not args.record_follow_decisions):
+        parser.error('corridor fallback requires G1 corner-distance/per-ray/decision recording')
+    if args.short_boundary_prefix and (args.mode != 'g1' or not args.corridor_fallback):
+        parser.error('short boundary prefix requires explicit G1 corridor fallback')
+    if args.grass_alignment != 'original' and (args.track != 'official_v2026_11_06'
+            or not args.official_signal_course or not args.record_follow_decisions):
+        parser.error('grass alignment requires recorded v11.06 official signal course')
+    corner_arguments = piecewise_arguments(args.g1_piecewise_wall, args.mode, args.record_follow_decisions)
+    config = load_config(args.config)
+    vehicle_path = None
+    if args.vehicle_config is not None:
+        import yaml
+        vehicle_path = args.vehicle_config.resolve(strict=True)
+        vehicle_path.relative_to(REPO)
+        vehicle = yaml.safe_load(vehicle_path.read_text(encoding='utf-8'))['vehicle']
+        config['ego_geometry'] = dict(length_m=vehicle['footprint']['length_m'],
+            width_m=vehicle['footprint']['width_m'],wheelbase_m=vehicle['drivetrain']['wheelbase_m'],
+            track_width_m=vehicle['drivetrain']['track_width_m'])
+    ego_geometry = ev.ego_geometry(config)
+    ego_length, ego_width = ego_geometry['length_m'], ego_geometry['width_m']
+    if args.actor_overlay:
+        args.actor_overlay.resolve().relative_to(REPO)
+    case = overlay_case(case_named(config, args.case), args.actor_overlay)
+    diagnostic_window = args.diagnostic_stop_after_green_s
+    if diagnostic_window is not None and (
+            not math.isfinite(diagnostic_window) or not 0 < diagnostic_window < case['duration_s']
+            or args.race_operation_test):
+        parser.error('diagnostic window must be shorter than the registered case and cannot truncate a race operation test')
+    merge_profile = merge_profile_for_case(case)
+    if (args.handoff_observed_motion or args.side_departure_trial or args.current_lane_preference_trial) and not args.official_signal_course:
+        raise ValueError('관측 이동 후보는 공식 교통 경로에서만 선택한다')
+    if args.team_signal_course and args.official_signal_course:
+        raise ValueError('11/1 fixture와 공식 월드 교통 경로는 함께 선택할 수 없다')
+    if args.track != DEMO_TRACK and (not args.official_signal_course or args.local_sensor_config is None):
+        raise ValueError('새 코스 교통 시험은 --official-signal-course와 --local-sensor-config를 함께 명시한다')
+    if merge_profile is not None and (args.mode != ('g1g2' if args.official_signal_course else 'g1') or args.race_operation_test
+                                      or args.lidar_test_profile or motion_profile):
+        raise ValueError('merge trial requires plain G1 without operation or sensor stress overlays')
+    specs = []  # r457: no traffic models, no hidden or remote actor.
+    launch, acceptance, actor_cfg, limits = config['launch'], config['acceptance'], config['actor'], config['timeouts']
+    handoff_arguments = g1_handoff_eval.launch_arguments(args.mode, args.handoff_reserve, launch, args.record_follow_decisions, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire, boundary_refresh=args.handoff_boundary_refresh, control_rate_hz=args.handoff_control_rate_hz, decision_execution=args.handoff_decision_execution)
+    facility_sources = {}
+    world_dir = DEMO_WORLD
+    if args.team_signal_course:
+        import race_traffic_course as course
+        from prelap_signal_eval import FIXTURE
+        facility_sources = course.inputs(args, config, case)
+        world_dir = FIXTURE
+    elif args.official_signal_course:
+        import official_traffic_course as official
+        world_dir = TRACK_WORLDS[args.track]
+        facility_sources = official.inputs(args, config, case, world_dir, args.track)
+    selected_course = args.team_signal_course or args.official_signal_course
+    if handoff_arguments and ((not selected_course and (args.case not in ('stop_restart','slow_lead') or args.actor_overlay))
+            or args.seed != 0 or
+            args.race_operation_test or (lidar_profile and not g1g2_lidar_stress) or motion_profile or args.partial_observation_policy != 'strict'
+            or args.zero_speed_mode != 'legacy' or args.physics_step
+            or args.corridor_fallback or args.short_boundary_prefix or args.parallel_hold_trial
+            or args.pass_release_trial or args.traffic_recovery_trial or args.guard_curve_trial
+            or args.traffic_path_recovery_trial or args.boundary_evidence != 'connected' or args.occupancy_timing != 'oldest'):
+        raise ValueError('registered G1/G2 traffic comparison uses its fixed configuration, seed 0 and no overlays')
+    if handoff_arguments and not selected_course:
+        reference=load_config(CONFIG)
+        if (case != case_named(reference,args.case) or actor_cfg != reference['actor']
+                or acceptance != reference['acceptance'] or config['seeds']['0'] != reference['seeds']['0']):
+            raise ValueError('G1/G2 traffic comparison must retain the original lead, schedule and acceptance gates')
+    partial_arguments = partial_trial_arguments(args.partial_observation_policy, args.mode,
+                                               args.record_follow_decisions, launch)
+    parallel_arguments = parallel_trial_arguments(args.parallel_hold_trial, args.partial_observation_policy,
+        args.mode, args.record_follow_decisions, args.boundary_evidence, args.occupancy_timing)
+    release_arguments = pass_release_arguments(args.pass_release_trial,args.parallel_hold_trial)
+    guard_arguments = guard_curve_arguments(args.guard_curve_trial, args.pass_release_trial)
+    if args.traffic_recovery_trial and not args.guard_curve_trial:
+        raise ValueError('traffic recovery requires explicit guard curve trial')
+    recovery_arguments = ['g1_traffic_recovery_trial:=true'] if args.traffic_recovery_trial else []
+    path_recovery_arguments = traffic_path_recovery_arguments(
+        args.traffic_path_recovery_trial, args.traffic_recovery_trial, args.corridor_fallback)
+    if lidar_profile and (launch['lidar_rate_hz'] != 10 or launch['lidar_acquisition'] != 'sequential'):
+        raise ValueError('registered G1 lidar stress requires sequential 10 Hz')
+    native_path = native_profile = native_audit = None
+    if args.lidar_native_sampling_profile:
+        if (args.mode not in ('g1','m3','g1g2') or not args.record_follow_decisions
+                or launch['lidar_acquisition'] != 'sequential' or launch['lidar_compensation'] != 'both'):
+            raise ValueError('native traffic requires recorded G1/M3/G1G2, sequential and both compensation')
+        native_path = args.lidar_native_sampling_profile.resolve(strict=True)
+        native_path.relative_to(REPO)
+        native_profile = json.loads(native_path.read_text(encoding='utf-8'))
+        native_audit = NativeSamplingAudit(native_profile, launch['lidar_rate_hz'])
+    lidar_topic = '/scan/native' if native_audit else '/scan'
+    output = args.output.resolve()
+    if not output.is_relative_to(REPO/'artifacts'):
+        raise ValueError('output must be under artifacts')
+    centerline, scene = load_centerline(world_dir)
+    s0 = actor_start_s(config, scene, args.seed, case)
+    lateral = actor_lateral_offset(config, case)
+    route = dict(kind='solo_full_course', lap_length_m=centerline.lap, actor_count=0)
+    starts, additional_routes = [], None
+    output.mkdir(parents=True, exist_ok=False)
+    actor_path = output/'facilities_only.sdf'
+    actor_path.write_bytes((Path(__file__).resolve().parent/'facilities_only.sdf').read_bytes())
+    sources = {rel: sha256(REPO/rel) for rel in source_paths(args.config, lidar_profile, args.actor_overlay, motion_profile)}
+    sources.update(facility_sources)
+    sources.update({p.relative_to(REPO).as_posix(): sha256(p) for p in Path(__file__).resolve().parent.glob('*.py')})
+    if vehicle_path is not None:
+        sources[vehicle_path.relative_to(REPO).as_posix()] = sha256(vehicle_path)
+    runtime_native_profile = None
+    if native_path:
+        sources[native_path.relative_to(REPO).as_posix()] = sha256(native_path)
+        runtime_native_profile = output/'native_sampling_profile.json'
+        runtime_native_profile.write_bytes(native_path.read_bytes())
+    if handoff_arguments:
+        for path in sorted((REPO/'src/arena_autonomy/arena_autonomy').glob('*.py')):
+            sources[path.relative_to(REPO).as_posix()] = sha256(path)
+    runtime_motion_profile = None
+    if motion_profile:
+        runtime_motion_profile = output/'motion_test_profile.json'
+        runtime_motion_profile.write_text(json.dumps(motion_requested, indent=2), encoding='utf-8')
+    runtime_lidar_profile = None
+    if lidar_profile:
+        runtime_lidar_profile = output/'lidar_test_profile.json'
+        runtime_lidar_profile.write_text(json.dumps(lidar_requested, indent=2), encoding='utf-8')
+    with zipfile.ZipFile(output/'source_snapshot.zip', 'w', zipfile.ZIP_DEFLATED) as bundle:
+        for rel in sources:
+            bundle.write(REPO/rel, rel)
+        bundle.write(actor_path, 'evaluation_actor.sdf')
+        if runtime_native_profile:
+            bundle.write(runtime_native_profile, 'evaluation_native_sampling_profile.json')
+        if runtime_lidar_profile:
+            bundle.write(runtime_lidar_profile, 'evaluation_lidar_test_profile.json')
+        if runtime_motion_profile:
+            bundle.write(runtime_motion_profile, 'evaluation_motion_test_profile.json')
+    os.environ.update(ROS_DOMAIN_ID=str(150+os.getpid() % 30), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST',
+                      ROS_STATIC_PEERS='', GZ_PARTITION=f'arena_autonomy_test_{os.getpid()}')
+    # 위 파티션 이름은 lidar_shutdown.stop_gazebo_service의 시험 소유 확인 규칙과 같아야 한다.
+    os.environ.setdefault('FASTDDS_BUILTIN_TRANSPORTS', 'LARGE_DATA')
+    import rclpy
+    from rclpy.signals import SignalHandlerOptions
+    from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
+    from sensor_msgs.msg import Image, LaserScan, Imu
+    from nav_msgs.msg import Odometry
+    from ackermann_msgs.msg import AckermannDriveStamped
+    from std_msgs.msg import String
+    from std_srvs.srv import Trigger
+    from tf2_msgs.msg import TFMessage
+    from ros_gz_interfaces.srv import SetEntityPose
+    from rosgraph_msgs.msg import Clock
+
+    report = {'started_at_utc': datetime.now(timezone.utc).isoformat(), 'passed': False,
+              'case': case['name'], 'seed': args.seed, 'mode': args.mode,
+              'boundary_evidence_mode': args.boundary_evidence,
+              'occupancy_timing_mode': args.occupancy_timing,
+              'scope': config['scope'], 'config_sha256': sha256(args.config), 'source_sha256': sources,
+              'actor_sdf_sha256': sha256(actor_path), 'route_check': route,
+              'straight_section': route if route['kind'] == 'straight' else None,
+              'actor_visible_section': actor_cfg['visible_section'], 'started_wall_monotonic': time.monotonic()}
+    if args.track != DEMO_TRACK:
+        report['track'] = args.track
+    if diagnostic_window is not None:
+        report['diagnostic_window'] = dict(stop_after_green_s=diagnostic_window,
+            registered_duration_s=case['duration_s'], full_case_evidence=False)
+    if vehicle_path is not None:
+        report['vehicle_config'] = dict(path=str(vehicle_path),sha256=sha256(vehicle_path),ego_geometry=ego_geometry)
+    if args.local_sensor_config is not None:
+        sensor_path = Path(args.local_sensor_config).resolve(strict=True)
+        report['local_sensor_config'] = {'path': str(sensor_path), 'sha256': sha256(sensor_path)}
+    if runtime_native_profile:
+        report['native_sampling'] = dict(path=native_path.relative_to(REPO).as_posix(),
+            runtime_sha256=sha256(runtime_native_profile), selected_topic=lidar_topic,
+            time_model='period_divided_by_count', hardware_timing_verified=False)
+    if args.pilot_marker_z is not None:
+        report['pilot_marker_z_m'] = round(args.pilot_marker_z, 3)
+    if args.actor_overlay:
+        report['actor_overlay'] = {'path': str(args.actor_overlay.resolve().relative_to(REPO)),
+            'sha256': sha256(args.actor_overlay), 'scope': case['additional_actor_scope'], 'routes': additional_routes}
+    if partial_arguments:
+        report['partial_observation_trial'] = {'requested_policy': args.partial_observation_policy,
+            'launch_arguments': partial_arguments, 'default_changed': False,
+            'scope': 'explicit low-speed G1 trial; original gap, HOLD, STOP and verdict retained'}
+    if args.corridor_fallback:
+        report['corridor_fallback_enabled'] = True
+        report['recent_observation_enabled'] = False
+    if args.short_boundary_prefix:
+        report['short_boundary_prefix_enabled'] = True
+    if runtime_lidar_profile:
+        report['lidar_test_profile'] = {'path': str(lidar_profile.relative_to(REPO)),
+            'requested': lidar_requested, 'runtime_sha256': sha256(runtime_lidar_profile),
+            'scope': 'synthetic bounded radial error and publish delay, acquisition timestamps preserved'}
+    if runtime_motion_profile:
+        report['motion_test_profile'] = {'path': str(motion_profile.relative_to(REPO)),
+            'requested': motion_requested, 'runtime_sha256': sha256(runtime_motion_profile),
+            'feedback_mode':'drive_motor_shaft',
+            'counts_per_motor_revolution': motor_count_resolution(REPO),
+            'scope':'synthetic bias/gain/transport/time error; not raw tick loss or measured hardware'}
+    if args.zero_speed_mode != 'legacy' or args.physics_step:
+        # 평가 전용 구동 대조일 때만 기록한다. 기본 보고서 형식은 유지한다.
+        report['drivetrain_evaluation'] = {'zero_speed_mode': args.zero_speed_mode,
+                                           'physics_step_override_s': args.physics_step}
+    if args.grass_alignment != 'original':
+        report['grass_alignment_requested'] = args.grass_alignment
+    rclpy.init(signal_handler_options=SignalHandlerOptions.NO)
+    node = rclpy.create_node('g1b_traffic_validator')
+    state, trace, scans, drive_stamps, acquisition_records = {}, [], [], [], []
+    ego, actor, contacts, commands = [], [], [], []
+    capture_gate = EvaluationCaptureGate()
+    wheel_contacts = []
+    reader_audit = {name: {'json_messages': 0, 'handled_messages': 0, 'parse_errors': 0,
+                          'handler_errors': 0, 'last_error': None} for name in ('ego',)}
+    if args.record_wheel_contacts:
+        reader_audit['wheel_contact'] = dict(reader_audit['ego'])
+    rejected_actor_times = 0
+    rejected_ego_times = 0
+    actuation_trace, actuation_diagnostics = [], []
+    braking_diagnostics = []
+    actor_frames = set()
+    stop_requested = False
+
+    def interrupted(*_):
+        nonlocal stop_requested
+        stop_requested = True
+    signal.signal(signal.SIGINT, interrupted)
+    signal.signal(signal.SIGTERM, interrupted)
+
+    def remember(message, key):
+        state[key] = message
+        if key == 'drive':
+            drive_stamps.append(stamp(message.header.stamp))
+
+    def receive_clock(message):
+        # STOP 요청 기준 시각. 평가기 노드의 최신 sim /clock을 정수 ns로만 보관하고 수신 횟수를 센다.
+        state['clock_ns'] = int(message.clock.sec)*1_000_000_000+int(message.clock.nanosec)
+        state['clock_receipts'] = state.get('clock_receipts', 0)+1
+
+    scan_stream = (output/'scans_received.jsonl').open('w', encoding='utf-8')
+    status_stream = (output/'autonomy_status.jsonl').open('w', encoding='utf-8')
+    safety_stream = (output/'safety_status.jsonl').open('w', encoding='utf-8')
+
+    def receive_scan(message):
+        state['scan'] = message
+        scans.append(stamp(message.header.stamp))
+        if native_audit:
+            scan_stream.write(json.dumps(native_received_row(message), allow_nan=False)+'\n')
+            return
+        # 사후 재현용 평가 기록. 제어 입력이 아니며 Git에는 해시만 남긴다.
+        scan_stream.write(json.dumps({'stamp_s': scans[-1], 'time_increment': message.time_increment,
+            'angle_min': message.angle_min, 'angle_increment': message.angle_increment,
+            'ranges': [float(r) if math.isfinite(r) else None for r in message.ranges]})+'\n')
+
+    def receive_native(message):
+        from arena_autonomy.native_lidar_input import decode_measurements
+        receive_scan(decode_measurements(message.data, expected_time_basis='simulation_acquisition'))
+
+    def receive_status(message):
+        status = json.loads(message.data)
+        state['autonomy'] = status
+        status_stream.write(json.dumps({k: v for k, v in status.items() if k not in ('text_log', 'vision')},
+                                       ensure_ascii=False)+'\n')
+
+    def receive_actuation(message):
+        status = json.loads(message.data)
+        state['actuation'] = status
+        actuation_trace.append(status)
+
+    def receive_safety(message):
+        status = json.loads(message.data)
+        remember(status, 'safety')
+        safety_stream.write(json.dumps(dict(receipt_monotonic_s=time.monotonic(),data=status))+'\n')
+
+    def receive_dynamics(message):
+        status = json.loads(message.data)
+        state['dynamics'] = status
+        if args.record_braking_diagnostics:
+            braking_diagnostics.append(status)
+
+    reliable = QoSProfile(depth=200, reliability=ReliabilityPolicy.RELIABLE)
+    subscriptions = [
+        node.create_subscription(Image, '/camera/color/image_raw', lambda m: remember(m, 'rgb'), QoSProfile(depth=2)),
+        node.create_subscription(Odometry, '/odom', lambda m: remember(m, 'odom'), 10),
+        node.create_subscription(AckermannDriveStamped, '/drive', lambda m: remember(m, 'drive'), 10),
+        node.create_subscription(String, '/autonomy/status', receive_status, 50),
+        node.create_subscription(String, '/sim/traffic_light/state', lambda m: remember(json.loads(m.data), 'light'), 10),
+        node.create_subscription(String, '/sim/drivetrain', receive_dynamics, 10),
+        node.create_subscription(String, '/safety/status', receive_safety, 10),
+        node.create_subscription(AckermannDriveStamped, '/drive/safe', lambda m: remember(m, 'safe_drive'), 10),
+        node.create_subscription(Imu, '/imu/data', lambda m: remember(m, 'imu'), qos_profile_sensor_data),
+        (node.create_subscription(String, lidar_topic, receive_native, qos_profile_sensor_data)
+            if native_audit else node.create_subscription(LaserScan, lidar_topic, receive_scan, qos_profile_sensor_data)),
+        node.create_subscription(String, '/sim/lidar_acquisition', lambda m: acquisition_records.append(json.loads(m.data)), 100),
+        node.create_subscription(String, '/actuation/status', receive_actuation, 100),
+        node.create_subscription(Clock, '/clock', receive_clock, QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)),
+        node.create_subscription(String, '/actuation/output_status', lambda m: remember(json.loads(m.data), 'actuation_output'), 100),
+        node.create_subscription(String, '/actuation/diagnostics', lambda m: actuation_diagnostics.append(json.loads(m.data)),
+                                 QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)),
+    ]
+    arm_service = node.create_client(Trigger, '/actuation/arm')
+    mcu_stop_service = node.create_client(Trigger, '/actuation/stop')
+    operation_trial = second_start = None
+    if args.race_operation_test:
+        from m4_operation_trial import RosOperatorTrial
+        operation_trial = RosOperatorTrial(node, Trigger, String, new_race=args.race_operation_test != 'same_race')
+        if args.race_operation_test == 'new_race_restart':
+            from m4_second_start import RosSecondStart
+            second_start = RosSecondStart(node, Trigger)
+    obstacles = obstacle_polygons(world_dir/'world.sdf')
+    tree = STRtree(obstacles)
+    log_path = output/'simulation.log'
+    log = log_path.open('w', encoding='utf-8')
+    reader_log = (output/'readers.log').open('w', encoding='utf-8')
+    trace_stream = (output/'trajectory.jsonl').open('w', encoding='utf-8')
+    processes, readers = [], []
+    arm_future = actor_future = None
+    t_green = None
+    outcome = {'abort': None}
+    began = time.monotonic()
+
+    def receive_ego(data):
+        nonlocal rejected_ego_times
+        header = data.get('header', {}).get('stamp', {})
+        when = float(header.get('sec', 0))+float(header.get('nsec', 0))*1e-9
+        for pose in data.get('pose', []):
+            if pose.get('name') == 'arena_car':
+                pose['time'] = when
+                state['pose'] = pose
+                if not ego or when > ego[-1][0]:
+                    p = pose['position']
+                    ego.append((when, float(p.get('x', 0.)), float(p.get('y', 0.)), yaw_of(pose['orientation'])))
+                else:
+                    rejected_ego_times += 1
+
+    def receive_contact(data):
+        header = data.get('header', {}).get('stamp', {})
+        when = float(header.get('sec', 0))+float(header.get('nsec', 0))*1e-9
+        pairs = [[c['collision1']['name'], c['collision2']['name']] for c in data.get('contact', [])]
+        # 빈 Contacts도 수신 증거로 보존한다. 무접촉시 무발행과 구분한다.
+        contacts.append({'t': when, 'pairs': pairs})
+
+    try:
+        extra = [f'evaluation_actor_sdf:={actor_path}', *partial_arguments, *parallel_arguments, *release_arguments,
+                 *guard_arguments, *recovery_arguments, *path_recovery_arguments, *handoff_arguments,
+                 *corner_arguments]
+        if corner_arguments:
+            report['piecewise_wall_requested'] = True
+        if handoff_arguments:
+            report.update(boundary_evidence_mode='corner_distance_candidate', occupancy_timing_mode='per_ray_candidate',
+                handoff_reserve=args.handoff_reserve, handoff_launch_arguments=handoff_arguments,
+                partial_observation_policy='bounded_local_v4')
+        if operation_trial is not None:
+            extra.append('race_control_mode:=b3_candidate')
+        if args.boundary_evidence != 'connected':
+            extra.append(f'g1_boundary_evidence_mode:={args.boundary_evidence}')
+        if args.record_follow_decisions:
+            extra.append(f'g1_trace_path:={output / "follow_decisions.jsonl"}')
+        if args.occupancy_timing != 'oldest':
+            extra.append(f'g1_occupancy_timing_mode:={args.occupancy_timing}')
+        if args.corridor_fallback:
+            extra.extend(['g1_corridor_fallback_enabled:=true', 'g1_recent_observation_enabled:=false'])
+        if args.short_boundary_prefix:
+            extra.append('g1_short_boundary_prefix_enabled:=true')
+        if args.mode == 'm3':
+            extra.append('g1_m3_execution_trial:=true')
+            if args.m3_command_fallback:
+                extra.append('g1_m3_command_fallback:=true')
+            if args.m3_release_to_baseline:
+                extra.append('g1_m3_release_to_baseline:=true')
+            if args.m3_small_center_straight:
+                extra.append('g1_m3_small_center_straight:=true')
+            if args.m3_straight_surface_commitment:
+                extra.append('g1_m3_straight_surface_commitment:=true')
+            for name in departure_options:
+                if getattr(args, 'm3_'+name):
+                    extra.append('g1_m3_'+name+':=true')
+        if args.record_wheel_contacts:
+            extra.append('evaluation_wheel_contacts:=true')
+        extra += drivetrain_evaluation_arguments(args.zero_speed_mode, args.physics_step)
+        if args.grass_alignment != 'original':
+            extra.append('evaluation_grass_alignment:='+args.grass_alignment)
+        if vehicle_path is not None:
+            extra.append('vehicle_config:='+str(vehicle_path))
+        if args.local_sensor_config is not None:
+            extra.append('local_sensor_config:='+str(Path(args.local_sensor_config).resolve(strict=True)))
+        if args.track != DEMO_TRACK:
+            extra.append('track:='+args.track)
+        if args.pilot_marker_z is not None:
+            extra.append(f'pilot_marker_z:={args.pilot_marker_z:.3f}')
+        if runtime_native_profile:
+            extra.append('lidar_native_sampling_profile:='+str(runtime_native_profile))
+        processes.append(start_demo_process(
+            log, launch['speed_profile'], launch['lidar_rate_hz'], True, launch['red_duration_s'],
+            launch['autonomy_mode'], args.team_signal_course, launch['lidar_acquisition'], launch['lidar_compensation'],
+            launch['control_rate_hz'], launch['render_backend'], launch['sensor_wall_timeout_s'],
+            launch['speed_bump'], launch['collision_detector'], str(output), launch['grid_slot'],
+            str(runtime_lidar_profile) if runtime_lidar_profile else '',
+            str(runtime_motion_profile) if runtime_motion_profile else '',
+            launch['actuation_mode'], False, args.mode in ('g1', 'm3', 'g1g2'), extra, r0_plus=args.mode == 'r0plus',
+            team_signal_course=args.team_signal_course))
+        readers.append(json_reader(['gz', 'topic', '-e', '-t', f'/world/{WORLD_NAME}/dynamic_pose/info', '--json-output'],
+                                   capture_gate.wrap(receive_ego), reader_log, reader_audit['ego']))
+        if args.record_wheel_contacts:
+            readers.append(json_reader(['gz', 'topic', '-e', '-t', '/eval/wheels/contact', '--json-output'],
+                                       capture_gate.wrap(wheel_contacts.append), reader_log, reader_audit['wheel_contact']))
+        last_record = -math.inf
+        last_command_s = None
+        first_pose_time = None
+        signal_states = set()
+        false_start = False
+        wall_collision = 0
+        progress = 0.
+        last_s = None
+        while True:
+            rclpy.spin_once(node, timeout_sec=.005)
+            if stop_requested:
+                raise RuntimeError('interrupted')
+            if any(p.poll() is not None for p in processes+readers):
+                raise RuntimeError('owned process exited early')
+            if time.monotonic()-began > limits['wall_timeout_s']:
+                raise TimeoutError('wall timeout')
+            if 'actuation' in state and operation_trial is None:
+                status = state['actuation']
+                if (arm_future is None and status['stationary_ready'] and status['output_ready']
+                        and arm_service.service_is_ready() and status['now_us']-actuation_trace[0]['now_us'] > 1_000_000):
+                    arm_future = arm_service.call_async(Trigger.Request())
+                if arm_future is not None and arm_future.done() and not arm_future.result().success:
+                    raise RuntimeError('MCU ARM refused: '+arm_future.result().message)
+                if status['state'] in ('FAULT_LATCHED', 'ESTOP_LATCHED'):
+                    outcome['abort'] = 'mcu_latched_before_stop: '+str(status['reason'])
+                    break
+            required = {'pose', 'autonomy', 'light', 'rgb', 'odom', 'drive', 'dynamics', 'scan', 'safety',
+                        'safe_drive', 'imu'}
+            if not required.issubset(state):
+                if time.monotonic()-began > limits['startup_wall_timeout_s']:
+                    raise TimeoutError(f'startup data missing: {sorted(required-set(state))}')
+                continue
+            pose = state['pose']
+            now = pose['time']
+            first_pose_time = now if first_pose_time is None else first_pose_time
+            light = state['light']
+            if args.team_signal_course and (output/'signal_driver_failure.json').exists():
+                report['error']='2×5 신호 발생기 오류: signal_driver_failure.json 참조'
+                break
+            if t_green is None and light.get('applied') == 'green':
+                t_green = now
+                report['green_observed_sim_s'] = now
+            if operation_trial is not None:
+                try:
+                    operation_trial.tick(now, state['autonomy'].get('race'), state.get('actuation', {}), t_green,
+                                         state['safe_drive'].drive.speed, state['autonomy']['sim_time_s'])
+                    if second_start is not None:
+                        second_start.tick(now, operation_trial.logic.snapshot(), state['autonomy'].get('race'),
+                                          state.get('actuation', {}), light)
+                except Exception as error:
+                    outcome['abort'] = f'M4 operator: {type(error).__name__}: {error}'
+                    break
+            if now-last_record < .10:
+                if t_green is not None and now-t_green >= case['duration_s']:
+                    break
+                continue
+            last_record = now
+            position = {axis: float(pose['position'].get(axis, 0.)) for axis in ('x', 'y')}
+            s, error = centerline.nearest_s(position['x'], position['y'])
+            if last_s is not None:
+                delta = (s-last_s+centerline.lap/2) % centerline.lap-centerline.lap/2
+                progress += delta if abs(delta) <= 1 else 0.
+            last_s = s
+            footprint = rectangle(position['x'], position['y'], yaw_of(pose['orientation']), ego_length, ego_width)
+            hit = any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))
+            wall_collision += int(hit)
+            autonomy = state['autonomy']
+            signal_states.add(light['applied'])
+            false_start |= early_start_detected(light['applied'], state['drive'].drive.speed, autonomy)
+            false_start |= early_start_detected(light['applied'], state['safe_drive'].drive.speed, autonomy)
+            dynamics = state['dynamics']
+            record = {
+                't': now, 'x': position['x'], 'y': position['y'], 'yaw': yaw_of(pose['orientation']),
+                's': s, 'progress_m': progress, 'centerline_error_m': error, 'wall_collision': hit,
+                'elapsed_since_green_s': None if t_green is None else now-t_green, 'light': light['applied'],
+                'ground_speed_mps': math.hypot(dynamics['truth_longitudinal_mps'], dynamics['truth_lateral_mps']),
+                'truth_longitudinal_mps': dynamics['truth_longitudinal_mps'],
+                'drive_speed_mps': state['drive'].drive.speed, 'safe_speed_mps': state['safe_drive'].drive.speed,
+                'safety_reason': state['safety'].get('reason'), 'safety_clearance_m': state['safety'].get('swept_clearance_m'),
+                'autonomy': ev.compact_autonomy_status(autonomy),
+                'mcu_state': state.get('actuation', {}).get('state'),
+            }
+            if args.record_braking_diagnostics:
+                record['braking_diagnostics'] = {
+                    **dynamics,
+                    'safe_command_stamp_s': stamp(state['safe_drive'].header.stamp),
+                    'mcu_now_us': state.get('actuation', {}).get('now_us'),
+                    'mcu_target_speed_mps': state.get('actuation', {}).get('target_speed_mps'),
+                    'mcu_mean_wheel_mps': state.get('actuation', {}).get('mean_wheel_mps'),
+                }
+            record.update(partial_trace_fields(args.partial_observation_policy, autonomy, state['safety'],
+                                              parallel=args.parallel_hold_trial,pass_release=args.pass_release_trial))
+            trace.append(record)
+            trace_stream.write(json.dumps(record, ensure_ascii=False)+'\n')
+            if t_green is not None and progress >= centerline.lap:
+                report['solo_lap_finish_sim_s'] = now
+                break
+            if wall_collision > 3 or error > .35:
+                outcome['abort'] = f'wall contact or route departure: samples={wall_collision}, error={error:.3f}'
+                break
+            if diagnostic_window is not None and t_green is not None and now-t_green >= diagnostic_window:
+                outcome['abort'] = 'diagnostic_window_complete'
+                break
+            if t_green is not None and now-t_green >= case['duration_s']:
+                break
+            if t_green is None and now-first_pose_time > limits['max_sim_after_green_margin_s']+30:
+                raise TimeoutError('green not observed in time')
+            if t_green is not None and now-t_green > case['duration_s']+limits['max_sim_after_green_margin_s']:
+                raise TimeoutError('case sim window overrun')
+        report['case_window'] = {'green_sim_s': t_green, 'end_sim_s': state['pose']['time'],
+                                 'duration_s': case['duration_s']}
+        controller = 'local_pursuit'
+        inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node(controller, '/')}
+        required_inputs = {lidar_topic, '/camera/color/image_raw', configured_feedback_topic(), '/imu/data'}
+        if operation_trial is not None:
+            # 운영/MCU 상태만 추가 허용한다. 평가용 정답·신호 상태는 여전히 금지한다.
+            required_inputs |= {'/race/command', '/actuation/status'}
+        report['autonomy_subscriptions'] = sorted(inputs)
+        report['sensor_only_inputs'] = required_inputs.issubset(inputs) and inputs.issubset(required_inputs | {'/clock', '/parameter_events'})
+        safety_inputs = {topic for topic, _ in node.get_subscriber_names_and_types_by_node('lidar_safety', '/')}
+        safety_expected = {lidar_topic, '/imu/data', configured_feedback_topic(), '/drive'}
+        report['safety_subscriptions'] = sorted(safety_inputs)
+        report['safety_sensor_only_inputs'] = safety_expected.issubset(safety_inputs) and safety_inputs.issubset(safety_expected | {'/clock', '/parameter_events'})
+        if runtime_motion_profile:
+            report['motion_relay_publishers'] = {topic: sorted(i.node_name for i in node.get_publishers_info_by_topic(topic))
+                                                for topic in ('/imu/data', configured_feedback_topic())}
+        report['actor_pose_publishers'] = {name: sorted(i.node_name for i in node.get_publishers_info_by_topic(f'/model/{name}/pose')) for name in ('eval_g1b_actor','eval_second_lead')}
+        report['drive_publishers'] = sorted(i.node_name for i in node.get_publishers_info_by_topic('/drive'))
+        report['safe_drive_publishers'] = sorted(i.node_name for i in node.get_publishers_info_by_topic('/drive/safe'))
+        host_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('actuation_host', '/')})
+        mcu_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('virtual_mcu', '/')})
+        sink_inputs = sorted({t for t, _ in node.get_subscriber_names_and_types_by_node('guarded_sim_actuator', '/')})
+        add_rate_metrics(report, [], scans, state.get('scan'), launch['lidar_rate_hz'])
+        # 명시 STOP. 이미 고정 정지된 경우에도 실제 모델 정지와 출력 차단은 별도로 본다.
+        if not mcu_stop_service.wait_for_service(timeout_sec=3):
+            raise TimeoutError('MCU STOP service unavailable')
+        # STOP 전 MCU 고정 판정의 기준: 요청 직전에 새로 받은 평가기 /clock 정수 ns. 아래
+        # stop_start는 기존과 같이 요청 직후 수신 자세 시각이며 정지 대기 창에만 쓴다.
+        stop_request_clock_ns, clock_refresh = ev.fresh_clock_ns(
+            lambda: rclpy.spin_once(node, timeout_sec=.005), state, time.monotonic)
+        future = mcu_stop_service.call_async(Trigger.Request())
+        stop_start = state['pose']['time']
+        report['stop_request_sim_s'] = stop_start
+        report['stop_request_clock_ns'] = stop_request_clock_ns
+        report['stop_request_clock_refresh'] = {**clock_refresh, 'pose_minus_clock_s':
+            None if stop_request_clock_ns is None else stop_start-stop_request_clock_ns*1e-9}
+        stop_origin = {axis: float(state['pose']['position'].get(axis, 0.)) for axis in ('x', 'y')}
+        stable_since, stop_trace, last_stop = None, [], -math.inf
+        deadline = time.monotonic()+limits['stop_wall_timeout_s']
+        while state['pose']['time']-stop_start < acceptance['stop']['maximum_wait_sim_s']:
+            if stop_requested or time.monotonic() > deadline or any(p.poll() is not None for p in processes):
+                raise TimeoutError('stop check interrupted, timed out or process exited')
+            rclpy.spin_once(node, timeout_sec=.01)
+            now = state['pose']['time']
+            if now > last_stop:
+                p = {axis: float(state['pose']['position'].get(axis, 0.)) for axis in ('x', 'y')}
+                yaw = yaw_of(state['pose']['orientation'])
+                footprint = rectangle(p['x'], p['y'], yaw, ego_length, ego_width)
+                hit = any(footprint.intersection(obstacles[int(i)]).area > 1e-6 for i in tree.query(footprint))
+                stop_trace.append({'time': now, 'x': p['x'], 'y': p['y'], 'yaw': yaw, 'collision': hit,
+                                   'ground_speed_mps': math.hypot(state['dynamics']['truth_longitudinal_mps'],
+                                                                  state['dynamics']['truth_lateral_mps']),
+                                   'dynamics_source_s': state['dynamics'].get('sim_time_s'),
+                                   'odom_source_s': stamp(state['odom'].header.stamp),
+                                   'safe_command_source_s': stamp(state['safe_drive'].header.stamp),
+                                   'mcu_source_us': state.get('actuation', {}).get('now_us')})
+                last_stop = now
+            if (abs(state['odom'].twist.twist.linear.x) < .01 and abs(state['dynamics']['truth_longitudinal_mps']) < .01
+                    and abs(state['dynamics']['truth_lateral_mps']) < .01):
+                stable_since = now if stable_since is None else stable_since
+                if now-stable_since >= acceptance['stop']['stable_hold_sim_s'] and future.done() and future.result().success:
+                    # 비동기 진단의 저속 두 표본만으로 실제 정지 완료를 선언하지 않는다.
+                    # 평가용 밀집 자세 전 구간도 기존 속도/시간 한도를 만족해야 한다.
+                    evidence = ev.stop_pose_evidence(tuple(ego), now, acceptance['stop']['stable_hold_sim_s'])
+                    if evidence['passed']:
+                        break
+            else:
+                stable_since = None
+        stop_end = stop_trace[-1]['time'] if stop_trace else stop_start
+        evidence = ev.stop_pose_evidence(tuple(ego), stop_end, acceptance['stop']['stable_hold_sim_s'])
+        report['stop'] = {
+            'stable': (stable_since is not None and stop_end-stable_since >= acceptance['stop']['stable_hold_sim_s']
+                       and future.done() and future.result().success and evidence['passed']),
+            'pose_evidence': evidence,
+            'wait_sim_s': stop_end-stop_start,
+            'displacement_m': math.dist([stop_origin['x'], stop_origin['y']],
+                                        [stop_trace[-1][a] for a in ('x', 'y')]) if stop_trace else 0.,
+            'wall_collision_samples': sum(r['collision'] for r in stop_trace),
+        }
+        (output/'stop_trace.json').write_text(json.dumps(stop_trace, indent=2), encoding='utf-8')
+        final = state.get('actuation', {})
+        latch_timing = ev.stop_latch_timing(actuation_trace, stop_request_clock_ns,
+                                            acceptance['stop']['mcu_state'], acceptance['stop']['mcu_reason'])
+        report['actuation'] = {
+            'arm_acknowledged': (operation_trial.logic.initial_arm_ok if operation_trial is not None else
+                                bool(arm_future is not None and arm_future.done() and arm_future.result().success)),
+            'final_mcu': final, 'final_output': state.get('actuation_output'),
+            'positive_command_samples': sum(s['target_speed_mps'] > 0 for s in actuation_trace),
+            'latched_before_stop_samples': latch_timing['latched_before_stop_samples'],
+            'stop_latch_timing': latch_timing,
+            'host_subscriptions': host_inputs, 'mcu_subscriptions': mcu_inputs, 'sink_subscriptions': sink_inputs,
+        }
+        expected = [({'/drive/safe', '/actuation/rx'}, host_inputs),
+                    ({configured_feedback_topic(), '/actuation/tx', '/actuation/output_status'}, mcu_inputs),
+                    ({'/actuation/status'}, sink_inputs)]
+        report['actuation']['sensor_only_inputs'] = all(e.issubset(i) and set(i).issubset(e | {'/clock', '/parameter_events'})
+                                                       for e, i in expected)
+        report['actuation_stop_passed'] = (report['actuation']['arm_acknowledged'] and
+            final.get('reason') == acceptance['stop']['mcu_reason'] and final.get('state') == acceptance['stop']['mcu_state']
+            and (state.get('actuation_output') or {}).get('speed_mps') == 0.)
+        report['signal_states'] = sorted(signal_states)
+        report['false_start'] = false_start
+        report['wall_collision_samples'] = wall_collision
+    except Exception as error:
+        report['error'] = f'{type(error).__name__}: {error}'
+        print('G1-b run failed:', report['error'], flush=True)
+    finally:
+        if state.get('actuation', {}).get('reason') == 'control_deadline_missed':
+            deadline = time.monotonic()+1.
+            while not actuation_diagnostics and time.monotonic() < deadline:
+                rclpy.spin_once(node, timeout_sec=.01)
+        # 먼저 자차/접촉 transport 수신을 닫아 저장 중 평가 구간이 늘어나지 않게 한다.
+        capture_gate.close()
+        report['observation_closed_before_serialization'] = True
+        report['observation_last_ego_sim_s'] = ego[-1][0] if ego else None
+        report['abort'] = outcome['abort']
+        if args.record_wheel_contacts:
+            path = output/'wheel_contacts.jsonl'
+            path.write_text(''.join(json.dumps(row)+'\n' for row in wheel_contacts), encoding='utf-8')
+            report['wheel_contacts'] = {
+                'samples': len(wheel_contacts), 'sha256': sha256(path),
+                'scope': 'evaluation contact events only; silence is not proof of zero load; no control input',
+            }
+        (output/'actuation_diagnostics.json').write_text(json.dumps(actuation_diagnostics, indent=2), encoding='utf-8')
+        (output/'actuation_trace.json').write_text(json.dumps(actuation_trace), encoding='utf-8')
+        (output/'acquisition.json').write_text(json.dumps(acquisition_records), encoding='utf-8')
+        if args.record_braking_diagnostics:
+            path = output/'braking_diagnostics.jsonl'
+            path.write_text(''.join(json.dumps(row)+'\n' for row in braking_diagnostics), encoding='utf-8')
+            report['braking_diagnostics'] = {
+                'samples': len(braking_diagnostics), 'sha256': sha256(path),
+                'scope': 'evaluation only; original drivetrain source timestamps retained; no control or verdict change',
+            }
+        report['actuation_diagnostics'] = {'samples': len(actuation_diagnostics),
+            'control_deadline_samples': sum(r.get('type') == 'control_deadline_diagnostic' for r in actuation_diagnostics),
+            'scope': 'pre-shutdown fault diagnostics; no message alone does not prove no delay'}
+        report['sequential_acquisition_verified'] = bool(acquisition_records) and all(
+            r['max_capture_time_error_s'] <= .0021001 and r['discarded_source_gaps'] == 0 for r in acquisition_records)
+        report['actor_frames_seen'] = sorted(map(list, actor_frames))[:10]
+        report['actor_pose_rejected_nonincreasing_samples'] = rejected_actor_times
+        report['ego_pose_rejected_nonincreasing_samples'] = rejected_ego_times
+        report['evaluation_readers'] = {'streams': reader_audit,
+            'valid': reader_audit['ego']['handled_messages'] > 0 and all(
+                a['parse_errors'] == 0 and a['handler_errors'] == 0 for a in reader_audit.values()),
+            'scope': 'reader parse/handler success; contact event-only silence is not no-contact coverage'}
+        report['contact_evidence'] = dict(applicability='no_traffic_actor',
+            scope='Actor contact sensor removed with actor. Wall/old610 overlap and STOP checks remain; no physical contact-free claim from silence.')
+        node.destroy_node()
+        rclpy.shutdown()
+        report['gazebo_stop_service'] = stop_gazebo_service(processes[0] if processes else None,
+                                                            log_path.read_text(errors='replace'), os.environ['GZ_PARTITION'])
+        forced = []
+        for process in readers+processes[1:]:
+            forced += stop_owned(process)
+        cleanup = stop_launch(processes[0] if processes else None)
+        log.close()
+        reader_log.close()
+        trace_stream.close()
+        scan_stream.close()
+        status_stream.close()
+        safety_stream.close()
+        for name in ('scans_received', 'autonomy_status', 'safety_status'):
+            report[f'{name}_sha256'] = sha256(output/f'{name}.jsonl')
+        report['process_exit_codes'] = [p.poll() for p in processes+readers]
+        report['shutdown_audit'] = audit_shutdown(log_path.read_text(errors='replace'),
+                                                  processes[0].poll() if processes else None, cleanup or None)
+        report['remaining_test_pids'] = sorted({pid for p in processes+readers for pid in group_processes(p.pid)})
+        report['reader_forced_cleanup'] = forced
+        report['shutdown_clean'] = (report['shutdown_audit']['clean'] and not report['remaining_test_pids'] and not forced
+                                    and all(p.poll() in (0, -signal.SIGINT, 130) for p in processes[1:]+readers)
+                                    and report['gazebo_stop_service']['verified'])
+        report['source_unchanged'] = all(sha256(REPO/rel) == digest for rel, digest in sources.items())
+        if args.record_follow_decisions:
+            path = output/'follow_decisions.jsonl'
+            report['follow_decisions'] = {
+                'exists': path.is_file(), 'sha256': sha256(path) if path.is_file() else None,
+                'scope': 'decision-stage snapshots only; completeness and replay are separate checks',
+            }
+        report['wall_elapsed_s'] = time.monotonic()-began
+        for name, rows in (('ego_poses', ego), ('actor_poses', actor)):
+            path = output/f'{name}.jsonl'
+            path.write_text(''.join(json.dumps(r)+'\n' for r in rows), encoding='utf-8')
+            report[f'{name}_sha256'] = sha256(path)
+            report[f'{name}_samples'] = len(rows)
+        path = output/'actor_contacts.jsonl'
+        path.write_text(''.join(json.dumps(r)+'\n' for r in contacts), encoding='utf-8')
+        report['actor_contacts_sha256'] = sha256(path)
+        (output/'actor_commands.json').write_text(json.dumps(commands, indent=1), encoding='utf-8')
+        (output/'trace.json').write_text(json.dumps(trace, ensure_ascii=False), encoding='utf-8')
+        try:
+            report['evaluation'] = solo_evaluation.evaluate_run(
+                config=config, case=case, mode=args.mode, t_green=t_green, trace=trace, ego=ego, actor=actor,
+                contacts=contacts, commands=commands, stop_start=report.get('stop_request_sim_s'),
+                schedule_pose=None, centerline=centerline, s0=s0, obstacles=obstacles,
+                road=road_polygon(output/'runtime_world.sdf') if (output/'runtime_world.sdf').exists() else None,
+                runtime_world=(output/'runtime_world.sdf').read_text(encoding='utf-8') if (output/'runtime_world.sdf').exists() else '',
+                contact_evidence=report['contact_evidence'])
+        except Exception as error:
+            report['evaluation'] = {'error': f'{type(error).__name__}: {error}'}
+        if args.team_signal_course:
+            try:
+                report['team_signal_evidence']=course.signal(output, report.get('signal_states',[]), trace)
+            except (OSError,ValueError,KeyError,IndexError,TypeError) as error:
+                report['team_signal_evidence']=dict(passed=False,error=str(error))
+        else:
+            try:
+                import official_traffic_course as official
+                report['official_signal_evidence']=official.signal(output, report.get('signal_states',[]), trace, scene)
+            except (OSError,ValueError,KeyError,IndexError,TypeError) as error:
+                report['official_signal_evidence']=dict(passed=False,error=str(error))
+        solo_evaluation.finalize_verdict(report, args.mode)
+        if merge_profile is not None:
+            try:
+                result = audit_merge_motion(config, case, centerline, s0, t_green, actor,
+                    road_polygon(TRACK_WORLDS[args.track]/'world.sdf'), obstacle_polygons(TRACK_WORLDS[args.track]/'world.sdf'))
+            except Exception as error:
+                result = {'valid': False, 'error': f'{type(error).__name__}: {error}'}
+            report['m2_merge_motion'] = result
+            report['harness_valid'] = report['harness_valid'] and result['valid']
+            report['run_valid'] = report['run_valid'] and result['valid']
+            report['passed'] = report['run_valid'] and report['behavior_gates_passed']
+        if native_audit:
+            try:
+                received_native = [json.loads(line) for line in
+                    (output/'scans_received.jsonl').read_text(encoding='utf-8').splitlines() if line.strip()]
+                evidence = native_audit.audit(acquisition_records, received_native)
+                evidence['runtime_profile_unchanged'] = (
+                    sha256(runtime_native_profile) == report['native_sampling']['runtime_sha256'])
+                evidence['verified'] = evidence['verified'] and evidence['runtime_profile_unchanged']
+            except Exception as error:
+                evidence = dict(verified=False, error=f'{type(error).__name__}: {error}')
+            report['native_acquisition'] = evidence
+            report['integrity']['native_sampling_verified'] = evidence['verified']
+            report['run_valid'] = report['run_valid'] and evidence['verified']
+            report['passed'] = report['passed'] and evidence['verified']
+        if runtime_lidar_profile:
+            try:
+                with (output/'scans_received.jsonl').open(encoding='utf-8') as stream:
+                    received_scans = [json.loads(line) for line in stream if line.strip()]
+                stress = audit_injection(acquisition_records, received_scans, lidar_requested,
+                    native_profile=native_profile, rotation_rate_hz=launch['lidar_rate_hz'])
+                stress['runtime_profile_unchanged'] = (
+                    sha256(runtime_lidar_profile) == report['lidar_test_profile']['runtime_sha256'])
+                stress['verified'] = stress['verified'] and stress['runtime_profile_unchanged']
+                stress['input_sha256'] = {name: sha256(output/name) for name in
+                    ('acquisition.json', 'scans_received.jsonl', 'lidar_test_profile.json')}
+            except Exception as error:
+                stress = {'verified': False, 'error': f'{type(error).__name__}: {error}'}
+            require_injection_evidence(report, stress, lidar_topic=lidar_topic)
+        if runtime_motion_profile:
+            require_motion_evidence(report, output, motion_requested, report['motion_test_profile']['runtime_sha256'])
+        if operation_trial is not None:
+            trial_data = operation_trial.snapshot()
+            if second_start is not None:
+                trial_data['second_start'] = second_start.snapshot()
+            (output/'m4_operation_trace.json').write_text(json.dumps(trial_data, ensure_ascii=False), encoding='utf-8')
+            try:
+                if second_start is not None:
+                    from m4_second_start import evaluate_second_start
+                    report['m4_operation'] = evaluate_second_start(trial_data, report, tuple(ego), actuation_trace)
+                else:
+                    from m4_operation_eval import evaluate_trial
+                    report['m4_operation'] = evaluate_trial(trial_data, report, tuple(ego), actuation_trace)
+            except Exception as error:
+                report['m4_operation'] = dict(passed=False, error=f'{type(error).__name__}: {error}')
+            report['m4_operation']['trace_sha256'] = sha256(output/'m4_operation_trace.json')
+            report['m4_operation']['original_traffic_verdict_preserved'] = True
+        if handoff_arguments:
+            try:
+                evidence = g1_handoff_eval.inspect_header(output/'follow_decisions.jsonl', args.handoff_reserve, progress=args.handoff_yield_progress, rear_sweep=args.handoff_rear_sweep, observed_motion=args.handoff_observed_motion, side_departure=args.side_departure_trial, current_lane=args.current_lane_preference_trial, continuous_pace=args.handoff_continuous_pace, moving_pass=args.moving_pass_trial, moving_profile=args.moving_pass_profile, wall_witness=args.handoff_wall_witness, standing_reacquire=args.handoff_standing_wall_reacquire, boundary_refresh=args.handoff_boundary_refresh)
+            except (OSError,KeyError,ValueError,StopIteration) as error:
+                evidence = {'passed':False,'error':repr(error)}
+            report['handoff_execution'] = evidence
+            for key in ('harness_valid','run_valid','passed'):
+                report[key] = bool(report.get(key)) and evidence['passed']
+        if partial_arguments:
+            evidence = partial_trial_evidence(args.partial_observation_policy, trace)
+            evidence['original_traffic_passed'] = report['passed']
+            report['partial_observation_trial']['evidence'] = evidence
+            report['harness_valid'] = report['harness_valid'] and evidence['passed']
+            report['run_valid'] = report['run_valid'] and evidence['passed']
+            report['passed'] = report['passed'] and evidence['passed']
+        if parallel_arguments and not release_arguments:
+            evidence = parallel_trial_evidence(trace)
+            report['parallel_hold_trial'] = {'launch_arguments': parallel_arguments, 'default_changed': False,
+                'evidence': evidence, 'original_traffic_passed': report['passed']}
+            report['harness_valid'] = report['harness_valid'] and evidence['passed']
+            report['run_valid'] = report['run_valid'] and evidence['passed']
+            report['passed'] = report['passed'] and evidence['passed']
+        if release_arguments:
+            evidence = pass_release_evidence(trace, guard_curve=bool(guard_arguments))
+            report['pass_release_trial'] = {'launch_arguments':release_arguments,'default_changed':False,
+                'evidence':evidence,'original_traffic_passed':report['passed']}
+            if guard_arguments:
+                report['pass_release_trial']['guard_curve_arguments'] = guard_arguments
+            report['traffic_recovery_trial'] = dict(enabled=args.traffic_recovery_trial,
+                launch_arguments=recovery_arguments, default_changed=False)
+            if path_recovery_arguments:
+                report['traffic_path_recovery_trial'] = dict(enabled=True,
+                    launch_arguments=path_recovery_arguments, default_changed=False)
+            report['harness_valid'] = report['harness_valid'] and evidence['passed']
+            report['run_valid'] = report['run_valid'] and evidence['passed']
+            report['passed'] = report['passed'] and evidence['passed']
+        if diagnostic_window is not None:
+            report['diagnostic_window']['untruncated_verdict'] = report['passed']
+            report['passed'] = False
+        (output/'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+        print(json.dumps({k: report.get(k) for k in ('case', 'seed', 'mode', 'passed', 'harness_valid', 'error', 'abort')}
+                         | {'gates': report.get('gates')}, ensure_ascii=False, indent=1), flush=True)
+    passed = report['m4_operation']['passed'] if args.race_operation_test else report['passed']
+    return 0 if passed else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

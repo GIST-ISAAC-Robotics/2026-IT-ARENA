@@ -65,8 +65,18 @@ def rebase(output, submitted, current, scene, history, cfg):
         proposed=float(np.clip(desired,previous-3*dt,previous+3*dt))
         points=np.asarray(scene.occupied_endpoints_xy_m,dtype=float).reshape(-1,2)
         padding=per_ray_padding(scene,.025+cfg.measurement_padding_m,cfg.object_motion_bound_mps)
+        sweep_options = {}
+        # 저속 현재벽 후보와 같은 운동 norm 모델을 새 현재 점/취득 시각으로 재계산한다.
+        # 이전 clearance를 복사하거나 일반/고속 후보의 축별 여유를 바꾸지 않는다.
+        if (speed <= .10 and normal.get('current_wall_reacquire') is not None
+                and normal.get('occupancy_motion_shape') in (
+                    'fixed_box_plus_euclidean_motion_ball', 'fixed_box_low_speed_observation')):
+            padding = .025+cfg.measurement_padding_m
+            if (normal['occupancy_motion_shape'] != 'fixed_box_low_speed_observation'
+                    or abs(measured) > .20):
+                sweep_options['radial_margin'] = per_ray_padding(scene,0.,cfg.object_motion_bound_mps)
         clearance=min(swept_limit(points,angle,cfg.wheelbase_m,horizon=2.5,margin=padding,
-            length=cfg.length_m,width=cfg.width_m) for angle in (proposed,previous))
+            length=cfg.length_m,width=cfg.width_m,**sweep_options) for angle in (proposed,previous))
         available=max(0.,clearance-cfg.standstill_gap_m)
         target=min(speed,cap,braking_speed(available,scan_age),available/cfg.headway_s)
         if clearance<=cfg.hold_clearance_m or target<=0:

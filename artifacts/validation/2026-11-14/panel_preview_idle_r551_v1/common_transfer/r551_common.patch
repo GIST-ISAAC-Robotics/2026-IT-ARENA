@@ -1,0 +1,185 @@
+--- a/src/arena_autonomy/arena_autonomy/race_ops_page.py
++++ b/src/arena_autonomy/arena_autonomy/race_ops_page.py
+@@ -97,17 +97,17 @@
+  if(!previewLidar){ctx.fillStyle='#8a939c';ctx.fillText('유효 반환 점 없음 / OFF — 빈 공간 판정 아님',30,h-15)}
+ }
+ async function cameraPreview(row){
+- if(previewImageBusy||row.sequence===previewCameraSequence)return;
++ if(document.hidden||!$('previewcamera').checked||previewImageBusy||row.sequence===previewCameraSequence)return;
+  const connection=auth;
+  previewImageBusy=true;
+- try{const response=await fetch('/api/preview.jpg?sequence='+row.sequence,{headers:headers(connection),cache:'no-store'});if(auth!==connection)return;if(!response.ok)throw Error('JPEG '+response.status);
+-  const blob=await response.blob();if(auth!==connection||!last?.preview?.config.camera||!$('previewcamera').checked)return;
++ try{const response=await fetch('/api/preview.jpg?sequence='+row.sequence,{headers:headers(connection),cache:'no-store'});if(auth!==connection||document.hidden||!$('previewcamera').checked)return;if(!response.ok)throw Error('JPEG '+response.status);
++  const blob=await response.blob();if(auth!==connection||document.hidden||!last?.preview?.config.camera||!$('previewcamera').checked)return;
+   if(previewCameraUrl)URL.revokeObjectURL(previewCameraUrl);previewCameraUrl=URL.createObjectURL(blob);previewCameraSequence=row.sequence;
+   $('camerapreview').src=previewCameraUrl;$('camerapreview').hidden=false;
+  }catch(error){if(auth===connection)$('camerameta').textContent='미리보기 오류: '+error.message}finally{previewImageBusy=false}
+ }
+ function renderPreview(p){
+- if(!p)return;const cfg=p.config;
++ if(!p||document.hidden)return;const cfg=p.config;
+  $('previewstate').textContent=p.active?'ON · 조회 만료 시 자동 해제':'OFF';
+  const lidar=cfg.lidar?p.lidar:null;
+  if(lidar){$('lidarmeta').textContent=(lidar.stale?'오래됨 · ':'')+lidar.frame+' · 수신 '+fmt(lidar.receipt_age_s,2)+'s 전 · 표시 '+lidar.drawn_count+'/'+lidar.raw_count+' · 무효/무반환 '+lidar.invalid_count+' · 센서 좌표/운동보정 전';
+@@ -176,7 +176,7 @@
+  if(!auth)return;
+  // 재연결 전 응답과 더 새 상태 뒤에 도착한 응답은 화면/권한을 덮지 않는다.
+  const connection=auth,sequence=++pollSequence,current=()=>auth===connection&&sequence>=renderedPoll;
+- try{const r=await fetch('/api/state?client='+client,{headers:headers(connection),cache:'no-store'});
++ try{const r=await fetch('/api/state?client='+client+(document.hidden?'&preview=0':''),{headers:headers(connection),cache:'no-store'});
+   if(!current())return;
+   if(!r.ok){renderedPoll=sequence;lastOk=null;disableBoundControls();setStale((r.status===401||r.status===409?'인증/차량 불일치 ':'상태 조회 실패 ')+r.status);return}
+   const s=await r.json();if(!current())return;
+--- a/src/arena_autonomy/arena_autonomy/race_ops_node.py
++++ b/src/arena_autonomy/arena_autonomy/race_ops_node.py
+@@ -98,10 +98,13 @@
+             client = query.get('client', [''])[0]
+             if token(client) and role == 'operator':
+                 ops.core.client_seen(client, wall)
+-            if token(client):ops.preview.keepalive(client)
++            preview_requested = query.get('preview', ['1'])[0] != '0'
++            if token(client) and preview_requested:ops.preview.keepalive(client)
+             state = ops.core.view(wall, time.time())
+             state['manual'] = ops.manual.snapshot()
+             state['preview'] = ops.preview.snapshot()
++            if not preview_requested:
++                state['preview'].update(lidar=None, camera=None)
+             return self.respond(200, json.dumps(state, ensure_ascii=False, allow_nan=False), X_Arena_Role=role)
+         if url.path == '/api/preview.jpg':
+             data = ops.preview.jpeg()
+--- a/tests/operator_panel_page_checks.js
++++ b/tests/operator_panel_page_checks.js
+@@ -124,4 +124,24 @@
+  assert.equal(h.elements.camerapreview.hidden,true,'login immediately removes old image');
+  assert.equal(h.run('previewLidar'),null);assert.equal(h.run('previewLidarSequence'),null);
+ };
++checks.hidden_tab_keeps_ops_poll_without_preview=async()=>{
++ const h=harness();h.context.document.hidden=true;h.elements.previewcamera.checked=true;
++ const task=h.run('poll()');
++ assert(h.requests[0].url.includes('/api/state?client='));assert(h.requests[0].url.endsWith('&preview=0'));
++ const next=fixture();next.preview=previewRow(true);next.preview.camera={sequence:22,frame:'camera',receipt_age_s:0,width:640,height:480,stale:false};
++ h.requests[0].resolve(response(next));await task;
++ assert.equal(h.requests.length,1,'no hidden JPEG request');assert.equal(h.elements.manualstart.disabled,false,'operation state still refreshed');
++};
++checks.unselected_camera_does_not_fetch_and_discard=async()=>{
++ const h=harness();h.elements.previewcamera.checked=false;
++ h.run('cameraPreview({sequence:1})');assert.equal(h.requests.length,0);
++};
++checks.jpeg_finishing_while_hidden_is_not_displayed=async()=>{
++ const h=harness();let created=0;h.context.URL.createObjectURL=()=>{created++;return 'blob:camera'};
++ h.elements.previewcamera.checked=true;h.context.fixture.preview=previewRow(true);h.run('render(fixture)');
++ const task=h.run('cameraPreview({sequence:12})');assert.equal(h.requests.length,1);
++ h.context.document.hidden=true;
++ h.requests[0].resolve({ok:true,status:200,blob:async()=>({})});await task;
++ assert.equal(created,0);assert.equal(h.run('previewCameraSequence'),null);
++};
+ (async()=>{const name=process.argv[3];assert(checks[name],name);await checks[name]();console.log(JSON.stringify({check:name,passed:true,scope:'Windows local DOM and mocked HTTP only'}))})().catch(error=>{console.error(error);process.exitCode=1});
+--- a/tests/test_operator_panel_page.py
++++ b/tests/test_operator_panel_page.py
+@@ -14,6 +14,9 @@
+     'preview_late_configuration_does_not_cross_connection',
+     'preview_late_jpeg_does_not_cross_connection',
+     'preview_reconnect_clears_displayed_inputs',
++    'hidden_tab_keeps_ops_poll_without_preview',
++    'unselected_camera_does_not_fetch_and_discard',
++    'jpeg_finishing_while_hidden_is_not_displayed',
+ ])
+ def test_operator_panel_page(case):
+     node = shutil.which('node')
+--- a/tests/test_operator_preview_idle.py
++++ b/tests/test_operator_preview_idle.py
+@@ -0,0 +1,93 @@
++"""실제 Handler GET을 메모리 요청으로 실행. ROS는 기존 구독 대역이며 socket/장치 없음."""
++import ast
++import copy
++import hmac
++import json
++from pathlib import Path
++from types import SimpleNamespace as N
++from urllib.parse import parse_qs,urlsplit
++
++from arena_autonomy.race_ops_core import OpsCore,token
++from arena_autonomy.race_ops_manual import ManualPanel
++from arena_autonomy.race_ops_preview import Preview
++from test_operator_preview import fake_ros,until
++
++ROOT=Path(__file__).resolve().parents[1]
++
++
++def handler(clock,ops):
++    source=ROOT/'src/arena_autonomy/arena_autonomy/race_ops_node.py'
++    cls=next(n for n in ast.parse(source.read_text(encoding='utf-8')).body if isinstance(n,ast.ClassDef) and n.name=='Handler')
++    scope=dict(BaseHTTPRequestHandler=object,hmac=hmac,json=json,token=token,PAGE='fixture',
++        parse_qs=parse_qs,urlsplit=urlsplit,time=N(monotonic=lambda:clock[0],time=lambda:clock[0]))
++    exec(compile(ast.Module(body=[cls],type_ignores=[]),str(source),'exec'),scope)
++    h=scope['Handler']();h.server=N(ops=ops)
++    h.headers={'X-Arena-Token':'operator-fixture','X-Arena-Vehicle':'car'}
++    h.respond=lambda code,body,kind=None,**headers:(code,json.loads(body),headers)
++    return h
++
++
++def ops(clock,fake_ros,client='owner'):
++    preview=Preview(wall=lambda:clock[0])
++    preview.configure(dict(lidar=True,camera=True,lidar_type='native',lidar_topic='/scan/native',camera_topic='/rgb'),client)
++    preview.sync(fake_ros)
++    preview.cache['lidar']=dict(points=[[1.,0.,1.]],sequence=1,received_wall_s=clock[0],data=None)
++    preview.cache['camera']=dict(frame='camera',sequence=2,width=640,height=480,received_wall_s=clock[0],data=b'fixture')
++    return N(core=OpsCore('car'),manual=ManualPanel(),preview=preview,vehicle_id='car',token='operator-fixture',view_token='viewer-fixture')
++
++
++def get(h,client='owner',hidden=False):
++    h.path='/api/state?client='+client+('&preview=0' if hidden else '')
++    return h.do_GET()
++
++
++def test_hidden_owner_keeps_operator_heartbeat_but_preview_expires(fake_ros):
++    clock=[10.];state=ops(clock,fake_ros);h=handler(clock,state)
++    try:
++        assert len(fake_ros.subs)==2 and state.preview.lease_until==13.
++        for now in [12.,12.8]:
++            clock[0]=now
++            code,row,_=get(h,hidden=True)
++            assert code==200 and row['preview']['lidar'] is None and row['preview']['camera'] is None
++            assert state.core.clients['owner']==now
++            assert state.preview.desired['lidar'] and state.preview.desired['camera']
++            assert state.preview.lease_until==13.  # GET이 전역 OFF를 보내지는 않는다.
++        clock[0]=13.01;state.preview.sync(fake_ros)
++        until(lambda:state.preview.worker is None)
++        assert fake_ros.subs==[] and state.preview.cache=={}
++        assert state.core.client_fresh('owner',clock[0])
++    finally:state.preview.close(fake_ros)
++
++
++def test_hidden_nonowner_cannot_disable_visible_owner_or_clear_shared_cache(fake_ros):
++    clock=[10.];state=ops(clock,fake_ros,client='visible');h=handler(clock,state)
++    cache=copy.deepcopy(state.preview.cache)
++    try:
++        clock[0]=12.;get(h,'hidden',hidden=True)
++        assert state.preview.lease_until==13.
++        get(h,'visible');assert state.preview.lease_until==15.
++        clock[0]=14.;_,row,_=get(h,'hidden',hidden=True)
++        assert state.preview.lease_until==15. and state.preview.client=='visible'
++        assert len(fake_ros.subs)==2 and state.preview.cache==cache
++        assert state.preview.desired['lidar'] and state.preview.desired['camera']
++        assert row['preview']['lidar'] is None and row['preview']['camera'] is None
++        assert state.core.client_fresh('hidden',14.)
++    finally:state.preview.close(fake_ros)
++
++
++def test_query_omission_retains_exact_legacy_response_and_lease(fake_ros):
++    clock=[10.];state=ops(clock,fake_ros)
++    h=handler(clock,state)
++    try:
++        clock[0]=12.
++        code,row,headers=get(h)
++        assert code==200 and headers==dict(X_Arena_Role='operator')
++        assert state.preview.lease_until==15. and state.core.clients['owner']==12.
++        expected=state.core.view(12.,12.)
++        expected.update(manual=state.manual.snapshot(),preview=state.preview.snapshot())
++        assert row==expected  # query 생략은 전체 상태와 미리보기 payload를 보존한다.
++        assert row['preview']['lidar']['points']==[[1.,0.,1.]]
++        assert row['preview']['camera']['sequence']==2
++        h.path='/api/state?client=owner&preview=1'
++        assert h.do_GET()==(code,row,headers)
++    finally:state.preview.close(fake_ros)

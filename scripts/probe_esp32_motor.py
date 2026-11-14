@@ -24,8 +24,25 @@ def decode_line(line, allow_boot_prefix=False):
     return json.loads(line[9:]),prefix
 
 
+def validate_pulse(firmware, duty, ms, observe_guard=False):
+    if type(duty) is not int or type(ms) is not int:
+        raise ValueError('integer pulse bounds required')
+    if observe_guard:
+        limit={'motor_probe_guarded_5s_v1':50,'motor_probe_start15_5s_v1':150}.get(firmware,0)
+        if not 1<=duty<=limit or not 501<=ms<=5000:
+            raise ValueError('guarded host pulse bounds')
+    elif not 1<=duty<=100 or not 1<=ms<=500:
+        raise ValueError('host pulse bounds')
+
+
+def telemetry_fresh(motor, encoder, now_ns=None, max_age_s=1.0):
+    now_ns=time.monotonic_ns() if now_ns is None else now_ns
+    return all(isinstance(frame,dict) and 'host_ns' in frame and
+               0<=now_ns-frame['host_ns']<=max_age_s*1e9 for frame in (motor,encoder))
+
+
 class Bench:
-    def __init__(self, port, output):
+    def __init__(self, port, output, firmware='motor_probe_v1'):
         import serial
         self.output=output;output.mkdir(parents=True,exist_ok=False)
         self.raw=(output/'uart-private.bin').open('wb')
@@ -36,6 +53,7 @@ class Bench:
         self.buffer=bytearray();self.frames=[];self.errors=collections.Counter()
         self.boot=None;self.seq=None;self.info=None;self.motor=None;self.encoder=None
         self.id=0;self.phase='startup';self.replies={};self.last_state=0
+        self.firmware=firmware
 
     def send(self, data):
         self.commands.write(json.dumps({'host_ns':time.monotonic_ns(),'phase':self.phase,
@@ -63,7 +81,7 @@ class Bench:
             self.frames.append(r);self.log.write(json.dumps(r)+'\n')
             event=r['event']
             if event=='info':
-                if r['firmware']!='motor_probe_v1':raise RuntimeError('wrong firmware')
+                if r['firmware']!=self.firmware:raise RuntimeError('wrong firmware')
                 self.info=r
             elif event=='motor':self.motor=r;self.id=max(self.id,r['last_id'])
             elif event=='status':self.encoder=r
@@ -72,7 +90,8 @@ class Bench:
         self.log.flush();self.raw.flush()
         if time.monotonic()-self.last_state>.2:
             self.save('state.json',{'phase':self.phase,'motor':self.motor,'encoder':self.encoder,
-                                    'errors':dict(self.errors),'port_open':self.port.is_open})
+                                    'errors':dict(self.errors),'port_open':self.port.is_open,
+                                    'telemetry_fresh':telemetry_fresh(self.motor,self.encoder)})
             self.last_state=time.monotonic()
 
     def save(self,name,data):
@@ -108,17 +127,20 @@ class Bench:
                   and not self.motor['active'] and not self.motor['armed']
                   and self.motor['reason']=='host_stop' and self.motor['pwm_pin']==0)
 
-    def pulse(self,duty,ms):
-        if not 1<=duty<=100 or not 1<=ms<=500:raise ValueError('host pulse bounds')
-        self.collect(.1);before=dict(self.encoder);count=self.motor['pulses']
+    def pulse(self,duty,ms,*,observe_guard=False):
+        validate_pulse(self.firmware,duty,ms,observe_guard)
+        self.collect(.1)
+        if not telemetry_fresh(self.motor,self.encoder):
+            raise RuntimeError('stale MCU telemetry; no ARM or PULSE sent')
+        before=dict(self.encoder);count=self.motor['pulses']
         token=self.arm();r=self.request('PULSE',f'{token} {duty} {ms}')
         if r['result']!='started':raise RuntimeError('pulse rejected: '+r['result'])
         self.wait(lambda:self.motor['pulses']==count+1 and not self.motor['active']
-                  and self.motor['reason']=='deadline',seconds=ms/1000+1)
+                  and (observe_guard or self.motor['reason']=='deadline'),seconds=ms/1000+1)
         ended=dict(self.motor);self.collect(1)
         after=dict(self.encoder)
         late=ended['ended_us']-ended['deadline_us']
-        if late<0 or late>20000:raise RuntimeError('cutoff time outside bench bound')
+        if ended['reason']=='deadline' and (late<0 or late>20000):raise RuntimeError('cutoff time outside bench bound')
         if self.motor['pwm_pin']!=0 or self.motor['duty_permille']!=0:
             raise RuntimeError('PWM idle readback not LOW')
         fields=('pcnt_count','software_count','edges','a_rise','a_fall','b_rise','b_fall','invalid','ring_dropped')
@@ -160,10 +182,14 @@ class Bench:
         return result
 
     def close(self):
-        try:self.off()
+        stop_confirmed=False
+        try:
+            self.off()
+            stop_confirmed=True
         finally:
             self.port.close();self.log.close();self.raw.close();self.commands.close()
-            self.save('closed.json',{'port_closed':True,'last_motor':self.motor,'errors':dict(self.errors)})
+            self.save('closed.json',{'port_closed':True,'stop_confirmed':stop_confirmed,
+                                    'last_motor':self.motor,'errors':dict(self.errors)})
 
 
 def main(args):

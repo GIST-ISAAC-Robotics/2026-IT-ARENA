@@ -38,7 +38,7 @@ def sample(side='left', change='none'):
         angle = -math.pi+ray.source_index*math.tau/500
         ray.direction_xy = (math.cos(angle),math.sin(angle))
     scene = SimpleNamespace(rays=rays,t_ref_s=.5,source_frame_id='laser_frame',
-        source_first_s=.4,source_last_s=.4998,
+        source_first_s=.4,source_last_s=.4998,source_angles_rad=None,
         occupied_endpoints_xy_m=np.asarray([r.hit_xy_m for r in rays if r.status == 'return']))
     indices = [r.source_index for r in rays if r.hit_xy_m in principal]
     wall = dict(reason='current_connected_straight_wall_fit',source_ray_indices=indices,

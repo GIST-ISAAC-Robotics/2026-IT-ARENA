@@ -1,0 +1,73 @@
+...............................................FFFFFFFF................. [ 18%]
+................F....................................................... [ 36%]
+........................................................................ [ 54%]
+........................................................................ [ 72%]
+........................................................................ [ 91%]
+...................................                                      [100%]
+=================================== FAILURES ===================================
+_________ test_actual_control_preserves_stops_and_braking[stop-clear] __________
+tests/test_independent_guard_route.py:209: in test_actual_control_preserves_stops_and_braking
+    control,_=control_method(); control(n)
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: in control
+    self.motion.drain_pending()
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+__ test_actual_control_preserves_stops_and_braking[stale_command-stale_input] __
+tests/test_independent_guard_route.py:209: in test_actual_control_preserves_stops_and_braking
+    control,_=control_method(); control(n)
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: in control
+    self.motion.drain_pending()
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+_ test_actual_control_preserves_stops_and_braking[reverse-invalid_or_reverse_command] _
+tests/test_independent_guard_route.py:209: in test_actual_control_preserves_stops_and_braking
+    control,_=control_method(); control(n)
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: in control
+    self.motion.drain_pending()
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+_ test_actual_control_preserves_stops_and_braking[nan-invalid_or_reverse_command] _
+tests/test_independent_guard_route.py:209: in test_actual_control_preserves_stops_and_braking
+    control,_=control_method(); control(n)
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: in control
+    self.motion.drain_pending()
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+___ test_actual_control_preserves_stops_and_braking[stale_scan-stale_input] ____
+tests/test_independent_guard_route.py:209: in test_actual_control_preserves_stops_and_braking
+    control,_=control_method(); control(n)
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: in control
+    self.motion.drain_pending()
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+__ test_actual_control_preserves_stops_and_braking[motion_gap-motion_missing] __
+tests/test_independent_guard_route.py:209: in test_actual_control_preserves_stops_and_braking
+    control,_=control_method(); control(n)
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: in control
+    self.motion.drain_pending()
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+_ test_actual_control_preserves_stops_and_braking[actual_obstacle-lidar_braking] _
+tests/test_independent_guard_route.py:209: in test_actual_control_preserves_stops_and_braking
+    control,_=control_method(); control(n)
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: in control
+    self.motion.drain_pending()
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+____________ test_final_occupancy_sweep_keeps_only_current_steering ____________
+tests/test_independent_guard_route.py:223: in test_final_occupancy_sweep_keeps_only_current_steering
+    control(n)
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: in control
+    self.motion.drain_pending()
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+_____ test_partial_policy_does_not_bypass_independent_faults[central_gap] ______
+tests/test_partial_observation.py:198: in test_partial_policy_does_not_bypass_independent_faults
+    LidarSafety.control(node)
+src/arena_autonomy/arena_autonomy/lidar_safety.py:220: in control
+    if (not partial['allowed'] and self.command_observation_priority
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'command_observation_priority'
+- generated xml file: /mnt/c/Users/Jinhyeong/Documents/ChatGPT/IT ARENA local/artifacts/validation/2026-11-14/guard_memory_ray_clearance_r532_v1/common_transfer/regression.xml -
+=========================== short test summary info ============================
+FAILED tests/test_independent_guard_route.py::test_actual_control_preserves_stops_and_braking[stop-clear]
+FAILED tests/test_independent_guard_route.py::test_actual_control_preserves_stops_and_braking[stale_command-stale_input]
+FAILED tests/test_independent_guard_route.py::test_actual_control_preserves_stops_and_braking[reverse-invalid_or_reverse_command]
+FAILED tests/test_independent_guard_route.py::test_actual_control_preserves_stops_and_braking[nan-invalid_or_reverse_command]
+FAILED tests/test_independent_guard_route.py::test_actual_control_preserves_stops_and_braking[stale_scan-stale_input]
+FAILED tests/test_independent_guard_route.py::test_actual_control_preserves_stops_and_braking[motion_gap-motion_missing]
+FAILED tests/test_independent_guard_route.py::test_actual_control_preserves_stops_and_braking[actual_obstacle-lidar_braking]
+FAILED tests/test_independent_guard_route.py::test_final_occupancy_sweep_keeps_only_current_steering
+FAILED tests/test_partial_observation.py::test_partial_policy_does_not_bypass_independent_faults[central_gap]
+9 failed, 386 passed in 23.94s

@@ -1,0 +1,289 @@
+{
+  "count": 508,
+  "command_exact": 508,
+  "strict_output_exact": 507,
+  "decision_exact": 508,
+  "strict_state_exact": 437,
+  "diagnostic_normalized_state_exact": 508,
+  "output_difference_paths": {
+    "$[2].normal.partial_observation.surface_correspondence.processing_ms": 1
+  },
+  "state_difference_paths": {
+    "$.attributes.normal.attributes.partial_policy.attributes.surface_cache[2].processing_ms": 71
+  },
+  "exclusions": "Output: existing comparable_decision paths only. State: [normal.]partial_policy.surface_cache[2].processing_ms only. Strict originals retained.",
+  "comparison_basis": "same-source-policy baseline versus same-source-policy candidate; historical r493 outputs are not the equality oracle",
+  "input_sha256": "909c107fe700cf751e0a8c09b154bec09bff99140cd78b6b449014f8dfa829ac",
+  "resets": [
+    {
+      "index": 0,
+      "generation": 356,
+      "reason": null
+    }
+  ],
+  "baseline_cost": {
+    "constructor_ms": 156.652922,
+    "first_ms": 51.522978,
+    "median_ms": 67.771724,
+    "p95_ms": 107.48964534999998,
+    "max_ms": 161.133059,
+    "over_100ms": 39,
+    "elapsed_wall_s": 63.317191522999906,
+    "peak_rss_kib": 173924,
+    "mean_ms": 72.16699201574804,
+    "sum_evaluator_ms": 36660.831944
+  },
+  "candidate_cost": {
+    "constructor_ms": 156.568492,
+    "first_ms": 52.204548,
+    "median_ms": 67.8266325,
+    "p95_ms": 100.85705085,
+    "max_ms": 151.366796,
+    "over_100ms": 27,
+    "elapsed_wall_s": 63.119588208000096,
+    "peak_rss_kib": 171852,
+    "mean_ms": 71.62375142322834,
+    "sum_evaluator_ms": 36384.865723
+  },
+  "slow_targets": [
+    {
+      "key": [
+        356,
+        717
+      ],
+      "before_ms": 78.631365,
+      "after_ms": 78.254004,
+      "delta_ms": -0.3773610000000076
+    },
+    {
+      "key": [
+        356,
+        1304
+      ],
+      "before_ms": 161.133059,
+      "after_ms": 151.366796,
+      "delta_ms": -9.76626300000001
+    },
+    {
+      "key": [
+        356,
+        1311
+      ],
+      "before_ms": 133.08115,
+      "after_ms": 124.312902,
+      "delta_ms": -8.768248000000014
+    }
+  ],
+  "native_same_arm": true,
+  "input_unchanged": true,
+  "performance_claim": "one ordered saved sequence only; no causal speedup or full runtime claim",
+  "decision_and_state_pass": true,
+  "steps": [
+    {
+      "label": "baseline",
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "/home/q/it-arena-r501-a/run_variant.py",
+        "baseline"
+      ],
+      "pid": 6770,
+      "timeout_s": 240,
+      "forced": false,
+      "exit_code": 0,
+      "residual_group": false
+    },
+    {
+      "label": "candidate",
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "/home/q/it-arena-r501-a/run_variant.py",
+        "candidate"
+      ],
+      "pid": 6841,
+      "timeout_s": 240,
+      "forced": false,
+      "exit_code": 0,
+      "residual_group": false
+    },
+    {
+      "label": "compare",
+      "command": [
+        "/usr/bin/python3",
+        "-B",
+        "/home/q/it-arena-r501-a/compare.py"
+      ],
+      "pid": 6903,
+      "timeout_s": 90,
+      "forced": false,
+      "exit_code": 0,
+      "residual_group": false
+    }
+  ],
+  "strict_differences": [
+    {
+      "index": 437,
+      "key": [
+        356,
+        1304
+      ],
+      "command_exact": true,
+      "strict_output_exact": false,
+      "decision_exact": true,
+      "strict_state_exact": false,
+      "diagnostic_normalized_state_exact": true,
+      "output_differences": [
+        {
+          "path": "$[2].normal.partial_observation.surface_correspondence.processing_ms",
+          "before": 25.9523590000299,
+          "after": 25.85102599982747
+        }
+      ],
+      "state_differences": [
+        {
+          "path": "$.attributes.normal.attributes.partial_policy.attributes.surface_cache[2].processing_ms",
+          "before": 25.9523590000299,
+          "after": 25.85102599982747
+        }
+      ]
+    }
+  ],
+  "baseline_runtime": {
+    "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+    "numpy_version": "1.21.5",
+    "native_path": "/home/q/it-arena-r501-a/baseline/src/arena_autonomy/arena_autonomy/_numeric_kernels.cpython-310-aarch64-linux-gnu.so",
+    "thread_environment": {
+      "OPENBLAS_NUM_THREADS": null,
+      "OMP_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null
+    },
+    "warmup_calls": 0,
+    "state_injected": false,
+    "repeated_calls": 0,
+    "original_header_unchanged": true,
+    "timing_scope": "Evaluator call only; no instrumentation. Input validation and full state gzip serialization are outside the timer, between calls.",
+    "limitation": "One baseline then one candidate sequence: scheduling, cache and thermal order effects remain. No ROS, live sensors, actuation or real-time throughput proof."
+  },
+  "candidate_runtime": {
+    "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+    "numpy_version": "1.21.5",
+    "native_path": "/home/q/it-arena-r501-a/candidate/src/arena_autonomy/arena_autonomy/_numeric_kernels.cpython-310-aarch64-linux-gnu.so",
+    "thread_environment": {
+      "OPENBLAS_NUM_THREADS": null,
+      "OMP_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null
+    },
+    "warmup_calls": 0,
+    "state_injected": false,
+    "repeated_calls": 0,
+    "original_header_unchanged": true,
+    "timing_scope": "Evaluator call only; no instrumentation. Input validation and full state gzip serialization are outside the timer, between calls.",
+    "limitation": "One baseline then one candidate sequence: scheduling, cache and thermal order effects remain. No ROS, live sensors, actuation or real-time throughput proof."
+  },
+  "result_zip_sha256": "f47cad3bb9fa7ac8ebc6d011cf194f090567c85565a44e9f771be0ce0177bad0",
+  "source_integrity": {
+    "source_changes": [],
+    "manifest_unchanged": true,
+    "native_original_unchanged": true,
+    "native_copies": {
+      "baseline/src/arena_autonomy/arena_autonomy/_numeric_kernels.cpython-310-aarch64-linux-gnu.so": "5654cd2f52af838b52384a084f159bb1319925db6690945b4403cb7ae33f5bff",
+      "candidate/src/arena_autonomy/arena_autonomy/_numeric_kernels.cpython-310-aarch64-linux-gnu.so": "5654cd2f52af838b52384a084f159bb1319925db6690945b4403cb7ae33f5bff"
+    },
+    "native_source_hash_verified": true
+  },
+  "resource_return": {
+    "launcher_pid": 6758,
+    "launcher_process_present": false,
+    "remaining": {
+      "relevant_processes": [],
+      "open_sensor_ports": []
+    },
+    "results_zip_sha256": "f47cad3bb9fa7ac8ebc6d011cf194f090567c85565a44e9f771be0ce0177bad0",
+    "resource_returned": true
+  },
+  "environment_summary": {
+    "environment_before": {
+      "cpu_count": 6,
+      "readings": {
+        "/proc/loadavg": "0.37 0.20 0.19 1/683 6769\n",
+        "/sys/devices/system/cpu/cpu5/cpufreq/scaling_cur_freq": "729600\n",
+        "/sys/devices/system/cpu/cpu3/cpufreq/scaling_cur_freq": "1728000\n",
+        "/sys/devices/system/cpu/cpu1/cpufreq/scaling_cur_freq": "1728000\n",
+        "/sys/devices/system/cpu/cpu4/cpufreq/scaling_cur_freq": "729600\n",
+        "/sys/devices/system/cpu/cpu2/cpufreq/scaling_cur_freq": "1728000\n",
+        "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq": "1728000\n",
+        "/sys/devices/system/cpu/cpu5/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/devices/system/cpu/cpu3/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/devices/system/cpu/cpu1/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/devices/system/cpu/cpu4/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/devices/system/cpu/cpu2/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/class/thermal/thermal_zone2/temp": {
+          "available": false,
+          "error": "TypeError('metadata read returned non-bytes')"
+        },
+        "/sys/class/thermal/thermal_zone0/temp": "44437\n",
+        "/sys/class/thermal/thermal_zone7/temp": "42968\n",
+        "/sys/class/thermal/thermal_zone5/temp": "43156\n",
+        "/sys/class/thermal/thermal_zone3/temp": {
+          "available": false,
+          "error": "TypeError('metadata read returned non-bytes')"
+        },
+        "/sys/class/thermal/thermal_zone1/temp": "43437\n",
+        "/sys/class/thermal/thermal_zone8/temp": "44437\n",
+        "/sys/class/thermal/thermal_zone6/temp": "41968\n",
+        "/sys/class/thermal/thermal_zone4/temp": {
+          "available": false,
+          "error": "TypeError('metadata read returned non-bytes')"
+        }
+      },
+      "thread_environment": {
+        "OPENBLAS_NUM_THREADS": null,
+        "OMP_NUM_THREADS": null,
+        "MKL_NUM_THREADS": null
+      }
+    },
+    "environment_after": {
+      "cpu_count": 6,
+      "readings": {
+        "/proc/loadavg": "1.02 0.59 0.34 1/673 6943\n",
+        "/sys/devices/system/cpu/cpu5/cpufreq/scaling_cur_freq": "1728000\n",
+        "/sys/devices/system/cpu/cpu3/cpufreq/scaling_cur_freq": "729600\n",
+        "/sys/devices/system/cpu/cpu1/cpufreq/scaling_cur_freq": "729600\n",
+        "/sys/devices/system/cpu/cpu4/cpufreq/scaling_cur_freq": "1728000\n",
+        "/sys/devices/system/cpu/cpu2/cpufreq/scaling_cur_freq": "729600\n",
+        "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq": "729600\n",
+        "/sys/devices/system/cpu/cpu5/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/devices/system/cpu/cpu3/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/devices/system/cpu/cpu1/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/devices/system/cpu/cpu4/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/devices/system/cpu/cpu2/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor": "schedutil\n",
+        "/sys/class/thermal/thermal_zone2/temp": {
+          "available": false,
+          "error": "TypeError('metadata read returned non-bytes')"
+        },
+        "/sys/class/thermal/thermal_zone0/temp": "45937\n",
+        "/sys/class/thermal/thermal_zone7/temp": "44593\n",
+        "/sys/class/thermal/thermal_zone5/temp": "44906\n",
+        "/sys/class/thermal/thermal_zone3/temp": {
+          "available": false,
+          "error": "TypeError('metadata read returned non-bytes')"
+        },
+        "/sys/class/thermal/thermal_zone1/temp": "45312\n",
+        "/sys/class/thermal/thermal_zone8/temp": "45937\n",
+        "/sys/class/thermal/thermal_zone6/temp": "43687\n",
+        "/sys/class/thermal/thermal_zone4/temp": {
+          "available": false,
+          "error": "TypeError('metadata read returned non-bytes')"
+        }
+      },
+      "thread_environment": {
+        "OPENBLAS_NUM_THREADS": null,
+        "OMP_NUM_THREADS": null,
+        "MKL_NUM_THREADS": null
+      }
+    }
+  }
+}

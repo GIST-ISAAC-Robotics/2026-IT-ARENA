@@ -1,0 +1,111 @@
+"""현재 경로와 실제 점유를 우선하고 중복 관측 정지 조건은 적용하지 않는다.
+
+과거 측방 이력이나 자기 가림을 지우거나 자유 공간으로 바꾸지 않는다.
+현재 경로가 성립한 경우 그 이력만으로 별도 전역 가시성 증명을 요구하지 않는다.
+현재 실제 점유 swept 검사와 독립 보호층은 유지한다.
+"""
+import math
+
+POLICY = 'current_route_priority_v1'
+
+
+def enabled(cfg):
+    return cfg.traffic_recovery_trial and cfg.guard_observation_policy == 'selected_r181'
+
+
+def _current_path(cfg, scene, output):
+    speed, _, normal = output
+    return (enabled(cfg) and speed > 0 and normal.get('reason') == 'local_follow'
+            and normal.get('boundary_from_memory') is False
+            and normal.get('path_source_s') == scene.source_first_s)
+
+
+def _front_observed(scene):
+    return any(ray.status == 'return'
+        and abs(math.atan2(ray.direction_xy[1], ray.direction_xy[0])) <= math.radians(100)
+        for ray in scene.rays)
+
+
+def observed_command(cfg, scene, output, raw_scan, sensor_yaw):
+    """현재 경로/전체 점유 계산 뒤 부분 결측 관문을 중복 적용하지 않는다.
+
+    이 함수는 원 path 후보가 양수일 때만 호출되며, 경로/점유/제동의 정지를
+    양수로 바꾸지 않는다. legacy partial 판정의 reason을 사후 치환하지 않고
+    requested_speed/evaluate보다 먼저 실행 정책을 선택한다.
+    """
+    if not _current_path(cfg, scene, output):
+        return None
+    from arena_autonomy.scan_input import audit_scan_front, scan_angles
+    import numpy as np
+    # 이 두 입력 무결성 거절은 기존 partial 정책과 동일하다. 값이 유효하지
+    # 않은 근거리 표본을 원시 점유에서 빠진 빈 공간으로 취급하지 않는다.
+    if audit_scan_front(raw_scan, sensor_yaw, metadata_only=True).reason != 'ok':
+        return None
+    angles = (scan_angles(raw_scan)+sensor_yaw+math.pi) % math.tau-math.pi
+    values = np.asarray(raw_scan.ranges, dtype=float)
+    if np.any(values[np.abs(angles) <= math.radians(100)+1e-6] < raw_scan.range_min):
+        return None
+    speed, steering, detail = output
+    if not _front_observed(scene):
+        return 0., steering, {**detail, 'reason': 'follow_front_unobserved', 'behavior': 'HOLD'}
+    return speed, steering, {**detail,
+        'partial_observation_policy': cfg.partial_observation_policy,
+        'partial_observation': dict(allowed=True, reason=POLICY, execution_policy=POLICY,
+            speed_cap_mps=None, unknown_filled=False, residual_hidden_object_risk=True,
+            scope='current observed path and occupied sweep; no duplicate lateral gap veto')}
+
+
+def select(cfg, scene, baseline, view, detail):
+    speed, steering, normal = baseline
+    if (not _current_path(cfg, scene, baseline)
+            or (normal.get('partial_observation') or {}).get('allowed') is not True):
+        return None
+    # baseline이 현재 경로/점유 검사를 이미 끝냈다. 이전 측방 상태는 진단용으로
+    # 유지하되 retained .35 상한, 차체 전 이동 외곽의 완전 관측을 다시 요구하지 않는다.
+    # 옆에 반환이 있다는 사실 자체는 충돌이 아니다. 실제 전진/회전 차체와의
+    # 간섭은 baseline의 전체 원시 점유 swept 검사와 현재 재검사가 담당한다.
+    return speed, steering, {**normal, **detail, 'selector_choice': 'baseline',
+        'selector_reason': POLICY, 'selector_observation_policy': POLICY,
+        'selector_unknown_filled': False}
+
+
+def supported(output):
+    speed, _, detail = output
+    normal = detail.get('normal') or {}
+    return (type(speed) in (int, float) and math.isfinite(speed) and speed > 0
+            and detail.get('handoff_state') == 'FOLLOW'
+            and normal.get('reason') == 'local_follow'
+            and normal.get('selector_choice') == 'baseline'
+            and normal.get('selector_observation_policy') == POLICY)
+
+
+def rebase(output, submitted, current, scene, history, cfg):
+    if not enabled(cfg) or not supported(output):
+        return None
+    from .retained_recheck import _geometry
+    normal = output[2]['normal']
+    # 이 순수 기하 함수의 분류만 맞춘다. 실제 선택기 상태/측방 이력은 변경하지 않는다.
+    geometry = (output[0], output[1], {**output[2], 'normal': {**normal, 'selector_mode': 'SOLO'}})
+    result = _geometry.rebase(geometry, submitted, current, scene, history, cfg)
+    if result is None:
+        raise RuntimeError('current route geometry unexpectedly unsupported')
+    result = {**result, 'current_observation_policy': POLICY,
+        'rebased_selector_mode': normal.get('selector_mode'), 'state_transition': False,
+        'unknown_filled': False, 'source_permission_reused': False,
+        'observation_policy_scope': 'current path and occupied sweep; no full-sweep visibility veto'}
+    # 단일 결측/자기 가림마다 정지하지 않는다. 현재 전방 관측이 전부 소실되면
+    # 오래된 경로만으로 주행하지 않으며, 복구는 다음 정상 입력에서 다시 평가한다.
+    if result['speed_mps'] > 0 and not _front_observed(scene):
+        result.update(speed_mps=0., reason='current_route_front_observation_lost')
+    if result['speed_mps'] > 0:
+        # 현재 기하/전체 점유 sweep과 전방 관측이 통과한 결과의 인계 계약.
+        # 기존 원 경로 시각을 유지하며, 과거 점유 허가를 복사하지 않는다.
+        result['current_route_proof'] = dict(policy=POLICY, accepted=True,
+            original_path_source_s=result['path_source_s'],
+            original_path_age_s=result['path_age_s'],
+            current_evidence_first_s=result['source_first_s'],
+            current_reference_s=result['reference_s'],
+            source_timestamp_renewed=False, old_occupancy_permission_reused=False,
+            unknown_filled=False, route_geometry_age_limit_s=.5,
+            scope='current path and occupied sweep; no full-sweep visibility veto')
+    return result

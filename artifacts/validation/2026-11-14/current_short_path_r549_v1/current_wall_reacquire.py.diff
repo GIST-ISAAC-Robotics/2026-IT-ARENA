@@ -1,0 +1,57 @@
+--- before/src/arena_autonomy/arena_autonomy/current_wall_reacquire.py
++++ after/src/arena_autonomy/arena_autonomy/current_wall_reacquire.py
+@@ -27,7 +27,7 @@
+ 
+ 
+ def current_wall_candidate(scene, speed, side, previous, dt, cfg, *, cap_mps=.10):
+-    """현재 선호 벽만 사용한다. 반환값은 명령 후보이며 독립 guard 허가가 아니다."""
++    """현재 벽에서 재획득한다. 반환값은 명령 후보이며 독립 guard 허가가 아니다."""
+     if (not enabled(cfg) or side not in ('left', 'right') or not source_valid(scene)
+             or not all(math.isfinite(v) for v in (speed, previous, dt, cap_mps))
+             or speed < 0 or not 0 < dt <= .2 or not 0 < cap_mps <= cfg.max_speed_mps
+@@ -38,11 +38,22 @@
+     if len(points) < 30:
+         return None
+     try:
+-        path, boundary = local_path(points, side, cfg.wall_offset_m,
+-            horizon=cfg.boundary_min_ahead_m,
+-            piecewise_corner=cfg.piecewise_wall_trial,
+-            minimum_radius=cfg.wheelbase_m/math.tan(cfg.max_steering_rad),
+-            narrow_occluder_bridge=cfg.narrow_occluder_bridge)
++        def observed_path(wall):
++            return local_path(points, wall, cfg.wall_offset_m,
++                horizon=cfg.boundary_min_ahead_m,
++                piecewise_corner=cfg.piecewise_wall_trial,
++                minimum_radius=cfg.wheelbase_m/math.tan(cfg.max_steering_rad),
++                narrow_occluder_bridge=cfg.narrow_occluder_bridge)
++        wall = side
++        path, boundary = observed_path(wall)
++        preferred_failure = None
++        if path is None:
++            # 선호 벽의 끝이 짧아져도 현재 반대 벽으로 길이 보이면 재획득한다.
++            # 관측 길이/형상 기준은 그대로이며 결측 연결·외삽·기억 갱신은 하지 않는다.
++            # 이미 생긴 경로가 점유 검사에서 막힌 경우 다른 벽으로 우회하지 않는다.
++            preferred_failure = boundary.get('reason')
++            wall = 'right' if side == 'left' else 'left'
++            path, boundary = observed_path(wall)
+         if path is None:
+             return None
+         cap, desired, remaining = pursue_path(path, speed, cfg, age, speed_cap=cap_mps)
+@@ -62,7 +73,7 @@
+     detail = dict(reason='local_follow', behavior='FOLLOW',
+         boundary_selection='current_wall_reacquire_trial', fresh_boundary_accepted=True,
+         path_source_s=scene.source_first_s, boundary_age_s=age, boundary_from_memory=False,
+-        path_wall=side, wall_fallback=False, path_points=path.tolist(),
++        path_wall=wall, wall_fallback=wall != side, path_points=path.tolist(),
+         observed_path_ahead_m=remaining, swept_clearance_m=clearance,
+         unfiltered_occupancy=True, occupied_points=len(points),
+         occupancy_timing_mode='per_ray_candidate', occupancy_padding_m=float(np.max(padding)),
+@@ -74,6 +85,8 @@
+             actual_steering_rate_checked=True, current_angle_clearance_m=sweeps[0],
+             previous_angle_clearance_m=sweeps[1], unknown_filled=False,
+             output_requires_independent_guard=True))
++    if preferred_failure is not None:
++        detail['current_wall_reacquire']['preferred_wall_failure'] = preferred_failure
+     return float(target), steering, detail
+ 
+ 

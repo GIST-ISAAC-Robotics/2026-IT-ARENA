@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "registered_at": "2026-11-14 Windows draft; root final source and WSL handover pending",
+  "scope": "r544 nominal actor0 lap; r530 first-straight geometry, measured count-derived steering only; wheel angles not measured",
+  "ground_truth_allowlist_evaluation_only": [
+    "actor_schedule",
+    "actor_pose",
+    "ego_model_pose",
+    "centerline",
+    "road_polygon",
+    "wall_polygons",
+    "traffic_light_state_for_actor_anchor",
+    "contact_sensor"
+  ],
+  "launch": {
+    "entry_g1": "artifacts/validation/2026-11-14/measured_steering_reacquire_lap_r550_v1/course.launch.py",
+    "entry_r0": "demo.launch.py (same arguments as the existing validator's local_pursuit path, g1_follow_enabled unset=false)",
+    "autonomy_mode": "local_pursuit",
+    "lidar_acquisition": "sequential",
+    "lidar_compensation": "both",
+    "control_rate_hz": 50.0,
+    "lidar_rate_hz": 10.0,
+    "render_backend": "wsl_nvidia",
+    "collision_detector": "configured",
+    "shutdown_mode": "service",
+    "sensor_wall_timeout_s": 30.0,
+    "speed_bump": false,
+    "red_duration_s": 1.0,
+    "grid_slot": 3,
+    "actuation_mode": "virtual_mcu",
+    "actuation_stop": "software_stop",
+    "speed_profile": "g1_open_1p5",
+    "speed_profile_note": "실제 등속/정지 앞차 비교에서 사용한 1.5 m/s. 단독 10 km/h 설정은 사용하지 않는다.",
+    "temporary_traffic_light_trigger": "공식 2×5 실제 픽셀 출발. 시험 초록은 출발 신호 아님."
+  },
+  "vehicle_and_sensor_unchanged": "r475 vehicle/sensors/mass/speed unchanged except explicit measured-count-derived steering YAML: joint cap0.30666234131856146rad, central command0.28475436568260193rad; wheel angles CAD-derived, not measured",
+  "actor": {
+    "model_name": "eval_g1b_actor",
+    "length_m": 0.2,
+    "width_m": 0.15,
+    "height_m": 0.22,
+    "bottom_m": 0,
+    "lateral_offset_m": 0,
+    "visible_section": "상대 높이220mm는 팀 차량과 비슷한 높이의 시험 가정. C1 Z134.6mm가 가로지르며 더 낮은 상대를 대신 검증하지 않는다.",
+    "physics": "static model moved by evaluator set_pose (teleport); collision geometry and contact sensor follow the commanded pose (g1b_contact_probe_v1). Infinite-mass blocker, not a vehicle dynamics model.",
+    "command_hz": 100,
+    "pose_publish_hz": 100,
+    "start_center_gap_m": 1.6,
+    "start_center_gap_note": "same as the G1-a synthetic suite; ego body front to actor rear is 1.40 m",
+    "visual_outline": "recessed_sides"
+  },
+  "seeds": {
+    "0": {
+      "actor_start_offset_m": 0
+    },
+    "1": {
+      "actor_start_offset_m": -0.1
+    },
+    "2": {
+      "actor_start_offset_m": 0.1
+    }
+  },
+  "seed_note": "Gazebo has no injected noise here; a seed fixes a deterministic actor start offset along the centerline so that scan/command phase differs between repetitions.",
+  "schedule_anchor": "sim time at which the evaluator first observes applied=green on /sim/traffic_light/state (evaluator only; the controller detects green from its own camera)",
+  "cases": [
+    {
+      "name": "solo_course_lap",
+      "behavior_kind": "solo",
+      "route_kind": "full_course",
+      "duration_s": 80.0,
+      "actor_start_center_gap_m": 1.6,
+      "actor_lateral_offset_m": 0.0,
+      "schedule": [],
+      "expected": "actor0, one complete lap within80sim seconds, original ownedSTOP"
+    }
+  ],
+  "straight_section_check": "직선/첫코너 기존 검사는 불변. full_course만 전체 등록 앞차 경로를1cm마다 도로/벽 대조하고 1.2랩 이내로 제한.",
+  "first_corner_s_m": 6.7,
+  "acceptance": {
+    "minimum_body_gap_m": 0.15,
+    "minimum_body_gap_basis": "G1-a pre-registered minimum body gap (config/tests/g1_follow_v1.json); applied to BOTH the sampled gap and the conservative swept lower bound",
+    "swept_max_curvature_per_m": 3,
+    "swept_note": "lower bound assumes rigid planar motion with monotonic yaw between ego pose samples and path curvature <= tan(0.37)/0.135 = 2.9 /m",
+    "actor_contact_messages_with_ego": 0,
+    "wall_collision_samples": 0,
+    "outside_road_samples": 0,
+    "outside_road_basis": "옛 차체전체 도로 판정은 원시로 보존하며 명시 full_course의 바퀴 중심 최대2개와 별도 조밀 노면을 적용.",
+    "stopped_center": {
+      "minimum_continuous_hold_s": 3,
+      "maximum_final_gap_m": 0.7,
+      "basis": "HOLD at G1 swept clearance <= 0.20 m (+ about 0.06-0.13 m padding) predicts a 0.2-0.45 m body gap (synthetic 0.405 m). 0.70 m is half of the 1.40 m initial gap: it separates an approach-and-hold from a stall near the start. 3.0 s of continuous zero speed within a 10 s window."
+    },
+    "slow_lead": {
+      "minimum_progress_m": 2.5,
+      "maximum_stationary_while_lead_moves_s": 2.5,
+      "maximum_final_gap_m": 1.2,
+      "basis": "lead travels 4.2 m; following must not degenerate into a permanent stall. 2.5 s reuses the G1-a restart limit. Final gap must be below the 1.40 m start gap."
+    },
+    "stationary_definition": "model ground speed < 0.01 m/s, /drive/safe speed == 0 and (G1) behavior HOLD; R0 has no behavior field",
+    "stop": {
+      "maximum_wait_sim_s": 6,
+      "stable_hold_sim_s": 0.5,
+      "mcu_reason": "software_stop",
+      "mcu_state": "ESTOP_LATCHED"
+    },
+    "harness": {
+      "actor_command_max_interval_s": 0.1,
+      "actor_moving_tracking_error_max_m": 0.035,
+      "actor_static_error_max_m": 0.005,
+      "basis": "G0 command interval limit; 0.035 m = about 0.1 s of 0.35 m/s lag. A harness failure invalidates the run instead of counting as a controller result."
+    },
+    "threshold_status": "pre-registered before execution; not measured real vehicle guarantees. Do not relax after results; a change needs a new config version and a rerun.",
+    "moving_stop_restart": {
+      "hold_window_s": [
+        3.0,
+        8.0
+      ],
+      "minimum_hold_s": 1.0,
+      "maximum_restart_delay_s": 2.5,
+      "restart_speed_mps": 0.1,
+      "minimum_progress_after_restart_m": 1.0,
+      "maximum_final_gap_m": 1.2,
+      "basis": "선정 구성의 정지·재개·코너 출구 기준. 정지 시작·끝만 이 각본의 3–8초에 맞춘다.",
+      "required_exit_s_m": 9.8,
+      "maximum_actor_s_m": 12.1,
+      "minimum_heading_change_deg": 150
+    },
+    "cut_in": {
+      "minimum_progress_m": 2.5,
+      "maximum_stationary_while_lead_moves_s": 2.5,
+      "maximum_final_gap_m": 1.2,
+      "basis": "기존 앞차 추종 기준. 상대는 코너 1 m 전에 멈춘다."
+    },
+    "straight_moving_lead": {
+      "minimum_progress_m": 2.5,
+      "maximum_stationary_while_lead_moves_s": 2.5,
+      "maximum_final_gap_m": 1.2,
+      "basis": "lead travels 4.2 m; following must not degenerate into a permanent stall. 2.5 s reuses the G1-a restart limit. Final gap must be below the 1.40 m start gap."
+    },
+    "persistent_block": {
+      "minimum_continuous_hold_s": 3.0,
+      "maximum_final_gap_m": 0.7,
+      "basis": "옛 HOLD 판정 원본. 사용자 결정의 우회는 goal_eval.py에서 본다."
+    },
+    "solo_course_lap": {
+      "minimum_progress_m": 2.5,
+      "maximum_stationary_while_lead_moves_s": 2.5,
+      "maximum_final_gap_m": 1.2,
+      "basis": "80초 상대64m 경로 감사. 자차1랩·원 지속/간격/노면/충돌/STOP 기준 유지.",
+      "minimum_laps": 1,
+      "maximum_actor_laps": 1.5,
+      "surface_policy": "two_wheel_centers",
+      "wheelbase_m": 0.135,
+      "track_m": 0.135
+    }
+  },
+  "matrix": {
+    "modes": [
+      "g1g2"
+    ],
+    "cases": [
+      "solo_course_lap"
+    ],
+    "seeds": [
+      0
+    ]
+  },
+  "timeouts": {
+    "max_sim_after_green_margin_s": 20,
+    "startup_wall_timeout_s": 150,
+    "wall_timeout_s": 1500,
+    "stop_wall_timeout_s": 120
+  },
+  "parent_config": {
+    "path": "config/tests/official_forward_v1.json"
+  },
+  "merge_acceptance": {
+    "minimum_lateral_change_m": 0.11,
+    "final_offset_error_max_m": 0.005,
+    "moving_heading_error_max_rad": 0.085,
+    "static_heading_error_max_rad": 0.005,
+    "basis": "0.55 m/s·최대 곡률 약 1.26/m의 yaw rate 0.69 rad/s × 기존 0.11 s 지연 + 0.005 rad. 상대 각본 실행 확인 전용."
+  },
+  "track": "official_v2026_11_06",
+  "derived_from": {
+    "path": "artifacts/validation/2026-11-08/traffic_lap_transition_v1/new_track_course.json",
+    "sha256": "e6134a15f545cb1fe5e59710057c44ec160855595b23dd91f41863604d451002",
+    "changed_keys": [
+      "duration_s",
+      "actor_speed",
+      "command_hz",
+      "scope",
+      "description"
+    ]
+  },
+  "first_corner_basis": "artifacts/validation/2026-11-07/traffic_course_migration_v1/geometry_probe.json: 새 중심선 s=0 직선 끝(첫 직각 꼭짓점). 평가 전용, 제어 입력 아님",
+  "official_multi_actor_trial": false
+}

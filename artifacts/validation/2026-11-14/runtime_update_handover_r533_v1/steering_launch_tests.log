@@ -1,0 +1,47 @@
+.F..                                                                     [100%]
+================================== FAILURES ===================================
+_ test_existing_selected_bundle_links_both_nodes_and_keeps_smaller_runtime_cap _
+
+    def test_existing_selected_bundle_links_both_nodes_and_keeps_smaller_runtime_cap():
+        with tempfile.TemporaryDirectory(prefix='r533-launch-synthetic-') as temp:
+            root=Path(temp);bundle=synthetic_bundle(root)
+            board=subject.installed.read_json(bundle/'runtime_board.json')
+            selection=subject.installed.read_json(SELECTION)
+            board['assembly_id']=selection['assembly_id'];board['servo']['command_limit']=selection['command_limit_rad']
+            bp=root/'synthetic-board.json';bp.write_text(json.dumps(board),encoding='utf-8')
+            selected=root/'installed_selected'
+            subject.installed.prepare(bp,subject.ROOT/selection['steering_profile']['path'],selection['assembly_id'],selected)
+            base=root/'base.yaml';base.write_text(subject.limits.yaml.safe_dump(BASE),encoding='utf-8')
+            runtime=root/'runtime';subject.limits.prepare(selected,base,runtime)
+            result=subject.selected_arguments(SELECTION,installed_profile=selected,runtime_selection=runtime)
+            assert result['installed_profile_link_verified'] and result['runtime_params_selected']
+            assert result['argument_fragments']['planner']==result['argument_fragments']['guard']==['--ros-args','--params-file',str(runtime/'runtime_profile.yaml')]
+            assert result['effective_command_limit_rad']==selection['command_limit_rad']
+            smaller=subject.limits.yaml.safe_load(base.read_text())
+            for node in subject.limits.NODES:smaller[node]['ros__parameters']['max_steering_angle_rad']=.15
+            base.write_text(subject.limits.yaml.safe_dump(smaller),encoding='utf-8')
+>           runtime_small=root/'runtime_small';subject.limits.prepare(selected,base,runtime_small)
+                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+artifacts\validation\2026-11-14\runtime_update_handover_r533_v1\tests\test_steering_launch_selection.py:40: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+scripts\runtime_installed_limits.py:107: in prepare
+    value = derived_profile(base_raw, contract['command_limit_rad'])
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+base_raw = b"lidar_safety:\r\n  ros__parameters:\r\n    max_steering_angle_rad: 0.15\r\n    race_control_mode: b3_candidate\r\n  ...id: c1_unmounted_preview\r\n    nested_example:\r\n    - 1\r\n    - kept\r\n    - false\r\n    use_sim_time: false\r\n"
+limit = 0.28475436568260193
+
+    def derived_profile(base_raw, limit):
+        value = copy.deepcopy(profile_values(base_raw))
+        for node in NODES:
+            if value[node]['ros__parameters'][PARAMETER] < limit:
+>               raise ValueError(node+' would widen existing steering limit; '
+                                 'choose an explicitly compatible base profile')
+E               ValueError: local_pursuit would widen existing steering limit; choose an explicitly compatible base profile
+
+scripts\runtime_installed_limits.py:82: ValueError
+=========================== short test summary info ===========================
+FAILED artifacts/validation/2026-11-14/runtime_update_handover_r533_v1/tests/test_steering_launch_selection.py::test_existing_selected_bundle_links_both_nodes_and_keeps_smaller_runtime_cap
+1 failed, 3 passed in 0.34s

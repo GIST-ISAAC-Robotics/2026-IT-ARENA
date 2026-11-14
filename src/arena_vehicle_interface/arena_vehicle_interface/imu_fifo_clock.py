@@ -29,7 +29,11 @@ class ImuFifoClock:
     time_contract_verified = False
     sensor_acquisition_timestamp = False  # ROS 절대 취득시각 검증은 아직 없다.
 
-    def __init__(self, *, warmup_ns=250_000_000):
+    def __init__(self, *, warmup_ns=250_000_000, sensor_tag=1):
+        if type(sensor_tag) is not int or sensor_tag not in (1, 2):
+            raise ValueError('uncompressed gyro tag 1 or accel tag 2 required')
+        self.sensor_tag = sensor_tag
+        self.sample_key = 'gyro_rad_s' if sensor_tag == 1 else 'accel_mps2'
         self.slots = FifoTimeSlots()
         self.read_clock = ImuReadClock(warmup_ns=warmup_ns)
         self.anchors = deque(maxlen=8)
@@ -79,7 +83,7 @@ class ImuFifoClock:
                     self._clear_fit('inconsistent_register_clock')
                     self.anchors.append(dict(row))
             return None
-        if paired is None or row.get('sensor_tag') != 1:
+        if paired is None or row.get('sensor_tag') != self.sensor_tag:
             return None
         if self.fit is None:
             self.counts['fit_warmup'] += 1
@@ -102,7 +106,7 @@ class ImuFifoClock:
             mapped = self._sensor_interval(row)
             if mapped is not None:
                 pairs[(row['boot'], row['sequence'])] = mapped
-            if 'gyro_rad_s' in row:
+            if self.sample_key in row:
                 gyros.append(row)
         # 실제 read_end를 사용한다. 추정 취득시각으로 읽기시각을 덮어쓰지 않는다.
         read_stamps = self.read_clock.convert_batch(gyros,

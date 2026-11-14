@@ -117,6 +117,10 @@ class PartialObservationPolicy:
         """선택형 재관측만 전체 위협 상태를 보존한다. 기본 정책은 사용하지 않는다."""
         pass
 
+    def _retain_latched_threat(self, threatening, previous):
+        """선택된 독립 guard만 이미 래치 중인 새 실제 소실점을 보존한다."""
+        pass
+
     def reset(self):
         self.previous = None
         self.previous_distinct = None
@@ -521,6 +525,8 @@ class PartialObservationPolicy:
                     # 짧은 진단 예시(witnesses)와 제어에 필요한 전체 증거를 분리한다.
                     # 캡처 오류가 생겨도 위에서 설정한 래치는 남는다.
                     self._capture_latched_threat(threatening,previous,now)
+                else:
+                    self._retain_latched_threat(threatening,previous)
         self._remember(points, now, source, fresh)
         return None
 

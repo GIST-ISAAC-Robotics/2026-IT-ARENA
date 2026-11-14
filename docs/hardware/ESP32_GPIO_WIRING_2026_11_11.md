@@ -72,7 +72,9 @@ MD20A는 3.3 V 입력을 지원하므로 PWM/DIR에 CF-0108을 넣지 않는다.
 
 **점퍼 두 개 모두 A 위치**, UART 헤더는 **TX→TX / RX→RX**다. 일반 UART 장치의 교차 연결 습관을 적용하면 이 제품에서는 잘못 연결할 수 있다. 이는 [Waveshare 공식 배선 안내](https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example)의 명시 사항이다. H2의 실제 핀 순서와 D/V/G 케이블 방향은 보드 실크로 확인하며 좌우 순번이나 선 색은 추측하지 않는다.
 
-[제조사 회로도](https://files.waveshare.com/wiki/Bus_Servo_Adapter_A/Bus_Servo_Adapter_A.pdf)의 UART/버스 변환부는 3.3 V 논리이며 자동 방향 전환을 사용한다. 별도 방향 GPIO16이나 ESP32 3V3/5V 전원선을 어댑터 H2에 연결하지 않는다. GPIO17/18을 서보의 D 한 선에 직접 묶지 않는다. 어댑터 USB는 이번 구성에서 비워 둔다.
+[제조사 회로도](https://files.waveshare.com/wiki/Bus_Servo_Adapter_A/Bus_Servo_Adapter_A.pdf)의 UART/버스 변환부는 3.3 V 논리이며 자동 방향 전환을 사용한다. 별도 방향 GPIO16이나 ESP32 3V3/5V 전원선을 어댑터 H2에 연결하지 않는다. GPIO17/18을 서보의 D 한 선에 직접 묶지 않는다.
+
+**11/14 실물 정정:** 사용자는 실제 보유 어댑터에 USB 단자가 없다고 확인했다. 앞선 “어댑터 USB는 비워 둔다”는 제품 동일성 가정을 철회하며 USB 직접 연결을 대안으로 사용하지 않는다. 위 Waveshare 링크의 제품과 보유 보드의 판본·회로 동일성은 재확인이 필요하다. 기존 ESP32 UART를 통한 실제 통신 성공은 보존하되, Jetson에 옮길 때에는 실제 헤더 기능과 반환 신호 전압을 확인한다. [ESP32 없이 제어하는 대안 조사](MOUNTED_DC_TEST_2026_11_14.md#esp32-없이-제어하는-대안-조사).
 
 전원은 DC 5.5×2.1 mm 잭(중앙 +) 또는 해당 전원 단자 중 하나를 사용한다. **M01 CH5(CN6) 12 V/2 A**, 서보 한 개로 조립한다. CH6(CN7)은 예비이며 CH5와 병렬 연결하지 않는다. 이는 이번 조립 채널 선택이며 앞선 벤치 시험의 실제 채널 확인을 소급하지 않는다. [서보 실측](../sensors/ST3215_HS_HARDWARE_2026_11_12.md)에서 ID1/1 Mbps를 확인했으나 실제 조향 전류·전압 강하·링크 중립·끝단은 후속이다. 직렬 서보이므로 ESP32의 PWM 서보 출력 핀을 추가하지 않는다.
 

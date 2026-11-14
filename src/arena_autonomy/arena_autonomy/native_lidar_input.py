@@ -39,6 +39,8 @@ def subscribe_scan(node,callback,qos):
     """한 표현/한 토픽만 구독한다. 시뮬 native 모드는 기본 OFF다."""
     from sensor_msgs.msg import LaserScan
     from std_msgs.msg import String
+    from arena_autonomy.quick_self_mask import configure_node
+    callback = configure_node(node, callback)
     mode=input_representation(node)
     if (getattr(getattr(node,'motion',None),'timing_policy','verified_only') == 'host_estimated_v1'
             and mode != 'native_estimated_v1'):

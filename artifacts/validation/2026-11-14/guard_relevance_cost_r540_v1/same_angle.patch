@@ -1,0 +1,19 @@
+--- a/src/arena_autonomy/arena_autonomy/guard_memory_command.py
++++ b/src/arena_autonomy/arena_autonomy/guard_memory_command.py
+@@ -195,11 +195,15 @@
+         horizon=max(.20,.06+checked_speed*(age+.10)+checked_speed**2/4+.04)
+         # 비정상 실측을 무한 크기의 외곽 배열로 만들지 않는다. 기존 입력 오류로 유지한다.
+         if horizon>3.:return finish('memory_command_braking_horizon_unavailable')
+-        angles=(steering,previous)
++        angles=(steering,) if steering==previous else (steering,previous)
+         memory_clearances=[swept_limit(retained,a,wheelbase,horizon=horizon,
+             length=length,width=width) if len(retained) else horizon for a in angles]
+         raw_clearances=[swept_limit(current,a,wheelbase,horizon=horizon,
+             length=length,width=width) for a in angles]
++        # 동일 호출의 정확히 같은 각도만 재사용한다. 기억/관측 갱신은 위에서 그대로 수행했다.
++        if len(angles)==1:
++            memory_clearances*=2
++            raw_clearances*=2
+         memory_relevant=any(value<horizon-1e-10 for value in memory_clearances)
+         if not all_reobserved and memory_relevant:
+             target=min(.10,target)

@@ -1,0 +1,1663 @@
+........................................................................ [ 36%]
+............FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 73%]
+FF..................................................                     [100%]
+=================================== FAILURES ===================================
+_________________________ test_clear_path_keeps_speed __________________________
+
+    def test_clear_path_keeps_speed():
+        node, commands, statuses = node_double()
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:39: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d30700>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d43740>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+__ test_delayed_old_scan_stops_even_with_fresh_transport_and_running_command ___
+
+    def test_delayed_old_scan_stops_even_with_fresh_transport_and_running_command():
+        node, commands, statuses = node_double()
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1bc9ec0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d7ab60>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+__________________ test_faults_stop_independent_gate[no_scan] __________________
+
+fault = 'no_scan'
+
+    @pytest.mark.parametrize('fault', ['no_scan', 'no_command', 'old_command', 'old_scan', 'nan_command',
+                                       'reverse', 'unknown_front', 'motion_gap', 'transport'])
+    def test_faults_stop_independent_gate(fault):
+        node, commands, statuses = node_double()
+        if fault == 'no_scan': node.scan = None
+        if fault == 'no_command': node.command = None
+        if fault == 'old_command': node.command.header.stamp.sec = 9
+        if fault == 'old_scan': node.scan.header.stamp.sec = 9
+        if fault == 'nan_command': node.command.drive.speed = math.nan
+        if fault == 'reverse': node.command.drive.speed = -1.
+        if fault == 'unknown_front': node.scan.ranges[250] = math.nan
+        if fault == 'transport': node.scan_wall -= 4.
+        if fault == 'motion_gap':
+            def fail(_): raise MotionUnavailable('motion_gap')
+            node.motion.project = fail
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d9ab40>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d7b060>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+________________ test_faults_stop_independent_gate[no_command] _________________
+
+fault = 'no_command'
+
+    @pytest.mark.parametrize('fault', ['no_scan', 'no_command', 'old_command', 'old_scan', 'nan_command',
+                                       'reverse', 'unknown_front', 'motion_gap', 'transport'])
+    def test_faults_stop_independent_gate(fault):
+        node, commands, statuses = node_double()
+        if fault == 'no_scan': node.scan = None
+        if fault == 'no_command': node.command = None
+        if fault == 'old_command': node.command.header.stamp.sec = 9
+        if fault == 'old_scan': node.scan.header.stamp.sec = 9
+        if fault == 'nan_command': node.command.drive.speed = math.nan
+        if fault == 'reverse': node.command.drive.speed = -1.
+        if fault == 'unknown_front': node.scan.ranges[250] = math.nan
+        if fault == 'transport': node.scan_wall -= 4.
+        if fault == 'motion_gap':
+            def fail(_): raise MotionUnavailable('motion_gap')
+            node.motion.project = fail
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=None, scan=sensor_msgs.msg.LaserScan(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(se...method append of list object at 0x7516e1bed300>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d7b380>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+________________ test_faults_stop_independent_gate[old_command] ________________
+
+fault = 'old_command'
+
+    @pytest.mark.parametrize('fault', ['no_scan', 'no_command', 'old_command', 'old_scan', 'nan_command',
+                                       'reverse', 'unknown_front', 'motion_gap', 'transport'])
+    def test_faults_stop_independent_gate(fault):
+        node, commands, statuses = node_double()
+        if fault == 'no_scan': node.scan = None
+        if fault == 'no_command': node.command = None
+        if fault == 'old_command': node.command.header.stamp.sec = 9
+        if fault == 'old_scan': node.scan.header.stamp.sec = 9
+        if fault == 'nan_command': node.command.drive.speed = math.nan
+        if fault == 'reverse': node.command.drive.speed = -1.
+        if fault == 'unknown_front': node.scan.ranges[250] = math.nan
+        if fault == 'transport': node.scan_wall -= 4.
+        if fault == 'motion_gap':
+            def fail(_): raise MotionUnavailable('motion_gap')
+            node.motion.project = fail
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1be6c40>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d79a80>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_________________ test_faults_stop_independent_gate[old_scan] __________________
+
+fault = 'old_scan'
+
+    @pytest.mark.parametrize('fault', ['no_scan', 'no_command', 'old_command', 'old_scan', 'nan_command',
+                                       'reverse', 'unknown_front', 'motion_gap', 'transport'])
+    def test_faults_stop_independent_gate(fault):
+        node, commands, statuses = node_double()
+        if fault == 'no_scan': node.scan = None
+        if fault == 'no_command': node.command = None
+        if fault == 'old_command': node.command.header.stamp.sec = 9
+        if fault == 'old_scan': node.scan.header.stamp.sec = 9
+        if fault == 'nan_command': node.command.drive.speed = math.nan
+        if fault == 'reverse': node.command.drive.speed = -1.
+        if fault == 'unknown_front': node.scan.ranges[250] = math.nan
+        if fault == 'transport': node.scan_wall -= 4.
+        if fault == 'motion_gap':
+            def fail(_): raise MotionUnavailable('motion_gap')
+            node.motion.project = fail
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d9b900>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d7b880>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+________________ test_faults_stop_independent_gate[nan_command] ________________
+
+fault = 'nan_command'
+
+    @pytest.mark.parametrize('fault', ['no_scan', 'no_command', 'old_command', 'old_scan', 'nan_command',
+                                       'reverse', 'unknown_front', 'motion_gap', 'transport'])
+    def test_faults_stop_independent_gate(fault):
+        node, commands, statuses = node_double()
+        if fault == 'no_scan': node.scan = None
+        if fault == 'no_command': node.command = None
+        if fault == 'old_command': node.command.header.stamp.sec = 9
+        if fault == 'old_scan': node.scan.header.stamp.sec = 9
+        if fault == 'nan_command': node.command.drive.speed = math.nan
+        if fault == 'reverse': node.command.drive.speed = -1.
+        if fault == 'unknown_front': node.scan.ranges[250] = math.nan
+        if fault == 'transport': node.scan_wall -= 4.
+        if fault == 'motion_gap':
+            def fail(_): raise MotionUnavailable('motion_gap')
+            node.motion.project = fail
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d32cc0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d7bce0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+__________________ test_faults_stop_independent_gate[reverse] __________________
+
+fault = 'reverse'
+
+    @pytest.mark.parametrize('fault', ['no_scan', 'no_command', 'old_command', 'old_scan', 'nan_command',
+                                       'reverse', 'unknown_front', 'motion_gap', 'transport'])
+    def test_faults_stop_independent_gate(fault):
+        node, commands, statuses = node_double()
+        if fault == 'no_scan': node.scan = None
+        if fault == 'no_command': node.command = None
+        if fault == 'old_command': node.command.header.stamp.sec = 9
+        if fault == 'old_scan': node.scan.header.stamp.sec = 9
+        if fault == 'nan_command': node.command.drive.speed = math.nan
+        if fault == 'reverse': node.command.drive.speed = -1.
+        if fault == 'unknown_front': node.scan.ranges[250] = math.nan
+        if fault == 'transport': node.scan_wall -= 4.
+        if fault == 'motion_gap':
+            def fail(_): raise MotionUnavailable('motion_gap')
+            node.motion.project = fail
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d9d3c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84400>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_______________ test_faults_stop_independent_gate[unknown_front] _______________
+
+fault = 'unknown_front'
+
+    @pytest.mark.parametrize('fault', ['no_scan', 'no_command', 'old_command', 'old_scan', 'nan_command',
+                                       'reverse', 'unknown_front', 'motion_gap', 'transport'])
+    def test_faults_stop_independent_gate(fault):
+        node, commands, statuses = node_double()
+        if fault == 'no_scan': node.scan = None
+        if fault == 'no_command': node.command = None
+        if fault == 'old_command': node.command.header.stamp.sec = 9
+        if fault == 'old_scan': node.scan.header.stamp.sec = 9
+        if fault == 'nan_command': node.command.drive.speed = math.nan
+        if fault == 'reverse': node.command.drive.speed = -1.
+        if fault == 'unknown_front': node.scan.ranges[250] = math.nan
+        if fault == 'transport': node.scan_wall -= 4.
+        if fault == 'motion_gap':
+            def fail(_): raise MotionUnavailable('motion_gap')
+            node.motion.project = fail
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c91ec0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d845e0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+________________ test_faults_stop_independent_gate[motion_gap] _________________
+
+fault = 'motion_gap'
+
+    @pytest.mark.parametrize('fault', ['no_scan', 'no_command', 'old_command', 'old_scan', 'nan_command',
+                                       'reverse', 'unknown_front', 'motion_gap', 'transport'])
+    def test_faults_stop_independent_gate(fault):
+        node, commands, statuses = node_double()
+        if fault == 'no_scan': node.scan = None
+        if fault == 'no_command': node.command = None
+        if fault == 'old_command': node.command.header.stamp.sec = 9
+        if fault == 'old_scan': node.scan.header.stamp.sec = 9
+        if fault == 'nan_command': node.command.drive.speed = math.nan
+        if fault == 'reverse': node.command.drive.speed = -1.
+        if fault == 'unknown_front': node.scan.ranges[250] = math.nan
+        if fault == 'transport': node.scan_wall -= 4.
+        if fault == 'motion_gap':
+            def fail(_): raise MotionUnavailable('motion_gap')
+            node.motion.project = fail
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d9d280>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d7b880>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_________________ test_faults_stop_independent_gate[transport] _________________
+
+fault = 'transport'
+
+    @pytest.mark.parametrize('fault', ['no_scan', 'no_command', 'old_command', 'old_scan', 'nan_command',
+                                       'reverse', 'unknown_front', 'motion_gap', 'transport'])
+    def test_faults_stop_independent_gate(fault):
+        node, commands, statuses = node_double()
+        if fault == 'no_scan': node.scan = None
+        if fault == 'no_command': node.command = None
+        if fault == 'old_command': node.command.header.stamp.sec = 9
+        if fault == 'old_scan': node.scan.header.stamp.sec = 9
+        if fault == 'nan_command': node.command.drive.speed = math.nan
+        if fault == 'reverse': node.command.drive.speed = -1.
+        if fault == 'unknown_front': node.scan.ranges[250] = math.nan
+        if fault == 'transport': node.scan_wall -= 4.
+        if fault == 'motion_gap':
+            def fail(_): raise MotionUnavailable('motion_gap')
+            node.motion.project = fail
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c93f00>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d7b2e0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_____________________ test_obstacle_inside_footprint_stops _____________________
+
+    def test_obstacle_inside_footprint_stops():
+        node, commands, _ = node_double()
+        node.motion.project = lambda _: (np.tile([.1, 0.], (40,1)), 40)
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:81: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d9e000>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d851c0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_____________ test_clock_rollback_clears_inputs_and_motion_history _____________
+
+    def test_clock_rollback_clears_inputs_and_motion_history():
+        node, commands, statuses = node_double()
+        resets = []
+        node.last_clock = 11.
+        node.motion.history = SimpleNamespace(reset=lambda: resets.append(True))
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:90: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1bee440>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84f40>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices0-0.0] _
+
+steering = 0.0, indices = [250], value = inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1be4440>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84540>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices0--0.3] _
+
+steering = -0.3, indices = [250], value = inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c8fb00>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85580>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices0-0.3] _
+
+steering = 0.3, indices = [250], value = inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c00540>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d7b880>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices1-0.0] _
+
+steering = 0.0, indices = [223, 224, 225, 226, 227, 228, ...], value = inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d890c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84ae0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices1--0.3] _
+
+steering = -0.3, indices = [223, 224, 225, 226, 227, 228, ...], value = inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1bcae80>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85260>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices1-0.3] _
+
+steering = 0.3, indices = [223, 224, 225, 226, 227, 228, ...], value = inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d33000>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86a20>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices2-0.0] _
+
+steering = 0.0, indices = [0, 1, 2, 3, 4, 5, ...], value = inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1db8d40>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86200>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices2--0.3] _
+
+steering = -0.3, indices = [0, 1, 2, 3, 4, 5, ...], value = inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c00ec0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85a80>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices2-0.3] _
+
+steering = 0.3, indices = [0, 1, 2, 3, 4, 5, ...], value = inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1bfe0c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86de0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices0-0.0] _
+
+steering = 0.0, indices = [250], value = -inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c03340>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85d00>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices0--0.3] _
+
+steering = -0.3, indices = [250], value = -inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1bff4c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d860c0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices0-0.3] _
+
+steering = 0.3, indices = [250], value = -inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d9c200>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84c20>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices1-0.0] _
+
+steering = 0.0, indices = [223, 224, 225, 226, 227, 228, ...], value = -inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d7ea80>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85260>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices1--0.3] _
+
+steering = -0.3, indices = [223, 224, 225, 226, 227, 228, ...], value = -inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d8a0c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84ae0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices1-0.3] _
+
+steering = 0.3, indices = [223, 224, 225, 226, 227, 228, ...], value = -inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1bc8080>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85800>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices2-0.0] _
+
+steering = 0.0, indices = [0, 1, 2, 3, 4, 5, ...], value = -inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d7f2c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85300>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices2--0.3] _
+
+steering = -0.3, indices = [0, 1, 2, 3, 4, 5, ...], value = -inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d8af40>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84c20>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices2-0.3] _
+
+steering = 0.3, indices = [0, 1, 2, 3, 4, 5, ...], value = -inf
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c901c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86480>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices0-0.0] _
+
+steering = 0.0, indices = [250], value = nan
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c997c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86d40>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices0--0.3] _
+
+steering = -0.3, indices = [250], value = nan
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1bd3d00>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86ac0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices0-0.3] _
+
+steering = 0.3, indices = [250], value = nan
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c64d80>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86980>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices1-0.0] _
+
+steering = 0.0, indices = [223, 224, 225, 226, 227, 228, ...], value = nan
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d7f240>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85da0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices1--0.3] _
+
+steering = -0.3, indices = [223, 224, 225, 226, 227, 228, ...], value = nan
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d98c00>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86480>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices1-0.3] _
+
+steering = 0.3, indices = [223, 224, 225, 226, 227, 228, ...], value = nan
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c17f80>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d87600>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices2-0.0] _
+
+steering = 0.0, indices = [0, 1, 2, 3, 4, 5, ...], value = nan
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1be4ac0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85760>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices2--0.3] _
+
+steering = -0.3, indices = [0, 1, 2, 3, 4, 5, ...], value = nan
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1bd3d40>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1c08220>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices2-0.3] _
+
+steering = 0.3, indices = [0, 1, 2, 3, 4, 5, ...], value = nan
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c64300>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d87920>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices0-0.0] _
+
+steering = 0.0, indices = [250], value = 0.049
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e51e9680>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85bc0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices0--0.3] _
+
+steering = -0.3, indices = [250], value = 0.049
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d7d5c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84c20>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices0-0.3] _
+
+steering = 0.3, indices = [250], value = 0.049
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1cb5500>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d87600>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices1-0.0] _
+
+steering = 0.0, indices = [223, 224, 225, 226, 227, 228, ...], value = 0.049
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d9d9c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d87420>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices1--0.3] _
+
+steering = -0.3, indices = [223, 224, 225, 226, 227, 228, ...], value = 0.049
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d9adc0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85120>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices1-0.3] _
+
+steering = 0.3, indices = [223, 224, 225, 226, 227, 228, ...], value = 0.049
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1cb6ec0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86ac0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices2-0.0] _
+
+steering = 0.0, indices = [0, 1, 2, 3, 4, 5, ...], value = 0.049
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1dbb7c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d867a0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices2--0.3] _
+
+steering = -0.3, indices = [0, 1, 2, 3, 4, 5, ...], value = 0.049
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c35a00>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84680>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices2-0.3] _
+
+steering = 0.3, indices = [0, 1, 2, 3, 4, 5, ...], value = 0.049
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c15f80>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d851c0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices0-0.0] _
+
+steering = 0.0, indices = [250], value = 12.001
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1db9840>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86a20>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices0--0.3] _
+
+steering = -0.3, indices = [250], value = 12.001
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1beeb00>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1c09620>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices0-0.3] _
+
+steering = 0.3, indices = [250], value = 12.001
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1cb4280>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d85bc0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices1-0.0] _
+
+steering = 0.0, indices = [223, 224, 225, 226, 227, 228, ...], value = 12.001
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c4e400>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d87420>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices1--0.3] _
+
+steering = -0.3, indices = [223, 224, 225, 226, 227, 228, ...], value = 12.001
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e524e000>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84720>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices1-0.3] _
+
+steering = 0.3, indices = [223, 224, 225, 226, 227, 228, ...], value = 12.001
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1d88fc0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1c09580>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices2-0.0] _
+
+steering = 0.0, indices = [0, 1, 2, 3, 4, 5, ...], value = 12.001
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c65940>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1c08860>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices2--0.3] _
+
+steering = -0.3, indices = [0, 1, 2, 3, 4, 5, ...], value = 12.001
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c98b40>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1c08680>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices2-0.3] _
+
+steering = 0.3, indices = [0, 1, 2, 3, 4, 5, ...], value = 12.001
+
+    @pytest.mark.parametrize('steering', [0., -.3, .3])
+    @pytest.mark.parametrize('indices', [[250], list(range(223, 278)), list(range(500))])
+    @pytest.mark.parametrize('value', [math.inf, -math.inf, math.nan, .049, 12.001])
+    def test_single_and_partial_no_return_stop_then_finite_input_recovers(steering, indices, value):
+        node, commands, statuses = node_double()
+        node.command.drive.steering_angle = steering
+        # 회전 시 점 간섭을 제거하는 테스트 대역: 관측 계약만 독립 검증한다.
+        node.motion.project = lambda _: (np.full((60, 2), 20.), 60)
+        for i in indices:
+            node.scan.ranges[i] = value
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:106: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c8d080>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d84680>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_projected_finite_count_boundary_remains_independent_of_front_observation[29] _
+
+count = 29
+
+    @pytest.mark.parametrize('count', [29, 30, 31])
+    def test_projected_finite_count_boundary_remains_independent_of_front_observation(count):
+        node, commands, statuses = node_double()
+        node.motion.project = lambda _: (np.full((count, 2), 20.), count)
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1bfe800>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1d86ac0>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_projected_finite_count_boundary_remains_independent_of_front_observation[30] _
+
+count = 30
+
+    @pytest.mark.parametrize('count', [29, 30, 31])
+    def test_projected_finite_count_boundary_remains_independent_of_front_observation(count):
+        node, commands, statuses = node_double()
+        node.motion.project = lambda _: (np.full((count, 2), 20.), count)
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c7ce40>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1c09440>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+_ test_projected_finite_count_boundary_remains_independent_of_front_observation[31] _
+
+count = 31
+
+    @pytest.mark.parametrize('count', [29, 30, 31])
+    def test_projected_finite_count_boundary_remains_independent_of_front_observation(count):
+        node, commands, statuses = node_double()
+        node.motion.project = lambda _: (np.full((count, 2), 20.), count)
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:119: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c4e3c0>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1c08900>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+____________ test_body_front_in_rotated_lidar_frame_is_not_ignored _____________
+
+    def test_body_front_in_rotated_lidar_frame_is_not_ignored():
+        node, commands, statuses = node_double()
+        node.motion.history.config.lidar_yaw_rad = math.pi
+        node.scan.ranges[0] = math.inf
+>       LidarSafety.control(node)
+
+tests/test_lidar_safety.py:128: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = namespace(command=ackermann_msgs.msg.AckermannDriveStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Tim...method append of list object at 0x7516e1c8e080>), get_clock=<function node_double.<locals>.<lambda> at 0x7516e1c08d60>)
+
+    def control(self):
+>       self.motion.drain_pending()
+E       AttributeError: 'types.SimpleNamespace' object has no attribute 'drain_pending'
+
+src/arena_autonomy/arena_autonomy/lidar_safety.py:149: AttributeError
+=========================== short test summary info ============================
+FAILED tests/test_lidar_safety.py::test_clear_path_keeps_speed - AttributeErr...
+FAILED tests/test_lidar_safety.py::test_delayed_old_scan_stops_even_with_fresh_transport_and_running_command
+FAILED tests/test_lidar_safety.py::test_faults_stop_independent_gate[no_scan]
+FAILED tests/test_lidar_safety.py::test_faults_stop_independent_gate[no_command]
+FAILED tests/test_lidar_safety.py::test_faults_stop_independent_gate[old_command]
+FAILED tests/test_lidar_safety.py::test_faults_stop_independent_gate[old_scan]
+FAILED tests/test_lidar_safety.py::test_faults_stop_independent_gate[nan_command]
+FAILED tests/test_lidar_safety.py::test_faults_stop_independent_gate[reverse]
+FAILED tests/test_lidar_safety.py::test_faults_stop_independent_gate[unknown_front]
+FAILED tests/test_lidar_safety.py::test_faults_stop_independent_gate[motion_gap]
+FAILED tests/test_lidar_safety.py::test_faults_stop_independent_gate[transport]
+FAILED tests/test_lidar_safety.py::test_obstacle_inside_footprint_stops - Att...
+FAILED tests/test_lidar_safety.py::test_clock_rollback_clears_inputs_and_motion_history
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices0-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices0--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices0-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices1-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices1--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices1-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices2-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices2--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[inf-indices2-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices0-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices0--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices0-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices1-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices1--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices1-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices2-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices2--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[-inf-indices2-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices0-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices0--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices0-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices1-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices1--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices1-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices2-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices2--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[nan-indices2-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices0-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices0--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices0-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices1-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices1--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices1-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices2-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices2--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[0.049-indices2-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices0-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices0--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices0-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices1-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices1--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices1-0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices2-0.0]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices2--0.3]
+FAILED tests/test_lidar_safety.py::test_single_and_partial_no_return_stop_then_finite_input_recovers[12.001-indices2-0.3]
+FAILED tests/test_lidar_safety.py::test_projected_finite_count_boundary_remains_independent_of_front_observation[29]
+FAILED tests/test_lidar_safety.py::test_projected_finite_count_boundary_remains_independent_of_front_observation[30]
+FAILED tests/test_lidar_safety.py::test_projected_finite_count_boundary_remains_independent_of_front_observation[31]
+FAILED tests/test_lidar_safety.py::test_body_front_in_rotated_lidar_frame_is_not_ignored
+62 failed, 134 passed in 3.11s

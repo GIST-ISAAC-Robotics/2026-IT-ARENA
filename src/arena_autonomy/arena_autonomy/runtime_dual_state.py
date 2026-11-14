@@ -1,12 +1,23 @@
 """r334의 두 슬롯 경로 인계 계약. 현재 검사 정책은 외부에서 명시한다.
 
-원천300ms·명령200ms·경로500ms·양수발행100ms를 유지한다. 새로운 시각,
-점유 허가, 독립 보호 통과를 만들지 않는다. 노드/기본값에는 연결하지 않는다.
+원천300ms·명령200ms·경로500ms를 유지한다. 기본 양수발행은100ms이며,
+명시한 실제 출력 dt의 current 결과만20ms 이후 조기 전달할 수 있다.
+새로운 시각·점유 허가·독립 보호 통과를 만들지 않는다.
 """
 import copy
 import math
 from arena_autonomy.decision_delivery import source_identity
 from arena_autonomy.runtime_dual_process import DualSlots, plan_reference
+
+
+def _checked_angle_fits_actual_interval(output, previous, output_dt_s, elapsed_s):
+    """기존50Hz control 하한과 발행 직전의 같은3rad/s clamp를 유지한다."""
+    values = (previous, output_dt_s, elapsed_s, output.get('steering_rad'))
+    if not all(type(v) in (float, int) and math.isfinite(v) for v in values):
+        return False
+    if elapsed_s < .02-1e-9 or not 0 < output_dt_s <= min(.1, elapsed_s):
+        return False
+    return previous-3*output_dt_s <= output['steering_rad'] <= previous+3*output_dt_s
 
 
 def current_request(output, submitted, current, *, retained, crop_current_selection=False):
@@ -191,7 +202,7 @@ class RuntimeDualProcess(DualSlots):
         raise RuntimeError('use route-owned offer_next_current')
 
     def application_reason(self, row, *, now_s, previous_steering_rad, side,
-                           motion_epoch, sensor_epoch):
+                           motion_epoch, sensor_epoch, output_dt_s=None):
         if (self.ready is None or row.get('sequence') != self.ready['sequence']
                 or row.get('generation') != self.generation
                 or row.get('route_check', {}).get('revision') != self.revision):
@@ -233,6 +244,13 @@ class RuntimeDualProcess(DualSlots):
                 and proof.get('old_occupancy_permission_reused') is False):
             return 'new_current_route_proof_required'
         if now_s - self.last_application < .1 - 1e-9:
+            # 이전 source/proof 검사를 끝낸 내부 소유 current만 조기 전달한다.
+            # control 시작 때 구한 실제 dt도 확인해 후속 clamp가 checked 각도를
+            # 바꾸지 않게 한다. dt 생략·nonretained는 기존100ms 정책이다.
+            if (cur['reference_s'] > self.last_application
+                    and _checked_angle_fits_actual_interval(out, previous_steering_rad,
+                        output_dt_s, now_s-self.last_application)):
+                return None
             return 'positive_application_interval'
         return None
 

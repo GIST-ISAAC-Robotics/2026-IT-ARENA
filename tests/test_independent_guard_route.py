@@ -185,7 +185,7 @@ def node(raw=None,speed=.8,steering=0.,previous=.4,partial=True):
         scan=raw,scan_wall=time.monotonic(),command_wall=time.monotonic(),wall_timeout=3.,
         limit=.458,wheelbase=.135,length=.20,width=.15,previous_safe_steering=previous,
         partial_policy=p,command_observation_priority=True,recent_observation_enabled=False,
-        motion=NS(history=h,project=project),signed_motion_policy='forward_drive',
+        motion=NS(history=h,project=project,drain_pending=lambda:None),signed_motion_policy='forward_drive',
         vehicle_marker_channel=NS(profile=None,snapshot=lambda _:None,reset=lambda:None),
         publisher=NS(publish=outputs.append),status=NS(publish=statuses.append))
     return n,outputs,statuses

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="6" time="0.426" timestamp="2026-11-14T12:04:28.869933+09:00" hostname="DESKTOP-KA11CHH"><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_shifted_current_wall_uses_same_points_without_old_anchor" time="0.020"><failure message="ModuleNotFoundError: No module named 'arena_vehicle_interface'">def test_shifted_current_wall_uses_same_points_without_old_anchor():
+&gt;       normal, candidate = LocalFollow(CFG), CurrentWallReacquire(CFG)
+                            ^^^^^^^^^^^^^^^^
+
+artifacts\validation\2026-11-14\current_wall_reacquire_r521_v1\test_stage.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\arena_autonomy\arena_autonomy\local_follow.py:536: in __init__
+    from arena_autonomy.current_lane_preference import CurrentLaneSelector
+src\arena_autonomy\arena_autonomy\current_lane_preference.py:11: in &lt;module&gt;
+    from arena_autonomy.observed_lane_preference_trial import front_extent, StraightLanePreferenceSelector
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    """선택형 시험, 기본 미사용: 시간 대신 현재 관측 직선에서의 차선 유지 선호를 비교한다.
+    
+    ROS에서 rear_lane_keep_policy=observed를 명시한 시험 전용이며 운영 채택이 아니다. 후방 사각 부재를 추정하지 않는다. 현재 양의 RELEASED 출력에서
+    소실 쪽으로 꺾을 때 기존 평행 후보를 택하며 새 정지를 만들지 않는다. 곡선/경로/관측 맥락 상실,
+    벽 선택 변경, 현재 반대쪽 점유, 앞쪽 통과에는 원래 판단으로 돌아간다. 현재 관측/제동 검사를
+    통과한 평행 경로의 목표속도는 기존 G1 이하이며, 시험용 20 ms 엔코더 한 카운트분 여유를 둔다.
+    anchor_m은 이전 후보와의 진단 비교용이고 새 정책의 판단에는 현재 프레임의 현재 모서리만 쓴다.
+    """
+    import math
+    
+&gt;   from arena_vehicle_interface.drive_feedback import MotorEncoderSpec
+E   ModuleNotFoundError: No module named 'arena_vehicle_interface'
+
+src\arena_autonomy\arena_autonomy\observed_lane_preference_trial.py:11: ModuleNotFoundError</failure></testcase><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_short_curved_current_fragment_positive_then_real_occupied_zero" time="0.029"><failure message="ModuleNotFoundError: No module named 'arena_vehicle_interface'">def test_short_curved_current_fragment_positive_then_real_occupied_zero():
+        free, _ = sensor(shift=.08, end=.50, curved=True)
+        blocked, _ = sensor(shift=.08, end=.50, curved=True, obstacle=True)
+&gt;       before = command(LocalFollow(CFG), free)
+                         ^^^^^^^^^^^^^^^^
+
+artifacts\validation\2026-11-14\current_wall_reacquire_r521_v1\test_stage.py:83: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\arena_autonomy\arena_autonomy\local_follow.py:536: in __init__
+    from arena_autonomy.current_lane_preference import CurrentLaneSelector
+src\arena_autonomy\arena_autonomy\current_lane_preference.py:11: in &lt;module&gt;
+    from arena_autonomy.observed_lane_preference_trial import front_extent, StraightLanePreferenceSelector
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    """선택형 시험, 기본 미사용: 시간 대신 현재 관측 직선에서의 차선 유지 선호를 비교한다.
+    
+    ROS에서 rear_lane_keep_policy=observed를 명시한 시험 전용이며 운영 채택이 아니다. 후방 사각 부재를 추정하지 않는다. 현재 양의 RELEASED 출력에서
+    소실 쪽으로 꺾을 때 기존 평행 후보를 택하며 새 정지를 만들지 않는다. 곡선/경로/관측 맥락 상실,
+    벽 선택 변경, 현재 반대쪽 점유, 앞쪽 통과에는 원래 판단으로 돌아간다. 현재 관측/제동 검사를
+    통과한 평행 경로의 목표속도는 기존 G1 이하이며, 시험용 20 ms 엔코더 한 카운트분 여유를 둔다.
+    anchor_m은 이전 후보와의 진단 비교용이고 새 정책의 판단에는 현재 프레임의 현재 모서리만 쓴다.
+    """
+    import math
+    
+&gt;   from arena_vehicle_interface.drive_feedback import MotorEncoderSpec
+E   ModuleNotFoundError: No module named 'arena_vehicle_interface'
+
+src\arena_autonomy\arena_autonomy\observed_lane_preference_trial.py:11: ModuleNotFoundError</failure></testcase><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_normal_positive_and_non_boundary_stop_unchanged" time="0.002"><failure message="ModuleNotFoundError: No module named 'arena_vehicle_interface'">def test_normal_positive_and_non_boundary_stop_unchanged():
+&gt;       normal, candidate = LocalFollow(CFG), CurrentWallReacquire(CFG)
+                            ^^^^^^^^^^^^^^^^
+
+artifacts\validation\2026-11-14\current_wall_reacquire_r521_v1\test_stage.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+src\arena_autonomy\arena_autonomy\local_follow.py:536: in __init__
+    from arena_autonomy.current_lane_preference import CurrentLaneSelector
+src\arena_autonomy\arena_autonomy\current_lane_preference.py:11: in &lt;module&gt;
+    from arena_autonomy.observed_lane_preference_trial import front_extent, StraightLanePreferenceSelector
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    """선택형 시험, 기본 미사용: 시간 대신 현재 관측 직선에서의 차선 유지 선호를 비교한다.
+    
+    ROS에서 rear_lane_keep_policy=observed를 명시한 시험 전용이며 운영 채택이 아니다. 후방 사각 부재를 추정하지 않는다. 현재 양의 RELEASED 출력에서
+    소실 쪽으로 꺾을 때 기존 평행 후보를 택하며 새 정지를 만들지 않는다. 곡선/경로/관측 맥락 상실,
+    벽 선택 변경, 현재 반대쪽 점유, 앞쪽 통과에는 원래 판단으로 돌아간다. 현재 관측/제동 검사를
+    통과한 평행 경로의 목표속도는 기존 G1 이하이며, 시험용 20 ms 엔코더 한 카운트분 여유를 둔다.
+    anchor_m은 이전 후보와의 진단 비교용이고 새 정책의 판단에는 현재 프레임의 현재 모서리만 쓴다.
+    """
+    import math
+    
+&gt;   from arena_vehicle_interface.drive_feedback import MotorEncoderSpec
+E   ModuleNotFoundError: No module named 'arena_vehicle_interface'
+
+src\arena_autonomy\arena_autonomy\observed_lane_preference_trial.py:11: ModuleNotFoundError</failure></testcase><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_stale_or_front_lost_not_positive" time="0.013"><failure message="ValueError: empty input has no source observation times">def test_stale_or_front_lost_not_positive():
+        scene, _ = sensor()
+        assert current_wall_candidate(replace(scene, t_ref_s=1.1), 0., 'left', 0., .1, CFG) is None
+&gt;       assert current_wall_candidate(replace(scene, rays=()), 0., 'left', 0., .1, CFG) is None
+                                      ^^^^^^^^^^^^^^^^^^^^^^^
+
+artifacts\validation\2026-11-14\current_wall_reacquire_r521_v1\test_stage.py:103: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+C:\Python314\Lib\dataclasses.py:1778: in replace
+    return _replace(obj, **changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Python314\Lib\dataclasses.py:1812: in _replace
+    return self.__class__(**changes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+&lt;string&gt;:11: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = LocalScene(t_ref_s=0.7, source_first_s=0.6, source_last_s=0.6998, source_frame_id='laser_frame', source_epoch=0, rays=(), frame_id='base_link', source_angles_rad=None)
+
+    def __post_init__(self):
+        t_ref = _finite(self.t_ref_s, 't_ref_s')
+        if t_ref &lt; 0 or self.frame_id != 'base_link':
+            raise ValueError('invalid reference time/frame')
+        _source(self.source_frame_id, self.source_epoch)
+        if len(self.rays) &gt; MAX_RAYS:
+            raise ValueError('too many rays')
+        rays = tuple(self.rays)
+        object.__setattr__(self, 'rays', rays)
+        if self.source_angles_rad is not None:
+            angles = tuple(_finite(v, 'source_angles_rad') for v in self.source_angles_rad)
+            if len(angles) != len(rays):
+                raise ValueError('source angles/rays mismatch')
+            object.__setattr__(self, 'source_angles_rad', angles)
+        if not rays:
+            if self.source_first_s is not None or self.source_last_s is not None:
+&gt;               raise ValueError('empty input has no source observation times')
+E               ValueError: empty input has no source observation times
+
+src\arena_autonomy\arena_autonomy\local_scene.py:94: ValueError</failure></testcase><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_pass_connector_positive_normal_exit_and_occupied_counterexample" time="0.038" /><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_previous_steering_sweep_can_reject_candidate" time="0.015" /></testsuite></testsuites>

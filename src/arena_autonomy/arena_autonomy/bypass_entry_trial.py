@@ -82,8 +82,14 @@ def observed_straight_wall(scene, config, side):
     """지금 보인 한쪽 연결 벽의 직선 부분. 다른 반환점은 제거하지 않는다."""
     points = np.asarray(scene.occupied_endpoints_xy_m, dtype=float).reshape(-1, 2)
     sign = 1 if side == 'left' else -1
-    path, detail = local_path(points[sign*points[:, 1] > .10], side,
-                              offset=config.wall_offset_m, horizon=1.8)
+    # occupied_endpoints와 같은 return 순서의 방향에 동일 부분집합 마스크를 적용한다.
+    # 같은 좌표의 여러 반환도 각 광선과의 짝을 유지하며 원시 점유는 바꾸지 않는다.
+    bearings = np.asarray([math.atan2(ray.direction_xy[1], ray.direction_xy[0])
+                           for ray in scene.rays if ray.status == 'return'])
+    selected = sign*points[:, 1] > .10
+    path, detail = local_path(points[selected], side,
+                              offset=config.wall_offset_m, horizon=1.8,
+                              bearings_rad=bearings[selected])
     if path is None:
         return None, dict(reason='observed_wall_reference_missing', side=side, wall=detail)
     path = np.asarray(path)

@@ -38,6 +38,14 @@ def main(argv=None):
     goal.add_argument('profile', type=Path)
     goal.add_argument('--steering-deg', type=float, required=True,
                       help='좌회전 양수인 차량 중앙 등가각. 서보 축 각도가 아닙니다.')
+    goal.add_argument('--command-limit-rad', type=float, dest='command_limit',
+                      help='선택 실장 board의 servo.command_limit. 생략하면 기존 CAD 상한.')
+    goal.add_argument('--wheelbase-m', type=float, dest='wheelbase',
+                      help='선택 실장 board의 servo.wheelbase(m). 생략하면 기존 CAD 값.')
+    goal.add_argument('--track-m', type=float, dest='track',
+                      help='선택 실장 board의 servo.track(m). 생략하면 기존 CAD 값.')
+    goal.add_argument('--wheel-limit-rad', type=float, dest='wheel_limit',
+                      help='선택 실장 board의 servo.wheel_limit(rad). 생략하면 기존 CAD 값.')
     export = commands.add_parser('export-cpp', help='실장 확인 값을 MCU 빌드용 헤더로 내보내기. 업로드/출력 없음.')
     export.add_argument('profile', type=Path)
     export.add_argument('--assembly-id', required=True)
@@ -68,7 +76,12 @@ def main(argv=None):
             return 0
         if args.command == 'goal':
             import math
-            print(json.dumps(cad_servo_goal(data, math.radians(args.steering_deg)), allow_nan=False))
+            # 설치 생성기와 같은 선택 범위를 전달한다. 실측 count/방향/한계는 바꾸지 않는다.
+            selected = {key: getattr(args, key) for key in
+                        ('command_limit', 'wheelbase', 'track', 'wheel_limit')
+                        if getattr(args, key) is not None}
+            print(json.dumps(cad_servo_goal(data, math.radians(args.steering_deg), **selected),
+                             allow_nan=False))
             return 0
         check_profile(data, ready=True, assembly_id=args.assembly_id)
         complete = covers(data, args.required_servo_min_rad, args.required_servo_max_rad)

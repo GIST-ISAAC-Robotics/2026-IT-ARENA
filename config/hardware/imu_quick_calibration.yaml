@@ -1,0 +1,32 @@
+# 2026-11-14 사용자 요청 임시 자동 보정. 실측 완료/실차 검증 결과가 아니다.
+# controller와 독립 guard에 같은 overlay를 전달한다. 과거 시뮬레이션 기본값은 OFF다.
+/**:
+  ros__parameters:
+    motion_quick_calibration: true
+    motion_imu_frame_id: lsm6dsox_sensor
+    motion_calibration_accel_topic: /hardware_runtime/accel
+    motion_calibration_stationary_duration_s: 1.5
+    motion_calibration_min_samples: 80
+    motion_calibration_input_max_age_s: 0.15
+    motion_calibration_state_max_age_s: 0.7
+    motion_calibration_sample_gap_s: 0.08
+    motion_calibration_stationary_speed_mps: 0.025
+    motion_calibration_zero_command_mps: 0.005
+    motion_calibration_gravity_mps2: 9.80665
+    motion_calibration_gravity_tolerance_mps2: 0.5
+    motion_calibration_accel_std_limit_mps2: 0.12
+    motion_calibration_gyro_std_limit_rad_s: 0.008
+    motion_calibration_stationary_gyro_limit_rad_s: 0.12
+    # 현재 CAD 축거. 설치 실측값이라는 뜻은 아니다.
+    motion_calibration_wheelbase_m: 0.128
+    # 실제 USB 서보 observation의 검증된 부호 근거가 있을 때만 자동 후보를 얻는다.
+    motion_calibration_steering_sign_verified: false
+    motion_calibration_encoder_sign_verified: false
+    motion_calibration_initial_encoder_sign: 1
+    motion_calibration_turn_min_duration_s: 0.25
+    motion_calibration_forward_min_duration_s: 0.25
+    # PI/물리방향 미교정이어도 보정후보 내부의 공칭환산에만 사용. 제어속도로 발행하지 않는다.
+    motion_calibration_raw_encoder_candidates: true
+    motion_calibration_nominal_counts_per_motor_rev: 28.0
+    motion_calibration_nominal_gear_ratio: 11.9118
+    motion_calibration_nominal_wheel_radius_m: 0.0325

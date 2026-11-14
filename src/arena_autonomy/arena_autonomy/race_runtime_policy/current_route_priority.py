@@ -97,4 +97,15 @@ def rebase(output, submitted, current, scene, history, cfg):
     # 오래된 경로만으로 주행하지 않으며, 복구는 다음 정상 입력에서 다시 평가한다.
     if result['speed_mps'] > 0 and not _front_observed(scene):
         result.update(speed_mps=0., reason='current_route_front_observation_lost')
+    if result['speed_mps'] > 0:
+        # 현재 기하/전체 점유 sweep과 전방 관측이 통과한 결과의 인계 계약.
+        # 기존 원 경로 시각을 유지하며, 과거 점유 허가를 복사하지 않는다.
+        result['current_route_proof'] = dict(policy=POLICY, accepted=True,
+            original_path_source_s=result['path_source_s'],
+            original_path_age_s=result['path_age_s'],
+            current_evidence_first_s=result['source_first_s'],
+            current_reference_s=result['reference_s'],
+            source_timestamp_renewed=False, old_occupancy_permission_reused=False,
+            unknown_filled=False, route_geometry_age_limit_s=.5,
+            scope='current path and occupied sweep; no full-sweep visibility veto')
     return result

@@ -31,7 +31,7 @@ def scene(now,inner=True,block=False,unknown=False,source=None,epoch=0):
 
 @pytest.fixture
 def isolated(monkeypatch):
-    def fitted(points,side,offset):
+    def fitted(points,side,offset,**kwargs):
         if side=='left':return None,{'reason':'wall_segment_short'}
         return reference(),{'reason':'ok','wall_distance_m':.425,'boundary_observed_ahead_m':1.2}
     monkeypatch.setattr(lf,'local_path',fitted)
@@ -110,7 +110,7 @@ def test_existing_non_corner_outputs_equal(geometry):
 def test_unconfirmed_far_tail_is_removed_from_carried_and_command_path(monkeypatch):
     original=reference()
     full=np.vstack((original,np.column_stack((np.full(25,.425),np.linspace(.45,1.05,25)))))
-    def fitted(points,side,offset):
+    def fitted(points,side,offset,**kwargs):
         if side=='left':return None,{'reason':'wall_segment_short'}
         return full,{'reason':'ok','wall_distance_m':.425,'boundary_observed_ahead_m':1.8}
     monkeypatch.setattr(lf,'local_path',fitted)

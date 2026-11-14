@@ -1,0 +1,40 @@
+--- a/src/arena_autonomy/arena_autonomy/development_jog.py
++++ b/src/arena_autonomy/arena_autonomy/development_jog.py
+@@ -13,6 +13,8 @@
+ import sys
+ import threading
+ import time
++
++from arena_autonomy.vehicle_geometry import float32_limit_not_above
+ import uuid
+ 
+ 
+@@ -237,7 +239,7 @@
+ 
+     def publish(speed,steering):
+         msg=AckermannDriveStamped();msg.header.stamp=node.get_clock().now().to_msg()
+-        msg.header.frame_id='base_link';msg.drive.speed=float(speed)
++        msg.header.frame_id='base_link';msg.drive.speed=(float32_limit_not_above(speed) if speed > 0 else float(speed))
+         msg.drive.steering_angle=float(steering)
+         publisher.publish(msg)
+         events.append(dict(wall_s=time.monotonic(),stamp_s=now(),speed_mps=speed,
+--- a/src/arena_autonomy/arena_autonomy/wall_follow.py
++++ b/src/arena_autonomy/arena_autonomy/wall_follow.py
+@@ -2,6 +2,8 @@
+ import json
+ import math
+ import time
++
++from arena_autonomy.vehicle_geometry import float32_limit_not_above
+ 
+ import rclpy
+ from ackermann_msgs.msg import AckermannDriveStamped
+@@ -201,7 +203,7 @@
+             message.header.stamp = (self.get_clock().now().to_msg() if reference is None else
+                 rclpy.time.Time(nanoseconds=round(reference * 1e9)).to_msg())
+             message.header.frame_id = "base_link"
+-            message.drive.speed, message.drive.steering_angle = float(speed), float(steering)
++            message.drive.speed, message.drive.steering_angle = (float32_limit_not_above(speed) if speed > 0 else float(speed)), float(steering)
+             self.timing.call('command_publish', self.publisher.publish, message)
+         status.update(speed_command_mps=speed, steering_command_rad=steering)
+         if getattr(self, 'hardware_shadow', False):

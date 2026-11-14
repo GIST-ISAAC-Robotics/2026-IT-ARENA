@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="7" time="0.638" timestamp="2026-11-14T12:07:21.234433+09:00" hostname="DESKTOP-KA11CHH"><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_shifted_current_wall_uses_same_points_without_old_anchor" time="0.119" /><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_short_curved_current_fragment_positive_then_real_occupied_zero" time="0.033" /><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_normal_positive_and_non_boundary_stop_unchanged" time="0.096" /><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_stale_or_front_lost_not_positive" time="0.014" /><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_pass_connector_positive_normal_exit_and_occupied_counterexample" time="0.056" /><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_previous_steering_sweep_can_reject_candidate" time="0.015" /><testcase classname="artifacts.validation.2026-11-14.current_wall_reacquire_r521_v1.test_stage" name="test_pass_old_wall_failure_can_handoff_new_current_follow_without_cap" time="0.100"><failure message="assert not True&#10; +  where True = &lt;arena_autonomy.moving_pass.MovingPassAdapter object at 0x0000023CFF0C4CD0&gt;.active">def test_pass_old_wall_failure_can_handoff_new_current_follow_without_cap():
+        owner, _ = make_controller(HEADER)
+        adapter = owner.moving_pass
+        adapter.active = True
+        before = (0., 0., dict(reason='moving_pass_current_path_unavailable',
+            handoff_state='MOVING_PASS', moving_pass=dict(entry=dict(reason='entry_guide_current_wall_disagrees'))))
+        results = []
+        # ray 일관성을 유지한 별도 정상경로 복귀 시험. 자차 폐루프 운동 증명은 아니다.
+        for now, shift in ((.7, .16), (.8, .16), (.9, .08), (1., .08), (1.1, .08)):
+            scene, raw = sensor(now, shift=shift)
+            result = connect_moving_pass(adapter, before, scene, history(), 0., 'left', 0., .1, raw)
+            results.append(result)
+            if not adapter.active:
+                break
+        assert results[0][0] == pytest.approx(.10) and results[1][0] == pytest.approx(.10)
+&gt;       assert not adapter.active
+E       assert not True
+E        +  where True = &lt;arena_autonomy.moving_pass.MovingPassAdapter object at 0x0000023CFF0C4CD0&gt;.active
+
+artifacts\validation\2026-11-14\current_wall_reacquire_r521_v1\test_stage.py:158: AssertionError</failure></testcase></testsuite></testsuites>

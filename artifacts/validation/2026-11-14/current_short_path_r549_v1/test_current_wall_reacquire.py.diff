@@ -1,0 +1,62 @@
+--- before/tests/test_current_wall_reacquire.py
++++ after/tests/test_current_wall_reacquire.py
+@@ -65,13 +65,16 @@
+     return a[..., 0]*b[..., 1]-a[..., 1]*b[..., 0]
+ 
+ 
+-def sensor(now=.7, shift=0., end=2., curved=False, obstacle=False, closed=False, actor=None):
++def sensor(now=.7, shift=0., end=2., curved=False, obstacle=False, closed=False, actor=None,
++           left_end=None):
+     # 임의 시험 벽과 actor는 교차거리 생성에만 사용하고 제어기에는 label을 전달하지 않는다.
+     xs = np.linspace(-2., end, 160)
+     center = shift + (.05*np.sin(6*xs) if curved else xs*0)
+     segments = []
+     for sign in (-1., 1.):
+         points = np.c_[xs, center+sign*CFG.wall_offset_m]
++        if sign > 0 and left_end is not None:
++            points = points[xs <= left_end]
+         segments.extend(zip(points[:-1], points[1:]))
+     if obstacle:
+         segments.append((np.array([.18, -.22]), np.array([.18, .22])))
+@@ -174,6 +177,41 @@
+     assert baseline_command(LocalFollow(CFG), blocked)[0] == 0
+ 
+ 
++def test_short_preferred_wall_uses_current_opposite_wall_with_measured_steering():
++    cfg = replace(CFG, max_steering_rad=.28475436568260193)
++    scene, _ = sensor(left_end=.20)
++    out = reacquire.current_wall_candidate(scene, .1, 'left', 0., .1, cfg)
++    assert out is not None and 0 < out[0] <= .1
++    assert out[2]['wall_fallback'] and out[2]['path_wall'] == 'right'
++    assert out[2]['current_wall_reacquire']['preferred_wall_failure'] == 'wall_segment_short'
++    assert out[2]['path_source_s'] == scene.source_first_s
++    assert out[2]['occupied_points'] == len(scene.occupied_endpoints_xy_m)
++    assert abs(out[1]) <= cfg.max_steering_rad
++
++
++def test_opposite_reacquisition_preserves_actual_front_obstacle_stop():
++    scene, _ = sensor(left_end=.20, obstacle=True)
++    assert reacquire.current_wall_candidate(scene, .1, 'left', 0., .1, CFG) is None
++
++
++def test_no_wall_is_not_free_path():
++    scene, _ = sensor(end=.15)
++    assert reacquire.current_wall_candidate(scene, .1, 'left', 0., .1, CFG) is None
++
++
++def test_occupied_preferred_path_does_not_trigger_opposite_path_search(monkeypatch):
++    scene, _ = sensor()
++    calls = []
++    original = reacquire.local_path
++    def record(points, side, *args, **kwargs):
++        calls.append(side)
++        return original(points, side, *args, **kwargs)
++    monkeypatch.setattr(reacquire, 'local_path', record)
++    monkeypatch.setattr(reacquire, 'swept_limit', lambda *args, **kwargs: 0.)
++    assert reacquire.current_wall_candidate(scene, .1, 'left', 0., .1, CFG) is None
++    assert calls == ['left']
++
++
+ def test_normal_positive_and_actual_occupied_stop_unchanged(monkeypatch):
+     old, current = LocalFollow(CFG), LocalFollow(CFG)
+     for now in (.4, .5, .6, .7):

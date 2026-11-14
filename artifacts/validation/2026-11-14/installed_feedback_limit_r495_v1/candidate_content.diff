@@ -1,0 +1,53 @@
+--- a/scripts/runtime_installed_profile.py
++++ b/scripts/runtime_installed_profile.py
+@@ -61,7 +61,8 @@
+ 
+ 
+ def headers(board, zero, assembly_id):
+-    if type(board) is not dict or set(board) != {'schema', 'assembly_id', 'servo', *BOARD_TYPES}:
++    required = {'schema', 'assembly_id', 'servo', *BOARD_TYPES}
++    if type(board) is not dict or not required <= set(board) <= required | {'max_wheel_mps'}:
+         raise ValueError('exact runtime_installed_board_v1 fields required')
+     if board['schema'] != 'runtime_installed_board_v1':
+         raise ValueError('unknown installed board schema')
+@@ -69,6 +70,12 @@
+         raise ValueError('board assembly identity changed')
+     if type(board['servo']) is not dict or set(board['servo']) != set(SERVO_TYPES):
+         raise ValueError('exact explicit RuntimeServoConfig fields required')
++    if 'max_wheel_mps' in board:
++        # 기존 receiver의 양수/명령 상한 관계를 생성 전에 확인한다. 새 보호 판정은 아니다.
++        literal(board['max_wheel_mps'], 'double')
++        literal(board['maximum_speed_mps'], 'double')
++        if board['max_wheel_mps'] <= 0 or board['max_wheel_mps'] < board['maximum_speed_mps']:
++            raise ValueError('max_wheel_mps must be positive and >= maximum_speed_mps')
+     zero_header, zero_digest = cpp_zero_profile(zero, assembly_id=assembly_id,
+         **{key: board['servo'][key] for key in ('command_limit', 'wheelbase', 'track', 'wheel_limit')})
+     lines = ['#pragma once', '#include "mounted_steering_zero.hpp"',
+@@ -77,6 +84,8 @@
+              '  RuntimeBoardProfile p;']
+     for prefix, values, types in (('p.', board, BOARD_TYPES), ('p.servo.', board['servo'], SERVO_TYPES)):
+         lines.extend('  '+prefix+key+'='+literal(values[key], kind)+';' for key, kind in types.items())
++    if 'max_wheel_mps' in board:
++        lines.append('  p.max_wheel_mps='+literal(board['max_wheel_mps'], 'double')+';')
+     lines.extend(['  p.servo.zero=arena_steering_mount::Profile();', '  return p;', '}',
+                   '}  // namespace arena_runtime_mount', ''])
+     return zero_header.encode('ascii'), '\n'.join(lines).encode('ascii'), zero_digest
+--- a/src/arena_vehicle_interface/firmware_runtime_drive/main/board_profile.hpp
++++ b/src/arena_vehicle_interface/firmware_runtime_drive/main/board_profile.hpp
+@@ -9,6 +9,8 @@
+   int encoder_direction=0;
+   bool motor_direction_confirmed=false, forward_dir_high=false;
+   double maximum_duty=0.0, kp=0.0, ki=0.0, maximum_speed_mps=0.0;
++  // 선택형 encoder 타당성 경계. 생략 시 기존5m/s, 물리 과도 속도 보증이 아니다.
++  double max_wheel_mps=5.0;
+   std::int64_t feedback_period_us=20000;
+   arena_servo::RuntimeServoConfig servo{};
+ 
+@@ -17,6 +19,7 @@
+     c.feedback_mode=arena_actuation::FeedbackMode::kMotorShaft;
+     c.ticks_per_rev=28;c.gear_ratio=2.5*81.0/17.0;c.wheel_radius_m=.0325;
+     c.max_speed_mps=maximum_speed_mps;c.max_steering_rad=servo.command_limit;
++    c.max_wheel_mps=max_wheel_mps;
+     return c;
+   }
+   arena_actuation::Md20aForwardProfile motor_profile() const {

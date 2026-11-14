@@ -117,7 +117,9 @@ PYTHONPATH="$PWD/src/arena_autonomy${PYTHONPATH:+:$PYTHONPATH}" python3 scripts/
 
 ### 서보·라이다·엔코더
 
-- 서보: [영점 도구](../../scripts/steering_zero_profile.py)의 `record` → `confirm-mount` → 설치 bundle 생성 → [동일 상한 파생](../../scripts/runtime_installed_limits.py) 순서다. 실제 count/방향/안전 범위만 넣으며 예제 숫자를 실장값으로 쓰지 않는다. MCU 헤더 export만으로 적용 완료가 아니고 실제 선택 빌드/설치 확인과 바닥 저속 직진이 남는다. 링크 유격/하중에 따른 방향 변화를 영점으로 덮지 않는다.
+**11/14 서보 기록 확보:** 수동·전동 결과로 선택한 중립2811/운영2600–2980과 대칭 중앙16.315°를 [실측 반영](../../artifacts/validation/2026-11-14/measured_steering_apply_r541_v1/RESULT.md)에 남겼다. 이미 확보한 측정을 자동으로 다시 요구하지 않으며, 아래 설치/양쪽 ROS/host 선택은 [현재 실행 인자 안내](../../artifacts/validation/2026-11-14/runtime_update_handover_r533_v1/FIELD_SELECTION_LINK.md)를 따른다. START 버튼은 새 프로필을 자동으로 읽지 않는다. 바퀴각 실측·장치 설치/flash·바닥 확인은 완료로 취급하지 않는다.
+
+- 서보: [장착 수동 3점·미동 도구](MOUNTED_SERVO_SETUP_2026_11_14.md)로 토크 OFF에서 손으로 직진·좌우 최대에 맞춘 count와 각도계로 잰 바퀴각을 기록한다. 앞바퀴를 다시 직진에 맞춘 뒤 필요하면 최대 12 counts씩 미동한다. 장착 끝점에서 여유를 남겨 운영 범위를 정한 뒤 [영점 도구](../../scripts/steering_zero_profile.py)의 `confirm-mount` → 설치 bundle 생성 → [동일 상한 파생](../../scripts/runtime_installed_limits.py) 순서로 진행한다. MCU 헤더 export만으로 적용 완료가 아니고 실제 선택 빌드/설치 확인과 바닥 저속 직진이 남는다. 링크 유격/하중에 따른 방향 변화를 영점으로 덮지 않는다.
 - C1: [자기 반환 검토 도구](../../scripts/review_c1_self_returns.py)는 정지·주변 공간 확인이 필요한 거리 한정 후보 도구다. 60cm 벽을 차체로 오인해 마스크에 넣지 않는다. 중앙에서도 벽이 센서에서 가까우므로 실제 센서 위치와 nominal 거리대를 대조하며 모호하면 후보를 채택하지 않는다. 배선으로 새로 가려진 부분과 실제 벽을 분리할 때만 마스크를 보완한다.
 - 엔코더: 단일 모터축28카운트·11.911764706:1·65mm 기준을 유지하고 부호와 대략적인 실이동 환산을 먼저 본다. 짧은5cm 이동의 한 번 오차만으로 기어비/반경을 바꾸지 않는다. 들린 차동기 양쪽 바퀴의 개별 속도는 차체 속도 검증이 아니다.
 

@@ -117,7 +117,8 @@ class RuntimeDualDelivery:
     def offer_recheck(self, snapshot):
         return self.worker.offer_next_current(snapshot, now_s=self.clock())
 
-    def poll(self, now_s, *, previous_steering_rad, side, motion_epoch, sensor_epoch):
+    def poll(self, now_s, *, previous_steering_rad, side, motion_epoch, sensor_epoch,
+             output_dt_s=None):
         if self.pending_publication is not None:
             raise RuntimeError('previous candidate requires publication acknowledgement')
         self.collect()
@@ -137,6 +138,9 @@ class RuntimeDualDelivery:
             w.last_application = self.last_application
             state = dict(now_s=now_s, previous_steering_rad=previous_steering_rad, side=side,
                          motion_epoch=motion_epoch, sensor_epoch=sensor_epoch)
+            if output_dt_s is not None:
+                # 같은 control 시작 dt를 pending/ack/commit까지 보존한다.
+                state['output_dt_s'] = output_dt_s
             prepared = w.prepared(**state)
             if prepared['kind'] == 'candidate':
                 row = prepared['result']

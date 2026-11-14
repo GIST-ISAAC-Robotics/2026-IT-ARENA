@@ -288,6 +288,7 @@ class MovingPassGuide(EntryGuide):
     def evaluate(self,scene,history,speed,previous_steering,dt):
         if self.path is not None or not source_valid(scene):
             result=super().evaluate(scene,history,speed,previous_steering,dt)
+            result=self._current_path_preview(scene,speed,previous_steering,dt,result)
             result=self._current_follow_return(scene,history,speed,previous_steering,dt,result)
             if result.get('entry_phase')=='rejoin' and result.get('rejoin_band'):
                 self.returning_behind=result['rejoin_band'].get('return_behind_lead',False)
@@ -320,6 +321,47 @@ class MovingPassGuide(EntryGuide):
         finally:
             self.entry=original
             self.reference_provider=None
+
+    def _current_path_preview(self,scene,speed,previous,dt,result):
+        """관측된 횡이동 경로를 짧고 일정한 주시거리로 추종한다.
+
+        경로·목표 편이·점유 여유를 바꾸지 않는다. 실제 직전 조향의 변화율과
+        현재 점유/제동을 모두 다시 통과한 양수 후보만 선택한다.
+        """
+        from functools import partial
+        from arena_autonomy.adaptive_entry_preview import shorter_pursuit
+        from arena_autonomy.bypass_entry_trial import _compare_entries
+        from arena_autonomy.race_runtime_policy.current_route_priority import enabled
+        if not enabled(self.config) or self.path is None or self.follow_headway:
+            return result
+        reference=result.get('reference',{})
+        rows=result.get('candidates',())
+        if (reference.get('reason')!='current_outer_wall_rechecked_for_remembered_guide'
+                or self.side not in reference.get('walls',{}) or len(rows)!=1):
+            return result
+        row=rows[0]
+        clearance=row.get('command_clearance_m');target=row.get('target_speed_mps')
+        if (row.get('reason') not in ('known_occupied_command_hold','observed_entry_command_candidate')
+                or not all(isinstance(v,(int,float)) and not isinstance(v,bool) and math.isfinite(v)
+                           for v in (clearance,target)) or target < 0):
+            return result
+        comparison=dict(config=self.config,entry=self.entry,
+            guide=dict(reference=reference,path=self.path,offset_m=self.offset,transition_m=self.transition,
+                outer_side=self.side,
+                stationary_outer_boundary=self.stationary_outer_boundary and self.wall_confirmations>=2),
+            padding_provider=self.padding_provider,follow_headway=False)
+        # 횡이동을 시작한 때부터 같은 24 cm 목표를 추종한다. 지주에 근접해
+        # 제동이 시작된 뒤에야 주시거리를 바꾸면 경로 추종 지연을 회복하지 못한다.
+        # 짧은 목표가 점유 검사에서 거절되면 기존 유효 후보를 그대로 유지한다.
+        lookahead=.24
+        proposal=_compare_entries(scene,scene.t_ref_s,speed,previous,dt,
+            pursuit_provider=partial(shorter_pursuit,lookahead_m=lookahead),**comparison)
+        chosen=proposal.get('selected')
+        applied=chosen is not None and chosen['speed_mps']>0
+        detail=dict(applied=applied,lookahead_m=lookahead,previous_target_mps=target,
+                    previous_clearance_m=clearance,same_observed_path=True,
+                    same_occupied_returns_and_padding=True,actual_steering_rate_checked=True)
+        return {**result,**(proposal if applied else {}),'moving_path_preview':detail}
 
     def _current_follow_return(self,scene,history,speed,previous,dt,result):
         """점유 제동으로 느려지는 추월에서 현재 관측의 중심 복귀를 비교한다.
@@ -427,6 +469,15 @@ class MovingPassGuide(EntryGuide):
     def _wall_covers_guide(self,fit,wall):
         if super()._wall_covers_guide(fit,wall):
             return True
+        from arena_autonomy.race_runtime_policy.current_route_priority import enabled
+        if (enabled(self.config) and self.phase=='entry'
+                and wall.get('reason')=='current_connected_straight_wall_fit'
+                and fit[2]<=self.config.length_m/2 and fit[3]>=.30):
+            # 전방의 같은 관측 경로를 따라갈 때 후륜축 뒤까지 벽이 보여야 할
+            # 이유는 없다. 관측된 구간만 path로 잘라 쓰고 현재 모든 점유/제동은
+            # 다시 검사한다. 뒷부분을 외삽하거나 비어 있다고 채우지 않는다.
+            wall['guide_extent']='current_body_front_and_forward_entry_only'
+            return True
         # 이미 실제 후방 반환을 확인하고 복귀를 시작한 동안에만 적용한다.
         # 긴 현재 경로의 시작점이 차체 앞부분 안에 있으면 전방 추종 목표를
         # 관측 구간에서 고른다. 시작점을 후륜축까지 외삽하지 않는다.
@@ -479,16 +530,18 @@ class MovingPassAdapter:
         self.withdrawal_requested = False
         self.withdrawal_speed_cap = self.guide.entry.speed_cap_mps
 
-    def _prepare_follow_handoff(self,scene,history,speed,side,previous,dt,raw_scan):
-        # 복귀 중 현재 센서로 G1을 먼저 준비한다. 예전 경로의 허가를 옮기지 않는다.
-        if self.guide.phase not in ('rejoin','centered'):
-            return
+    def _ensure_follow_handoff(self):
         if self.handoff_follow is None:
             from arena_autonomy.local_follow import LocalFollow
             from arena_autonomy.bypass_handoff import BlockingPersistence
             self.handoff_follow=LocalFollow(self.owner.config)
             self.handoff_monitor=BlockingPersistence(self.owner.execution,
                 self.owner.config.object_motion_bound_mps,self.owner.config.open_route_speed_mps)
+    def _prepare_follow_handoff(self,scene,history,speed,side,previous,dt,raw_scan):
+        # 복귀 중 현재 센서로 G1을 먼저 준비한다. 예전 경로의 허가를 옮기지 않는다.
+        if self.guide.phase not in ('rejoin','centered'):
+            return
+        self._ensure_follow_handoff()
         self.handoff_follow.command(scene,history,speed,side,previous,dt,raw_scan=raw_scan)
         self.handoff_monitor.update(scene,history)
 
@@ -607,10 +660,12 @@ class MovingPassAdapter:
                         'aborted_to_observed_follow' if behind else 'rejoined'),
                 completed=not (behind or current_follow))}
         if chosen is None:
-            return 0., previous, dict(reason='moving_pass_current_path_unavailable', behavior='HOLD',
+            baseline = 0., previous, dict(reason='moving_pass_current_path_unavailable', behavior='HOLD',
                                      mode='g1_g2_handoff_trial', handoff_state='MOVING_PASS', simulation_trial_only=True,
                                      moving_pass=dict(target=target, entry=proposal),
                                      output_requires_independent_guard=True)
+            from arena_autonomy.current_wall_reacquire import connect_moving_pass
+            return connect_moving_pass(self, baseline, scene, history, speed, side, previous, dt, raw_scan)
         why=('moving_pass_current_follow_return' if self.guide.returning_to_current_follow else
              'moving_pass_return_behind' if self.guide.returning_behind else
              'moving_pass_yield_for_return' if self.withdrawal_requested else 'moving_pass_'+self.guide.phase)

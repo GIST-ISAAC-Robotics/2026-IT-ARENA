@@ -1,0 +1,34 @@
+--- a/src/arena_autonomy/arena_autonomy/local_path.py
++++ b/src/arena_autonomy/arena_autonomy/local_path.py
+@@ -218,10 +218,12 @@
+ 
+ 
+ def local_path(points, side, offset=.425, horizon=1.8, rays=None, piecewise_corner=False, minimum_radius=0.,
+-               narrow_occluder_bridge=False, minimum_ahead_m=.28):
++               narrow_occluder_bridge=False, minimum_ahead_m=.28, bearings_rad=None):
+     """연결된 관측 벽의 호길이 매개곡선. 수직 벽/급커브도 y=f(x)로 강제하지 않는다.
+ 
+     rays는 points와 같은 순서의 원시 광선 번호다. 주지 않으면 거리 간격만으로 연결한다.
++    bearings_rad는 같은 실제 반환 광선의 보정 후 방향이다. 주어지면 이 각도로 정렬한다.
++    센서 원점과 차체 원점의 차이로 가까운 벽과 먼 배경이 교차 정렬되는 것을 막는다.
+     narrow_occluder_bridge(선택형, 기본 꺼짐)는 벽 앞 좁은 가림체 묶음을 벽 사슬에서만 빼고
+     그 앞뒤 실제 벽점을 잇는다. 가림체 점은 호출자의 점유·보호 검사에 그대로 남는다.
+     minimum_ahead_m은 벽 앵커 앞 최소 관측 호길이다. 기본0.28m는 유지하며,
+@@ -231,12 +233,15 @@
+     points = np.asarray(points, dtype=float)
+     if points.ndim != 2 or points.shape[1] != 2:
+         return None, {"reason": "wall_lost"}
++    bearings = None if bearings_rad is None else np.asarray(bearings_rad, dtype=float)
++    if bearings is not None and (bearings.shape != (len(points),) or not np.all(np.isfinite(bearings))):
++        return None, {"reason": "wall_bearings_invalid"}
+     finite = np.all(np.isfinite(points), axis=1)
+     points = points[finite]
+     if len(points) < 12:
+         return None, {"reason": "wall_lost"}
+-    # 보정이 끝난 현재 좌표의 방위 순서. 왼쪽은 감소, 오른쪽은 증가 방향이 전진이다.
+-    angles = np.arctan2(points[:, 1], points[:, 0])
++    # 왼쪽은 감소, 오른쪽은 증가 방향이 전진이다. 광선이 없으면 기존 원점 방위를 유지한다.
++    angles = np.arctan2(points[:, 1], points[:, 0]) if bearings is None else bearings[finite]
+     order = np.argsort(-sign * angles)
+     points = points[order]
+     gaps = np.linalg.norm(np.diff(points, axis=0), axis=1)

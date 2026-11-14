@@ -1,0 +1,66 @@
+/* uno_q_v1.json: 3.3 V direct USART, TIM3 x4, TIM4 20 kHz, SPI2. */
+/ {
+  chosen {
+    /delete-property/ zephyr,console;
+    /delete-property/ zephyr,shell-uart;
+    /delete-property/ zephyr,code-partition;
+    /delete-property/ zephyr,canbus;
+  };
+  zephyr,user {
+    motor-dir-gpios = <&gpioa 12 GPIO_ACTIVE_HIGH>;
+    motor-pwm-gpios = <&gpiob 8 GPIO_ACTIVE_HIGH>;
+    imu-irq-gpios = <&gpiob 3 GPIO_ACTIVE_HIGH>;
+  };
+};
+&usart1_rx_pb7 { /delete-property/ bias-pull-up; bias-disable; };
+&flash0 { /delete-node/ partitions; };
+&usart1_tx_pb6 { bias-disable; };
+&usart1 { status = "okay"; current-speed = <1000000>; };
+&lpuart1 { status = "disabled"; };
+&spi3 { status = "disabled"; };
+&i2c2 { status = "disabled"; };
+&i2c4 { status = "disabled"; };
+&adc1 { status = "disabled"; };
+&adc4 { status = "disabled"; };
+&dac1 { status = "disabled"; };
+&fdcan1 { status = "disabled"; };
+&usbotg_fs { status = "disabled"; };
+&die_temp { status = "disabled"; };
+&vref1 { status = "disabled"; };
+&vbat4 { status = "disabled"; };
+&timers3 {
+  status = "okay";
+  st,prescaler = <0>;
+  pwm { status = "disabled"; };
+  qdec3: qdec {
+    compatible = "st,stm32-qdec";
+    status = "okay";
+    pinctrl-0 = <&tim3_ch1_pa6 &tim3_ch2_pa7>;
+    pinctrl-names = "default";
+    st,encoder-mode = <3>;
+    st,input-filter-level = <3>;
+    st,counts-per-revolution = <28>;
+  };
+};
+&tim3_ch1_pa6 { bias-disable; };
+&tim3_ch2_pa7 { bias-disable; };
+&timers4 {
+  status = "okay";
+  st,prescaler = <0>;
+  pwm4: pwm {
+    status = "okay";
+    pinctrl-0 = <&tim4_ch3_pb8>;
+    pinctrl-names = "default";
+  };
+};
+&spi2 {
+  status = "okay";
+  pinctrl-0 = <&spi2_sck_pb13 &spi2_miso_pb14 &spi2_mosi_pb15>;
+  pinctrl-names = "default";
+  cs-gpios = <&gpiob 9 GPIO_ACTIVE_LOW>;
+  imu0: imu@0 {
+    compatible = "arena,raw-spi";
+    reg = <0>;
+    spi-max-frequency = <1000000>;
+  };
+};

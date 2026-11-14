@@ -1,0 +1,187 @@
+--- v1/src/arena_autonomy/arena_autonomy/vehicle_marker_geometry.py
++++ v2/src/arena_autonomy/arena_autonomy/vehicle_marker_geometry.py
+@@ -105,6 +105,73 @@
+     return bool(lengths.min()>=6. and (np.all(cross>0) or np.all(cross<0)))
+ 
+ 
++def _black_code_evidence(gray,q,target):
++    """중복 후보의 원 영상 검은 외곽/내부 코드 표본. pose 재투영만으로 크기를 고르지 않는다."""
++    cells=6 if target['dictionary']=='DICT_4X4_50' else 9
++    cell=12;n=cells*cell
++    dictionary=cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco,target['dictionary']))
++    draw=getattr(cv2.aruco,'generateImageMarker',None) or cv2.aruco.drawMarker
++    expected=draw(dictionary,target['id'],n)
++    canonical=np.array([[0.,0.],[n-1.,0.],[n-1.,n-1.],[0.,n-1.]],np.float32)
++    warped=cv2.warpPerspective(gray,cv2.getPerspectiveTransform(q.astype(np.float32),canonical),(n,n))
++    centers=np.arange(cells)*cell+cell//2
++    bits=expected[np.ix_(centers,centers)]>127
++    samples=warped[np.ix_(centers,centers)].astype(float)
++    y,x=np.indices((n,n));border=(x<cell)|(x>=n-cell)|(y<cell)|(y>=n-cell)
++    black=float(np.median(warped[border]));white=float(np.median(samples[bits]))
++    threshold=(black+white)/2
++    border_fraction=float(np.mean(warped[border]<threshold))
++    bit_fraction=float(np.mean((samples>=threshold)==bits))
++    edge=float(np.linalg.norm(np.roll(q,-1,axis=0)-q,axis=1).mean())
++    eps=min(.08,1.5/edge);t=np.linspace(.15,.85,9)
++    inside=np.concatenate([np.column_stack((t,t*0+eps)),np.column_stack((t*0+1-eps,t)),
++        np.column_stack((1-t,t*0+1-eps)),np.column_stack((t*0+eps,1-t))])
++    outside=np.concatenate([np.column_stack((t,t*0-eps)),np.column_stack((t*0+1+eps,t)),
++        np.column_stack((1-t,t*0+1+eps)),np.column_stack((t*0-eps,1-t))])
++    unit=np.array([[0.,0.],[1.,0.],[1.,1.],[0.,1.]],np.float32)
++    xy=cv2.perspectiveTransform(np.concatenate([inside,outside]).astype(np.float32)[None],
++        cv2.getPerspectiveTransform(unit,q.astype(np.float32)))[0]
++    height,width=gray.shape
++    if (xy<0).any() or (xy[:,0]>=width-1).any() or (xy[:,1]>=height-1).any():return None
++    values=cv2.remap(gray,xy[:,0,None],xy[:,1,None],cv2.INTER_LINEAR).reshape(2,4,9).astype(float)
++    contrast=np.median(values[1]-values[0],axis=1)
++    supported=int(np.count_nonzero((contrast>=20.)&(np.median(values[0],axis=1)<threshold)))
++    evidence=dict(black_border_fraction=border_fraction,code_bit_fraction=bit_fraction,
++        edge_contrast=contrast.tolist(),supported_edges=supported,black_level=black,white_level=white)
++    evidence['supported']=white-black>=20. and border_fraction>=.90 and bit_fraction>=.90 and supported>=3
++    return evidence
++
++
++def representative_quad(rgb,quads,target):
++    """동일 ID의 거의 겹친 검출만 묶고 영상의 검은 코드 외곽 근거로 대표를 고른다."""
++    height,width=rgb.shape[:2]
++    if not quads or not all(valid_quad(q,width,height) for q in quads):return None,None
++    if len(quads)==1:return quads[0],dict(count=1,policy='single_detection')
++    areas=[float(cv2.contourArea(q.astype(np.float32))) for q in quads]
++    # 최대 quad는 군의 크기 기준일 뿐 대표로 자동 채택하지 않는다.
++    index=max(range(len(quads)),key=lambda i:areas[i]);ref=quads[index]
++    edge=float(np.linalg.norm(np.roll(ref,-1,axis=0)-ref,axis=1).mean())
++    min_iou=1.;max_ratio=1.;max_center=0.
++    for q,area in zip(quads,areas):
++        length=float(np.linalg.norm(np.roll(q,-1,axis=0)-q,axis=1).mean())
++        ratio=max(edge/length,length/edge);center=float(np.linalg.norm(q.mean(axis=0)-ref.mean(axis=0))/edge)
++        intersection=float(cv2.intersectConvexConvex(ref.astype(np.float32),q.astype(np.float32))[0])
++        iou=intersection/(areas[index]+area-intersection)
++        if (ratio>1.25 or center>.10 or iou<.70
++                or np.max(np.linalg.norm(q-ref,axis=1))>.20*edge):return None,None
++        min_iou=min(min_iou,iou);max_ratio=max(max_ratio,ratio);max_center=max(max_center,center)
++    gray=cv2.cvtColor(rgb,cv2.COLOR_RGB2GRAY);supported=[]
++    for index,q in enumerate(quads):
++        evidence=_black_code_evidence(gray,q,target)
++        if evidence is not None and evidence['supported']:supported.append((index,evidence))
++    if not supported:return None,None
++    index,evidence=max(supported,key=lambda item:(item[1]['black_border_fraction'],item[1]['code_bit_fraction'],
++        float(np.median(item[1]['edge_contrast'])),tuple(quads[item[0]].reshape(-1))))
++    return quads[index],dict(count=len(quads),policy='overlap_and_black_code_v2',
++        min_iou=min_iou,max_edge_ratio=max_ratio,max_center_fraction=max_center,
++        supported_candidates=len(supported),selected_black_code_evidence=evidence)
++
++
+ def pose_region(corners, target, profile, width, height):
+     """검출한 검은 코드 네 꼭짓점으로만 추정한다. 상대 마커 높이를 가정하지 않는다."""
+     if not valid_quad(corners,width,height):return None,'invalid_or_small_quad'
+@@ -179,14 +246,14 @@
+     for target in profile['targets']:
+         quads=[np.asarray(q,dtype=float) for identity,q in observations[target['dictionary']] if identity==target['id']]
+         if not quads:continue
+-        # 동일 코드의 중복 사각형만 병합. 서로 다른 위치의 같은 ID는 그 프레임만 제외한다.
+-        ref=quads[0]
+-        equivalent=all(q.shape==ref.shape==(4,2) and np.max(np.linalg.norm(q-ref,axis=1))<=2. for q in quads)
+-        if not equivalent:region,reason=None,'ambiguous_duplicate'
++        ref,duplicates=representative_quad(rgb,quads,target)
++        if ref is None:region,reason=None,'ambiguous_duplicate'
+         else:
+             try:region,reason=pose_region(ref,target,profile,width,height)
+             except (cv2.error,ValueError):region,reason=None,'pose_input_unusable'
+         if region is None:packet['rejected'].append(dict(dictionary=target['dictionary'],id=target['id'],reason=reason))
+-        else:packet['regions'].append(region)
++        else:
++            region['duplicate_resolution']=duplicates
++            packet['regions'].append(region)
+     packet['reason']='observed' if packet['regions'] else 'no_usable_detection'
+     return packet
+--- v1/tests/test_vehicle_marker_duplicates.py
++++ v2/tests/test_vehicle_marker_duplicates.py
+@@ -0,0 +1,88 @@
++"""원 OpenCV 4.6 중첩 quad와 배경판/테두리 반례. 인쇄 정확도 검사가 아니다."""
++import copy
++import cv2
++import numpy as np
++import pytest
++
++from arena_autonomy import vehicle_marker_geometry as geometry
++from arena_autonomy.vehicle_marker_calibration import adjust_profile
++from test_vehicle_marker_regions import profile
++
++OUTER=np.array([[600.,400.],[679.,400.],[679.,479.],[600.,479.]])
++INNER=np.array([[605.,406.],[673.,405.],[674.,473.],[606.,474.]])
++
++
++def image(identity=1,frame=False):
++    rgb=np.full((720,1280,3),255,np.uint8)
++    dictionary=cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
++    draw=getattr(cv2.aruco,'generateImageMarker',None) or cv2.aruco.drawMarker
++    rgb[400:480,600:680]=draw(dictionary,identity,80)[:,:,None]
++    if frame:cv2.rectangle(rgb,(595,395),(684,484),(0,0,0),2)
++    return rgb
++
++
++def estimate(rgb,quads,profile):
++    return geometry.estimate_regions(rgb,[(1,q) for q in quads],profile,source_stamp_s=1.,
++        frame_id='camera_color_optical_frame',epoch=0)
++
++
++@pytest.mark.parametrize('reverse',[False,True])
++def test_saved_linux_nested_quad_uses_actual_black_border(profile,reverse):
++    quads=[OUTER,INNER]
++    if reverse:quads.reverse()
++    selected,evidence=geometry.representative_quad(image(),quads,profile['targets'][0])
++    np.testing.assert_array_equal(selected,OUTER)
++    assert evidence['min_iou']==pytest.approx(4625/6241)
++    assert evidence['max_center_fraction']==0.
++    assert evidence['selected_black_code_evidence']['supported_edges']==4
++    result=estimate(image(),quads,profile)['regions'][0]
++    baseline,_=geometry.pose_region(OUTER,profile['targets'][0],profile,1280,720)
++    np.testing.assert_array_equal(result['polygon_xy_m'],baseline['polygon_xy_m'])
++    assert result['rear_center_xy_m']==baseline['rear_center_xy_m']
++    assert not result['absolute_accuracy_verified']
++
++
++@pytest.mark.parametrize('frame',[False,True])
++def test_larger_white_board_or_black_frame_is_not_automatically_selected(profile,frame):
++    # OpenCV thickness=2 frame의 실제 바깥 검은 pixel은 594..685다.
++    bigger=OUTER.mean(axis=0)+(OUTER-OUTER.mean(axis=0))*((91 if frame else 89)/79)
++    rgb=image(frame=frame)
++    selected,evidence=geometry.representative_quad(rgb,[bigger,OUTER],profile['targets'][0])
++    np.testing.assert_array_equal(selected,OUTER)
++    assert evidence['supported_candidates']==1
++    wrong,_=geometry.pose_region(bigger,profile['targets'][0],profile,1280,720)
++    correct=estimate(rgb,[bigger,OUTER],profile)['regions'][0]
++    assert correct['rear_center_xy_m'][0]>wrong['rear_center_xy_m'][0]
++
++
++@pytest.mark.parametrize('other',[
++    OUTER+[40.,0.],
++    OUTER.mean(axis=0)+(OUTER-OUTER.mean(axis=0))*.6,
++    np.roll(OUTER,1,axis=0),
++    OUTER[[0,2,1,3]],
++])
++def test_separate_scale_orientation_or_invalid_duplicate_not_merged(profile,other):
++    result=estimate(image(),[OUTER,other],profile)
++    assert not result['regions'] and result['rejected'][0]['reason']=='ambiguous_duplicate'
++
++
++def test_false_id_on_different_code_or_blank_image_has_no_supported_representative(profile):
++    for rgb in (image(identity=7),np.full((720,1280,3),255,np.uint8)):
++        assert not estimate(rgb,[OUTER,INNER],profile)['regions']
++
++
++def test_single_detection_retains_original_pose_without_new_image_gate(profile):
++    # Single detection already carries the existing detector's ID; only duplicate resolution changed.
++    blank=np.zeros((720,1280,3),np.uint8)
++    result=estimate(blank,[OUTER],profile)['regions'][0]
++    expected,_=geometry.pose_region(OUTER,profile['targets'][0],profile,1280,720)
++    assert result['rear_center_xy_m']==expected['rear_center_xy_m']
++
++
++@pytest.mark.parametrize('distance',[.2,.5])
++def test_existing_one_frontal_sample_accepts_short_box_range(profile,distance):
++    sample=dict(frontoparallel=True,measured_distance_m=distance,
++        pixel_width=800*.0348/distance,black_code_size_m=.0348,image_width_px=1280)
++    result=adjust_profile(profile,[sample])
++    assert result['camera']['fx_px']==pytest.approx(800.)
++    assert result['simple_adjustment']['absolute_accuracy_verified'] is False

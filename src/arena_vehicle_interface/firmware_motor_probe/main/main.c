@@ -25,6 +25,13 @@ static pcnt_unit_handle_t unit;
 static uint32_t boot,sequence,tx_errors;
 static bool streaming;
 static int64_t stream_start;
+#ifdef ARENA_MOTOR_START15_5S
+#define MOTOR_PROBE_NAME "motor_probe_start15_5s_v1"
+#elif defined(ARENA_MOTOR_GUARDED_5S)
+#define MOTOR_PROBE_NAME "motor_probe_guarded_5s_v1"
+#else
+#define MOTOR_PROBE_NAME "motor_probe_v1"
+#endif
 
 static uint32_t crc32(const char *s,size_t n) {
   uint32_t c=0xffffffff;
@@ -59,8 +66,8 @@ static void IRAM_ATTR on_edge(void *arg) {
 }
 static void info(void) {
   char b[600];
-  snprintf(b,sizeof(b),"{\"event\":\"info\",\"firmware\":\"motor_probe_v1\",\"boot\":%lu,\"seq\":%lu,\"gpio_a\":4,\"gpio_b\":5,\"pulls\":\"disabled\",\"pcnt_filter_ns\":1000,\"decode\":\"quadrature_x4\",\"positive_sequence\":\"00,10,11,01,00\",\"motor_pwm\":%d,\"motor_dir\":%d}",
-    (unsigned long)boot,(unsigned long)sequence++,gpio_get_level(15),gpio_get_level(6));emit(b);
+  snprintf(b,sizeof(b),"{\"event\":\"info\",\"firmware\":\"" MOTOR_PROBE_NAME "\",\"boot\":%lu,\"seq\":%lu,\"gpio_a\":4,\"gpio_b\":5,\"pulls\":\"disabled\",\"pcnt_filter_ns\":1000,\"decode\":\"quadrature_x4\",\"positive_sequence\":\"00,10,11,01,00\",\"motor_pwm\":%d,\"motor_dir\":%d,\"stop_gpio8\":%d}",
+    (unsigned long)boot,(unsigned long)sequence++,gpio_get_level(15),gpio_get_level(6),gpio_get_level(8));emit(b);
 }
 static void status(void) {
   int64_t begin=esp_timer_get_time();int count=0;
@@ -92,6 +99,10 @@ void app_main(void) {
   gpio_set_level(15,0);gpio_set_level(6,0);
   gpio_config_t out={.pin_bit_mask=(1ULL<<15)|(1ULL<<6),.mode=GPIO_MODE_INPUT_OUTPUT};
   ESP_ERROR_CHECK(gpio_config(&out));
+#ifdef ARENA_MOTOR_GUARDED_5S
+  gpio_config_t stop={.pin_bit_mask=1ULL<<8,.mode=GPIO_MODE_INPUT,.pull_up_en=GPIO_PULLUP_ENABLE};
+  ESP_ERROR_CHECK(gpio_config(&stop));
+#endif
   motor_setup();
   uart_config_t serial={.baud_rate=921600,.data_bits=UART_DATA_8_BITS,
     .parity=UART_PARITY_DISABLE,.stop_bits=UART_STOP_BITS_1,

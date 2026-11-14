@@ -1,0 +1,135 @@
+--- a/tests/test_guard_memory_command.py
++++ b/tests/test_guard_memory_command.py
+@@ -33,12 +33,13 @@
+     assert output['reason']=='known_obstacle_latched' and p.guard_memory is not None
+     return p,h,raw
+ 
+-def test_real_latch_capture_crawls_without_erasing_original_evidence_or_unknown():
++def test_real_latch_capture_preserves_unrelated_memory_original_evidence_and_unknown():
+     p,h,raw=actual_latch();before=copy.deepcopy(p.latch_evidence)
+     original=p.guard_memory.original.copy();ranges=np.array(raw.ranges)
+     p.anchor_probe.ended=p.clearance_probe.ended=True
+     result=check(p,h,raw)
+-    assert result['accepted'] and result['speed_cap_mps']==.1
++    assert result['accepted'] and result['speed_cap_mps']==.8
++    assert result['retained_points']==1 and not result['memory_relevant_to_command']
+     assert p.latched and p.latch_evidence==before
+     np.testing.assert_array_equal(p.guard_memory.original,original)
+     np.testing.assert_array_equal(raw.ranges,ranges)
+@@ -59,13 +60,21 @@
+     assert not result['accepted'] and result['previous_memory_clearance_m']<=.06
+ 
+ def test_higher_measured_speed_uses_real_braking_budget_then_low_target():
+-    p,h=seeded();result=check(p,h,measured=.5)
++    p,h=seeded();result=check(p,h,requested=.1,measured=.5)
+     assert result['accepted'] and result['speed_cap_mps']==.1
+     assert result['checked_speed_mps']==.5 and result['braking_speed_mps']>=.5
+     p,h=seeded(((.35,0.),));raw=fixture.scan()
+     raw.ranges[245:255]=[float('nan')]*10
+     result=check(p,h,raw,measured=.5)
+     assert not result['accepted'] and result['braking_speed_mps']<.5
++
++
++def test_unobserved_forward_memory_keeps_crawl_cap():
++    p,h=seeded(((.35,0.),));raw=fixture.scan()
++    raw.ranges[245:255]=[float('nan')]*10
++    result=check(p,h,raw,measured=.1)
++    assert result['accepted'] and result['speed_cap_mps']==.1
++    assert result['memory_relevant_to_command'] and result['retained_points']==1
+ 
+ def test_continuous_transport_survives_probe_window_and_motion_buffer_rollover():
+     h=MotionHistory(MotionConfig(wheel_radius_m=.0325,rear_axle_x_m=-.0675,lidar_x_m=.06,history_s=.5))
+@@ -103,19 +112,25 @@
+     assert len(p.guard_memory.points)==0 and p.latched
+     np.testing.assert_array_equal(p.guard_memory.original,original)
+ 
+-def test_real_reobservation_restores_normal_cap_and_new_loss_returns_low_cap():
+-    p,h,raw=actual_latch();assert check(p,h,raw)['speed_cap_mps']==.1
++def test_real_side_reobservation_and_new_loss_preserve_evidence_and_relevance():
++    p,h,raw=actual_latch();original=p.guard_memory.original.copy()
++    first=check(p,h,raw)
++    assert first['speed_cap_mps']==.8 and first['retained_points']>0
++    assert not first['memory_relevant_to_command'] and not first['all_retained_points_currently_resolved']
+     seen=fixture.scan(.6,[2.]*500);seen.ranges[375]=.15
+     points=project_scan(seen,h,.7,timing_verified=True)[0]
+     partial=p.evaluate(seen,points,h,.7,.8)
+     observed=limited_memory_command(p,partial,seen,points,h,.7,.8,0.,0.,0.,.135,.20,.15)
+     assert observed['accepted'] and observed['speed_cap_mps']==.8 and p.latched
++    assert observed['retained_points']==0 and observed['all_retained_points_currently_resolved']
+     missing=fixture.scan(.7,[2.]*500);missing.ranges[375]=float('nan')
+     points=project_scan(missing,h,.8,timing_verified=True)[0]
+     partial=p.evaluate(missing,points,h,.8,.8)
+     lost=limited_memory_command(p,partial,missing,points,h,.8,.8,0.,0.,0.,.135,.20,.15)
+-    assert lost['accepted'] and lost['speed_cap_mps']==.1 and lost['retained_points']>0
++    assert lost['accepted'] and lost['speed_cap_mps']==.8 and lost['retained_points']>0
++    assert not lost['memory_relevant_to_command'] and not lost['all_retained_points_currently_resolved']
+     assert p.latched and len(p.guard_memory.additional_original)>0
++    np.testing.assert_array_equal(p.guard_memory.original,original)
+ 
+ @pytest.mark.parametrize('failure',['epoch','frame','reverse_time','motion_reset','motion_missing'])
+ def test_epoch_time_motion_failures_cannot_create_permission(failure):
+@@ -152,13 +167,13 @@
+     n.motion.project=project
+     return n,outputs,statuses
+ 
+-def test_actual_control_limits_to_point_one_and_stops_for_raw_obstacle():
++def test_actual_control_ignores_unrelated_memory_and_stops_for_raw_obstacle():
+     for obstacle in (False,True):
+         p,h,raw=actual_latch()
+         if obstacle:raw.ranges[250]=.05
+         n,out,status=guard_node(raw,p,h)
+         control,_=fixture.control_method();control(n)
+-        assert out[-1].drive.speed==(0. if obstacle else .1) and p.latched
++        assert out[-1].drive.speed==(0. if obstacle else .8) and p.latched
+         report=json.loads(status[-1].data)
+         assert report['partial_observation']['retained_memory_command']['accepted'] is (not obstacle)
+ 
+--- a/tests/test_guard_memory_ray_clearance.py
++++ b/tests/test_guard_memory_ray_clearance.py
+@@ -40,17 +40,22 @@
+     result=check(p,h,raw)
+     before[375]=float('nan')  # frozen r528 check()의 명시 측방 결측
+     assert len(p.guard_memory.points)==1 and result['active_points_ray_cleared']==0
+-    assert not result.get('normal_cap_restored',False)
+-    assert not result['accepted'] or result['speed_cap_mps']<=.1
++    if case=='behind_forward_ray':
++        assert result['accepted'] and result['speed_cap_mps']==.8
++        assert result['normal_cap_restored'] and not result['memory_relevant_to_command']
++    else:
++        assert not result.get('normal_cap_restored',False)
++        assert not result['accepted'] or result['speed_cap_mps']<=.1
+     np.testing.assert_array_equal(np.array(raw.ranges),before)
+     assert p.latched
+ 
+ 
+-def test_one_unobserved_point_retains_crawl_after_other_point_is_ray_cleared():
++def test_irrelevant_unobserved_point_is_preserved_after_other_point_is_ray_cleared():
+     p,h=seeded(((.4,-.066),(.06,.15)));result=check(p,h)
+-    assert result['accepted'] and result['speed_cap_mps']==.1
++    assert result['accepted'] and result['speed_cap_mps']==.8
+     assert result['active_points_ray_cleared']==1 and result['retained_points']==1
+-    assert not result['normal_cap_restored'] and len(p.guard_memory.original)==2
++    assert result['normal_cap_restored'] and not result['memory_relevant_to_command']
++    assert not result['all_retained_points_currently_resolved'] and len(p.guard_memory.original)==2
+ 
+ 
+ def test_current_raw_obstacle_stops_after_old_location_is_cleared():
+@@ -88,7 +93,8 @@
+         result=check(p,h,raw,now=now,measured=.1)
+         assert result['accepted']
+         if tick<23:
+-            assert result['speed_cap_mps']==.1 and result['retained_points']==1
++            assert result['speed_cap_mps']==.8 and result['retained_points']==1
++            assert not result['memory_relevant_to_command'] and not result['all_retained_points_currently_resolved']
+             np.testing.assert_allclose(p.guard_memory.points,old-[.1*(now-.4),0.],atol=1e-12)
+         else:
+             assert result['speed_cap_mps']==.8 and result['active_points_ray_cleared']==1
+@@ -115,7 +121,7 @@
+ def test_same_scan_skips_ray_work_but_transports_memory_and_checks_raw(monkeypatch):
+     import arena_autonomy.guard_memory_command as module
+     p,h=seeded();raw=fixture.scan(ranges=[2.]*500)
+-    assert check(p,h,raw)['speed_cap_mps']==.1
++    assert check(p,h,raw)['speed_cap_mps']==.8
+     before=p.guard_memory.reference
+     def unexpected(*args,**kwargs):raise AssertionError('same scan reconstructed')
+     monkeypatch.setattr(module,'motion_scene',unexpected)

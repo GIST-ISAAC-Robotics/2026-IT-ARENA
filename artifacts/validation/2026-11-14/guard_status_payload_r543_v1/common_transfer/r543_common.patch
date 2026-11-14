@@ -1,0 +1,433 @@
+--- a/src/arena_autonomy/arena_autonomy/lidar_safety.py
++++ b/src/arena_autonomy/arena_autonomy/lidar_safety.py
+@@ -121,6 +121,11 @@
+             self.create_subscription(String, '/race/input_boundary', self.on_input_boundary, 10)
+         self.publisher = self.create_publisher(AckermannDriveStamped, "/drive/safe", 10)
+         self.status = self.create_publisher(String, "/safety/status", 10)
++        from arena_autonomy.guard_status_payload import make_encoder
++        self.status_encoder = make_encoder(
++            self.declare_parameter('safety_status_detail', 'full').value,
++            self.declare_parameter('safety_status_evidence_path', '').value,
++            self.get_logger().warning)
+         from arena_autonomy.native_lidar_input import subscribe_scan
+         subscribe_scan(self,self.timing.wrap('scan',self.on_scan),qos_profile_sensor_data)
+         self.create_subscription(AckermannDriveStamped, "/drive", self.timing.wrap('command', self.on_command), 10)
+@@ -283,7 +288,7 @@
+                 or self.vehicle_marker_channel.profile is not None):
+             self.previous_safe_steering = output.drive.steering_angle
+         self.publisher.publish(output)
+-        self.status.publish(String(data=json.dumps({"reason": reason, "safe_speed_mps": output.drive.speed,
++        self.status.publish(String(data=(getattr(self, 'status_encoder', None) or json.dumps)({"reason": reason, "safe_speed_mps": output.drive.speed,
+                                                     "reference_s": now, "command_stale": command_stale,
+                                                     "swept_clearance_m": clearance, "sensor": "C1",
+                                                     "no_return_policy": "unknown",
+@@ -297,6 +302,11 @@
+                                                     **({'partial_observation':partial} if getattr(self,'partial_policy',None) is not None else {}),
+                                                     **({'recent_observation':recent} if getattr(self,'recent_observation_enabled',False) else {})})))
+ 
++    def destroy_node(self):
++        from arena_autonomy.guard_status_payload import close_encoder
++        close_encoder(getattr(self, 'status_encoder', None))
++        return super().destroy_node()
++
+ 
+ def main(args=None):
+     run_node(LidarSafety, args=args)
+--- /dev/null
++++ b/src/arena_autonomy/arena_autonomy/guard_status_payload.py
+@@ -0,0 +1,179 @@
++"""선택형 상태 인코더. 제어/관측 객체를 변경하지 않고 정적 좌표만 상세 파일로 참조한다.
++
++현재 PartialObservationPolicy가 최초 래치 때 새로 만든 뒤 변경하지 않는
++correspondence_context 객체에만 적용한다. 소유자가 객체를 교체하면 새 레코드다.
++full 기본 경로는 기존 json.dumps와 동일하며 상세 파일/스레드를 만들지 않는다.
++"""
++import copy
++import hashlib
++import json
++from pathlib import Path
++import threading
++import uuid
++
++from arena_vehicle_interface.queued_log import QueuedLog
++
++
++class DetailArchive:
++    """완료 문자열만 기존 QueuedLog에 전달. write+flush 완료 전 참조를 허용하지 않는다."""
++    def __init__(self, path):
++        self.path=Path(path)
++        if not self.path.is_absolute():
++            raise ValueError('explicit absolute detail path required')
++        self.stream=self.path.open('x',encoding='utf-8',newline='\n')
++        self.archive_id=uuid.uuid4().hex
++        self.lock=threading.Lock()
++        self.results={}
++        self.sequence=0
++        try:
++            self.log=QueuedLog(self._write,capacity=4)
++        except Exception:
++            self.stream.close()
++            raise
++
++    def _write(self, text):
++        key=json.loads(text)['record_id']
++        try:
++            self.stream.write(text+'\n')
++            self.stream.flush()
++        except Exception:
++            with self.lock:self.results[key]='failed'
++            raise
++        with self.lock:self.results[key]='written'
++
++    def submit(self, context):
++        data=json.dumps(context)
++        self.sequence+=1
++        ref=dict(archive_id=self.archive_id,record_id=self.sequence,
++            sha256=hashlib.sha256(data.encode()).hexdigest(),bytes=len(data.encode()))
++        text=json.dumps(dict(schema='guard_status_context_v1',**ref,data=context))
++        with self.lock:self.results[self.sequence]='pending'
++        accepted=self.log.submit(text)
++        if not accepted:
++            with self.lock:self.results[self.sequence]='dropped'
++        return ref
++
++    def state(self, ref):
++        with self.lock:return self.results.get(ref['record_id'],'missing')
++
++    def snapshot(self):
++        return dict(path=self.path.name,archive_id=self.archive_id,**self.log.snapshot())
++
++    def close(self):
++        complete=self.log.close()
++        if complete:self.stream.close()
++        return complete
++
++
++class StatusEncoder:
++    def __init__(self, mode='full', archive=None):
++        if mode not in ('full','compact_v1'):
++            raise ValueError('unknown safety_status_detail')
++        if mode=='compact_v1' and archive is None:
++            raise ValueError('compact status requires explicit recoverable detail archive')
++        self.mode,self.archive=mode,archive
++        self._context=self._ref=None
++
++    def encode(self, status):
++        if self.mode=='full':
++            return json.dumps(status)
++        result=dict(status)
++        partial=status.get('partial_observation')
++        evidence=partial.get('latch_evidence') if isinstance(partial,dict) else None
++        context=evidence.get('correspondence_context') if isinstance(evidence,dict) else None
++        state='no_context'
++        if isinstance(context,dict):
++            if context is not self._context:
++                self._context=context
++                self._ref=self.archive.submit(context)
++            state=self.archive.state(self._ref)
++            if state in ('failed','dropped','missing'):
++                raise RuntimeError('detail archive '+state)
++            if state=='written':
++                # 나머지 latch 증거·동적 진단·현재 원시점유 결과는 그대로 전달한다.
++                compact_evidence={k:v for k,v in evidence.items() if k!='correspondence_context'}
++                compact_evidence['correspondence_context_ref']=dict(self._ref)
++                result['partial_observation']={**partial,'latch_evidence':compact_evidence}
++        result['status_detail']=dict(schema='guard_status_compact_v1',mode=self.mode,
++            context_storage=state,full_context_in_message=state!='written',archive=self.archive.snapshot())
++        # pending/failed/dropped에는 원 상세를 그대로 발행한다. 구동 출력은 건드리지 않는다.
++        return json.dumps(result)
++
++
++def _warning(warn, reason):
++    try:
++        warn('guard compact status disabled; full status retained: '+reason)
++    except Exception:
++        pass  # 진단 경고의 실패도 구동 콜백으로 전달하지 않는다.
++
++
++class SafeStatusEncoder:
++    """compact 구현/저장 오류는 한 번 경고하고 원래 full JSON 경로로 돌아간다."""
++    def __init__(self, archive, warn):
++        self.archive,self.warn=archive,warn
++        self.encoder=StatusEncoder('compact_v1',archive)
++        self.disabled_reason=None
++
++    def __call__(self, status):
++        if self.disabled_reason is None:
++            try:
++                return self.encoder.encode(status)
++            except Exception as error:
++                self.disabled_reason=type(error).__name__+': '+str(error)
++                _warning(self.warn,self.disabled_reason)
++        return json.dumps(status)
++
++    def close(self):
++        try:
++            if not self.archive.close():
++                _warning(self.warn,'detail writer did not finish')
++        except Exception as error:
++            _warning(self.warn,'detail close '+type(error).__name__+': '+str(error))
++
++
++def make_encoder(mode='full', path='', warn=lambda _:None):
++    # full에서는 경로 검사·파일·스레드·metadata를 추가하지 않는다.
++    if mode=='full':
++        return None
++    try:
++        if mode!='compact_v1':
++            raise ValueError('unknown safety_status_detail')
++        return SafeStatusEncoder(DetailArchive(path),warn)
++    except Exception as error:
++        _warning(warn,type(error).__name__+': '+str(error))
++        return None
++
++
++def close_encoder(encoder):
++    if encoder is not None:
++        encoder.close()
++
++
++def load_details(path):
++    records={}
++    for line in Path(path).read_text(encoding='utf-8').splitlines():
++        row=json.loads(line)
++        if row.get('schema')!='guard_status_context_v1':raise ValueError('unknown detail schema')
++        data=json.dumps(row['data']).encode()
++        if len(data)!=row['bytes'] or hashlib.sha256(data).hexdigest()!=row['sha256']:
++            raise ValueError('detail integrity mismatch')
++        key=(row['archive_id'],row['record_id'])
++        if key in records:raise ValueError('duplicate detail key')
++        records[key]=row
++    return records
++
++
++def restore_status(status, records):
++    result=copy.deepcopy(status)
++    metadata=result.pop('status_detail',None)
++    if metadata is None:return result
++    if metadata.get('schema')!='guard_status_compact_v1':raise ValueError('unknown compact schema')
++    evidence=(result.get('partial_observation') or {}).get('latch_evidence') or {}
++    ref=evidence.get('correspondence_context_ref')
++    if ref is not None:
++        row=records[(ref['archive_id'],ref['record_id'])]
++        if row['sha256']!=ref['sha256'] or row['bytes']!=ref['bytes']:
++            raise ValueError('referenced detail mismatch')
++        evidence.pop('correspondence_context_ref')
++        evidence['correspondence_context']=copy.deepcopy(row['data'])
++    return result
+--- /dev/null
++++ b/tests/test_guard_status_payload.py
+@@ -0,0 +1,160 @@
++"""공통 guard status의 actual control/기록 오류 계약. ROS transport는 기존 node fixture로 대체한다."""
++import copy
++import json
++import threading
++from types import SimpleNamespace as N
++
++import pytest
++
++from arena_autonomy import guard_status_payload as subject
++import test_independent_guard_route as fixture
++
++def method():
++    return fixture.control_method()[0]
++
++
++def node(kind='positive',context=None):
++    n,outputs,statuses=fixture.node(partial=False,previous=0.)
++    # 압축 대상 상세가 들어오는 수명만 고정한다. projection/sweep/braking/시각/출력은 실제 control이다.
++    evidence=dict(scope='sensor_points_only_not_object_identity',witnesses=[dict(source_index=1)],
++        reference_s=.4,correspondence_context=context if context is not None else dict(points=[[1.,2.]]))
++    partial=dict(allowed=True,reason='retained_memory_current_sweep_crawl',speed_cap_mps=.1,
++        unknown_filled=False,latch_time_s=.4,latch_reason='previous_point_in_missing_sweep',latch_evidence=evidence,
++        retained_memory_command=dict(accepted=True,speed_cap_mps=.1,requested_speed_mps=.8))
++    n.partial_policy=N(evaluate=lambda *a:dict(partial),reset=lambda:None)
++    n.command_observation_priority=False
++    if kind=='zero':n.command.drive.speed=0.
++    elif kind=='stale':n.command.header.stamp=fixture.stamp(.3)
++    elif kind=='missing':n.scan=None
++    elif kind=='obstacle':n.scan.ranges[250]=.05
++    return n,outputs,statuses,partial
++
++
++def signature(message):
++    return (message.drive.speed,message.drive.steering_angle,message.header.frame_id,
++        message.header.stamp.sec,message.header.stamp.nanosec)
++
++
++def test_full_factory_does_not_touch_files_or_start_writer(monkeypatch,tmp_path):
++    def forbidden(*a,**k):raise AssertionError('default full must not construct archive')
++    monkeypatch.setattr(subject,'DetailArchive',forbidden)
++    assert subject.make_encoder('full',str(tmp_path/'untouched.jsonl'),forbidden) is None
++    assert list(tmp_path.iterdir())==[]
++
++
++@pytest.mark.parametrize('path',['','relative/record.jsonl'])
++def test_compact_requires_run_absolute_path_but_invalid_path_falls_back(path):
++    warnings=[]
++    assert subject.make_encoder('compact_v1',path,warnings.append) is None
++    assert len(warnings)==1
++
++
++def test_same_path_restart_keeps_old_file_and_falls_back(tmp_path):
++    path=tmp_path/'run1.jsonl';warnings=[]
++    first=subject.make_encoder('compact_v1',str(path),warnings.append)
++    first({'partial_observation':{'latch_evidence':{'correspondence_context':{'points':[[1.,2.]]}}}})
++    first.archive.log.queue.join();first.close();original=path.read_bytes()
++    assert subject.make_encoder('compact_v1',str(path),warnings.append) is None
++    assert path.read_bytes()==original and len(warnings)==1
++
++
++@pytest.mark.parametrize('kind',['positive','zero','stale','missing','obstacle'])
++@pytest.mark.parametrize('mode',['full','compact_v1'])
++def test_actual_control_output_stop_and_dynamic_status_equal(kind,mode,tmp_path):
++    context=dict(points=[[1.,2.]])
++    baseline,old_out,old_status,_=node(kind,context)
++    stage,new_out,new_status,partial=node(kind,context)
++    warnings=[];path=tmp_path/'unique_run.jsonl'
++    encoder=subject.make_encoder(mode,str(path),warnings.append)
++    stage.status_encoder=encoder
++    try:
++        if encoder is not None:
++            encoder({'partial_observation':partial});encoder.archive.log.queue.join()
++        method()(baseline)
++        method()(stage)
++        assert signature(new_out[-1])==signature(old_out[-1])
++        assert new_out[-1].drive.speed==(.1 if kind=='positive' else 0.)
++        if encoder is None:
++            assert new_status[-1].data==old_status[-1].data and not path.exists()
++        else:
++            recovered=subject.restore_status(json.loads(new_status[-1].data),subject.load_details(path))
++            assert recovered==json.loads(old_status[-1].data)
++        assert warnings==[]
++    finally:subject.close_encoder(encoder)
++
++
++def test_compact_runtime_exception_keeps_actual_control_running_with_full_status(tmp_path):
++    warnings=[];encoder=subject.make_encoder('compact_v1',str(tmp_path/'run.jsonl'),warnings.append)
++    def failure(_):raise RuntimeError('synthetic encoder failure')
++    encoder.encoder.encode=failure
++    try:
++        for kind in ['positive','zero']:
++            baseline,old_out,old_status,_=node(kind)
++            stage,new_out,new_status,_=node(kind);stage.status_encoder=encoder
++            method()(baseline);method()(stage)
++            assert signature(new_out[-1])==signature(old_out[-1])
++            assert new_status[-1].data==old_status[-1].data
++        assert len(warnings)==1 and 'synthetic encoder failure' in warnings[0]
++    finally:encoder.close()
++
++
++@pytest.mark.parametrize('failure',['write','flush'])
++def test_background_disk_failure_keeps_actual_control_running_with_full_status(tmp_path,failure):
++    warnings=[];encoder=subject.make_encoder('compact_v1',str(tmp_path/'run.jsonl'),warnings.append)
++    stream=encoder.archive.stream
++    def broken_write(_):raise OSError('synthetic disk failure')
++    def broken_flush():raise OSError('synthetic flush failure')
++    encoder.archive.stream=N(write=broken_write if failure=='write' else stream.write,
++        flush=broken_flush if failure=='flush' else stream.flush,close=stream.close)
++    context=dict(points=[[1.,2.]])
++    stage,new_out,new_status,_=node('positive',context);stage.status_encoder=encoder
++    try:
++        method()(stage);encoder.archive.log.queue.join()
++        baseline,old_out,old_status,_=node('positive',context)
++        method()(baseline);method()(stage)
++        assert signature(new_out[-1])==signature(old_out[-1])
++        assert new_status[-1].data==old_status[-1].data
++        assert encoder.archive.log.failed==1 and len(warnings)==1
++        stage.command.drive.speed=0.
++        method()(stage)
++        assert new_out[-1].drive.speed==0. and len(warnings)==1
++    finally:encoder.close()
++
++
++def test_reference_is_not_published_before_first_flush_ack(tmp_path):
++    path=tmp_path/'new_run.jsonl';encoder=subject.make_encoder('compact_v1',str(path))
++    flushing,release=threading.Event(),threading.Event();stream=encoder.archive.stream
++    def blocked_flush():
++        flushing.set()
++        if not release.wait(2.):raise TimeoutError('test flush acknowledgement not released')
++        stream.flush()
++    encoder.archive.stream=N(write=stream.write,flush=blocked_flush,close=stream.close)
++    value=dict(reason='clear',safe_speed_mps=.1,reference_s=.6,partial_observation=dict(latch_time_s=.4,
++        latch_evidence=dict(witnesses=[dict(source_index=1)],correspondence_context=dict(points=[[1.,2.]]))))
++    original=copy.deepcopy(value)
++    try:
++        encoder(value);assert flushing.wait(1.)
++        pending=json.loads(encoder(value))
++        assert pending['partial_observation']==value['partial_observation']
++        assert pending['status_detail']['context_storage']=='pending'
++        release.set();encoder.archive.log.queue.join()
++        ready=json.loads(encoder(value))
++        assert ready['status_detail']['context_storage']=='written'
++        assert subject.restore_status(ready,subject.load_details(path))==value==original
++        assert encoder.archive.log.accepted==encoder.archive.log.written==1
++    finally:
++        release.set();encoder.close()
++
++
++def test_queue_drop_and_warning_failure_return_exact_full(tmp_path,monkeypatch):
++    def broken_warning(_):raise RuntimeError('synthetic logger failure')
++    encoder=subject.make_encoder('compact_v1',str(tmp_path/'run.jsonl'),broken_warning)
++    monkeypatch.setattr(encoder.archive.log,'submit',lambda _:False)
++    _,_,_,partial=node()
++    value=dict(reason='clear',safe_speed_mps=.1,partial_observation=partial)
++    try:
++        assert encoder(value)==json.dumps(value)
++        assert encoder.disabled_reason=='RuntimeError: detail archive dropped'
++        value['safe_speed_mps']=0.
++        assert encoder(value)==json.dumps(value)
++    finally:encoder.close()
+--- /dev/null
++++ b/tests/test_guard_status_payload_ros.py
+@@ -0,0 +1,50 @@
++"""ROS 사용 가능 시 별도 domain에서 실행할 상태 연결 검사. 입력 없는 0명령만 발행한다."""
++import json
++import time
++
++import pytest
++
++rclpy=pytest.importorskip('rclpy')
++from ackermann_msgs.msg import AckermannDriveStamped
++from rclpy.executors import SingleThreadedExecutor
++from std_msgs.msg import String
++from arena_autonomy.lidar_safety import LidarSafety
++
++
++@pytest.mark.parametrize('mode',['full','compact_v1'])
++def test_real_node_status_zero_output_and_detail_lifecycle(tmp_path,mode):
++    path=tmp_path/'run1_contexts.jsonl'
++    rclpy.init(args=['--ros-args','-p','safety_status_detail:='+mode,
++        '-p','safety_status_evidence_path:='+str(path)])
++    node=listener=executor=None
++    try:
++        node=LidarSafety();listener=rclpy.create_node('guard_status_contract_listener')
++        statuses=[];safe=[]
++        listener.create_subscription(String,'/safety/status',lambda m:statuses.append(json.loads(m.data)),10)
++        listener.create_subscription(AckermannDriveStamped,'/drive/safe',safe.append,10)
++        executor=SingleThreadedExecutor();executor.add_node(node);executor.add_node(listener)
++        deadline=time.monotonic()+3.
++        while (not statuses or not safe) and time.monotonic()<deadline:
++            executor.spin_once(timeout_sec=.02)
++        assert statuses and safe
++        assert all(row['reason']=='missing_input' and row['safe_speed_mps']==0. for row in statuses)
++        assert all(message.drive.speed==0. for message in safe)
++        if mode=='full':
++            assert node.status_encoder is None and not path.exists()
++            assert all('status_detail' not in row for row in statuses)
++        else:
++            assert node.status_encoder is not None and path.exists()
++            assert all(row['status_detail']['mode']=='compact_v1' for row in statuses)
++            encoder=node.status_encoder
++            encoder({'partial_observation':{'latch_evidence':{'correspondence_context':{'points':[[1.,2.]]}}}})
++            encoder.archive.log.queue.join()
++            executor.remove_node(node);node.destroy_node();node=None
++            original=path.read_bytes()
++            assert original and not encoder.archive.log.thread.is_alive()
++            node=LidarSafety()  # 같은 path에서 원 증거 보존 + full fallback, 시작 성공
++            assert node.status_encoder is None and path.read_bytes()==original
++    finally:
++        if executor is not None:executor.shutdown(timeout_sec=1.)
++        if node is not None:node.destroy_node()
++        if listener is not None:listener.destroy_node()
++        rclpy.shutdown()

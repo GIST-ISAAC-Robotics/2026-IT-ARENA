@@ -98,10 +98,13 @@ class Handler(BaseHTTPRequestHandler):
             client = query.get('client', [''])[0]
             if token(client) and role == 'operator':
                 ops.core.client_seen(client, wall)
-            if token(client):ops.preview.keepalive(client)
+            preview_requested = query.get('preview', ['1'])[0] != '0'
+            if token(client) and preview_requested:ops.preview.keepalive(client)
             state = ops.core.view(wall, time.time())
             state['manual'] = ops.manual.snapshot()
             state['preview'] = ops.preview.snapshot()
+            if not preview_requested:
+                state['preview'].update(lidar=None, camera=None)
             return self.respond(200, json.dumps(state, ensure_ascii=False, allow_nan=False), X_Arena_Role=role)
         if url.path == '/api/preview.jpg':
             data = ops.preview.jpeg()

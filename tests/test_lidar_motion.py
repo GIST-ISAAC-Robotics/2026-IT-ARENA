@@ -138,8 +138,12 @@ class MotionTests(unittest.TestCase):
     def test_input_dependency_is_sensor_only(self):
         p = ROOT / 'src/arena_autonomy/arena_autonomy/lidar_motion_ros.py'
         source = p.read_text()
-        for forbidden in ('/odom', '/sim/', '.orientation', 'linear_acceleration'):
+        for forbidden in ('/odom', '/sim/', '.orientation'):
             self.assertNotIn(forbidden, source)
+        # 11/14 명시 선택형 WAIT 보정만 specific force를 사용한다. 운동 적분은 계속
+        # 엔코더 속도와 gyro이며 가속도/조향으로 병진 정답을 만들어 넣지 않는다.
+        core = (ROOT / 'src/arena_autonomy/arena_autonomy/lidar_motion.py').read_text()
+        self.assertNotIn('linear_acceleration', core)
         ast.parse(source)
 
     def test_scan_validity_matches_existing_projection(self):

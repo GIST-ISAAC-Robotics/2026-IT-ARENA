@@ -1,0 +1,726 @@
+{
+  "scope": "two assumed asymmetric wall shapes; original r525 local and active-pass fixture protocols, not closed-loop",
+  "numpy_version": "2.5.4",
+  "compatibility": "process-local 2D determinant; Python numeric default; no installed dependency changes",
+  "command_limit_rad": 0.28475436568260193,
+  "full_follow_config": {
+    "signed_motion_policy": "forward_drive",
+    "solo_route_only": false,
+    "corridor_arc_agreement": false,
+    "ray_wall_continuity": false,
+    "piecewise_wall_trial": true,
+    "solo_straight_budget_trial": false,
+    "solo_corner_approach_trial": false,
+    "oblique_gap_trial": true,
+    "partial_observation_policy": "bounded_local_v4",
+    "known_structure_policy": "structure_aware_v1",
+    "known_structure_sectors_json": "{\"sectors_deg\": [[168.14344658741254, 3.026954460405105], [-167.94189267100495, 3.0286330838020525], [123.152834481159, 7.259987043244574], [-123.15283448115898, 7.259987043244585]], \"range_limits_m\": [[0.1546521350185877, 0.1791643871601953], [0.1547781919363293, 0.17928620601910233], [0.05794965910877819, 0.07998629412484672], [0.0579496591087782, 0.07998629412484673]]}",
+    "parallel_hold_trial": true,
+    "current_lane_preference_trial": true,
+    "current_lane_headroom_mps": 0.061225042014404256,
+    "side_departure_trial": true,
+    "pass_release_trial": true,
+    "guard_curve_trial": true,
+    "guard_observation_policy": "selected_r181",
+    "traffic_recovery_trial": true,
+    "released_rear_sweep_trial": true,
+    "released_body_gap_trial": true,
+    "static_side_release_trial": true,
+    "traffic_path_recovery_trial": true,
+    "rear_lane_keep_trial": false,
+    "rear_lane_keep_policy": "timed",
+    "corridor_fallback_enabled": true,
+    "short_boundary_prefix_enabled": true,
+    "recent_observation_enabled": false,
+    "boundary_evidence_mode": "corner_distance_candidate",
+    "occupancy_timing_mode": "per_ray_candidate",
+    "wheelbase_m": 0.128,
+    "track_m": 0.1239,
+    "wheel_radius_m": 0.0325,
+    "wheel_width_m": 0.0261,
+    "length_m": 0.207,
+    "width_m": 0.15,
+    "wall_offset_m": 0.505,
+    "road_half_m": 0.305,
+    "max_steering_rad": 0.28475436568260193,
+    "max_speed_mps": 1.0,
+    "open_route_speed_mps": 1.5,
+    "blend_open_speed_by_length": false,
+    "preview_turn_speed": false,
+    "preview_above_base_speed": false,
+    "boundary_bridge": false,
+    "traffic_boundary_refresh_trial": false,
+    "low_speed_arc_reacquire": false,
+    "standing_wall_reacquire": true,
+    "narrow_occluder_bridge": true,
+    "junction_continuity": true,
+    "expiry_route_reference_trial": true,
+    "lateral_acceleration_mps2": 3.0,
+    "memory_ttl_s": 0.3,
+    "memory_motion_limit_m": 0.45,
+    "boundary_min_ahead_m": 0.65,
+    "boundary_anchor_error_m": 0.12,
+    "boundary_agreement_m": 0.08,
+    "measurement_padding_m": 0.03,
+    "object_motion_bound_mps": 0.5,
+    "standstill_gap_m": 0.16,
+    "hold_clearance_m": 0.2,
+    "resume_clearance_m": 0.28,
+    "headway_s": 0.8,
+    "confirmations": 2,
+    "crop_edge_component_trial": true
+  },
+  "cases": [
+    {
+      "name": "asym60_gap50_left_in100",
+      "amplitude": 0.06,
+      "gap": 0.05,
+      "shift": 0.0,
+      "all_geometry_assumed_not_measured": true,
+      "wavelength_m": 1.0,
+      "joint_centers_x_m": [
+        0.4,
+        1.0
+      ],
+      "local_before": {
+        "speed_mps": 0.0,
+        "steering_rad": 0.0,
+        "reason": "follow_boundary_unconfirmed",
+        "underlying": null,
+        "original_geometry_reason": null,
+        "recovery": {},
+        "swept_clearance_m": null,
+        "boundary_reason": "local_path",
+        "boundary_ahead_m": 0.8921131119522909,
+        "moving_entry_reason": null,
+        "deferred": null
+      },
+      "local_after": {
+        "speed_mps": 0.1,
+        "steering_rad": -0.15018511267821133,
+        "reason": "local_follow",
+        "underlying": "follow_boundary_unconfirmed",
+        "original_geometry_reason": null,
+        "recovery": {
+          "cap_mps": 0.1,
+          "current_boundary_ahead_m": 0.6500000000000001,
+          "anchor_error_m": 0.11851835538584257,
+          "prior_anchor_agreement_required": false,
+          "path_memory_committed": false,
+          "actual_steering_rate_checked": true,
+          "current_angle_clearance_m": 0.64,
+          "previous_angle_clearance_m": 2.5,
+          "unknown_filled": false,
+          "output_requires_independent_guard": true
+        },
+        "swept_clearance_m": 0.64,
+        "boundary_reason": "local_path",
+        "boundary_ahead_m": 0.8921131119522909,
+        "moving_entry_reason": null,
+        "deferred": null
+      },
+      "moving_before": {
+        "speed_mps": 0.0,
+        "steering_rad": 0.0,
+        "reason": "moving_pass_current_path_unavailable",
+        "underlying": null,
+        "original_geometry_reason": null,
+        "recovery": {},
+        "swept_clearance_m": null,
+        "boundary_reason": null,
+        "boundary_ahead_m": null,
+        "moving_entry_reason": "entry_guide_current_outer_wall_unavailable",
+        "deferred": null
+      },
+      "moving_after": {
+        "speed_mps": 0.1,
+        "steering_rad": -0.15018511267821133,
+        "reason": "moving_pass_current_wall_reacquire_trial",
+        "underlying": null,
+        "original_geometry_reason": "entry_guide_current_outer_wall_unavailable",
+        "recovery": {
+          "cap_mps": 0.1,
+          "current_boundary_ahead_m": 0.6500000000000001,
+          "anchor_error_m": 0.11851835538584257,
+          "prior_anchor_agreement_required": false,
+          "path_memory_committed": false,
+          "actual_steering_rate_checked": true,
+          "current_angle_clearance_m": 0.64,
+          "previous_angle_clearance_m": 0.88,
+          "unknown_filled": false,
+          "output_requires_independent_guard": true
+        },
+        "swept_clearance_m": null,
+        "boundary_reason": null,
+        "boundary_ahead_m": null,
+        "moving_entry_reason": "entry_guide_current_outer_wall_unavailable",
+        "deferred": null
+      },
+      "helper": {
+        "speed_mps": 0.1,
+        "steering_rad": -0.15018511267821133,
+        "reason": "local_follow",
+        "underlying": null,
+        "original_geometry_reason": null,
+        "recovery": {
+          "cap_mps": 0.1,
+          "current_boundary_ahead_m": 0.6500000000000001,
+          "anchor_error_m": 0.11851835538584257,
+          "prior_anchor_agreement_required": false,
+          "path_memory_committed": false,
+          "actual_steering_rate_checked": true,
+          "current_angle_clearance_m": 0.64,
+          "previous_angle_clearance_m": 0.88,
+          "unknown_filled": false,
+          "output_requires_independent_guard": true
+        },
+        "swept_clearance_m": 0.64,
+        "boundary_reason": null,
+        "boundary_ahead_m": null,
+        "moving_entry_reason": null,
+        "deferred": null
+      },
+      "helper_trace": {
+        "local_path": [
+          {
+            "path_available": true,
+            "boundary": {
+              "reason": "local_path",
+              "boundary_samples": 191,
+              "boundary_observed_ahead_m": 0.6500000000000001,
+              "wall_distance_m": 0.41761819186723426,
+              "path_points": [
+                [
+                  0.024196957034892247,
+                  -0.11992259742792966
+                ],
+                [
+                  0.033900422415822924,
+                  -0.11514771918779226
+                ],
+                [
+                  0.043639572598381485,
+                  -0.1104470133432282
+                ],
+                [
+                  0.05342623733908712,
+                  -0.1058450685521549
+                ],
+                [
+                  0.06328668913932808,
+                  -0.10140385305584697
+                ],
+                [
+                  0.07318810926802297,
+                  -0.09705545316516574
+                ],
+                [
+                  0.08313956567688742,
+                  -0.09282163479996296
+                ],
+                [
+                  0.0931660665802167,
+                  -0.0887691177603101
+                ],
+                [
+                  0.10323847540148356,
+                  -0.08483322190876762
+                ],
+                [
+                  0.11335970880354354,
+                  -0.08102374331751447
+                ],
+                [
+                  0.12355009841466011,
+                  -0.07740260231215375
+                ],
+                [
+                  0.13379909175117444,
+                  -0.07395222065980969
+                ],
+                [
+                  0.14410004693688452,
+                  -0.07066095739131933
+                ],
+                [
+                  0.15445497447895495,
+                  -0.06754298904670038
+                ],
+                [
+                  0.1648655547351324,
+                  -0.0646144192017511
+                ],
+                [
+                  0.17534308994001954,
+                  -0.061935268981894685
+                ],
+                [
+                  0.18587303223764598,
+                  -0.05947214913959073
+                ],
+                [
+                  0.19645491210680915,
+                  -0.057243968801809035
+                ],
+                [
+                  0.2070872028564308,
+                  -0.05527109245952887
+                ],
+                [
+                  0.2177670966442682,
+                  -0.05357524183085857
+                ],
+                [
+                  0.22849027247747114,
+                  -0.05217933585161317
+                ],
+                [
+                  0.23925066544875237,
+                  -0.05110725999332151
+                ],
+                [
+                  0.25004024917673673,
+                  -0.050383557679190796
+                ],
+                [
+                  0.260849337934447,
+                  -0.05006726706047212
+                ],
+                [
+                  0.271662078583423,
+                  -0.05019127162224044
+                ],
+                [
+                  0.28246077606675146,
+                  -0.050752042096225004
+                ],
+                [
+                  0.29321932569704323,
+                  -0.05183340312226027
+                ],
+                [
+                  0.30391049079087645,
+                  -0.05345234817324559
+                ],
+                [
+                  0.3144966053488972,
+                  -0.05565218519294704
+                ],
+                [
+                  0.32495029965213235,
+                  -0.058416370901621224
+                ],
+                [
+                  0.3352185541613312,
+                  -0.06180386335970305
+                ],
+                [
+                  0.345303389332694,
+                  -0.06570488487159697
+                ],
+                [
+                  0.3551474501298388,
+                  -0.07017872773912957
+                ],
+                [
+                  0.36477426882754704,
+                  -0.07510249318970023
+                ],
+                [
+                  0.3741791803954106,
+                  -0.08043873372305843
+                ],
+                [
+                  0.38335787362763407,
+                  -0.0861566731113177
+                ]
+              ],
+              "path_anchor_error_m": 0.11851835538584257
+            }
+          }
+        ],
+        "pursue_path": [
+          [
+            0.1,
+            -0.15018511267821133,
+            0.3784832616031838
+          ]
+        ],
+        "swept_limit": [
+          {
+            "angle": -0.15018511267821133,
+            "clearance": 0.64
+          },
+          {
+            "angle": 0.0,
+            "clearance": 0.88
+          }
+        ],
+        "braking_speed": [
+          0.9564659966250539
+        ]
+      },
+      "local_positive_to_zero": false,
+      "moving_positive_to_zero": false,
+      "positive_moving_exact_match": true,
+      "statuses": {
+        "return": 486,
+        "unknown": 14
+      },
+      "unknown_source_indices": [
+        167,
+        168,
+        169,
+        170,
+        171,
+        214,
+        215,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326
+      ],
+      "raw_scene_unchanged": true,
+      "original_ray_metadata_preserved": true,
+      "left_inward_m": 0.1,
+      "left_phase_rad": 0.0,
+      "right_phase_rad": 1.5707963267948966,
+      "elapsed_windows_s": 0.24786289999974542
+    },
+    {
+      "name": "asym60_gap50_left_in100_actual_obstacle",
+      "amplitude": 0.06,
+      "gap": 0.05,
+      "shift": 0.0,
+      "obstacle": true,
+      "all_geometry_assumed_not_measured": true,
+      "wavelength_m": 1.0,
+      "joint_centers_x_m": [
+        0.4,
+        1.0
+      ],
+      "local_before": {
+        "speed_mps": 0.0,
+        "steering_rad": 0.0,
+        "reason": "follow_boundary_unconfirmed",
+        "underlying": null,
+        "original_geometry_reason": null,
+        "recovery": {},
+        "swept_clearance_m": null,
+        "boundary_reason": "local_path",
+        "boundary_ahead_m": 0.43655837934745584,
+        "moving_entry_reason": null,
+        "deferred": null
+      },
+      "local_after": {
+        "speed_mps": 0.0,
+        "steering_rad": 0.0,
+        "reason": "follow_boundary_unconfirmed",
+        "underlying": null,
+        "original_geometry_reason": null,
+        "recovery": {},
+        "swept_clearance_m": null,
+        "boundary_reason": "local_path",
+        "boundary_ahead_m": 0.43655837934745584,
+        "moving_entry_reason": null,
+        "deferred": null
+      },
+      "moving_before": {
+        "speed_mps": 0.0,
+        "steering_rad": 0.0,
+        "reason": "moving_pass_current_path_unavailable",
+        "underlying": null,
+        "original_geometry_reason": null,
+        "recovery": {},
+        "swept_clearance_m": null,
+        "boundary_reason": null,
+        "boundary_ahead_m": null,
+        "moving_entry_reason": "entry_guide_current_outer_wall_unavailable",
+        "deferred": null
+      },
+      "moving_after": {
+        "speed_mps": 0.0,
+        "steering_rad": 0.0,
+        "reason": "moving_pass_current_path_unavailable",
+        "underlying": null,
+        "original_geometry_reason": null,
+        "recovery": {},
+        "swept_clearance_m": null,
+        "boundary_reason": null,
+        "boundary_ahead_m": null,
+        "moving_entry_reason": "entry_guide_current_outer_wall_unavailable",
+        "deferred": null
+      },
+      "helper": {
+        "speed_mps": 0.0,
+        "candidate_available": false
+      },
+      "helper_trace": {
+        "local_path": [
+          {
+            "path_available": true,
+            "boundary": {
+              "reason": "local_path",
+              "boundary_samples": 171,
+              "boundary_observed_ahead_m": 0.43655837934745584,
+              "wall_distance_m": 0.21827918967372803,
+              "path_points": [
+                [
+                  -0.3250000000000001,
+                  0.2182791896737275
+                ],
+                [
+                  -0.3250000000000001,
+                  0.20580609312094303
+                ],
+                [
+                  -0.32500000000000007,
+                  0.19333299656815858
+                ],
+                [
+                  -0.32500000000000007,
+                  0.1808599000153741
+                ],
+                [
+                  -0.32500000000000007,
+                  0.16838680346258966
+                ],
+                [
+                  -0.32500000000000007,
+                  0.1559137069098052
+                ],
+                [
+                  -0.32500000000000007,
+                  0.14344061035702071
+                ],
+                [
+                  -0.32500000000000007,
+                  0.13096751380423627
+                ],
+                [
+                  -0.32500000000000007,
+                  0.1184944172514518
+                ],
+                [
+                  -0.32500000000000007,
+                  0.10602132069866733
+                ],
+                [
+                  -0.32500000000000007,
+                  0.09354822414588287
+                ],
+                [
+                  -0.32500000000000007,
+                  0.0810751275930984
+                ],
+                [
+                  -0.32500000000000007,
+                  0.06860203104031394
+                ],
+                [
+                  -0.32500000000000007,
+                  0.056128934487529494
+                ],
+                [
+                  -0.32500000000000007,
+                  0.04365583793474502
+                ],
+                [
+                  -0.32500000000000007,
+                  0.031182741381960574
+                ],
+                [
+                  -0.32500000000000007,
+                  0.018709644829176104
+                ],
+                [
+                  -0.32500000000000007,
+                  0.006236548276391638
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.006236548276392804
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.01870964482917728
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.03118274138196174
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.04365583793474624
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.05612893448753069
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.06860203104031513
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.08107512759309962
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.09354822414588405
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.1060213206986685
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.11849441725145295
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.13096751380423746
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.1434406103570219
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.15591370690980635
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.16838680346259086
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.1808599000153753
+                ],
+                [
+                  -0.32500000000000007,
+                  -0.19333299656815975
+                ],
+                [
+                  -0.325,
+                  -0.20580609312094428
+                ],
+                [
+                  -0.32499999999999996,
+                  -0.21827918967372872
+                ]
+              ],
+              "path_anchor_error_m": 0.32500000000000007
+            }
+          }
+        ]
+      },
+      "local_positive_to_zero": false,
+      "moving_positive_to_zero": false,
+      "positive_moving_exact_match": true,
+      "statuses": {
+        "return": 500
+      },
+      "unknown_source_indices": [],
+      "raw_scene_unchanged": true,
+      "original_ray_metadata_preserved": true,
+      "left_inward_m": 0.1,
+      "left_phase_rad": 0.0,
+      "right_phase_rad": 1.5707963267948966,
+      "elapsed_windows_s": 0.19053129999883822
+    }
+  ],
+  "WSL": false,
+  "Jetson": false,
+  "Gazebo": false,
+  "obstacle_preserved_zero": true,
+  "common_file_changes": false,
+  "success_search_repeated": false,
+  "source_hashes": {
+    "artifacts/validation/2026-11-14/field_large_walls_r525_v1/probe.py": "88c5c2ca063a073f83e68b5c0f2398f94f2536847a3e34ee3e40c9b673d9e566",
+    "artifacts/validation/2026-11-14/field_large_walls_r525_v1/sensor_generator.py": "e123d0a208ff96202553542f0e9e9f52716a223e182ea08670237799255785a1",
+    "artifacts/validation/2026-11-14/measured_steering_apply_r541_v1/selected_v2/derived_limits.json": "8d2c68b2c7f85e8a04aabba2cca366a267a425e2882e02ada7bc6cca5d61b21e",
+    "src/arena_autonomy/arena_autonomy/__init__.py": "b6513b8cab5e1d835a27ff4407bc4045eeb90b1e928080c61362735055428f60",
+    "src/arena_autonomy/arena_autonomy/adaptive_entry_preview.py": "c4cc57d82064ed427d2c56bdedb3580b1c7a74f6d9ccd494e9ffb310465f0366",
+    "src/arena_autonomy/arena_autonomy/anchor_clearance_trial.py": "7fc01687c88d5e7e1f4236fd33eb52d4950d4c64a0ff7298a174d8d8ddac0375",
+    "src/arena_autonomy/arena_autonomy/boundary_evidence.py": "1432454c4c8bb4b81edc96d03a08a4c5d842f21d97843ae1190a5ec570df868c",
+    "src/arena_autonomy/arena_autonomy/bypass_corridor_trial.py": "79b6fb0eb5cca5257dd516ccccb70d40d1b16748c662004a0e7545eeed4b41ab",
+    "src/arena_autonomy/arena_autonomy/bypass_entry_follow.py": "b8057ba27ea213029d8ae3e6274f908266ab8c2da8875fd6590ed86e7289f929",
+    "src/arena_autonomy/arena_autonomy/bypass_entry_trial.py": "7ec85a945bc78d6bde801e0f6ab2ff5951473e0506098f728164e705438158ec",
+    "src/arena_autonomy/arena_autonomy/bypass_handoff.py": "807944541a41a8fcf476f7a2eb69178a1a65f86feee25dbbfd939f607b0dcd86",
+    "src/arena_autonomy/arena_autonomy/bypass_handoff_corridor_trial.py": "5f85b4a44abc3e4c6a0b5b4bdf60f2b10cdc29cb3b36641eb42bf4ec1d72687a",
+    "src/arena_autonomy/arena_autonomy/bypass_initial_reference.py": "7c00b12c714095db2e8129d6764b8f3f16467b37239639686a3c527a1d1c87cd",
+    "src/arena_autonomy/arena_autonomy/bypass_motion_pause_trial.py": "c09f3da4a11327dd799d372130aa98f89186724f743536d207511550adf9c17a",
+    "src/arena_autonomy/arena_autonomy/bypass_observed_return.py": "43cd1772f538716df406fefa2451a3137b7d7d556a95d1cd0325c75d049b4561",
+    "src/arena_autonomy/arena_autonomy/bypass_preparation_hold.py": "3541b6f6b148625676dc8d179141b18bdd3862149743fe60a832f9081656c82f",
+    "src/arena_autonomy/arena_autonomy/bypass_relative_yield.py": "e8f880295fb6c90c3de9be75c2119505e70e120104ad77d3786102aca8ab378a",
+    "src/arena_autonomy/arena_autonomy/bypass_relative_yield_pause.py": "eefe4b03132abd356d527a70e5c6a9fe5366a7081fc920755cdc31ddd1ab9ffc",
+    "src/arena_autonomy/arena_autonomy/bypass_signed_hold_trial.py": "029d5d28927e7ef959e56ec1eba6145e167e17a8fffc8de49a23b6fabd5e662d",
+    "src/arena_autonomy/arena_autonomy/bypass_wall_fit.py": "c95440591c58fcb9ac058ba8d59b45d6419a12ea42a7148abf2c108b4d8c370e",
+    "src/arena_autonomy/arena_autonomy/bypass_yield_progress.py": "4190d2c5594c0b50110b2956def7560e3a9900d54e87f1edb6e2ccd6ca7d980f",
+    "src/arena_autonomy/arena_autonomy/corner_corridor.py": "c5dd4a13fdd926221fd4cd81a1a5dd69d16303bb5e0bb4f4e1680c6599c7bb7c",
+    "src/arena_autonomy/arena_autonomy/corner_distance.py": "2ee17d397ba876b32f14a84bc9d1cb9674139617dee509d04cc5e2260ab81ba7",
+    "src/arena_autonomy/arena_autonomy/corner_evidence.py": "131b5b7479eed6a6b012914ae2a21efa80c9e39ed57d87bf249b4579e4ace652",
+    "src/arena_autonomy/arena_autonomy/corridor_observer.py": "cce2cf30d6125e46cccdb6c5e0c139889cc85b60f9a8378f2a0ff3dcd01a1f38",
+    "src/arena_autonomy/arena_autonomy/corridor_roles.py": "c74fa4260f9f9e072e7290de374391da626f890a4df81b05ae848483200c3edc",
+    "src/arena_autonomy/arena_autonomy/crop_edge_selection.py": "07bd3edb7f6c1d6487aa5b062b10e936b2d323d1a6a0d88ad9b51347156241d9",
+    "src/arena_autonomy/arena_autonomy/current_lane_preference.py": "f3d2b6d20c10c873b5f42ea47d688e56fe218f3582d8c525c50c52d997c8afb5",
+    "src/arena_autonomy/arena_autonomy/current_wall_reacquire.py": "1831c8d0602e5b1b39ede71d5982c9c516754c32cbca4daab84548a106abd034",
+    "src/arena_autonomy/arena_autonomy/follow_trace.py": "71a117eb2cc9f17df2461b5a341af142824c9431cd29c046366ae3684b15808d",
+    "src/arena_autonomy/arena_autonomy/fresh_parallel_speed_trial.py": "1a2b662d3ddd885190c1ccacf0647a6061ceeb0f772352a477169cbc6baa20d9",
+    "src/arena_autonomy/arena_autonomy/front_patch_motion.py": "0735e39fa944bbfd6db6cb3dc91aab28424da2479bfc5cf2f1ddd22e1c23a86e",
+    "src/arena_autonomy/arena_autonomy/known_structure.py": "4cae35bbc944351d7ab1536eadcfa564d67b516df682827dbc5be6e6e61563f0",
+    "src/arena_autonomy/arena_autonomy/lateral_intent.py": "1c8b5f876b51860f1bb8f2d1dec319a863bb55fe329c8fe5b9d39b742a2f86c3",
+    "src/arena_autonomy/arena_autonomy/lidar_motion.py": "aeba9a02076da7d053205f7f3b2f41b75dc11dca5769dc8edc375eafebfe1358",
+    "src/arena_autonomy/arena_autonomy/lidar_observation.py": "7d7afc7c597eb2fdc503b53311fb884a66b0a8637c70e3a13ba2bb4bee6937e6",
+    "src/arena_autonomy/arena_autonomy/lidar_source_frame.py": "1d879939cb09ad2baaa35fd2cf6f477174ff54bfda94ec9b01a8d337c50ba29d",
+    "src/arena_autonomy/arena_autonomy/linear_observation.py": "8629e74ef096eca74e3738df808b7157a5050d20b6d83aec4b237e545cc02956",
+    "src/arena_autonomy/arena_autonomy/local_follow.py": "405b5dbffe8ed82fc5052db5221f7818a8e210357f8eb4e5beb58bf8b5c4df11",
+    "src/arena_autonomy/arena_autonomy/local_path.py": "b0f2a45256382db68e7c29652ab3eda843e14412de759ab07802d7a15b882eeb",
+    "src/arena_autonomy/arena_autonomy/local_scene.py": "93367c56a16beedbd37561ce3d9258db23c20bf2a281f841a8a6d08cb3522d4a",
+    "src/arena_autonomy/arena_autonomy/m3_execution_trial.py": "2dfd8944a35241f29fe003509edd7474ea2f06c027a7849325df94f9d88a91a3",
+    "src/arena_autonomy/arena_autonomy/m3_observed_follow.py": "fd1b7860901c3e8a09422c82c3102a319ed16a57f74c2cea88ff34991923e11a",
+    "src/arena_autonomy/arena_autonomy/measurement_scan.py": "a4ecc18c6076753d3637ca3b2f37fb94733b11fcb4db22666515e782f41701f5",
+    "src/arena_autonomy/arena_autonomy/moving_pass.py": "bbe915652f426fc0b2b0de3fdac25eb187ca890cae1eb5a9091b6bd8a2e46bf0",
+    "src/arena_autonomy/arena_autonomy/nearby_face_motion.py": "e32960d372c3eb889887bb4cfe5519db1700aabcf984a09f47c7de690e9a5fbe",
+    "src/arena_autonomy/arena_autonomy/numeric_kernels.py": "7b3a52ba431fe0221fbbb026dac7f7f1006af6dde727da99fc6c8bae93a808d6",
+    "src/arena_autonomy/arena_autonomy/observation_lateral.py": "05f7c2f1e34e223f34179fd09d34af795a782c57d1f51497ef9f3fb303277f25",
+    "src/arena_autonomy/arena_autonomy/observation_support.py": "888bed2d0ca47878ef9855f84430e88d90fd8301d474e5303c570bb8b4e198cf",
+    "src/arena_autonomy/arena_autonomy/observed_lane_preference_trial.py": "5b3f969c458de8d40dc1ef924ab3de953c4dba774c8843417e1ca612aac44867",
+    "src/arena_autonomy/arena_autonomy/observed_lateral_trial.py": "fe202d0ec6991a4cc4f328a70ada6d92bbc3c9ab660e38feb3d333a9f7bfb818",
+    "src/arena_autonomy/arena_autonomy/occupancy_timing.py": "4d75e1172d16a50c273fb8f8cffc407bbbec838556b8a3dec9bc87d9a783970f",
+    "src/arena_autonomy/arena_autonomy/parallel_lane_trial.py": "8d15c181fa54b696599388fb12295e7599dfbdd19d169c088b9ad89b0eb1ecf0",
+    "src/arena_autonomy/arena_autonomy/partial_observation.py": "1f4f8d2e2b52ecf6b9488fa5cc56d5842a38087917a4a7c1decdd139ed10c873",
+    "src/arena_autonomy/arena_autonomy/partial_surface_alignment.py": "bd73af32b17fa42c97ed9ecf428cd46b3f44adf1e937fdc97dafd881e44222a3",
+    "src/arena_autonomy/arena_autonomy/pass_release_trial.py": "690287c4a6e573b0b52848a6c2519e81969a44f7d272e2a774e485ac0c071955",
+    "src/arena_autonomy/arena_autonomy/piecewise_wall.py": "c200bc43cf2b2ba97b2580b56c2c8c0a79d608563087f21fec033f348a1ef55b",
+    "src/arena_autonomy/arena_autonomy/point_set.py": "2420ed321234f06dfcf9f5a112df9a72dd264d8f38219bf9a22cfbdb326a6ed7",
+    "src/arena_autonomy/arena_autonomy/polygon_batch.py": "2a2d32ea65d0ccab07b6fa0828911a75e5e752f1bafd5bbde354ae553cdf53e9",
+    "src/arena_autonomy/arena_autonomy/race_runtime_policy/__init__.py": "7341b471edb2f9bb50aac22a437f903d4d8ab737b30edfb2fdbe5ea002623cc8",
+    "src/arena_autonomy/arena_autonomy/race_runtime_policy/current_route_priority.py": "d797637d30352dd938ad47e8df0dc613692f1cbed69fa360d6e7ce2d8f8c7acf",
+    "src/arena_autonomy/arena_autonomy/race_runtime_policy/guard_crawl.py": "dae75efb823809e61cc1ed23344a4299bbefb304c574fcd8bc1fa3ec04bc8fe8",
+    "src/arena_autonomy/arena_autonomy/race_runtime_policy/released_plan.py": "d517d6044a8f75aa970bed8ec8368d2ab9103f9be199151b2fb7fa7c43abb799",
+    "src/arena_autonomy/arena_autonomy/race_runtime_policy/terminal_plan.py": "5649509a2f13dd1aa43a27ee3d7b9763a1777c389c1e3ff303e163aa29ef8f73",
+    "src/arena_autonomy/arena_autonomy/rear_face_motion.py": "6f1cc1a7ca9d537ced0f8ec46676cd22e93dc4c3d5693d5af5cef30e76e5954e",
+    "src/arena_autonomy/arena_autonomy/rear_fringe_trial.py": "cd39ebe9659e83bcd4fe78812a26f8b9cb626a3750bf1d24e38d6773d8202943",
+    "src/arena_autonomy/arena_autonomy/recovery_geometry.py": "2d3398b6c60f8f670d3b983c7d48f999b237501a0bd0f5d24260add2f8765ebd",
+    "src/arena_autonomy/arena_autonomy/scan_input.py": "8d4f878aeadc23c5cabca36a596f99baafbdd66941d7ac70ee8771aab09d15cb",
+    "src/arena_autonomy/arena_autonomy/scan_topology.py": "b8c49aa529c312e415a36072b92220c6674fa1dc931f9070e12ca3e872089324",
+    "src/arena_autonomy/arena_autonomy/scene_motion.py": "31fef686fddbabefab99bd49447b0b53938d2b6e0608b31f2257a0be9e8c1003",
+    "src/arena_autonomy/arena_autonomy/static_side_return.py": "e678285be8a7883f7696097913c5aa5b3b2d8bccbfa7cb2713d5ce4dee3f1ec3",
+    "src/arena_autonomy/arena_autonomy/stopped_entry_centering.py": "18b7add21f2cc43a8aa0c0f28e73241d5ae14298615b54b7091dadd57e5e20a3",
+    "src/arena_autonomy/arena_autonomy/surface_anchor_trial.py": "f0ec1d63fcad8d4524bcf33def27c077a0ff69b10d2c53bf0be49bc7b23e37e2",
+    "src/arena_autonomy/arena_autonomy/traffic_path_recovery_trial.py": "9bd9a2498f4ed242cbcecc55f2b908ddce092113a7f914dbecf055140874b875",
+    "src/arena_autonomy/arena_autonomy/traffic_recovery_trial.py": "ab7da15968d301abdb2dba910f608dd74ef5138f7cc99eb3a1b6b8c801362c87",
+    "src/arena_autonomy/arena_autonomy/traffic_solo_gap.py": "ede81919ae70a2de0c33e9b632622bf4b8f53c486bd3788fe4809ce9292d1628",
+    "src/arena_autonomy/arena_autonomy/vehicle_marker_occupancy.py": "ec849bf56c57fad54ad8ed182cb66b3f9f0d89f821c1703b97ea1216ef19123e",
+    "src/arena_autonomy/arena_autonomy/wall_reference_support.py": "41ad45fb726e9408530c982ad807c805bc0998979180bb2bdebd0689c4410d7b",
+    "src/arena_vehicle_interface/arena_vehicle_interface/__init__.py": "9c3a6867a92f845a9953e7a888e3b387b94640485cc45f2940754104c2372561",
+    "src/arena_vehicle_interface/arena_vehicle_interface/drive_feedback.py": "be4a2f804381a0e492e8cc831d57d32984a2b8baf3fbafaae1444e72b757c504",
+    "src/arena_vehicle_interface/arena_vehicle_interface/queued_log.py": "03c96124f5f5e2f4bbee7210e9ff1b16458c62537ef4ac15d00944d6a9b11300",
+    "tests/test_current_wall_reacquire.py": "ba0d32aa4f078b19d453eaa7f8b7c56bba14548ab4bc4f17876f1a32aa64f704"
+  }
+}

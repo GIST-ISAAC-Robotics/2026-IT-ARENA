@@ -1,0 +1,166 @@
+{
+  "revision": "v1-20261114-usb-stop-excluded",
+  "status": "물리STOP 사용자 제외 / 나머지 기능 유지 / 엔코더 정합 미완료 / Jetson OFF·실물 안정성 미검증",
+  "board": "Jetson Orin Nano Developer Kit Super / P3768 기준 J12",
+  "numbering": "J12 BOARD 물리 핀 번호. SoC GPIO 번호가 아님. 실제 핀1 방향은 보드에서 확인",
+  "three_v3_budget_ma": 100,
+  "signals": [
+    {
+      "net": "IMU_SDA",
+      "pin": 3,
+      "function": "I2C SDA",
+      "endpoint": "Adafruit 4438 하단 SDA",
+      "status": "SPI에서 I2C로 변경; 드라이버·통신 미검증"
+    },
+    {
+      "net": "IMU_SCL",
+      "pin": 5,
+      "function": "I2C SCL",
+      "endpoint": "Adafruit 4438 하단 SCL",
+      "status": "3.3 V 구동; 기존 SPI 펌웨어 재사용 불가"
+    },
+    {
+      "net": "MOTOR_DIR",
+      "pin": 29,
+      "function": "GPIO output / PQ.05",
+      "endpoint": "MD20A DIR",
+      "status": "전진/후진 부호와 부팅 LOW 미검증"
+    },
+    {
+      "net": "ENC_A_3V3",
+      "pin": 31,
+      "function": "GPIO input / PQ.06",
+      "endpoint": "CF A1 (현재 직결 미채택)",
+      "status": "TXS 내부풀업·지속 구동으로TXB ±2mA 요구 충족 근거 없음"
+    },
+    {
+      "net": "MOTOR_PWM",
+      "pin": 32,
+      "function": "PWM / PG.06 / 32e0000.pwm",
+      "endpoint": "MD20A PWM",
+      "status": "20 kHz 후보; pinmux·파형·0출력·종료·OS정지 시 차단 미검증"
+    },
+    {
+      "net": "ENC_B_3V3",
+      "pin": 33,
+      "function": "GPIO input / PH.00",
+      "endpoint": "CF A2 (입력 정합 확인 경로)",
+      "status": "이 핀은 PWM이 아닌 GPIO 입력으로 설정"
+    }
+  ],
+  "headers": [
+    {
+      "pin": 1,
+      "destination": "T3V3 → IMU VIN + IMU CS + CF VA/OE",
+      "role": "3.3 V 공급; J12 전체 합계100 mA 이내 후보"
+    },
+    {
+      "pin": 6,
+      "destination": "IMU GND",
+      "role": "신호/전원 GND; 하단 DO는 미연결"
+    },
+    {
+      "pin": 9,
+      "destination": "TGND → CF GND + 엔코더 GND + J01 CN5−",
+      "role": "센서 공통 기준; 모터 전력 귀환 아님"
+    },
+    {
+      "pin": 25,
+      "destination": "MD20A 신호 GND",
+      "role": "PWM/DIR 기준; VB− 전력선 별도"
+    }
+  ],
+  "imu_local": [
+    "하단 CS → T3V3 (I2C 모드)",
+    "하단 DO는 미연결; 기존 주소 선택을 유지하고0x6A/0x6B 확인",
+    "뒷면 주소 점퍼 SJ1이 닫힌 상태에서 DO를 GND에 연결하지 않음 (3.3V 단락 위험)",
+    "3Vo·I1·I2·SCX·SDX·상단 CS/DO는 이번 안에서 미연결"
+  ],
+  "preserved": [
+    "배터리 Y 분기 → J01/M01 CN1",
+    "J01 CN2(CH1) 19 V → Jetson DC",
+    "J01 CN5(CH4) 5 V → 엔코더/CF VB",
+    "M01 CN2(CH1) → MD20A VB+/VB−",
+    "M01 CN6(CH5) 12 V → 서보 어댑터",
+    "서보 3선 케이블",
+    "B0390 CSI",
+    "C1 USB"
+  ],
+  "removed": [
+    "ESP32 본체",
+    "Jetson↔ESP32 USB",
+    "ESP32 전원/신호 분기 전체"
+  ],
+  "holds": [
+    "발열 ESP32는 USB·전원·신호에서 완전히 분리; 기존 외부 배선 이상 미확정",
+    "서보는USB 경로 채택; J12 UART 미사용으로TX 풀업 조건 문제 회피. USB 등록·직접 통신 구현/시험은 별도",
+    "CF TXS→Jetson TXB 입력 구동 요구 충족 근거 없음; 전압3.3V만으로 직결 승인 불가",
+    "J12 I2C 이외 신호의 외부 pull-up/down은 >50 kΩ 조건; 10kΩ을 임의 추가하지 않음",
+    "J12 3.3V와 PDB 3.3V/5V를 병렬 연결하지 않음; 총부하100mA와 전원 순서 확인",
+    "물리STOP은 사용자 지시로 제외. 명령 시간 만료·실행 오류 시 PWM0 처리는 구현/검증 대상",
+    "27/28 엔코더 우회안 미채택: USB-C/전력감시 I2C 공유와 LOW 여유 문제",
+    "Jetson 전원OFF 사용자 확인: 이번 자료 검토 뒤 새 실물 통신·GPIO/PWM 출력 검증 없음"
+  ],
+  "sources": [
+    {
+      "title": "추가 부품 없는 현재 검토 결과·실측 대기",
+      "url": "jetson_existing_parts_check_2026_11_14.md"
+    },
+    {
+      "title": "기존 ESP32 연결표",
+      "url": "esp32_gpio_pin_table_v1.md"
+    },
+    {
+      "title": "ESP32 없는 제어 조사",
+      "url": "../MOUNTED_DC_TEST_2026_11_14.md#esp32-없이-제어하는-대안-조사"
+    },
+    {
+      "title": "NVIDIA carrier SP-11324 v1.3 (§3.3, Table3-3, Table5-3)",
+      "url": "https://developer.nvidia.com/downloads/assets/embedded/secure/jetson/orin_nano/docs/jetson_orin_nano_devkit_carrier_board_specification_sp.pdf"
+    },
+    {
+      "title": "NVIDIA Jetson.GPIO 핀 정의",
+      "url": "https://github.com/NVIDIA/jetson-gpio/blob/master/lib/python/Jetson/GPIO/gpio_pin_data.py"
+    },
+    {
+      "title": "NVIDIA GPIO/PWM 및 pinmux",
+      "url": "https://github.com/NVIDIA/jetson-gpio#11-pwm"
+    },
+    {
+      "title": "Adafruit 4438 핀 설명",
+      "url": "https://learn.adafruit.com/lsm6dsox-and-ism330dhc-6-dof-imu/pinouts"
+    },
+    {
+      "title": "Adafruit 4438 공식 회로도 / 주소 SJ1",
+      "url": "https://github.com/adafruit/Adafruit-LSM6DSOX-PCB/blob/master/Adafruit_LSM6DSOX.sch"
+    },
+    {
+      "title": "TI TXB0108 입력 구동 조건",
+      "url": "https://www.ti.com/lit/ds/symlink/txb0108.pdf"
+    },
+    {
+      "title": "Cytron MD20A 사양",
+      "url": "https://www.cytron.io/p-20amp-6v-30v-dc-motor-driver"
+    },
+    {
+      "title": "Waveshare USB 제어·B점퍼 공식 연결",
+      "url": "https://docs.waveshare.com/Bus_Servo_Adapter_A/Product-Wiring-Example"
+    },
+    {
+      "title": "NVIDIA USB-C Host 모드",
+      "url": "https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/hardware_layout.html"
+    }
+  ],
+  "usb": [
+    {
+      "name": "조향",
+      "host": "Jetson USB-C (Host)",
+      "device": "Bus Servo Adapter(A) USB-C",
+      "cable": "데이터 지원 USB-C ↔ USB-C",
+      "status": "점퍼캡 2개 B; 외부 UART TX/RX/GND 미연결; 별도12V 필요; USB 등록·통신 미시험"
+    }
+  ],
+  "excluded": [
+    "물리 STOP 스위치: 사용자 명시적 제외, 미연결; 이번 완성 조건에 포함하지 않음"
+  ]
+}

@@ -1,0 +1,289 @@
+"""ToF 없는 구성의 독립 라이다 보호층. /drive -> /drive/safe."""
+import json
+import math
+import time
+
+import numpy as np
+from ackermann_msgs.msg import AckermannDriveStamped
+from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import LaserScan
+from std_msgs.msg import String
+
+from arena_autonomy.lidar_motion import MotionUnavailable
+from arena_autonomy.lidar_motion_ros import MotionInput, seconds
+from arena_autonomy.lidar_observation import audit_front_observation
+from arena_autonomy.local_path import mask_scan, swept_limit, braking_speed
+from arena_vehicle_interface.node_lifecycle import run_node
+from arena_vehicle_interface.timing_probe import TimingProbe
+
+
+class LidarSafety(Node):
+    def __init__(self):
+        super().__init__("lidar_safety")
+        from arena_autonomy.execution_environment import configure, motion_supported
+        configure(self)
+        if self.hardware_shadow:
+            raise ValueError('hardware shadow must use the isolated preview safety path')
+        self.timing = TimingProbe(self)
+        self.motion = MotionInput(self)
+        self.wall_timeout = float(self.declare_parameter("sensor_wall_timeout_s", 3.).value)
+        self.limit = float(self.declare_parameter("max_steering_angle_rad", .37).value)
+        self.wheelbase = float(self.declare_parameter('wheelbase_m', .145).value)
+        self.length = float(self.declare_parameter('vehicle_length_m', .20).value)
+        self.width = float(self.declare_parameter('vehicle_width_m', .15).value)
+        self.rear_blind_half_angle = float(self.declare_parameter('rear_blind_half_angle_deg', 30.).value)
+        if not all(math.isfinite(v) and v > 0 for v in (self.wall_timeout, self.limit, self.wheelbase, self.length, self.width)):
+            raise ValueError('LiDAR safety geometry and timeouts must be finite and positive')
+        if not 0 <= self.rear_blind_half_angle <= 80:
+            raise ValueError('rear_blind_half_angle_deg must be within 0..80')
+        # 시험 전용 장착 구조 각도(JSON). 기본 ''이면 기존 후방 반각 실수 그대로.
+        from arena_autonomy.local_scene import blind_parameter
+        self.rear_blind_half_angle = blind_parameter(self.rear_blind_half_angle,
+            str(self.declare_parameter('lidar_blind_sectors_json', '').value))
+        self.recent_observation_enabled = bool(self.declare_parameter('g1_recent_observation_enabled', False).value)
+        self.partial_policy = None
+        self.signed_motion_policy = str(self.declare_parameter('signed_motion_policy', 'forward_drive').value)
+        if self.signed_motion_policy not in ('legacy_hold', 'forward_drive'):
+            raise ValueError('unknown signed motion policy')
+        policy = str(self.declare_parameter('partial_observation_policy', 'strict').value)
+        oblique = bool(self.declare_parameter('g1_oblique_gap_trial', False).value)
+        if oblique and policy != 'bounded_local_v4':
+            raise ValueError('oblique gap safety trial requires explicit v4')
+        traffic_recovery = bool(self.declare_parameter('g1_traffic_recovery_trial', False).value)
+        guard_policy = str(self.declare_parameter('g1_guard_observation_policy', 'original_v1').value)
+        if guard_policy not in ('original_v1', 'selected_r181'):
+            raise ValueError('unknown guard observation policy')
+        self.command_observation_priority = traffic_recovery and guard_policy == 'selected_r181'
+        if traffic_recovery and policy != 'bounded_local_v4':
+            raise ValueError('traffic recovery safety requires explicit v4 policy')
+        if policy not in ('strict', 'bounded_side_v1', 'bounded_local_v2', 'bounded_local_v3', 'bounded_local_v4'):
+            raise ValueError('unknown partial observation policy')
+        # 계획기와 같은 구조 각도·같은 정책을 독립 입력으로 계산한다. 기본 off.
+        from arena_autonomy.known_structure import validate as validate_structure
+        structure_policy = str(self.declare_parameter('known_structure_policy', 'off').value)
+        validate_structure(structure_policy, str(self.get_parameter('lidar_blind_sectors_json').value)
+                           if structure_policy != 'off' else '')
+        if structure_policy != 'off' and policy != 'bounded_local_v4':
+            raise ValueError('known structure policy requires bounded_local_v4')
+        crop_edge = self.declare_parameter('g1_crop_edge_component_trial', False).value
+        from arena_autonomy.crop_edge_selection import (SIMULATION_SCOPE, ESTIMATED_SCOPE,
+            validate_policy_selection, validate_node_selection)
+        self.observation_input_scope = self.declare_parameter('g1_observation_input_scope', SIMULATION_SCOPE).value
+        validate_policy_selection(crop_edge, policy, traffic_recovery)
+        validate_node_selection(self, crop_edge, observation_scope=self.observation_input_scope)
+        if policy != 'strict':
+            if self.recent_observation_enabled or not motion_supported(self):
+                raise ValueError('bounded observation policy requires explicit both motion timing and no recent candidate')
+            from arena_autonomy.partial_observation import PartialObservationPolicy
+            if traffic_recovery:
+                from arena_autonomy.traffic_recovery_trial import RecoveryPolicy
+                PartialObservationPolicy = RecoveryPolicy
+            if structure_policy != 'off':
+                from arena_autonomy.known_structure import structure_policy as with_structure
+                PartialObservationPolicy = with_structure(PartialObservationPolicy,
+                    str(self.get_parameter('lidar_blind_sectors_json').value))
+            self.partial_policy = PartialObservationPolicy(allow_narrow_forward=policy in ('bounded_local_v2','bounded_local_v3','bounded_local_v4'),
+                                                          surface_translation_enabled=policy in ('bounded_local_v3','bounded_local_v4'),
+                                                          lateral_metric_enabled=policy=='bounded_local_v4',
+                                                          oblique_metric_enabled=oblique,
+                                                          crop_edge_component_trial=crop_edge)
+            if self.command_observation_priority:
+                self.partial_policy.command_observation_priority = True
+            if self.observation_input_scope == ESTIMATED_SCOPE:
+                self.partial_policy.observation_input_scope = self.observation_input_scope
+        self.observation_cache = None
+        self.observation_epoch = 0
+        self.previous_safe_steering = 0.
+        if self.recent_observation_enabled:
+            from arena_autonomy.local_follow import FollowConfig
+            from arena_autonomy.observation_support import RecentScenes
+            enabled = bool(self.declare_parameter('g1_follow_enabled', False).value)
+            corridor = bool(self.declare_parameter('g1_corridor_fallback_enabled', False).value)
+            if not enabled or not corridor or self.motion.mode!='both' or not self.motion.verified:
+                raise ValueError('recent observation safety requires G1, corridor, verified sequential both motion')
+            self.observation_config = FollowConfig(recent_observation_enabled=True, corridor_fallback_enabled=True,
+                boundary_evidence_mode='corner_distance_candidate', occupancy_timing_mode='per_ray_candidate',
+                wheelbase_m=self.wheelbase, length_m=self.length, width_m=self.width, max_steering_rad=self.limit)
+            self.observation_cache = RecentScenes()
+        from arena_autonomy.vehicle_marker_channel import MarkerChannel
+        self.vehicle_marker_channel = MarkerChannel(self, producer=False)
+        if self.vehicle_marker_channel.profile is not None:
+            from arena_autonomy.local_follow import FollowConfig
+            self.vehicle_marker_config = FollowConfig(wheelbase_m=self.wheelbase,
+                length_m=self.length, width_m=self.width, max_steering_rad=self.limit)
+        self.scan = self.command = None
+        self.scan_wall = self.command_wall = 0.
+        self.last_clock = None
+        self.input_floor_s = -math.inf
+        # 경기 운영 후보에서만 연결한다. 관측 기억을 지우기만 하므로 이 신호로 허가가 늘어나지 않는다.
+        if str(self.declare_parameter('race_control_mode', 'legacy').value) == 'b3_candidate':
+            self.create_subscription(String, '/race/input_boundary', self.on_input_boundary, 10)
+        self.publisher = self.create_publisher(AckermannDriveStamped, "/drive/safe", 10)
+        self.status = self.create_publisher(String, "/safety/status", 10)
+        from arena_autonomy.native_lidar_input import subscribe_scan
+        subscribe_scan(self,self.timing.wrap('scan',self.on_scan),qos_profile_sensor_data)
+        self.create_subscription(AckermannDriveStamped, "/drive", self.timing.wrap('command', self.on_command), 10)
+        self.create_timer(.02, self.timing.wrap('control', self.control))
+
+    def on_input_boundary(self, msg):
+        boundary = float(json.loads(msg.data)['boundary_s'])
+        self.input_floor_s = boundary
+        self.vehicle_marker_channel.reset(boundary)
+        self.scan = None
+        self.motion.begin_input_boundary(boundary)
+        if getattr(self, 'partial_policy', None) is not None:
+            self.partial_policy.reset()
+
+    def on_scan(self, msg):
+        if seconds(msg.header.stamp) < self.input_floor_s:
+            return
+        if self.scan is None or seconds(msg.header.stamp) >= seconds(self.scan.header.stamp):
+            self.scan, self.scan_wall = mask_scan(msg, self.rear_blind_half_angle), time.monotonic()
+
+    def on_command(self, msg):
+        if self.command is None or seconds(msg.header.stamp) >= seconds(self.command.header.stamp):
+            self.command, self.command_wall = msg, time.monotonic()
+
+    def control(self):
+        now = self.get_clock().now().nanoseconds * 1e-9
+        if self.last_clock is not None and now < self.last_clock:
+            self.scan = self.command = None
+            self.input_floor_s = -math.inf
+            self.vehicle_marker_channel.reset()
+            self.motion.history.reset()
+            if getattr(self, 'partial_policy', None) is not None:
+                self.partial_policy.reset()
+            if getattr(self,'observation_cache',None) is not None:
+                self.observation_cache.reset()
+                self.observation_epoch += 1
+                self.previous_safe_steering = 0.
+        self.last_clock = now
+        output = AckermannDriveStamped()
+        output.header.stamp = self.get_clock().now().to_msg()
+        output.header.frame_id = "base_link"
+        if self.command is not None and math.isfinite(self.command.drive.steering_angle):
+            output.drive.steering_angle = float(np.clip(self.command.drive.steering_angle, -self.limit, self.limit))
+        reason, clearance = "input_stop", 0.
+        observation = None
+        recent = None
+        partial = None
+        command_stale = None
+        marker_evidence = None
+        try:
+            if self.scan is None or self.command is None:
+                raise MotionUnavailable("missing_input")
+            command_age = now - seconds(self.command.header.stamp)
+            if (command_age < 0 or not 0 <= now - seconds(self.scan.header.stamp) <= .3 or
+                time.monotonic() - self.scan_wall > self.wall_timeout):
+                raise MotionUnavailable("stale_input")
+            command_stale = command_age > .2 or time.monotonic() - self.command_wall > self.wall_timeout
+            if command_stale and getattr(self, 'partial_policy', None) is None:
+                raise MotionUnavailable("stale_input")
+            speed, steering = self.command.drive.speed, self.command.drive.steering_angle
+            if not all(math.isfinite(v) for v in (speed, steering)) or speed < 0:
+                raise MotionUnavailable("invalid_or_reverse_command")
+            # Slamtec 드라이버의 +Inf는 raw 0/무응답도 포함한다. Gazebo의 광선
+            # 미교차와 구별할 관측 증거가 없으면 어느 쪽도 자유 공간으로 쓰지 않는다.
+            from arena_autonomy.scan_input import audit_scan_front
+            observation = audit_scan_front(self.scan,self.motion.history.config.lidar_yaw_rad)
+            candidate = getattr(self,'recent_observation_enabled',False)
+            partial_policy = getattr(self, 'partial_policy', None)
+            if observation.reason != 'ok' and not ((candidate or partial_policy is not None) and observation.reason=='front_unobserved'):
+                raise MotionUnavailable(observation.reason)
+            points, count = self.motion.project(self.scan)
+            if count < 30:
+                raise MotionUnavailable("scan_invalid")
+            if partial_policy is not None:
+                stamps, values = self.motion.history.wheels.available(now)
+                if not len(stamps) or now-stamps[-1] > self.motion.history.config.max_extrapolation_s+1e-9:
+                    raise MotionUnavailable('motion_stale')
+                measured = float(values[-1])
+                if not math.isfinite(measured):
+                    raise MotionUnavailable('invalid_or_reverse_feedback')
+                # 음수 측정은 정지 명령/입력 고장이 아니다. 현재 전방 경로를 독립
+                # 검사하며 양수 명령을 통과시킬 수 있다. signed 운동 이력은 보존하고
+                # 외곽 계산에만 속력 상계를 쓴다. 후방 밀림의 안전 보증은 아니다.
+                partial = partial_policy.evaluate(self.scan, points, self.motion.history, now, max(speed, abs(measured)),
+                    output.drive.steering_angle, getattr(self,'previous_safe_steering',0.),
+                    self.wheelbase,self.length,self.width)
+                if measured < 0 and getattr(self, 'signed_motion_policy', 'forward_drive') == 'legacy_hold':
+                    raise MotionUnavailable('invalid_or_reverse_feedback')
+                partial = {**partial, 'measured_speed_mps': measured,
+                    'forward_planning_speed_mps': abs(measured), 'signed_history_preserved': True}
+                # 명령 만료 중에도 유효한 센서의 관측 기억은 갱신한다. 이전 유한
+                # 명령은 위 관측 외곽 검사에만 쓰며 아래 차단 전에 구동 출력은 없다.
+                # 센서/운동 자체의 공백과 이미 보인 장애물의 래치는 그대로 유지한다.
+                if command_stale:
+                    raise MotionUnavailable('stale_input')
+                if not partial['allowed']:
+                    raise MotionUnavailable(partial['reason'])
+                if partial['speed_cap_mps'] is not None:
+                    speed = min(speed, partial['speed_cap_mps'])
+                if partial.get('reason') == 'structure_shadow_limited' and speed <= .001:
+                    # 구조 그림자/숨은 기억 앞 제동 제한이 0. 상태 사유만 구별한다.
+                    raise MotionUnavailable('structure_shadow_limited')
+            if candidate:
+                from arena_autonomy.observation_support import needs_recent_support, sweep_support, side_missing_candidate
+                from arena_autonomy.scene_motion import motion_scene
+                scene = motion_scene(self.scan,self.motion.history,now,timing_verified=self.motion.verified,
+                                     epoch=self.observation_epoch,rear_half_angle_deg=self.rear_blind_half_angle)
+                required = observation.reason!='ok' or needs_recent_support(scene)
+                sources, cache_reason = self.observation_cache.observe(scene,self.motion.history,
+                                                                      transport=required and speed>0)
+                recent = {'required':required,'cache_reason':cache_reason,'rear_dynamic_risk_unresolved':True}
+                if required:
+                    if not side_missing_candidate(scene):
+                        raise MotionUnavailable('front_unobserved')
+                    if speed>0:
+                        stamps, values = self.motion.history.wheels.available(now)
+                        if not len(stamps) or now-stamps[-1]>self.motion.history.config.max_extrapolation_s+1e-9:
+                            raise MotionUnavailable('motion_stale')
+                        motion = self.motion.history.config
+                        # 계획기의 지지 결과/경로는 받지 않는다. 독립 입력으로 다시 계산한다.
+                        measured = float(values[-1])
+                        planning = abs(measured) if getattr(self, 'signed_motion_policy', 'forward_drive') == 'forward_drive' else measured
+                        recent = sweep_support(sources,planning,min(.2,speed),output.drive.steering_angle,
+                            self.previous_safe_steering,self.observation_config,
+                            protected_sensor_pose=(motion.lidar_x_m,motion.lidar_y_m,motion.lidar_yaw_rad))
+                        if not recent['supported']:
+                            raise MotionUnavailable('observation_unconfirmed')
+                        speed = min(.2,speed)
+            output.drive.steering_angle = float(np.clip(steering, -self.limit, self.limit))
+            clearance = swept_limit(points, output.drive.steering_angle, self.wheelbase,
+                                    length=self.length, width=self.width)
+            cap = braking_speed(clearance, now - seconds(self.scan.header.stamp))
+            output.drive.speed = float(min(speed, cap))
+            reason = "clear" if cap >= speed else "lidar_braking"
+            packet = self.vehicle_marker_channel.snapshot(now)
+            if packet is not None:
+                from arena_autonomy.vehicle_marker_occupancy import constrain_command
+                limited = constrain_command((output.drive.speed, output.drive.steering_angle, {"reason":reason}),
+                    packet, self.motion.history, now, packet["vision_epoch"],
+                    self.previous_safe_steering, self.vehicle_marker_config)
+                output.drive.speed = limited[0]
+                marker_evidence = limited[2].get("vehicle_marker_occupancy")
+                if marker_evidence is not None: reason = "vehicle_marker_braking"
+        except MotionUnavailable as error:
+            reason = str(error)
+        if (getattr(self,'recent_observation_enabled',False) or getattr(self,'partial_policy',None) is not None
+                or self.vehicle_marker_channel.profile is not None):
+            self.previous_safe_steering = output.drive.steering_angle
+        self.publisher.publish(output)
+        self.status.publish(String(data=json.dumps({"reason": reason, "safe_speed_mps": output.drive.speed,
+                                                    "reference_s": now, "command_stale": command_stale,
+                                                    "swept_clearance_m": clearance, "sensor": "C1",
+                                                    "no_return_policy": "unknown",
+                                                    **({'execution_environment': self.execution_environment,
+                                                        'motion_timing_verified': False,
+                                                        'motion_time_policy': self.motion.timing_policy,
+                                                        'physical_actuation_verified': False}
+                                                       if getattr(self,'hardware_runtime',False) else {}),
+                                                    **({"vehicle_marker_occupancy":marker_evidence} if marker_evidence is not None else {}),
+                                                    "front_observation": vars(observation) if observation else None,
+                                                    **({'partial_observation':partial} if getattr(self,'partial_policy',None) is not None else {}),
+                                                    **({'recent_observation':recent} if getattr(self,'recent_observation_enabled',False) else {})})))
+
+
+def main(args=None):
+    run_node(LidarSafety, args=args)

@@ -5,9 +5,11 @@
 기본값 `rear_wheel_pair_legacy`는 모드 매개변수가 없던 옛 기록·시험 재현용이며
 현재 launch는 모드를 명시한다. 회전량은 두 모드 모두 IMU 자이로를 사용한다.
 """
+import json
 import math
 import time
 from copy import copy
+from dataclasses import replace
 
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Imu, JointState
@@ -20,6 +22,32 @@ from arena_vehicle_interface.drive_feedback import (
 
 def seconds(stamp):
     return stamp.sec + stamp.nanosec * 1e-9
+
+
+def drain_ready_motion(subscriptions, *, budget_s=.002, max_messages=64, clock=time.monotonic):
+    started=clock()
+    counts=[0]*len(subscriptions)
+    total=0
+    exhausted=False
+    while total<max_messages and clock()-started<budget_s:
+        progress=False
+        for i,sub in enumerate(subscriptions):
+            if total>=max_messages or clock()-started>=budget_s:
+                exhausted=True
+                break
+            # Humble Executor._take_subscription와 같은 take 경로. 변환 뒤
+            # 기존 wrapper/엄격 검증을 전부 거친다. stamp/공백을 고치지 않는다.
+            with sub.handle:
+                item=sub.handle.take_message(sub.msg_type,sub.raw)
+            if item is not None:
+                sub.callback(item[0])
+                counts[i]+=1
+                total+=1
+                progress=True
+        if not progress:break
+    elapsed=clock()-started
+    return dict(counts=counts,total=total,duration_ms=elapsed*1000,
+                bounded_stop=exhausted or total>=max_messages or elapsed>=budget_s)
 
 
 class MotionInput:
@@ -85,23 +113,69 @@ class MotionInput:
         self.gyro_rejections = {}
         self.last_gyro_rejection = None
         self.input_floor_s = -math.inf
+        self.calibration = None
+        if bool(node.declare_parameter('motion_quick_calibration', False).value):
+            if not self.expected_imu_frame:
+                raise ValueError('quick calibration requires explicit motion_imu_frame_id')
+            from arena_autonomy.imu_quick_calibration import QuickCalibrationConfig, QuickImuCalibration
+            calibration_config = {name: node.declare_parameter('motion_calibration_'+name, value).value
+                                  for name, value in vars(QuickCalibrationConfig()).items()}
+            self.calibration = QuickImuCalibration(QuickCalibrationConfig(**calibration_config))
+            self.calibration_version = 0
+            self.calibration_diagnostic_pub = None
         # 독립 비교의 none도 같은 입력 부하를 받는다. 일반 none에서는 생성하지 않아도 된다.
         # 계측 이름 'wheels'는 기존 분석 호환용 구동 피드백 콜백 이름이다.
         wrap = node.timing.wrap if hasattr(node, 'timing') else lambda _, callback: callback
         callback = self.on_drive_motor if self.feedback_mode == MODE_MOTOR else self.on_wheels
-        node.create_subscription(JointState, self.feedback_topic, wrap('wheels', callback), 100)
+        self._ready_motion_subscriptions = [node.create_subscription(
+            JointState, self.feedback_topic, wrap('wheels', callback), 100)]
         imu_topic = str(node.declare_parameter("motion_imu_topic", "/camera/imu").value)
+        self.imu_topic = imu_topic
         # 각속도는 최신값만 필요한 영상과 달리 적분용 이력이다. 기본5표본은
         # 200Hz에서25ms뿐이라 짧은 계산 지연에도 중간 표본을 잃었다(r134).
         # 약320ms를 보관하되 원 취득시각·세대/만료 검사는 그대로 적용한다.
         imu_qos = copy(qos_profile_sensor_data)
         imu_qos.depth = 64
-        node.create_subscription(Imu, imu_topic, wrap('imu', self.on_imu), imu_qos)
+        self._ready_motion_subscriptions.append(node.create_subscription(
+            Imu, imu_topic, wrap('imu', self.on_imu), imu_qos))
+        if self.calibration is not None:
+            from ackermann_msgs.msg import AckermannDriveStamped
+            from std_msgs.msg import String
+            self._calibration_string = String
+            self.calibration_accel_topic = str(node.declare_parameter(
+                'motion_calibration_accel_topic', '/hardware_runtime/accel').value)
+            self.calibration_diagnostic_pub = node.create_publisher(
+                String, '~/imu_calibration/status', 10)
+            self._calibration_last_publish = -math.inf
+            # 상태/명령도 같은 mutually-exclusive executor에서 처리한다. 직접 구동 발행은 없다.
+            self._ready_motion_subscriptions.extend([
+                node.create_subscription(String, '/autonomy/status', self.on_calibration_state, 10),
+                node.create_subscription(AckermannDriveStamped, '/drive/safe', self.on_calibration_command, 10),
+                node.create_subscription(String, '/hardware_runtime/encoder_observation',
+                                         self.on_calibration_raw_encoder, 10),
+                node.create_subscription(String, '/hardware_runtime/steering_observation',
+                                         self.on_calibration_steering, 10)])
+            if self.calibration_accel_topic != imu_topic:
+                self._ready_motion_subscriptions.append(node.create_subscription(
+                    Imu, self.calibration_accel_topic, self.on_calibration_accel, imu_qos))
+
+    def drain_pending(self, *, budget_s=.002):
+        """현재 control callback 안에서 이미 준비된 표본만 기존 callback으로 소비한다.
+
+        control과 운동 subscriptions는 같은 기본 mutually-exclusive callback group을
+        사용한다. 호출 뒤 제어 함수가 now를 읽는다. 동시 직접 호출은 지원하지 않는다.
+        상한은 메시지 사이에서 검사하며 남은 표본과 원 stamp/만료 기준은 보존한다.
+        """
+        self.last_drain = drain_ready_motion(self._ready_motion_subscriptions, budget_s=budget_s)
+        return self.last_drain
 
     def clock(self):
         now = self.node.get_clock().now().nanoseconds * 1e-9
         if self.last_clock is not None and now < self.last_clock - 1e-9:
             self.history.reset()
+            if self.calibration is not None:
+                self.calibration.reset_inputs()
+                self._calibration_last_publish = -math.inf
             self.counts["resets"] += 1
             self.input_floor_s = -math.inf
         self.last_clock = now
@@ -110,6 +184,8 @@ class MotionInput:
     def begin_input_boundary(self, boundary_s):
         """이력을 비우고 경계 전 취득 표본을 막는다. 운반 중 누적 이동을 새 위치에 잇지 않는다."""
         self.history.reset()
+        if self.calibration is not None:
+            self.calibration.reset_inputs()
         self.counts["resets"] += 1
         self.input_floor_s = boundary_s
 
@@ -129,7 +205,10 @@ class MotionInput:
             # 이름/개수 불일치는 거절한다. 비유한 값은 Series가 거절하고 기록에 남긴다.
             self.counts["rejected"] += 1
             return
-        accepted = self.input_floor_s <= stamp <= now + .1 and self.history.add_wheels(stamp, *values)
+        sign = self.calibration.encoder_sign if self.calibration is not None else 1
+        accepted = self.input_floor_s <= stamp <= now + .1 and self.history.add_wheels(
+            stamp, *(value*sign for value in values))
+        self._calibration_encoder(stamp, sum(values)*.5, accepted, now)
         self.capture("wheels", stamp, values, accepted)
 
     def on_drive_motor(self, msg):
@@ -147,7 +226,9 @@ class MotionInput:
         speed_mps = mean_wheel * self.history.config.wheel_radius_m * self.history.config.wheel_scale
         accepted = (math.isfinite(position) and math.isfinite(speed_mps)
                     and abs(speed_mps) <= self.max_motor_feedback_mps and self.input_floor_s <= stamp <= now + .1
-                    and self.history.add_mean_wheel(stamp, mean_wheel))
+                    and self.history.add_mean_wheel(stamp, mean_wheel * (
+                        self.calibration.encoder_sign if self.calibration is not None else 1)))
+        self._calibration_encoder(stamp, mean_wheel, accepted, now)
         self.capture("drive_motor", stamp, [motor_rad_s, mean_wheel], accepted)
 
     def on_imu(self, msg):
@@ -172,7 +253,26 @@ class MotionInput:
               and abs((yaw - self.history.config.gyro_bias_rad_s) - self.history.gyro.values[-1]) >
               self.gyro_step_slack + self.gyro_slew_limit * (stamp - self.history.gyro.times[-1])):
             reason = "gyro_slew"
-        elif not self.history.add_gyro(stamp, yaw):
+        if self.calibration is not None:
+            if reason is not None:
+                self.calibration.reject(reason)
+            else:
+                # 같은 메시지 accel은 명시적인 covariance 계약이 있을 때만 사용한다.
+                # 별도 FIFO accel은 고유 취득 stamp를 가진 전용 callback에서 받는다.
+                if self.calibration_accel_topic == self.imu_topic:
+                    self.on_calibration_accel(msg)
+                if self.calibration.observe_imu(stamp, values, now):
+                    self.axis = tuple(self.calibration.up)
+                    scalar_bias = float(sum(a*b for a, b in zip(self.axis, self.calibration.bias)))
+                    self.history.config = replace(self.history.config, gyro_bias_rad_s=scalar_bias)
+                    # 서로 다른 축/부호로 누적한 이력을 잇지 않는다. 채택은 WAIT에서만 일어난다.
+                    self.history.reset()
+                    self.counts['resets'] += 1
+                    self.calibration_version = self.calibration.version
+                    self._calibration_last_publish = -math.inf
+            self._publish_calibration(now)
+        yaw = sum(a * v for a, v in zip(self.axis, values))
+        if reason is None and not self.history.add_gyro(stamp, yaw):
             reason = "gyro_timestamp"
         accepted = reason is None
         if reason:
@@ -182,11 +282,85 @@ class MotionInput:
         # 짧은 공백은 기존 ZOH 한도, 연속 거절은 motion_stale/gap으로 정지한다.
         self.capture("gyro", stamp, values, accepted)
 
+    def _calibration_encoder(self, stamp, mean_wheel, accepted, now):
+        if self.calibration is not None:
+            if accepted:
+                self.calibration.observe_encoder(stamp, mean_wheel*self.history.config.wheel_radius_m
+                                                 * self.history.config.wheel_scale, now)
+            else:
+                self.calibration.reject('encoder_rejected')
+
+    def on_calibration_state(self, msg):
+        try:
+            value = json.loads(msg.data)
+            stamp = float(value['sim_time_s'])
+            if stamp < self.input_floor_s:
+                raise ValueError('state_before_boundary')
+            self.calibration.observe_state(stamp, value['state'], self.clock())
+        except (ValueError, KeyError, TypeError):
+            self.calibration.reject('state_invalid')
+
+    def on_calibration_command(self, msg):
+        stamp = seconds(msg.header.stamp)
+        if stamp < self.input_floor_s:
+            self.calibration.reject('command_before_boundary')
+            return
+        self.calibration.observe_command(stamp, msg.drive.speed, msg.drive.steering_angle, self.clock())
+
+    def on_calibration_accel(self, msg):
+        now, stamp = self.clock(), seconds(msg.header.stamp)
+        values = [msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z]
+        if ((self.expected_imu_frame and msg.header.frame_id != self.expected_imu_frame)
+                or msg.linear_acceleration_covariance[0] == -1 or stamp < self.input_floor_s
+                or not all(math.isfinite(v) and abs(v) < 8*9.80665 for v in values)):
+            self.calibration.reject('accel_contract_invalid')
+            self.calibration.accel = None
+            return
+        self.calibration.observe_accel(stamp, values, now)
+
+    def on_calibration_steering(self, msg):
+        try:
+            value = json.loads(msg.data)
+            age_ns, receipt_ns = value['age_ns'], value['receipt_realtime_ns']
+            if (value.get('schema') != 'uno_q_steering_observation_v1' or value.get('valid') is not True
+                    or type(age_ns) is not int or type(receipt_ns) is not int or age_ns < 0
+                    or age_ns*1e-9 > self.calibration.config.input_max_age_s):
+                raise ValueError('invalid steering observation')
+            self.calibration.observe_steering(receipt_ns*1e-9, float(value['central_angle_rad']), self.clock(),
+                sign_verified=value.get('steering_sign_verified') is True and bool(value.get('sign_reference')))
+        except (ValueError, KeyError, TypeError, OverflowError):
+            self.calibration.steering = None
+
+    def on_calibration_raw_encoder(self, msg):
+        try:
+            value = json.loads(msg.data)
+            age_ns, receipt_ns = value['age_ns'], value['receipt_realtime_ns']
+            stamp_ns = value.get('stamp_ns', receipt_ns)
+            if (value.get('schema') != 'uno_q_encoder_observation_v1' or value.get('valid') is not True
+                    or type(age_ns) is not int or type(receipt_ns) is not int or age_ns < 0
+                    or type(stamp_ns) is not int
+                    or age_ns*1e-9 > self.calibration.config.input_max_age_s
+                    or stamp_ns*1e-9 < self.input_floor_s):
+                raise ValueError('invalid raw encoder observation')
+            self.calibration.observe_encoder_count(stamp_ns*1e-9, value['motor_counts'], value['boot'],
+                value['observation_seq'], value['capture_us'], self.clock())
+        except (ValueError, KeyError, TypeError, OverflowError):
+            self.calibration.raw_stationary_since = None
+            self.calibration.reject('raw_encoder_contract_invalid')
+
+    def _publish_calibration(self, now):
+        if now-self._calibration_last_publish >= .5:
+            self.calibration_diagnostic_pub.publish(self._calibration_string(
+                data=json.dumps(self.calibration.snapshot(), allow_nan=False)))
+            self._calibration_last_publish = now
+
     def project(self, scan):
         now = self.clock()
         began = time.perf_counter()
         diagnostic = {"gyro_rejections": dict(getattr(self, 'gyro_rejections', {})),
                       "last_gyro_rejection": getattr(self, 'last_gyro_rejection', None)}
+        if self.calibration is not None:
+            diagnostic['imu_calibration'] = self.calibration.snapshot()
         try:
             if scan.header.frame_id != self.history.config.lidar_frame_id:
                 raise MotionUnavailable("scan_frame_mismatch")
