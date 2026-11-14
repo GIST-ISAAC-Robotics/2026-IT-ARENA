@@ -1,71 +1,135 @@
-# 2026 IT ARENA 자율주행 경주
+<div align="center">
 
-GIST-ISAAC-Robotics의 차량 소프트웨어·ROS 2 시뮬레이션 및 대회 준비 기록 저장소입니다. **2026-11-14 경기 종료:** 사용자의 현장 보고에 따르면 MCU가 없고 Jetson에 운용 장치가 연결되지 않은 상태로 경기가 시작되어 차량이 움직이지 않았습니다. 세부 후기는 추후 추가합니다.
+# 2026 IT ARENA
 
-**대회용 최종 기준은 Jetson + ESP32 버전입니다.** 이는 보존할 설계·소프트웨어 기준이며 경기 실차의 정상 작동이나 완주를 뜻하지 않습니다. 이후 시뮬레이션 변경과 미사용 UNO Q 대체안은 별도 개발 이력으로 보존합니다. `main`에는 이 세 범주의 자료가 함께 있으므로 최신 파일 전체를 하나의 실차 검증 완료 릴리스로 해석하지 않습니다.
+**센서 기반 자율주행 경주 · GIST-ISAAC-Robotics**
 
-| 읽을 목적 | 기준 문서 |
+ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
+
+[성공 시연](#성공-시뮬레이션-영상) · [차량 설계](#차량-설계) · [회로도](#전장과-제어-구조) · [최종 소스](#최종-버전과-재현) · [경기 기록](#결과와-개발-기록)
+
+<a href="docs/hardware/PACKAGING_FINAL_2026_11_13.md"><img src="outputs/cad_final_2026_11_13/cad_isometric.png" width="540" alt="11월 13일 차량 패키징 CAD 사시도"></a>
+
+*11/13 패키징 CAD 렌더 · 실물 사진이 아닙니다.*
+
+</div>
+
+카메라·2D LiDAR·IMU·모터축 엔코더를 사용해 코스를 인식하고, 지역 경로 추종과 독립 보호층으로 차량을 제어하는 자율주행 경주 프로젝트입니다. 코스 변경 대응, 다중 차량 주행, 전장·기구 설계와 실물 이관까지의 개발 자료를 보존합니다.
+
+> **대회 종료 · 2026-11-14**<br>
+> 경기 시작 시 사용 가능한 MCU와 연결된 Jetson 운용 장치가 없어 차량은 주행하지 못했습니다. 아래 영상은 개발 중 성공한 **시뮬레이션 기록**입니다. 보존할 대회용 최종 기준은 **Jetson + ESP32**이며, UNO Q 대체안은 현장에서 사용하지 못했습니다. [경기 결과와 후기](docs/reports/COMPETITION_RESULT_2026_11_14.md)
+
+## 성공 시뮬레이션 영상
+
+코스별 빠른 성공 기록과 이후 조건을 반영한 성공 기록을 나누어 선정합니다. 코스·차량·센서·연산 조건이 다른 랩타임을 하나의 순위로 비교하지 않습니다. 영상의 소스 버전은 보존된 ESP32 최종 소스와 다를 수 있습니다.
+
+**썸네일을 누르면 개별 MP4로 이동합니다.** 1080p · 30 fps · 무음 · 1.0배속. 저장된 실제 시뮬레이션 자세를 낮은 추적 시점으로 재렌더했습니다. 새 주행이나 실차 촬영이 아닙니다.
+
+### 코스별 속도 대표
+
+<table>
+<tr>
+<td width="50%" valign="top"><a href="artifacts/videos/2026-11-15/a_curved_course_r15_solo_lap.mp4"><img src="artifacts/videos/2026-11-15/posters/a_curved_course_r15_solo_lap_poster.jpg" alt="곡선 코스 · 개편 전 영상 보기"></a><br><b>곡선 코스 · 개편 전</b><br>r15 · 첫 초록 표본→결승 <b>31.850 sim s</b><br><a href="artifacts/videos/2026-11-15/a_curved_course_r15_solo_lap.mp4">▶ 영상 보기</a> · <a href="artifacts/validation/2026-11-05/solo_straight_closed_loop_v1/README.md">원 시험 기록</a></td>
+<td width="50%" valign="top"><a href="artifacts/videos/2026-11-15/b_right_angle_course_r25_solo_lap.mp4"><img src="artifacts/videos/2026-11-15/posters/b_right_angle_course_r25_solo_lap_poster.jpg" alt="직각 코스 · 개편 후 영상 보기"></a><br><b>직각 코스 · 개편 후</b><br>r25 · RGB 출발 기록→목표 도달 <b>29.228 sim s</b><br><a href="artifacts/videos/2026-11-15/b_right_angle_course_r25_solo_lap.mp4">▶ 영상 보기</a> · <a href="artifacts/validation/2026-11-08/solo_gap_envelope_connected_v3/README.md">원 시험 기록</a></td>
+</tr>
+</table>
+
+### 추가 조건을 반영한 완주
+
+<table>
+<tr>
+<td width="50%" valign="top"><a href="artifacts/videos/2026-11-15/c_right_angle_late_dev_r475_solo_lap.mp4"><img src="artifacts/videos/2026-11-15/posters/c_right_angle_late_dev_r475_solo_lap_poster.jpg" alt="시설물·센서 표본 반영 영상 보기"></a><br><b>시설물·센서 표본 반영</b><br>r475 · GREEN→랩 검출 <b>49.882 sim s</b><br>시설 지주 3개 · C1 실측 각도 표본<br><a href="artifacts/videos/2026-11-15/c_right_angle_late_dev_r475_solo_lap.mp4">▶ 영상 보기</a> · <a href="artifacts/validation/2026-11-14/solo_full_lap_r475_v1/RESULT.md">원 시험 기록</a></td>
+<td width="50%" valign="top"><a href="artifacts/videos/2026-11-15/f_sensor_noise_delay_traffic_r38.mp4"><img src="artifacts/videos/2026-11-15/posters/f_sensor_noise_delay_traffic_r38_poster.jpg" alt="센서 오차·지연 + 앞차 2대 영상 보기"></a><br><b>센서 오차·지연 + 앞차 2대</b><br>r38 · 60초 평가창에서 <b>48.09 m · 거리 한 바퀴</b><br>C1 ±3 cm · 추가 지연 32–70 ms<br><a href="artifacts/videos/2026-11-15/f_sensor_noise_delay_traffic_r38.mp4">▶ 영상 보기</a> · <a href="artifacts/validation/2026-11-08/masked_motion_speed_v1/README.md">원 시험 기록</a></td>
+</tr>
+</table>
+
+### 기능별 시연
+
+<table>
+<tr>
+<td width="50%" valign="top"><a href="artifacts/videos/2026-11-15/d1_overtake_medium_lead_r15.mp4"><img src="artifacts/videos/2026-11-15/posters/d1_overtake_medium_lead_r15_poster.jpg" alt="이동차 추월·복귀 영상 보기"></a><br><b>이동차 추월·복귀</b><br>r15 medium_v1 · 앞차 <b>0.50 m/s</b><br><a href="artifacts/videos/2026-11-15/d1_overtake_medium_lead_r15.mp4">▶ 영상 보기</a> · <a href="artifacts/validation/2026-11-08/medium_pass_connected_v1/README.md">원 시험 기록</a></td>
+<td width="50%" valign="top"><a href="artifacts/videos/2026-11-15/d2_bypass_stopped_car_r18.mp4"><img src="artifacts/videos/2026-11-15/posters/d2_bypass_stopped_car_r18_poster.jpg" alt="정지차 우회·복귀 영상 보기"></a><br><b>정지차 우회·복귀</b><br>r18 · 정지 상대 완전 통과 후 본선 복귀<br><a href="artifacts/videos/2026-11-15/d2_bypass_stopped_car_r18.mp4">▶ 영상 보기</a> · <a href="artifacts/validation/2026-11-08/rear_face_motion_connected_v1/README.md">원 시험 기록</a></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><a href="artifacts/videos/2026-11-15/e1_signal_red_green_start_r475.mp4"><img src="artifacts/videos/2026-11-15/posters/e1_signal_red_green_start_r475_poster.jpg" alt="신호 대기 → 출발 영상 보기"></a><br><b>신호 대기 → 출발</b><br>r475 · 적색 순차 점등과 GREEN 출발<br><a href="artifacts/videos/2026-11-15/e1_signal_red_green_start_r475.mp4">▶ 영상 보기</a> · <a href="artifacts/validation/2026-11-14/solo_full_lap_r475_v1/RESULT.md">원 시험 기록</a></td>
+<td width="50%" valign="top"><a href="artifacts/videos/2026-11-15/e2_stop_restart_r40.mp4"><img src="artifacts/videos/2026-11-15/posters/e2_stop_restart_r40_poster.jpg" alt="정지 → 같은 경기 재출발 영상 보기"></a><br><b>정지 → 같은 경기 재출발</b><br>r40 · RESET 없는 STOP / START<br><a href="artifacts/videos/2026-11-15/e2_stop_restart_r40.mp4">▶ 영상 보기</a> · <a href="artifacts/validation/2026-11-08/entry_width_transition_v1/README.md">원 시험 기록</a></td>
+</tr>
+</table>
+
+주입한 센서 지연은 **시뮬레이션 시험 조건**이며 Jetson에서 측정한 연산 지연이 아닙니다. 추월·오차 조건 영상은 해당 기능의 사전 수용 기준 통과를 따릅니다. 별도 공통 추종 평가의 미충족 항목과 두 바퀴 잔디 사용 등은 원 보고서에 보존합니다.
+
+[영상 전체 목록·조건·재렌더 한계](artifacts/videos/2026-11-15/README.md) · [선정 근거와 검증](docs/reports/SIMULATION_RECORDINGS_2026_11_15.md) · [파일 해시 색인](artifacts/videos/2026-11-15/recordings_index.json)
+
+## 차량 설계
+
+<table>
+<tr>
+<td width="50%"><img src="outputs/cad_final_2026_11_13/cad_side.png" alt="차량 CAD 측면도"><br><b>측면 · 층별 패키징</b></td>
+<td width="50%"><img src="outputs/cad_final_2026_11_13/cad_front.png" alt="차량 CAD 정면도"><br><b>정면 · 조향과 센서 배치</b></td>
+</tr>
+</table>
+
+위 그림은 11/13 확정 패키징의 설계 검토 렌더입니다. 일부 센서는 대체 CAD 형상이며 실제 조립·배선·센서 교정을 증명하지 않습니다. 11/14 수신한 제작 기준 STEP과의 차이도 별도 보존했습니다.
+
+| 설계 자료 | 확인할 내용 |
 |---|---|
-| 실제 경기 결과·후기 | [경기 종료 기록](docs/reports/COMPETITION_RESULT_2026_11_14.md) |
-| 대회용 ESP32 최종 구성·소스 복원 | [최종 기준](docs/releases/FINAL_ESP32_2026_11_14.md) |
-| 이후 시뮬레이션·부분 성공·실패·중단 | [시뮬레이션 작업 색인](docs/reports/SIMULATION_WORK_INDEX_2026_11_14.md) |
-| 미사용 대체안 | [UNO Q 준비](docs/hardware/UNO_Q_DEPLOYMENT_2026_11_14.md) · [Jetson 직접 제어 검토](docs/hardware/schematics/jetson_existing_parts_check_2026_11_14.md) |
-| 산출물·원시 로그·바이너리 보존 위치 | [산출물 목록](docs/reports/ARTIFACT_CATALOG_2026_11_14.md) |
+| [확정 패키징](docs/hardware/PACKAGING_FINAL_2026_11_13.md) · [11/14 제작 기준 대조](docs/hardware/PACKAGING_CAD_COMPARE_2026_11_14.md) | 원본 해시, 기구 치수, 센서 가림, 제작 변경 |
+| [조향 설계](docs/hardware/STEERING_FUSION_2026_11_13.md) · [장착 후 수동 3점 기록](docs/hardware/MOUNTED_SERVO_SETUP_2026_11_14.md) | CAD 조향 관계와 실제 서보 위치 측정 |
+| [층별 배선 배치](docs/hardware/WIRING_LAYERS_2026_11_13.md) | 전원보드·제어보드·센서 배치와 하네스 경로 |
 
-- [정리된 현황](docs/PROJECT_CONTEXT.md) · [종료 후 보류 작업](docs/DEVELOPMENT_PLAN.md)
-- [작업별 문서 안내](docs/README.md) · [작업 규칙](AGENTS.md)
-- [코스 개편 전 보관 릴리스](docs/releases/PRE_TRACK_REDESIGN_2026_11_05.md)
-- [주최 측 공식 저장소](https://github.com/MOSW626/istech-it-arena)
+## 전장과 제어 구조
 
-아래 실행 설명은 보존된 개발 환경을 재현하기 위한 것입니다. 공식 v2026.11.06 팀 파생 월드·B0390·C1·지역 Pure Pursuit 구성의 실험 결과는 해당 시험의 소스와 설정에서만 유효합니다. 장치 연결이나 시험을 자동으로 재개하지 않습니다.
+[![ESP32 기준 전체 신호·전원 회로도](docs/hardware/schematics/esp32_gpio_all_v1.png)](docs/hardware/schematics/esp32_gpio_all_v1.png)
 
-## 시작하기
+**ESP32 기준 보존 회로도** — 그림을 누르면 원본 크기로 볼 수 있습니다. [핀별 연결표](docs/hardware/schematics/esp32_gpio_pin_table_v1.md) · [설계 설명](docs/hardware/ESP32_GPIO_WIRING_2026_11_11.md) · [승인 전장 기준](docs/hardware/APPROVED_ELECTRICAL_LAYOUT.md). 설계도와 실제 조립·통전 검증 상태는 해당 문서에서 구분합니다.
 
-PC 기준 환경은 **WSL2 Ubuntu 24.04 / ROS 2 Jazzy / Gazebo Harmonic**입니다. 최초 설치에는 `sudo bash scripts/setup_wsl.sh`와 `bash scripts/configure_wsl_user.sh`를 사용합니다. 기존 환경에서는 다음을 실행합니다.
-
-```bash
-source /opt/ros/jazzy/setup.bash
-bash scripts/doctor.sh
-colcon build --symlink-install --base-paths src
-source install/setup.bash
-python3 scripts/build_official_track.py --check --profile config/tracks/official_v2026.11.06.yaml
-python3 scripts/run_new_course_solo.py outputs/new_course_solo_01 --preset new-course-solo --check-r25
-python3 scripts/run_new_course_solo.py outputs/new_course_solo_01 --preset new-course-solo
+```mermaid
+flowchart LR
+    camera["B0390 카메라"] --> jetson["Jetson · 인식 / 지역 경로 / 추종"]
+    lidar["RPLIDAR C1"] --> jetson
+    imu["LSM6DSOX IMU"] --> mcu["ESP32 · 센서 / 구동 인터페이스"]
+    encoder["모터축 엔코더"] --> mcu
+    mcu -->|센서 피드백| jetson
+    jetson -->|/drive| guard["독립 보호층"]
+    guard -->|/drive/safe| mcu
+    mcu --> driver["MD20A → DC 모터"]
+    mcu --> servo["Adapter A → ST3215-HS 서보"]
 ```
 
-- **새 코스 입력 점검:** 위 `--check --profile …v2026.11.06.yaml`이 새 공식 원본·팀 실행 월드(`track:=official_v2026_11_06`)의 출처/해시를 확인합니다. 프로필 없는 `--check`는 이전 v2026.11.01 입력만 확인합니다. 둘 다 주행 검증은 아닙니다. [새 코스 감사](docs/track/OFFICIAL_V2026_11_06_AUDIT.md)·[이관 근거](artifacts/validation/2026-11-07/track_migration_v1/README.md)
-- **단독 본선 프리셋 `new-course-solo`:** B0390/C1·[JR60P20](docs/decisions/0029-temporary-jr60p20-vehicle.md)(ID49 중심 140 mm), 새 코스, 기본 OFF 단독 후보(직선 증속·직각 접근 감속·사선 공백·직각 벽 경로·선호 벽 재획득)를 묶어 1랩을 실행합니다. 이 조합은 [r25](artifacts/validation/2026-11-08/solo_gap_envelope_connected_v3/README.md)(거리 한 랩 46.67 m·29.228초)의 등록 실행 인자와 같습니다. `--check-r25`는 실행 없이 경로만 정상화해 각 옵션·값을 대조하고, `--print-args`는 최종 인자만 출력합니다. 인자 일치일 뿐, 현재 소스·기록 계측·실행 결과가 r25와 같다는 뜻은 아닙니다. STOP 정착 변위 등 남은 한계는 [현황](docs/PROJECT_CONTEXT.md)에 있습니다.
-- **결과 경로:** 매 실행에 새 경로를 지정합니다(기존 경로는 거절). 기존 `artifacts/validation/` 결과 아래에 쓰지 않습니다.
-- **교통:** 교통 시험은 단독 프리셋에 포함하지 않으며 별도 프로필을 씁니다. 현재 대표와 한계는 [교통 경기 거리 대표](artifacts/validation/2026-11-08/traffic_race_distance_v1/README.md)·[교통 한 랩 r23](artifacts/validation/2026-11-08/traffic_lap_transition_v1/README.md)과 [현황](docs/PROJECT_CONTEXT.md)을 확인합니다.
-- **이전 구성 재현:** `python3 scripts/run_current_solo.py <새 경로>`(옵션 생략)는 이전 v2026.11.01 코스·[B0183 센서 설정](src/arena_description/config/b0183_c1_jr60p20_sim.yaml)의 기존 단독 조합이며, `--previous-jr50`은 이전 JR50을 재현합니다. 이전 코스 교통 인자는 [채택 보고서](artifacts/validation/2026-11-04/lidar_jr60_adoption_v1/README.md#4-앞으로의-실행-인자)에 있습니다.
+제어기는 센서 입력으로 주행을 판단합니다. 지도·Gazebo 정답 위치·심판 신호는 제어 입력으로 사용하지 않으며, 평가·영상 촬영용 정보와 분리합니다. [주행 알고리즘](docs/autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md) · [구동 계약](docs/hardware/ACTUATION_CONTRACT_2026_09_22.md)
 
-기존 범용 예제는 `ros2 launch arena_bringup local_pursuit.launch.py`입니다. 이 예제의 기본 `local_fast` 명령 상한은 9 km/h이며 구동 연결은 `legacy`입니다. 기존 비교 재현과 새 단독 시뮬의 설정을 구분합니다. [속도 목표](docs/decisions/0028-speed-continuity-and-final-gearing.md) · [주행 설명](docs/autonomy/LOCAL_PURE_PURSUIT_2026_09_21.md) · [구동 계약/ROS 연결](docs/hardware/ACTUATION_ROS_2026_09_22.md)
+## 최종 버전과 재현
 
-`headless:=true`는 GUI만 끕니다. WSL GPU 비교에는 `render_backend:=wsl_nvidia`를 명시하고 실제 렌더러·정상 종료를 확인합니다. 기본 렌더러는 `system`입니다. [설정·문제 해결](docs/simulation/GPU_RENDERING.md)
+| 구분 | 보존 기준 |
+|---|---|
+| **대회용 최종 · ESP32** | [고정 소스·구성·복원 설명](docs/releases/FINAL_ESP32_2026_11_14.md) · [소스 ZIP](artifacts/validation/2026-11-14/runtime_update_handover_r533_v1/selected_v2/runtime_handover_sources.zip). 실차 설치·주행 완료 릴리스는 아닙니다. |
+| **성공 영상의 실행 버전** | [영상별 원 시험·소스·설정·조건](docs/reports/SIMULATION_RECORDINGS_2026_11_15.md)을 함께 기록합니다. 최종 소스에 과거 성공을 소급하지 않습니다. |
+| **후속 연구와 미사용 대체안** | [시뮬레이션 작업 색인](docs/reports/SIMULATION_WORK_INDEX_2026_11_14.md) · [UNO Q 준비](docs/hardware/UNO_Q_DEPLOYMENT_2026_11_14.md). 현재 `main`에는 이 자료들도 함께 있습니다. |
 
-## 저장소 구성
+개발 환경은 **WSL2 Ubuntu 24.04 / ROS 2 Jazzy / Gazebo Harmonic**입니다. [설치·실행·검증 명령](docs/simulation/ARCHIVED_RUNBOOK_2026_11_15.md), [코스 개편 전 보관 릴리스](docs/releases/PRE_TRACK_REDESIGN_2026_11_05.md), [공식 코스 입력 감사](docs/track/OFFICIAL_V2026_11_06_AUDIT.md)에서 각 시점의 재현 조건을 확인할 수 있습니다.
+
+## 결과와 개발 기록
+
+| 기록 | 내용 |
+|---|---|
+| [경기 결과·후기](docs/reports/COMPETITION_RESULT_2026_11_14.md) | 실제 경기 무주행 결과. 세부 후기는 추후 추가 |
+| [ESP32 통신 단절·발열 사건](docs/hardware/ESP32_FAILURE_REVIEW_2026_11_15.md) | 마지막 응답·출력·엔코더·재접속 증거, 회수하지 못한 로그와 원인 미확정 범위 |
+| [시뮬레이션 이력](docs/reports/SIMULATION_WORK_INDEX_2026_11_14.md) | 성공·실패·중단·미실행 기록을 당시 조건 그대로 보존 |
+| [산출물 목록](docs/reports/ARTIFACT_CATALOG_2026_11_14.md) | 공개 자료와 로컬 원시 로그·대용량 파일의 경계 |
+| [문서 안내](docs/README.md) · [활동 기록](docs/activity/) | 설계·의사결정·실험 근거를 찾는 경로 |
+
+<details>
+<summary>저장소 구성</summary>
 
 | 경로 | 역할 |
 |---|---|
-| `src/arena_autonomy/` | 인식·운동 보정·지역 경로·주행·독립 보호층 |
-| `src/arena_vehicle_interface/` | 센서/구동 어댑터·명령 계약·가상 MCU·계측 |
-| `src/arena_bringup/` | 실행 조합과 launch 설정 |
-| `src/arena_description/` | 차량 치수·센서 배치·모델 |
-| `src/arena_gazebo/` | 월드·구동 물리·신호등 |
-| `scripts/`, `tests/`, `config/` | 생성/실험/분석 도구, 회귀검사, 시험 설정 |
-| `docs/` | 현재 현황·설계·결정·짧은 활동 기록; 과거 상세는 `docs/archive/` |
-| `assets/`, `artifacts/`, `outputs/` | 공식 원본, 검증 증거, 예산표/조사 산출물 |
+| `src/arena_autonomy/` | 인식·운동 보정·지역 경로·추종·독립 보호층 |
+| `src/arena_vehicle_interface/` | 센서·구동 인터페이스, MCU 계약과 계측 |
+| `src/arena_bringup/`, `src/arena_description/`, `src/arena_gazebo/` | 실행 구성, 차량 모델, 시뮬레이션 |
+| `scripts/`, `tests/`, `config/` | 생성·분석 도구, 검사, 시험 설정 |
+| `docs/` | 설계·결정·결과·활동 기록 |
+| `assets/`, `artifacts/`, `outputs/` | 공식 입력, 검증 근거, 영상·도면·설계 산출물 |
 
-## 기존 실행과 검증
+</details>
 
-`simulation.launch.py`는 시뮬레이션만, `demo.launch.py`는 기존 LiDAR/스테레오 비교 구성을 실행합니다. 한 번에 하나씩 실행하고 종료를 확인합니다. 트랙은 기본 `official`, 비교용 `experimental`/`original`을 선택할 수 있습니다. [기존 데모](docs/autonomy/BASIC_DEMO.md)
-
-신규 시험의 공식 실행 입력은 `config/tracks/official_v2026.11.06.yaml`(월드 `track:=official_v2026_11_06`)입니다. 이전 `config/tracks/official_v2026.11.01.yaml`(`track:=official`, 방지턱 제거·검정 그리드·2×5 신호·ID0/45 배치·코스 안 신호등 기둥 제거 팀 파생본)은 기존 시험 재현용입니다. [이전 입력과 팀 변경 구분](docs/reports/OFFICIAL_UPDATE_2026_11_02.md)·[기둥 제거 검증](artifacts/validation/2026-11-03/post_free_facility_v1/README.md). 원본 ZIP과 기존 시험은 보존합니다. 변경 영향에 맞게 검증 명령을 선택하십시오.
-
-```bash
-python3 scripts/build_official_track.py --check --profile config/tracks/official_v2026.11.06.yaml
-python3 scripts/build_official_track.py --check   # 이전 v2026.11.01 재현 입력
-python3 -m pytest tests src/arena_vehicle_interface/test -q
-```
-
-`--check`는 출처/해시 검사이며 실제 주행 검증이 아닙니다. 전체 회귀를 실행하지 않은 변경에 과거 통과 결과를 새 결과로 사용하지 않습니다. 현재 실패·미검증 범위는 [현황](docs/PROJECT_CONTEXT.md), 이전 실행 예시 전체는 [정리 전 README](docs/archive/2026-09-27/README.before.md)에 있습니다.
+[현재 보존 현황](docs/PROJECT_CONTEXT.md) · [종료 후 보류 과제](docs/DEVELOPMENT_PLAN.md) · [주최 측 공식 저장소](https://github.com/MOSW626/istech-it-arena)

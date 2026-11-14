@@ -4,6 +4,8 @@
 
 ## 찾는 순서
 
+11/15 추가 수집: [ESP32 사건 증거](../hardware/ESP32_FAILURE_REVIEW_2026_11_15.md)는 기존 로컬 파일 19개를 묶고 작은 결과 JSON 9개를 원래 바이트로 공개했다. 원시 로그·바이너리 묶음은 `build/esp32_incident_20261115/`에 로컬 보존한다. 이 추가 수집분은 아래 11/14 종료 시점 목록과 구분한다.
+
 | 자료 | 위치와 해석 |
 |---|---|
 | ESP32 최종 소스 | [r533 selected_v2 ZIP](../../artifacts/validation/2026-11-14/runtime_update_handover_r533_v1/selected_v2/runtime_handover_sources.zip)·내부734파일 해시. GitHub에서 받을 수 있는 source-only 보존본 |
@@ -17,6 +19,8 @@
 | 종료 전 긴 현황·계획 | [문서 보관본](../archive/2026-11-14-closeout/README.md).4파일을 byte 단위로 보존하고 원래 경로·해시 기록 |
 
 ## 공개와 로컬 보존의 경계
+
+11/15 공개 전시물: [영상 8편·포스터·제작 도구](../../artifacts/videos/2026-11-15/README.md), [출처·편집·검사 근거](../../artifacts/validation/2026-11-15/video_recording_v1/), [선정·검증 보고](SIMULATION_RECORDINGS_2026_11_15.md)를 추가했다. MP4 합계 약 46.2 MB는 Git에 보존하며 중간 프레임과 미선정 영상은 `build/competition_recordings_20261115/`에 로컬 보존한다. 원시 자세 등 기존 비공개 입력이 필요하므로 Git clone만으로 모든 재렌더를 재현할 수는 없다.
 
 코드·설정·보고서·시험 소스·작은 평가 결과·실패 기록·manifest를 Git에 남긴다. 11/14의 원시 센서/고빈도 주행 JSONL, 상세 trace/acquisition, 입력 포함 소스 압축, 재생성 메시와 실행 의존성은 기존 날짜의 제외 정책을 이어 적용한다. `signal_sequence.jsonl` 같은 작은 시험 조건은 계속 공개한다. 기존에 추적하던 파일은 이번 정리에서 강제로 제거하지 않았다.
 

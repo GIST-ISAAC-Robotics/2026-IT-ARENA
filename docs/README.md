@@ -1,6 +1,8 @@
 # 문서 안내
 
-**경기 종료 후 안내:** [실제 경기 결과](reports/COMPETITION_RESULT_2026_11_14.md), [ESP32 최종 보존 기준](releases/FINAL_ESP32_2026_11_14.md), [별도 시뮬레이션 이력](reports/SIMULATION_WORK_INDEX_2026_11_14.md), [산출물 목록](reports/ARTIFACT_CATALOG_2026_11_14.md)을 먼저 확인합니다. 아래 날짜별 문서는 당시 설계·실험·준비 근거이며, 최신 작업 재개 지시나 경기 성공 기록이 아닙니다.
+[프로젝트 전시 README](../README.md)에서 차량 CAD·ESP32 회로도와 [성공 시뮬레이션 영상 8편](reports/SIMULATION_RECORDINGS_2026_11_15.md)을 볼 수 있습니다. 영상은 원 실행의 저장 자세 재렌더이며 코스·속도·시설물·센서 오차 조건별로 구분합니다.
+
+**경기 종료 후 안내:** [실제 경기 결과](reports/COMPETITION_RESULT_2026_11_14.md), [ESP32 최종 보존 기준](releases/FINAL_ESP32_2026_11_14.md), [별도 시뮬레이션 이력](reports/SIMULATION_WORK_INDEX_2026_11_14.md), [ESP32 통신 단절·발열 증거](hardware/ESP32_FAILURE_REVIEW_2026_11_15.md), [산출물 목록](reports/ARTIFACT_CATALOG_2026_11_14.md)을 먼저 확인합니다. 아래 날짜별 문서는 당시 설계·실험·준비 근거이며, 최신 작업 재개 지시나 경기 성공 기록이 아닙니다.
 
 작업 시작점은 [현재 현황](PROJECT_CONTEXT.md)입니다. 최신 공식 코스는 [11/6 610 mm 직각 코스 원본 감사](track/OFFICIAL_V2026_11_06_AUDIT.md), 규정·신호 결정은 [11/2 회의·모델 검토](reports/OFFICIAL_UPDATE_2026_11_02.md), 주행 목표는 [11/1 중간 점검](reports/MIDPROJECT_REVIEW_2026_11_01.md)·[ADR 0028](decisions/0028-speed-continuity-and-final-gearing.md), 기능 완성도에 따른 우선순위는 [11/12 전체 재점검](reports/READINESS_REVIEW_2026_11_12.md)·[현행 개발 계획](DEVELOPMENT_PLAN.md), 기구팀 전달은 [하드웨어 요구사항](HARDWARE_AND_RULE_QUESTIONS.md)에 모읍니다. [모니터·세이브포인트 재개·사건 기록](autonomy/RACE_MONITOR_AND_RECOVERY_PLAN_2026_11_02.md)에는 설계와 기본 OFF 시뮬 연결 상태를 구분해 정리했습니다.
 
