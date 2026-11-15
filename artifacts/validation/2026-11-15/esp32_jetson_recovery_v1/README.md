@@ -13,3 +13,7 @@
 [사건 분석](../../../../docs/hardware/ESP32_FAILURE_REVIEW_2026_11_15.md)은 당시 밀리초 시간표와 이번에 재확인한 시각의 정밀도를 구분한다. 마지막 응답 이후 전기적 상태를 측정한 자료는 없다. 통신 증거만으로 발열 원인이나 부품이 고장난 시각을 단정하지 않는다.
 
 원시 UART·전체 커널 시간창·장치 식별자가 있는 로그·펌웨어 백업·`stage-path.txt` 원본은 노트북의 Git 제외 경로와 **저장소 밖** `IT ARENA evidence backup 2026-11-15/incident-originals.zip`에 보존한다. [외부 묶음 해시](../local_preservation_v1/summary.json). 별도 묶음은 같은 노트북에 있으므로 저장소 삭제에 대비한 사본이다.
+
+후속 확인에서 고장 폴더 바깥의 직전 서보 캡처 두 건, 서보 플래시 준비, 15% 시험 당시 호스트 코드 및 신선도 수정본을 더 회수했다. 일반 파일 **57개**의 원격 SHA-256을 확인했고 원시 기록은 같은 백업 폴더의 `jetson-incident-supplement.tar.gz`에 둔다. [추가 회수 목록](supplement_manifest.json)에는 [시험 당시 호스트 코드](supplement/start15_candidate__probe_esp32_motor.py), [실행기](supplement/start15_candidate__run_guarded_motor_bench.py), [후속 수정본](supplement/start15_host_fresh_v2__probe_esp32_motor.py)의 공개 사본과 해시가 있다.
+
+별개로 [Jetson에 설치했던 r500의 입력 소스](supplement/r500-installed-input-sources.zip)와 [설치 확인 자료](supplement/r500-install-receipts.zip)를 당시 해시와 일치하는 노트북 사본에서 공개했다. 이는 경기 전 Jetson 준비 이력이며 [대회용 최종 ESP32 소스](../../../../docs/releases/FINAL_ESP32_2026_11_14.md)나 고장 당시 모터 진단 앱과 구분한다.

@@ -1,5 +1,7 @@
 # r500 Jetson 현장 설치 준비
 
+보존 안내: 당시 설치에 사용한 [r491 소스 ZIP](../../2026-11-15/esp32_jetson_recovery_v1/supplement/r500-installed-input-sources.zip)과 [r500 설치 확인 ZIP](../../2026-11-15/esp32_jetson_recovery_v1/supplement/r500-install-receipts.zip)의 동일 해시 사본을 공개했다.
+
 2026-11-14. **소스·ROS overlay·ARM 의존성 준비 완료, 실물 운용 설정은 미선택**이다. 센서·ESP32 포트, ARM/flash/출력, 저장 입력 benchmark는 실행하지 않았다. 기존 네트워크·시스템 설정과 이전 설치본은 변경하지 않았다.
 
 ## 준비 위치와 확인

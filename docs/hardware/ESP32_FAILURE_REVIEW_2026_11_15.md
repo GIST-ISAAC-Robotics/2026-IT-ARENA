@@ -52,6 +52,8 @@ USB 분리는 마지막 수신보다 약 3분 52초 뒤였다. 회수된 `kern.l
 
 후속 회수 원본은 [회수 목록](../../artifacts/validation/2026-11-15/esp32_jetson_recovery_v1/recovery_manifest.json)에 기록했다. Jetson의 시험 폴더와 노트북의 `build/mounted_motor_start15_5s_20261114/stage-path.txt`는 각각 **시험 수신 자료 위치**와 **ESP-IDF 빌드 임시 경로**로 구분한다. 원시 UART·전체 명령·커널 시간창·빌드 로그 및 `stage-path.txt` 원본은 저장소 밖 `IT ARENA evidence backup 2026-11-15/incident-originals.zip`에도 보관했다.
 
+고장 세션과 함께 해석할 직전 서보 캡처 및 실제 호스트 실행 코드는 [추가 회수 목록](../../artifacts/validation/2026-11-15/esp32_jetson_recovery_v1/supplement_manifest.json)에 정리했다. 사건 폴더의 83개와 별개로 일반 파일 57개를 기존 SHA-256과 대조했고, 원본은 같은 백업 폴더의 `jetson-incident-supplement.tar.gz`에 보존했다.
+
 분석에 아직 없는 자료는 다음과 같다.
 
 - 당시 journal 원본 엔트리. 회수한 `kern.log`의 초 단위 USB 기록으로 벽시계를 재대조했다.
