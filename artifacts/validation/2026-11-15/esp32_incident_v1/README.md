@@ -1,5 +1,7 @@
 # ESP32 통신 단절 사건 증거 묶음
 
+이 폴더는 노트북에 먼저 남아 있던 자료의 초기 수집본이다. Jetson에서 직접 회수한 UART·명령·커널 사건은 [후속 회수 자료](../esp32_jetson_recovery_v1/README.md)를 확인한다. 초기 목록과 해시는 보존한다.
+
 2026-11-15 로컬 보존 파일을 수집했다. [분석 문서](../../../../docs/hardware/ESP32_FAILURE_REVIEW_2026_11_15.md)가 기준이다.
 
 - [manifest.json](manifest.json): 원본19개 경로·크기·SHA256. 원본 수정0, 장치 접근0.

@@ -64,7 +64,7 @@ A·B·C·F는 코스(곡선 v2026.11.01 / 직각 v2026.11.06), 차량·센서 �
 
 ### Git 저장소만으로는 다시 만들 수 없는 범위
 
-렌더 입력 가운데 원시 자세(`ego_poses.jsonl`, `actor_poses.jsonl`, `additional_actors.json`), 실행 월드(`runtime_world.sdf`), 지형 OBJ(`batched_*.obj`), 그리고 r475 `run1/` 전체는 기존 Git 제외 정책에 따라 **로컬에만** 있습니다. 따라서 Git clone만으로는 재렌더를 완료할 수 없습니다. 같은 입력인지는 각 [편집 JSON](../../validation/2026-11-15/video_recording_v1/edit/)의 `source_run`·`render_inputs_sha256`, [render_logs/&lt;clip&gt;/meta.json](../../validation/2026-11-15/video_recording_v1/render_logs/)의 `input_sha256`과 파일별 SHA-256으로 확인할 수 있습니다. 이번 작업에서 원시 로그를 새로 공개하지는 않았습니다. 로컬 입력이 있으면 `tools/build_plugin.sh`(WSL) → `tools/render_all.sh`(WSL) → `compose_clip.py --clip <key>`·`qa_clip.py --clip <key>`(Windows 미디어 venv) → `make_index.py` 순서로 다시 만듭니다. GPU 렌더의 바이트 단위 동일성은 확인하지 않았습니다.
+후속 정리에서 영상 8편의 평가 자세·신호·SDF·OBJ를 [재렌더 입력 ZIP](../../validation/2026-11-15/replay_preservation_v1/README.md)에 넣었습니다. 원본을 덮어쓰지 않는 별도 작업 폴더에 풀고 원 경로를 맞추면 촬영 입력을 복원할 수 있습니다. 각 [편집 JSON](../../validation/2026-11-15/video_recording_v1/edit/)과 렌더 메타데이터를 기준으로 파일 해시를 검증했습니다. 장치 센서 기록과 전체 제어 판단 로그는 ZIP에 포함하지 않았습니다. 촬영 환경을 준비한 뒤 `tools/build_plugin.sh`(WSL) → `tools/render_all.sh`(WSL) → `compose_clip.py --clip <key>`·`qa_clip.py --clip <key>`(Windows 미디어 venv) → `make_index.py` 순서로 다시 만듭니다. 다른 PC에서는 작업 폴더·텍스처 경로와 렌더러를 맞춰야 하며, GPU 렌더의 바이트 단위 동일성은 확인하지 않았습니다.
 
 ## 재렌더의 한계
 

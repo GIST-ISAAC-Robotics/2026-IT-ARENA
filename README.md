@@ -58,7 +58,7 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 
 주입한 센서 지연은 **시뮬레이션 시험 조건**이며 Jetson에서 측정한 연산 지연이 아닙니다. 추월·오차 조건 영상은 해당 기능의 사전 수용 기준 통과를 따릅니다. 별도 공통 추종 평가의 미충족 항목과 두 바퀴 잔디 사용 등은 원 보고서에 보존합니다.
 
-[영상 전체 목록·조건·재렌더 한계](artifacts/videos/2026-11-15/README.md) · [선정 근거와 검증](docs/reports/SIMULATION_RECORDINGS_2026_11_15.md) · [파일 해시 색인](artifacts/videos/2026-11-15/recordings_index.json)
+[영상 전체 목록·조건](artifacts/videos/2026-11-15/README.md) · [선정 근거와 검증](docs/reports/SIMULATION_RECORDINGS_2026_11_15.md) · [파일 해시 색인](artifacts/videos/2026-11-15/recordings_index.json) · [재렌더 입력·대표 소스](artifacts/validation/2026-11-15/replay_preservation_v1/README.md)
 
 ## 차량 설계
 
@@ -113,7 +113,7 @@ flowchart LR
 | 기록 | 내용 |
 |---|---|
 | [경기 결과·후기](docs/reports/COMPETITION_RESULT_2026_11_14.md) | 실제 경기 무주행 결과. 세부 후기는 추후 추가 |
-| [ESP32 통신 단절·발열 사건](docs/hardware/ESP32_FAILURE_REVIEW_2026_11_15.md) | 마지막 응답·출력·엔코더·재접속 증거, 회수하지 못한 로그와 원인 미확정 범위 |
+| [ESP32 통신 단절·발열 사건](docs/hardware/ESP32_FAILURE_REVIEW_2026_11_15.md) | Jetson에서 회수한 UART·명령·USB 시간표의 분석과 고장 원인 미확정 범위 |
 | [시뮬레이션 이력](docs/reports/SIMULATION_WORK_INDEX_2026_11_14.md) | 성공·실패·중단·미실행 기록을 당시 조건 그대로 보존 |
 | [산출물 목록](docs/reports/ARTIFACT_CATALOG_2026_11_14.md) | 공개 자료와 로컬 원시 로그·대용량 파일의 경계 |
 | [문서 안내](docs/README.md) · [활동 기록](docs/activity/) | 설계·의사결정·실험 근거를 찾는 경로 |

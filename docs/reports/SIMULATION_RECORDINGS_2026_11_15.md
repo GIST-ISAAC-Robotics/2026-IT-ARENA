@@ -86,13 +86,13 @@
 
 ## 6. 재현 범위·미검증·파일 크기
 
-- **Git clone만으로는 재렌더를 완료할 수 없다.** 다음 입력은 기존 Git 제외 정책에 따라 로컬에만 있다: 원시 자세(`ego_poses.jsonl`, `actor_poses.jsonl`, `additional_actors.json`), 실행 월드 `runtime_world.sdf`, 지형 `batched_*.obj`, r475 `run1/` 전체(차량 SDF·신호 기록 포함). 공개되는 것은 그 경로와 SHA-256뿐이다. 경로와 해시는 각 [편집 JSON](../../artifacts/validation/2026-11-15/video_recording_v1/edit/)의 `source_run`·`render_inputs_sha256`·`source_files`와 [render_logs/&lt;clip&gt;/meta.json](../../artifacts/validation/2026-11-15/video_recording_v1/render_logs/)의 `input_sha256`에 있다. 렌더용 `poses.txt`·`render_world.sdf`는 `large_inputs_sha256.json`에 해시만 남겼다. 원시 로그는 이번 작업에서 새로 공개하지 않았다.
+- 후속 정리에서 [재렌더 입력 ZIP](../../artifacts/validation/2026-11-15/replay_preservation_v1/README.md)을 추가했다. 8편에 사용한 7개 실행의 Gazebo 평가 자세·신호 기록·SDF·OBJ 57개를 원래 경로와 SHA-256으로 보존한다. Git clone에 ZIP이 포함되지만 재렌더에는 별도 압축 해제·렌더 환경·프로젝트 경로 설정이 필요하다. 원시 센서·전체 주행 판단 기록은 기존 공개 제외를 유지한다.
 - 바퀴 회전·조향각·롤/피치는 재현하지 않았다. 신호 갠트리를 통과할 때 구조물이 화면 아래쪽을 잠깐 가린다.
 - E1의 신호는 시뮬 신호 모형의 기록 단계다. 실제 신호 촬영이나 인식 검증이 아니다. 실측 조향 상한을 적용한 성공 완주와 Jetson 계산 지연을 주입한 성공 완주는 확보한 기록에서 확인하지 못해 영상화하지 않았다.
 - 도구 해시는 두 곳에 남겼다. [recordings_index.json](../../artifacts/videos/2026-11-15/recordings_index.json)에는 작업 종료 시점의 최종 도구 해시를, 각 편집 JSON의 `tools_sha256`에는 해당 MP4를 합성할 때의 값을 기록했다.
   - 1차 MP4를 합성한 뒤 `compose_clip.py`에는 포스터 함수와 `--poster-only` 옵션만 추가했다. 프레임 선택·오버레이·인코딩 부분은 바꾸지 않았다.
   - `build_scene.py`는 A–E1 렌더 뒤 두 번 고쳤다. 한 번은 E2를 위한 Pose_V 숫자 변환이고, 다른 한 번은 F를 위한 `additional_actors.json` 상대 추가와 여러 상대 중 가장 가까운 앞·옆 상대 선택이다. 상대가 하나 이하인 실행의 카메라 계산은 같다. 다만 이 점을 A–E1을 다시 렌더해 확인하지는 않았다.
-- MP4 8개의 합계는 46,178,243 bytes다(F 11.5 MB, C 10.4 MB, A 9.3 MB, 나머지 1.1–6.6 MB). 포스터 8개는 639,110 bytes(약 0.64 MB)다. 영상·포스터·제작 도구·작은 검증 근거를 Git에 공개 보존하고 루트 README에서 연결한다. 중간 JPEG 프레임은 Git 제외 대상인 `build/competition_recordings_20261115/`에 남아 있다.
+- MP4 8개의 합계는 46,178,243 bytes다(F 11.5 MB, C 10.4 MB, A 9.3 MB, 나머지 1.1–6.6 MB). 포스터 8개는 639,110 bytes(약 0.64 MB)다. 영상·포스터·제작 도구·작은 검증 근거를 Git에 공개 보존하고 루트 README에서 연결한다. 중간 JPEG 프레임은 후속 정리에서 최종 MP4와 재렌더 입력 보존을 확인한 뒤 제거했다.
 
 ## 7. 독립 검토와 통합
 
