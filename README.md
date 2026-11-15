@@ -73,6 +73,7 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 
 | 설계 자료 | 확인할 내용 |
 |---|---|
+| [**최종 전체 CAD·회로도 다운로드**](https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA/releases/tag/final-design-2026.11.14) | 11/14 제작 기준 전체 STEP + ESP32 배선 PNG, 원본 SHA-256 확인 |
 | [확정 패키징](docs/hardware/PACKAGING_FINAL_2026_11_13.md) · [11/14 제작 기준 대조](docs/hardware/PACKAGING_CAD_COMPARE_2026_11_14.md) | 원본 해시, 기구 치수, 센서 가림, 제작 변경 |
 | [조향 설계](docs/hardware/STEERING_FUSION_2026_11_13.md) · [장착 후 수동 3점 기록](docs/hardware/MOUNTED_SERVO_SETUP_2026_11_14.md) | CAD 조향 관계와 실제 서보 위치 측정 |
 | [층별 배선 배치](docs/hardware/WIRING_LAYERS_2026_11_13.md) | 전원보드·제어보드·센서 배치와 하네스 경로 |
@@ -115,7 +116,7 @@ flowchart LR
 | [경기 결과·후기](docs/reports/COMPETITION_RESULT_2026_11_14.md) | 실제 경기 무주행 결과. 세부 후기는 추후 추가 |
 | [ESP32 통신 단절·발열 사건](docs/hardware/ESP32_FAILURE_REVIEW_2026_11_15.md) | Jetson에서 회수한 UART·명령·USB 시간표의 분석과 고장 원인 미확정 범위 |
 | [시뮬레이션 이력](docs/reports/SIMULATION_WORK_INDEX_2026_11_14.md) | 성공·실패·중단·미실행 기록을 당시 조건 그대로 보존 |
-| [산출물 목록](docs/reports/ARTIFACT_CATALOG_2026_11_14.md) | 공개 자료와 로컬 원시 로그·대용량 파일의 경계 |
+| [보존 자료 복원](docs/reports/ARCHIVE_AND_CLEANUP_2026_11_15.md) · [산출물 목록](docs/reports/ARTIFACT_CATALOG_2026_11_14.md) | 공개 최종본·비공개 실측 원본의 GitHub 위치, 로컬 정리 범위 |
 | [문서 안내](docs/README.md) · [활동 기록](docs/activity/) | 설계·의사결정·실험 근거를 찾는 경로 |
 
 <details>

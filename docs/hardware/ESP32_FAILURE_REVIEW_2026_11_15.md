@@ -48,6 +48,8 @@ USB 분리는 마지막 수신보다 약 3분 52초 뒤였다. 회수된 `kern.l
 
 ## 자료 보존과 미확보 항목
 
+**현재 복원 위치:** 아래 로컬 묶음은 [비공개 GitHub 보존 릴리스](https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA-evidence/releases/tag/archive-2026-11-15)로 이관했다. `incident-originals.zip`과 `jetson-incident-supplement.tar.gz`가 원본이며 원격 다운로드 SHA-256을 확인한 뒤 로컬 중복본을 정리했다. [전체 복원 안내](../reports/ARCHIVE_AND_CLEANUP_2026_11_15.md). 아래 경로는 당시 위치다.
+
 [증거 manifest](../../artifacts/validation/2026-11-15/esp32_incident_v1/manifest.json)에 19개 로컬 파일의 원래 경로·크기·SHA256을 기록했다. 9개 작은 결과 JSON은 byte 그대로 공개 사본을 만들었다. 원시 명령·빌드 로그·기록 당시 앱 및 직전 앱 백업까지 포함한 별도 로컬 묶음은 `build/esp32_incident_20261115/esp32_incident_local_evidence.zip`이다. [묶음 해시](../../artifacts/validation/2026-11-15/esp32_incident_v1/local_bundle.json). 원본 파일은 수정하지 않았다.
 
 후속 회수 원본은 [회수 목록](../../artifacts/validation/2026-11-15/esp32_jetson_recovery_v1/recovery_manifest.json)에 기록했다. Jetson의 시험 폴더와 노트북의 `build/mounted_motor_start15_5s_20261114/stage-path.txt`는 각각 **시험 수신 자료 위치**와 **ESP-IDF 빌드 임시 경로**로 구분한다. 원시 UART·전체 명령·커널 시간창·빌드 로그 및 `stage-path.txt` 원본은 저장소 밖 `IT ARENA evidence backup 2026-11-15/incident-originals.zip`에도 보관했다.

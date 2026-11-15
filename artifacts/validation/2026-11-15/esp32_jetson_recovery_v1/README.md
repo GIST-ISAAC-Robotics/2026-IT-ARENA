@@ -1,5 +1,7 @@
 # Jetson에서 회수한 ESP32 통신 단절 증거
 
+**현재 원본 위치:** [비공개 GitHub 증거 릴리스](https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA-evidence/releases/tag/archive-2026-11-15). 원격 해시 확인 후 로컬 중복본은 정리했으며 아래 경로는 회수 당시 위치다.
+
 2026-11-15, 기존 호스트 키를 확인한 SSH 접속으로 Jetson의 `mounted-dc-test.5qyIBL` 시험 폴더를 복사했다. [회수 목록](recovery_manifest.json)의 원격 SHA-256과 전송 묶음의 파일 **83개**가 모두 일치한다. 전원·포트·구동 상태 변경이나 재시험 없이 기존 파일만 읽었다.
 
 | 공개 자료 | 확인할 내용 |
