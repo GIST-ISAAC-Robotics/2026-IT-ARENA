@@ -8,9 +8,9 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 
 [성공 시연](#성공-시뮬레이션-영상) · [차량 설계](#차량-설계) · [회로도](#전장과-제어-구조) · [최종 소스](#최종-버전과-재현) · [경기 기록](#결과와-개발-기록)
 
-<a href="docs/hardware/PACKAGING_FINAL_2026_11_13.md"><img src="outputs/cad_final_2026_11_13/cad_isometric.png" width="540" alt="11월 13일 차량 패키징 CAD 사시도"></a>
+<a href="artifacts/promotion/2026-11-18/track-hero.png"><img src="artifacts/promotion/2026-11-18/track-hero.png" width="760" alt="IT ARENA 차량이 앞바퀴를 틀고 공식 코스 결승선 근처에 정차한 홍보용 렌더"></a>
 
-*11/13 패키징 CAD 렌더 · 실물 사진이 아닙니다.*
+*IT ARENA 610 mm 직각 코스 · 정차 콘셉트 렌더*
 
 </div>
 
@@ -62,18 +62,36 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 
 ## 차량 설계
 
+### 트랙 콘셉트
+
+홍보용 Fusion 조립품을 공식 610 mm 코스 형상에 배치해 조향, 카메라 시점과 조명을 연출했습니다. [코스 도면과 검토 기록](docs/track/OFFICIAL_V2026_11_06_AUDIT.md)
+
 <table>
 <tr>
-<td width="50%"><img src="outputs/cad_final_2026_11_13/cad_side.png" alt="차량 CAD 측면도"><br><b>측면 · 층별 패키징</b></td>
-<td width="50%"><img src="outputs/cad_final_2026_11_13/cad_front.png" alt="차량 CAD 정면도"><br><b>정면 · 조향과 센서 배치</b></td>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/track-rear.png"><img src="artifacts/promotion/2026-11-18/track-rear.png" alt="낮은 시점에서 바라본 후면과 ArUco 마커"></a><br><b>직선 구간 · 낮은 후면 시점</b></td>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/track-motion.png"><img src="artifacts/promotion/2026-11-18/track-motion.png" alt="공식 코스 직각 구간에서 주행을 연출한 차량"></a><br><b>직각 코너 · 주행 연출</b></td>
 </tr>
 </table>
 
-위 그림은 11/13 확정 패키징의 설계 검토 렌더입니다. 일부 센서는 대체 CAD 형상이며 실제 조립·배선·센서 교정을 증명하지 않습니다. 11/14 수신한 제작 기준 STEP과의 차이도 별도 보존했습니다.
+### CAD 상세
+
+<table>
+<tr>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/rear-three-quarter.png"><img src="artifacts/promotion/2026-11-18/rear-three-quarter.png" alt="차량 후면의 ArUco 마커와 두 기둥에 묶은 전원선"></a><br><b>후면 · ArUco와 층간 배선</b></td>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/left-side.png"><img src="artifacts/promotion/2026-11-18/left-side.png" alt="배터리와 센서, Jetson, 전원보드의 층별 배치"></a><br><b>측면 · 층별 패키징</b></td>
+</tr>
+<tr>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/camera-jetson-csi.png"><img src="artifacts/promotion/2026-11-18/camera-jetson-csi.png" alt="카메라 상단에서 Jetson CSI로 이어지는 리본 케이블"></a><br><b>카메라 · Jetson CSI</b></td>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/motor-driver.png"><img src="artifacts/promotion/2026-11-18/motor-driver.png" alt="모터 드라이버 신호선과 검정 배터리 확대"></a><br><b>하부 · 모터 드라이버와 배터리</b></td>
+</tr>
+</table>
+
+홍보용 CAD는 차량 조립품에 전원·센서 배선과 외관을 반영한 모델입니다. 배선 길이와 실제 조립 공차는 미검증입니다. [전면 CAD](artifacts/promotion/2026-11-18/front-three-quarter.png) · [상부 전원보드](artifacts/promotion/2026-11-18/upper-assembly.png) · [Jetson 단자 확대](artifacts/promotion/2026-11-18/jetson-ports.png) · [11/13 설계 검토 렌더](outputs/cad_final_2026_11_13/README.md)
 
 | 설계 자료 | 확인할 내용 |
 |---|---|
-| [**최종 전체 CAD·회로도 다운로드**](https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA/releases/tag/final-design-2026.11.14) | 11/14 제작 기준 전체 STEP + ESP32 배선 PNG, 원본 SHA-256 확인 |
+| [**11/14 제작 기준 STEP·회로도 다운로드**](https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA/releases/tag/final-design-2026.11.14) | 전체 조립품 STEP과 ESP32 배선 PNG |
+| Fusion 편집용 보관본 | 팀 조립 원본 v34와 홍보용 조립본을 참조 부품이 포함된 F3Z로 각각 내부 보관 |
 | [확정 패키징](docs/hardware/PACKAGING_FINAL_2026_11_13.md) · [11/14 제작 기준 대조](docs/hardware/PACKAGING_CAD_COMPARE_2026_11_14.md) | 원본 해시, 기구 치수, 센서 가림, 제작 변경 |
 | [조향 설계](docs/hardware/STEERING_FUSION_2026_11_13.md) · [장착 후 수동 3점 기록](docs/hardware/MOUNTED_SERVO_SETUP_2026_11_14.md) | CAD 조향 관계와 실제 서보 위치 측정 |
 | [층별 배선 배치](docs/hardware/WIRING_LAYERS_2026_11_13.md) | 전원보드·제어보드·센서 배치와 하네스 경로 |
