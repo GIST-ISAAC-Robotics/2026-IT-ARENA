@@ -79,8 +79,12 @@ Fusion 차량 모델로 제작한 야외 서킷 콘셉트 샷입니다. 노면�
 
 <table>
 <tr>
-<td width="50%"><a href="artifacts/promotion/2026-11-18/rear-three-quarter.png"><img src="artifacts/promotion/2026-11-18/rear-three-quarter.png" alt="차량 후면의 ArUco 마커와 두 기둥에 묶은 전원선"></a><br><b>후면 · ArUco와 층간 배선</b></td>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/front-three-quarter.png"><img src="artifacts/promotion/2026-11-18/front-three-quarter.png" alt="차량 전면과 측면이 함께 보이는 CAD 이미지"></a><br><b>전면 · 카메라와 LiDAR 배치</b></td>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/rear-three-quarter.png"><img src="artifacts/promotion/2026-11-18/rear-three-quarter.png" alt="차량 후면과 측면에서 바라본 ArUco 마커와 층간 배선"></a><br><b>후면 · ArUco와 층간 배선</b></td>
+</tr>
+<tr>
 <td width="50%"><a href="artifacts/promotion/2026-11-18/left-side.png"><img src="artifacts/promotion/2026-11-18/left-side.png" alt="배터리와 센서, Jetson, 전원보드의 층별 배치"></a><br><b>측면 · 층별 패키징</b></td>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/upper-assembly.png"><img src="artifacts/promotion/2026-11-18/upper-assembly.png" alt="차량 상부의 전원보드와 전원 배선"></a><br><b>상부 · 전원보드와 배선</b></td>
 </tr>
 <tr>
 <td width="50%"><a href="artifacts/promotion/2026-11-18/camera-jetson-csi.png"><img src="artifacts/promotion/2026-11-18/camera-jetson-csi.png" alt="카메라 상단에서 Jetson CSI로 이어지는 리본 케이블"></a><br><b>카메라 · Jetson CSI</b></td>
@@ -88,7 +92,7 @@ Fusion 차량 모델로 제작한 야외 서킷 콘셉트 샷입니다. 노면�
 </tr>
 </table>
 
-홍보용 CAD는 차량 조립품에 전원·센서 배선과 외관을 반영한 모델입니다. 배선 길이와 실제 조립 공차는 미검증입니다. [전면 CAD](artifacts/promotion/2026-11-18/front-three-quarter.png) · [상부 전원보드](artifacts/promotion/2026-11-18/upper-assembly.png) · [Jetson 단자 확대](artifacts/promotion/2026-11-18/jetson-ports.png) · [11/13 설계 검토 렌더](outputs/cad_final_2026_11_13/README.md)
+홍보용 CAD는 차량 조립품에 전원·센서 배선과 외관을 반영한 모델입니다. 배선 길이와 실제 조립 공차는 미검증입니다. [Jetson 단자 확대](artifacts/promotion/2026-11-18/jetson-ports.png) · [11/13 설계 검토 렌더](outputs/cad_final_2026_11_13/README.md)
 
 | 설계 자료 | 확인할 내용 |
 |---|---|
