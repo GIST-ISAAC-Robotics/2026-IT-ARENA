@@ -8,9 +8,9 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 
 [성공 시연](#성공-시뮬레이션-영상) · [차량 설계](#차량-설계) · [회로도](#전장과-제어-구조) · [최종 소스](#최종-버전과-재현) · [경기 기록](#결과와-개발-기록)
 
-<a href="artifacts/promotion/2026-11-18/track-hero.png"><img src="artifacts/promotion/2026-11-18/track-hero.png" width="760" alt="IT ARENA 차량이 앞바퀴를 틀고 공식 코스 결승선 근처에 정차한 홍보용 렌더"></a>
+<a href="artifacts/promotion/2026-11-18/circuit-hero.png"><img src="artifacts/promotion/2026-11-18/circuit-hero.png" width="900" alt="맑은 하늘의 야외 서킷에서 앞바퀴를 틀어 정차한 IT ARENA 차량 렌더"></a>
 
-*IT ARENA 610 mm 직각 코스 · 정차 콘셉트 렌더*
+*IT ARENA 차량 · 야외 서킷 정차 콘셉트 렌더*
 
 </div>
 
@@ -64,14 +64,16 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 
 ### 트랙 콘셉트
 
-홍보용 Fusion 조립품을 공식 610 mm 코스 형상에 배치해 조향, 카메라 시점과 조명을 연출했습니다. [코스 도면과 검토 기록](docs/track/OFFICIAL_V2026_11_06_AUDIT.md)
+홍보용 Fusion 조립품을 야외 서킷에 배치해 정차·후면·코너 주행을 연출했습니다. 노면과 자연광에 Poly Haven의 [Asphalt Track](https://polyhaven.com/a/asphalt_track)과 [Kloofendal 43d Clear](https://polyhaven.com/a/kloofendal_43d_clear_puresky)를 사용했습니다.
 
 <table>
 <tr>
-<td width="50%"><a href="artifacts/promotion/2026-11-18/track-rear.png"><img src="artifacts/promotion/2026-11-18/track-rear.png" alt="낮은 시점에서 바라본 후면과 ArUco 마커"></a><br><b>직선 구간 · 낮은 후면 시점</b></td>
-<td width="50%"><a href="artifacts/promotion/2026-11-18/track-motion.png"><img src="artifacts/promotion/2026-11-18/track-motion.png" alt="공식 코스 직각 구간에서 주행을 연출한 차량"></a><br><b>직각 코너 · 주행 연출</b></td>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/circuit-rear.png"><img src="artifacts/promotion/2026-11-18/circuit-rear.png" alt="야외 서킷에서 바라본 후면과 ArUco 마커"></a><br><b>후면 · ArUco와 층간 배선</b></td>
+<td width="50%"><a href="artifacts/promotion/2026-11-18/circuit-motion.png"><img src="artifacts/promotion/2026-11-18/circuit-motion.png" alt="야외 서킷 코너에서 주행을 연출한 차량"></a><br><b>코너 · 주행 연출</b></td>
 </tr>
 </table>
+
+공식 610 mm 직각 코스에도 같은 조립품을 배치했습니다. [공식 코스 정차](artifacts/promotion/2026-11-18/track-hero.png) · [후면](artifacts/promotion/2026-11-18/track-rear.png) · [코너 주행 연출](artifacts/promotion/2026-11-18/track-motion.png) · [코스 도면과 검토 기록](docs/track/OFFICIAL_V2026_11_06_AUDIT.md)
 
 ### CAD 상세
 
@@ -91,7 +93,7 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 | 설계 자료 | 확인할 내용 |
 |---|---|
 | [**11/14 제작 기준 STEP·회로도 다운로드**](https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA/releases/tag/final-design-2026.11.14) | 전체 조립품 STEP과 ESP32 배선 PNG |
-| Fusion 편집용 보관본 | 팀 조립 원본 v34와 홍보용 조립본을 참조 부품이 포함된 F3Z로 각각 내부 보관 |
+| Fusion 편집용 보관본 | 팀 조립 원본 v34와 홍보용 조립본 v7을 참조 부품이 포함된 F3Z로 각각 내부 보관 |
 | [확정 패키징](docs/hardware/PACKAGING_FINAL_2026_11_13.md) · [11/14 제작 기준 대조](docs/hardware/PACKAGING_CAD_COMPARE_2026_11_14.md) | 원본 해시, 기구 치수, 센서 가림, 제작 변경 |
 | [조향 설계](docs/hardware/STEERING_FUSION_2026_11_13.md) · [장착 후 수동 3점 기록](docs/hardware/MOUNTED_SERVO_SETUP_2026_11_14.md) | CAD 조향 관계와 실제 서보 위치 측정 |
 | [층별 배선 배치](docs/hardware/WIRING_LAYERS_2026_11_13.md) | 전원보드·제어보드·센서 배치와 하네스 경로 |
