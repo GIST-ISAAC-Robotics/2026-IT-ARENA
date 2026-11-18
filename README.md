@@ -6,11 +6,15 @@
 
 ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 
-[성공 시연](#성공-시뮬레이션-영상) · [차량 설계](#차량-설계) · [회로도](#전장과-제어-구조) · [최종 소스](#최종-버전과-재현) · [경기 기록](#결과와-개발-기록)
+[자율주행 쇼케이스](#자율주행-쇼케이스) · [성공 시연](#성공-시뮬레이션-영상) · [차량 설계](#차량-설계) · [회로도](#전장과-제어-구조) · [최종 소스](#최종-버전과-재현) · [경기 기록](#결과와-개발-기록)
 
-<a href="artifacts/promotion/2026-11-18/circuit-hero.png"><img src="artifacts/promotion/2026-11-18/circuit-hero.png" width="900" alt="푸른 하늘 아래 앞바퀴를 비스듬히 틀고 있는 IT ARENA 차량의 전면 3/4 시점"></a>
+## 자율주행 쇼케이스
 
-*IT ARENA · 야외 서킷 콘셉트 샷*
+<a href="https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA/releases/download/showcase-2026.11.18/ISAAC-Robotics-Autonomous-Driving-54s.mp4"><img src="artifacts/promotion/2026-11-18/driving-showcase-poster.jpg" width="900" alt="곡선 코스를 주행하는 차량과 LiDAR 센서 뷰가 담긴 54초 쇼케이스 영상 열기"></a>
+
+**[▶ 54초 영상 열기](https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA/releases/download/showcase-2026.11.18/ISAAC-Robotics-Autonomous-Driving-54s.mp4)** · 1080p MP4 · [장면 안내](https://github.com/GIST-ISAAC-Robotics/2026-IT-ARENA/releases/tag/showcase-2026.11.18)
+
+신호등 출발, 이동차 추월과 복귀, 정지차 우회, 두 갈림길과 굴곡 구간을 담은 시뮬레이션 편집 영상입니다.
 
 </div>
 
@@ -63,6 +67,10 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 ## 차량 설계
 
 ### 서킷 콘셉트 샷
+
+<a href="artifacts/promotion/2026-11-18/circuit-hero.png"><img src="artifacts/promotion/2026-11-18/circuit-hero.png" width="900" alt="푸른 하늘 아래 앞바퀴를 비스듬히 틀고 있는 IT ARENA 차량의 전면 3/4 시점"></a>
+
+*IT ARENA · 야외 서킷 콘셉트 샷*
 
 Fusion 차량 모델로 제작한 야외 서킷 콘셉트 샷입니다. 노면과 자연광에 Poly Haven의 [Asphalt Track](https://polyhaven.com/a/asphalt_track)과 [Kloofendal 43d Clear](https://polyhaven.com/a/kloofendal_43d_clear_puresky)를 사용했습니다.
 
