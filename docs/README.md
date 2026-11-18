@@ -14,6 +14,7 @@
 
 | 작업 | 먼저 볼 문서 | 필요할 때 확인할 근거 |
 |---|---|---|
+| 홍보용 차량 이미지 · 서킷 배경 재사용 | [렌더링과 장면 보관 안내](hardware/PROMOTION_RENDERING.md) | Blender 장면, 카메라·조명, 원본 재질 |
 | 11/13 확정 STEP·배선 움직임·실장 가림 | [확정 기구와 보정 준비](hardware/PACKAGING_FINAL_2026_11_13.md) | 같은 이름의 새 원본 해시/지주, 거리 한정 자기 반환 후보, 잔디 +3mm 비교와 평탄 주행 기준 |
 | 11/12 패키징 STEP·기둥 배선·XT30·안정성 | [1차 기구 종합 검토](hardware/PACKAGING_STEP_REVIEW_2026_11_12.md) | [B-rep 치수·단면·배선 두께·질량 가정·렌더](../outputs/cad_review_2026_11_12/README.md). 기존 전체 CAD와 현행 JR 시뮬을 구분. 실물 조립/주행 검증은 아님 |
 | 전체 계획·다중 차량 | [현행 개발 계획](DEVELOPMENT_PLAN.md), [현행 목표](decisions/0028-speed-continuity-and-final-gearing.md), [다중 차량 전략·설계](autonomy/MULTI_VEHICLE_DESIGN_2026_10_04.md), [G0 관측·기하 시험](autonomy/MULTI_VEHICLE_G0_2026_10_05.md), [G2 기하·추종 준비](autonomy/G2_PREPARATION_2026_10_13.md) | [10/23 이전 계획·독립 교차 검토](reports/DEVELOPMENT_PLAN_2026_10_23.md#9-토의와-독립-검토에서-바뀐-점), [10/4 이전 계획](reports/DEVELOPMENT_PLAN_2026_10_04.md), [알고리즘 비교 이력](autonomy/ALGORITHM_OPTIONS.md), [9/22 이전 계획](reports/DEVELOPMENT_PLAN_2026_09_22.md) |

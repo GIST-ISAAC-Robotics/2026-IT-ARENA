@@ -75,6 +75,8 @@ Fusion 차량 모델로 제작한 야외 서킷 콘셉트 샷입니다. 노면�
 
 공식 610 mm 직각 코스에도 같은 조립품을 배치했습니다. [공식 코스 대표 컷](artifacts/promotion/2026-11-18/track-hero.png) · [후면](artifacts/promotion/2026-11-18/track-rear.png) · [코너 주행 연출](artifacts/promotion/2026-11-18/track-motion.png) · [코스 도면과 검토 기록](docs/track/OFFICIAL_V2026_11_06_AUDIT.md)
 
+[홍보 렌더링 방법과 장면 보관 안내](docs/hardware/PROMOTION_RENDERING.md)
+
 ### CAD 상세
 
 <table>
