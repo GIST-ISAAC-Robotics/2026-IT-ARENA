@@ -8,9 +8,9 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 
 [성공 시연](#성공-시뮬레이션-영상) · [차량 설계](#차량-설계) · [회로도](#전장과-제어-구조) · [최종 소스](#최종-버전과-재현) · [경기 기록](#결과와-개발-기록)
 
-<a href="artifacts/promotion/2026-11-18/circuit-hero.png"><img src="artifacts/promotion/2026-11-18/circuit-hero.png" width="900" alt="맑은 하늘의 야외 서킷에서 앞바퀴를 틀어 정차한 IT ARENA 차량 렌더"></a>
+<a href="artifacts/promotion/2026-11-18/circuit-hero.png"><img src="artifacts/promotion/2026-11-18/circuit-hero.png" width="900" alt="푸른 하늘 아래 앞바퀴를 비스듬히 틀고 있는 IT ARENA 차량의 전면 3/4 시점"></a>
 
-*IT ARENA 차량 · 야외 서킷 정차 콘셉트 렌더*
+*IT ARENA · 야외 서킷 콘셉트 샷*
 
 </div>
 
@@ -62,9 +62,9 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 
 ## 차량 설계
 
-### 트랙 콘셉트
+### 서킷 콘셉트 샷
 
-홍보용 Fusion 조립품을 야외 서킷에 배치해 정차·후면·코너 주행을 연출했습니다. 노면과 자연광에 Poly Haven의 [Asphalt Track](https://polyhaven.com/a/asphalt_track)과 [Kloofendal 43d Clear](https://polyhaven.com/a/kloofendal_43d_clear_puresky)를 사용했습니다.
+Fusion 차량 모델로 제작한 야외 서킷 콘셉트 샷입니다. 노면과 자연광에 Poly Haven의 [Asphalt Track](https://polyhaven.com/a/asphalt_track)과 [Kloofendal 43d Clear](https://polyhaven.com/a/kloofendal_43d_clear_puresky)를 사용했습니다.
 
 <table>
 <tr>
@@ -73,7 +73,7 @@ ROS 2 Jazzy · Gazebo Harmonic · NVIDIA Jetson · ESP32
 </tr>
 </table>
 
-공식 610 mm 직각 코스에도 같은 조립품을 배치했습니다. [공식 코스 정차](artifacts/promotion/2026-11-18/track-hero.png) · [후면](artifacts/promotion/2026-11-18/track-rear.png) · [코너 주행 연출](artifacts/promotion/2026-11-18/track-motion.png) · [코스 도면과 검토 기록](docs/track/OFFICIAL_V2026_11_06_AUDIT.md)
+공식 610 mm 직각 코스에도 같은 조립품을 배치했습니다. [공식 코스 대표 컷](artifacts/promotion/2026-11-18/track-hero.png) · [후면](artifacts/promotion/2026-11-18/track-rear.png) · [코너 주행 연출](artifacts/promotion/2026-11-18/track-motion.png) · [코스 도면과 검토 기록](docs/track/OFFICIAL_V2026_11_06_AUDIT.md)
 
 ### CAD 상세
 
